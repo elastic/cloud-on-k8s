@@ -10,7 +10,6 @@ import (
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -128,8 +127,12 @@ func getUserConfig(params DriverParams) (*settings.CanonicalConfig, error) {
 		return nil, nil
 	}
 
-	secret, err := getConfigRefSecret(params.Client, params.Beat.Spec.ConfigRef.SecretName, params.Beat.Namespace)
-	if err != nil {
+	secret := &corev1.Secret{}
+	if err := params.Client.Get(
+		types.NamespacedName{
+			Name:      params.Beat.Spec.ConfigRef.SecretName,
+			Namespace: params.Beat.Namespace,
+		}, secret); err != nil {
 		return nil, err
 	}
 
@@ -140,43 +143,25 @@ func getUserConfig(params DriverParams) (*settings.CanonicalConfig, error) {
 
 	data, exists := secret.Data[ConfigFileName]
 	if !exists {
-		msg := fmt.Sprintf("no %s key in secret", ConfigFileName)
-		params.Logger.Error(err, msg, "namespace", params.Beat.Namespace, "beat_name", params.Beat.Name, "secret_name", secret.Name)
-
-		msg = fmt.Sprintf("no key %s in secret %s in namespace %s", ConfigFileName, secret.Name, params.Beat.Namespace)
+		msg := fmt.Sprintf("no key %s in secret %s in namespace %s", ConfigFileName, secret.Name, params.Beat.Namespace)
 		params.Recorder().Event(&params.Beat, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+
+		// create new msg to avoid duplicating secret name and namespace
+		msg = fmt.Sprintf("no %s key in secret", ConfigFileName)
+		params.Logger.Error(nil, msg, "namespace", params.Beat.Namespace, "beat_name", params.Beat.Name, "secret_name", secret.Name)
 		return nil, fmt.Errorf(msg)
 	}
 	parsed, err := settings.ParseConfig(data)
 	if err != nil {
-		msg := "unable to parse configuration from secret"
-		params.Logger.Error(err, msg, "namespace", params.Beat.Namespace, "beat_name", params.Beat.Name, "secret_name", secret.Name)
-
-		msg = fmt.Sprintf("unable to parse configuration from key %s in secret %s in namespace %s", ConfigFileName, secret.Name, params.Beat.Namespace)
+		msg := fmt.Sprintf("unable to parse configuration from key %s in secret %s in namespace %s", ConfigFileName, secret.Name, params.Beat.Namespace)
 		params.Recorder().Event(&params.Beat, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+
+		// create new msg to avoid duplicating secret name and namespace
+		msg = "unable to parse configuration from secret"
+		params.Logger.Error(err, msg, "namespace", params.Beat.Namespace, "beat_name", params.Beat.Name, "secret_name", secret.Name)
 		return nil, err
 	}
 	return parsed, nil
-}
-
-func getConfigRefSecret(
-	client k8s.Client,
-	name, namespace string,
-) (*corev1.Secret, error) {
-	secret := &corev1.Secret{}
-	if err := client.Get(
-		types.NamespacedName{
-			Name:      name,
-			Namespace: namespace,
-		}, secret); err == nil {
-		// user provided an existing secret, just use it
-		return secret, nil
-	} else if !apierrors.IsNotFound(err) {
-		// can't be sure if the secret exists or not, error out to be safe
-		return nil, err
-	}
-
-	return nil, fmt.Errorf("secret %s not found in %s namespace", name, namespace)
 }
 
 func reconcileConfig(
