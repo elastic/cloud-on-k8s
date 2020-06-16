@@ -12177,8 +12177,8 @@ spec:
             secureSettings:
               description: SecureSettings is a list of references to Kubernetes Secrets
                 containing sensitive configuration options for the Beat. Secrets data
-                can be then referenced in the Beat config using Secret keys or as
-                specified in `Entries` field of each SecureSetting.
+                can be then referenced in the Beat config using the Secret's keys
+                or as specified in `Entries` field of each SecureSetting.
               items:
                 description: SecretSource defines a data source based on a Kubernetes
                   Secret.
