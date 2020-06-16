@@ -38,7 +38,7 @@ type BeatSpec struct {
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.
-	// Secrets data can be then referenced in the Beat config using Secret keys or as specified in `Entries` field of
+	// Secrets data can be then referenced in the Beat config using the Secret's keys or as specified in `Entries` field of
 	// each SecureSetting.
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
