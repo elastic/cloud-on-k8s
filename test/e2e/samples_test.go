@@ -89,7 +89,6 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
-				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, testName).
 				WithPodLabel(run.TestNameLabel, testName).
 				WithRBAC().
