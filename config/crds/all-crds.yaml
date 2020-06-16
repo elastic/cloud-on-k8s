@@ -625,8 +625,8 @@ spec:
               type: string
             type:
               description: Type is the type of the Beat to deploy (filebeat, metricbeat,
-                etc.). Any string can be used, but well-known types will be recognized
-                and will allow to provide sane default configurations.
+                heartbeat, etc.). Any string can be used, but well-known types will
+                be recognized and will allow to provide sane default configurations.
               maxLength: 20
               pattern: '[a-zA-Z0-9-]+'
               type: string

@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -78,12 +79,11 @@ func TestHeartbeatConfig(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	hbBuilder := beat.NewBuilder(name).
-		WithType("heartbeat").
+		WithType(heartbeat.Type).
 		WithDeployment().
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithImage("docker.elastic.co/beats/heartbeat:7.7.0").
 		WithESValidations(
-			beat.HasEventFromBeat("heartbeat"),
+			beat.HasEventFromBeat(heartbeat.Type),
 			beat.HasEvent("monitor.status:up"))
 
 	podTemplateYaml := `spec:
