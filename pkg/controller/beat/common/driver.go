@@ -7,7 +7,6 @@ package common
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +16,6 @@ import (
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
@@ -68,24 +66,12 @@ func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 
 var _ driver.Interface = DriverParams{}
 
-func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
-	if (spec.DaemonSet == nil && spec.Deployment == nil) || (spec.DaemonSet != nil && spec.Deployment != nil) {
-		return fmt.Errorf("either daemonset or deployment has to be specified")
-	}
-	return nil
-}
-
 func Reconcile(
 	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
-
-	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
-		k8s.EmitErrorEvent(params.EventRecorder, err, &params.Beat, events.EventReasonValidation, err.Error())
-		return results.WithError(err)
-	}
 
 	configHash := sha256.New224()
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
