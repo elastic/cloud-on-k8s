@@ -519,7 +519,18 @@ spec:
           description: BeatSpec defines the desired state of a Beat.
           properties:
             config:
-              description: Config holds the Beat configuration.
+              description: Config holds the Beat configuration. At most one of [`Config`,
+                `ConfigRef`] can be specified.
+              type: object
+            configRef:
+              description: ConfigRef contains a reference to an existing Kubernetes
+                Secret holding the Beat configuration. Beat settings must be specified
+                as yaml, under a single "beat.yml" entry. At most one of [`Config`,
+                `ConfigRef`] can be specified.
+              properties:
+                secretName:
+                  description: SecretName is the name of the secret.
+                  type: string
               type: object
             daemonSet:
               description: DaemonSet specifies the Beat should be deployed as a DaemonSet,

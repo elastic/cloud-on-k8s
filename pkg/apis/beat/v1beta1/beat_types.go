@@ -34,9 +34,15 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
-	// Config holds the Beat configuration.
+	// Config holds the Beat configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 	// +kubebuilder:validation:Optional
 	Config *commonv1.Config `json:"config,omitempty"`
+
+	// ConfigRef contains a reference to an existing Kubernetes Secret holding the Beat configuration.
+	// Beat settings must be specified as yaml, under a single "beat.yml" entry. At most one of [`Config`, `ConfigRef`]
+	// can be specified.
+	// +kubebuilder:validation:Optional
+	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.
 	// Secrets data can be then referenced in the Beat config using the Secret's keys or as specified in `Entries` field of

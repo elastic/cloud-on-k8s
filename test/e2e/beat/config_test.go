@@ -160,16 +160,71 @@ processors:
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
+func TestBeatConfigRef(t *testing.T) {
+	name := "test-beat-configref"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	secretName := "fb-config" // nolint:gosec
+	agentName := "configref-test-agent"
+	config := fmt.Sprintf(`
+name: %s
+filebeat:
+  autodiscover:
+    providers:
+    - hints:
+        default_config:
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+          type: container
+        enabled: true
+      host: ${HOSTNAME}
+      type: kubernetes
+processors:
+- add_cloud_metadata: {}
+- add_host_metadata: {}
+`, agentName)
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: test.Ctx().ManagedNamespace(0),
+		},
+		Data: map[string][]byte{
+			"beat.yml": []byte(config),
+		},
+	}
+
+	fbBuilder := beat.NewBuilder(name).
+		WithType(filebeat.Type).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithConfigRef(secretName).
+		WithObjects(secret).
+		WithESValidations(
+			beat.HasEventFromBeat(filebeat.Type),
+			beat.HasEvent("agent.name:"+agentName),
+		)
+
+	fbBuilder = applyYamls(t, fbBuilder, "", e2eFilebeatPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder).RunSequential(t)
+}
+
 // --- helpers
 
 func applyYamls(t *testing.T, b beat.Builder, configYaml, podTemplateYaml string) beat.Builder {
-	b.Beat.Spec.Config = &commonv1.Config{}
-	err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)
-	require.NoError(t, err)
+	if configYaml != "" {
+		b.Beat.Spec.Config = &commonv1.Config{}
+		err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)
+		require.NoError(t, err)
+	}
 
-	// use ghodss as settings package has issues with unpacking volumes part of the yamls
-	err = ghodssyaml.Unmarshal([]byte(podTemplateYaml), b.PodTemplate)
-	require.NoError(t, err)
+	if podTemplateYaml != "" {
+		// use ghodss as settings package has issues with unpacking volumes part of the yamls
+		err := ghodssyaml.Unmarshal([]byte(podTemplateYaml), b.PodTemplate)
+		require.NoError(t, err)
+	}
 
 	return b
 }

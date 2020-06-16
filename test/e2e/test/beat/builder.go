@@ -239,6 +239,16 @@ func (b Builder) WithSecureSettings(secretNames ...string) Builder {
 	return b
 }
 
+func (b Builder) WithConfigRef(secretName string) Builder {
+	b.Beat.Spec.ConfigRef = &commonv1.ConfigSource{
+		SecretRef: commonv1.SecretRef{
+			SecretName: secretName,
+		},
+	}
+
+	return b
+}
+
 func (b Builder) WithObjects(objs ...runtime.Object) Builder {
 	b.AdditionalObjects = append(b.AdditionalObjects, objs...)
 	return b

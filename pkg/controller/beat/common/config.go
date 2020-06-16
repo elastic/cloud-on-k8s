@@ -5,20 +5,28 @@
 package common
 
 import (
+	"fmt"
 	"hash"
 	"path"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+// ConfigRefWatchName returns the name of the watch registered on Kubernetes Secret referenced in `configRef`
+func ConfigRefWatchName(beat types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-configref", beat.Namespace, beat.Name)
+}
 
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
@@ -73,14 +81,12 @@ func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssoc
 }
 
 func buildBeatConfig(
-	log logr.Logger,
-	client k8s.Client,
-	beat beatv1beta1.Beat,
+	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
-	outputCfg, err := buildOutputConfig(client, beatv1beta1.BeatESAssociation{Beat: &beat})
+	outputCfg, err := buildOutputConfig(params.Client, beatv1beta1.BeatESAssociation{Beat: &params.Beat})
 	if err != nil {
 		return nil, err
 	}
@@ -89,26 +95,69 @@ func buildBeatConfig(
 		return nil, err
 	}
 
-	userConfig := beat.Spec.Config
-	if userConfig == nil {
-		return cfg.Render()
-	}
-
-	userCfg, err := settings.NewCanonicalConfigFrom(userConfig.Data)
+	// get user config from `config` or `configRef`
+	userConfig, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = cfg.MergeWith(userCfg); err != nil {
+	if userConfig == nil {
+		return cfg.Render()
+	}
+
+	if err = cfg.MergeWith(userConfig); err != nil {
 		return nil, err
 	}
-	log.V(1).Info(
-		"Replacing ECK-managed configuration by user-provided configuration",
-		"beat_name", beat.Name,
-		"namespace", beat.Namespace,
-	)
 
 	return cfg.Render()
+}
+
+// getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
+// `configRef` field.
+func getUserConfig(params DriverParams) (*settings.CanonicalConfig, error) {
+	if params.Beat.Spec.Config != nil {
+		return settings.NewCanonicalConfigFrom(params.Beat.Spec.Config.Data)
+	}
+
+	if params.Beat.Spec.ConfigRef == nil || params.Beat.Spec.ConfigRef.SecretName == "" {
+		return nil, nil
+	}
+
+	secret := &corev1.Secret{}
+	if err := params.Client.Get(
+		types.NamespacedName{
+			Name:      params.Beat.Spec.ConfigRef.SecretName,
+			Namespace: params.Beat.Namespace,
+		}, secret); err != nil {
+		return nil, err
+	}
+
+	nsn := k8s.ExtractNamespacedName(&params.Beat)
+	if err := watches.WatchUserProvidedSecrets(nsn, params.DynamicWatches(), ConfigRefWatchName(nsn), []string{secret.Name}); err != nil {
+		return nil, err
+	}
+
+	data, exists := secret.Data[ConfigFileName]
+	if !exists {
+		msg := fmt.Sprintf("no key %s in secret %s in namespace %s", ConfigFileName, secret.Name, params.Beat.Namespace)
+		params.Recorder().Event(&params.Beat, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+
+		// create new msg to avoid duplicating secret name and namespace
+		msg = fmt.Sprintf("no %s key in secret", ConfigFileName)
+		params.Logger.Error(nil, msg, "namespace", params.Beat.Namespace, "beat_name", params.Beat.Name, "secret_name", secret.Name)
+		return nil, fmt.Errorf(msg)
+	}
+	parsed, err := settings.ParseConfig(data)
+	if err != nil {
+		msg := fmt.Sprintf("unable to parse configuration from key %s in secret %s in namespace %s", ConfigFileName, secret.Name, params.Beat.Namespace)
+		params.Recorder().Event(&params.Beat, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+
+		// create new msg to avoid duplicating secret name and namespace
+		msg = "unable to parse configuration from secret"
+		params.Logger.Error(err, msg, "namespace", params.Beat.Namespace, "beat_name", params.Beat.Name, "secret_name", secret.Name)
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func reconcileConfig(
@@ -116,7 +165,7 @@ func reconcileConfig(
 	managedConfig *settings.CanonicalConfig,
 	configHash hash.Hash,
 ) error {
-	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, managedConfig)
+	cfgBytes, err := buildBeatConfig(params, managedConfig)
 	if err != nil {
 		return err
 	}
