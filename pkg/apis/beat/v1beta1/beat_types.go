@@ -16,6 +16,7 @@ type BeatSpec struct {
 	// Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used,
 	// but well-known types will be recognized and will allow to provide sane default configurations.
 	// +kubebuilder:validation:MaxLength=20
+	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
 	Type string `json:"type"`
 
 	// Version of the Beat.

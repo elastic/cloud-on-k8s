@@ -5,6 +5,8 @@
 package user
 
 import (
+	"fmt"
+
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 
 	"gopkg.in/yaml.v2"
@@ -28,6 +30,18 @@ const (
 
 	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
 	ApmAgentUserRole = "eck_apm_agent_user_role"
+
+	// V70 indicates version 7.0
+	V70 = "v70"
+
+	// V73 indicates version 7.3
+	V73 = "v73"
+
+	// V75 indicates version 7.5
+	V75 = "v75"
+
+	// V77 indicates version 7.7
+	V77 = "v77"
 )
 
 var (
@@ -74,6 +88,54 @@ var (
 		},
 	}
 )
+
+func init() {
+	for _, beat := range []string{"filebeat", "metricbeat"} {
+		PredefinedRoles[BeatRoleName(V77, beat)] = esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
+				},
+			},
+		}
+
+		PredefinedRoles[BeatRoleName(V75, beat)] = esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
+				},
+			},
+		}
+
+		PredefinedRoles[BeatRoleName(V73, beat)] = esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "manage_pipeline"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read", "index", "view_index_metadata", "create_index"},
+				},
+			},
+		}
+
+		PredefinedRoles[BeatRoleName(V70, beat)] = esclient.Role{
+			Cluster: []string{"manage_index_templates", "monitor", "manage_ilm", "manage_ml", "manage_pipeline"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read", "index", "create_index"},
+				},
+			},
+		}
+	}
+}
+
+func BeatRoleName(version, beatType string) string {
+	return fmt.Sprintf("eck_beat_%s_role_%s", beatType, version)
+}
 
 // RolesFileContent is a map {role name -> yaml role spec}.
 // We care about the role names here, but consider the roles spec as a yaml blob we don't need to access.
