@@ -25,16 +25,19 @@ func Test_checkBeatType(t *testing.T) {
 			typ:  "apachebeat",
 		},
 		{
-			name: "bad type - space",
-			typ:  "file beat",
+			name:    "bad type - space",
+			typ:     "file beat",
+			wantErr: true,
 		},
 		{
-			name: "bad type - illegal characters",
-			typ:  "filebeat-2",
+			name:    "bad type - illegal characters",
+			typ:     "filebeat$2",
+			wantErr: true,
 		},
 		{
-			name: "injection",
-			typ:  "filebeat,superuser",
+			name:    "injection",
+			typ:     "filebeat,superuser",
+			wantErr: true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

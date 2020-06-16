@@ -28,7 +28,7 @@ var (
 		checkNoDowngrade,
 	}
 
-	typeRegex = regexp.MustCompile("[a-zA-Z0-9-]+")
+	typeRegex = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 )
 
 func checkNoUnknownFields(b *Beat) field.ErrorList {
@@ -74,7 +74,7 @@ func checkBeatType(b *Beat) field.ErrorList {
 			field.Invalid(
 				field.NewPath("spec").Child("type"),
 				b.Spec.Type,
-				"Beat Type has to match [a-zA-Z0-9]"),
+				"Beat Type has to match ^[a-zA-Z0-9-]+$"),
 		}
 	}
 
