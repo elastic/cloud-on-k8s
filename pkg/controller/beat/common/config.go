@@ -116,14 +116,10 @@ func buildBeatConfig(
 // `configRef` field.
 func getUserConfig(params DriverParams) (*settings.CanonicalConfig, error) {
 	if params.Beat.Spec.Config != nil {
-		userCfg, err := settings.NewCanonicalConfigFrom(params.Beat.Spec.Config.Data)
-		if err != nil {
-			return nil, err
-		}
-		return userCfg, nil
+		return settings.NewCanonicalConfigFrom(params.Beat.Spec.Config.Data)
 	}
 
-	if params.Beat.Spec.ConfigRef == nil {
+	if params.Beat.Spec.ConfigRef == nil || params.Beat.Spec.ConfigRef.SecretName == "" {
 		return nil, nil
 	}
 
