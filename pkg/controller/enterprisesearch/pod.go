@@ -6,7 +6,6 @@ package enterprisesearch
 
 import (
 	"path"
-	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -46,7 +45,7 @@ var (
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{
-				Command: []string{"bash", path.Join(ConfigMountPath, ReadinessProbeFilename)},
+				Command: []string{"bash", path.Join(ReadinessProbeMountPath)},
 			},
 		},
 	}
@@ -54,6 +53,7 @@ var (
 
 func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	cfgVolume := ConfigSecretVolume(ent)
+	readinessProbeVolume := ReadinessProbeSecretVolume(ent)
 
 	builder := defaults.NewPodTemplateBuilder(
 		ent.Spec.PodTemplate, entv1beta1.EnterpriseSearchContainerName).
@@ -63,8 +63,8 @@ func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTe
 			{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
 		WithReadinessProbe(ReadinessProbe).
-		WithVolumes(cfgVolume.Volume()).
-		WithVolumeMounts(cfgVolume.VolumeMount()).
+		WithVolumes(cfgVolume.Volume(), readinessProbeVolume.Volume()).
+		WithVolumeMounts(cfgVolume.VolumeMount(), readinessProbeVolume.VolumeMount()).
 		WithEnv(DefaultEnv...).
 		// ensure the Pod gets rotated on config change
 		WithLabels(map[string]string{ConfigHashLabelName: configHash})
