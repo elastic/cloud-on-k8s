@@ -182,10 +182,6 @@ spec:
         configMap:
           defaultMode: 0600
           name: metricbeat-daemonset-modules
-      - name: data
-        hostPath:
-          path: /var/lib/metricbeat-data
-          type: DirectoryOrCreate
       - name: es-certs
         secret:
           secretName: monitor-es-http-certs-public
