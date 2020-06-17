@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = HTTP settings and TLS SANs
 
-In the `spec.http.service.spec.type` section, you can change the Kubernetes service used to expose Elasticsearch:
+In the `spec.http.service.spec` field, you can change the Kubernetes service type used to expose Elasticsearch:
 
 [source,yaml]
 ----
