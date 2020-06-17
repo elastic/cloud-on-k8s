@@ -1,19 +1,5 @@
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: "eck-{{ .Context.TestRun }}"
-  namespace: {{ .Context.E2ENamespace }}
-  labels:
-    test-run: {{ .Context.TestRun }}
-data:
-{{ range $key, $value := .Secrets }}
-  {{ $key }}: |
-    {{ $value | b64enc }}
-{{ end }}
-
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: "eck-{{ .Context.TestRun }}"

@@ -206,13 +206,17 @@ spec:
   serviceName: {{ .Operator.Name }}
   template:
     metadata:
-      # if monitoring secrets are specified, filebeat is deployed and provides the below configuration
-      {{ if not .MonitoringSecrets }}
       annotations:
+        co.elastic.metrics/metricsets: collector
+        co.elastic.metrics/module: prometheus
+        co.elastic.metrics/hosts: '${data.host}:9090'
+        co.elastic.metrics/period: 10s
+        # if monitoring secrets are specified, filebeat is deployed and provides the below configuration
+        {{ if not .MonitoringSecrets }}
         # Rename the fields "error" to "error.message" and "source" to "event.source"
         # This is to avoid a conflict with the ECS "error" and "source" documents.
         "co.elastic.logs/raw": "[{\"type\":\"container\",\"json.keys_under_root\":true,\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
-      {{end}}
+        {{end}}
       labels:
         control-plane: {{ .Operator.Name }}
         test-run: {{ .TestRun }}
@@ -222,7 +226,7 @@ spec:
       - image: {{ .OperatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--namespaces", "{{ .Operator.ManagedNamespaces | join "," }}", "--enable-webhook", "--log-verbosity=1"]
+        args: ["manager", "--namespaces", "{{ .Operator.ManagedNamespaces | join "," }}", "--enable-webhook", "--log-verbosity=1", "--metrics-port=9090"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -240,6 +244,9 @@ spec:
         ports:
         - containerPort: 9443
           name: webhook-server
+          protocol: TCP
+        - containerPort: 9090
+          name: prometheus
           protocol: TCP
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
