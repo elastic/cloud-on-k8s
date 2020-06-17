@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -281,12 +282,16 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 	return []test.Step{
 		{
 			Name: "Create the default Agent Configuration in Kibana",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				kb := kbv1.Kibana{}
-				assert.NoError(t, k.Client.Get(apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).NamespacedName(), &kb))
+				if err := k.Client.Get(apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).NamespacedName(), &kb); err != nil {
+					return err
+				}
 
 				password, err := k.GetElasticPassword(apm.Spec.ElasticsearchRef.WithDefaultNamespace(apm.Namespace).NamespacedName())
-				assert.NoError(t, err)
+				if err != nil {
+					return err
+				}
 
 				uri := "/api/apm/settings/agent-configuration"
 
@@ -295,25 +300,30 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 					uri += "/new"
 				}
 				_, err = kibana.DoRequest(k, kb, password, "PUT", uri, []byte(sampleDefaultAgentConfiguration))
-				assert.NoError(t, err)
-			},
+				return err
+			}),
 		},
 		{
 			Name: "Read back the agent default configuration from the APM Server",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
 				defer cancel()
 
 				agentConfig, err := c.apmClient.AgentsDefaultConfig(ctx)
-				assert.NoError(t, err)
+				if err != nil {
+					return err
+				}
 
 				expectedAgentConfiguration := AgentConfig{
 					CaptureBody:           "errors",
 					TransactionMaxSpans:   "99",
 					TransactionSampleRate: "1",
 				}
-				assert.Equal(t, expectedAgentConfiguration, agentConfig)
-			},
+				if !reflect.DeepEqual(expectedAgentConfiguration, agentConfig) {
+					return fmt.Errorf("expected agent configuration %+v, got %+v", expectedAgentConfiguration, agentConfig)
+				}
+				return nil
+			}),
 		},
 	}
 }
