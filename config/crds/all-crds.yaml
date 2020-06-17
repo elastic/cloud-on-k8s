@@ -1773,10 +1773,10 @@ spec:
               description: Config holds the Enterprise Search configuration.
               type: object
             configRef:
-              description: ConfigRef contains references to an existing Kubernetes
+              description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Enterprise Search configuration. Configuration
-                settings are merged and have precedence over plain text settings specified
-                in `config`.
+                settings are merged and have precedence over settings specified in
+                `config`.
               properties:
                 secretName:
                   description: SecretName is the name of the secret.
