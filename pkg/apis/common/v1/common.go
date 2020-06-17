@@ -168,8 +168,9 @@ type KeyToPath struct {
 type ConfigSource struct {
 	// SecretName references a Kubernetes Secret in the same namespace as the resource that will consume it.
 	//
-	// Example:
+	// Examples:
 	// ---
+	// # Filebeat configuration
 	// kind: Secret
 	// apiVersion: v1
 	// metadata:
@@ -189,6 +190,22 @@ type ConfigSource struct {
 	//     processors:
 	//     - add_cloud_metadata: {}
 	//     - add_host_metadata: {}
+	// ---
+	// # EnterpriseSearch configuration
+	// kind: Secret
+	// apiVersion: v1
+	// metadata:
+	// 	name: smtp-credentials
+	// stringData:
+	//  enterprise-search.yml: |-
+	//    email.account.enabled: true
+	//    email.account.smtp.auth: plain
+	//    email.account.smtp.starttls.enable: false
+	//    email.account.smtp.host: 127.0.0.1
+	//    email.account.smtp.port: 25
+	//    email.account.smtp.user: myuser
+	//    email.account.smtp.password: mypassword
+	//    email.account.email_defaults.from: my@email.com
 	// ---
 	SecretRef `json:",inline"`
 }

@@ -108,11 +108,8 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	return b
 }
 
-func (b Builder) WithConfigRef(ref entv1beta1.ConfigSource) Builder {
-	if b.EnterpriseSearch.Spec.ConfigRef == nil {
-		b.EnterpriseSearch.Spec.ConfigRef = []entv1beta1.ConfigSource{}
-	}
-	b.EnterpriseSearch.Spec.ConfigRef = append(b.EnterpriseSearch.Spec.ConfigRef, ref)
+func (b Builder) WithConfigRef(ref *commonv1.ConfigSource) Builder {
+	b.EnterpriseSearch.Spec.ConfigRef = ref
 	return b
 }
 

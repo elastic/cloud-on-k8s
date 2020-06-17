@@ -224,43 +224,51 @@ func configRefWatchName(ent types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-configref", ent.Namespace, ent.Name)
 }
 
-// parseConfigRef builds a single merged CanonicalConfig from the secrets referenced in configRef,
-// and ensures watches are correctly set on those secrets.
+// parseConfigRef builds a CanonicalConfig from the secret referenced in configRef,
+// and ensures a watch is set on this secret.
 func parseConfigRef(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	cfg := settings.NewCanonicalConfig()
-	secretNames := make([]string, 0, len(ent.Spec.ConfigRef))
-	for _, secretRef := range ent.Spec.ConfigRef {
-		if secretRef.SecretName == "" {
-			continue
-		}
-		secretNames = append(secretNames, secretRef.SecretName)
+	var secretNames []string
+	if ent.Spec.ConfigRef != nil && ent.Spec.ConfigRef.SecretName != "" {
+		secretNames = append(secretNames, ent.Spec.ConfigRef.SecretName)
 	}
 	nsn := k8s.ExtractNamespacedName(&ent)
+	// will reset any existing watch if secretNames is empty
 	if err := watches.WatchUserProvidedSecrets(nsn, driver.DynamicWatches(), configRefWatchName(nsn), secretNames); err != nil {
 		return nil, err
 	}
-	for _, secretName := range secretNames {
-		var secret corev1.Secret
-		if err := driver.K8sClient().Get(types.NamespacedName{Namespace: ent.Namespace, Name: secretName}, &secret); err != nil {
-			// the secret may not exist (yet) in the cache
-			// it may contain important settings such as encryption keys, that we don't want to generate ourselves
-			// let's explicitly error out
-			return nil, err
-		}
-		if data, exists := secret.Data[ConfigFilename]; exists {
-			parsed, err := settings.ParseConfig(data)
-			if err != nil {
-				msg := "unable to parse configuration from secret"
-				log.Error(err, msg, "namespace", ent.Namespace, "ent_name", ent.Name, "secret_name", secretName)
-				driver.Recorder().Event(&ent, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
-				return nil, err
-			}
-			if err := cfg.MergeWith(parsed); err != nil {
-				return nil, err
-			}
-		}
+	if len(secretNames) == 0 {
+		// no secret referenced, nothing to do
+		return settings.NewCanonicalConfig(), nil
 	}
-	return cfg, nil
+
+	var secret corev1.Secret
+	if err := driver.K8sClient().Get(types.NamespacedName{Namespace: ent.Namespace, Name: ent.Spec.ConfigRef.SecretName}, &secret); err != nil {
+		// the secret may not exist (yet) in the cache
+		// it may contain important settings such as encryption keys, that we don't want to generate ourselves
+		// let's explicitly error out
+		return nil, err
+	}
+	data, exists := secret.Data[ConfigFilename]
+	if !exists {
+		msg := fmt.Sprintf("no key %s in secret %s in namespace %s", ConfigFilename, secret.Name, ent.Namespace)
+		driver.Recorder().Event(&ent, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+
+		// create new msg to avoid duplicating secret name and namespace
+		msg = fmt.Sprintf("no %s key in secret", ConfigFilename)
+		log.Error(nil, msg, "namespace", ent.Namespace, "ent_name", ent.Name, "secret_name", secret.Name)
+		return nil, fmt.Errorf(msg)
+	}
+	parsed, err := settings.ParseConfig(data)
+	if err != nil {
+		msg := fmt.Sprintf("unable to parse configuration from key %s in secret %s in namespace %s", ConfigFilename, secret.Name, ent.Namespace)
+		driver.Recorder().Event(&ent, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+
+		// create new msg to avoid duplicating secret name and namespace
+		msg = "unable to parse configuration from secret"
+		log.Error(err, msg, "namespace", ent.Namespace, "ent_name", ent.Name, "secret_name", secret.Name)
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func defaultConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {

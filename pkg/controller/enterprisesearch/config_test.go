@@ -22,16 +22,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func entWithConfigRef(secretNames ...string) entv1beta1.EnterpriseSearch {
+func entWithConfigRef(secretName string) entv1beta1.EnterpriseSearch {
 	ent := entv1beta1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "ent",
 		},
 	}
-	for _, secretName := range secretNames {
-		ent.Spec.ConfigRef = append(ent.Spec.ConfigRef, entv1beta1.ConfigSource{
-			SecretRef: commonv1.SecretRef{SecretName: secretName}})
+	if secretName != "" {
+		ent.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: secretName}}
 	}
 	return ent
 }
@@ -71,31 +70,14 @@ func Test_parseConfigRef(t *testing.T) {
 		{
 			name:        "no configRef specified",
 			secrets:     nil,
-			ent:         entWithConfigRef(),
+			ent:         entWithConfigRef(""),
 			wantConfig:  settings.NewCanonicalConfig(),
 			wantWatches: false,
 		},
 		{
-			name: "merge entries from all secrets, priority to the last one",
-			secrets: []runtime.Object{
-				secretWithConfig("secret-1", []byte("a: b\nc: d")),
-				secretWithConfig("secret-2", []byte("a: b-2\nc: d")),
-				secretWithConfig("secret-3", []byte("a: b-3")),
-			},
-			ent: entWithConfigRef("secret-1", "secret-2", "secret-3"),
-			wantConfig: settings.MustCanonicalConfig(map[string]string{
-				"a": "b-3",
-				"c": "d",
-			}),
-			wantWatches: true,
-		},
-		{
-			name: "a referenced secret does not exist: return an error",
-			secrets: []runtime.Object{
-				secretWithConfig("secret-1", []byte("a: b\nc: d")),
-				secretWithConfig("secret-2", []byte("a: b-2\nc: d")),
-			},
-			ent:         entWithConfigRef("secret-1", "secret-2", "secret-3"),
+			name:        "a referenced secret does not exist: return an error",
+			secrets:     []runtime.Object{},
+			ent:         entWithConfigRef("non-existing"),
 			wantConfig:  nil,
 			wantWatches: true,
 			wantErr:     true,
@@ -103,11 +85,9 @@ func Test_parseConfigRef(t *testing.T) {
 		{
 			name: "a referenced secret is invalid: return an error",
 			secrets: []runtime.Object{
-				secretWithConfig("secret-1", []byte("a: b\nc: d")),
-				secretWithConfig("secret-2", []byte("a: b-2\nc: d")),
-				secretWithConfig("secret-3", []byte("invalidyaml")),
+				secretWithConfig("invalid", []byte("invalidyaml")),
 			},
-			ent:         entWithConfigRef("secret-1", "secret-2", "secret-3"),
+			ent:         entWithConfigRef("invalid"),
 			wantConfig:  nil,
 			wantWatches: true,
 			wantErr:     true,
@@ -421,8 +401,8 @@ func TestReconcileConfig(t *testing.T) {
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
-					ConfigRef: []entv1beta1.ConfigSource{
-						{SecretRef: commonv1.SecretRef{SecretName: "my-config"}}, // override the external url from config
+					ConfigRef: &commonv1.ConfigSource{
+						SecretRef: commonv1.SecretRef{SecretName: "my-config"}, // override the external url from config
 					},
 				},
 			},
@@ -560,8 +540,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Name:      "sample",
 				},
 				Spec: entv1beta1.EnterpriseSearchSpec{
-					ConfigRef: []entv1beta1.ConfigSource{
-						{SecretRef: commonv1.SecretRef{SecretName: "my-config"}},
+					ConfigRef: &commonv1.ConfigSource{
+						SecretRef: commonv1.SecretRef{SecretName: "my-config"},
 					},
 				},
 			},
