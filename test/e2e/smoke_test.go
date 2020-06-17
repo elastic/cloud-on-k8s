@@ -22,7 +22,7 @@ import (
 
 const sampleFile = "../../config/samples/beat/filebeat_es_kibana_apm.yaml"
 
-// TestSmoke runs a test suite using the ApmServer + Kibana + ES sample.
+// TestSmoke runs a test suite using the ApmServer + Kibana + ES + Beat sample.
 func TestSmoke(t *testing.T) {
 	var esBuilder elasticsearch.Builder
 	var kbBuilder kibana.Builder
@@ -67,14 +67,17 @@ func TestSmoke(t *testing.T) {
 		WithRestrictedSecurityContext().
 		WithLabel(run.TestNameLabel, testName).
 		WithPodLabel(run.TestNameLabel, testName)
+	// PodTemplate is normally set through constructor/.With funcs, set it here as those calls are omitted in this test
+	beatBuilder.PodTemplate = &beatBuilder.Beat.Spec.DaemonSet.PodTemplate
 	beatBuilder = beatBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithRestrictedSecurityContext().
 		WithLabel(run.TestNameLabel, testName).
 		WithPodLabel(run.TestNameLabel, testName).
-		WithESValidations(beat.HasEventFromBeat(filebeat.Type))
+		WithESValidations(beat.HasEventFromBeat(filebeat.Type)).
+		WithRBAC().
+		WithPSP()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder, beatBuilder).
 		RunSequential(t)

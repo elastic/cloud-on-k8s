@@ -16,13 +16,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// WriteAssocToConfigHash dereferences auth secret (if any) to include it in the configHash.
-func WriteAssocToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
-	if err := writeAuthSecretToConfigHash(client, assoc, configHash); err != nil {
-		return err
+// WriteAssocsToConfigHash dereferences auth and CA secrets (if any) to include it in the configHash.
+func WriteAssocsToConfigHash(client k8s.Client, associations []commonv1.Association, configHash hash.Hash) error {
+	for _, assoc := range associations {
+		if err := writeAuthSecretToConfigHash(client, assoc, configHash); err != nil {
+			return err
+		}
+		if err := writeCASecretToConfigHash(client, assoc, configHash); err != nil {
+			return err
+		}
 	}
-
-	return writeCASecretToConfigHash(client, assoc, configHash)
+	return nil
 }
 
 func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {

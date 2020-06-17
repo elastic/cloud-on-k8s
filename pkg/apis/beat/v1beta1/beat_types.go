@@ -13,9 +13,10 @@ import (
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
-	// Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used,
+	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, etc.). Any string can be used,
 	// but well-known types will be recognized and will allow to provide sane default configurations.
 	// +kubebuilder:validation:MaxLength=20
+	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
 	Type string `json:"type"`
 
 	// Version of the Beat.
@@ -25,13 +26,29 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
+	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
+	// It allows automatic setup of dashboards and visualizations.
+	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
+
 	// Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
-	// Config holds the Beat configuration. If provided, it will override the default configuration.
+	// Config holds the Beat configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 	// +kubebuilder:validation:Optional
 	Config *commonv1.Config `json:"config,omitempty"`
+
+	// ConfigRef contains a reference to an existing Kubernetes Secret holding the Beat configuration.
+	// Beat settings must be specified as yaml, under a single "beat.yml" entry. At most one of [`Config`, `ConfigRef`]
+	// can be specified.
+	// +kubebuilder:validation:Optional
+	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
+
+	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.
+	// Secrets data can be then referenced in the Beat config using the Secret's keys or as specified in `Entries` field of
+	// each SecureSetting.
+	// +kubebuilder:validation:Optional
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
 	// ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
@@ -70,7 +87,10 @@ type BeatStatus struct {
 	Health BeatHealth `json:"health,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	KibanaAssocationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 }
 
 type BeatHealth string
@@ -106,32 +126,23 @@ type Beat struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      BeatSpec                  `json:"spec,omitempty"`
-	Status    BeatStatus                `json:"status,omitempty"`
-	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
+	Spec        BeatSpec                  `json:"spec,omitempty"`
+	Status      BeatStatus                `json:"status,omitempty"`
+	esAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
+	kbAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
-func (b *Beat) Associated() commonv1.Associated {
-	if b != nil {
-		return b
-	}
-	return &Beat{}
-}
-
-func (b *Beat) AssociatedType() string {
-	return commonv1.ElasticsearchAssociationType
-}
-
-func (b *Beat) AssociationRef() commonv1.ObjectSelector {
-	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
-}
-
-func (b *Beat) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
-}
+var _ commonv1.Associated = &Beat{}
 
 func (b *Beat) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{b}
+	return []commonv1.Association{
+		&BeatESAssociation{Beat: b},
+		&BeatKibanaAssociation{Beat: b},
+	}
+}
+
+func (b *Beat) ServiceAccountName() string {
+	return b.Spec.ServiceAccountName
 }
 
 // IsMarkedForDeletion returns true if the Beat is going to be deleted
@@ -139,32 +150,103 @@ func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
 }
 
-func (b *Beat) ServiceAccountName() string {
-	return b.Spec.ServiceAccountName
-}
-
 func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
 	return b.Spec.ElasticsearchRef
 }
 
-func (b *Beat) AssociationConf() *commonv1.AssociationConf {
-	return b.assocConf
+type BeatESAssociation struct {
+	*Beat
 }
 
-func (b *Beat) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	b.assocConf = assocConf
+var _ commonv1.Association = &BeatESAssociation{}
+
+func (b *BeatESAssociation) Associated() commonv1.Associated {
+	if b == nil {
+		return nil
+	}
+	if b.Beat == nil {
+		b.Beat = &Beat{}
+	}
+	return b.Beat
 }
 
-func (b *Beat) AssociationStatus() commonv1.AssociationStatus {
-	return b.Status.Association
+func (b *BeatESAssociation) AssociatedType() string {
+	return commonv1.ElasticsearchAssociationType
 }
 
-func (b *Beat) SetAssociationStatus(status commonv1.AssociationStatus) {
-	b.Status.Association = status
+func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
+	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
+}
+
+func (b *BeatESAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
+}
+
+func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
+	return b.esAssocConf
+}
+
+func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	b.esAssocConf = conf
+}
+
+func (b *BeatESAssociation) AssociationStatus() commonv1.AssociationStatus {
+	return b.Status.ElasticsearchAssociationStatus
+}
+
+func (b *BeatESAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
+	b.Status.ElasticsearchAssociationStatus = status
+}
+
+type BeatKibanaAssociation struct {
+	*Beat
+}
+
+var _ commonv1.Association = &BeatKibanaAssociation{}
+
+func (b *BeatKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
+	return b.kbAssocConf
+}
+
+func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	b.kbAssocConf = conf
+}
+
+func (b *BeatKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
+	return b.Status.KibanaAssocationStatus
+}
+
+func (b *BeatKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
+	b.Status.KibanaAssocationStatus = status
+}
+
+func (b *BeatKibanaAssociation) Associated() commonv1.Associated {
+	if b == nil {
+		return nil
+	}
+	if b.Beat == nil {
+		b.Beat = &Beat{}
+	}
+	return b.Beat
+}
+
+func (b *BeatKibanaAssociation) AssociatedType() string {
+	return commonv1.KibanaAssociationType
+}
+
+func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
+}
+
+func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
+	return commonv1.KibanaConfigAnnotationName
+}
+
+func (b *Beat) SecureSettings() []commonv1.SecretSource {
+	return b.Spec.SecureSettings
 }
 
 var _ commonv1.Associated = &Beat{}
-var _ commonv1.Association = &Beat{}
 
 // +kubebuilder:object:root=true
 

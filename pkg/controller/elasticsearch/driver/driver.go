@@ -201,7 +201,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 				events.EventReasonUnexpected,
 				fmt.Sprintf("Could not update cluster license: %s", err.Error()),
 			)
-			log.Error(err, "Could not update cluster license", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			log.Info("Could not update cluster license", "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			// don't error out the entire reconciliation, move on with next steps and retry later
 			results.WithResult(defaultRequeue)
 		}

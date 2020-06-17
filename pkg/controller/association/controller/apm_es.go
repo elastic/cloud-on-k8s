@@ -28,8 +28,8 @@ const (
 	ApmAssociationLabelName = "apmassociation.k8s.elastic.co/name"
 	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
 	ApmAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
-	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
-	ApmAssociationTypeLabelNamespace = "apmassociation.k8s.elastic.co/type"
+	// ApmAssociationLabelType marks resources created for an association originating from APM.
+	ApmAssociationLabelType = "apmassociation.k8s.elastic.co/type"
 )
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -44,14 +44,14 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociationName:    "apm-es",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				ApmAssociationLabelName:          associated.Name,
-				ApmAssociationLabelNamespace:     associated.Namespace,
-				ApmAssociationTypeLabelNamespace: commonv1.ElasticsearchAssociationType,
+				ApmAssociationLabelName:      associated.Name,
+				ApmAssociationLabelNamespace: associated.Namespace,
+				ApmAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
 		UserSecretSuffix:  "apm-user",
 		CASecretLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole:        getRoles,
+		ESUserRole:        getAPMElasticsearchRoles,
 	})
 }
 
@@ -67,8 +67,8 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 	return services.ExternalServiceURL(es), nil
 }
 
-// getRoles returns for a given version of the APM Server the set of required roles.
-func getRoles(associated commonv1.Associated) (string, error) {
+// getAPMElasticsearchRoles returns for a given version of the APM Server the set of required roles.
+func getAPMElasticsearchRoles(associated commonv1.Associated) (string, error) {
 	apmServer, ok := associated.(*apmv1.ApmServer)
 	if !ok {
 		return "", pkgerrors.Errorf(

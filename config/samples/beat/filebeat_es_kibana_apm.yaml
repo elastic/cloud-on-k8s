@@ -53,3 +53,46 @@ spec:
   version: 7.7.1
   elasticsearchRef:
     name: elasticsearch-sample
+  config:
+    filebeat:
+      autodiscover:
+        providers:
+        - hints:
+            default_config:
+              paths:
+              - /var/log/containers/*${data.kubernetes.container.id}.log
+              type: container
+            enabled: true
+          node: ${HOSTNAME}
+          type: kubernetes
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        containers:
+        - name: filebeat
+          volumeMounts:
+          - mountPath: /var/lib/docker/containers
+            name: varlibdockercontainers
+          - mountPath: /var/log/containers
+            name: varlogcontainers
+          - mountPath: /var/log/pods
+            name: varlogpods
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        securityContext:
+          runAsUser: 0
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - hostPath:
+            path: /var/lib/docker/containers
+          name: varlibdockercontainers
+        - hostPath:
+            path: /var/log/containers
+          name: varlogcontainers
+        - hostPath:
+            path: /var/log/pods
+          name: varlogpods

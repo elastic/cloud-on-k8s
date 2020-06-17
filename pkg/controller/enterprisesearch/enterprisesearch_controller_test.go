@@ -22,6 +22,7 @@ import (
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
@@ -485,6 +486,97 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 					// ok
 				}
 			}
+		})
+	}
+}
+
+func Test_buildConfigHash(t *testing.T) {
+	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
+		Namespace: "ns", Name: "ent"}}
+
+	entWithAssociation := *ent.DeepCopy()
+	esTLSCertsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
+		Data: map[string][]byte{
+			certificates.CertFileName: []byte("es-cert-data"),
+		},
+	}
+	entWithAssociation.SetAssociationConf(&commonv1.AssociationConf{CACertProvided: true, CASecretName: esTLSCertsSecret.Name})
+
+	entWithoutTLS := *ent.DeepCopy()
+	entWithoutTLS.Spec.HTTP.TLS = commonv1.TLSOptions{
+		SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
+
+	configSecret := corev1.Secret{
+		Data: map[string][]byte{
+			ConfigFilename:         []byte("config"),
+			ReadinessProbeFilename: []byte("readiness-probe"),
+		},
+	}
+	configSecret2 := corev1.Secret{
+		Data: map[string][]byte{
+			ConfigFilename:         []byte("another-config"),
+			ReadinessProbeFilename: []byte("readiness-probe"),
+		},
+	}
+	tlsCertsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)},
+		Data: map[string][]byte{
+			certificates.CertFileName: []byte("cert-data"),
+		},
+	}
+	type args struct {
+		c            k8s.Client
+		ent          entv1beta1.EnterpriseSearch
+		configSecret corev1.Secret
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantHash string
+	}{
+		{
+			name: "happy path",
+			args: args{
+				c:            k8s.WrappedFakeClient(&configSecret, &esTLSCertsSecret, &tlsCertsSecret),
+				ent:          entWithAssociation,
+				configSecret: configSecret,
+			},
+			wantHash: "e018290576675dead3a9bd73aee0fa0294f88d5932d538adb6e29e25",
+		},
+		{
+			name: "different config: different hash",
+			args: args{
+				c:            k8s.WrappedFakeClient(&configSecret2, &esTLSCertsSecret, &tlsCertsSecret),
+				ent:          ent,
+				configSecret: configSecret2,
+			},
+			wantHash: "0557212aade10e98fba51d0031749730dc5c12c2491243866a1c2409",
+		},
+		{
+			name: "no TLS configured: different hash",
+			args: args{
+				c:            k8s.WrappedFakeClient(&configSecret, &esTLSCertsSecret),
+				ent:          entWithoutTLS,
+				configSecret: configSecret,
+			},
+			wantHash: "b2b7f40d500cbee52c1a3265e02fcdde4ddc0929763a108a4358f5db",
+		},
+		{
+			name: "no ES association: different hash",
+			args: args{
+				c:            k8s.WrappedFakeClient(&configSecret, &tlsCertsSecret),
+				ent:          ent,
+				configSecret: configSecret,
+			},
+			wantHash: "f7f145b1c83e63e6445c85cbf2c4bf7c5cc95f85bd06171b7a88cdf2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash, err := buildConfigHash(tt.args.c, tt.args.ent, tt.args.configSecret)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantHash, hash)
 		})
 	}
 }

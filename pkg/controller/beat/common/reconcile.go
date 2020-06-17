@@ -137,8 +137,7 @@ func updateStatus(params DriverParams, ready, desired int32) error {
 
 	beat.Status.AvailableNodes = ready
 	beat.Status.ExpectedNodes = desired
-	beat.Status.Health = CalculateHealth(&beat, ready, desired)
-	beat.Status.Association = beat.AssociationStatus()
+	beat.Status.Health = CalculateHealth(beat.GetAssociations(), ready, desired)
 
 	return params.Client.Status().Update(&beat)
 }

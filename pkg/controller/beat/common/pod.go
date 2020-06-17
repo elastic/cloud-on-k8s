@@ -8,26 +8,25 @@ import (
 	"fmt"
 	"hash"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 const (
-	CAVolumeName = "es-certs"
-	CAMountPath  = "/mnt/elastic-internal/es-certs/"
-	CAFileName   = "ca.crt"
+	CAFileName = "ca.crt"
 
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/etc/beat.yml"
 	ConfigFileName   = "beat.yml"
 
-	DataVolumeName        = "data"
+	DataVolumeName        = "beat-data"
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
@@ -51,57 +50,35 @@ var (
 	}
 )
 
+func certificatesDir(association commonv1.Association) string {
+	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
+}
+
+// initContainerParameters generates parameters specific to Beats for an init container that will load the secure
+// settings into a keystore
+func initContainerParameters(typ string) keystore.InitContainerParameters {
+	return keystore.InitContainerParameters{
+		KeystoreCreateCommand:         fmt.Sprintf("%s keystore create --force", typ),
+		KeystoreAddCommand:            fmt.Sprintf(`cat "$filename" | %s keystore add "$key" --stdin --force`, typ),
+		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+		DataVolumePath:                fmt.Sprintf(DataPathTemplate, typ),
+		Resources:                     defaultResources,
+	}
+}
+
 func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
-	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
-	configHash hash.Hash) corev1.PodTemplateSpec {
+	keystoreResources *keystore.Resources,
+	configHash hash.Hash,
+) corev1.PodTemplateSpec {
 	podTemplate := params.GetPodTemplate()
 
-	// Token mounting gets defaulted to false, which prevents from detecting whether user had set it.
-	// Instead, checking that here, before the default is applied.
-	// This is required for autodiscover which is enabled by default.
-	if podTemplate.Spec.AutomountServiceAccountToken == nil {
-		t := true
-		podTemplate.Spec.AutomountServiceAccountToken = &t
-	}
-
 	spec := &params.Beat.Spec
-	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type)
-
-	// might be nil if caller wants to use the default builder without any modifications
-	if modifyPodFunc != nil {
-		modifyPodFunc(builder)
-	}
-
-	builder = builder.
-		WithTerminationGracePeriod(30).
-		WithEnv(corev1.EnvVar{
-			Name: "NODE_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "spec.nodeName",
-				},
-			}}).
+	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithResources(defaultResources).
-		WithHostNetwork().
-		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
-			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-			VersionLabelName:    spec.Version})).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
-		WithArgs("-e", "-c", ConfigMountPath).
-		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
-		WithPodSecurityContext(corev1.PodSecurityContext{
-			RunAsUser: pointer.Int64(0),
-		})
-
-	if ShouldManageAutodiscoverRBAC() {
-		autodiscoverServiceAccountName := ServiceAccountName(params.Beat.Name)
-		// If SA is already provided, the call will be no-op. This is fine as we then assume
-		// that for this resource (despite operator configuration) the user took the responsibility
-		// of configuring RBAC.
-		builder.WithServiceAccount(autodiscoverServiceAccountName)
-	}
+		WithArgs("-e", "-c", ConfigMountPath)
 
 	dataVolume := createDataVolume(params)
 	volumes := []volume.VolumeLike{
@@ -114,16 +91,35 @@ func buildPodTemplate(
 		dataVolume,
 	}
 
-	if params.Beat.AssociationConf().CAIsConfigured() {
-		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
-			params.Beat.AssociationConf().GetCASecretName(),
-			CAVolumeName,
-			CAMountPath))
+	for _, association := range params.Beat.GetAssociations() {
+		if !association.AssociationConf().CAIsConfigured() {
+			continue
+		}
+		caSecretName := association.AssociationConf().GetCASecretName()
+		caVolume := volume.NewSecretVolumeWithMountPath(
+			caSecretName,
+			association.AssociatedType()+"-certs",
+			certificatesDir(association),
+		)
+		volumes = append(volumes, caVolume)
+
 	}
 
 	for _, v := range volumes {
 		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
 	}
+
+	if keystoreResources != nil {
+		_, _ = configHash.Write([]byte(keystoreResources.Version))
+		builder.WithInitContainers(keystoreResources.InitContainer).
+			WithVolumes(keystoreResources.Volume).
+			WithInitContainerDefaults()
+	}
+
+	builder = builder.
+		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
+			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
+			VersionLabelName:    spec.Version}))
 
 	return builder.PodTemplate
 }

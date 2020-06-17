@@ -163,7 +163,7 @@ var predicates = [...]Predicate{
 			if err != nil {
 				return false, err
 			}
-			if health == esv1.ElasticsearchGreenHealth || health == esv1.ElasticsearchYellowHealth {
+			if health.Status == esv1.ElasticsearchGreenHealth || health.Status == esv1.ElasticsearchYellowHealth {
 				return true, nil
 			}
 			_, healthy := context.healthyPods[candidate.Name]
@@ -194,7 +194,7 @@ var predicates = [...]Predicate{
 				return false, err
 			}
 			_, healthyNode := context.healthyPods[candidate.Name]
-			if health != esv1.ElasticsearchYellowHealth || !healthyNode {
+			if health.Status != esv1.ElasticsearchYellowHealth || !healthyNode {
 				// This predicate is only relevant on healthy node if cluster health is yellow
 				return true, nil
 			}
@@ -203,22 +203,9 @@ var predicates = [...]Predicate{
 				// Restart in yellow state is only allowed during version upgrade
 				return false, nil
 			}
-			// This candidate needs a version upgrade, check if the Shards are in a compatible state.
-			shards, err := context.shardLister.GetShards(context.ctx)
-			if err != nil {
-				return false, err
-			}
-			for _, shard := range shards {
-				switch shard.State {
-				case client.INITIALIZING, client.RELOCATING:
-					return false, nil
-				case client.UNASSIGNED:
-					if !shard.IsReplica() {
-						return false, nil
-					}
-				}
-			}
-			return true, nil
+			// This candidate needs a version upgrade, check if the primaries are assigned and shards are not moving or
+			// initializing
+			return isSafeToRoll(health), nil
 		},
 	},
 	{
@@ -434,4 +421,17 @@ func conflictingShards(shards1, shards2 []client.Shard) bool {
 		}
 	}
 	return false
+}
+
+// IsSafeToRoll indicates that a rolling update can continue with the next node if
+// - no relocating or initializing shards or shards being fetched
+// - all primaries allocated
+// only reliable if Status result was created with wait_for_events=languid
+// so that there are no pending initialisations in the task queue
+func isSafeToRoll(health client.Health) bool {
+	return !health.TimedOut && // make sure request did not time out (i.e. no pending events)
+		health.Status != esv1.ElasticsearchRedHealth && // all primaries allocated
+		health.NumberOfInFlightFetch == 0 && // no shards being fetched
+		health.InitializingShards == 0 && // no shards initializing
+		health.RelocatingShards == 0 // no shards relocating
 }

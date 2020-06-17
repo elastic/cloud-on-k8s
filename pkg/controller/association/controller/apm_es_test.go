@@ -11,7 +11,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-func Test_getRoles(t *testing.T) {
+func Test_getAPMElasticsearchRoles(t *testing.T) {
 	type args struct {
 		associated commonv1.Associated
 	}
@@ -78,13 +78,13 @@ func Test_getRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getRoles(tt.args.associated)
+			got, err := getAPMElasticsearchRoles(tt.args.associated)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getRoles() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getAPMElasticsearchRoles() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("getRoles() = %v, want %v", got, tt.want)
+				t.Errorf("getAPMElasticsearchRoles() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -141,6 +141,11 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) v1be
 
 // allowedDisruptions returns the number of Pods that we allow to be disrupted while keeping the cluster healthy.
 func allowedDisruptions(es esv1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
+	if actualSsets.ExpectedNodeCount() == 1 {
+		// single node cluster (not highly-available)
+		// allow the node to be disrupted to ensure K8s nodes operations can be performed
+		return 1
+	}
 	if es.Status.Health != esv1.ElasticsearchGreenHealth {
 		// A non-green cluster may become red if we disrupt one node, don't allow it.
 		// The health information we're using here may be out-of-date, that's best effort.
