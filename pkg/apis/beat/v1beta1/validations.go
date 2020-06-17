@@ -23,6 +23,7 @@ var (
 		checkImageIfTypeUnknown,
 		checkBeatType,
 		checkSingleConfigSource,
+		checkSpec,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -95,5 +96,14 @@ func checkSingleConfigSource(b *Beat) field.ErrorList {
 		}
 	}
 
+	return nil
+}
+
+func checkSpec(b *Beat) field.ErrorList {
+	if (b.Spec.DaemonSet == nil && b.Spec.Deployment == nil) || (b.Spec.DaemonSet != nil && b.Spec.Deployment != nil) {
+		return field.ErrorList{
+			field.Invalid(field.NewPath("spec"), b.Spec, "either daemonset or deployment must be specified"),
+		}
+	}
 	return nil
 }
