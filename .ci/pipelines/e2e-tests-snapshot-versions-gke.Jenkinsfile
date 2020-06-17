@@ -96,7 +96,7 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-77-snapshot-${BUILD_NUMBER}-e2e"
+                    "eck-78-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
