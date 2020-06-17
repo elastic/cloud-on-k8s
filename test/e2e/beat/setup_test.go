@@ -52,8 +52,7 @@ func TestBeatKibanaRef(t *testing.T) {
 						return err
 					}
 					var dashboards kbSavedObjects
-					json.Unmarshal(body, &dashboards)
-					if err != nil {
+					if err := json.Unmarshal(body, &dashboards); err != nil {
 						return err
 					}
 					if dashboards.Total == 0 {
