@@ -268,7 +268,9 @@ func TestReconcileConfig(t *testing.T) {
 				"allow_es_settings_modification: true",
 				"ent_search:",
 				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
 				"certificate_authorities:",
@@ -306,7 +308,9 @@ func TestReconcileConfig(t *testing.T) {
 				"allow_es_settings_modification: true",
 				"ent_search:",
 				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
 				"certificate_authorities:",
@@ -352,7 +356,9 @@ func TestReconcileConfig(t *testing.T) {
 				"auth:",
 				"source: elasticsearch-native",
 				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
 				"certificate_authorities:",
@@ -384,8 +390,10 @@ func TestReconcileConfig(t *testing.T) {
 				"allow_es_settings_modification: true",
 				"ent_search:",
 				"external_url: https://my.own.dns.com", // overridden default setting
-				"foo: bar",                             // new setting
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"foo: bar", // new setting
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
 				"certificate_authorities:",
@@ -430,8 +438,10 @@ func TestReconcileConfig(t *testing.T) {
 				"allow_es_settings_modification: true",
 				"ent_search:",
 				"external_url: https://my.own.dns.from.configref.com", // overridden from configRef
+				"filebeat_log_directory: /var/log/enterprise-search",
 				"foo: bar", // new setting
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
 				"certificate_authorities:",
