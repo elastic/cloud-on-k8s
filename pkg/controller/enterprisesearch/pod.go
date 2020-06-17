@@ -22,6 +22,7 @@ const (
 	HTTPPort            = 3002
 	DefaultJavaOpts     = "-Xms3500m -Xmx3500m"
 	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
+	LogVolumeMountPath  = "/var/log/enterprise-search"
 )
 
 var (
@@ -54,6 +55,7 @@ var (
 func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	cfgVolume := ConfigSecretVolume(ent)
 	readinessProbeVolume := ReadinessProbeSecretVolume(ent)
+	logsVolume := volume.NewEmptyDirVolume("logs", LogVolumeMountPath)
 
 	builder := defaults.NewPodTemplateBuilder(
 		ent.Spec.PodTemplate, entv1beta1.EnterpriseSearchContainerName).
@@ -63,8 +65,8 @@ func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTe
 			{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
 		WithReadinessProbe(ReadinessProbe).
-		WithVolumes(cfgVolume.Volume(), readinessProbeVolume.Volume()).
-		WithVolumeMounts(cfgVolume.VolumeMount(), readinessProbeVolume.VolumeMount()).
+		WithVolumes(cfgVolume.Volume(), readinessProbeVolume.Volume(), logsVolume.Volume()).
+		WithVolumeMounts(cfgVolume.VolumeMount(), readinessProbeVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithEnv(DefaultEnv...).
 		// ensure the Pod gets rotated on config change
 		WithLabels(map[string]string{ConfigHashLabelName: configHash})

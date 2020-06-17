@@ -273,8 +273,8 @@ func defaultConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         "0.0.0.0",
-		"filebeat_log_directory":         "/var/log/enterprise-search",
-		"log_directory":                  "/var/log/enterprise-search",
+		"filebeat_log_directory":         LogVolumeMountPath,
+		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,
 	})
 }
