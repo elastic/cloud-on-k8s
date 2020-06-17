@@ -35,7 +35,7 @@ server:
     key: /mnt/elastic-internal/http-certs/tls.key
     certificate: /mnt/elastic-internal/http-certs/tls.crt
 xpack:
-  encrypted_saved_objects:
+  encryptedSavedObjects:
     encryptionKey: thisismyobjectkey
   reporting:
     encryptionKey: thisismyreportingkey
@@ -136,7 +136,7 @@ func TestNewConfigSettings(t *testing.T) {
 			Namespace: defaultKb.Namespace,
 		},
 		Data: map[string][]byte{
-			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nxpack.reporting.encryptionKey: thisismyreportingkey\nxpack.encrypted_saved_objects.encryptionKey: thisismyobjectkey"),
+			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nxpack.reporting.encryptionKey: thisismyreportingkey\nxpack.encryptedSavedObjects.encryptionKey: thisismyobjectkey"),
 		},
 	}
 	type args struct {

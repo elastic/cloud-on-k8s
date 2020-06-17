@@ -44,7 +44,7 @@ const (
 	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled" // >= 7.6
 	XpackSecurityEncryptionKey                     = "xpack.security.encryptionKey"
 	XpackReportingEncryptionKey                    = "xpack.reporting.encryptionKey"
-	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encrypted_saved_objects.encryptionKey"
+	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -141,7 +141,7 @@ func VersionDefaults(kb *kbv1.Kibana, v version.Version) *settings.CanonicalConf
 type reusableSettings struct {
 	EncryptionKey   string `config:"xpack.security.encryptionKey"`
 	ReportingKey    string `config:"xpack.reporting.encryptionKey"`
-	SavedObjectsKey string `config:"xpack.encrypted_saved_objects.encryptionKey"`
+	SavedObjectsKey string `config:"xpack.encryptedSavedObjects.encryptionKey"`
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
