@@ -272,7 +272,7 @@ metadata:
 spec:
   version: {version}
   nodeSets:
-  - name: default-10Gi
+  - name: default-10gi
     count: 3
     config:
       node.master: true
