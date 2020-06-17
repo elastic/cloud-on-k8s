@@ -13,6 +13,7 @@ pipeline {
 
     options {
         timeout(time: 300, unit: 'MINUTES')
+        skipDefaultCheckout(true)
     }
 
     environment {
@@ -23,8 +24,10 @@ pipeline {
     }
 
     stages {
-        stage('Load common scripts') {
+        stage('Checkout, stash source code and load common scripts') {
             steps {
+                checkout scm
+                stash allowEmpty: true, name: 'source', useDefaultExcludes: false
                 script {
                     lib = load ".ci/common/tests.groovy"
                 }
@@ -37,7 +40,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, '1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
                         }
@@ -48,7 +51,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, '1.15', "eck-gke15-${BUILD_NUMBER}-e2e")
                         }
