@@ -5,8 +5,6 @@
 package keystore
 
 import (
-	"strings"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,11 +65,7 @@ func NewResources(
 	}
 
 	// build an init container to create the keystore from the secure settings volume
-	initContainer, err := initContainer(
-		*secretVolume,
-		strings.ToLower(hasKeystore.GetObjectKind().GroupVersionKind().Kind),
-		initContainerParams,
-	)
+	initContainer, err := initContainer(*secretVolume, initContainerParams)
 	if err != nil {
 		return nil, err
 	}

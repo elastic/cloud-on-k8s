@@ -61,7 +61,7 @@ var (
 		KeystoreCreateCommand:         ApmServerBin + " keystore create --force",
 		KeystoreAddCommand:            ApmServerBin + ` keystore add "$key" --stdin < "$filename"`,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-		DataVolumePath:                DataVolumePath,
+		KeystoreVolumePath:            DataVolumePath,
 		Resources: corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("128Mi"),

@@ -16,12 +16,12 @@ const (
 	InitContainerName = "elastic-internal-init-keystore"
 )
 
-// InitContainerParameters helps to create a valid keystore init script for Kibana or the APM server.
+// InitContainerParameters helps to create a valid keystore init script.
 type InitContainerParameters struct {
 	// Where the user provided secured settings should be mounted
 	SecureSettingsVolumeMountPath string
-	// Where the data will be copied
-	DataVolumePath string
+	// Where the keystore file is created, it is the responsibility of the controller to create the volume
+	KeystoreVolumePath string
 	// Keystore add command
 	KeystoreAddCommand string
 	// Keystore create command
@@ -30,11 +30,18 @@ type InitContainerParameters struct {
 	Resources corev1.ResourceRequirements
 }
 
-// script is a small bash script to create a Kibana or APM keystore,
+// script is a small bash script to create a the keystore,
 // then add all entries from the secure settings secret volume into it.
 const script = `#!/usr/bin/env bash
 
 set -eux
+
+keystore_initialized_flag={{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
+
+if [[ -f "${keystore_initialized_flag}" ]]; then
+    echo "Keystore already initialized."
+	exit 0
+fi
 
 echo "Initializing keystore."
 
@@ -49,6 +56,7 @@ for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	{{ .KeystoreAddCommand }}
 done
 
+touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `
 
@@ -58,7 +66,6 @@ var scriptTemplate = template.Must(template.New("").Parse(script))
 // to load secure settings in a Keystore.
 func initContainer(
 	secureSettingsSecret volume.SecretVolume,
-	volumePrefix string,
 	parameters InitContainerParameters,
 ) (corev1.Container, error) {
 	privileged := false
@@ -69,7 +76,7 @@ func initContainer(
 	}
 
 	return corev1.Container{
-		// Image will be inherited from pod template defaults Kibana Docker image
+		// Image will be inherited from pod template defaults
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            InitContainerName,
 		SecurityContext: &corev1.SecurityContext{
@@ -79,8 +86,6 @@ func initContainer(
 		VolumeMounts: []corev1.VolumeMount{
 			// access secure settings
 			secureSettingsSecret.VolumeMount(),
-			// write the keystore in the data volume
-			DataVolume(volumePrefix, parameters.DataVolumePath).VolumeMount(),
 		},
 		Resources: parameters.Resources,
 	}, nil

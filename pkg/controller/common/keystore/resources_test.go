@@ -27,7 +27,7 @@ var (
 		KeystoreCreateCommand:         "/keystore/bin/keystore create",
 		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
 		SecureSettingsVolumeMountPath: "/foo/secret",
-		DataVolumePath:                "/bar/data",
+		KeystoreVolumePath:            "/bar/data",
 		Resources: corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("128Mi"),
