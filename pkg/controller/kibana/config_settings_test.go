@@ -37,15 +37,12 @@ server:
 xpack:
   encryptedSavedObjects:
     encryptionKey: thisismyobjectkey
+  license_management.ui.enabled: false
   reporting:
     encryptionKey: thisismyreportingkey
   security:
     encryptionKey: thisismyencryptionkey
-  monitoring:
-    ui:
-      container:
-        elasticsearch:
-          enabled: true
+  monitoring.ui.container.elasticsearch.enabled: true
 `)
 
 var associationConfig = []byte(`
@@ -65,6 +62,10 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		c      k8s.Client
 		kibana kbv1.Kibana
 	}
+
+	kb75 := mkKibana()
+	kb75.Spec.Version = "7.5.0"
+
 	tests := []struct {
 		name      string
 		args      args
@@ -115,6 +116,29 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				assert.Equal(t, len(r.SavedObjectsKey), 64)
 			},
 		},
+
+		{
+			name: "Create new encryption keys pre-7.6.0",
+			args: args{
+				c: k8s.WrappedFakeClient(
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						Data: map[string][]byte{
+							SettingsFilename: associationConfig,
+						},
+					},
+				),
+				kibana: kb75,
+			},
+			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				// Unpack the configuration to check that some default reusable settings have been generated
+				var r reusableSettings
+				assert.NoError(t, got.Unpack(&r))
+				assert.Equal(t, len(r.EncryptionKey), 64) // key length should be 64
+				assert.Equal(t, len(r.ReportingKey), 64)
+				assert.Equal(t, len(r.SavedObjectsKey), 0) // is only introduced in 7.6.0
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -163,15 +187,14 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.WrappedFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
+					kb.Spec.HTTP = commonv1.HTTPConfig{
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								Disabled: true,
 							},
 						},
 					}
+
 					return kb
 				},
 			},
@@ -192,9 +215,7 @@ func TestNewConfigSettings(t *testing.T) {
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "test-es"},
-					}
+					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
 					kb.SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
 						AuthSecretKey:  "elastic",
@@ -243,11 +264,9 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.WrappedFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						Config: &commonv1.Config{
-							Data: map[string]interface{}{
-								"foo": "bar",
-							},
+					kb.Spec.Config = &commonv1.Config{
+						Data: map[string]interface{}{
+							"foo": "bar",
 						},
 					}
 					return kb
@@ -269,11 +288,9 @@ func TestNewConfigSettings(t *testing.T) {
 				}),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						Config: &commonv1.Config{
-							Data: map[string]interface{}{
-								"logging.verbose": false,
-							},
+					kb.Spec.Config = &commonv1.Config{
+						Data: map[string]interface{}{
+							"logging.verbose": false,
 						},
 					}
 					return kb
@@ -304,7 +321,7 @@ func TestNewConfigSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
-			v := version.From(7, 5, 0)
+			v := version.From(7, 6, 0)
 			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -402,7 +419,7 @@ func mkKibana() kbv1.Kibana {
 			Name:      "testkb",
 			Namespace: "testns",
 		},
-		Spec: kbv1.KibanaSpec{Version: "7.5.0"},
+		Spec: kbv1.KibanaSpec{Version: "7.6.0"},
 	}
 	return kb
 }
@@ -413,6 +430,9 @@ func Test_getExistingConfig(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testkb",
 			Namespace: "testns",
+		},
+		Spec: kbv1.KibanaSpec{
+			Version: "7.6.0",
 		},
 	}
 	testValidSecret := corev1.Secret{

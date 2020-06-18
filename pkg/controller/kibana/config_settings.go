@@ -189,7 +189,13 @@ func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.Canoni
 	if len(r.ReportingKey) == 0 {
 		r.ReportingKey = string(common.RandomBytes(64))
 	}
-	if len(r.SavedObjectsKey) == 0 {
+
+	kbVer, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
+	if len(r.SavedObjectsKey) == 0 && kbVer.IsSameOrAfter(version.MustParse("7.6.0")) {
 		r.SavedObjectsKey = string(common.RandomBytes(64))
 	}
 	return settings.MustCanonicalConfig(r), nil
