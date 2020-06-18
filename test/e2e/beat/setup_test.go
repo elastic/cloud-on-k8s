@@ -115,8 +115,9 @@ func TestBeatKibanaRef(t *testing.T) {
 							expectDashboards: false,
 						},
 					} {
-						if !dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", check.beat)) && check.expectDashboards {
-							return fmt.Errorf("expected at least one %s dashboard, found none", check.beat)
+						hasDashboards := dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", check.beat))
+						if hasDashboards != check.expectDashboards {
+							return fmt.Errorf("expected  %s dashboard [%v], found dashboards [%v]", check.beat, check.expectDashboards, hasDashboards)
 						}
 					}
 					return nil
