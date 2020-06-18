@@ -25,6 +25,11 @@ func Test_getBeatKibanaRoles(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "not a valid version",
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "not-a-version"}},
+			wantErr: true,
+		},
+		{
 			name:    "<7.5 kibana_user",
 			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "6.8.0"}},
 			want:    "kibana_user",
