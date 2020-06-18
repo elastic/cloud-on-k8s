@@ -115,6 +115,9 @@ func TestBeatKibanaRef(t *testing.T) {
 							expectDashboards: false,
 						},
 					} {
+						// We are exploiting the fact here that Beats dashboards follow a naming convention that starts with the
+						// name of the beat in square brackets. This test will obviously break if future versions of Beats
+						// abandon this naming convention.
 						hasDashboards := dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", check.beat))
 						if hasDashboards != check.expectDashboards {
 							return fmt.Errorf("expected  %s dashboard [%v], found dashboards [%v]", check.beat, check.expectDashboards, hasDashboards)
