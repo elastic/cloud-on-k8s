@@ -7,13 +7,13 @@ endif::[]
 [id="{p}-{page_id}"]
 = Secure the Elastic Stack
 
+You can secure your Elastic Stack by specifying the following settings:
+
 - <<{p}-custom-http-certificate>>
-- <<{p}-http-settings-tls-sans>>
 - <<{p}-users-and-roles>>
 - <<{p}-rotate-credentials>>
 
 include::security/custom-http-certificate.asciidoc[leveloffset=+1]
-include::security/http-settings-tls-sans.asciidoc[leveloffset=+1]
 include::security/users-and-roles.asciidoc[leveloffset=+1]
 include::security/rotate-credentials.asciidoc[leveloffset=+1]
 
