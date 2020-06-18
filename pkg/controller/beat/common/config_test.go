@@ -306,7 +306,7 @@ func Test_getUserConfig(t *testing.T) {
 	}{
 		{
 			name: "no user config",
-			want: settings.NewCanonicalConfig(),
+			want: nil,
 		},
 		{
 			name:   "config populated",

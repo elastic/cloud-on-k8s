@@ -51,7 +51,7 @@ func ParseConfigRef(
 
 	if len(secretNames) == 0 {
 		// no secret referenced, nothing to do
-		return settings.NewCanonicalConfig(), nil
+		return nil, nil
 	}
 
 	var secret corev1.Secret

@@ -71,7 +71,7 @@ func Test_parseConfigRef(t *testing.T) {
 			name:        "no configRef specified",
 			secrets:     nil,
 			ent:         entWithConfigRef(""),
-			wantConfig:  settings.NewCanonicalConfig(),
+			wantConfig:  nil,
 			wantWatches: false,
 		},
 		{

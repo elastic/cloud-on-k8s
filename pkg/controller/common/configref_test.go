@@ -88,7 +88,7 @@ func TestParseConfigRef(t *testing.T) {
 			wantWatches:     []string{watchName},
 		},
 		{
-			name:      "no configRef specified: return an empty config",
+			name:      "no configRef specified",
 			configRef: nil,
 			secretKey: "configFile.yml",
 			runtimeObjs: []runtime.Object{
@@ -98,7 +98,7 @@ func TestParseConfigRef(t *testing.T) {
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
 					}},
 			},
-			want:        settings.NewCanonicalConfig(),
+			want:        nil,
 			wantWatches: []string{},
 		},
 		{
@@ -112,7 +112,7 @@ func TestParseConfigRef(t *testing.T) {
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
 					}},
 			},
-			want:            settings.NewCanonicalConfig(),
+			want:            nil,
 			existingWatches: []string{watchName},
 			wantWatches:     []string{},
 		},
