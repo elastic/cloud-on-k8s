@@ -86,21 +86,9 @@ func TestHeartbeatConfig(t *testing.T) {
 			beat.HasEventFromBeat(heartbeat.Type),
 			beat.HasEvent("monitor.status:up"))
 
-	podTemplateYaml := `spec:
-  dnsPolicy: ClusterFirstWithHostNet
-  hostNetwork: true
-  securityContext:
-    runAsUser: 0
-`
+	configYaml := fmt.Sprintf(e2eHeartBeatConfigTpl, v1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
 
-	configYaml := fmt.Sprintf(`
-heartbeat.monitors:
-- type: tcp
-  schedule: '@every 5s'
-  hosts: ["%s.%s.svc:9200"]
-`, v1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
-
-	hbBuilder = applyYamls(t, hbBuilder, configYaml, podTemplateYaml)
+	hbBuilder = applyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
 }

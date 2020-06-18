@@ -7,9 +7,13 @@ package beat
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -17,14 +21,28 @@ import (
 )
 
 type kbSavedObjects struct {
-	Total int `json:"total"`
+	Total        int `json:"total"`
+	SavedObjects []struct {
+		Attributes struct {
+			Title string `json:"title"`
+		} `json:"attributes"`
+	} `json:"saved_objects"`
+}
+
+func (so kbSavedObjects) HasDashboardsWithPrefix(prefix string) bool {
+	for _, obj := range so.SavedObjects {
+		if strings.HasPrefix(obj.Attributes.Title, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestBeatKibanaRef(t *testing.T) {
 	name := "test-beat-kibanaref"
 
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithNodeCount(1).
@@ -37,6 +55,26 @@ func TestBeatKibanaRef(t *testing.T) {
 
 	fbBuilder = applyYamls(t, fbBuilder, e2eFilebeatConfig, e2eFilebeatPodTemplate)
 
+	mbBuilder := beat.NewBuilder(name).
+		WithType(metricbeat.Type).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithRBAC()
+
+	mbBuilder = applyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
+
+	hbBuilder := beat.NewBuilder(name).
+		WithType(heartbeat.Type).
+		WithDeployment().
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithESValidations(
+			beat.HasEventFromBeat(heartbeat.Type),
+			beat.HasEvent("monitor.status:up"))
+
+	configYaml := fmt.Sprintf(e2eHeartBeatConfigTpl, esv1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
+
+	hbBuilder = applyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
+
 	dashboardCheck := func(client *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
@@ -47,7 +85,9 @@ func TestBeatKibanaRef(t *testing.T) {
 						return err
 					}
 
-					body, err := kibana.DoRequest(client, kbBuilder.Kibana, password, "GET", "/api/saved_objects/_find?type=dashboard", nil)
+					body, err := kibana.DoRequest(client, kbBuilder.Kibana, password,
+						"GET", "/api/saved_objects/_find?type=dashboard", nil,
+					)
 					if err != nil {
 						return err
 					}
@@ -58,11 +98,32 @@ func TestBeatKibanaRef(t *testing.T) {
 					if dashboards.Total == 0 {
 						return fmt.Errorf("expected >0 dashboards but got 0")
 					}
+					for _, check := range []struct {
+						beat             string
+						expectDashboards bool
+					}{
+						{
+							beat:             "Filebeat",
+							expectDashboards: true,
+						},
+						{
+							beat:             "Metricbeat",
+							expectDashboards: true,
+						},
+						{
+							beat:             "Heartbeat",
+							expectDashboards: false,
+						},
+					} {
+						if !dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", check.beat)) && check.expectDashboards {
+							return fmt.Errorf("expected at least one %s dashboard, found none", check.beat)
+						}
+					}
 					return nil
 				}),
 			},
 		}
 	}
 
-	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder).RunSequential(t)
+	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder, mbBuilder, hbBuilder).RunSequential(t)
 }
