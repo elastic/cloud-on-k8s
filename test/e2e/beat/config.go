@@ -251,4 +251,89 @@ processors:
       mountPath: /run/containerd
       readOnly: true
 `
+
+	e2ePacketbeatConfig = `packetbeat.interfaces.device: any
+packetbeat.protocols:
+- type: dns
+  ports: [53]
+  include_authorities: true
+  include_additionals: true
+- type: http
+  ports: [80, 8000, 8080, 9200]
+packetbeat.flows:
+  timeout: 30s
+  period: 10s
+processors:
+  - add_cloud_metadata:
+  - add_kubernetes_metadata:
+      host: ${HOSTNAME}
+      indexers:
+      - ip_port:
+      matchers:
+      - field_format:
+          format: '%{[ip]}:%{[port]}'`
+
+	e2ePacketbeatPodTemplate = `
+spec:
+  terminationGracePeriodSeconds: 30
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+  containers:
+  - name: packetbeat
+    securityContext:
+      runAsUser: 0
+      capabilities:
+        add:
+        - NET_ADMIN
+`
+	e2eJournalbeatConfig = `journalbeat.inputs:
+- paths: []
+  seek: cursor
+  cursor_seek_fallback: tail
+processors:
+- add_kubernetes_metadata:
+    host: "${HOSTNAME}"
+    in_cluster: true
+    default_indexers.enabled: false
+    default_matchers.enabled: false
+    indexers:
+      - container:
+    matchers:
+      - fields:
+          lookup_fields: ["container.id"]
+- decode_json_fields:
+    fields: ["message"]
+    process_array: false
+    max_depth: 1
+    target: ""
+    overwrite_keys: true
+`
+
+	e2eJournalbeatPodTemplate = `
+spec:
+  dnsPolicy: ClusterFirstWithHostNet
+  containers:
+  - name: journalbeat
+    volumeMounts:
+    - mountPath: /var/log/journal
+      name: var-journal
+    - mountPath: /run/log/journal
+      name: run-journal
+    - mountPath: /etc/machine-id
+      name: machine-id
+  hostNetwork: true
+  securityContext:
+    runAsUser: 0
+  terminationGracePeriodSeconds: 30
+  volumes:
+  - hostPath:
+      path: /var/log/journal
+    name: var-journal
+  - hostPath:
+      path: /run/log/journal
+    name: run-journal
+  - hostPath:
+      path: /etc/machine-id
+    name: machine-id
+`
 )

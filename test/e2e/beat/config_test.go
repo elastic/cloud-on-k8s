@@ -18,7 +18,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/journalbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/packetbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
@@ -226,6 +228,52 @@ func TestAuditbeatConfig(t *testing.T) {
 	abBuilder = applyYamls(t, abBuilder, e2eAuditbeatConfig, e2eAuditbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, abBuilder).RunSequential(t)
+}
+
+func TestPacketbeatConfig(t *testing.T) {
+	name := "test-pb-cfg"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+
+	pbBuilder := beat.NewBuilder(name).
+		WithType(packetbeat.Type).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithRoles(beat.PacketbeatPSPClusterRoleName).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithESValidations(
+			beat.HasEventFromBeat(packetbeat.Type),
+			beat.HasEvent("event.dataset:flow"),
+			beat.HasEvent("event.dataset:dns"),
+			beat.HasEvent("event.dataset:http"),
+		)
+
+	pbBuilder = applyYamls(t, pbBuilder, e2ePacketbeatConfig, e2ePacketbeatPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, pbBuilder).RunSequential(t)
+}
+
+func TestJournalbeatConfig(t *testing.T) {
+	name := "test-jb-cfg"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	jbBuilder := beat.NewBuilder(name).
+		WithType(journalbeat.Type).
+		WithRoles(beat.JournalbeatPSPClusterRoleName).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithESValidations(
+			beat.HasEventFromBeat(journalbeat.Type),
+		)
+
+	jbBuilder = applyYamls(t, jbBuilder, e2eJournalbeatConfig, e2eJournalbeatPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, jbBuilder).RunSequential(t)
 }
 
 // --- helpers
