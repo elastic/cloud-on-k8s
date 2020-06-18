@@ -131,25 +131,37 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			wantErr:          "",
 			wantNewLicense:   false,
 			wantRequeue:      false,
-			wantRequeueAfter: false,
+			wantRequeueAfter: true,
 		},
 		{
-			name:    "existing gold matching license",
+			name:    "no match: existing gold license",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
 				enterpriseLicense(t, client.ElasticsearchLicenseTypeGold, 1, false),
 				cluster,
 			},
 			wantErr:          "",
-			wantNewLicense:   true,
+			wantNewLicense:   false,
 			wantRequeue:      false,
 			wantRequeueAfter: true,
 		},
 		{
-			name:    "existing platinum matching license",
+			name:    "no match: platinum license",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
 				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, false),
+				cluster,
+			},
+			wantErr:          "",
+			wantNewLicense:   false,
+			wantRequeue:      false,
+			wantRequeueAfter: true,
+		},
+		{
+			name:    "existing enterprise matching license",
+			cluster: cluster,
+			k8sResources: []runtime.Object{
+				enterpriseLicense(t, client.ElasticsearchLicenseTypeEnterprise, 1, false),
 				cluster,
 			},
 			wantErr:          "",
@@ -167,7 +179,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			wantErr:          "",
 			wantNewLicense:   false,
 			wantRequeue:      false,
-			wantRequeueAfter: false,
+			wantRequeueAfter: true,
 		},
 	}
 	for _, tt := range tests {
@@ -184,13 +196,16 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			if tt.wantRequeue {
+			switch {
+			case tt.wantRequeue:
 				require.True(t, res.Requeue)
 				require.Zero(t, res.RequeueAfter)
-			}
-			if tt.wantRequeueAfter {
+			case tt.wantRequeueAfter:
 				require.False(t, res.Requeue)
 				require.NotZero(t, res.RequeueAfter)
+			default:
+				require.False(t, res.Requeue)
+				require.Zero(t, res.RequeueAfter)
 			}
 			// verify that a cluster license was created
 			// following the es naming convention
