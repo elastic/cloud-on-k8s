@@ -13,6 +13,7 @@ pipeline {
 
     options {
         timeout(time: 300, unit: 'MINUTES')
+        skipDefaultCheckout(true)
     }
 
     environment {
@@ -23,8 +24,10 @@ pipeline {
     }
 
     stages {
-        stage('Load common scripts') {
+        stage('Checkout, stash source code and load common scripts') {
             steps {
+                checkout scm
+                stash allowEmpty: true, name: 'source', useDefaultExcludes: false
                 script {
                     lib = load ".ci/common/tests.groovy"
                 }
@@ -38,7 +41,7 @@ pipeline {
                         label 'eck'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runTests(lib, failedTests, "kindest/node:v1.12.10", "1.12")
                         }
@@ -49,7 +52,7 @@ pipeline {
                         label 'eck'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runTests(lib, failedTests, "kindest/node:v1.16.9", "1.16")
                         }
@@ -60,7 +63,7 @@ pipeline {
                         label 'eck'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17")
                         }

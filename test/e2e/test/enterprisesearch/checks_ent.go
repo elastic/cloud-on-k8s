@@ -6,9 +6,6 @@ package enterprisesearch
 
 import (
 	"fmt"
-	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -71,32 +68,43 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		// App Search tests
 		test.Step{
 			Name: "Retrieve the App Search API Key",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				appSearchClient = entClient.AppSearch()
 				key, err := appSearchClient.GetAPIKey()
-				require.NoError(t, err)
+				if err != nil {
+					return err
+				}
 				appSearchClient = appSearchClient.WithAPIKey(key)
-			},
+				return nil
+			}),
 		},
 		test.Step{
 			Name: "Create an App Search engine (if not already done)",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				results, err := appSearchClient.GetEngines()
-				require.NoError(t, err)
-				if len(results.Results) == 0 {
-					require.NoError(t, appSearchClient.CreateEngine(appSearchEngine))
+				if err != nil {
+					return err
 				}
-			},
+				if len(results.Results) > 0 {
+					// already done
+					return nil
+				}
+				return appSearchClient.CreateEngine(appSearchEngine)
+			}),
 		},
 		test.Step{
 			Name: "Index documents in the App Search engine (if not already done)",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				results, err := appSearchClient.GetDocuments(appSearchEngine)
-				require.NoError(t, err)
-				if len(results.Results) == 0 {
-					require.NoError(t, appSearchClient.IndexDocument(appSearchEngine, appSearchSampleDocs))
+				if err != nil {
+					return err
 				}
-			},
+				if len(results.Results) > 0 {
+					// already done
+					return nil
+				}
+				return appSearchClient.IndexDocument(appSearchEngine, appSearchSampleDocs)
+			}),
 		},
 		test.Step{
 			Name: "Querying 'mountain' in App Search should eventually return 2 documents",

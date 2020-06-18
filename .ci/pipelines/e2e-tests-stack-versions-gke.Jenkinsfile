@@ -13,6 +13,7 @@ pipeline {
 
     options {
         timeout(time: 300, unit: 'MINUTES')
+        skipDefaultCheckout(true)
     }
 
     environment {
@@ -23,8 +24,10 @@ pipeline {
     }
 
     stages {
-        stage('Load common scripts') {
+        stage('Checkout, stash source code and load common scripts') {
             steps {
+                checkout scm
+                stash allowEmpty: true, name: 'source', useDefaultExcludes: false
                 script {
                     lib = load ".ci/common/tests.groovy"
                 }
@@ -37,7 +40,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.10")
                         }
@@ -48,7 +51,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
                         }
@@ -59,7 +62,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
                         }
@@ -70,7 +73,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
                         }
@@ -81,7 +84,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-74-${BUILD_NUMBER}-e2e", "7.4.2")
                         }
@@ -92,7 +95,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-75-${BUILD_NUMBER}-e2e", "7.5.2")
                         }
@@ -103,7 +106,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.2")
                         }
@@ -114,7 +117,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.1")
                         }
