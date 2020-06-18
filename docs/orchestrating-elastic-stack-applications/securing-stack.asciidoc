@@ -1,0 +1,20 @@
+:page_id: securing-stack
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Secure the Elastic Stack
+
+You can secure your Elastic Stack by specifying the following settings:
+
+- <<{p}-custom-http-certificate>>
+- <<{p}-users-and-roles>>
+- <<{p}-rotate-credentials>>
+
+include::security/custom-http-certificate.asciidoc[leveloffset=+1]
+include::security/users-and-roles.asciidoc[leveloffset=+1]
+include::security/rotate-credentials.asciidoc[leveloffset=+1]
+
+
