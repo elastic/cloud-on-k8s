@@ -159,7 +159,7 @@ type PartialConfig struct {
 
 // GetConfigFromPod execs into the Pod to retrieve the Enterprise Search configuration file.
 func GetConfigFromPod(k *test.K8sClient, pod types.NamespacedName) (PartialConfig, error) {
-	stdout, stderr, err := k.Exec(pod, []string{"cat", "/mnt/elastic-internal/config/enterprise-search.yml"})
+	stdout, stderr, err := k.Exec(pod, []string{"cat", "/usr/share/enterprise-search/config/enterprise-search.yml"})
 	if err != nil {
 		return PartialConfig{}, errors.Wrap(err, fmt.Sprintf("failed to get config from Pod, stdout: %s; stderr: %s", stdout, stderr))
 	}
