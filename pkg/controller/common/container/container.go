@@ -27,6 +27,9 @@ const (
 	FilebeatImage         Image = "beats/filebeat"
 	MetricbeatImage       Image = "beats/metricbeat"
 	HeartbeatImage        Image = "beats/heartbeat"
+	AuditbeatImage        Image = "beats/auditbeat"
+	JournalbeatImage      Image = "beats/journalbeat"
+	PacketbeatImage       Image = "beats/packetbeat"
 )
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.

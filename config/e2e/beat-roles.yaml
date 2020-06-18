@@ -75,3 +75,18 @@ rules:
   - elastic.beat.restricted
   verbs:
   - use
+---
+# ClusterRole allowing use of Auditbeat-specific PSP
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-auditbeat-restricted
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.auditbeat.restricted
+  verbs:
+  - use

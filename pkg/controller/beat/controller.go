@@ -22,11 +22,14 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/journalbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/otherbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/packetbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -223,6 +226,12 @@ func newDriver(
 		return metricbeat.NewDriver(dp)
 	case string(heartbeat.Type):
 		return heartbeat.NewDriver(dp)
+	case string(auditbeat.Type):
+		return auditbeat.NewDriver(dp)
+	case string(journalbeat.Type):
+		return journalbeat.NewDriver(dp)
+	case string(packetbeat.Type):
+		return packetbeat.NewDriver(dp)
 	default:
 		return otherbeat.NewDriver(dp)
 	}

@@ -59,7 +59,7 @@ func TestBeatKibanaRef(t *testing.T) {
 		WithType(metricbeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref()).
-		WithRBAC()
+		WithRoles(beat.MetricbeatClusterRoleName)
 
 	mbBuilder = applyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
 

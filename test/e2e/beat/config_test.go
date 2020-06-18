@@ -15,6 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
@@ -22,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
 func TestFilebeatDefaultConfig(t *testing.T) {
@@ -55,6 +57,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	mbBuilder := beat.NewBuilder(name).
 		WithType(metricbeat.Type).
+		WithRoles(beat.MetricbeatClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(metricbeat.Type),
@@ -197,6 +200,32 @@ processors:
 	fbBuilder = applyYamls(t, fbBuilder, "", e2eFilebeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder).RunSequential(t)
+}
+
+func TestAuditbeatConfig(t *testing.T) {
+	name := "test-ab-cfg"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+
+	abBuilder := beat.NewBuilder(name).
+		WithType(auditbeat.Type).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithRoles(beat.AuditbeatPSPClusterRoleName).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithESValidations(
+			beat.HasEventFromBeat(auditbeat.Type),
+			beat.HasEvent("event.dataset:file"),
+			beat.HasEvent("event.module:file_integrity"),
+		)
+
+	abBuilder = applyYamls(t, abBuilder, e2eAuditbeatConfig, e2eAuditbeatPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, abBuilder).RunSequential(t)
 }
 
 // --- helpers

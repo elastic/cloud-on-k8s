@@ -173,7 +173,7 @@ BeatSpec defines the desired state of a Beat.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, etc.). Any string can be used, but well-known types will be recognized and will allow to provide sane default configurations.
+| *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, etc.). Any string can be used, but well-known types will be recognized and will allow to use the correct image and Elasticsearch roles. It will also allow for the initial setup if the type supports it and `kibanaRef` field is specified.
 | *`version`* __string__ | Version of the Beat.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 | *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster. It allows automatic setup of dashboards and visualizations.

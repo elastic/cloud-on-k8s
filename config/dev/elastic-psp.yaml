@@ -47,7 +47,7 @@
           max: 65535
     readOnlyRootFilesystem: false
 ---
-  # PSP needed for DaemonSet running Filebeat. Allows for hostNetwork, running as root and using hostPath volume type.
+  # Base PSP needed for running Beats. Allows for hostNetwork, running as root and using hostPath volume type.
   apiVersion: policy/v1beta1
   kind: PodSecurityPolicy
   metadata:
@@ -92,4 +92,55 @@
         # Forbid adding the root group.
         - min: 1
           max: 65535
+    readOnlyRootFilesystem: false
+---
+  # PSP needed for Auditbeat.
+  apiVersion: policy/v1beta1
+  kind: PodSecurityPolicy
+  metadata:
+    name: elastic.auditbeat.restricted
+    annotations:
+      seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default,runtime/default'
+      apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+      seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
+      apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
+  spec:
+    privileged: false
+    allowPrivilegeEscalation: false
+    # Allow core volume types.
+    volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    # Assume that persistentVolumes set up by the cluster admin are safe to use.
+    - 'persistentVolumeClaim'
+    # Allow access to the host for log files.
+    - 'hostPath'
+    allowedCapabilities:
+    - 'AUDIT_READ'
+    - 'AUDIT_WRITE'
+    - 'AUDIT_CONTROL'
+    hostNetwork: true
+    hostIPC: false
+    hostPID: true
+    runAsUser:
+      # Allow the container to run as root.
+      rule: 'RunAsAny'
+    seLinux:
+      # This policy assumes the nodes are using AppArmor rather than SELinux.
+      rule: 'RunAsAny'
+    supplementalGroups:
+      rule: 'MustRunAs'
+      ranges:
+      # Forbid adding the root group.
+      - min: 1
+        max: 65535
+    fsGroup:
+      rule: 'MustRunAs'
+      ranges:
+      # Forbid adding the root group.
+      - min: 1
+        max: 65535
     readOnlyRootFilesystem: false

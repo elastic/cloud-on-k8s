@@ -12230,8 +12230,11 @@ spec:
               type: string
             type:
               description: Type is the type of the Beat to deploy (filebeat, metricbeat,
-                heartbeat, etc.). Any string can be used, but well-known types will
-                be recognized and will allow to provide sane default configurations.
+                heartbeat, auditbeat, journalbeat, packetbeat, etc.). Any string can
+                be used, but well-known types will be recognized and will allow to
+                use the correct image and Elasticsearch roles. It will also allow
+                for the initial setup if the type supports it and `kibanaRef` field
+                is specified.
               maxLength: 20
               pattern: '[a-zA-Z0-9-]+'
               type: string
