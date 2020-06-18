@@ -66,10 +66,7 @@ func TestBeatKibanaRef(t *testing.T) {
 	hbBuilder := beat.NewBuilder(name).
 		WithType(heartbeat.Type).
 		WithDeployment().
-		WithElasticsearchRef(esBuilder.Ref()).
-		WithESValidations(
-			beat.HasEventFromBeat(heartbeat.Type),
-			beat.HasEvent("monitor.status:up"))
+		WithElasticsearchRef(esBuilder.Ref())
 
 	configYaml := fmt.Sprintf(e2eHeartBeatConfigTpl, esv1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
 
