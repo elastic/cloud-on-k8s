@@ -106,7 +106,7 @@ rules:
   verbs:
   - use
 ---
-# ClusterRole allowing use of Packetbeat-specific PSP
+# ClusterRole allowing use of Journalbeat-specific PSP
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
