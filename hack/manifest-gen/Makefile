@@ -18,6 +18,10 @@ docker-build:
 	@ ./manifest-gen.sh -u
 	@ docker build -t $(DOCKER_IMAGE) .
 
+.PHONY: docker-push
+docker-push:
+	@ ../docker-push.sh $(DOCKER_IMAGE)
+
 .PHONY: docker-gen-global
 docker-gen-global: docker-build
 	@ docker run --rm $(DOCKER_IMAGE) generate --profile=global
