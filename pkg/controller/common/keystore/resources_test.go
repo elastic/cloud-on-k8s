@@ -101,6 +101,13 @@ func TestResources(t *testing.T) {
 
 set -eux
 
+keystore_initialized_flag=/bar/data/elastic-internal-init-keystore.ok
+
+if [[ -f "${keystore_initialized_flag}" ]]; then
+    echo "Keystore already initialized."
+	exit 0
+fi
+
 echo "Initializing keystore."
 
 # create a keystore in the default data path
@@ -114,6 +121,7 @@ for filename in  /foo/secret/*; do
 	/keystore/bin/keystore add "$key" "$filename"
 done
 
+touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `,
 				},
@@ -122,11 +130,6 @@ echo "Keystore initialization successful."
 						Name:      "elastic-internal-secure-settings",
 						ReadOnly:  true,
 						MountPath: "/mnt/elastic-internal/secure-settings",
-					},
-					{
-						Name:      "kibana-data",
-						ReadOnly:  false,
-						MountPath: "/bar/data",
 					},
 				},
 				SecurityContext: &corev1.SecurityContext{
