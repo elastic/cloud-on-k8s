@@ -19,12 +19,14 @@ type clientV6 struct {
 
 func (c *clientV6) GetClusterInfo(ctx context.Context) (Info, error) {
 	var info Info
-	return info, c.get(ctx, "/", &info)
+	err := c.get(ctx, "/", &info)
+	return info, err
 }
 
 func (c *clientV6) GetClusterRoutingAllocation(ctx context.Context) (ClusterRoutingAllocation, error) {
 	var settings ClusterRoutingAllocation
-	return settings, c.get(ctx, "/_cluster/settings", &settings)
+	err := c.get(ctx, "/_cluster/settings", &settings)
+	return settings, err
 }
 
 func (c *clientV6) updateAllocationEnable(ctx context.Context, value string) error {
@@ -61,7 +63,8 @@ func (c *clientV6) Flush(ctx context.Context) error {
 
 func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
 	var result Health
-	return result, c.get(ctx, "/_cluster/health", &result)
+	err := c.get(ctx, "/_cluster/health", &result)
+	return result, err
 }
 
 func (c *clientV6) GetClusterHealthWaitForAllEvents(ctx context.Context) (Health, error) {
@@ -92,13 +95,15 @@ func (c *clientV6) ReloadSecureSettings(ctx context.Context) error {
 func (c *clientV6) GetNodes(ctx context.Context) (Nodes, error) {
 	var nodes Nodes
 	// restrict call to basic node info only
-	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
+	err := c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
+	return nodes, err
 }
 
 func (c *clientV6) GetNodesStats(ctx context.Context) (NodesStats, error) {
 	var nodesStats NodesStats
 	// restrict call to basic node info only
-	return nodesStats, c.get(ctx, "/_nodes/_all/stats/os", &nodesStats)
+	err := c.get(ctx, "/_nodes/_all/stats/os", &nodesStats)
+	return nodesStats, err
 }
 
 func (c *clientV6) UpdateRemoteClusterSettings(ctx context.Context, settings RemoteClustersSettings) error {
@@ -107,27 +112,32 @@ func (c *clientV6) UpdateRemoteClusterSettings(ctx context.Context, settings Rem
 
 func (c *clientV6) GetRemoteClusterSettings(ctx context.Context) (RemoteClustersSettings, error) {
 	remoteClustersSettings := RemoteClustersSettings{}
-	return remoteClustersSettings, c.get(ctx, "/_cluster/settings", &remoteClustersSettings)
+	err := c.get(ctx, "/_cluster/settings", &remoteClustersSettings)
+	return remoteClustersSettings, err
 }
 
 func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
 	var license LicenseResponse
-	return license.License, c.get(ctx, "/_xpack/license", &license)
+	err := c.get(ctx, "/_xpack/license", &license)
+	return license.License, err
 }
 
 func (c *clientV6) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
 	var response LicenseUpdateResponse
-	return response, c.post(ctx, "/_xpack/license?acknowledge=true", licenses, &response)
+	err := c.post(ctx, "/_xpack/license?acknowledge=true", licenses, &response)
+	return response, err
 }
 
 func (c *clientV6) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 	var response StartTrialResponse
-	return response, c.post(ctx, "/_xpack/license/start_trial?acknowledge=true", nil, &response)
+	err := c.post(ctx, "/_xpack/license/start_trial?acknowledge=true", nil, &response)
+	return response, err
 }
 
 func (c *clientV6) StartBasic(ctx context.Context) (StartBasicResponse, error) {
 	var response StartBasicResponse
-	return response, c.post(ctx, "/_xpack/license/start_basic?acknowledge=true", nil, &response)
+	err := c.post(ctx, "/_xpack/license/start_basic?acknowledge=true", nil, &response)
+	return response, err
 }
 
 func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {

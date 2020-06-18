@@ -18,9 +18,9 @@ In some cases, the licence-detector will not be able to detect the licence type 
 
 Current overrides file can be found in the `overrides` directory. Follow the existing directory layout (`licences/<domain>/<pkg>/LICENCE`) when adding new licence text overrides.
 
-### Whitelisting licence types
+### Allowing licence types
 
-Current list of allowed licence types can be found in the `rules.json` file. Refer to the documentation in the tool repo for more information about adding new licence types to the whitelist.
+Current list of allowed licence types can be found in the `rules.json` file. Refer to the documentation in the tool repo for more information about adding new licence types to the allowlist.
 
 
 generate-image-deps.sh

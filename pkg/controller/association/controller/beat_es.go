@@ -5,6 +5,10 @@
 package controller
 
 import (
+	"fmt"
+	"strings"
+
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -13,6 +17,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -47,8 +52,65 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		},
 		UserSecretSuffix:  "beat-user",
 		CASecretLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole: func(commonv1.Associated) (string, error) {
-			return esuser.SuperUserBuiltinRole, nil
-		},
+		ESUserRole:        getBeatRoles,
 	})
+}
+
+func getBeatRoles(assoc commonv1.Associated) (string, error) {
+	beat, ok := assoc.(*beatv1beta1.Beat)
+	if !ok {
+		return "", pkgerrors.Errorf(
+			"Beat expected, got %s/%s",
+			assoc.GetObjectKind().GroupVersionKind().Group,
+			assoc.GetObjectKind().GroupVersionKind().Kind,
+		)
+	}
+
+	if strings.Contains(beat.Spec.Type, ",") {
+		return "", fmt.Errorf("beat type %s should not contain a comma", beat.Spec.Type)
+	}
+
+	v, err := version.Parse(beat.Spec.Version)
+	if err != nil {
+		return "", err
+	}
+
+	// Roles for supported Beats are based on:
+	// https://www.elastic.co/guide/en/beats/filebeat/current/feature-roles.html
+	// Docs are the same for all Beats. For a specific version docs change "current" to major.minor, eg:
+	// https://www.elastic.co/guide/en/beats/filebeat/7.1/feature-roles.html
+	switch {
+	case v.IsSameOrAfter(version.From(7, 7, 0)):
+		return strings.Join([]string{
+			"kibana_admin",
+			"ingest_admin",
+			"beats_admin",
+			"remote_monitoring_user",
+			esuser.BeatRoleName(esuser.V77, beat.Spec.Type),
+		}, ","), nil
+	case v.IsSameOrAfter(version.From(7, 5, 0)):
+		return strings.Join([]string{
+			"kibana_user",
+			"ingest_admin",
+			"beats_admin",
+			"remote_monitoring_user",
+			esuser.BeatRoleName(esuser.V75, beat.Spec.Type),
+		}, ","), nil
+	case v.IsSameOrAfter(version.From(7, 3, 0)):
+		return strings.Join([]string{
+			"kibana_user",
+			"ingest_admin",
+			"beats_admin",
+			"remote_monitoring_user",
+			esuser.BeatRoleName(esuser.V73, beat.Spec.Type),
+		}, ","), nil
+	default:
+		return strings.Join([]string{
+			"kibana_user",
+			"ingest_admin",
+			"beats_admin",
+			"monitoring_user",
+			esuser.BeatRoleName(esuser.V70, beat.Spec.Type),
+		}, ","), nil
+	}
 }

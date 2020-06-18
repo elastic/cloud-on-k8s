@@ -13,6 +13,7 @@ pipeline {
 
     options {
         timeout(time: 300, unit: 'MINUTES')
+        skipDefaultCheckout(true)
     }
 
     environment {
@@ -23,8 +24,10 @@ pipeline {
     }
 
     stages {
-        stage('Load common scripts') {
+        stage('Checkout, stash source code and load common scripts') {
             steps {
+                checkout scm
+                stash allowEmpty: true, name: 'source', useDefaultExcludes: false
                 script {
                     lib = load ".ci/common/tests.groovy"
                 }
@@ -60,7 +63,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
+                        unstash "source"
                         script {
                             runWith(lib, failedTests, "eck-78-snapshot-${BUILD_NUMBER}-e2e", "7.8.0-SNAPSHOT")
                         }
@@ -96,7 +99,7 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-77-snapshot-${BUILD_NUMBER}-e2e"
+                    "eck-78-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',

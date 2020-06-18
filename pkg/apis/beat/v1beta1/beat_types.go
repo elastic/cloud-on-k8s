@@ -13,9 +13,10 @@ import (
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
-	// Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used,
+	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, etc.). Any string can be used,
 	// but well-known types will be recognized and will allow to provide sane default configurations.
 	// +kubebuilder:validation:MaxLength=20
+	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
 	Type string `json:"type"`
 
 	// Version of the Beat.
@@ -33,9 +34,21 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
-	// Config holds the Beat configuration. If provided, it will override the default configuration.
+	// Config holds the Beat configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 	// +kubebuilder:validation:Optional
 	Config *commonv1.Config `json:"config,omitempty"`
+
+	// ConfigRef contains a reference to an existing Kubernetes Secret holding the Beat configuration.
+	// Beat settings must be specified as yaml, under a single "beat.yml" entry. At most one of [`Config`, `ConfigRef`]
+	// can be specified.
+	// +kubebuilder:validation:Optional
+	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
+
+	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.
+	// Secrets data can be then referenced in the Beat config using the Secret's keys or as specified in `Entries` field of
+	// each SecureSetting.
+	// +kubebuilder:validation:Optional
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
 	// ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
@@ -228,6 +241,12 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
 	return commonv1.KibanaConfigAnnotationName
 }
+
+func (b *Beat) SecureSettings() []commonv1.SecretSource {
+	return b.Spec.SecureSettings
+}
+
+var _ commonv1.Associated = &Beat{}
 
 // +kubebuilder:object:root=true
 

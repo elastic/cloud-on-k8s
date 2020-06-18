@@ -349,13 +349,15 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	_, _ = configHash.Write(configSecret.Data[ReadinessProbeFilename])
 
 	// - in the Enterprise Search TLS certificates
-	var tlsCertSecret corev1.Secret
-	tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)}
-	if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
-		return "", err
-	}
-	if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
-		_, _ = configHash.Write(certPem)
+	if ent.Spec.HTTP.TLS.Enabled() {
+		var tlsCertSecret corev1.Secret
+		tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)}
+		if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
+			return "", err
+		}
+		if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(certPem)
+		}
 	}
 
 	// - in the Elasticsearch TLS certificates

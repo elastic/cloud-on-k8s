@@ -45,12 +45,8 @@ pipeline {
                 stage("Run unit and integration tests") {
                     when {
                         expression {
-                            checkout scm
                             notOnlyDocs()
                         }
-                    }
-                    agent {
-                        label 'linux'
                     }
                     steps {
                         script {
@@ -66,7 +62,6 @@ pipeline {
                 stage("Run smoke E2E tests") {
                     when {
                         expression {
-                            checkout scm
                             notOnlyDocs()
                         }
                     }

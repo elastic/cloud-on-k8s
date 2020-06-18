@@ -152,13 +152,9 @@ shellcheck:
 install-crds: generate-crds
 	kubectl apply -f $(ALL_CRDS)
 
-# Install roles that operator expects to be present by default.
-install-roles:
-	kubectl apply -f ./config/operator/all-in-one/beat-roles.yaml
-
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
-run: install-crds install-roles go-run
+run: install-crds go-run
 
 go-run:
 	# Run the operator locally with debug logs and operator image set to latest

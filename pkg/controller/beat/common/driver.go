@@ -7,16 +7,19 @@ package common
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -27,11 +30,26 @@ type Driver interface {
 }
 
 type DriverParams struct {
-	Client  k8s.Client
 	Context context.Context
 	Logger  logr.Logger
 
+	Client        k8s.Client
+	EventRecorder record.EventRecorder
+	Watches       watches.DynamicWatches
+
 	Beat beatv1beta1.Beat
+}
+
+func (dp DriverParams) K8sClient() k8s.Client {
+	return dp.Client
+}
+
+func (dp DriverParams) Recorder() record.EventRecorder {
+	return dp.EventRecorder
+}
+
+func (dp DriverParams) DynamicWatches() watches.DynamicWatches {
+	return dp.Watches
 }
 
 func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
@@ -46,31 +64,17 @@ func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{}
 }
 
-func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
-	if (spec.DaemonSet == nil && spec.Deployment == nil) || (spec.DaemonSet != nil && spec.Deployment != nil) {
-		return fmt.Errorf("either daemonset or deployment has to be specified")
-	}
-	return nil
-}
+var _ driver.Interface = DriverParams{}
 
 func Reconcile(
 	params DriverParams,
-	defaultConfig DefaultConfig,
+	managedConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
-	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
 
-	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
-		return results.WithError(err)
-	}
-
-	if err := ReconcileAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Beat); err != nil {
-		results.WithError(err)
-	}
-
 	configHash := sha256.New224()
-	if err := reconcileConfig(params, defaultConfig, configHash); err != nil {
+	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
 		return results.WithError(err)
 	}
 
@@ -79,7 +83,18 @@ func Reconcile(
 		return results.WithError(err)
 	}
 
-	podTemplate := buildPodTemplate(params, defaultImage, modifyPodFunc, configHash)
+	keystoreResources, err := keystore.NewResources(
+		params,
+		&params.Beat,
+		namer,
+		NewLabels(params.Beat),
+		initContainerParameters(params.Beat.Spec.Type),
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	podTemplate := buildPodTemplate(params, defaultImage, keystoreResources, configHash)
 	results.WithResults(reconcilePodVehicle(podTemplate, params))
 	return results
 }

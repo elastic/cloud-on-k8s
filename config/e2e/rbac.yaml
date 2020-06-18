@@ -27,7 +27,6 @@ rules:
       - podsecuritypolicies
     resourceNames:
       - elastic.restricted
-      - elastic.beat.restricted
     verbs:
       - use
   - apiGroups:
@@ -100,6 +99,32 @@ rules:
       - get
       - update
       - patch
+  - apiGroups:
+    - policy
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - get
+    # to dynamically bind service accounts to Beat ClusterRoles
+  - apiGroups:
+    - rbac.authorization.k8s.io
+    resources:
+    - clusterroles
+    verbs:
+    - bind
+    - get
+  - apiGroups:
+    - "rbac.authorization.k8s.io"
+    resources:
+    - clusterrolebindings
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+    - delete
   - apiGroups:
       - "apps"
     resources:

@@ -25,7 +25,7 @@ All Elastic Stack resources deployed by the ECK Operator are secured by default.
 [id="{p}-authentication"]
 === Authentication
 
-To access Elasticsearch, Kibana or APM Server, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
+To access Elastic resources, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
 
 [source,sh]
 ----
@@ -38,12 +38,12 @@ NOTE: Beware of copying this Secret as-is into a different namespace. See <<{p}-
 [id="{p}-services"]
 == Services
 
-You can access Elasticsearch, Kibana or APM Server by using native Kubernetes services that are not reachable from the public Internet by default.
+You can access Elastic resources by using native Kubernetes services that are not reachable from the public Internet by default.
 
 [id="{p}-kubernetes-service"]
 === Manage Kubernetes services
 
-For each resource, `Elasticsearch`, `Kibana` or `ApmServer`, the operator manages a Kubernetes service named `<name>-[es|kb|apm]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
+For each resource, the operator manages a Kubernetes service named `<name>-[es|kb|apm|ent]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
 
 [source,sh]
 ----
@@ -97,7 +97,7 @@ This section only covers TLS certificates for the HTTP layer. Those for the tran
 [id="{p}-default-self-signed-certificate"]
 === Default self-signed certificate
 
-By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch, Kibana and APM Server.
+By default, the operator manages a self-signed certificate with a custom CA for each resource.
 The CA, the certificate and the private key are each stored in a separate `Secret`.
 
 [source,sh]
@@ -108,7 +108,7 @@ hulk-es-http-certs-internal      Opaque                                2      28
 hulk-es-http-certs-public        Opaque                                1      28m
 ----
 
-The public certificate is stored in a secret named `<name>-[es|kb]-http-certs-public`.
+The public certificate is stored in a secret named `<name>-[es|kb|apm|ent]-http-certs-public`.
 
 [source,sh]
 ----
@@ -169,7 +169,7 @@ spec:
 [id="{p}-disable-tls"]
 === Disable TLS
 
-You can explicitly disable TLS for Kibana or APM Server and the HTTP layer of Elasticsearch.
+You can explicitly disable TLS for Kibana, APM Server, Enterprise Search and the HTTP layer of Elasticsearch.
 
 [source,yaml]
 ----

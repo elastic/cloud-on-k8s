@@ -58,6 +58,7 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
+			helper.createBeatRoles,
 			helper.createManagedNamespaces,
 		}
 	} else {
@@ -67,12 +68,15 @@ func doRun(flags runFlags) error {
 			helper.initTestContext,
 			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
+			helper.createBeatRoles,
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
+			helper.deployTestSecret,
 			helper.deployFilebeat,
+			helper.deployMetricbeat,
 			helper.deployTestJob,
 			helper.runTestJob,
 		}
@@ -232,6 +236,11 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/rbac.yaml", h.testContext)
 }
 
+func (h *helper) createBeatRoles() error {
+	log.Info("Creating Beat roles")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/beat-roles.yaml", h.testContext)
+}
+
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
 	return h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
@@ -290,14 +299,35 @@ func (h *helper) deployFilebeat() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/filebeat.yaml", h.testContext)
 }
 
-func (h *helper) deployTestJob() error {
-	log.Info("Deploying e2e test job")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
+func (h *helper) deployMetricbeat() error {
+	if h.monitoringSecrets == "" {
+		log.Info("No monitoring secrets provided, metricbeat is not deployed")
+		return nil
+	}
+
+	log.Info("Deploying metricbeat")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/metricbeat.yaml", h.testContext)
+}
+
+func (h *helper) deployTestSecret() error {
+	log.Info("Deploying e2e test secret")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/secret.yaml",
 		struct {
 			Secrets map[string]string
 			Context test.Context
 		}{
 			Secrets: h.testSecrets,
+			Context: h.testContext,
+		},
+	)
+}
+
+func (h *helper) deployTestJob() error {
+	log.Info("Deploying e2e test job")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
+		struct {
+			Context test.Context
+		}{
 			Context: h.testContext,
 		},
 	)

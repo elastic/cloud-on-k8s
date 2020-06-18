@@ -7,12 +7,9 @@ package beat
 import (
 	"context"
 
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -25,11 +22,15 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/otherbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -51,7 +52,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c)
+	return addWatches(c, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler.
@@ -65,8 +66,8 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 	}
 }
 
-// Watch DaemonSets and Deployments
-func addWatches(c controller.Controller) error {
+// addWatches adds watches for all resources this controller cares about
+func addWatches(c controller.Controller, r *ReconcileBeat) error {
 	// Watch for changes to Beat
 	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -96,27 +97,9 @@ func addWatches(c controller.Controller) error {
 		return err
 	}
 
-	if beatcommon.ShouldManageAutodiscoverRBAC() {
-		// Watch ServiceAccounts
-		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &beatv1beta1.Beat{},
-		}); err != nil {
-			return err
-		}
-
-		// Watch relevant ClusterRoleBindings
-		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-				requests := []reconcile.Request{}
-				if result, nsName := beatcommon.IsAutodiscoverResource(object.Meta); result {
-					requests = append(requests, reconcile.Request{NamespacedName: nsName})
-				}
-				return requests
-			}),
-		}); err != nil {
-			return err
-		}
+	// Watch dynamically referenced Secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
+		return err
 	}
 
 	return nil
@@ -144,12 +127,7 @@ func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, 
 	var beat beatv1beta1.Beat
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &beat); err != nil {
 		if apierrors.IsNotFound(err) {
-			if err := r.onDelete(types.NamespacedName{
-				Namespace: request.Namespace,
-				Name:      request.Name,
-			}); err != nil {
-				return reconcile.Result{Requeue: true}, nil
-			}
+			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -189,7 +167,7 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 		return results.WithError(err)
 	}
 
-	driverResults := newDriver(ctx, r.Client, beat).Reconcile()
+	driverResults := newDriver(ctx, r.recorder, r.Client, r.dynamicWatches, beat).Reconcile()
 	results.WithResults(driverResults)
 
 	return results
@@ -217,20 +195,25 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 	return compat, err
 }
 
-func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
-	if beatcommon.ShouldManageAutodiscoverRBAC() {
-		return beatcommon.CleanUp(r.Client, obj)
-	}
-
-	return nil
+func (r *ReconcileBeat) onDelete(obj types.NamespacedName) {
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(beatcommon.ConfigRefWatchName(obj))
 }
 
-func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) beatcommon.Driver {
+func newDriver(
+	ctx context.Context,
+	recorder record.EventRecorder,
+	client k8s.Client,
+	dynamicWatches watches.DynamicWatches,
+	beat beatv1beta1.Beat,
+) beatcommon.Driver {
 	dp := beatcommon.DriverParams{
-		Client:  client,
-		Context: ctx,
-		Logger:  log,
-		Beat:    beat,
+		Client:        client,
+		Context:       ctx,
+		Logger:        log,
+		Watches:       dynamicWatches,
+		EventRecorder: recorder,
+		Beat:          beat,
 	}
 
 	switch beat.Spec.Type {
@@ -238,6 +221,8 @@ func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) be
 		return filebeat.NewDriver(dp)
 	case string(metricbeat.Type):
 		return metricbeat.NewDriver(dp)
+	case string(heartbeat.Type):
+		return heartbeat.NewDriver(dp)
 	default:
 		return otherbeat.NewDriver(dp)
 	}

@@ -5,16 +5,20 @@
 package common
 
 import (
+	"context"
 	"testing"
 
 	logrtesting "github.com/go-logr/logr/testing"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -45,10 +49,9 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	)
 
-	unmanagedDefaultCfg := settings.MustParseConfig([]byte("default: true"))
-	managedDefaultCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
-	userConfig := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
-	userCanonicalConfig := settings.MustCanonicalConfig(userConfig.Data)
+	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
+	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
+	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
 	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities: 
    - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
 	outputYaml := settings.MustParseConfig([]byte(`output:
@@ -59,12 +62,12 @@ func Test_buildBeatConfig(t *testing.T) {
     username: elastic
 `))
 
-	withAssociation := beatv1beta1.Beat{
+	withAssoc := beatv1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 		},
 	}
-	esAssoc := beatv1beta1.BeatESAssociation{Beat: &withAssociation}
+	esAssoc := beatv1beta1.BeatESAssociation{Beat: &withAssoc}
 	esAssoc.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret",
 		AuthSecretKey:  "elastic",
@@ -72,115 +75,112 @@ func Test_buildBeatConfig(t *testing.T) {
 		CASecretName:   "secret2",
 		URL:            "url",
 	})
-	withAssociationWithCA := *withAssociation.DeepCopy()
+	withAssocWithCA := *withAssoc.DeepCopy()
 
-	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssociationWithCA}
+	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssocWithCA}
 	esAssocWithCA.AssociationConf().CACertProvided = true
 
-	withAssociationWithCAAndConfig := *withAssociationWithCA.DeepCopy()
-	withAssociationWithCAAndConfig.Spec.Config = userConfig
+	withAssocWithCAWithonfig := *withAssocWithCA.DeepCopy()
+	withAssocWithCAWithonfig.Spec.Config = userCfg
 
-	withAssociationWithConfig := *withAssociation.DeepCopy()
-	withAssociationWithConfig.Spec.Config = userConfig
+	withAssocWithConfig := *withAssoc.DeepCopy()
+	withAssocWithConfig.Spec.Config = userCfg
 
 	for _, tt := range []struct {
 		name          string
 		client        k8s.Client
 		beat          beatv1beta1.Beat
-		defaultConfig DefaultConfig
+		managedConfig *settings.CanonicalConfig
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
 		{
-			name: "neither default nor user config",
+			name: "no association, no configs",
 			beat: beatv1beta1.Beat{},
 		},
 		{
-			name:          "no association, only default config",
+			name: "no association, user config",
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userCfg,
+			}},
+			want: userCanonicalCfg,
+		},
+		{
+			name:          "no association, managed config",
 			beat:          beatv1beta1.Beat{},
-			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
-			want:          unmanagedDefaultCfg,
+			managedConfig: managedCfg,
+			want:          managedCfg,
 		},
 		{
-			name: "no association, only user config",
+			name: "no association, managed and user configs",
 			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userConfig,
+				Config: userCfg,
 			}},
-			want: userCanonicalConfig,
+			managedConfig: managedCfg,
+			want:          merge(userCanonicalCfg, managedCfg),
 		},
 		{
-			name: "no association, default and user config",
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userConfig,
-			}},
-			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
-			want:          userCanonicalConfig,
-		},
-		{
-			name: "no association, both default configs and user config",
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userConfig,
-			}},
-			defaultConfig: DefaultConfig{
-				Unmanaged: unmanagedDefaultCfg,
-				Managed:   managedDefaultCfg,
-			},
-			want: merge(userCanonicalConfig, managedDefaultCfg),
-		},
-
-		{
-			name:          "association without ca, only default config",
-			client:        clientWithSecret,
-			beat:          withAssociation,
-			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
-			want:          merge(unmanagedDefaultCfg, outputYaml),
-		},
-		{
-			name:   "association without ca, only user config",
+			name:   "association without ca, no configs",
 			client: clientWithSecret,
-			beat:   withAssociationWithConfig,
-			want:   merge(userCanonicalConfig, outputYaml),
+			beat:   withAssoc,
+			want:   outputYaml,
 		},
 		{
-			name:          "association without ca, default and user config",
-			client:        clientWithSecret,
-			beat:          withAssociationWithConfig,
-			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
-			want:          merge(userCanonicalConfig, outputYaml),
-		},
-		{
-			name:          "association with ca, only default config",
-			client:        clientWithSecret,
-			beat:          withAssociationWithCA,
-			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
-			want:          merge(unmanagedDefaultCfg, outputYaml, outputCAYaml),
-		},
-		{
-			name:   "association with ca, only user config",
+			name:   "association without ca, user config",
 			client: clientWithSecret,
-			beat:   withAssociationWithCAAndConfig,
-			want:   merge(userCanonicalConfig, outputYaml, outputCAYaml),
+			beat:   withAssocWithConfig,
+			want:   merge(userCanonicalCfg, outputYaml),
 		},
 		{
-			name:          "association with ca, default and user config",
+			name:          "association without ca, managed config",
 			client:        clientWithSecret,
-			beat:          withAssociationWithCAAndConfig,
-			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
-			want:          merge(userCanonicalConfig, outputYaml, outputCAYaml),
+			beat:          withAssoc,
+			managedConfig: managedCfg,
+			want:          merge(managedCfg, outputYaml),
 		},
 		{
-			name:   "association with ca, both default configs and user config",
+			name:          "association without ca, user and managed configs",
+			client:        clientWithSecret,
+			beat:          withAssocWithConfig,
+			managedConfig: managedCfg,
+			want:          merge(userCanonicalCfg, managedCfg, outputYaml),
+		},
+		{
+			name:   "association with ca, no configs",
 			client: clientWithSecret,
-			beat:   withAssociationWithCAAndConfig,
-			defaultConfig: DefaultConfig{
-				Unmanaged: unmanagedDefaultCfg,
-				Managed:   managedDefaultCfg,
-			},
-			want: merge(userCanonicalConfig, managedDefaultCfg, outputYaml, outputCAYaml),
+			beat:   withAssocWithCA,
+			want:   merge(outputYaml, outputCAYaml),
+		},
+		{
+			name:   "association with ca, user config",
+			client: clientWithSecret,
+			beat:   withAssocWithCAWithonfig,
+			want:   merge(userCanonicalCfg, outputYaml, outputCAYaml),
+		},
+		{
+			name:          "association with ca, managed config",
+			client:        clientWithSecret,
+			beat:          withAssocWithCA,
+			managedConfig: managedCfg,
+			want:          merge(managedCfg, outputYaml, outputCAYaml),
+		},
+		{
+			name:          "association with ca, user and managed configs",
+			client:        clientWithSecret,
+			beat:          withAssocWithCAWithonfig,
+			managedConfig: managedCfg,
+			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.beat, tt.defaultConfig)
+			gotYaml, gotErr := buildBeatConfig(DriverParams{
+				Client:        tt.client,
+				Context:       nil,
+				Logger:        logrtesting.NullLogger{},
+				Watches:       watches.DynamicWatches{},
+				EventRecorder: nil,
+				Beat:          tt.beat,
+			}, tt.managedConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 
@@ -291,6 +291,101 @@ setup.kibana:
 			}
 			diff := tt.want.Diff(got, nil)
 			require.Empty(t, diff)
+		})
+	}
+}
+
+func Test_getUserConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		config    *commonv1.Config
+		configRef *commonv1.ConfigSource
+		client    k8s.Client
+		want      *settings.CanonicalConfig
+		wantErr   bool
+	}{
+		{
+			name: "no user config",
+		},
+		{
+			name:   "config populated",
+			config: &commonv1.Config{Data: map[string]interface{}{"config": "true"}},
+			want:   settings.MustParseConfig([]byte(`config: "true"`)),
+		},
+		{
+			name: "configref populated - no secret",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config",
+				},
+			},
+			client:  k8s.WrappedFakeClient(),
+			wantErr: true,
+		},
+		{
+			name: "configref populated - no secret key",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config",
+				},
+			},
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-secret-config",
+				},
+			}),
+			wantErr: true,
+		},
+		{
+			name: "configref populated - malformed config",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config-2",
+				},
+			},
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-secret-config-2",
+				},
+				Data: map[string][]byte{"beat.yml": []byte("filebeat:bad:value")},
+			}),
+			wantErr: true,
+		},
+		{
+			name: "configref populated",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config-2",
+				},
+			},
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-secret-config-2",
+				},
+				Data: map[string][]byte{"beat.yml": []byte(`filebeat: "true"`)},
+			}),
+			want: settings.MustParseConfig([]byte(`filebeat: "true"`)),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			params := DriverParams{
+				Context:       context.Background(),
+				Logger:        log.NullLogger{},
+				Client:        tt.client,
+				EventRecorder: &record.FakeRecorder{},
+				Watches:       watches.NewDynamicWatches(),
+				Beat: beatv1beta1.Beat{
+					Spec: beatv1beta1.BeatSpec{
+						Config:    tt.config,
+						ConfigRef: tt.configRef,
+					},
+				},
+			}
+
+			got, gotErr := getUserConfig(params)
+			require.Equal(t, tt.wantErr, gotErr != nil)
+			require.Equal(t, tt.want, got)
+
 		})
 	}
 }
