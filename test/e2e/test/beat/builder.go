@@ -120,6 +120,11 @@ func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
+	b.Beat.Spec.KibanaRef = ref
+	return b
+}
+
 func (b Builder) WithConfig(config *commonv1.Config) Builder {
 	b.Beat.Spec.Config = config
 	return b

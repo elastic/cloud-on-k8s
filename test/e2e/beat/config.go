@@ -50,6 +50,20 @@ processors:
     name: varlogpods
 `
 
+	e2eHeartBeatConfigTpl = `
+heartbeat.monitors:
+- type: tcp
+  schedule: '@every 5s'
+  hosts: ["%s.%s.svc:9200"]
+`
+
+	e2eHeartbeatPodTemplate = `spec:
+  dnsPolicy: ClusterFirstWithHostNet
+  hostNetwork: true
+  securityContext:
+    runAsUser: 0
+`
+
 	e2eMetricbeatConfig = `metricbeat:
   autodiscover:
     providers:

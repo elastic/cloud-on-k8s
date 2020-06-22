@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
 
 	"github.com/pkg/errors"
 
@@ -33,7 +32,7 @@ func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 }
 
 // DoRequest executes an HTTP request against a Kibana instance using the given password for the elastic user.
-func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string, uri string, body []byte) ([]byte, error) {
+func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string, pathAndQuery string, body []byte) ([]byte, error) {
 	scheme := "http"
 	if kb.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
@@ -44,7 +43,14 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 		return nil, errors.Wrap(err, "while parsing url")
 	}
 
-	u.Path = path.Join(u.Path, uri)
+	pathAndQueryURL, err := url.Parse(pathAndQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "while parsing path and query from caller")
+	}
+
+	u.Path = pathAndQueryURL.Path
+	u.RawQuery = pathAndQueryURL.RawQuery
+
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "while creating request")
@@ -64,7 +70,7 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("fail to request %s, status is %d)", uri, resp.StatusCode)
+		return nil, fmt.Errorf("fail to request %s, status is %d)", pathAndQuery, resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
