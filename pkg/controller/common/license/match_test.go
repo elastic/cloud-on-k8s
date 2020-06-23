@@ -297,25 +297,6 @@ func Test_bestMatchAt(t *testing.T) {
 			wantFound: true,
 		},
 		{
-			name: "no result: platinum post 7.8.1",
-			args: args{
-				minVersion: version.MustParse("7.8.1"),
-				licenses: []EnterpriseLicense{
-					{
-						License: LicenseSpec{
-							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
-							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []ElasticsearchLicense{
-								{License: license(twoMonth, platinum)},
-								{License: license(twelveMonth, platinum)},
-							},
-						},
-					},
-				},
-			},
-			wantFound: false,
-		},
-		{
 			name: "success: longest valid from multiple enterprise licenses",
 			args: args{
 				licenses: []EnterpriseLicense{

@@ -319,16 +319,7 @@ func (l License) IsValid(instant time.Time) bool {
 
 // IsSupported returns true if the current license type is supported by the given version of Elasticsearch.
 func (l License) IsSupported(v *version.Version) bool {
-	v7_8_1 := version.MustParse("7.8.1")
-	// 7.8.1 is the first version to fully support Enterprise licenses
-	if l.Type == string(ElasticsearchLicenseTypeEnterprise) && !v.IsSameOrAfter(v7_8_1) {
-		return false
-	}
-	// 7.8.1 does not allow upload of anything but Trial or Enteprise licenses
-	if stringsutil.StringInSlice(l.Type, []string{
-		string(ElasticsearchLicenseTypeGold),
-		string(ElasticsearchLicenseTypePlatinum),
-	}) && v.IsSameOrAfter(v7_8_1) {
+	if l.Type == string(ElasticsearchLicenseTypeEnterprise) && !v.IsSameOrAfter(version.MustParse("7.8.1")) {
 		return false
 	}
 	return true
