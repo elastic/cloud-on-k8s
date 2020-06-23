@@ -28,8 +28,9 @@ import (
 
 const (
 	ESCertsPath              = "/mnt/elastic-internal/es-certs"
-	ConfigMountPath          = "/mnt/elastic-internal/config"
+	ConfigMountPath          = "/usr/share/enterprise-search/config/enterprise-search.yml"
 	ConfigFilename           = "enterprise-search.yml"
+	ReadinessProbeMountPath  = "/mnt/elastic-internal/scripts/readiness-probe.sh"
 	ReadinessProbeFilename   = "readiness-probe.sh"
 	ReadinessProbeTimeoutSec = 5
 
@@ -38,7 +39,12 @@ const (
 )
 
 func ConfigSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
-	return volume.NewSecretVolumeWithMountPath(name.Config(ent.Name), "config", ConfigMountPath)
+	return volume.NewSecretVolume(name.Config(ent.Name), "config", ConfigMountPath, ConfigFilename, 0444)
+}
+
+func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
+	// reuse the config secret
+	return volume.NewSecretVolume(name.Config(ent.Name), "readiness-probe", ReadinessProbeMountPath, ReadinessProbeFilename, 0444)
 }
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
@@ -225,6 +231,8 @@ func defaultConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         "0.0.0.0",
+		"filebeat_log_directory":         LogVolumeMountPath,
+		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,
 	})
 }
