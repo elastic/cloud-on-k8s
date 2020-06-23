@@ -40,7 +40,7 @@ spec:
   version: {version}
 ----
 
-<1> The namespace declaration can be omitted if both clusters reside in the same namespace
+<1> The namespace declaration can be omitted if both clusters reside in the same namespace.
 
 
 [id="{p}-remote-clusters-connect-external"]

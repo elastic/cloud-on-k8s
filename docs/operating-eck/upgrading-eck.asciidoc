@@ -50,7 +50,7 @@ kubectl annotate --overwrite elastic --all $ANNOTATION
 for NS in $(kubectl get ns -o=custom-columns='NAME:.metadata.name' --no-headers); do kubectl annotate --overwrite elastic --all $ANNOTATION -n $NS; done
 ----
 
-<1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed=false`
+<1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed=false`.
 
 Once the operator has been upgraded and you are ready to let the resource become managed again (triggering a rolling restart of pods in the process), remove the annotation.
 
@@ -64,7 +64,7 @@ RM_ANNOTATION='common.k8s.elastic.co/pause-' <1>
 kubectl annotate elasticsearch quickstart $RM_ANNOTATION
 ----
 
-<1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed-`
+<1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed-`.
 
 NOTE: The ECK source repository contains a link:https://github.com/elastic/cloud-on-k8s/tree/master/hack/annotator[shell script] to assist with mass addition/deletion of annotations.
 

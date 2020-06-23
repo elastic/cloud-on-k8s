@@ -57,8 +57,8 @@ data:
   license: "JSON license in base64 format"  <2>
 ----
 
-<1> This label is required for ECK to identify your license secret
-<2> The license file can have any name
+<1> This label is required for ECK to identify your license secret.
+<2> The license file can have any name.
 
 You can easily create this secret using `kubectl` 's built-in support for secrets.  Note that it must be in the same namespace as the operator:
 
