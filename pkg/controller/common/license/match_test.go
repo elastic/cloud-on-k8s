@@ -256,7 +256,7 @@ func Test_bestMatchAt(t *testing.T) {
 			wantFound: true,
 		},
 		{
-			name: "success: mixed platinum/enterprise pre 7.6",
+			name: "success: mixed platinum/enterprise pre 7.8.1",
 			args: args{
 				licenses: []EnterpriseLicense{
 					{
@@ -276,9 +276,9 @@ func Test_bestMatchAt(t *testing.T) {
 			wantFound: true,
 		},
 		{
-			name: "success: mixed platinum/enterprise post 7.6",
+			name: "success: mixed platinum/enterprise post 7.8.1",
 			args: args{
-				minVersion: version.MustParse("7.6.0"),
+				minVersion: version.MustParse("7.8.1"),
 				licenses: []EnterpriseLicense{
 					{
 						License: LicenseSpec{
@@ -416,7 +416,7 @@ func Test_filterValidForType(t *testing.T) {
 			},
 		},
 		{
-			name: "matching is version specific: pre-7.6",
+			name: "matching is version specific: pre-7.8.1",
 			args: args{
 				minVersion: version.MustParse("7.5.0"),
 				licenses: []EnterpriseLicense{
@@ -440,9 +440,9 @@ func Test_filterValidForType(t *testing.T) {
 			want: []licenseWithTimeLeft{},
 		},
 		{
-			name: "matching is version specific: post-7.6",
+			name: "matching is version specific: post-7.8.1",
 			args: args{
-				minVersion: version.MustParse("7.7.0"),
+				minVersion: version.MustParse("7.8.1"),
 				licenses: []EnterpriseLicense{
 					{
 						License: LicenseSpec{

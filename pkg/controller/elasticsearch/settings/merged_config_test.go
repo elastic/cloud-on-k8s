@@ -126,7 +126,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "prior to 7.6.0, we should not set allowed license upload types",
+			name:    "prior to 7.8.1, we should not set allowed license upload types",
 			version: "7.5.0",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
@@ -134,8 +134,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "starting 7.6.0, we should set allowed license upload types",
-			version: "7.6.0",
+			name:    "starting 7.8.1, we should set allowed license upload types",
+			version: "7.8.1",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackLicenseUploadTypes})))
