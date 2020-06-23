@@ -25,12 +25,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+const (
+	defaultFsGroup = 1000
+)
+
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
+	setDefaultFsGroup bool,
 ) (corev1.PodTemplateSpec, error) {
 	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
@@ -50,6 +55,10 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 	defaultContainerPorts := getDefaultContainerPorts(es)
+
+	if setDefaultFsGroup {
+		builder = builder.WithFsGroup(defaultFsGroup)
+	}
 
 	builder = builder.
 		WithResources(DefaultResources).

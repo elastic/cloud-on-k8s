@@ -174,6 +174,11 @@ func init() {
 		DefaultWebhookConfigurationName,
 		fmt.Sprintf("Name of the Kubernetes ValidatingWebhookConfiguration resource (defaults to %s). Only used when enable-webhook is true.", DefaultWebhookConfigurationName),
 	)
+	Cmd.Flags().Bool(
+		operator.SetDefaultFsGroupFlag,
+		true,
+		"Enables setting the default filesystem group in Pods security context",
+	)
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -322,6 +327,7 @@ func execute() {
 			RotateBefore: certRotateBefore,
 		},
 		MaxConcurrentReconciles: viper.GetInt(operator.MaxConcurrentReconcilesFlag),
+		SetDefaultFsGroup:       viper.GetBool(operator.SetDefaultFsGroupFlag),
 		Tracer:                  tracer,
 	}
 

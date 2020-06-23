@@ -64,6 +64,7 @@ func BuildStatefulSet(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
+	setDefaultFsGroup bool,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
@@ -75,7 +76,7 @@ func BuildStatefulSet(
 		nodeSet.VolumeClaimTemplates, nodeSet.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
 	)
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(es, nodeSet, cfg, keystoreResources)
+	podTemplate, err := BuildPodTemplateSpec(es, nodeSet, cfg, keystoreResources, setDefaultFsGroup)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

@@ -87,6 +87,19 @@ var sampleES = esv1.Elasticsearch{
 	},
 }
 
+func TestBuildPodTemplateSpecWithDefaultFsGroup(t *testing.T) {
+	nodeSet := sampleES.Spec.NodeSets[0]
+	ver, err := version.Parse(sampleES.Spec.Version)
+	require.NoError(t, err)
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config)
+	require.NoError(t, err)
+
+	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil, true)
+	require.NoError(t, err)
+
+	require.Equal(t, int64(1000), *actual.Spec.SecurityContext.FSGroup)
+}
+
 func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
@@ -94,7 +107,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config)
 	require.NoError(t, err)
 
-	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil)
+	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec

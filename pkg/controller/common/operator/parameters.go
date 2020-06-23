@@ -26,6 +26,9 @@ type Parameters struct {
 	CertRotation certificates.RotationParams
 	// MaxConcurrentReconciles controls the number of goroutines per controller.
 	MaxConcurrentReconciles int
+	// SetDefaultFsGroup determines whether the operator should set the default
+	// filesystem group for Pod security context.
+	SetDefaultFsGroup bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
 }
