@@ -20,7 +20,7 @@ var KeystoreParams = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         KeystoreBinPath + " create",
 	KeystoreAddCommand:            KeystoreBinPath + ` add-file "$key" "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
+	KeystoreVolumePath:            esvolume.ConfigVolumeMountPath,
 	Resources: corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: resource.MustParse("196Mi"),

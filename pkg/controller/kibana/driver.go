@@ -42,7 +42,7 @@ var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
 	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-	DataVolumePath:                DataVolumeMountPath,
+	KeystoreVolumePath:            DataVolumeMountPath,
 	Resources: corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: resource.MustParse("128Mi"),

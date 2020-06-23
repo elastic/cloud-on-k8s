@@ -61,7 +61,7 @@ func initContainerParameters(typ string) keystore.InitContainerParameters {
 		KeystoreCreateCommand:         fmt.Sprintf("%s keystore create --force", typ),
 		KeystoreAddCommand:            fmt.Sprintf(`cat "$filename" | %s keystore add "$key" --stdin --force`, typ),
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-		DataVolumePath:                fmt.Sprintf(DataPathTemplate, typ),
+		KeystoreVolumePath:            fmt.Sprintf(DataPathTemplate, typ),
 		Resources:                     defaultResources,
 	}
 }
