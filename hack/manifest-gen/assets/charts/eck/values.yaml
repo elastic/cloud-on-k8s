@@ -1,0 +1,60 @@
+operator:
+  name: elastic-operator
+  namespace: elastic-system
+  version: 1.2.0
+
+  selectorLabels:
+    control-plane: elastic-operator
+
+  image:
+    repository: docker.elastic.co/eck/eck-operator
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 150Mi
+    requests:
+      cpu: 100m
+      memory: 50Mi
+
+config:
+  createClusterScopedResources: true
+
+  managedNamespaces: []
+
+  logVerbosity: 0
+
+  metricsPort: 0
+
+  containerRegistry: docker.elastic.co
+
+  maxConcurrentReconciles: 3
+
+  tracing:
+    enabled: false
+    config:
+      ELASTIC_APM_SERVER_URL: http://localhost:8200
+      ELASTIC_APM_SERVER_TIMEOUT: 30s
+
+  ca:
+    validity: 8760h
+    rotateBefore: 24h
+
+  certificates:
+    validity: 8760h
+    rotateBefore: 24h
+
+  refs:
+    enforceRBAC: false
+
+  webhook:
+    enabled: true
+    manageCerts: true
+    certsDir: "/tmp/k8s-webhook-server/serving-certs"
+    certsSecret: elastic-webhook-server-cert
+    name: elastic-webhook.k8s.elastic.co
+    serviceName: elastic-webhook-server
+
+  beat:
+    manageAutoDiscoverRBAC: true

@@ -1,28 +1,15 @@
-# The namespaced operator has two sets of permissions, in its namespace and in the managed namespace.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: elastic-operator
-rules:
+{{/* vim: set filetype=mustache: */}}
+
+{{/*
+RBAC permissions
+*/}}
+{{- define "rbac.rules" -}}
 - apiGroups:
-  - ""
+  - "authorization.k8s.io"
   resources:
-  - configmaps
-  - secrets
+  - subjectaccessreviews
   verbs:
-  - get
-  - list
-  - watch
   - create
-  - update
-  - patch
-  - delete
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: elastic-namespace-operator
-rules:
 - apiGroups:
   - ""
   resources:
@@ -42,34 +29,12 @@ rules:
   - update
   - patch
   - delete
-# required to allow the operator to bind service accounts it manages
-# to role that holds permissions needed for Beat autodiscover feature
-- apiGroups:
-  - "rbac.authorization.k8s.io"
-  resources:
-  - clusterrolebindings
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterroles
-  verbs:
-  - bind
-  resourceNames:
-  - elastic-beat-autodiscover
 - apiGroups:
   - apps
   resources:
   - deployments
   - statefulsets
-  - daemonsets # used by Beats
+  - daemonsets
   verbs:
   - get
   - list
@@ -96,6 +61,8 @@ rules:
   - elasticsearches
   - elasticsearches/status
   - elasticsearches/finalizers
+  - enterpriselicenses
+  - enterpriselicenses/status
   verbs:
   - get
   - list
@@ -122,6 +89,8 @@ rules:
   - apm.k8s.elastic.co
   resources:
   - apmservers
+  - apmservers/status
+  - apmservers/finalizers
   verbs:
   - get
   - list
@@ -131,20 +100,24 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - apm.k8s.elastic.co
-  resources:
-  - apmservers/status
-  - apmservers/finalizers
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
   - enterprisesearch.k8s.elastic.co
   resources:
   - enterprisesearches
   - enterprisesearches/status
   - enterprisesearches/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
   verbs:
   - get
   - list
@@ -167,3 +140,34 @@ rules:
   - update
   - patch
   - delete
+{{- end -}}
+
+
+{{/*
+RBAC permissions on cluster resources.
+These are separate as the user may not have enough permissions to manipulate cluster resources.
+*/}}
+{{- define "cluster.resource.rbac.rules" -}}
+# required to allow the operator to bind service accounts it manages
+# to role that holds permissions needed for Beat autodiscover feature
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+   - clusterrolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  resourceNames:
+  - elastic-beat-autodiscover
+{{- end -}}

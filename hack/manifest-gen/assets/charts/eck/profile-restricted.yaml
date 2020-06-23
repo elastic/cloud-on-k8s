@@ -1,0 +1,10 @@
+config:
+  createClusterScopedResources: false
+
+  managedNamespaces: ["elastic-system"]
+
+  webhook:
+    enabled: false
+
+  beat:
+    manageAutoDiscoverRBAC: false

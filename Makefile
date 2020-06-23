@@ -60,7 +60,7 @@ TEST_OPTS ?=
 
 ## -- Namespaces
 
-# namespace in which the operator is deployed (see config/operator)
+# namespace in which the operator is deployed
 OPERATOR_NAMESPACE ?= elastic-system
 # name of the operator statefulset and related resources
 OPERATOR_NAME ?= elastic-operator
@@ -201,11 +201,21 @@ endif
 deploy: check-gke install-crds build-operator-image apply-operator
 
 apply-operator:
-	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-	OPERATOR_NAME=$(OPERATOR_NAME) \
-	NAMESPACE=$(OPERATOR_NAMESPACE) \
-	MANAGED_NAMESPACES=$(MANAGED_NAMESPACES) \
-		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
+ifeq ($(strip $(MANAGED_NAMESPACES)),)
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--set=operator.version=$(IMG_VERSION) \
+		--set=operator.image.repository=$(BASE_IMG) \
+		--set=operator.namespace=$(OPERATOR_NAMESPACE) \
+		--set=operator.name=$(OPERATOR_NAME) | kubectl apply -f -
+else
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--profile=restricted \
+		--set=operator.version=$(IMG_VERSION) \
+		--set=operator.image.repository=$(BASE_IMG) \
+		--set=operator.namespace=$(OPERATOR_NAMESPACE) \
+		--set=operator.name=$(OPERATOR_NAME) \
+		--set=config.managedNamespaces="{$(MANAGED_NAMESPACES)}" | kubectl apply -f -
+endif
 
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
@@ -214,11 +224,11 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 
 # merge all-in-one crds with operator manifests
 generate-all-in-one:
-	cp -f $(ALL_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
-	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-		OPERATOR_NAME=$(OPERATOR_NAME) \
-		NAMESPACE=$(OPERATOR_NAMESPACE) \
-		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--set=operator.version=$(IMG_VERSION) \
+		--set=operator.image.repository=$(BASE_IMG) \
+		--set=operator.namespace=$(OPERATOR_NAMESPACE) \
+		--set=operator.name=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
@@ -337,7 +347,7 @@ purge-gcr-images:
 switch-registry-gcr:
 ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set to use GCR)
-endif	
+endif
 	@ echo "REGISTRY = eu.gcr.io"               > .registry.env
 	@ echo "REGISTRY_NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
 	@ echo "E2E_REGISTRY_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env

@@ -1,0 +1,91 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.operator.name }}
+  namespace: {{ .Values.operator.namespace }}
+  labels:
+    {{- toYaml .Values.operator.selectorLabels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- toYaml .Values.operator.selectorLabels | nindent 6 }}
+  serviceName: {{ .Values.operator.name }}
+  template:
+    metadata:
+      annotations:
+        # Rename the fields "error" to "error.message" and "source" to "event.source"
+        # This is to avoid a conflict with the ECS "error" and "source" documents.
+        "co.elastic.logs/raw": "[{\"type\":\"container\",\"json.keys_under_root\":true,\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
+      labels:
+        {{- toYaml .Values.operator.selectorLabels | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: {{ .Values.operator.name }}
+      containers:
+      - image: "{{ .Values.operator.image.repository }}:{{ .Values.operator.version }}"
+        imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
+        name: manager
+        args:
+          - "manager"
+          - "--log-verbosity={{- .Values.config.logVerbosity -}}"
+          - "--metrics-port={{- .Values.config.metricsPort -}}"
+          - "--container-registry={{- .Values.config.containerRegistry -}}"
+          - "--max-concurrent-reconciles={{- .Values.config.maxConcurrentReconciles -}}"
+          - "--ca-cert-validity={{- .Values.config.ca.validity -}}"
+          - "--ca-cert-rotate-before={{- .Values.config.ca.rotateBefore -}}"
+          - "--cert-validity={{- .Values.config.certificates.validity -}}"
+          - "--cert-rotate-before={{- .Values.config.certificates.rotateBefore -}}"
+          {{- if .Values.config.tracing.enabled }}
+          - "--enable-tracing"
+          {{- end }}
+          {{- if .Values.config.refs.enforceRBAC }}
+          - "--enforce-rbac-on-refs"
+          {{- end }}
+          {{- if .Values.config.webhook.enabled }}
+          - "--enable-webhook"
+            {{- if not .Values.config.webhook.manageCerts }}
+          - "--manage-webhook-certs=false"
+          - "--webhook-cert-dir={{- .Values.config.webhook.certsDir -}}"
+            {{- end }}
+          {{- end }}
+          {{- if .Values.config.managedNamespaces }}
+          - "--namespaces={{- join "," .Values.config.managedNamespaces  -}}"
+          {{- end }}
+          {{- if not .Values.config.beat.manageAutoDiscoverRBAC }}
+          - "--manage-beat-autodiscover-rbac=false"
+          {{- end }}
+        env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: OPERATOR_IMAGE
+            value: "{{ .Values.operator.image.repository }}:{{ .Values.operator.version }}"
+          {{- if .Values.config.webhook.enabled }}
+          - name: WEBHOOK_SECRET
+            value: "{{ .Values.config.webhook.certsSecret }}"
+          {{- end }}
+          {{- if .Values.config.tracing.enabled -}}
+          {{- range $name, $value :=  .Values.config.tracing.config }}
+          - name: {{ $name }}
+            value: {{ $value }}
+          {{- end }}
+          {{- end }}
+        resources:
+          {{- toYaml .Values.operator.resources | nindent 12 }}
+{{- if .Values.config.webhook.enabled }}
+        ports:
+        - containerPort: 9443
+          name: https-webhook
+          protocol: TCP
+        volumeMounts:
+          - mountPath: {{ .Values.config.webhook.certsDir }}
+            name: cert
+            readOnly: true
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: "{{ .Values.config.webhook.certsSecret }}"
+{{- end }}
