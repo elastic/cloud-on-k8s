@@ -19,7 +19,7 @@ operator:
       memory: 50Mi
 
 config:
-  createClusterResources: true
+  createClusterScopedResources: true
 
   managedNamespaces: []
 

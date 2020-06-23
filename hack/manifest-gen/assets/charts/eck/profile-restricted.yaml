@@ -1,5 +1,5 @@
 config:
-  createClusterResources: false
+  createClusterScopedResources: false
 
   managedNamespaces: ["elastic-system"]
 
