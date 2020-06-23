@@ -625,8 +625,10 @@ spec:
               type: string
             type:
               description: Type is the type of the Beat to deploy (filebeat, metricbeat,
-                heartbeat, etc.). Any string can be used, but well-known types will
-                be recognized and will allow to provide sane default configurations.
+                heartbeat, auditbeat, journalbeat, packetbeat, etc.). Any string can
+                be used, but well-known types will have the image field defaulted
+                and have the appropriate Elasticsearch roles created automatically.
+                It also allows for dashboard setup when combined with a `KibanaRef`.
               maxLength: 20
               pattern: '[a-zA-Z0-9-]+'
               type: string
@@ -1773,20 +1775,15 @@ spec:
               description: Config holds the Enterprise Search configuration.
               type: object
             configRef:
-              description: 'ConfigRef contains references to Kubernetes Secrets holding
-                the Enterprise Search configuration. Configuration settings are merged
-                and have prcedence over plain text settings specified in  `config`.
-                Multiple secrets can be referenced: if duplicate settings exist in
-                multiple secrets, the last one takes precedence.'
-              items:
-                description: ConfigSource references configuration settings to include
-                  in the Enterprise Search configuration.
-                properties:
-                  secretName:
-                    description: SecretName is the name of the secret.
-                    type: string
-                type: object
-              type: array
+              description: ConfigRef contains a reference to an existing Kubernetes
+                Secret holding the Enterprise Search configuration. Configuration
+                settings are merged and have precedence over settings specified in
+                `config`.
+              properties:
+                secretName:
+                  description: SecretName is the name of the secret.
+                  type: string
+              type: object
             count:
               description: Count of Enterprise Search instances to deploy.
               format: int32
