@@ -37,7 +37,7 @@ sed_bsd() {
 usage() {
     echo "Usage: $0 [-u | -g <args>]"
     echo "    '-u'"
-    echo "         Update the chart and exit"
+    echo "         Update the chart (version and CRDs) and exit"
     echo "    '-g'"
     echo "         Generate manifest using the given arguments"
     echo ""
