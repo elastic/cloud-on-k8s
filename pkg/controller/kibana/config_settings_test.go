@@ -6,10 +6,12 @@ package kibana
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	ucfg "github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -26,20 +28,21 @@ import (
 var defaultConfig = []byte(`
 elasticsearch:
 server:
-  host: "0"
+  host: "0.0.0.0"
   name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
     certificate: /mnt/elastic-internal/http-certs/tls.crt
 xpack:
+  encryptedSavedObjects:
+    encryptionKey: thisismyobjectkey
+  license_management.ui.enabled: false
+  reporting:
+    encryptionKey: thisismyreportingkey
   security:
     encryptionKey: thisismyencryptionkey
-  monitoring:
-    ui:
-      container:
-        elasticsearch:
-          enabled: true
+  monitoring.ui.container.elasticsearch.enabled: true
 `)
 
 var associationConfig = []byte(`
@@ -59,6 +62,10 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		c      k8s.Client
 		kibana kbv1.Kibana
 	}
+
+	kb75 := mkKibana()
+	kb75.Spec.Version = "7.5.0"
+
 	tests := []struct {
 		name      string
 		args      args
@@ -80,7 +87,9 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
-					"xpack.security.encryptionKey": "thisismyencryptionkey",
+					XpackSecurityEncryptionKey:              "thisismyencryptionkey",
+					XpackReportingEncryptionKey:             "thisismyreportingkey",
+					XpackEncryptedSavedObjectsEncryptionKey: "thisismyobjectkey",
 				})
 				assert.Equal(t, expectedSettings, got)
 			},
@@ -102,7 +111,32 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var r reusableSettings
 				assert.NoError(t, got.Unpack(&r))
-				assert.Equal(t, len(r.EncryptionKey), 64) // Kibana encryption key length should be 64
+				assert.Equal(t, len(r.EncryptionKey), 64) // key length should be 64
+				assert.Equal(t, len(r.ReportingKey), 64)
+				assert.Equal(t, len(r.SavedObjectsKey), 64)
+			},
+		},
+
+		{
+			name: "Create new encryption keys pre-7.6.0",
+			args: args{
+				c: k8s.WrappedFakeClient(
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						Data: map[string][]byte{
+							SettingsFilename: associationConfig,
+						},
+					},
+				),
+				kibana: kb75,
+			},
+			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				// Unpack the configuration to check that some default reusable settings have been generated
+				var r reusableSettings
+				assert.NoError(t, got.Unpack(&r))
+				assert.Equal(t, len(r.EncryptionKey), 64) // key length should be 64
+				assert.Equal(t, len(r.ReportingKey), 64)
+				assert.Equal(t, len(r.SavedObjectsKey), 0) // is only introduced in 7.6.0
 			},
 		},
 	}
@@ -126,7 +160,7 @@ func TestNewConfigSettings(t *testing.T) {
 			Namespace: defaultKb.Namespace,
 		},
 		Data: map[string][]byte{
-			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey"),
+			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nxpack.reporting.encryptionKey: thisismyreportingkey\nxpack.encryptedSavedObjects.encryptionKey: thisismyobjectkey"),
 		},
 	}
 	type args struct {
@@ -153,15 +187,14 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.WrappedFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
+					kb.Spec.HTTP = commonv1.HTTPConfig{
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								Disabled: true,
 							},
 						},
 					}
+
 					return kb
 				},
 			},
@@ -182,9 +215,7 @@ func TestNewConfigSettings(t *testing.T) {
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "test-es"},
-					}
+					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
 					kb.SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
 						AuthSecretKey:  "elastic",
@@ -233,11 +264,9 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.WrappedFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						Config: &commonv1.Config{
-							Data: map[string]interface{}{
-								"foo": "bar",
-							},
+					kb.Spec.Config = &commonv1.Config{
+						Data: map[string]interface{}{
+							"foo": "bar",
 						},
 					}
 					return kb
@@ -254,16 +283,14 @@ func TestNewConfigSettings(t *testing.T) {
 						Namespace: defaultKb.Namespace,
 					},
 					Data: map[string][]byte{
-						SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nlogging.verbose: true"),
+						SettingsFilename: append(defaultConfig, []byte(`logging.verbose: true`)...),
 					},
 				}),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec = kbv1.KibanaSpec{
-						Config: &commonv1.Config{
-							Data: map[string]interface{}{
-								"logging.verbose": false,
-							},
+					kb.Spec.Config = &commonv1.Config{
+						Data: map[string]interface{}{
+							"logging.verbose": false,
 						},
 					}
 					return kb
@@ -280,7 +307,7 @@ func TestNewConfigSettings(t *testing.T) {
 						Namespace: defaultKb.Namespace,
 					},
 					Data: map[string][]byte{
-						SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nlogging.verbose: true"),
+						SettingsFilename: append(defaultConfig, []byte(`logging.verbose: true`)...),
 					},
 				}),
 				kb: func() kbv1.Kibana {
@@ -294,7 +321,7 @@ func TestNewConfigSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
-			v := version.From(7, 5, 0)
+			v := version.From(7, 6, 0)
 			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -311,33 +338,39 @@ func TestNewConfigSettings(t *testing.T) {
 			var wantCfg map[string]interface{}
 			require.NoError(t, cfg.Unpack(&wantCfg))
 
-			require.Equal(t, wantCfg, gotCfg)
+			assert.Empty(t, deep.Equal(wantCfg, gotCfg))
 		})
 	}
 }
 
-// TestNewConfigSettingsCreateEncryptionKey checks that we generate a new key if none is specified
-func TestNewConfigSettingsCreateEncryptionKey(t *testing.T) {
+// TestNewConfigSettingsCreateEncryptionKeys checks that we generate new keys if none are specified
+func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
-	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
-	require.NoError(t, err)
-	assert.NotEmpty(t, val)
+	for _, key := range []string{XpackSecurityEncryptionKey, XpackReportingEncryptionKey, XpackEncryptedSavedObjectsEncryptionKey} {
+		val, err := (*ucfg.Config)(got.CanonicalConfig).String(key, -1, settings.Options...)
+		require.NoError(t, err)
+		assert.NotEmpty(t, val)
+	}
+
 }
 
 // TestNewConfigSettingsExistingEncryptionKey tests that we do not override the existing key if one is already specified
 func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	kb := mkKibana()
+	securityKey := "securityKey"
+	reportKey := "reportKey"
+	savedObjsKey := "savedObjsKey"
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      SecretName(kb),
 			Namespace: kb.Namespace,
 		},
 		Data: map[string][]byte{
-			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey"),
+			SettingsFilename: []byte(fmt.Sprintf("%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey)),
 		},
 	}
 	client := k8s.WrapClient(fake.NewFakeClient(existingSecret))
@@ -346,9 +379,18 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
+
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
-	assert.Equal(t, "thisismyencryptionkey", val)
+	assert.Equal(t, securityKey, val)
+
+	val, err = (*ucfg.Config)(got.CanonicalConfig).String(XpackReportingEncryptionKey, -1, settings.Options...)
+	require.NoError(t, err)
+	assert.Equal(t, reportKey, val)
+
+	val, err = (*ucfg.Config)(got.CanonicalConfig).String(XpackEncryptedSavedObjectsEncryptionKey, -1, settings.Options...)
+	require.NoError(t, err)
+	assert.Equal(t, savedObjsKey, val)
 }
 
 // TestNewConfigSettingsExplicitEncryptionKey tests that we do not override the existing key if one is already specified in the Spec
@@ -377,7 +419,7 @@ func mkKibana() kbv1.Kibana {
 			Name:      "testkb",
 			Namespace: "testns",
 		},
-		Spec: kbv1.KibanaSpec{Version: "7.5.0"},
+		Spec: kbv1.KibanaSpec{Version: "7.6.0"},
 	}
 	return kb
 }
@@ -388,6 +430,9 @@ func Test_getExistingConfig(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testkb",
 			Namespace: "testns",
+		},
+		Spec: kbv1.KibanaSpec{
+			Version: "7.6.0",
 		},
 	}
 	testValidSecret := corev1.Secret{

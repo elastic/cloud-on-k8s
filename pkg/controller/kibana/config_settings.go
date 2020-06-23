@@ -43,6 +43,8 @@ const (
 	XpackMonitoringUIContainerElasticsearchEnabled = "xpack.monitoring.ui.container.elasticsearch.enabled"
 	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled" // >= 7.6
 	XpackSecurityEncryptionKey                     = "xpack.security.encryptionKey"
+	XpackReportingEncryptionKey                    = "xpack.reporting.encryptionKey"
+	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -137,7 +139,9 @@ func VersionDefaults(kb *kbv1.Kibana, v version.Version) *settings.CanonicalConf
 
 // reusableSettings captures secrets settings in the Kibana configuration that we want to reuse.
 type reusableSettings struct {
-	EncryptionKey string `config:"xpack.security.encryptionKey"`
+	EncryptionKey   string `config:"xpack.security.encryptionKey"`
+	ReportingKey    string `config:"xpack.reporting.encryptionKey"`
+	SavedObjectsKey string `config:"xpack.encryptedSavedObjects.encryptionKey"`
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
@@ -182,13 +186,25 @@ func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.Canoni
 	if len(r.EncryptionKey) == 0 {
 		r.EncryptionKey = string(common.RandomBytes(64))
 	}
+	if len(r.ReportingKey) == 0 {
+		r.ReportingKey = string(common.RandomBytes(64))
+	}
+
+	kbVer, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
+	if len(r.SavedObjectsKey) == 0 && kbVer.IsSameOrAfter(version.From(7, 6, 0)) {
+		r.SavedObjectsKey = string(common.RandomBytes(64))
+	}
 	return settings.MustCanonicalConfig(r), nil
 }
 
 func baseSettings(kb *kbv1.Kibana) map[string]interface{} {
 	conf := map[string]interface{}{
 		ServerName: kb.Name,
-		ServerHost: "0",
+		ServerHost: "0.0.0.0",
 		XpackMonitoringUIContainerElasticsearchEnabled: true,
 	}
 
