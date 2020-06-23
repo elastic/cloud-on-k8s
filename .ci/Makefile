@@ -55,7 +55,7 @@ ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) re
 ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
-		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t $(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
+		../hack/retry.sh 5 docker build -f $(ROOT_DIR)/.ci/Dockerfile -t $(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
 		../hack/docker-push.sh $(CI_IMAGE) \
 	)
 
