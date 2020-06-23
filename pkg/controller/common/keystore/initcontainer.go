@@ -30,7 +30,7 @@ type InitContainerParameters struct {
 	Resources corev1.ResourceRequirements
 }
 
-// script is a small bash script to create a the keystore,
+// script is a small bash script to create an Elastic Stack keystore,
 // then add all entries from the secure settings secret volume into it.
 const script = `#!/usr/bin/env bash
 
