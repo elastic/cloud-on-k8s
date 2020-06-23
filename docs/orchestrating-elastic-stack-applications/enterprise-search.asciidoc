@@ -150,7 +150,7 @@ spec:
   config:
     ent_search.external_url: https://my-custom-domain:3002
   configRef:
-  - secretName: smtp-credentials
+    secretName: smtp-credentials
 ---
 kind: Secret
 apiVersion: v1
@@ -168,7 +168,7 @@ stringData:
     email.account.email_defaults.from: my@email.com
 ----
 
-ECK merges the content of `config` and `configRef` into a single internal Secret. In case of duplicate settings, the last referenced Secret takes precedence.
+ECK merges the content of `config` and `configRef` into a single internal Secret. In case of duplicate settings, the configRef secret has precedence.
 
 [id="{p}-enterprise-search-custom-pod-template"]
 === Customize the Pod template
@@ -229,7 +229,7 @@ spec:
   version: {version}
   count: 1
   configRef:
-  - secretName: elasticsearch-credentials
+    secretName: elasticsearch-credentials
 ---
 kind: Secret
 apiVersion: v1

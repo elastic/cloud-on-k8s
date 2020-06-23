@@ -19,11 +19,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -219,48 +217,8 @@ func getExistingConfig(client k8s.Client, ent entv1beta1.EnterpriseSearch) (*set
 	return cfg, nil
 }
 
-// configRefWatchName returns the name of the watch registered on Kubernetes secrets referenced in `configRef`.
-func configRefWatchName(ent types.NamespacedName) string {
-	return fmt.Sprintf("%s-%s-configref", ent.Namespace, ent.Name)
-}
-
-// parseConfigRef builds a single merged CanonicalConfig from the secrets referenced in configRef,
-// and ensures watches are correctly set on those secrets.
 func parseConfigRef(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	cfg := settings.NewCanonicalConfig()
-	secretNames := make([]string, 0, len(ent.Spec.ConfigRef))
-	for _, secretRef := range ent.Spec.ConfigRef {
-		if secretRef.SecretName == "" {
-			continue
-		}
-		secretNames = append(secretNames, secretRef.SecretName)
-	}
-	nsn := k8s.ExtractNamespacedName(&ent)
-	if err := watches.WatchUserProvidedSecrets(nsn, driver.DynamicWatches(), configRefWatchName(nsn), secretNames); err != nil {
-		return nil, err
-	}
-	for _, secretName := range secretNames {
-		var secret corev1.Secret
-		if err := driver.K8sClient().Get(types.NamespacedName{Namespace: ent.Namespace, Name: secretName}, &secret); err != nil {
-			// the secret may not exist (yet) in the cache
-			// it may contain important settings such as encryption keys, that we don't want to generate ourselves
-			// let's explicitly error out
-			return nil, err
-		}
-		if data, exists := secret.Data[ConfigFilename]; exists {
-			parsed, err := settings.ParseConfig(data)
-			if err != nil {
-				msg := "unable to parse configuration from secret"
-				log.Error(err, msg, "namespace", ent.Namespace, "ent_name", ent.Name, "secret_name", secretName)
-				driver.Recorder().Event(&ent, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
-				return nil, err
-			}
-			if err := cfg.MergeWith(parsed); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return cfg, nil
+	return common.ParseConfigRef(driver, &ent, ent.Spec.ConfigRef, ConfigFilename)
 }
 
 func defaultConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {

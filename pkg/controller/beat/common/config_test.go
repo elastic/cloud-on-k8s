@@ -177,7 +177,7 @@ func Test_buildBeatConfig(t *testing.T) {
 				Client:        tt.client,
 				Context:       nil,
 				Logger:        logrtesting.NullLogger{},
-				Watches:       watches.DynamicWatches{},
+				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat,
 			}, tt.managedConfig)
@@ -306,6 +306,7 @@ func Test_getUserConfig(t *testing.T) {
 	}{
 		{
 			name: "no user config",
+			want: nil,
 		},
 		{
 			name:   "config populated",
@@ -385,7 +386,6 @@ func Test_getUserConfig(t *testing.T) {
 			got, gotErr := getUserConfig(params)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			require.Equal(t, tt.want, got)
-
 		})
 	}
 }

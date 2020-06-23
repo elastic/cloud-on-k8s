@@ -96,7 +96,7 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	}
 	// simulate existing watches
 	nsn := types.NamespacedName{Name: "sample", Namespace: "ns"}
-	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.DynamicWatches(), configRefWatchName(nsn), []string{"watched-secret"}))
+	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.DynamicWatches(), common.ConfigRefWatchName(nsn), []string{"watched-secret"}))
 	// simulate a custom http tls secret
 	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.dynamicWatches, "sample-ent-http-certificate", []string{"user-tls-secret"}))
 	require.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())

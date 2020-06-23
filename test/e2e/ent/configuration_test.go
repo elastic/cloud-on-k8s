@@ -81,7 +81,7 @@ email:
 	)
 	require.NoError(t, err)
 	entWithConfigRef := enterprisesearch.Builder{EnterpriseSearch: *entWithConfig.EnterpriseSearch.DeepCopy()}.
-		WithConfigRef(entv1beta1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: configRefSecret.Name}}).
+		WithConfigRef(&commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: configRefSecret.Name}}).
 		WithMutatedFrom(&entWithConfig)
 
 	stepsFn := func(k *test.K8sClient) test.StepList {
