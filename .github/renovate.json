@@ -30,7 +30,8 @@
     },
     {
       "packageNames": [
-        "k8s.io/utils"
+        "k8s.io/utils",
+        "golang.org/x/crypto"
       ],
       "updateTypes": [
         "digest"
