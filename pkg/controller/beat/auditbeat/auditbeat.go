@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package filebeat
+package auditbeat
 
 import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	Type beatcommon.Type = "filebeat"
+	Type beatcommon.Type = "auditbeat"
 )
 
 type Driver struct {
@@ -30,9 +30,5 @@ func (d *Driver) Reconcile() *reconciler.Results {
 		return reconciler.NewResult(d.DriverParams.Context).WithError(err)
 	}
 
-	return beatcommon.Reconcile(
-		d.DriverParams,
-		managedConfig,
-		container.FilebeatImage,
-	)
+	return beatcommon.Reconcile(d.DriverParams, managedConfig, container.AuditbeatImage)
 }

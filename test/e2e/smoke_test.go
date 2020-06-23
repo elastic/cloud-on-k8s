@@ -76,8 +76,7 @@ func TestSmoke(t *testing.T) {
 		WithLabel(run.TestNameLabel, testName).
 		WithPodLabel(run.TestNameLabel, testName).
 		WithESValidations(beat.HasEventFromBeat(filebeat.Type)).
-		WithRBAC().
-		WithPSP()
+		WithRoles(beat.AutodiscoverClusterRoleName, beat.PSPClusterRoleName)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder, beatBuilder).
 		RunSequential(t)

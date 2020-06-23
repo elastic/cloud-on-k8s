@@ -75,3 +75,48 @@ rules:
   - elastic.beat.restricted
   verbs:
   - use
+---
+# ClusterRole allowing use of Auditbeat-specific PSP
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-auditbeat-restricted
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.auditbeat.restricted
+  verbs:
+  - use
+---
+# ClusterRole allowing use of Packetbeat-specific PSP
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-packetbeat-restricted
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.packetbeat.restricted
+  verbs:
+  - use
+---
+# ClusterRole allowing use of Journalbeat-specific PSP
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-journalbeat-restricted
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.journalbeat.restricted
+  verbs:
+  - use

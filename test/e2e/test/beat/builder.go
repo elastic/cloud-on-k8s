@@ -16,7 +16,6 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
@@ -24,7 +23,11 @@ import (
 )
 
 const (
-	PSPClusterRoleName          = "elastic-beat-restricted"
+	PSPClusterRoleName            = "elastic-beat-restricted"
+	AuditbeatPSPClusterRoleName   = "elastic-auditbeat-restricted"
+	PacketbeatPSPClusterRoleName  = "elastic-packetbeat-restricted"
+	JournalbeatPSPClusterRoleName = "elastic-journalbeat-restricted"
+
 	AutodiscoverClusterRoleName = "elastic-beat-autodiscover"
 	MetricbeatClusterRoleName   = "elastic-beat-metricbeat"
 )
@@ -71,8 +74,7 @@ func newBuilder(name string, suffix string) Builder {
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet().
-		WithRBAC().
-		WithPSP()
+		WithRoles(AutodiscoverClusterRoleName, PSPClusterRoleName)
 }
 
 type ValidationFunc func(client.Client) error
@@ -185,16 +187,12 @@ func (b Builder) WithPodTemplateServiceAccount(name string) Builder {
 	return b
 }
 
-func (b Builder) WithRBAC() Builder {
-	clusterRoleName := AutodiscoverClusterRoleName
-	if b.Beat.Spec.Type == string(metricbeat.Type) {
-		clusterRoleName = MetricbeatClusterRoleName
+func (b Builder) WithRoles(clusterRoleNames ...string) Builder {
+	for _, clusterRoleName := range clusterRoleNames {
+		b = bind(b, clusterRoleName)
 	}
-	return bind(b, clusterRoleName)
-}
 
-func (b Builder) WithPSP() Builder {
-	return bind(b, PSPClusterRoleName)
+	return b
 }
 
 func bind(b Builder, clusterRoleName string) Builder {

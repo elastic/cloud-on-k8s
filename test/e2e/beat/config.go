@@ -151,4 +151,189 @@ processors:
   - hostPath:
       path: /proc
     name: proc`
+
+	e2eAuditbeatConfig = `auditbeat.modules:
+- module: file_integrity
+  paths:
+  - /hostfs/bin
+  - /hostfs/usr/bin
+  - /hostfs/sbin
+  - /hostfs/usr/sbin
+  - /hostfs/etc
+  exclude_files:
+  - '(?i)\.sw[nop]$'
+  - '~$'
+  - '/\.git($|/)'
+  scan_at_start: true
+  scan_rate_per_sec: 50 MiB
+  max_file_size: 100 MiB
+  hash_types: [sha1]
+  recursive: true
+- module: auditd
+  audit_rules: |
+    # Executions
+    -a always,exit -F arch=b64 -S execve,execveat -k exec
+
+    # Unauthorized access attempts
+    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access
+    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access
+
+processors:
+  - add_cloud_metadata: {}
+  - add_process_metadata:
+      match_pids: ['process.pid']
+      include_fields: ['container.id']
+  - add_kubernetes_metadata:
+      host: ${HOSTNAME}
+      default_indexers.enabled: false
+      default_matchers.enabled: false
+      indexers:
+        - container:
+      matchers:
+        - fields.lookup_fields: ['container.id']
+`
+
+	e2eAuditbeatPodTemplate = `spec:
+  hostPID: true  # Required by auditd module
+  dnsPolicy: ClusterFirstWithHostNet
+  hostNetwork: true
+  securityContext:
+    runAsUser: 0
+  volumes:
+  - name: bin
+    hostPath:
+      path: /bin
+  - name: usrbin
+    hostPath:
+      path: /usr/bin
+  - name: sbin
+    hostPath:
+      path: /sbin
+  - name: usrsbin
+    hostPath:
+      path: /usr/sbin
+  - name: etc
+    hostPath:
+      path: /etc
+  - name: run-containerd
+    hostPath:
+      path: /run/containerd
+      type: DirectoryOrCreate
+  containers:
+  - name: auditbeat
+    securityContext:
+      capabilities:
+        add:
+        # Capabilities needed for auditd module
+        - 'AUDIT_READ'
+        - 'AUDIT_WRITE'
+        - 'AUDIT_CONTROL'
+    volumeMounts:
+    - name: bin
+      mountPath: /hostfs/bin
+      readOnly: true
+    - name: sbin
+      mountPath: /hostfs/sbin
+      readOnly: true
+    - name: usrbin
+      mountPath: /hostfs/usr/bin
+      readOnly: true
+    - name: usrsbin
+      mountPath: /hostfs/usr/sbin
+      readOnly: true
+    - name: etc
+      mountPath: /hostfs/etc
+      readOnly: true
+    # Directory with root filesystems of containers executed with containerd, this can be
+    # different with other runtimes. This volume is needed to monitor the file integrity
+    # of files in containers.
+    - name: run-containerd
+      mountPath: /run/containerd
+      readOnly: true
+`
+
+	e2ePacketbeatConfig = `packetbeat.interfaces.device: any
+packetbeat.protocols:
+- type: dns
+  ports: [53]
+  include_authorities: true
+  include_additionals: true
+- type: http
+  ports: [80, 8000, 8080, 9200]
+packetbeat.flows:
+  timeout: 30s
+  period: 10s
+processors:
+  - add_cloud_metadata:
+  - add_kubernetes_metadata:
+      host: ${HOSTNAME}
+      indexers:
+      - ip_port:
+      matchers:
+      - field_format:
+          format: '%{[ip]}:%{[port]}'`
+
+	e2ePacketbeatPodTemplate = `
+spec:
+  terminationGracePeriodSeconds: 30
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+  containers:
+  - name: packetbeat
+    securityContext:
+      runAsUser: 0
+      capabilities:
+        add:
+        - NET_ADMIN
+`
+	e2eJournalbeatConfig = `journalbeat.inputs:
+- paths: []
+  seek: cursor
+  cursor_seek_fallback: tail
+processors:
+- add_kubernetes_metadata:
+    host: "${HOSTNAME}"
+    in_cluster: true
+    default_indexers.enabled: false
+    default_matchers.enabled: false
+    indexers:
+      - container:
+    matchers:
+      - fields:
+          lookup_fields: ["container.id"]
+- decode_json_fields:
+    fields: ["message"]
+    process_array: false
+    max_depth: 1
+    target: ""
+    overwrite_keys: true
+`
+
+	e2eJournalbeatPodTemplate = `
+spec:
+  dnsPolicy: ClusterFirstWithHostNet
+  containers:
+  - name: journalbeat
+    volumeMounts:
+    - mountPath: /var/log/journal
+      name: var-journal
+    - mountPath: /run/log/journal
+      name: run-journal
+    - mountPath: /etc/machine-id
+      name: machine-id
+  hostNetwork: true
+  securityContext:
+    runAsUser: 0
+  terminationGracePeriodSeconds: 30
+  volumes:
+  - hostPath:
+      path: /var/log/journal
+    name: var-journal
+  - hostPath:
+      path: /run/log/journal
+    name: run-journal
+  - hostPath:
+      path: /etc/machine-id
+    name: machine-id
+`
 )
