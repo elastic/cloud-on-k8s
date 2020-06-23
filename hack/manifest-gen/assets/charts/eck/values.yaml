@@ -52,7 +52,7 @@ config:
     enabled: true
     manageCerts: true
     certsDir: "/tmp/k8s-webhook-server/serving-certs"
-    secret: elastic-webhook-server-cert
+    certsSecret: elastic-webhook-server-cert
     name: elastic-webhook.k8s.elastic.co
     serviceName: elastic-webhook-server
 

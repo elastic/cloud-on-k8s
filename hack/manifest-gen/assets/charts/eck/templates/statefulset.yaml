@@ -64,7 +64,7 @@ spec:
             value: "{{ .Values.operator.image.repository }}:{{ .Values.operator.version }}"
           {{- if .Values.config.webhook.enabled }}
           - name: WEBHOOK_SECRET
-            value: "{{ .Values.config.webhook.secret }}"
+            value: "{{ .Values.config.webhook.certsSecret }}"
           {{- end }}
           {{- if .Values.config.tracing.enabled -}}
           {{- range $name, $value :=  .Values.config.tracing.config }}
@@ -87,5 +87,5 @@ spec:
         - name: cert
           secret:
             defaultMode: 420
-            secretName: "{{ .Values.config.webhook.secret }}"
+            secretName: "{{ .Values.config.webhook.certsSecret }}"
 {{- end }}

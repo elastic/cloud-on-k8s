@@ -149,7 +149,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: "{{ .Values.config.webhook.secret }}"
+  name: "{{ .Values.config.webhook.certsSecret }}"
   namespace: {{ .Values.operator.namespace }}
 {{- end }}
 {{- end -}}
