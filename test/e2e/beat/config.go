@@ -182,7 +182,6 @@ processors:
   - add_cloud_metadata: {}
   - add_process_metadata:
       match_pids: ['process.pid']
-      include_fields: ['container.id']
   - add_kubernetes_metadata:
       host: ${HOSTNAME}
       default_indexers.enabled: false
