@@ -1,0 +1,21 @@
+testParam:
+  - name: alpha
+    operatorVersion: 0.9.0
+    stackVersion: 7.2.0
+    crdVersion: v1alpha1
+  - name: beta
+    operatorVersion: 1.0.0-beta1
+    stackVersion: 7.5.0
+    crdVersion: v1beta1
+  - name: ga101
+    operatorVersion: 1.0.1
+    stackVersion: 7.7.1
+    crdVersion: v1
+  - name: ga112
+    operatorVersion: 1.1.2
+    stackVersion: 7.8.0
+    crdVersion: v1
+  - name: upcoming
+    operatorVersion: 1.2.0-bc1
+    stackVersion: 7.8.0
+    crdVersion: v1
