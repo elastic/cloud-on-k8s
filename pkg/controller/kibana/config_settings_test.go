@@ -194,7 +194,6 @@ func TestNewConfigSettings(t *testing.T) {
 							},
 						},
 					}
-
 					return kb
 				},
 			},
@@ -406,11 +405,20 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
-	var gotCfg map[string]interface{}
-	require.NoError(t, got.Unpack(&gotCfg))
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
 	assert.Equal(t, key, val)
+}
+
+// Verifies that pre-7.6.0 keys are not present in the config
+func TestNewConfigSettingsPre760(t *testing.T) {
+	kb := mkKibana()
+	kb.Spec.Version = "7.5.0"
+	client := k8s.WrapClient(fake.NewFakeClient())
+	v := version.MustParse(kb.Spec.Version)
+	got, err := NewConfigSettings(context.Background(), client, kb, v)
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }
 
 func mkKibana() kbv1.Kibana {
