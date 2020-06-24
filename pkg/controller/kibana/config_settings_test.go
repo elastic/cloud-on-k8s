@@ -405,8 +405,6 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
-	// var gotCfg map[string]interface{}
-	// require.NoError(t, got.Unpack(&gotCfg))
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
 	assert.Equal(t, key, val)
@@ -420,7 +418,7 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjectsEncryptionKey})))
+	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }
 
 func mkKibana() kbv1.Kibana {
