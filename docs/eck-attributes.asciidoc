@@ -1,2 +1,2 @@
-:eck_version: 1.1.1
+:eck_version: 1.2.0
 :eck_crd_version: v1
