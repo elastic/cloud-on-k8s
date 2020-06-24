@@ -89,7 +89,7 @@ plans:
   eks:
     region: eu-central-1
     nodeCount: 3
-    nodeAMI: static
+    nodeAMI: auto
     diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
 - id: eks-dev
   operation: create
