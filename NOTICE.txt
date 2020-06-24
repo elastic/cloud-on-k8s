@@ -1556,11 +1556,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.7.0
-Time    : 2020-06-17T20:39:15Z
+Version : v1.7.1
+Time    : 2020-06-23T20:31:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.7.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
