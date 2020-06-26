@@ -29,7 +29,7 @@ var ErrRetry = errors.New("retriable error")
 
 // TestContext holds the context for the current test.
 type TestContext struct {
-	*k8s.Helper
+	*k8s.Kubectl
 	*Janitor
 	*zap.SugaredLogger
 	backoff wait.Backoff
@@ -37,7 +37,7 @@ type TestContext struct {
 
 // NewTestContext creates a new test context.
 func NewTestContext(confFlags *genericclioptions.ConfigFlags, retryCount int, retryDelay, retryTimeout time.Duration) (*TestContext, error) {
-	helper, err := k8s.NewHelper(confFlags)
+	kubectl, err := k8s.NewKubectl(confFlags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8S helper: %w", err)
 	}
@@ -51,7 +51,7 @@ func NewTestContext(confFlags *genericclioptions.ConfigFlags, retryCount int, re
 	}
 
 	return &TestContext{
-		Helper:        helper,
+		Kubectl:       kubectl,
 		Janitor:       &Janitor{},
 		SugaredLogger: zap.S().Named("fixture"),
 		backoff:       backoff,
@@ -61,7 +61,7 @@ func NewTestContext(confFlags *genericclioptions.ConfigFlags, retryCount int, re
 // WithName creates a copy of the context with a new name.
 func (tc *TestContext) WithName(name string) *TestContext {
 	return &TestContext{
-		Helper:        tc.Helper,
+		Kubectl:       tc.Kubectl,
 		Janitor:       tc.Janitor,
 		SugaredLogger: tc.With("step", name),
 		backoff:       tc.backoff,

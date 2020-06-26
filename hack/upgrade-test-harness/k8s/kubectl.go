@@ -34,8 +34,8 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-// Helper contains Kubernetes API utilities.
-type Helper struct {
+// Kubectl provides utilities based on the kubectl API.
+type Kubectl struct {
 	defaultNamespace string
 	factory          cmdutil.Factory
 	openAPISchema    openapi.Resources
@@ -43,8 +43,8 @@ type Helper struct {
 	errOut           io.Writer
 }
 
-// NewHelper creates a new instance of Helper.
-func NewHelper(confFlags *genericclioptions.ConfigFlags) (*Helper, error) {
+// NewKubectl creates a new instance of Kubectl.
+func NewKubectl(confFlags *genericclioptions.ConfigFlags) (*Kubectl, error) {
 	matchVersionFlags := cmdutil.NewMatchVersionFlags(confFlags)
 	factory := cmdutil.NewFactory(matchVersionFlags)
 
@@ -55,7 +55,7 @@ func NewHelper(confFlags *genericclioptions.ConfigFlags) (*Helper, error) {
 
 	logger := zap.L().Named("kubectl")
 
-	return &Helper{
+	return &Kubectl{
 		defaultNamespace: findActiveNamespace(confFlags),
 		factory:          factory,
 		openAPISchema:    openAPISchema,
@@ -80,12 +80,12 @@ func findActiveNamespace(confFlags *genericclioptions.ConfigFlags) string {
 	return defaultNS
 }
 
-func (h *Helper) Namespace() string {
+func (h *Kubectl) Namespace() string {
 	return h.defaultNamespace
 }
 
 // GetResources gets the named objects.
-func (h *Helper) GetResources(namespace string, names ...string) *resource.Result {
+func (h *Kubectl) GetResources(namespace string, names ...string) *resource.Result {
 	return h.factory.NewBuilder().
 		Unstructured().
 		NamespaceParam(namespace).
@@ -98,7 +98,7 @@ func (h *Helper) GetResources(namespace string, names ...string) *resource.Resul
 }
 
 // LoadResources loads manifests from the given file path.
-func (h *Helper) LoadResources(filePath string) (*resource.Result, error) {
+func (h *Kubectl) LoadResources(filePath string) (*resource.Result, error) {
 	validator, err := h.factory.Validator(true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain validator: %w", err)
@@ -116,7 +116,7 @@ func (h *Helper) LoadResources(filePath string) (*resource.Result, error) {
 }
 
 // CreateOrUpdate the given set of resources.
-func (h *Helper) CreateOrUpdate(resources resource.Visitor) error {
+func (h *Kubectl) CreateOrUpdate(resources resource.Visitor) error {
 	return resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -178,12 +178,12 @@ func (h *Helper) CreateOrUpdate(resources resource.Visitor) error {
 }
 
 // DynamicClient returns a dynamic client.
-func (h *Helper) DynamicClient() (dynamic.Interface, error) {
+func (h *Kubectl) DynamicClient() (dynamic.Interface, error) {
 	return h.factory.DynamicClient()
 }
 
 // Delete the given set of resources from the cluster.
-func (h *Helper) Delete(resources *resource.Result, timeout time.Duration) error {
+func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration) error {
 	resources = resources.IgnoreErrors(errors.IsNotFound)
 
 	dynamicClient, err := h.DynamicClient()
@@ -256,7 +256,7 @@ func (h *Helper) Delete(resources *resource.Result, timeout time.Duration) error
 	return err
 }
 
-func (h *Helper) print(operation string, obj runtime.Object) error {
+func (h *Kubectl) print(operation string, obj runtime.Object) error {
 	printFlags := genericclioptions.NewPrintFlags(operation).WithTypeSetter(scheme.Scheme)
 
 	printer, err := printFlags.ToPrinter()
