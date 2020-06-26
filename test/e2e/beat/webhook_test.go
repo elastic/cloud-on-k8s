@@ -10,7 +10,6 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,7 +28,6 @@ func TestWebhook(t *testing.T) {
 	err := test.NewK8sClientOrFatal().Client.Create(&beat)
 
 	require.Error(t, err)
-	require.True(t, apierrors.IsInvalid(err))
 	require.Contains(
 		t,
 		err.Error(),
