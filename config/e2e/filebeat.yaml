@@ -248,11 +248,25 @@ metadata:
 allowHostDirVolumePlugin: true
 allowHostIPC: false
 allowHostNetwork: true
-allowHostPID: false
+allowHostPID: true
 allowHostPorts: false
 allowPrivilegeEscalation: true
 allowPrivilegedContainer: true
-allowedCapabilities: []
+allowedCapabilities:
+  - AUDIT_READ
+  - AUDIT_WRITE
+  - AUDIT_CONTROL
+  - NET_ADMIN'
+  - KILL
+  - CHOWN
+  - FSETID
+  - FOWNER
+  - SETGID
+  - SETUID
+  - SETFCAP
+  - SETPCAP
+  - AUDIT_WRITE
+  - NET_BIND_SERVICE
 defaultAddCapabilities: []
 fsGroup:
   type: RunAsAny

@@ -5,12 +5,16 @@
 package controller
 
 import (
+	"fmt"
+	"strings"
+
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -68,12 +72,40 @@ func getBeatKibanaRoles(associated commonv1.Associated) (string, error) {
 		)
 	}
 
+	if strings.Contains(beat.Spec.Type, ",") {
+		return "", fmt.Errorf("beat type %s should not contain a comma", beat.Spec.Type)
+	}
+
 	v, err := version.Parse(beat.Spec.Version)
 	if err != nil {
 		return "", err
 	}
-	if v.IsSameOrAfter(version.From(7, 5, 0)) {
-		return "kibana_admin", nil
+
+	// Roles for supported Beats are based on:
+	// https://www.elastic.co/guide/en/beats/filebeat/7.6/feature-roles.html#privileges-to-setup-beats
+	// Docs are the same for all Beats. For a specific version docs change "current" to major.minor, eg:
+	// https://www.elastic.co/guide/en/beats/filebeat/7.1/feature-roles.html#privileges-to-setup-beats
+	switch {
+	case v.IsSameOrAfter(version.From(7, 7, 0)):
+		return strings.Join([]string{
+			"kibana_admin",
+			"ingest_admin",
+			"beats_admin",
+			esuser.BeatKibanaRoleName(esuser.V77, beat.Spec.Type),
+		}, ","), nil
+	case v.IsSameOrAfter(version.From(7, 3, 0)):
+		return strings.Join([]string{
+			"kibana_user",
+			"ingest_admin",
+			"beats_admin",
+			esuser.BeatKibanaRoleName(esuser.V73, beat.Spec.Type),
+		}, ","), nil
+	default:
+		return strings.Join([]string{
+			"kibana_user",
+			"ingest_admin",
+			"beats_admin",
+			esuser.BeatKibanaRoleName(esuser.V70, beat.Spec.Type),
+		}, ","), nil
 	}
-	return "kibana_user", nil
 }

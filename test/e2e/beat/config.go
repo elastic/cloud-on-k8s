@@ -196,6 +196,7 @@ processors:
   hostPID: true  # Required by auditd module
   dnsPolicy: ClusterFirstWithHostNet
   hostNetwork: true
+  automountServiceAccountToken: true
   securityContext:
     runAsUser: 0
   volumes:
@@ -276,6 +277,7 @@ processors:
 spec:
   terminationGracePeriodSeconds: 30
   hostNetwork: true
+  automountServiceAccountToken: true
   dnsPolicy: ClusterFirstWithHostNet
   containers:
   - name: packetbeat
@@ -310,6 +312,7 @@ processors:
 
 	e2eJournalbeatPodTemplate = `
 spec:
+  automountServiceAccountToken: true
   dnsPolicy: ClusterFirstWithHostNet
   containers:
   - name: journalbeat
