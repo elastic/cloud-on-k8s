@@ -60,8 +60,6 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          - name: OPERATOR_IMAGE
-            value: "{{ .Values.operator.image.repository }}:{{ .Values.operator.version }}"
           {{- if .Values.config.webhook.enabled }}
           - name: WEBHOOK_SECRET
             value: "{{ .Values.config.webhook.certsSecret }}"
