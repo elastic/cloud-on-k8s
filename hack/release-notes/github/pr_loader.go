@@ -75,7 +75,7 @@ func mkClient() *http.Client {
 		Timeout: 15 * time.Second,
 	}
 
-	if token := os.Getenv("GH_TOKEN"); token != "" {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, client)
 

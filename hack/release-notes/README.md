@@ -23,8 +23,8 @@ Usage
 -----
 
 ```
-GH_TOKEN=<token> go run main.go <version>
+GITHUB_TOKEN=<token> go run main.go <version>
 
 Example:
-VERSION=1.2.0 GH_TOKEN=xxxyyy go run main.go "$VERSION" > "../../docs/release-notes/${VERSION}.asciidoc"
+VERSION=1.2.0 GITHUB_TOKEN=xxxyyy go run main.go "$VERSION" > "../../docs/release-notes/${VERSION}.asciidoc"
 ```
