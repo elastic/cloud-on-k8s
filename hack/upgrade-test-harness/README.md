@@ -11,7 +11,7 @@ Usage
 go run main.go --from-release=alpha --to-release=upcoming
 ```
 
-CAUTION: Running the test harness could result in existing CRDs and operator deployments from being torn down. It should ideally be run on a fresh non-production cluster.
+CAUTION: Running the test harness could wipe out existing CRDs and operator deployments. It should ideally be run on a fresh, non-production cluster.
 
 ```
 Flags:

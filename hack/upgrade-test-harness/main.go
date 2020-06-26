@@ -78,8 +78,15 @@ func doRun(_ *cobra.Command, _ []string) error {
 	from := mustGetReleasePos(conf, opts.fromRelease)
 	to := mustGetReleasePos(conf, opts.toRelease)
 
-	if to < from {
+	if to <= from {
 		return errInvalidVersionRange
+	}
+
+	// setup upcoming release if necessary
+	if conf.TestParams[to].Name == "upcoming" {
+		if err := setupUpcomingRelease(opts.upcomingReleaseYAML); err != nil {
+			return fmt.Errorf("failed to setup upcoming release: %w", err)
+		}
 	}
 
 	// create test context
@@ -103,14 +110,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	var prevTestParam *fixture.TestParam
 
 	for i := from; i <= to; i++ {
-		currTestParam := conf.TestParam[i]
-
-		// setup upcoming release if necessary
-		if currTestParam.Name == "upcoming" {
-			if err := setupUpcomingRelease(opts.upcomingReleaseYAML); err != nil {
-				return fmt.Errorf("failed to setup upcoming release: %w", err)
-			}
-		}
+		currTestParam := conf.TestParams[i]
 
 		fixtures := buildUpgradeFixtures(prevTestParam, currTestParam)
 

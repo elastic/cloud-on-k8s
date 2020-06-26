@@ -18,12 +18,12 @@ import (
 
 // File represents the structure of the configuration file.
 type File struct {
-	TestParam []fixture.TestParam `json:"testParam"`
+	TestParams []fixture.TestParam `json:"testParams"`
 }
 
 // ReleasePos returns the position of the given release in the ordered list.
 func (f *File) ReleasePos(name string) (int, error) {
-	for i, release := range f.TestParam {
+	for i, release := range f.TestParams {
 		if name == release.Name {
 			return i, nil
 		}

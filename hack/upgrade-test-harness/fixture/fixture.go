@@ -108,16 +108,7 @@ func (ts *TestStep) Execute(ctx *TestContext) error {
 	return err
 }
 
-// retryAny is a convenience function to create a test step that is retried on any error.
-func retryAny(name string, action func(*TestContext) error) *TestStep {
-	return &TestStep{
-		Name:      name,
-		Action:    action,
-		Retriable: func(_ error) bool { return true },
-	}
-}
-
-// retryRetriable is a convenience function to create a test step that is retried if it returns an error wrapping ErrRetry.
+// retryRetriable is a convenience function to create a test step that is retried if the error is deemed retriable.
 func retryRetriable(name string, action func(*TestContext) error) *TestStep {
 	return &TestStep{
 		Name:   name,
