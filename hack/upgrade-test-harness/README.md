@@ -16,13 +16,13 @@ CAUTION: Running the test harness could result in existing CRDs and operator dep
 ```
 Flags:
       --conf-file string               Path to the file containing test params (default "conf.yaml")
-      --from-release string            Release to start with (alpha, beta, ga101, ga112, upcoming) (default "alpha")
+      --from-release string            Release to start with (alpha, beta, v101, v112, upcoming) (default "alpha")
       --log-level string               Log level (DEBUG, INFO, WARN, ERROR) (default "INFO")
       --retry-count uint               Number of retries (default 5)
       --retry-delay duration           Delay between retries (default 30s)
       --retry-timeout duration         Time limit for retries (default 5m0s)
       --skip-cleanup                   Skip cleaning up after test run
-      --to-release string              Release to finish with (alpha, beta, ga101, ga112, upcoming) (default "upcoming")
+      --to-release string              Release to finish with (alpha, beta, v101, v112, upcoming) (default "upcoming")
       --upcoming-release-yaml string   YAML file for installing the upcoming release (default "../../config/all-in-one.yaml")
 
 In addition, common kubectl flags such as "-n" can be provided. Invoke with "--help" to see all available flags.

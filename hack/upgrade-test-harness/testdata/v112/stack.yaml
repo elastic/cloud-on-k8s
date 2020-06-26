@@ -2,9 +2,9 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: ga101
+  name: v112
 spec:
-  version: 7.7.1
+  version: 7.8.0
   nodeSets:
   - name: default
     count: 3
@@ -14,19 +14,19 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: ga101
+  name: v112
 spec:
-  version: 7.7.1
+  version: 7.8.0
   count: 1
   elasticsearchRef:
-    name: ga101
+    name: v112
 ---
 apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
-  name: ga101
+  name: v112
 spec:
-  version: 7.7.1
+  version: 7.8.0
   count: 1
   elasticsearchRef:
-    name: ga101
+    name: v112

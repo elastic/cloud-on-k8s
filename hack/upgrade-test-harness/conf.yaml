@@ -7,11 +7,11 @@ testParam:
     operatorVersion: 1.0.0-beta1
     stackVersion: 7.5.0
     crdVersion: v1beta1
-  - name: ga101
+  - name: v101
     operatorVersion: 1.0.1
     stackVersion: 7.7.1
     crdVersion: v1
-  - name: ga112
+  - name: v112
     operatorVersion: 1.1.2
     stackVersion: 7.8.0
     crdVersion: v1
