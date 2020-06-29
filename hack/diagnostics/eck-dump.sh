@@ -117,7 +117,7 @@ main() {
     get_resources "$ns" controllerrevisions
     list_resources "$ns" secrets
     
-    local types="kibana,elasticsearch,apmserver"
+    local types="kibana,elasticsearch,apmserver,enterprisesearch,beat"
     for t in $types; do
       get_resources "$ns" $t
       get_logs "$ns" common.k8s.elastic.co/type=$t
