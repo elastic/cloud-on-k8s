@@ -5,23 +5,21 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"html/template"
-	"io"
-	"net/http"
+	"log"
 	"os"
-	"regexp"
-	"sort"
-	"strconv"
 	"strings"
+	"text/template"
+
+	"github.com/elastic/cloud-on-k8s/hack/release-notes/github"
 )
 
 const (
-	baseURL             = "https://api.github.com/repos/"
-	repo                = "elastic/cloud-on-k8s/"
-	releaseNoteTemplate = `:issue: https://github.com/{{.Repo}}issues/
-:pull: https://github.com/{{.Repo}}pull/
+	noGroup  = "nogroup"
+	repoName = "elastic/cloud-on-k8s"
+
+	releaseNotesTemplate = `:issue: https://github.com/{{.Repo}}/issues/
+:pull: https://github.com/{{.Repo}}/pull/
 
 [[release-notes-{{.Version}}]]
 == {n} version {{.Version}}
@@ -31,7 +29,7 @@ const (
 [float]
 === {{index $.GroupLabels $group}}
 {{range .}}
-* {{.Title}} {pull}{{.Number}}[#{{.Number}}]{{with .RelatedIssues -}}
+* {{.Title}} {pull}{{.Number}}[#{{.Number}}]{{with .Issues -}}
 {{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}{issue}{{$el}}[#{{$el}}]{{end}})
 {{- end}}
 {{- end}}
@@ -41,250 +39,101 @@ const (
 )
 
 var (
-	// To use authenticated requests against the Github API set the following environment variables:
-	// GH_USER is a Github user name
-	githubUser = os.Getenv("GH_USER")
-	// GH_TOKEN is a personal access token see https://github.com/settings/tokens
-	githubToken = os.Getenv("GH_TOKEN")
-	order       = []string{
-		">breaking",
-		">deprecation",
-		">feature",
-		">enhancement",
-		">bug",
-		"nogroup",
-	}
-
 	groupLabels = map[string]string{
 		">breaking":    "Breaking changes",
 		">deprecation": "Deprecations",
 		">feature":     "New features",
 		">enhancement": "Enhancements",
 		">bug":         "Bug fixes",
-		"nogroup":      "Misc",
+		noGroup:        "Misc",
 	}
 
-	ignore = map[string]bool{
-		">non-issue":   true,
-		">refactoring": true,
-		">docs":        true,
-		">test":        true,
-		":ci":          true,
-		"backport":     true,
+	groupOrder = []string{
+		">breaking",
+		">deprecation",
+		">feature",
+		">enhancement",
+		">bug",
+		noGroup,
+	}
+
+	ignoredLabels = map[string]struct{}{
+		">non-issue":                 {},
+		">refactoring":               {},
+		">docs":                      {},
+		">test":                      {},
+		":ci":                        {},
+		"backport":                   {},
+		"exclude-from-release-notes": {},
 	}
 )
 
-// Label models a subset of a GitHub label.
-type Label struct {
-	Name string `json:"name"`
-}
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Printf("Usage: GH_TOKEN=<github token> %s VERSION\n", os.Args[0])
+		os.Exit(2)
+	}
 
-// Issue models a subset of a Github issue.
-type Issue struct {
-	Labels        []Label           `json:"labels"`
-	Body          string            `json:"body"`
-	Title         string            `json:"title"`
-	Number        int               `json:"number"`
-	PullRequest   map[string]string `json:"pull_request,omitempty"`
-	RelatedIssues []int
-}
+	version := os.Args[1]
 
-type GroupedIssues = map[string][]Issue
-
-type TemplateParams struct {
-	Version     string
-	Repo        string
-	GroupLabels map[string]string
-	Groups      GroupedIssues
-	GroupOrder  []string
-}
-
-func fetch(url string, out interface{}) (string, error) {
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+	prs, err := github.LoadPullRequests(repoName, version, ignoredLabels)
 	if err != nil {
-		return "", err
-	}
-	if githubUser != "" && githubToken != "" {
-		request.SetBasicAuth(githubUser, githubToken)
-	}
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	nextLink := extractNextLink(resp.Header)
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("%s: %d %s ", url, resp.StatusCode, resp.Status)
+		log.Printf("ERROR: %v", err)
+		os.Exit(1)
 	}
 
-	if err = json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
+	if len(prs) == 0 {
+		log.Print("No pull requests found. Check the version argument.")
+		os.Exit(2)
 	}
-	return nextLink, nil
+
+	groupedPRs := groupPullRequests(prs)
+	if err := render(version, groupedPRs); err != nil {
+		log.Printf("Failed to render release notes: %v", err)
+		os.Exit(1)
+	}
 }
 
-func extractNextLink(headers http.Header) string {
-	var nextLink string
-	nextRe := regexp.MustCompile(`<([^>]+)>; rel="next"`)
-	links := headers["Link"]
-	for _, lnk := range links {
-		matches := nextRe.FindAllStringSubmatch(lnk, 1)
-		if matches != nil && matches[0][1] != "" {
-			nextLink = matches[0][1]
-			break
-		}
-	}
-	return nextLink
-}
+func groupPullRequests(prs []github.PullRequest) map[string][]github.PullRequest {
+	groups := make(map[string][]github.PullRequest)
 
-func fetchVersionLabels() ([]string, error) {
-	var versionLabels []string
-	url := fmt.Sprintf("%s%slabels?page=1", baseURL, repo)
-FETCH:
-	var labels []Label
-	next, err := fetch(url, &labels)
-	if err != nil {
-		return nil, err
-	}
-	for _, l := range labels {
-		if strings.HasPrefix(l.Name, "v") {
-			versionLabels = append(versionLabels, l.Name)
-		}
-	}
-	if next != "" {
-		url = next
-		goto FETCH
-	}
-
-	return versionLabels, nil
-}
-
-func fetchIssues(version string) (GroupedIssues, error) {
-	url := fmt.Sprintf("%s%sissues?labels=%s&pagesize=100&state=all&page=1", baseURL, repo, version)
-	var prs []Issue
-FETCH:
-	var tranche []Issue
-	next, err := fetch(url, &tranche)
-	if err != nil {
-		return nil, err
-	}
-	for _, issue := range tranche {
-		// only look at PRs
-		if issue.PullRequest != nil {
-			prs = append(prs, issue)
-		}
-	}
-	if next != "" {
-		url = next
-		goto FETCH
-	}
-	result := make(GroupedIssues)
-	noGroup := "nogroup"
-PR:
+PR_LOOP:
 	for _, pr := range prs {
-		prLabels := make(map[string]bool)
-		for _, lbl := range pr.Labels {
-			// remove PRs that have labels to be ignored
-			if ignore[lbl.Name] {
-				continue PR
-			}
-			// build a lookup table of all labels for this PR
-			prLabels[lbl.Name] = true
-		}
-
-		// extract related issues from PR body
-		if err := extractRelatedIssues(&pr); err != nil {
-			return nil, err
-		}
-
-		// group PRs by type label
-		for typeLabel := range groupLabels {
-			if prLabels[typeLabel] {
-				result[typeLabel] = append(result[typeLabel], pr)
-				continue PR
+		for _, lbl := range groupOrder {
+			if _, ok := pr.Labels[lbl]; ok {
+				groups[lbl] = append(groups[lbl], pr)
+				continue PR_LOOP
 			}
 		}
-		// or fall back to a default group
-		result[noGroup] = append(result[noGroup], pr)
+
+		groups[noGroup] = append(groups[noGroup], pr)
 	}
-	return result, nil
+
+	return groups
 }
 
-func extractRelatedIssues(issue *Issue) error {
-	re := regexp.MustCompile(fmt.Sprintf(`https://github.com/%sissues/(\d+)`, repo))
-	matches := re.FindAllStringSubmatch(issue.Body, -1)
-	issues := map[int]struct{}{}
-	for _, capture := range matches {
-		issueNum, err := strconv.Atoi(capture[1])
-		if err != nil {
-			return err
-		}
-		issues[issueNum] = struct{}{}
-
+func render(version string, groups map[string][]github.PullRequest) error {
+	params := struct {
+		Version     string
+		Repo        string
+		Groups      map[string][]github.PullRequest
+		GroupLabels map[string]string
+		GroupOrder  []string
+	}{
+		Version:     version,
+		Repo:        repoName,
+		Groups:      groups,
+		GroupLabels: groupLabels,
+		GroupOrder:  groupOrder,
 	}
-	for rel := range issues {
-		issue.RelatedIssues = append(issue.RelatedIssues, rel)
-	}
-	sort.Ints(issue.RelatedIssues)
-	return nil
-}
 
-func dumpIssues(params TemplateParams, out io.Writer) {
 	funcs := template.FuncMap{
 		"id": func(s string) string {
 			return strings.TrimPrefix(s, ">")
 		},
 	}
-	tpl := template.Must(template.New("release_notes").Funcs(funcs).Parse(releaseNoteTemplate))
-	err := tpl.Execute(out, params)
-	if err != nil {
-		println(err)
-	}
-}
 
-func main() {
-	labels, err := fetchVersionLabels()
-	if err != nil {
-		panic(err)
-	}
+	tpl := template.Must(template.New("release_notes").Funcs(funcs).Parse(releaseNotesTemplate))
 
-	if len(os.Args) != 2 {
-		usage(labels)
-	}
-
-	version := os.Args[1]
-	found := false
-	for _, l := range labels {
-		if l == version {
-			found = true
-		}
-	}
-	if !found {
-		usage(labels)
-	}
-
-	groupedIssues, err := fetchIssues(version)
-	if err != nil {
-		panic(err)
-	}
-	dumpIssues(TemplateParams{
-		Version:     strings.TrimPrefix(version, "v"),
-		Repo:        repo,
-		GroupLabels: groupLabels,
-		Groups:      groupedIssues,
-		GroupOrder:  order,
-	}, os.Stdout)
-
-}
-
-func usage(labels []string) {
-	println(fmt.Sprintf("USAGE: %s version > outfile", os.Args[0]))
-	println("Known versions:")
-	sort.Strings(labels)
-	for _, l := range labels {
-		println(l)
-	}
-	os.Exit(1)
+	return tpl.Execute(os.Stdout, params)
 }

@@ -1,25 +1,30 @@
-# Release notes generator
+Release notes generator
+=======================
 
-This tool generates release notes from all PRs labeled with a specific version. If an issue is linked, it will use that as well.
+This tool generates release notes from all PRs labeled with a specific version. If any issues are linked to a PR, they will be included in the output as well.
 
 PRs labeled with the following are not included:
-- non-issue
-- refactoring
-- docs
-- test
-- ci
-- backport
+- `>non-issue`
+- `>refactoring`
+- `>docs`
+- `>test`
+- `:ci`
+- `backport`
+- `exclude-from-release-notes`
 
-## Usage
+
+Prerequisites
+--------------
+
+Create a GitHub token by going to https://github.com/settings/tokens. The token must have `repo:status` and `public_repo` scopes. Enable SSO for the token as well.
+
+
+Usage
+-----
 
 ```
-go run . $VERSION > outfile
-```
+GITHUB_TOKEN=<token> go run main.go <version>
 
-e.g.
-
+Example:
+VERSION=1.2.0 GITHUB_TOKEN=xxxyyy go run main.go "$VERSION" > "../../docs/release-notes/${VERSION}.asciidoc"
 ```
-go run . v1.1.0 > ../../docs/release-notes/1.1.0.asciidoc
-```
-
-You will then likely also want to update `docs/release-notes/highlights.asciidoc` and `docs/release-notes.asciidoc` to include the new release notes.
