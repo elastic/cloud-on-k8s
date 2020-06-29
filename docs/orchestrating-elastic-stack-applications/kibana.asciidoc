@@ -21,6 +21,7 @@ The following sections describe how to customize a Kibana deployment to suit you
 ** <<{p}-kibana-http-publish,Load balancer settings and TLS SANs>>
 ** <<{p}-kibana-http-custom-tls,Provide your own certificate>>
 ** <<{p}-kibana-http-disable-tls,Disable TLS>>
+** <<{p}-kibana-plugins>>
 
 
 [id="{p}-kibana-connect-to-es"]
@@ -280,3 +281,24 @@ spec:
       selfSignedCertificate:
         disabled: true
 ----
+
+[id="{p}-kibana-plugins"]
+== Install Kibana plugins
+
+Similar to <<{p}-init-containers-plugin-downloads,Elasticsearch plugins>>, you can install link:https://www.elastic.co/guide/en/kibana/current/install-plugin.html[Kibana plugins] with an `initContainer`:
+
+[source,yaml,subs="attributes"]
+----
+spec:
+  podTemplate:
+    spec:
+      initContainers:
+      - name: install-plugins
+        command:
+        - sh
+        - -c
+        - |
+          bin/kibana-plugin install --quiet https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-{version}.zip
+----
+
+You can also override the Kibana container image to use your own image with the plugins already installed, as described in the <<{p}-custom-images,custom images doc>>.
