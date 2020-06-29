@@ -36,7 +36,6 @@ func TestNewInitContainers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			containers, err := NewInitContainers(
-				tt.args.elasticsearchImage,
 				volume.SecretVolume{},
 				"clustername",
 				tt.args.keystoreResources,

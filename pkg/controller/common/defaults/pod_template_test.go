@@ -97,7 +97,6 @@ func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 			b := &PodTemplateBuilder{
 				PodTemplate:   tt.PodTemplate,
 				containerName: tt.containerName,
-				Container:     tt.container,
 			}
 			if got := b.setDefaults().PodTemplate; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.setDefaults() = %v, want %v", got, tt.want)
@@ -198,8 +197,8 @@ func TestPodTemplateBuilder_WithDockerImage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.podTemplate, containerName)
-			if got := b.WithDockerImage(tt.args.customImage, tt.args.defaultImage).Container.Image; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PodTemplateBuilder.WithDockerImage() = %v, want %v", got, tt.want)
+			if got := b.WithDockerImage(tt.args.customImage, tt.args.defaultImage).containerDefaulter.Container().Image; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithImage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -268,7 +267,7 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithReadinessProbe(tt.readinessProbe).Container.ReadinessProbe; !reflect.DeepEqual(got, tt.want) {
+			if got := b.WithReadinessProbe(tt.readinessProbe).containerDefaulter.Container().ReadinessProbe; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithReadinessProbe() = %v, want %v", got, tt.want)
 			}
 		})
@@ -364,7 +363,7 @@ func TestPodTemplateBuilder_WithPorts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithPorts(tt.ports).Container.Ports; !reflect.DeepEqual(got, tt.want) {
+			if got := b.WithPorts(tt.ports).containerDefaulter.Container().Ports; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithPorts() = %v, want %v", got, tt.want)
 			}
 		})
@@ -403,7 +402,7 @@ func TestPodTemplateBuilder_WithCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithCommand(tt.command).Container.Command; !reflect.DeepEqual(got, tt.want) {
+			if got := b.WithCommand(tt.command).containerDefaulter.Container().Command; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithCommand() = %v, want %v", got, tt.want)
 			}
 		})
@@ -512,14 +511,14 @@ func TestPodTemplateBuilder_WithVolumeMounts(t *testing.T) {
 		{
 			name:         "set default volume mounts",
 			PodTemplate:  corev1.PodTemplateSpec{},
-			volumeMounts: []corev1.VolumeMount{{Name: "vm1"}, {Name: "vm2"}},
-			want:         []corev1.VolumeMount{{Name: "vm1"}, {Name: "vm2"}},
+			volumeMounts: []corev1.VolumeMount{{Name: "vm1", MountPath: "/vm1"}, {Name: "vm2", MountPath: "/vm2"}},
+			want:         []corev1.VolumeMount{{Name: "vm1", MountPath: "/vm1"}, {Name: "vm2", MountPath: "/vm2"}},
 		},
 		{
 			name:         "volume mounts should be sorted alphabetically",
 			PodTemplate:  corev1.PodTemplateSpec{},
-			volumeMounts: []corev1.VolumeMount{{Name: "cc"}, {Name: "aa"}, {Name: "bb"}},
-			want:         []corev1.VolumeMount{{Name: "aa"}, {Name: "bb"}, {Name: "cc"}},
+			volumeMounts: []corev1.VolumeMount{{Name: "cc", MountPath: "/cc"}, {Name: "aa", MountPath: "/aa"}, {Name: "bb", MountPath: "/bb"}},
+			want:         []corev1.VolumeMount{{Name: "aa", MountPath: "/aa"}, {Name: "bb", MountPath: "/bb"}, {Name: "cc", MountPath: "/cc"}},
 		},
 		{
 			name: "append to but don't override user-provided volume mounts",
@@ -575,7 +574,7 @@ func TestPodTemplateBuilder_WithVolumeMounts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithVolumeMounts(tt.volumeMounts...).Container.VolumeMounts; !reflect.DeepEqual(got, tt.want) {
+			if got := b.WithVolumeMounts(tt.volumeMounts...).containerDefaulter.Container().VolumeMounts; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithVolumeMounts() = %v, want %v", got, tt.want)
 			}
 		})
@@ -656,7 +655,7 @@ func TestPodTemplateBuilder_WithEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithEnv(tt.vars...).Container.Env; !reflect.DeepEqual(got, tt.want) {
+			if got := b.WithEnv(tt.vars...).containerDefaulter.Container().Env; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithEnv() = %v, want %v", got, tt.want)
 			}
 		})
@@ -761,10 +760,11 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 					Name:  "user-init-container2",
 					Image: "default-image",
 					Env:   PodDownwardEnvVars(),
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "foo",
-						MountPath: "/foo",
-					}, defaultVolumeMount,
+					VolumeMounts: []corev1.VolumeMount{
+						defaultVolumeMount, {
+							Name:      "foo",
+							MountPath: "/foo",
+						},
 					},
 				},
 				{
@@ -817,7 +817,7 @@ func TestPodTemplateBuilder_WithInitContainers(t *testing.T) {
 			want:           []corev1.Container{{Name: "init-container1"}, {Name: "init-container2"}},
 		},
 		{
-			name: "append to but don't override user-provided init containers",
+			name: "merge operator and user-provided init containers",
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
@@ -1041,7 +1041,7 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithResources(tt.defaultResources).Container.Resources; !reflect.DeepEqual(got, tt.want) {
+			if got := b.WithResources(tt.defaultResources).containerDefaulter.Container().Resources; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
 			}
 		})
@@ -1122,7 +1122,7 @@ func TestPodTemplateBuilder_WithPreStopHook(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.podTemplate, "mycontainer")
-			got := b.WithPreStopHook(tt.preStopHook).Container.Lifecycle
+			got := b.WithPreStopHook(tt.preStopHook).containerDefaulter.Container().Lifecycle
 			if !reflect.DeepEqual(got.PreStop, &tt.wantPreStop) {
 				t.Errorf("PreStop after PodTemplateBuilder.WithPreStopHook() = %v, want %v", got.PreStop, tt.wantPreStop)
 			}
