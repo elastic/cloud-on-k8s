@@ -205,6 +205,12 @@ processors:
 }
 
 func TestAuditbeatConfig(t *testing.T) {
+	if test.Ctx().Provider == "kind" {
+		// kind doesn't support configuring required settings
+		// see https://github.com/elastic/cloud-on-k8s/issues/3328 for more context
+		t.SkipNow()
+	}
+
 	name := "test-ab-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
