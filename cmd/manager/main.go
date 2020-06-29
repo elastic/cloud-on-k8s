@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -468,6 +469,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	}{
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
+		&beatv1beta1.Beat{},
 		&entv1beta1.EnterpriseSearch{},
 		&esv1.Elasticsearch{},
 		&esv1beta1.Elasticsearch{},
