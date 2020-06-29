@@ -248,16 +248,16 @@ metadata:
 allowHostDirVolumePlugin: true
 allowHostIPC: false
 allowHostNetwork: true
-allowHostPID: true
+allowHostPID: true # required for Auditbeat
 allowHostPorts: false
 allowPrivilegeEscalation: true
 allowPrivilegedContainer: true
 allowedCapabilities:
-  - AUDIT_READ
+  - AUDIT_READ     # required for Auditbeat
   - AUDIT_WRITE
   - AUDIT_CONTROL
-  - NET_ADMIN
-  - KILL
+  - NET_ADMIN      # required for Packetbeat
+  - KILL           # required for Journalbeat
   - CHOWN
   - FSETID
   - FOWNER

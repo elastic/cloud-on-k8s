@@ -82,7 +82,7 @@ func getBeatKibanaRoles(associated commonv1.Associated) (string, error) {
 	}
 
 	// Roles for supported Beats are based on:
-	// https://www.elastic.co/guide/en/beats/filebeat/7.6/feature-roles.html#privileges-to-setup-beats
+	// https://www.elastic.co/guide/en/beats/filebeat/current/feature-roles.html#privileges-to-setup-beats
 	// Docs are the same for all Beats. For a specific version docs change "current" to major.minor, eg:
 	// https://www.elastic.co/guide/en/beats/filebeat/7.1/feature-roles.html#privileges-to-setup-beats
 	switch {

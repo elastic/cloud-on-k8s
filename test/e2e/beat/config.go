@@ -22,7 +22,7 @@ processors:
 `
 
 	e2eFilebeatPodTemplate = `spec:
-  automountServiceAccountToken: true
+  automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   containers:
   - name: filebeat
     volumeMounts:
@@ -120,7 +120,7 @@ processors:
 `
 
 	e2eMetricbeatPodTemplate = `spec:
-  automountServiceAccountToken: true
+  automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   containers:
   - args:
     - -e
@@ -196,7 +196,7 @@ processors:
   hostPID: true  # Required by auditd module
   dnsPolicy: ClusterFirstWithHostNet
   hostNetwork: true
-  automountServiceAccountToken: true
+  automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   securityContext:
     runAsUser: 0
   volumes:
@@ -277,7 +277,7 @@ processors:
 spec:
   terminationGracePeriodSeconds: 30
   hostNetwork: true
-  automountServiceAccountToken: true
+  automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   dnsPolicy: ClusterFirstWithHostNet
   containers:
   - name: packetbeat
@@ -312,7 +312,7 @@ processors:
 
 	e2eJournalbeatPodTemplate = `
 spec:
-  automountServiceAccountToken: true
+  automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   dnsPolicy: ClusterFirstWithHostNet
   containers:
   - name: journalbeat
