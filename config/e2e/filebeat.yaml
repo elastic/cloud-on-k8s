@@ -256,7 +256,7 @@ allowedCapabilities:
   - AUDIT_READ
   - AUDIT_WRITE
   - AUDIT_CONTROL
-  - NET_ADMIN'
+  - NET_ADMIN
   - KILL
   - CHOWN
   - FSETID
