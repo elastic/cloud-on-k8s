@@ -93,7 +93,7 @@ spec:
   elasticsearchRef:
     name: quickstart
   kibanaRef:
-    name: my-kibana
+    name: quickstart
 EOF
 ----
 
