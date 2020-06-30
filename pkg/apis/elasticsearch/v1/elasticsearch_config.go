@@ -30,7 +30,7 @@ type Node struct {
 	Data      bool `config:"data"`
 	Ingest    bool `config:"ingest"`
 	ML        bool `config:"ml"`
-	Transform bool `config:transform` // available as of 7.7.0
+	Transform bool `config:"transform"` // available as of 7.7.0
 }
 
 // ElasticsearchSettings is a typed subset of elasticsearch.yml for purposes of the operator.
