@@ -13,6 +13,7 @@ endif::[]
 - <<{p}-kibana>>
 - <<{p}-apm-server>>
 - <<{p}-enterprise-search>>
+- <<{p}-beat>>
 - <<{p}-securing-stack>>
 - <<{p}-accessing-elastic-services>>
 - <<{p}-customize-pods>>

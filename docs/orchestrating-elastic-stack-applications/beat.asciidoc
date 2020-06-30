@@ -11,7 +11,7 @@ This section describes how to configure and deploy Beats with ECK.
 
 * <<{p}-beat-quickstart,Quickstart>>
 * <<{p}-beat-configuration,Configuration>>
-* <<{p}-beat-configuration,Troubleshooting>>
+* <<{p}-beat-troubleshooting,Troubleshooting>>
 
 [id="{p}-beat-quickstart"]
 == Quickstart
@@ -129,7 +129,7 @@ filebeat:
 output:
   elasticsearch:
     hosts:
-    - https://elasticsearch-sample-es-http.default.svc:9200
+    - https://elasticsearch-quickstartquickstart-es-http.default.svc:9200
     password: <redacted>
     ssl:
       certificate_authorities:
@@ -289,7 +289,7 @@ See Beats link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.h
 [id="{p}-beat-set-beat-output"]
 === Set Beat output
 
-If `elasticsearchRef` element is specified ECK will populate output section of the config. ECK will create a user with appropriate roles and permissions and use its credentials. It will also mount CA certificate in all Beat Pods if necessary and roll over Pods when this certificate changes.
+If `elasticsearchRef` element is specified ECK will populate output section of the Beat config. ECK will create a user with appropriate roles and permissions and use its credentials. It will also mount CA certificate in all Beat Pods if necessary and roll over Pods when this certificate changes.
 
 Output can be set to any that's supported by given Beat. To do that, remove `elasticsearchRef` element from the specification and include appropriate output configuration in the `config` or `configRef`.
 
@@ -387,3 +387,17 @@ rules:
 === Deploying Beats in secured clusters
 
 Deploying Beats in clusters with Pod Security Policy admission controller enabled or in OpenShift clusters require granting additional permissions to the Service Account that Beat Pods are running with. Those Service Accounts need to be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
+
+[id="{p}-beat-troubleshooting"]
+== Troubleshooting
+
+[id="{p}-beat-beat-pods-are-crashing-when-kibanaref-is-specified"]
+=== Beat Pods are crashing when kibanaRef is specified
+
+When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Pod crashes. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The pod may cycle at most few times during the first initialization. Afterwards, the Beat should run successfully.
+
+
+[id="{p}-beat-configuration-containing-key-null-is-malformed"]
+=== Configuration containing key: null is malformed
+
+When Beat config containing `some_key: null` is applied using `kubectl apply` it's interpretted by `kubectl` diffing mechanism as an instruction to remove key `some_key` from the config. This is unfortunate, but works according to the spec it follows. To overcome that, `null` can sometimes be replaced by an empty dictionary, like: `some_key: {}`. If this is not possible due to a particular settings semantics, `configRef` field can be used instead of `config` as Secret data doesn't go through that diffing process.
