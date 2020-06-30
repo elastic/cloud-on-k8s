@@ -30,3 +30,31 @@ func TestEnterpriseSearchCrossNSAssociation(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
 }
+
+func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion7x
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	name := "test-ent-version-upgrade"
+	es := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithVersion(dstVersion)
+
+	ent := enterprisesearch.NewBuilder(name).
+		WithElasticsearchRef(es.Ref()).
+		WithNodeCount(2).
+		WithVersion(srcVersion)
+
+	if ent.SkipTest() {
+		t.SkipNow() // invalid version
+	}
+
+	entUpgraded := ent.WithVersion(dstVersion).WithMutatedFrom(&ent)
+
+	// During the version upgrade, the operator will toggle Enterprise Search read-only mode.
+	// We don't verify this behaviour here. Instead, we just check Enterprise Search eventually
+	// runs fine in the new version: it would fail to run if read-only mode wasn't toggled.
+	test.RunMutations(t, []test.Builder{es, ent}, []test.Builder{es, entUpgraded})
+}
