@@ -145,6 +145,9 @@ lint:
 shellcheck:
 	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
+upgrade-test: docker-build docker-push
+	@hack/upgrade-test-harness/run.sh
+
 #############################
 ##  --       Run       --  ##
 #############################

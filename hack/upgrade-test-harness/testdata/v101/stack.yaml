@@ -1,0 +1,32 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: v101
+spec:
+  version: 7.7.1
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: v101
+spec:
+  version: 7.7.1
+  count: 1
+  elasticsearchRef:
+    name: v101
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: v101
+spec:
+  version: 7.7.1
+  count: 1
+  elasticsearchRef:
+    name: v101

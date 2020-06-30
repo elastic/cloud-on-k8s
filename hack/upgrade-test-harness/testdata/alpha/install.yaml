@@ -1,0 +1,970 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmservers.apm.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .spec.version
+    description: APM version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: apm.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: ApmServer
+    plural: apmservers
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            config:
+              description: Config represents the APM configuration.
+              type: object
+            elasticsearch:
+              description: Elasticsearch configures how the APM server connects to
+                Elasticsearch
+              properties:
+                auth:
+                  description: Auth configures authentication for APM Server to use.
+                  properties:
+                    inline:
+                      description: Inline is auth provided as plaintext inline credentials.
+                      properties:
+                        password:
+                          description: Password is the password to use.
+                          type: string
+                        username:
+                          description: User is the username to use.
+                          type: string
+                      required:
+                      - username
+                      - password
+                      type: object
+                    secret:
+                      description: SecretKeyRef is a secret that contains the credentials
+                        to use.
+                      type: object
+                  type: object
+                hosts:
+                  description: Hosts are the URLs of the output Elasticsearch nodes.
+                  items:
+                    type: string
+                  type: array
+                ssl:
+                  description: SSL configures TLS-related configuration for Elasticsearch
+                  properties:
+                    certificateAuthorities:
+                      description: CertificateAuthorities is a secret that contains
+                        a `tls.crt` entry that contain certificates for server verifications.
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+            elasticsearchRef:
+              description: ElasticsearchRef references an Elasticsearch resource in
+                the Kubernetes cluster. If the namespace is not specified, the current
+                resource namespace will be used.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
+            featureFlags:
+              description: FeatureFlags are apm-specific flags that enable or disable
+                specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: ObjectMeta is metadata for the service. The name
+                        and namespace provided here is managed by ECK and will be
+                        ignored.
+                      type: object
+                    spec:
+                      description: Spec defines the behavior of the service.
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    HTTP TLS certificates.
+                  properties:
+                    certificate:
+                      description: 'Certificate is a reference to a secret that contains
+                        the certificate and private key to be used.  The secret should
+                        have the following content:  - `tls.crt`: The certificate
+                        (or a chain). - `tls.key`: The private key to the first certificate
+                        in the certificate chain.'
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        disabled:
+                          description: Disabled turns off the provisioning of self-signed
+                            HTTP TLS certificates.
+                          type: boolean
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the HTTP TLS certificates. For example:
+                            a wildcard DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            nodeCount:
+              description: NodeCount defines how many nodes the Apm Server deployment
+                must have.
+              format: int32
+              type: integer
+            podTemplate:
+              description: PodTemplate can be used to propagate configuration to APM
+                Server pods. This allows specifying custom annotations, labels, environment
+                variables, affinity, resources, etc. for the pods created from this
+                NodeSpec.
+              type: object
+            secureSettings:
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into the APM keystore on each node. Each individual
+                key/value entry in the referenced secret is considered as an individual
+                secure setting to be injected. The secret must exist in the same namespace
+                as the APM resource.
+              properties:
+                secretName:
+                  type: string
+              type: object
+            version:
+              description: Version represents the version of the APM Server
+              type: string
+          type: object
+        status:
+          properties:
+            controllerVersion:
+              description: ControllerVersion is the version of the controller that
+                last updated the ApmServer instance
+              type: string
+            health:
+              type: string
+            secretTokenSecret:
+              description: SecretTokenSecretName is the name of the Secret that contains
+                the secret token
+              type: string
+            service:
+              description: ExternalService is the name of the service the agents should
+                connect to.
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: elasticsearches.elasticsearch.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .spec.version
+    description: Elasticsearch version
+    name: version
+    type: string
+  - JSONPath: .status.phase
+    name: phase
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: elasticsearch.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Elasticsearch
+    plural: elasticsearches
+    shortNames:
+    - es
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            featureFlags:
+              description: FeatureFlags are instance-specific flags that enable or
+                disable specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: ObjectMeta is metadata for the service. The name
+                        and namespace provided here is managed by ECK and will be
+                        ignored.
+                      type: object
+                    spec:
+                      description: Spec defines the behavior of the service.
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    HTTP TLS certificates.
+                  properties:
+                    certificate:
+                      description: 'Certificate is a reference to a secret that contains
+                        the certificate and private key to be used.  The secret should
+                        have the following content:  - `tls.crt`: The certificate
+                        (or a chain). - `tls.key`: The private key to the first certificate
+                        in the certificate chain.'
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        disabled:
+                          description: Disabled turns off the provisioning of self-signed
+                            HTTP TLS certificates.
+                          type: boolean
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the HTTP TLS certificates. For example:
+                            a wildcard DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            nodes:
+              description: Nodes represents a list of groups of nodes with the same
+                configuration to be part of the cluster
+              items:
+                properties:
+                  config:
+                    description: Config represents Elasticsearch configuration.
+                    type: object
+                  name:
+                    description: Name is a logical name for this set of nodes. Used
+                      as a part of the managed Elasticsearch node.name setting.
+                    maxLength: 12
+                    pattern: '[a-zA-Z0-9-]*'
+                    type: string
+                  nodeCount:
+                    description: NodeCount defines how many nodes have this topology
+                    format: int32
+                    type: integer
+                  podTemplate:
+                    description: PodTemplate can be used to propagate configuration
+                      to Elasticsearch pods. This allows specifying custom annotations,
+                      labels, environment variables, volumes, affinity, resources,
+                      etc. for the pods created from this NodeSpec.
+                    type: object
+                  volumeClaimTemplates:
+                    description: 'VolumeClaimTemplates is a list of claims that pods
+                      are allowed to reference. Every claim in this list must have
+                      at least one matching (by name) volumeMount in one container
+                      in the template. A claim in this list takes precedence over
+                      any volumes in the template, with the same name. TODO: Define
+                      the behavior if a claim already exists with the same name. TODO:
+                      define special behavior based on claim metadata.name. (e.g data
+                      / logs volumes)'
+                    items:
+                      type: object
+                    type: array
+                type: object
+              type: array
+            podDisruptionBudget:
+              description: PodDisruptionBudget allows full control of the default
+                pod disruption budget.  The default budget selects all cluster pods
+                and sets maxUnavailable to 1. To disable it entirely, set to the empty
+                value (`{}` in YAML).
+              properties:
+                metadata:
+                  description: ObjectMeta is metadata for the service. The name and
+                    namespace provided here is managed by ECK and will be ignored.
+                  type: object
+                spec:
+                  description: Spec of the desired behavior of the PodDisruptionBudget
+                  type: object
+              type: object
+            secureSettings:
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into Elasticsearch keystore on each node. Each individual
+                key/value entry in the referenced secret is considered as an individual
+                secure setting to be injected. The secret must exist in the same namespace
+                as the Elasticsearch resource.
+              properties:
+                secretName:
+                  type: string
+              type: object
+            setVmMaxMapCount:
+              description: SetVMMaxMapCount indicates whether an init container should
+                be used to ensure that the `vm.max_map_count` is set according to
+                https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
+                Setting this to true requires the kubelet to allow running privileged
+                containers. Defaults to true if not specified. To be disabled, it
+                must be explicitly set to false.
+              type: boolean
+            updateStrategy:
+              description: UpdateStrategy specifies how updates to the cluster should
+                be performed.
+              properties:
+                changeBudget:
+                  description: ChangeBudget is the change budget that should be used
+                    when performing mutations to the cluster.
+                  properties:
+                    maxSurge:
+                      description: 'MaxSurge is the maximum number of pods that can
+                        be scheduled above the original number of pods. By default,
+                        a fixed value of 1 is used. Value can be an absolute number
+                        (ex: 5) or a percentage of total pods at the start of the
+                        update (ex: 10%). This can not be 0 if MaxUnavailable is 0
+                        if you want automatic rolling updates to be applied. Absolute
+                        number is calculated from percentage by rounding up. Example:
+                        when this is set to 30%, the new group can be scaled up by
+                        30% immediately when the rolling update starts. Once old pods
+                        have been killed, new group can be scaled up further, ensuring
+                        that total number of pods running at any time during the update
+                        is at most 130% of the target number of pods.'
+                      format: int64
+                      type: integer
+                    maxUnavailable:
+                      description: 'MaxUnavailable is the maximum number of pods that
+                        can be unavailable during the update. Value can be an absolute
+                        number (ex: 5) or a percentage of total pods at the start
+                        of update (ex: 10%). Absolute number is calculated from percentage
+                        by rounding down. This can not be 0 if MaxSurge is 0 if you
+                        want automatic rolling changes to be applied. By default,
+                        a fixed value of 0 is used. Example: when this is set to 30%,
+                        the group can be scaled down by 30% immediately when the rolling
+                        update starts. Once new pods are ready, the group can be scaled
+                        down further, followed by scaling up the group, ensuring that
+                        at least 70% of the target number of pods are available at
+                        all times during the update.'
+                      format: int64
+                      type: integer
+                  required:
+                  - maxUnavailable
+                  - maxSurge
+                  type: object
+                groups:
+                  description: Groups is a list of groups that should have their cluster
+                    mutations considered in a fair manner with a strict change budget
+                    (not allowing any surge or unavailability) before the entire cluster
+                    is reconciled with the full change budget.
+                  items:
+                    properties:
+                      selector:
+                        description: Selector is the selector used to match pods.
+                        type: object
+                    type: object
+                  type: array
+              type: object
+            version:
+              description: Version represents the version of the stack
+              type: string
+          type: object
+        status:
+          properties:
+            clusterUUID:
+              type: string
+            controllerVersion:
+              description: ControllerVersion is the version of the controller that
+                last updated the Elasticsearch cluster
+              type: string
+            health:
+              type: string
+            masterNode:
+              type: string
+            phase:
+              type: string
+            service:
+              type: string
+            zenDiscovery:
+              properties:
+                minimumMasterNodes:
+                  format: int64
+                  type: integer
+              type: object
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: trustrelationships.elasticsearch.k8s.elastic.co
+spec:
+  group: elasticsearch.k8s.elastic.co
+  names:
+    kind: TrustRelationship
+    plural: trustrelationships
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            caCert:
+              description: CaCert contains the PEM-encoded CA certificate for the
+                remote cluster.
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibanas.kibana.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .spec.version
+    description: Kibana version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: kibana.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Kibana
+    plural: kibanas
+    shortNames:
+    - kb
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            config:
+              description: Config represents Kibana configuration.
+              type: object
+            elasticsearch:
+              description: Elasticsearch configures how Kibana connects to Elasticsearch
+              properties:
+                auth:
+                  description: Auth configures authentication for Kibana to use.
+                  properties:
+                    inline:
+                      description: Inline is auth provided as plaintext inline credentials.
+                      properties:
+                        password:
+                          description: Password is the password to use.
+                          type: string
+                        username:
+                          description: User is the username to use.
+                          type: string
+                      required:
+                      - username
+                      - password
+                      type: object
+                    secret:
+                      description: SecretKeyRef is a secret that contains the credentials
+                        to use.
+                      type: object
+                  type: object
+                certificateAuthorities:
+                  description: CertificateAuthorities names a secret that contains
+                    a CA file entry to use.
+                  properties:
+                    secretName:
+                      type: string
+                  type: object
+                url:
+                  description: ElasticsearchURL is the URL to the target Elasticsearch
+                  type: string
+              required:
+              - url
+              type: object
+            elasticsearchRef:
+              description: ElasticsearchRef references an Elasticsearch resource in
+                the Kubernetes cluster. If the namespace is not specified, the current
+                resource namespace will be used.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
+            featureFlags:
+              description: FeatureFlags are instance-specific flags that enable or
+                disable specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: ObjectMeta is metadata for the service. The name
+                        and namespace provided here is managed by ECK and will be
+                        ignored.
+                      type: object
+                    spec:
+                      description: Spec defines the behavior of the service.
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    HTTP TLS certificates.
+                  properties:
+                    certificate:
+                      description: 'Certificate is a reference to a secret that contains
+                        the certificate and private key to be used.  The secret should
+                        have the following content:  - `tls.crt`: The certificate
+                        (or a chain). - `tls.key`: The private key to the first certificate
+                        in the certificate chain.'
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        disabled:
+                          description: Disabled turns off the provisioning of self-signed
+                            HTTP TLS certificates.
+                          type: boolean
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the HTTP TLS certificates. For example:
+                            a wildcard DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            nodeCount:
+              description: NodeCount defines how many nodes the Kibana deployment
+                must have.
+              format: int32
+              type: integer
+            podTemplate:
+              description: PodTemplate can be used to propagate configuration to Kibana
+                pods. This allows specifying custom annotations, labels, environment
+                variables, affinity, resources, etc. for the pods created from this
+                NodeSpec.
+              type: object
+            secureSettings:
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into Kibana keystore on each node. Each individual
+                key/value entry in the referenced secret is considered as an individual
+                secure setting to be injected. The secret must exist in the same namespace
+                as the Kibana resource.
+              properties:
+                secretName:
+                  type: string
+              type: object
+            version:
+              description: Version represents the version of Kibana
+              type: string
+          type: object
+        status:
+          properties:
+            associationStatus:
+              type: string
+            controllerVersion:
+              description: ControllerVersion is the version of the controller that
+                last updated the Kibana instance
+              type: string
+            health:
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - endpoints
+  - events
+  - persistentvolumeclaims
+  - secrets
+  - services
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearches
+  - elasticsearches/status
+  - elasticsearches/finalizers
+  - enterpriselicenses
+  - enterpriselicenses/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
+  - kibanas/status
+  - kibanas/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers
+  - apmservers/status
+  - apmservers/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - associations.k8s.elastic.co
+  resources:
+  - apmserverelasticsearchassociations
+  - apmserverelasticsearchassociations/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-operator
+subjects:
+- kind: ServiceAccount
+  name: elastic-operator
+  namespace: elastic-system
+
+---
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elastic-system
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+  labels:
+    control-plane: elastic-operator
+spec:
+  selector:
+    matchLabels:
+      control-plane: elastic-operator
+  serviceName: elastic-operator
+  template:
+    metadata:
+      labels:
+        control-plane: elastic-operator
+    spec:
+      serviceAccountName: elastic-operator
+      containers:
+      - image: docker.elastic.co/eck/eck-operator:0.9.0
+        name: manager
+        args: ["manager", "--operator-roles", "all", "--enable-debug-logs=false"]
+        env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: WEBHOOK_SECRET
+            value: webhook-server-secret
+          - name: WEBHOOK_PODS_LABEL
+            value: elastic-operator
+          - name: OPERATOR_IMAGE
+            value: docker.elastic.co/eck/eck-operator:0.9.0
+        resources:
+          limits:
+            cpu: 1
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        ports:
+        - containerPort: 9876
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/cert
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-server-secret
+  namespace: elastic-system
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+
+---
+
