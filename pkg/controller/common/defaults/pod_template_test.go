@@ -332,6 +332,35 @@ func TestPodTemplateBuilder_WithPorts(t *testing.T) {
 			},
 		},
 		{
+			name: "ports should be sorted",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Ports: []corev1.ContainerPort{
+								{Name: "b", ContainerPort: int32(8080), Protocol: corev1.ProtocolTCP},
+								{Name: "d", ContainerPort: int32(8081), Protocol: corev1.ProtocolTCP},
+								{Name: "c", ContainerPort: int32(8082), Protocol: corev1.ProtocolTCP},
+							},
+						},
+					},
+				},
+			},
+			ports: []corev1.ContainerPort{
+				{Name: "a", ContainerPort: int32(9999), Protocol: corev1.ProtocolTCP},
+				{Name: "e", ContainerPort: int32(7777), Protocol: corev1.ProtocolTCP},
+				{Name: "b", ContainerPort: int32(8083), Protocol: corev1.ProtocolTCP},
+			},
+			want: []corev1.ContainerPort{
+				{Name: "a", ContainerPort: int32(9999), Protocol: corev1.ProtocolTCP},
+				{Name: "b", ContainerPort: int32(8080), Protocol: corev1.ProtocolTCP},
+				{Name: "c", ContainerPort: int32(8082), Protocol: corev1.ProtocolTCP},
+				{Name: "d", ContainerPort: int32(8081), Protocol: corev1.ProtocolTCP},
+				{Name: "e", ContainerPort: int32(7777), Protocol: corev1.ProtocolTCP},
+			},
+		},
+		{
 			name: "append to but don't override user provided ports",
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{

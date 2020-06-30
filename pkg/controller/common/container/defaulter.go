@@ -64,6 +64,10 @@ func (d Defaulter) WithPorts(ports []corev1.ContainerPort) Defaulter {
 			d.base.Ports = append(d.base.Ports, p)
 		}
 	}
+	// order ports by name to ensure stable pod spec comparison
+	sort.SliceStable(d.base.Ports, func(i, j int) bool {
+		return d.base.Ports[i].Name < d.base.Ports[j].Name
+	})
 	return d
 }
 
