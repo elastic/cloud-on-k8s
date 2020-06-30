@@ -75,6 +75,29 @@ apm-server-quickstart-apm-server-69b447ddc5-fflc6   1/1     Running   0         
 [id="{p}-apm-advanced-configuration"]
 == Advanced configuration
 
+[id="{p}-apm-agent-central-configuration"]
+=== Use APM Agent central configuration
+link:https://www.elastic.co/guide/en/kibana/current/agent-configuration.html[APM Agent configuration management] allows you to configure your APM Agents centrally from within the Kibana APM app. In order to use APM Agent central configuration you need to set up a Kibana endpoint in your APM Server configuration. Using a Kibana managed by ECK makes that as simple as adding a `kibanaRef` attribute to the APM Server specification:
+
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
+kind: ApmServer
+metadata:
+  name: apm-server-quickstart
+  namespace: default
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+  kibanaRef:
+    name: my-kibana
+EOF
+----
+
+
 [id="{p}-apm-customize-configuration"]
 === Customize the APM Server configuration
 
