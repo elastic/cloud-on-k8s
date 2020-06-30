@@ -91,7 +91,7 @@ func (b *PodTemplateBuilder) WithAnnotations(annotations map[string]string) *Pod
 	return b
 }
 
-// WithImage sets up the Container Docker image, unless already provided.
+// WithDockerImage sets up the Container Docker image, unless already provided.
 // The default image will be used unless customImage is not empty.
 func (b *PodTemplateBuilder) WithDockerImage(customImage string, defaultImage string) *PodTemplateBuilder {
 	if customImage != "" {
@@ -179,6 +179,7 @@ func (b *PodTemplateBuilder) WithTerminationGracePeriod(period int64) *PodTempla
 // - If the init container contains an empty image field, it's inherited from the main container.
 // - VolumeMounts from the main container are added to the init container VolumeMounts, unless they would conflict
 //   with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
+// - default environment variables
 func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
 	mainContainer := b.containerDefaulter.Container()
 	for i := range b.PodTemplate.Spec.InitContainers {
@@ -208,8 +209,8 @@ func (b *PodTemplateBuilder) findInitContainerByName(name string) int {
 //
 // Ordering:
 // - Provided init containers are prepended to the existing ones in the template.
-// - If an init container by the same name already exists in the template, the init container in the template
-// takes its place, and the provided init container is discarded.
+// - If an init container by the same name already exists in the template, the two PodTemplates are merged, the values
+// provided by the user take precedence.
 func (b *PodTemplateBuilder) WithInitContainers(
 	initContainers ...corev1.Container,
 ) *PodTemplateBuilder {

@@ -11,41 +11,23 @@ import (
 )
 
 // Defaulter ensures that values are set if none exists in the base container.
-type Defaulter interface {
-	WithImage(image string) Defaulter
-	WithCommand(command []string) Defaulter
-	WithArgs(args []string) Defaulter
-	WithPorts(ports []corev1.ContainerPort) Defaulter
-	WithEnv(vars []corev1.EnvVar) Defaulter
-	WithResources(resources corev1.ResourceRequirements) Defaulter
-	WithVolumeMounts(volumeMounts []corev1.VolumeMount) Defaulter
-	WithReadinessProbe(readinessProbe *corev1.Probe) Defaulter
-	WithPreStopHook(handler *corev1.Handler) Defaulter
-
-	// From inherits default values from an other container.
-	From(other corev1.Container) Defaulter
-
-	// Container return a copy of the resulting container.
-	Container() corev1.Container
-}
-
-var _ Defaulter = &defaulter{}
-
-type defaulter struct {
+type Defaulter struct {
 	base *corev1.Container
 }
 
-func (d defaulter) Container() corev1.Container {
+// Container returns a copy of the resulting container.
+func (d Defaulter) Container() corev1.Container {
 	return *d.base.DeepCopy()
 }
 
 func NewDefaulter(base *corev1.Container) Defaulter {
-	return &defaulter{
+	return Defaulter{
 		base: base,
 	}
 }
 
-func (d defaulter) From(other corev1.Container) Defaulter {
+// From inherits default values from an other container.
+func (d Defaulter) From(other corev1.Container) Defaulter {
 
 	if other.Lifecycle != nil {
 		d.WithPreStopHook(other.Lifecycle.PreStop)
@@ -62,21 +44,21 @@ func (d defaulter) From(other corev1.Container) Defaulter {
 		WithReadinessProbe(other.ReadinessProbe)
 }
 
-func (d defaulter) WithCommand(command []string) Defaulter {
+func (d Defaulter) WithCommand(command []string) Defaulter {
 	if len(d.base.Command) == 0 {
 		d.base.Command = command
 	}
 	return d
 }
 
-func (d defaulter) WithArgs(args []string) Defaulter {
+func (d Defaulter) WithArgs(args []string) Defaulter {
 	if len(d.base.Args) == 0 {
 		d.base.Args = args
 	}
 	return d
 }
 
-func (d defaulter) WithPorts(ports []corev1.ContainerPort) Defaulter {
+func (d Defaulter) WithPorts(ports []corev1.ContainerPort) Defaulter {
 	for _, p := range ports {
 		if !d.portExists(p.Name) {
 			d.base.Ports = append(d.base.Ports, p)
@@ -86,7 +68,7 @@ func (d defaulter) WithPorts(ports []corev1.ContainerPort) Defaulter {
 }
 
 // portExists checks if a port with the given name already exists in the Container.
-func (d defaulter) portExists(name string) bool {
+func (d Defaulter) portExists(name string) bool {
 	for _, p := range d.base.Ports {
 		if p.Name == name {
 			return true
@@ -97,14 +79,14 @@ func (d defaulter) portExists(name string) bool {
 
 // WithImage sets up the Container Docker image, unless already provided.
 // The default image will be used unless customImage is not empty.
-func (d defaulter) WithImage(image string) Defaulter {
+func (d Defaulter) WithImage(image string) Defaulter {
 	if d.base.Image == "" {
 		d.base.Image = image
 	}
 	return d
 }
 
-func (d defaulter) WithReadinessProbe(readinessProbe *corev1.Probe) Defaulter {
+func (d Defaulter) WithReadinessProbe(readinessProbe *corev1.Probe) Defaulter {
 	if d.base.ReadinessProbe == nil {
 		d.base.ReadinessProbe = readinessProbe
 	}
@@ -112,7 +94,7 @@ func (d defaulter) WithReadinessProbe(readinessProbe *corev1.Probe) Defaulter {
 }
 
 // envExists checks if an env var with the given name already exists in the provided slice.
-func (d defaulter) envExists(name string) bool {
+func (d Defaulter) envExists(name string) bool {
 	for _, v := range d.base.Env {
 		if v.Name == name {
 			return true
@@ -121,7 +103,7 @@ func (d defaulter) envExists(name string) bool {
 	return false
 }
 
-func (d defaulter) WithEnv(vars []corev1.EnvVar) Defaulter {
+func (d Defaulter) WithEnv(vars []corev1.EnvVar) Defaulter {
 	for _, v := range vars {
 		if !d.envExists(v.Name) {
 			d.base.Env = append(d.base.Env, v)
@@ -130,8 +112,8 @@ func (d defaulter) WithEnv(vars []corev1.EnvVar) Defaulter {
 	return d
 }
 
-func (d defaulter) WithResources(resources corev1.ResourceRequirements) Defaulter {
-	// Ensure resources are set
+// WithResources ensures that resource requirements are set in the container.
+func (d Defaulter) WithResources(resources corev1.ResourceRequirements) Defaulter {
 	if d.base.Resources.Requests == nil && d.base.Resources.Limits == nil {
 		d.base.Resources = resources
 	}
@@ -139,7 +121,7 @@ func (d defaulter) WithResources(resources corev1.ResourceRequirements) Defaulte
 }
 
 // volumeExists checks if a volume mount with the given name already exists in the Container.
-func (d defaulter) volumeMountExists(volumeMount corev1.VolumeMount) bool {
+func (d Defaulter) volumeMountExists(volumeMount corev1.VolumeMount) bool {
 	for _, v := range d.base.VolumeMounts {
 		if v.Name == volumeMount.Name || v.MountPath == volumeMount.MountPath {
 			return true
@@ -148,7 +130,7 @@ func (d defaulter) volumeMountExists(volumeMount corev1.VolumeMount) bool {
 	return false
 }
 
-func (d defaulter) WithVolumeMounts(volumeMounts []corev1.VolumeMount) Defaulter {
+func (d Defaulter) WithVolumeMounts(volumeMounts []corev1.VolumeMount) Defaulter {
 	for _, v := range volumeMounts {
 		if !d.volumeMountExists(v) {
 			d.base.VolumeMounts = append(d.base.VolumeMounts, v)
@@ -161,7 +143,7 @@ func (d defaulter) WithVolumeMounts(volumeMounts []corev1.VolumeMount) Defaulter
 	return d
 }
 
-func (d defaulter) WithPreStopHook(handler *corev1.Handler) Defaulter {
+func (d Defaulter) WithPreStopHook(handler *corev1.Handler) Defaulter {
 	if d.base.Lifecycle == nil {
 		d.base.Lifecycle = &corev1.Lifecycle{}
 	}
