@@ -63,6 +63,30 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "version specific default differences 1",
+			c: commonv1.Config{
+				Data: map[string]interface{}{
+					NodeTransform: true,
+				},
+			},
+			args: args{
+				ver: version.From(7, 5, 0),
+			},
+			want: false,
+		},
+		{
+			name: "version specific default differences 2",
+			c: commonv1.Config{
+				Data: map[string]interface{}{
+					NodeTransform: true,
+				},
+			},
+			args: args{
+				ver: version.From(7, 7, 0),
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

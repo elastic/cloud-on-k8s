@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	NodeData   = "node.data"
-	NodeIngest = "node.ingest"
-	NodeMaster = "node.master"
-	NodeML     = "node.ml"
+	NodeData      = "node.data"
+	NodeIngest    = "node.ingest"
+	NodeMaster    = "node.master"
+	NodeML        = "node.ml"
+	NodeTransform = "node.transform"
 )
 
 // ClusterSettings is the cluster node in elasticsearch.yml.
@@ -50,7 +51,8 @@ func DefaultCfg(ver version.Version) ElasticsearchSettings {
 		},
 	}
 	if !ver.IsSameOrAfter(version.From(7, 7, 0)) {
-		settings.Node.Transform = false // this setting did not exist before 7.7.0 expessed here by setting it to false
+		// this setting did not exist before 7.7.0 expressed here by setting it to false this allows us to keep working with just one model
+		settings.Node.Transform = false
 	}
 	return settings
 }

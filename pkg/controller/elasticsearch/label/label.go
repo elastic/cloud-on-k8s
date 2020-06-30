@@ -129,7 +129,7 @@ func NewPodLabels(
 	NodeTypesDataLabelName.Set(nodeRoles.Data, labels)
 	NodeTypesIngestLabelName.Set(nodeRoles.Ingest, labels)
 	NodeTypesMLLabelName.Set(nodeRoles.ML, labels)
-	// transform nodes where only added in 7.7.0 so we should not annotate previous versions with them
+	// transform nodes were only added in 7.7.0 so we should not annotate previous versions with them
 	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
 		NodeTypesTransformLabelName.Set(nodeRoles.Transform, labels)
 	}
