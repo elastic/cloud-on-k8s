@@ -24,7 +24,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 
-	test.SkipInvalidUpgrade(t, srcVersion, srcVersion)
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-version-upgrade-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -60,7 +60,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 
-	test.SkipInvalidUpgrade(t, srcVersion, srcVersion)
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-upgrade-and-respec-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
