@@ -97,7 +97,6 @@ spec:
 EOF
 ----
 
-
 [id="{p}-apm-customize-configuration"]
 === Customize the APM Server configuration
 
