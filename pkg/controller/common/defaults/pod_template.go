@@ -220,7 +220,7 @@ func (b *PodTemplateBuilder) WithInitContainers(
 		if index := b.findInitContainerByName(c.Name); index != -1 {
 			userContainer := b.PodTemplate.Spec.InitContainers[index]
 
-			// remove it from the podTemplate:
+			// remove it from the podTemplate
 			b.PodTemplate.Spec.InitContainers = append(
 				b.PodTemplate.Spec.InitContainers[:index],
 				b.PodTemplate.Spec.InitContainers[index+1:]...,
