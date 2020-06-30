@@ -255,8 +255,12 @@ func TestPacketbeatConfig(t *testing.T) {
 			beat.HasEventFromBeat(packetbeat.Type),
 			beat.HasEvent("event.dataset:flow"),
 			beat.HasEvent("event.dataset:dns"),
-			beat.HasEvent("event.dataset:http"),
 		)
+
+	if test.Ctx().Provider != "kind" || test.Ctx().KubernetesVersion != "1.12" {
+		// there are some issues with kind 1.12 and tracking http traffic
+		pbBuilder = pbBuilder.WithESValidations(beat.HasEvent("event.dataset:http"))
+	}
 
 	pbBuilder = applyYamls(t, pbBuilder, e2ePacketbeatConfig, e2ePacketbeatPodTemplate)
 
