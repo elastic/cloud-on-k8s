@@ -24,12 +24,12 @@ cat $$<<$$EOF | kubectl apply -f -
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: filebeat-quickstart
+  name: quickstart
 spec:
   type: filebeat
   version: {version}
   elasticsearchRef:
-    name: elasticsearch-quickstart
+    name: quickstart
   config:
     filebeat.inputs:
     - type: container
@@ -76,29 +76,29 @@ kubectl get beat
 [source,sh,subs="attributes"]
 ----
 NAME                  HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
-filebeat-quickstart   green    3           3          filebeat   {version}     2m
+quickstart            green    3           3          filebeat   {version}     2m
 ----
 +
 List all the Pods belonging to a given Beat:
 +
 [source,sh]
 ----
-kubectl get pods --selector='beat.k8s.elastic.co/name=filebeat-quickstart-beat-filebeat'
+kubectl get pods --selector='beat.k8s.elastic.co/name=quickstart-beat-filebeat'
 ----
 +
 [source,sh]
 ----
 NAME                                      READY   STATUS    RESTARTS   AGE
-filebeat-quickstart-beat-filebeat-tkz65   1/1     Running   0          3m45s
-filebeat-quickstart-beat-filebeat-kx5jt   1/1     Running   0          3m45s
-filebeat-quickstart-beat-filebeat-nb6qh   1/1     Running   0          3m45s
+quickstart-beat-filebeat-tkz65            1/1     Running   0          3m45s
+quickstart-beat-filebeat-kx5jt            1/1     Running   0          3m45s
+quickstart-beat-filebeat-nb6qh            1/1     Running   0          3m45s
 ----
 +
 . Access logs for one of the Pods
 +
 [source,sh]
 ----
-kubectl logs -f filebeat-quickstart-beat-filebeat-tkz65
+kubectl logs -f quickstart-beat-filebeat-tkz65
 ----
 
 . Access logs ingested by Filebeat
@@ -130,17 +130,17 @@ The Beat configuration is provided through the `config` element:
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: heartbeat-quickstart
+  name: quickstart
 spec:
   type: heartbeat
   version: {version}
   elasticsearchRef:
-    name: elasticsearch-quickstart
+    name: quickstart
   config:
     heartbeat.monitors:
     - type: tcp
       schedule: '@every 5s'
-      hosts: ["elasticsearch-quickstart-es-http.default.svc:9200"]
+      hosts: ["quickstart-es-http.default.svc:9200"]
   deployment:
     podTemplate:
       spec:
@@ -160,7 +160,7 @@ spec:
   type: heartbeat
   version: 7.8.0
   elasticsearchRef:
-    name: elasticsearch-quickstart
+    name: quickstart
   configRef:
     secretName: heartbeat-config
   deployment:
@@ -179,29 +179,29 @@ stringData:
     heartbeat.monitors:
     - type: tcp
       schedule: '@every 5s'
-      hosts: ["elasticsearch-quickstart-es-http.default.svc:9200"]
+      hosts: ["quickstart-es-http.default.svc:9200"]
 ----
 
 For more details about Beats configuration, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/beats-reference.html[Beats documentation].
 
 [id="{p}-beat-deploy-elastic-beat"]
-=== Deploy Elastic Beat
+=== Deploy a Beat provided by Elastic
 
-ECK supports the deployment of the following Elastic Beats:
+ECK supports the deployment of the following Beats:
 
-- Filebeat
-- Metricbeat
-- Heartbeat
-- Journalbeat
-- Auditbeat
-- Packetbeat
+- link:https://www.elastic.co/beats/filebeat[Filebeat]
+- link:https://www.elastic.co/beats/metricbeat[Metricbeat]
+- link:https://www.elastic.co/beats/heartbeat[Heartbeat]
+- link:https://www.elastic.co/beats/auditbeat[Auditbeat]
+- link:https://www.elastic.co/beats/packetbeat[Packetbeat]
+- link:https://www.elastic.co/guide/en/beats/journalbeat/current/index.html[Journalbeat]
 
 You can specify the Beat to deploy and its version through `type` and `version` elements. ECK computes the correct path to the container image, so the `image` element doesn't have to be provided. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
 
 [id="{p}-beat-deploy-community-beat"]
 === Deploy a Community Beat
 
-ECK supports the deployment of any Community Beat. As with Elastic Beats, `type` and `version` specification elements have to be provided. In addition:
+ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
 
 - `image` must point to the image to be deployed
 -  role must exist and have the permissions required by the Beat. The role name has to be `eck_beat_type_role`, where `type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`.
@@ -217,10 +217,10 @@ ECK can instruct Beats to set up example dashboards packaged with the Beat. To e
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: filebeat-quickstart
+  name: quickstart
 spec:
   kibanaRef:
-    name: kibana-quickstart
+    name: quickstart
 ...
 ----
 
@@ -241,7 +241,7 @@ ECK exposes that mechanism with `secureSettings` element in the specification. <
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: filebeat-quickstart
+  name: quickstart
 spec:
   secureSettings:
   - secretName: agent-name-secret
@@ -273,7 +273,7 @@ Output can be set to any that's supported by a given Beat. To do that, remove th
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: filebeat-quickstart
+  name: quickstart
 spec:
   config:
     output.redis:
@@ -300,7 +300,7 @@ Some Beats features (such as link:https://www.elastic.co/guide/en/beats/filebeat
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: filebeat-quickstart
+  name: quickstart
 spec:
   config:
     filebeat:
