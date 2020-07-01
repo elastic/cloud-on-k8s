@@ -96,7 +96,7 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 	var hasMaster bool
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
 	}
 	for i, t := range es.Spec.NodeSets {
 		cfg, err := UnpackConfig(t.Config, *v)
