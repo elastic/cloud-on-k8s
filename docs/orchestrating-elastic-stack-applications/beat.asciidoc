@@ -79,7 +79,7 @@ NAME                  HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
 filebeat-quickstart   green    3           3          filebeat   {version}     2m
 ----
 +
-List all the Pods belonging to given Beat:
+List all the Pods belonging to a given Beat:
 +
 [source,sh]
 ----
@@ -118,7 +118,7 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 [id="{p}-beat-upgrade-specification"]
 === Upgrade the Beat specification
 
-Any setting can be changed in the Beat yaml specification, including version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Beat Pods. Depending on specification settings used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
+Any setting can be changed in the Beat YAML specification, including version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Beat Pods. Depending on specification settings used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up the Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
 
 [id="{p}-beat-custom-configuration"]
 === Customize Beat configuration
@@ -196,12 +196,12 @@ ECK supports the deployment of the following Elastic Beats:
 - Auditbeat
 - Packetbeat
 
-You can specify the Beat to deploy and its version through `type` and `version` elements. ECK computes the correct path to the container image, so the `image` element doesn't have to be provided. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use all Beat features.
+You can specify the Beat to deploy and its version through `type` and `version` elements. ECK computes the correct path to the container image, so the `image` element doesn't have to be provided. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
 
 [id="{p}-beat-deploy-community-beat"]
-=== Deploy community Beat
+=== Deploy a Community Beat
 
-ECK supports the deployment of any community Beat. As with Elastic Beats, `type` and `version` specification elements have to be provided. In addition:
+ECK supports the deployment of any Community Beat. As with Elastic Beats, `type` and `version` specification elements have to be provided. In addition:
 
 - `image` must point to the image to be deployed
 -  role must exist and have the permissions required by the Beat. The role name has to be `eck_beat_type_role`, where `type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`.
@@ -210,7 +210,7 @@ ECK supports the deployment of any community Beat. As with Elastic Beats, `type`
 [id="{p}-beat-set-up-kibana-dashboards"]
 === Set up Kibana dashboards
 
-ECK can instruct Beats to set up an example dashboards packaged with the Beat. To enable this, set `kibanaRef` element in the specification to point to ECK-managed Kibana deployment:
+ECK can instruct Beats to set up example dashboards packaged with the Beat. To enable this, set the `kibanaRef` element in the specification to point to ECK-managed Kibana deployment:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -224,7 +224,7 @@ spec:
 ...
 ----
 
-ECK will create a new user in Elasticsearch with minimal set of appropriate roles and permissions that is needed for dashboard setup.
+ECK will create a new user in Elasticsearch with a minimal set of appropriate roles and permissions that is needed for dashboard setup.
 
 
 [id="{p}-beat-secrets-keystore-for-secure-settings"]
@@ -263,9 +263,9 @@ See Beats link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.h
 [id="{p}-beat-set-beat-output"]
 === Set Beat output
 
-If `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and use its credentials. If required, it also mounts the CA certificate in all Beat Pods, and roll over Pods when this certificate changes.
+If the `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Beat Pods, and recreates Pods when this certificate changes.
 
-Output can be set to any that's supported by given Beat. To do that, remove `elasticsearchRef` element from the specification and include appropriate output configuration in the `config` or `configRef`.
+Output can be set to any that's supported by a given Beat. To do that, remove the `elasticsearchRef` element from the specification and include an appropriate output configuration in the `config` or `configRef`.
 
 
 [source,yaml,subs="attributes,+macros"]
@@ -288,7 +288,7 @@ spec:
 [id="{p}-beat-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Beats may need to be deployed as a Deployment or a DaemonSet. Provide `podTemplate` element under either `deployment` or `daemonSet` element in the specification to choose how a given Beat should be deployed.
+Depending on the use case, Beats may need to be deployed as a Deployment or a DaemonSet. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed.
 
 [id="{p}-beat-role-based-access-control-for-beats"]
 === Role Based Access Control for Beats
@@ -360,7 +360,7 @@ rules:
 [id="{p}-beat-deploying-beats-in-secured-clusters"]
 === Deploying Beats in secured clusters
 
-To deploy Beats in clusters with Pod Security Policy admission controller enabled, or in OpenShift clusters, you have to grant additional permissions to the Service Account that Beat Pods are running with. Those Service Accounts need to be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
+To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you have to grant additional permissions to the Service Account that the Beat Pods are running with. Those Service Accounts need to be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
 
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting
@@ -368,7 +368,7 @@ To deploy Beats in clusters with Pod Security Policy admission controller enable
 [id="{p}-beat-beat-pods-are-crashing-when-kibanaref-is-specified"]
 === Beat Pods are crashing when kibanaRef is specified
 
-When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Pod crashes. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The pod may cycle at most few times during the first initialization. Afterwards, the Beat should run successfully.
+When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Pod crashes. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The pod may cycle at most a few times during the first initialization. Afterwards, the Beat should run successfully.
 
 
 [id="{p}-beat-configuration-containing-key-null-is-malformed"]
