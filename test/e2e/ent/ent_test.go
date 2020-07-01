@@ -60,7 +60,8 @@ func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 	ent := enterprisesearch.NewBuilder(name).
 		WithElasticsearchRef(es.Ref()).
 		WithNodeCount(2).
-		WithVersion(srcVersion)
+		WithVersion(srcVersion).
+		WithRestrictedSecurityContext()
 
 	if ent.SkipTest() {
 		t.SkipNow() // invalid version
