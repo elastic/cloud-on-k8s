@@ -42,7 +42,6 @@ func BuildPodTemplateSpec(
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, es.Spec.Version))
 
 	initContainers, err := initcontainer.NewInitContainers(
-		builder.Container.Image,
 		transportCertificatesVolume(es.Name),
 		es.Name,
 		keystoreResources,
