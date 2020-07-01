@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -115,11 +114,6 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 				)
 			}
 
-			v, err := version.Parse(es.Spec.Version)
-			if err != nil {
-				return err
-			}
-
 			// flatten the topology
 			var expectedTopology []esv1.NodeSet
 			for _, node := range es.Spec.NodeSets {
@@ -154,7 +148,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 				nodeRoles := rolesToConfig(node.Roles)
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
-					cfg, err := esv1.UnpackConfig(topoElem.Config, *v)
+					cfg, err := esv1.UnpackConfig(topoElem.Config)
 					if err != nil {
 						return err
 					}
@@ -196,8 +190,6 @@ func rolesToConfig(roles []string) esv1.Node {
 			node.Data = true
 		case "ingest":
 			node.Ingest = true
-		case "transform":
-			node.Transform = true
 		}
 	}
 	return node
