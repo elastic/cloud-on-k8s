@@ -185,7 +185,7 @@ stringData:
 For more details about Beats configuration, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/beats-reference.html[Beats documentation].
 
 [id="{p}-beat-deploy-elastic-beat"]
-=== Deploy a Beat provided by Elastic
+=== Deploy a Beat
 
 ECK supports the deployment of the following Beats:
 
@@ -230,11 +230,9 @@ ECK will create a new user in Elasticsearch with a minimal set of appropriate ro
 [id="{p}-beat-secrets-keystore-for-secure-settings"]
 === Secrets keystore for secure settings
 
-
-Beats offer a secret keystore for sensitive settings that need to be provided in the configuration, like for example passwords. This avoids storing them in the config directly.
+Beats offer a secret keystore for sensitive settings that need to be provided in the config, like for example passwords. This avoids storing them in the config directly.
 
 ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings in a secure way:
-
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -288,7 +286,7 @@ spec:
 [id="{p}-beat-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Beats may need to be deployed as a Deployment or a DaemonSet. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed.
+Depending on the use case, Beats may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed.
 
 [id="{p}-beat-role-based-access-control-for-beats"]
 === Role Based Access Control for Beats
