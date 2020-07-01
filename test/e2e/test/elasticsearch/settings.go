@@ -7,22 +7,24 @@ package elasticsearch
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 )
 
 func MustNumDataNodes(es esv1.Elasticsearch) int {
 	var numNodes int
+	ver := version.MustParse(es.Spec.Version)
 	for _, n := range es.Spec.NodeSets {
-		if isDataNode(n) {
+		if isDataNode(n, ver) {
 			numNodes += int(n.Count)
 		}
 	}
 	return numNodes
 }
 
-func isDataNode(node esv1.NodeSet) bool {
+func isDataNode(node esv1.NodeSet, ver version.Version) bool {
 	if node.Config == nil {
-		return esv1.DefaultCfg.Node.Data // if not specified use the default
+		return esv1.DefaultCfg(ver).Node.Data // if not specified use the default
 	}
 	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
 	if err != nil {
@@ -30,7 +32,7 @@ func isDataNode(node esv1.NodeSet) bool {
 	}
 	nodeCfg, err := settings.CanonicalConfig{
 		CanonicalConfig: config,
-	}.Unpack()
+	}.Unpack(ver)
 	if err != nil {
 		panic(err)
 	}

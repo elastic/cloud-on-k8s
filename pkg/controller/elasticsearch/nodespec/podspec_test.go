@@ -108,7 +108,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
 
 	initContainers, err := initcontainer.NewInitContainers(
-		"docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
 		transportCertificatesVolume(sampleES.Name),
 		sampleES.Name,
 		nil,

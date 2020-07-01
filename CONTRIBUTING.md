@@ -119,7 +119,7 @@ Test the doc build locally:
 1. Move to the directory where the [elastic/docs](https://github.com/elastic/docs) repository has been pulled
 1. Run the following command:
 
-   `./build_docs --asciidoctor --doc $GOPATH/src/github.com/elastic/cloud-on-k8s --chunk 1 --open`
+   `./build_docs --asciidoctor --doc $GOPATH/src/github.com/elastic/cloud-on-k8s/docs/index.asciidoc --chunk 1 --open`
    
 Push a PR for review and add the label `>docs`.
 

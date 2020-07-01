@@ -1,0 +1,35 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: alpha
+spec:
+  version: 7.2.0
+  nodes:
+  - name: default
+    nodeCount: 3
+    config:
+      node.store.allow_mmap: false
+      node.master: true
+      node.data: true
+      node.ingest: true
+---
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  name: alpha
+spec:
+  version: 7.2.0
+  nodeCount: 1
+  elasticsearchRef:
+    name: alpha
+---
+apiVersion: apm.k8s.elastic.co/v1alpha1
+kind: ApmServer
+metadata:
+  name: alpha
+spec:
+  version: 7.2.0
+  nodeCount: 1
+  elasticsearchRef:
+    name: alpha
