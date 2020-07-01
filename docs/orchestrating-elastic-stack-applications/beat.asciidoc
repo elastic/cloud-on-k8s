@@ -196,15 +196,15 @@ ECK supports the deployment of the following Beats:
 - link:https://www.elastic.co/beats/packetbeat[Packetbeat]
 - link:https://www.elastic.co/guide/en/beats/journalbeat/current/index.html[Journalbeat]
 
-You can specify the Beat to deploy and its version through `type` and `version` elements. ECK computes the correct path to the container image, so the `image` element doesn't have to be provided. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
+You can specify the Beat to deploy and its version through `type` and `version` elements. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
 
 [id="{p}-beat-deploy-community-beat"]
 === Deploy a Community Beat
 
 ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
 
-- `image` must point to the image to be deployed
--  a role must exist in Elasticsearch and have the permissions required by the Beat. The role name has to be `eck_beat_type_role`, where `type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`.
+- `image` element in the specification must point to the image to be deployed
+-  a role must exist in Elasticsearch and have the permissions required by the Beat. The role name must be `eck_beat_$type_role`, where `$type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
 
 
 [id="{p}-beat-set-up-kibana-dashboards"]
@@ -255,7 +255,7 @@ stringData:
   AGENT_NAME_VAR: id_007
 ----
 
-See Beats link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[documentation] for more details.
+See link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[Beats documentation] for more details.
 
 
 [id="{p}-beat-set-beat-output"]
