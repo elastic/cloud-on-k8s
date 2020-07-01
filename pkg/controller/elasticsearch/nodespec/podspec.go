@@ -90,28 +90,25 @@ func buildLabels(
 	nodeSet esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 ) (map[string]string, error) {
-	// label with a hash of the config to rotate the pod on config changes
-	unpackedCfg, err := cfg.Unpack()
-	if err != nil {
-		return nil, err
-	}
-	nodeRoles := unpackedCfg.Node
-	cfgHash := hash.HashObject(cfg)
-
 	// label with version
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	podLabels, err := label.NewPodLabels(
+	// label with a hash of the config to rotate the pod on config changes
+	unpackedCfg, err := cfg.Unpack(*ver)
+	if err != nil {
+		return nil, err
+	}
+	nodeRoles := unpackedCfg.Node
+	cfgHash := hash.HashObject(cfg)
+
+	podLabels := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
 		esv1.StatefulSet(es.Name, nodeSet.Name),
 		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Protocol(),
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	if keystoreResources != nil {
 		// label with a checksum of the secure settings to rotate the pod on secure settings change

@@ -8,13 +8,15 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_RoleDefaults(t *testing.T) {
 	type args struct {
-		c2 commonv1.Config
+		c2  commonv1.Config
+		ver version.Version
 	}
 	tests := []struct {
 		name string
@@ -61,12 +63,36 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "version specific default differences 1",
+			c: commonv1.Config{
+				Data: map[string]interface{}{
+					NodeTransform: true,
+				},
+			},
+			args: args{
+				ver: version.From(7, 5, 0),
+			},
+			want: false,
+		},
+		{
+			name: "version specific default differences 2",
+			c: commonv1.Config{
+				Data: map[string]interface{}{
+					NodeTransform: true,
+				},
+			},
+			args: args{
+				ver: version.From(7, 7, 0),
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c1, err := UnpackConfig(&tt.c)
+			c1, err := UnpackConfig(&tt.c, tt.args.ver)
 			require.NoError(t, err)
-			c2, err := UnpackConfig(&tt.args.c2)
+			c2, err := UnpackConfig(&tt.args.c2, tt.args.ver)
 			require.NoError(t, err)
 			if got := c1.Node == c2.Node; got != tt.want {
 				t.Errorf("Config.EqualRoles() = %v, want %v", got, tt.want)
@@ -148,6 +174,7 @@ func TestConfig_DeepCopy(t *testing.T) {
 }
 
 func TestConfig_Unpack(t *testing.T) {
+	ver := version.From(7, 7, 0)
 	tests := []struct {
 		name    string
 		args    *commonv1.Config
@@ -169,10 +196,11 @@ func TestConfig_Unpack(t *testing.T) {
 			},
 			want: ElasticsearchSettings{
 				Node: Node{
-					Master: false,
-					Data:   true,
-					Ingest: true,
-					ML:     true,
+					Master:    false,
+					Data:      true,
+					Ingest:    true,
+					ML:        true,
+					Transform: true,
 				},
 				Cluster: ClusterSettings{
 					InitialMasterNodes: []string{"a", "b"},
@@ -183,13 +211,13 @@ func TestConfig_Unpack(t *testing.T) {
 		{
 			name:    "Unpack is nil safe",
 			args:    nil,
-			want:    DefaultCfg,
+			want:    DefaultCfg(ver),
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := UnpackConfig(tt.args)
+			got, err := UnpackConfig(tt.args, ver)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Unpack() error = %v, wantErr %v", err, tt.wantErr)
 				return
