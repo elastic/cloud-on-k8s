@@ -167,7 +167,7 @@ func Test_hasMaster(t *testing.T) {
 			expectErrors: false,
 		},
 		{
-			name: "has master on incorect version",
+			name: "has nodeset with invalid version",
 			es: &Elasticsearch{
 				Spec: ElasticsearchSpec{
 					Version: "x.y",
