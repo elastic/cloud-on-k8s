@@ -95,7 +95,6 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFileFile1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNativeNative1Order})))
-
 			},
 		},
 		{
