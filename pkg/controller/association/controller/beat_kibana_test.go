@@ -10,6 +10,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 )
 
 func Test_getBeatKibanaRoles(t *testing.T) {
@@ -30,15 +31,21 @@ func Test_getBeatKibanaRoles(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "<7.5 kibana_user",
-			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "6.8.0"}},
-			want:    "kibana_user",
+			name:    "<7.3 Beat",
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.0.0", Type: string(filebeat.Type)}},
+			want:    "kibana_user,ingest_admin,beats_admin,eck_beat_kibana_filebeat_role_v70",
 			wantErr: false,
 		},
 		{
-			name:    ">=7.5 kibana_admin",
-			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.5.0"}},
-			want:    "kibana_admin",
+			name:    "<7.7 Beat",
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.6.0", Type: string(filebeat.Type)}},
+			want:    "kibana_user,ingest_admin,beats_admin,eck_beat_kibana_filebeat_role_v73",
+			wantErr: false,
+		},
+		{
+			name:    ">=7.8 Beat",
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.8.0", Type: string(filebeat.Type)}},
+			want:    "kibana_admin,ingest_admin,beats_admin,eck_beat_kibana_filebeat_role_v77",
 			wantErr: false,
 		},
 	}

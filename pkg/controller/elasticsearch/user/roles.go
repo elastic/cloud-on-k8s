@@ -91,7 +91,7 @@ var (
 
 func init() {
 	for _, beat := range []string{"filebeat", "metricbeat", "heartbeat", "auditbeat", "journalbeat", "packetbeat"} {
-		PredefinedRoles[BeatRoleName(V77, beat)] = esclient.Role{
+		PredefinedRoles[BeatEsRoleName(V77, beat)] = esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{
 				{
@@ -101,7 +101,7 @@ func init() {
 			},
 		}
 
-		PredefinedRoles[BeatRoleName(V75, beat)] = esclient.Role{
+		PredefinedRoles[BeatEsRoleName(V75, beat)] = esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{
 				{
@@ -111,7 +111,7 @@ func init() {
 			},
 		}
 
-		PredefinedRoles[BeatRoleName(V73, beat)] = esclient.Role{
+		PredefinedRoles[BeatEsRoleName(V73, beat)] = esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "manage_pipeline"},
 			Indices: []esclient.IndexRole{
 				{
@@ -121,7 +121,7 @@ func init() {
 			},
 		}
 
-		PredefinedRoles[BeatRoleName(V70, beat)] = esclient.Role{
+		PredefinedRoles[BeatEsRoleName(V70, beat)] = esclient.Role{
 			Cluster: []string{"manage_index_templates", "monitor", "manage_ilm", "manage_ml", "manage_pipeline"},
 			Indices: []esclient.IndexRole{
 				{
@@ -130,11 +130,45 @@ func init() {
 				},
 			},
 		}
+
+		PredefinedRoles[BeatKibanaRoleName(V77, beat)] = esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_ml"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read"},
+				},
+			},
+		}
+
+		PredefinedRoles[BeatKibanaRoleName(V73, beat)] = esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_ml"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read"},
+				},
+			},
+		}
+
+		PredefinedRoles[BeatKibanaRoleName(V70, beat)] = esclient.Role{
+			Cluster: []string{"manage_index_templates", "monitor", "manage_ilm", "manage_ml"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Privileges: []string{"manage", "read"},
+				},
+			},
+		}
 	}
 }
 
-func BeatRoleName(version, beatType string) string {
-	return fmt.Sprintf("eck_beat_%s_role_%s", beatType, version)
+func BeatEsRoleName(version, beatType string) string {
+	return fmt.Sprintf("eck_beat_es_%s_role_%s", beatType, version)
+}
+
+func BeatKibanaRoleName(version, beatType string) string {
+	return fmt.Sprintf("eck_beat_kibana_%s_role_%s", beatType, version)
 }
 
 // RolesFileContent is a map {role name -> yaml role spec}.

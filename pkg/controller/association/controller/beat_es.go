@@ -86,7 +86,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"ingest_admin",
 			"beats_admin",
 			"remote_monitoring_user",
-			esuser.BeatRoleName(esuser.V77, beat.Spec.Type),
+			esuser.BeatEsRoleName(esuser.V77, beat.Spec.Type),
 		}, ","), nil
 	case v.IsSameOrAfter(version.From(7, 5, 0)):
 		return strings.Join([]string{
@@ -94,7 +94,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"ingest_admin",
 			"beats_admin",
 			"remote_monitoring_user",
-			esuser.BeatRoleName(esuser.V75, beat.Spec.Type),
+			esuser.BeatEsRoleName(esuser.V75, beat.Spec.Type),
 		}, ","), nil
 	case v.IsSameOrAfter(version.From(7, 3, 0)):
 		return strings.Join([]string{
@@ -102,7 +102,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"ingest_admin",
 			"beats_admin",
 			"remote_monitoring_user",
-			esuser.BeatRoleName(esuser.V73, beat.Spec.Type),
+			esuser.BeatEsRoleName(esuser.V73, beat.Spec.Type),
 		}, ","), nil
 	default:
 		return strings.Join([]string{
@@ -110,7 +110,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"ingest_admin",
 			"beats_admin",
 			"monitoring_user",
-			esuser.BeatRoleName(esuser.V70, beat.Spec.Type),
+			esuser.BeatEsRoleName(esuser.V70, beat.Spec.Type),
 		}, ","), nil
 	}
 }
