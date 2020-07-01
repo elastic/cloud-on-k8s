@@ -16,7 +16,7 @@ This section describes how to configure and deploy Beats with ECK.
 [id="{p}-beat-quickstart"]
 == Quickstart
 
-. Apply the following specification to deploy Filebeat. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
+. Apply the following specification to deploy Filebeat and collect the logs of all containers running in the Kubernetes cluster. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
 +
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -112,32 +112,6 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 +
 - or follow the Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to *Kibana* > *Discover*.
 
-. Inspect generated Filebeat configuration
-+
-[source,sh]
-----
-kubectl get secret filebeat-quickstart-beat-filebeat-config -o jsonpath='{.data.beat\.yml}' | base64 --decode
-----
-+
-[source,sh]
-----
-filebeat:
-  inputs:
-  - paths:
-    - /var/log/containers/*.log
-    type: container
-output:
-  elasticsearch:
-    hosts:
-    - https://elasticsearch-quickstartquickstart-es-http.default.svc:9200
-    password: <redacted>
-    ssl:
-      certificate_authorities:
-      - /mnt/elastic-internal/elasticsearch-certs/ca.crt
-    username: default-filebeat-quickstart-beat-user
-----
-
-
 [id="{p}-beat-configuration"]
 == Configuration
 
@@ -175,7 +149,7 @@ spec:
           runAsUser: 0
 ----
 
-Alternatively, it can be provided indirectly via a Secret specified in the `configRef` element:
+Alternatively, it can be provided via a Secret specified in the `configRef` element:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: beat.k8s.elastic.co/v1beta1
