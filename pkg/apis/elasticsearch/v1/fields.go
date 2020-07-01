@@ -18,8 +18,9 @@ const (
 
 	NodeName = "node.name"
 
-	PathData = "path.data"
-	PathLogs = "path.logs"
+	PathData                 = "path.data"
+	PathLogs                 = "path.logs"
+	ShardAwarenessAttributes = "cluster.routing.allocation.awareness.attributes"
 
 	XPackSecurityAuthcRealmsFileFile1Order     = "xpack.security.authc.realms.file.file1.order"     // 7.x realm syntax
 	XPackSecurityAuthcRealmsFile1Order         = "xpack.security.authc.realms.file1.order"          // 6.x realm syntax

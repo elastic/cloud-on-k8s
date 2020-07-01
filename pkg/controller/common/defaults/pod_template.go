@@ -22,6 +22,9 @@ func PodDownwardEnvVars() []corev1.EnvVar {
 		{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 		}},
+		{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
+		}},
 	}
 }
 

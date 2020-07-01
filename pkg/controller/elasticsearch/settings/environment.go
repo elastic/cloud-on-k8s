@@ -13,8 +13,9 @@ const (
 	EnvReadinessProbeProtocol = "READINESS_PROBE_PROTOCOL"
 	HeadlessServiceName       = "HEADLESS_SERVICE_NAME"
 
-	// EnvPodName and EnvPodIP are injected as env var into the ES pod at runtime,
+	// These are injected as env var into the ES pod at runtime,
 	// to be referenced in ES configuration file
-	EnvPodName = "POD_NAME"
-	EnvPodIP   = "POD_IP"
+	EnvPodName  = "POD_NAME"
+	EnvPodIP    = "POD_IP"
+	EnvNodeName = "node.attr.NODE_NAME"
 )
