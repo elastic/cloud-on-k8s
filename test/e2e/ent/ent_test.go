@@ -30,3 +30,18 @@ func TestEnterpriseSearchCrossNSAssociation(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
 }
+
+func TestEnterpriseSearchTLSDisabled(t *testing.T) {
+	name := "test-ent-tls-disabled"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+	entBuilder := enterprisesearch.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1).
+		WithTLSDisabled(true).
+		WithRestrictedSecurityContext()
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
+}
