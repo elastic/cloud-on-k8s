@@ -16,7 +16,7 @@ This section describes how to configure and deploy Beats with ECK.
 [id="{p}-beat-quickstart"]
 == Quickstart
 
-. Apply the following specification to deploy Filebeat. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in link:k8s-quickstart.html[Elasticsearch quickstart].
+. Apply the following specification to deploy Filebeat. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
 +
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -103,14 +103,14 @@ kubectl logs -f filebeat-quickstart-beat-filebeat-tkz65
 
 . Access logs ingested by Filebeat
 +
-- follow Elasticsearch deployment link:k8s-deploy-elasticsearch.html[guide] and run:
+- follow the Elasticsearch deployment link:k8s-deploy-elasticsearch.html[guide] and run:
 +
 [source,sh]
 ----
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 ----
 +
-- or follow Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to Kibana > Discover.
+- or follow the Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to *Kibana* > *Discover*.
 
 . Inspect generated Filebeat configuration
 +
@@ -149,7 +149,7 @@ Any setting can be changed in the Beat yaml specification, including version upg
 [id="{p}-beat-custom-configuration"]
 === Customize Beat configuration
 
-Beat configuration can be provided through `config` element in the specification:
+The Beat configuration is provided through the `config` element:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -175,7 +175,7 @@ spec:
           runAsUser: 0
 ----
 
-Alternatively, it can be provided indirectly via a Secret specified in `configRef` element in the specification:
+Alternatively, it can be provided indirectly via a Secret specified in the `configRef` element:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: beat.k8s.elastic.co/v1beta1
@@ -208,12 +208,12 @@ stringData:
       hosts: ["elasticsearch-quickstart-es-http.default.svc:9200"]
 ----
 
-For more details about Beats configuration see the link:https://www.elastic.co/guide/en/beats/libbeat/current/beats-reference.html[documentation].
+For more details about Beats configuration, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/beats-reference.html[Beats documentation].
 
 [id="{p}-beat-deploy-elastic-beat"]
 === Deploy Elastic Beat
 
-ECK supports deploying the following Elastic Beats:
+ECK supports the deployment of the following Elastic Beats:
 
 - Filebeat
 - Metricbeat
@@ -222,15 +222,15 @@ ECK supports deploying the following Elastic Beats:
 - Auditbeat
 - Packetbeat
 
-The Beat to deploy and its version has to be specified via `type` and `version` specification elements respectively. ECK will compute the correct path to the container image, so `image` element doesn't have to be provided. ECK will create a new user in Elasticsearch with a minimal set of appropriate roles and permissions that allow to use all Beat features.
+You can specify the Beat to deploy and its version through `type` and `version` elements. ECK computes the correct path to the container image, so the `image` element doesn't have to be provided. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use all Beat features.
 
 [id="{p}-beat-deploy-community-beat"]
 === Deploy community Beat
 
-ECK supports deploying any community Beat. As with Elastic Beats, `type` and `version` specification elements have to be provided. In addition:
+ECK supports the deployment of any community Beat. As with Elastic Beats, `type` and `version` specification elements have to be provided. In addition:
 
-- `image` has to point to the image to be deployed, and
-- a role has to exist and have the permissions required by the Beat. Role name has to be `eck_beat_type_role`, where `type` is the Beat type. For example, when deploying `type: kafkabeat` create role named `eck_beat_kafkabeat_role`.
+- `image` must point to the image to be deployed
+-  role must exist and have the permissions required by the Beat. The role name has to be `eck_beat_type_role`, where `type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`.
 
 
 [id="{p}-beat-set-up-kibana-dashboards"]
@@ -257,7 +257,7 @@ ECK will create a new user in Elasticsearch with minimal set of appropriate role
 === Secrets keystore for secure settings
 
 
-Beats offer a secret keystore that can be used when sensitive settings, such as passwords, need to be provided in the configuration. This avoids storing them in the config directly.
+Beats offer a secret keystore for sensitive settings that need to be provided in the configuration, like for example passwords. This avoids storing them in the config directly.
 
 ECK exposes that mechanism with `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to manage it:
 
@@ -289,7 +289,7 @@ See Beats link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.h
 [id="{p}-beat-set-beat-output"]
 === Set Beat output
 
-If `elasticsearchRef` element is specified ECK will populate output section of the Beat config. ECK will create a user with appropriate roles and permissions and use its credentials. It will also mount CA certificate in all Beat Pods if necessary and roll over Pods when this certificate changes.
+If `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and use its credentials. If required, it also mounts the CA certificate in all Beat Pods, and roll over Pods when this certificate changes.
 
 Output can be set to any that's supported by given Beat. To do that, remove `elasticsearchRef` element from the specification and include appropriate output configuration in the `config` or `configRef`.
 
@@ -386,7 +386,7 @@ rules:
 [id="{p}-beat-deploying-beats-in-secured-clusters"]
 === Deploying Beats in secured clusters
 
-Deploying Beats in clusters with Pod Security Policy admission controller enabled or in OpenShift clusters require granting additional permissions to the Service Account that Beat Pods are running with. Those Service Accounts need to be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
+To deploy Beats in clusters with Pod Security Policy admission controller enabled, or in OpenShift clusters, you have to grant additional permissions to the Service Account that Beat Pods are running with. Those Service Accounts need to be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
 
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting
@@ -400,4 +400,4 @@ When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If 
 [id="{p}-beat-configuration-containing-key-null-is-malformed"]
 === Configuration containing key: null is malformed
 
-When Beat config containing `some_key: null` is applied using `kubectl apply` it's interpretted by `kubectl` diffing mechanism as an instruction to remove key `some_key` from the config. This is unfortunate, but works according to the spec it follows. To overcome that, `null` can sometimes be replaced by an empty dictionary, like: `some_key: {}`. If this is not possible due to a particular settings semantics, `configRef` field can be used instead of `config` as Secret data doesn't go through that diffing process.
+When Beat config containing `some_key: null` is applied using `kubectl apply` it's interpreted by `kubectl` diff mechanism as an instruction to remove key `some_key` from the config. This is unfortunate, but works according to the spec it follows. To overcome that, `null` can sometimes be replaced by an empty dictionary, like: `some_key: {}`. If this is not possible due to a particular settings semantics, `configRef` field can be used instead of `config` as Secret data doesn't go through that diff process.
