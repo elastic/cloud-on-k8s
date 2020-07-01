@@ -31,7 +31,9 @@
     {
       "packageNames": [
         "k8s.io/utils",
-        "golang.org/x/crypto"
+        "golang.org/x/crypto",
+        "golang.org/x/net",
+        "golang.org/x/oauth2"
       ],
       "updateTypes": [
         "digest"
