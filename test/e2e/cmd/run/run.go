@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	jobTimeout           = 300 * time.Minute // time to wait for the test job to finish
+	jobTimeout           = 360 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	logBufferSize        = 1024              // Size of the log buffer (1KiB)
 	testRunLabel         = "test-run"        // name of the label applied to resources
