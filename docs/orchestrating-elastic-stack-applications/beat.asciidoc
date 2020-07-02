@@ -232,7 +232,7 @@ ECK will create a new user in Elasticsearch with a minimal set of appropriate ro
 
 Beats offer a secret keystore for sensitive settings that need to be provided in the config, like for example passwords. This avoids storing them in the config directly.
 
-ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings in a secure way:
+ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings securely:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -365,13 +365,13 @@ To deploy Beats in clusters with the Pod Security Policy admission controller en
 [id="{p}-beat-beat-pods-are-crashing-when-kibanaref-is-specified"]
 === Beat Pods are crashing when kibanaRef is specified
 
-When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Pod crashes. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The Pod may restart a few times when it is fThe `output` element can be set to any value that is supported by a given Beat. To use it, remove the `elasticsearchRef` element from the specification and include an appropriate `output` configuration in the `config` or `configRef` elements.irst deployed. Afterwards, the Beat should run successfully.
+When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Beat process exits and the Pod restarts. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The Pod may restart a few times when it is first deployed. Afterwards, the Beat should run successfully.
 
 
 [id="{p}-beat-configuration-containing-key-null-is-malformed"]
 === Configuration containing key: null is malformed
 
-When `kubectl` is used to modify a resource, it calculates a diff between the user applied and the already existing config. This diff has a special semantics link:https://tools.ietf.org/html/rfc7396#section-1[defined], that allow forcing removal of a particular key by setting its value to `null`. When user applied config contains `some_key: null` (or equivalent `some_key: ~`) it's interpreted as an instruction to remove `some_key`, often resulting in a malformed config. In Beat configs, this is often the case with link:https://www.elastic.co/guide/en/beats/filebeat/current/add-cloud-metadata.html[processors]. To avoid this:
+When `kubectl` is used to modify a resource, it calculates a diff between the user applied and the already existing config. This diff has a special semantics link:https://tools.ietf.org/html/rfc7396#section-1[defined], that forces the removal of a particular key by setting its value to `null`. When user applied config contains `some_key: null` (or equivalent `some_key: ~`) it's interpreted as an instruction to remove `some_key`, often resulting in a malformed config. In Beat configs, this is often the case with link:https://www.elastic.co/guide/en/beats/filebeat/current/add-cloud-metadata.html[processors]. To avoid this:
 
 - change `some_key: null` to `some_key: {}` - if it doesn't change config semantics
 - instead of `config` use `configRef` and reference a Secret containing the config - Secret data doesn't go through the same diffing process
