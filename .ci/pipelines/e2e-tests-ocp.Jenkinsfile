@@ -9,7 +9,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 360, unit: 'MINUTES')
+        timeout(time: 600, unit: 'MINUTES')
     }
 
     environment {
