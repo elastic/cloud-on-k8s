@@ -263,8 +263,7 @@ See link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[Be
 
 If the `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Beat Pods, and recreates Pods when this certificate changes.
 
-Output can be set to any that's supported by a given Beat. To do that, remove the `elasticsearchRef` element from the specification and include an appropriate output configuration in the `config` or `configRef`.
-
+Output can be set to any value that is supported by a given Beat. To use it, remove the `elasticsearchRef` element from the specification and include an appropriate output configuration in the `config` or `configRef` elements.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -274,12 +273,12 @@ metadata:
   name: quickstart
 spec:
   config:
-    output.redis:
-      hosts: ["my_redis.default.svc"]
-      password: "my_password"
-      key: "filebeat"
-      db: 0
-      timeout: 5
+    output.kafka:
+      hosts: ["kafka1.default.svc:9092", "kafka2.default.svc:9092"]
+      topic: '%{[fields.log_topic]}'
+      partition.round_robin:
+        reachable_only: false
+      required_acks: 1
 ...
 ----
 
@@ -291,7 +290,7 @@ Depending on the use case, Beats may need to be deployed as a link:https://kuber
 [id="{p}-beat-role-based-access-control-for-beats"]
 === Role Based Access Control for Beats
 
-Some Beats features (such as link:https://www.elastic.co/guide/en/beats/filebeat/current/configuration-autodiscover.html[autodiscover] or Kubernetes module link:https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-metricset-kubernetes-apiserver.html[metricsets]) require Beat Pods to interact with Kubernetes APIs. Specific permissions are needed to allow that. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow for autodiscover:
+Some Beats features (such as link:https://www.elastic.co/guide/en/beats/filebeat/current/configuration-autodiscover.html[autodiscover] or Kubernetes module link:https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-metricset-kubernetes-apiserver.html[metricsets]) require that Beat Pods interact with Kubernetes APIs. Specific permissions are needed to allow this functionality. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow for autodiscover:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -366,7 +365,7 @@ To deploy Beats in clusters with the Pod Security Policy admission controller en
 [id="{p}-beat-beat-pods-are-crashing-when-kibanaref-is-specified"]
 === Beat Pods are crashing when kibanaRef is specified
 
-When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Pod crashes. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The pod may cycle at most a few times during the first initialization. Afterwards, the Beat should run successfully.
+When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Pod crashes. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The Pod may restart a few times when it is fThe `output` element can be set to any value that is supported by a given Beat. To use it, remove the `elasticsearchRef` element from the specification and include an appropriate `output` configuration in the `config` or `configRef` elements.irst deployed. Afterwards, the Beat should run successfully.
 
 
 [id="{p}-beat-configuration-containing-key-null-is-malformed"]
