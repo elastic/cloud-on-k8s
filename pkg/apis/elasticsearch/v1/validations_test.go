@@ -166,28 +166,6 @@ func Test_hasMaster(t *testing.T) {
 			},
 			expectErrors: false,
 		},
-		{
-			name: "has nodeset with invalid version",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "x.y",
-					NodeSets: []NodeSet{
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									NodeMaster: "true",
-									NodeData:   "true",
-									NodeIngest: "false",
-									NodeML:     "false",
-								},
-							},
-							Count: 1,
-						},
-					},
-				},
-			},
-			expectErrors: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
