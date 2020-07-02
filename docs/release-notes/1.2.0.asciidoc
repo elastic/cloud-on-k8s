@@ -1,0 +1,47 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.2.0]]
+== {n} version 1.2.0
+
+
+
+[[feature-1.2.0]]
+[float]
+=== New features
+
+* Introduce Beat CRD {pull}3041[#3041] (issues: {issue}3040[#3040], {issue}3042[#3042], {issue}3133[#3133], {issue}3134[#3134])
+* Introduce EnterpriseSearch CRD {pull}2688[#2688]
+
+[[enhancement-1.2.0]]
+[float]
+=== Enhancements
+
+* Add additional Kibana encryption keys {pull}3285[#3285] (issue: {issue}2279[#2279])
+* Name transport service port {pull}3233[#3233]
+* Use _cluster/health API during rolling upgrades {pull}3195[#3195] (issue: {issue}3070[#3070])
+* Set resource limits for the keystore init container {pull}3193[#3193] (issue: {issue}2660[#2660])
+* Relax pod disruption budget for single node clusters {pull}3167[#3167]
+* Switch operator base image to Distroless {pull}3161[#3161]
+* Introduce a restricted role for APM agent configuration {pull}3155[#3155]
+* Do not stop running trial even when ECK is not in trial mode {pull}3150[#3150] (issue: {issue}3141[#3141])
+* Add licence usage metrics {pull}3145[#3145] (issue: {issue}3140[#3140])
+* Add manifest generator {pull}3124[#3124] (issue: {issue}2406[#2406])
+* Add support for APM Agent Config Management {pull}3043[#3043] (issue: {issue}1264[#1264])
+* Add PodTemplate semantic validation for Elasticsearch {pull}3020[#3020] (issue: {issue}2266[#2266])
+* Add port to nodeSet headless service {pull}3011[#3011] (issue: {issue}2843[#2843])
+* Name the webhook service port {pull}2829[#2829] (issue: {issue}2771[#2771])
+* Restrict APM Server user role {pull}2777[#2777] (issue: {issue}2661[#2661])
+
+[[bug-1.2.0]]
+[float]
+=== Bug fixes
+
+* Do not manage keystore if already initialized {pull}3295[#3295] (issue: {issue}3294[#3294])
+* Only provision Enterprise licenses as of 7.8.1 {pull}3273[#3273] (issue: {issue}3272[#3272])
+* Replace the license observer by a sync call in the reconciliation {pull}3165[#3165] (issue: {issue}3163[#3163])
+* Preserve extra annotations and labels on StatefulSet updates {pull}3149[#3149] (issue: {issue}3147[#3147])
+* Fix APM Server user role {pull}3010[#3010] (issue: {issue}2977[#2977])
+* Fix user http tls certificate watch leak {pull}2975[#2975] (issue: {issue}249[#249])
+
+
