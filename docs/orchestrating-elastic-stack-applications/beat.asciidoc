@@ -357,7 +357,7 @@ rules:
 [id="{p}-beat-deploying-beats-in-secured-clusters"]
 === Deploying Beats in secured clusters
 
-To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you must grant additional permissions to the Service Account used by the Beat Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
+To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you must grant additional permissions to the Service Account used by the Beat Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Beats and their features might require different settings set in their PSP/SCC.
 
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting
