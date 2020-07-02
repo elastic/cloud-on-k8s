@@ -40,4 +40,4 @@ The operator container image is now much smaller and more secure thanks to switc
 === Known issues
 
 - Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#transform-node[transform nodes] are not automatically labelled by the operator. If you need to identify transform nodes, use the `podTemplate` of the `nodeSet` to add your own label.
-- If you want to try out Workplace Search with a trial, use the <<{p}-licensing,ECK trial licensing>> mechanism instead of using the trial button provided on screen.
+- If you want to try out Workplace Search, use the <<{p}-licensing,ECK trial licensing>> mechanism instead of clicking on the _Start a Free Trial_ buttonin the Enterprise Search splash screen.
