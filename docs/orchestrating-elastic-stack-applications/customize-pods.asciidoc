@@ -64,6 +64,34 @@ spec:
 
 NOTE: APM Server configuration is identical to the Kibana configuration except for the `apiVersion` and `kind` fields.
 
+The example below shows how it's also possible to customize the init containers created as part of the Pods to initialize the filesystem or to manage the keystores.
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+    - name: default
+      count: 3
+      podTemplate:
+        spec:
+          initContainers:
+          - name: elastic-internal-init-keystore
+            resources: # override the default resources set by the operator
+              limits:
+                cpu: 1000m
+                memory: 368Mi
+              requests:
+                cpu: 1000m
+                memory: 368Mi
+  secureSettings:
+  - secretName: es-secret
+----
+
 [float]
 == More examples
 

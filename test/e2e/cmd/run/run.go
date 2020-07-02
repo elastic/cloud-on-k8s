@@ -432,7 +432,12 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 					}
 				}
 			case corev1.PodSucceeded:
-				log.Info("Tests completed successfully", "name", newPod.Name)
+				log.Info("Test Job succeeded, waiting for log stream to be over", "name", newPod.Name)
+				streamErr := <-streamStatus
+				if streamErr != nil {
+					log.Error(streamErr, "Stream failure")
+					err = streamErr
+				}
 				cancelFunc()
 			case corev1.PodFailed:
 				log.Info("Pod is in failed state", "name", newPod.Name)
@@ -484,14 +489,12 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 
 	writer := io.MultiWriter(outputs...)
 	var buffer [logBufferSize]byte
-	if _, err := io.CopyBuffer(writer, stream, buffer[:]); err != nil {
-		if err == io.EOF {
-			log.Info("Log stream ended")
-			return
-		}
-
+	if _, err := io.CopyBuffer(writer, stream, buffer[:]); err != nil && err != io.EOF {
 		streamStatus <- err
+		return
 	}
+	log.Info("Log stream ended")
+	streamStatus <- nil
 }
 
 func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {
