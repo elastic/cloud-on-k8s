@@ -230,7 +230,7 @@ ECK will create a new user in Elasticsearch with a minimal set of appropriate ro
 [id="{p}-beat-secrets-keystore-for-secure-settings"]
 === Secrets keystore for secure settings
 
-Beats offer a secret keystore for sensitive settings that need to be provided in the config, like for example passwords. This avoids storing them in the config directly.
+Beats offer a secret keystore for sensitive settings that need to be provided in the config, for example passwords. This avoids storing them in the config directly.
 
 ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings securely:
 
@@ -357,7 +357,7 @@ rules:
 [id="{p}-beat-deploying-beats-in-secured-clusters"]
 === Deploying Beats in secured clusters
 
-To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you have to grant additional permissions to the Service Account that the Beat Pods are running with. Those Service Accounts need to be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
+To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you must grant additional permissions to the Service Account used by the Beat Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required PSP/SCC. Different Beats and their features might require different settings set in their PSP/SCC.
 
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting
