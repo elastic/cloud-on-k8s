@@ -31,9 +31,16 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
+	srcNodeCount := 3
+	if srcVersion == "7.1.1" {
+		// workaround for https://github.com/elastic/kibana/pull/37674 to avoid accidental .kibana index creation
+		// can be removed once we stop supporting 7.1.1
+		srcNodeCount = 1
+	}
+
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(3).
+		WithNodeCount(srcNodeCount).
 		WithVersion(srcVersion)
 
 	opts := []client.ListOption{
@@ -51,7 +58,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
-		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder)},
+		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
 		[]test.Watcher{NewReadinessWatcher(opts...), NewVersionWatcher(opts...)},
 	)
 }
