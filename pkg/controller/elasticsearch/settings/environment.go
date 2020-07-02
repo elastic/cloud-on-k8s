@@ -17,5 +17,5 @@ const (
 	// to be referenced in ES configuration file
 	EnvPodName  = "POD_NAME"
 	EnvPodIP    = "POD_IP"
-	EnvNodeName = "node.attr.NODE_NAME"
+	EnvNodeName = "NODE_NAME"
 )
