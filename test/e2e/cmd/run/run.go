@@ -5,6 +5,7 @@
 package run
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -403,8 +404,11 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 	informer := factory.Core().V1().Pods().Informer()
 
-	jobStarted := false
-	streamStatus := make(chan error, 1)
+	jobStarted := false                  // keep track of the first Pod running event
+	podSucceeded := false                // keep track of when we're done
+	streamStatus := make(chan error, 1)  // receive log errors or EOF (nil)
+	stopLogStream := make(chan struct{}) // notify the log stream it can stop when EOF
+
 	var err error
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -419,7 +423,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				if !jobStarted {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
-					go h.streamTestJobOutput(streamStatus, client, newPod.Name)
+					go h.streamTestJobOutput(streamStatus, stopLogStream, client, newPod.Name)
 				} else {
 					select {
 					case streamErr := <-streamStatus:
@@ -432,12 +436,21 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 					}
 				}
 			case corev1.PodSucceeded:
+				if podSucceeded {
+					// already done, but the informer is not stopped yet so this code is still running
+					return
+				}
 				log.Info("Test Job succeeded, waiting for log stream to be over", "name", newPod.Name)
+				podSucceeded = true
+				// notify the log stream goroutine that it can stop at the end of its stream buffer
+				close(stopLogStream)
+				// but wait for that buffer to be fully processed first
 				streamErr := <-streamStatus
 				if streamErr != nil {
 					log.Error(streamErr, "Stream failure")
 					err = streamErr
 				}
+				// we're done, stop the informer
 				cancelFunc()
 			case corev1.PodFailed:
 				log.Info("Pod is in failed state", "name", newPod.Name)
@@ -458,24 +471,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	return err
 }
 
-func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernetes.Clientset, pod string) {
-	log.Info("Streaming pod logs", "name", pod)
-	defer close(streamStatus)
-	sinceSeconds := int64(30)
-	opts := &corev1.PodLogOptions{
-		Container:    "e2e",
-		Follow:       true,
-		SinceSeconds: &sinceSeconds,
-	}
-
-	req := client.CoreV1().Pods(h.testContext.E2ENamespace).GetLogs(pod, opts).Context(context.Background())
-	stream, err := req.Stream()
-	if err != nil {
-		streamStatus <- err
-		return
-	}
-	defer stream.Close()
-
+func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
 		jl, err := newJSONLogToFile(testsLogFile)
@@ -486,15 +482,84 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 		defer jl.Close()
 		outputs = append(outputs, jl)
 	}
-
 	writer := io.MultiWriter(outputs...)
-	var buffer [logBufferSize]byte
-	if _, err := io.CopyBuffer(writer, stream, buffer[:]); err != nil && err != io.EOF {
-		streamStatus <- err
-		return
+
+	// The log stream may end abruptly in some environments where the network isn't reliable.
+	// Let's retry when that happens. To avoid duplicate log entries, keep track of the last
+	// Kubernetes log timestamp: we don't want to reprocess entries with a lower timestamp.
+	// If the stream drops in between several logs that share the same timestamp, the second half will be lost.
+	lastTimestamp := time.Time{}
+	for {
+		select {
+		case <-stop:
+			log.Info("Log stream stopped")
+			return
+		default:
+			log.Info("Streaming pod logs", "name", pod)
+			stream, err := getLogStream(client, pod, h.testContext.E2ENamespace)
+			if err != nil {
+				streamStatus <- err
+				continue // retry
+			}
+			defer stream.Close()
+
+			pastPreviousLogStream := false
+			scan := bufio.NewScanner(stream)
+			for scan.Scan() {
+				line := scan.Bytes()
+
+				timestamp, logLine, err := parseLog(string(line))
+				if err != nil {
+					streamStatus <- err
+					continue
+				}
+
+				// don't re-write logs that have been already written in a previous log stream attempt
+				if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
+					continue
+				}
+
+				// new log to process
+				pastPreviousLogStream = true
+				lastTimestamp = timestamp
+				if _, err := writer.Write([]byte(logLine + "\n")); err != nil {
+					streamStatus <- err
+					return
+				}
+			}
+			log.Info("Log stream ended")
+			// communicate to monitorTestJob that all logs of the current batch have been processed
+			streamStatus <- nil
+			// retry
+		}
 	}
-	log.Info("Log stream ended")
-	streamStatus <- nil
+}
+
+func getLogStream(client *kubernetes.Clientset, pod string, namespace string) (io.ReadCloser, error) {
+	sinceSeconds := int64(30)
+	opts := &corev1.PodLogOptions{
+		Container:    "e2e",
+		Follow:       true,
+		SinceSeconds: &sinceSeconds,
+		Timestamps:   true,
+	}
+
+	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts).Context(context.Background())
+	return req.Stream()
+}
+
+func parseLog(line string) (time.Time, string, error) {
+	// format: <date> <log>
+	// example: 2020-07-02T13:29:47.671331815Z my log here
+	splits := strings.SplitN(line, " ", 2)
+	if len(splits) != 2 {
+		return time.Time{}, "", fmt.Errorf("cannot parse timestamp in %s", line)
+	}
+	timestamp, err := time.Parse(time.RFC3339Nano, splits[0])
+	if err != nil {
+		return time.Time{}, "", err
+	}
+	return timestamp, splits[1], nil
 }
 
 func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {
