@@ -13,6 +13,7 @@ endif::[]
 - <<{p}-kibana>>
 - <<{p}-apm-server>>
 - <<{p}-enterprise-search>>
+- <<{p}-beat>>
 - <<{p}-securing-stack>>
 - <<{p}-accessing-elastic-services>>
 - <<{p}-customize-pods>>
@@ -25,6 +26,7 @@ include::elasticsearch-specification.asciidoc[leveloffset=+1]
 include::kibana.asciidoc[leveloffset=+1]
 include::apm-server.asciidoc[leveloffset=+1]
 include::enterprise-search.asciidoc[leveloffset=+1]
+include::beat.asciidoc[leveloffset=+1]
 include::securing-stack.asciidoc[leveloffset=+1]
 include::accessing-elastic-services.asciidoc[leveloffset=+1]
 include::customize-pods.asciidoc[leveloffset=+1]
