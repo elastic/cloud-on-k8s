@@ -285,21 +285,4 @@ spec:
 [id="{p}-kibana-plugins"]
 == Install Kibana plugins
 
-Similar to <<{p}-init-containers-plugin-downloads,Elasticsearch plugins>>, you can install link:https://www.elastic.co/guide/en/kibana/current/install-plugin.html[Kibana plugins] with an `initContainer`. For example, to install LogTrail:
-
-[source,yaml,subs="attributes"]
-----
-spec:
-  podTemplate:
-    spec:
-      initContainers:
-      - name: install-plugins
-        image: docker.elastic.co/kibana/kibana:7.8.0
-        command:
-        - sh
-        - -c
-        - |
-          bin/kibana-plugin install --quiet https://github.com/sivasamyk/logtrail/releases/download/v0.1.31/logtrail-7.8.0-0.1.31.zip
-----
-
-You can also override the Kibana container image to use your own image with the plugins already installed, as described in the <<{p}-custom-images,custom images doc>>.
+You can override the Kibana container image to use your own image with the plugins already installed, as described in the <<{p}-custom-images,custom images doc>>.
