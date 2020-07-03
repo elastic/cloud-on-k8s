@@ -74,9 +74,16 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
+	srcNodeCount := 3
+	if srcVersion == "7.1.1" {
+		// workaround for https://github.com/elastic/kibana/pull/37674 to avoid accidental .kibana index creation
+		// can be removed once we stop supporting 7.1.1
+		srcNodeCount = 1
+	}
+
 	kbBuilder1 := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(3).
+		WithNodeCount(srcNodeCount).
 		WithVersion(srcVersion)
 
 	// perform a Kibana version upgrade immediately followed by a Kibana configuration change.
