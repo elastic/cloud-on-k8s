@@ -36,7 +36,6 @@ import (
 const (
 	jobTimeout           = 360 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
-	logBufferSize        = 1024              // Size of the log buffer (1KiB)
 	testRunLabel         = "test-run"        // name of the label applied to resources
 	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
