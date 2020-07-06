@@ -18,8 +18,9 @@ const (
 
 	NodeName = "node.name"
 
-	PathData                 = "path.data"
-	PathLogs                 = "path.logs"
+	PathData = "path.data"
+	PathLogs = "path.logs"
+
 	ShardAwarenessAttributes = "cluster.routing.allocation.awareness.attributes"
 	NodeAttr                 = "node.attr"
 
