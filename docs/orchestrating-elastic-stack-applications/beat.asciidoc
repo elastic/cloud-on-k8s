@@ -1,0 +1,377 @@
+:page_id: beat
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run Beats on ECK
+
+This section describes how to configure and deploy Beats with ECK.
+
+* <<{p}-beat-quickstart,Quickstart>>
+* <<{p}-beat-configuration,Configuration>>
+* <<{p}-beat-troubleshooting,Troubleshooting>>
+
+[id="{p}-beat-quickstart"]
+== Quickstart
+
+. Apply the following specification to deploy Filebeat and collect the logs of all containers running in the Kubernetes cluster. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
++
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  type: filebeat
+  version: {version}
+  elasticsearchRef:
+    name: quickstart
+  config:
+    filebeat.inputs:
+    - type: container
+      paths:
+      - /var/log/containers/*.log
+  daemonSet:
+    podTemplate:
+      spec:
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        securityContext:
+          runAsUser: 0
+        containers:
+        - name: filebeat
+          volumeMounts:
+          - name: varlogcontainers
+            mountPath: /var/log/containers
+          - name: varlogpods
+            mountPath: /var/log/pods
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+        volumes:
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+EOF
+----
+
+. Monitor Beats
++
+Retrieve details about the Filebeat:
++
+[source,sh]
+----
+kubectl get beat
+----
++
+[source,sh,subs="attributes"]
+----
+NAME                  HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
+quickstart            green    3           3          filebeat   {version}     2m
+----
++
+List all the Pods belonging to a given Beat:
++
+[source,sh]
+----
+kubectl get pods --selector='beat.k8s.elastic.co/name=quickstart-beat-filebeat'
+----
++
+[source,sh]
+----
+NAME                                      READY   STATUS    RESTARTS   AGE
+quickstart-beat-filebeat-tkz65            1/1     Running   0          3m45s
+quickstart-beat-filebeat-kx5jt            1/1     Running   0          3m45s
+quickstart-beat-filebeat-nb6qh            1/1     Running   0          3m45s
+----
++
+. Access logs for one of the Pods
++
+[source,sh]
+----
+kubectl logs -f quickstart-beat-filebeat-tkz65
+----
+
+. Access logs ingested by Filebeat
++
+- follow the Elasticsearch deployment link:k8s-deploy-elasticsearch.html[guide] and run:
++
+[source,sh]
+----
+curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
+----
++
+- or follow the Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to *Kibana* > *Discover*.
+
+[id="{p}-beat-configuration"]
+== Configuration
+
+[id="{p}-beat-upgrade-specification"]
+=== Upgrade the Beat specification
+
+Any setting can be changed in the Beat YAML specification, including version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Beat Pods. Depending on specification settings used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up the Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
+
+[id="{p}-beat-custom-configuration"]
+=== Customize Beat configuration
+
+The Beat configuration is provided through the `config` element:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  type: heartbeat
+  version: {version}
+  elasticsearchRef:
+    name: quickstart
+  config:
+    heartbeat.monitors:
+    - type: tcp
+      schedule: '@every 5s'
+      hosts: ["quickstart-es-http.default.svc:9200"]
+  deployment:
+    podTemplate:
+      spec:
+        dnsPolicy: ClusterFirstWithHostNet
+        securityContext:
+          runAsUser: 0
+----
+
+Alternatively, it can be provided via a Secret specified in the `configRef` element:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: heartbeat-quickstart
+spec:
+  type: heartbeat
+  version: 7.8.0
+  elasticsearchRef:
+    name: quickstart
+  configRef:
+    secretName: heartbeat-config
+  deployment:
+    podTemplate:
+      spec:
+        dnsPolicy: ClusterFirstWithHostNet
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: heartbeat-config
+stringData:
+  beat.yml: |-
+    heartbeat.monitors:
+    - type: tcp
+      schedule: '@every 5s'
+      hosts: ["quickstart-es-http.default.svc:9200"]
+----
+
+For more details about Beats configuration, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/beats-reference.html[Beats documentation].
+
+[id="{p}-beat-deploy-elastic-beat"]
+=== Deploy a Beat
+
+ECK supports the deployment of the following Beats:
+
+- link:https://www.elastic.co/beats/filebeat[Filebeat]
+- link:https://www.elastic.co/beats/metricbeat[Metricbeat]
+- link:https://www.elastic.co/beats/heartbeat[Heartbeat]
+- link:https://www.elastic.co/beats/auditbeat[Auditbeat]
+- link:https://www.elastic.co/beats/packetbeat[Packetbeat]
+- link:https://www.elastic.co/guide/en/beats/journalbeat/current/index.html[Journalbeat]
+
+You can specify the Beat to deploy and its version through `type` and `version` elements. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
+
+[id="{p}-beat-deploy-community-beat"]
+=== Deploy a Community Beat
+
+ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
+
+- `image` element in the specification must point to the image to be deployed
+-  a role must exist in Elasticsearch and have the permissions required by the Beat. The role name must be `eck_beat_$type_role`, where `$type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+
+
+[id="{p}-beat-set-up-kibana-dashboards"]
+=== Set up Kibana dashboards
+
+ECK can instruct Beats to set up example dashboards packaged with the Beat. To enable this, set the `kibanaRef` element in the specification to point to ECK-managed Kibana deployment:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  kibanaRef:
+    name: quickstart
+...
+----
+
+ECK will create a new user in Elasticsearch with a minimal set of appropriate roles and permissions that is needed for dashboard setup.
+
+
+[id="{p}-beat-secrets-keystore-for-secure-settings"]
+=== Secrets keystore for secure settings
+
+Beats offer a secret keystore for sensitive settings that need to be provided in the config, for example passwords. This avoids storing them in the config directly.
+
+ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings securely:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  secureSettings:
+  - secretName: agent-name-secret
+  config:
+    name: ${AGENT_NAME_VAR}
+...
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agent-name-secret
+stringData:
+  AGENT_NAME_VAR: id_007
+----
+
+See link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[Beats documentation] for more details.
+
+
+[id="{p}-beat-set-beat-output"]
+=== Set Beat output
+
+If the `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Beat Pods, and recreates Pods when this certificate changes.
+
+Output can be set to any value that is supported by a given Beat. To use it, remove the `elasticsearchRef` element from the specification and include an appropriate output configuration in the `config` or `configRef` elements.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  config:
+    output.kafka:
+      hosts: ["kafka1.default.svc:9092", "kafka2.default.svc:9092"]
+      topic: '%{[fields.log_topic]}'
+      partition.round_robin:
+        reachable_only: false
+      required_acks: 1
+...
+----
+
+[id="{p}-beat-chose-the-deployment-model"]
+=== Choose the deployment model
+
+Depending on the use case, Beats may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed.
+
+[id="{p}-beat-role-based-access-control-for-beats"]
+=== Role Based Access Control for Beats
+
+Some Beats features (such as link:https://www.elastic.co/guide/en/beats/filebeat/current/configuration-autodiscover.html[autodiscover] or Kubernetes module link:https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-metricset-kubernetes-apiserver.html[metricsets]) require that Beat Pods interact with Kubernetes APIs. Specific permissions are needed to allow this functionality. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow for autodiscover:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  config:
+    filebeat:
+      autodiscover:
+        providers:
+        - host: ${HOSTNAME}
+          type: kubernetes
+          hints:
+            enabled: true
+            default_config:
+              type: container
+              paths:
+              - /var/log/containers/*${data.kubernetes.container.id}.log
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccount: elastic-beat-filebeat-quickstart
+        automountServiceAccountToken: true
+...
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-beat-filebeat-quickstart
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-beat-autodiscover-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-beat-autodiscover
+subjects:
+- kind: ServiceAccount
+  name: elastic-beat-filebeat-quickstart
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-beat-autodiscover
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - namespaces
+  - events
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+----
+
+[id="{p}-beat-deploying-beats-in-secured-clusters"]
+=== Deploying Beats in secured clusters
+
+To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you must grant additional permissions to the Service Account used by the Beat Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Beats and their features might require different settings set in their PSP/SCC.
+
+[id="{p}-beat-troubleshooting"]
+== Troubleshooting
+
+[id="{p}-beat-beat-pods-are-crashing-when-kibanaref-is-specified"]
+=== Beat Pods are crashing when kibanaRef is specified
+
+When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Beat process exits and the Pod restarts. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The Pod may restart a few times when it is first deployed. Afterwards, the Beat should run successfully.
+
+
+[id="{p}-beat-configuration-containing-key-null-is-malformed"]
+=== Configuration containing key: null is malformed
+
+When `kubectl` is used to modify a resource, it calculates a diff between the user applied and the already existing config. This diff has a special semantics link:https://tools.ietf.org/html/rfc7396#section-1[defined], that forces the removal of a particular key by setting its value to `null`. When user applied config contains `some_key: null` (or equivalent `some_key: ~`) it's interpreted as an instruction to remove `some_key`, often resulting in a malformed config. In Beat configs, this is often the case with link:https://www.elastic.co/guide/en/beats/filebeat/current/add-cloud-metadata.html[processors]. To avoid this:
+
+- change `some_key: null` to `some_key: {}` - if it doesn't change config semantics
+- instead of `config` use `configRef` and reference a Secret containing the config - Secret data doesn't go through the same diffing process
