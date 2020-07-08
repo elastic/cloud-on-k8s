@@ -96,14 +96,14 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 	var hasMaster bool
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
+		return append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
 	}
 	for i, t := range es.Spec.NodeSets {
 		cfg, err := UnpackConfig(t.Config, *v)
 		if err != nil {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i), t.Config, cfgInvalidMsg))
 		}
-		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
+		hasMaster = hasMaster || (cfg.Node.HasMasterRole() && t.Count > 0)
 	}
 	if !hasMaster {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, masterRequiredMsg))

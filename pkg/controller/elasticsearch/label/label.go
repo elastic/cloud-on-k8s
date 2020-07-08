@@ -125,13 +125,13 @@ func NewPodLabels(
 	labels[VersionLabelName] = ver.String()
 
 	// node types labels
-	NodeTypesMasterLabelName.Set(nodeRoles.Master, labels)
-	NodeTypesDataLabelName.Set(nodeRoles.Data, labels)
-	NodeTypesIngestLabelName.Set(nodeRoles.Ingest, labels)
-	NodeTypesMLLabelName.Set(nodeRoles.ML, labels)
+	NodeTypesMasterLabelName.Set(nodeRoles.HasMasterRole(), labels)
+	NodeTypesDataLabelName.Set(nodeRoles.HasDataRole(), labels)
+	NodeTypesIngestLabelName.Set(nodeRoles.HasIngestRole(), labels)
+	NodeTypesMLLabelName.Set(nodeRoles.HasMLRole(), labels)
 	// transform nodes were only added in 7.7.0 so we should not annotate previous versions with them
 	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
-		NodeTypesTransformLabelName.Set(nodeRoles.Transform, labels)
+		NodeTypesTransformLabelName.Set(nodeRoles.HasTransformRole(), labels)
 	}
 
 	// config hash label, to rotate pods on config changes

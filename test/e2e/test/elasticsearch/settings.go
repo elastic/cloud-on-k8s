@@ -37,5 +37,5 @@ func isDataNode(node esv1.NodeSet, ver version.Version) bool {
 	if err != nil {
 		panic(err)
 	}
-	return nodeCfg.Node.Data
+	return nodeCfg.Node.HasDataRole()
 }

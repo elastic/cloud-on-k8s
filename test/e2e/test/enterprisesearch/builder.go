@@ -95,6 +95,14 @@ func (b Builder) WithNodeCount(count int) Builder {
 	return b
 }
 
+func (b Builder) WithTLSDisabled(disabled bool) Builder {
+	if b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate == nil {
+		b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
+	}
+	b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	if b.EnterpriseSearch.Spec.Config == nil || b.EnterpriseSearch.Spec.Config.Data == nil {
 		b.EnterpriseSearch.Spec.Config = &commonv1.Config{

@@ -26,5 +26,5 @@ Usage
 GITHUB_TOKEN=<token> go run main.go <version>
 
 Example:
-VERSION=1.2.0 GITHUB_TOKEN=xxxyyy go run main.go "$VERSION" > "../../docs/release-notes/${VERSION}.asciidoc"
+GITHUB_TOKEN=xxxyyy go run main.go 1.2.0 > ../../docs/release-notes/1.2.0.asciidoc
 ```

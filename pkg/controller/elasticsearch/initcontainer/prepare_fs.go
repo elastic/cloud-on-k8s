@@ -98,7 +98,6 @@ var (
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
 func NewPrepareFSInitContainer(
-	imageName string,
 	transportCertificatesVolume volume.SecretVolume,
 	clusterName string,
 ) (corev1.Container, error) {
@@ -116,7 +115,6 @@ func NewPrepareFSInitContainer(
 
 	privileged := false
 	container := corev1.Container{
-		Image:           imageName,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            PrepareFilesystemContainerName,
 		SecurityContext: &corev1.SecurityContext{

@@ -116,12 +116,18 @@ main() {
     get_resources "$ns" networkpolicies
     get_resources "$ns" controllerrevisions
     list_resources "$ns" secrets
-    
-    local types="kibana,elasticsearch,apmserver,enterprisesearch,beat"
-    for t in $types; do
-      get_resources "$ns" $t
-      get_logs "$ns" common.k8s.elastic.co/type=$t
-    done
+
+    # get all managed resources and their logs
+    get_resources "$ns" kibana
+    get_logs "$ns" common.k8s.elastic.co/type=kibana
+    get_resources "$ns" elasticsearch
+    get_logs "$ns" common.k8s.elastic.co/type=elasticsearch
+    get_resources "$ns" apmserver
+    get_logs "$ns" common.k8s.elastic.co/type=apm-server
+    get_resources "$ns" enterprisesearch
+    get_logs "$ns" common.k8s.elastic.co/type=enterprise-search
+    get_resources "$ns" beat
+    get_logs "$ns" common.k8s.elastic.co/type=beat
   done
 
   if [[ -n $OUTPUT_DIR ]]; then

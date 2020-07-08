@@ -42,7 +42,6 @@ func BuildPodTemplateSpec(
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, es.Spec.Version))
 
 	initContainers, err := initcontainer.NewInitContainers(
-		builder.Container.Image,
 		transportCertificatesVolume(es.Name),
 		es.Name,
 		keystoreResources,
@@ -102,13 +101,13 @@ func buildLabels(
 	if err != nil {
 		return nil, err
 	}
-	nodeRoles := unpackedCfg.Node
+	node := unpackedCfg.Node
 	cfgHash := hash.HashObject(cfg)
 
 	podLabels := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
 		esv1.StatefulSet(es.Name, nodeSet.Name),
-		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Protocol(),
+		*ver, node, cfgHash, es.Spec.HTTP.Protocol(),
 	)
 
 	if keystoreResources != nil {

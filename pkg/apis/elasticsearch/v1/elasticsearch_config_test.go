@@ -5,11 +5,13 @@
 package v1
 
 import (
+	"reflect"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -125,8 +127,8 @@ func TestConfig_RoleDefaults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := UnpackConfig(&tt.args.c, tt.args.ver)
 			require.NoError(t, err)
-			if got.Node != tt.wantCfg {
-				t.Errorf("Config.EqualRoles() = %+v, want %+v", got, tt.wantCfg)
+			if !reflect.DeepEqual(got.Node, tt.wantCfg) {
+				t.Errorf("Config.EqualRoles() = %+v, want %+v", got.Node, tt.wantCfg)
 			}
 		})
 	}
@@ -158,6 +160,70 @@ var expectedJSONized = commonv1.Config{
 		"e":       []interface{}{float64(1), float64(2), float64(3)},
 		"f":       true,
 	},
+}
+
+func TestConfig_HasRole(t *testing.T) {
+	tests := []struct {
+		name                                                                        string
+		roles                                                                       []string
+		expectedMaster, expectedData, expectedIngest, expectedML, expectedTransform bool
+	}{
+		{
+			name:              "all roles",
+			roles:             []string{"master", "data", "ingest", "ml", "transform"},
+			expectedMaster:    true,
+			expectedData:      true,
+			expectedIngest:    true,
+			expectedML:        true,
+			expectedTransform: true,
+		},
+		{
+			name:              "master and data roles",
+			roles:             []string{"master", "data"},
+			expectedMaster:    true,
+			expectedData:      true,
+			expectedIngest:    false,
+			expectedML:        false,
+			expectedTransform: false,
+		},
+		{
+			name:              "ingest and ml roles",
+			roles:             []string{"ingest", "ml"},
+			expectedMaster:    false,
+			expectedData:      false,
+			expectedIngest:    true,
+			expectedML:        true,
+			expectedTransform: false,
+		},
+		{
+			name:              "ingest only",
+			roles:             []string{"ingest"},
+			expectedMaster:    false,
+			expectedData:      false,
+			expectedIngest:    true,
+			expectedML:        false,
+			expectedTransform: false,
+		},
+		{
+			name:              "no roles",
+			roles:             []string{},
+			expectedMaster:    false,
+			expectedData:      false,
+			expectedIngest:    false,
+			expectedML:        false,
+			expectedTransform: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := Node{Roles: tt.roles}
+			assert.Equal(t, tt.expectedMaster, node.HasMasterRole())
+			assert.Equal(t, tt.expectedData, node.HasDataRole())
+			assert.Equal(t, tt.expectedIngest, node.HasIngestRole())
+			assert.Equal(t, tt.expectedML, node.HasMLRole())
+			assert.Equal(t, tt.expectedTransform, node.HasTransformRole())
+		})
+	}
 }
 
 func TestConfig_DeepCopyInto(t *testing.T) {
@@ -228,6 +294,34 @@ func TestConfig_Unpack(t *testing.T) {
 			want: ElasticsearchSettings{
 				Node: Node{
 					Master:    false,
+					Data:      true,
+					Ingest:    true,
+					ML:        true,
+					Transform: true,
+				},
+				Cluster: ClusterSettings{
+					InitialMasterNodes: []string{"a", "b"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "happy path with node roles",
+			args: &commonv1.Config{
+				Data: map[string]interface{}{
+					"node": map[string]interface{}{
+						"roles": []string{"master", "data"},
+					},
+					"cluster": map[string]interface{}{
+						"initial_master_nodes": []string{"a", "b"},
+					},
+				},
+			},
+			want: ElasticsearchSettings{
+				Node: Node{
+					Roles: []string{"master", "data"},
+					// We are still expecting the default values for the legacy roles settings
+					Master:    true,
 					Data:      true,
 					Ingest:    true,
 					ML:        true,

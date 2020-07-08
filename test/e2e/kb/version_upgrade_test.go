@@ -24,16 +24,23 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 
-	test.SkipInvalidUpgrade(t, srcVersion, srcVersion)
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-version-upgrade-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
+	srcNodeCount := 3
+	if srcVersion == "7.1.1" {
+		// workaround for https://github.com/elastic/kibana/pull/37674 to avoid accidental .kibana index creation
+		// can be removed once we stop supporting 7.1.1
+		srcNodeCount = 1
+	}
+
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(3).
+		WithNodeCount(srcNodeCount).
 		WithVersion(srcVersion)
 
 	opts := []client.ListOption{
@@ -51,7 +58,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
-		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder)},
+		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
 		[]test.Watcher{NewReadinessWatcher(opts...), NewVersionWatcher(opts...)},
 	)
 }
@@ -60,16 +67,23 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 
-	test.SkipInvalidUpgrade(t, srcVersion, srcVersion)
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-upgrade-and-respec-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
+	srcNodeCount := 3
+	if srcVersion == "7.1.1" {
+		// workaround for https://github.com/elastic/kibana/pull/37674 to avoid accidental .kibana index creation
+		// can be removed once we stop supporting 7.1.1
+		srcNodeCount = 1
+	}
+
 	kbBuilder1 := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(3).
+		WithNodeCount(srcNodeCount).
 		WithVersion(srcVersion)
 
 	// perform a Kibana version upgrade immediately followed by a Kibana configuration change.
