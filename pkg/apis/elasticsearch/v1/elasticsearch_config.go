@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/go-ucfg"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -15,6 +16,11 @@ const (
 	NodeIngest = "node.ingest"
 	NodeMaster = "node.master"
 	NodeML     = "node.ml"
+
+	MasterRole = "master"
+	DataRole   = "data"
+	IngestRole = "ingest"
+	MLRole     = "ml"
 )
 
 // ClusterSettings is the cluster node in elasticsearch.yml.
@@ -24,10 +30,39 @@ type ClusterSettings struct {
 
 // Node is the node section in elasticsearch.yml.
 type Node struct {
-	Master bool `config:"master"`
-	Data   bool `config:"data"`
-	Ingest bool `config:"ingest"`
-	ML     bool `config:"ml"`
+	Master bool     `config:"master"`
+	Data   bool     `config:"data"`
+	Ingest bool     `config:"ingest"`
+	ML     bool     `config:"ml"`
+	Roles  []string `config:"roles"` // available as of 7.9.0, takes priority over the other fields if non-nil
+}
+
+func (n *Node) HasMasterRole() bool {
+	if n.Roles == nil {
+		return n.Master
+	}
+	return stringsutil.StringInSlice(MasterRole, n.Roles)
+}
+
+func (n *Node) HasDataRole() bool {
+	if n.Roles == nil {
+		return n.Data
+	}
+	return stringsutil.StringInSlice(DataRole, n.Roles)
+}
+
+func (n *Node) HasIngestRole() bool {
+	if n.Roles == nil {
+		return n.Ingest
+	}
+	return stringsutil.StringInSlice(IngestRole, n.Roles)
+}
+
+func (n *Node) HasMLRole() bool {
+	if n.Roles == nil {
+		return n.ML
+	}
+	return stringsutil.StringInSlice(MLRole, n.Roles)
 }
 
 // ElasticsearchSettings is a typed subset of elasticsearch.yml for purposes of the operator.
@@ -38,6 +73,7 @@ type ElasticsearchSettings struct {
 
 // DefaultCfg is an instance of ElasticsearchSettings with defaults set as they are in Elasticsearch.
 var DefaultCfg = ElasticsearchSettings{
+	// Values below only make senses if there is no "node.roles" in the configuration provided by the user
 	Node: Node{
 		Master: true,
 		Data:   true,

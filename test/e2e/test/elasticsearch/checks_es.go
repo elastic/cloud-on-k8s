@@ -145,7 +145,6 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 					return fmt.Errorf("%s was not in %+v", nodeID, nodesStats.Nodes)
 				}
 
-				nodeRoles := rolesToConfig(node.Roles)
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
 					cfg, err := esv1.UnpackConfig(topoElem.Config)
@@ -161,7 +160,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 						return err
 					}
 
-					if cfg.Node == nodeRoles &&
+					if compareRoles(cfg.Node, node.Roles) &&
 						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) {
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
@@ -178,21 +177,24 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 	}
 }
 
-func rolesToConfig(roles []string) esv1.Node {
-	node := esv1.Node{
-		ML: true, // ML is not reported in roles array, we assume true
-	}
-	for _, r := range roles {
+func compareRoles(expected esv1.Node, actualRoles []string) bool {
+	for _, r := range actualRoles {
 		switch r {
 		case "master":
-			node.Master = true
+			if !expected.HasMasterRole() {
+				return false
+			}
 		case "data":
-			node.Data = true
+			if !expected.HasDataRole() {
+				return false
+			}
 		case "ingest":
-			node.Ingest = true
+			if !expected.HasIngestRole() {
+				return false
+			}
 		}
 	}
-	return node
+	return true
 }
 
 func compareMemoryLimit(topologyElement esv1.NodeSet, cgroupMemoryLimitsInBytes int64) bool {

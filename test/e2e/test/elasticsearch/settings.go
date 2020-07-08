@@ -34,5 +34,5 @@ func isDataNode(node esv1.NodeSet) bool {
 	if err != nil {
 		panic(err)
 	}
-	return nodeCfg.Node.Data
+	return nodeCfg.Node.HasDataRole()
 }
