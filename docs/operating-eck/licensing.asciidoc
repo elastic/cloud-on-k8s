@@ -93,3 +93,16 @@ The operator periodically writes the total amount of Elastic resources under man
   "total_managed_memory": "3.22GB"
 }
 ----
+
+If the operator metrics endpoint is enabled via the `--metrics-port` flag (see <<{p}-operator-config>>), license usage data will be included in the reported metrics. 
+
+[source,shell]
+----
+> curl "$ECK_METRICS_ENDPOINT" | grep elastic_licensing
+# HELP elastic_licensing_enterprise_resource_units_total Total enterprise resource units used
+# TYPE elastic_licensing_enterprise_resource_units_total gauge
+elastic_licensing_enterprise_resource_units_total{license_level="basic"} 6
+# HELP elastic_licensing_memory_gigabytes_total Total memory used in GB
+# TYPE elastic_licensing_memory_gigabytes_total gauge
+elastic_licensing_memory_gigabytes_total{license_level="basic"} 357.01915648
+----
