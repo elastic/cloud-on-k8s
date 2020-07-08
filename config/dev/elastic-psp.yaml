@@ -227,7 +227,7 @@
     - SETPCAP
     - AUDIT_WRITE
     - NET_BIND_SERVICE
-    hostNetwork: false
+    hostNetwork: true
     hostIPC: false
     hostPID: false
     runAsUser:
