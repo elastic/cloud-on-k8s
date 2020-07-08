@@ -34,7 +34,7 @@ type Node struct {
 	Data   bool     `config:"data"`
 	Ingest bool     `config:"ingest"`
 	ML     bool     `config:"ml"`
-	Roles  []string `config:"roles"` // available as of 7.9.0
+	Roles  []string `config:"roles"` // available as of 7.9.0, takes priority over the other fields if non-nil
 }
 
 func (n *Node) HasMasterRole() bool {
