@@ -40,34 +40,42 @@ type ElasticsearchSettings struct {
 }
 
 // DefaultCfg is an instance of ElasticsearchSettings with defaults set as they are in Elasticsearch.
-func DefaultCfg(ver version.Version) ElasticsearchSettings {
+// cfg is the user provided config we want defaults for, ver is the version of Elasticsearch.
+func DefaultCfg(cfg *ucfg.Config, ver version.Version) ElasticsearchSettings {
 	settings := ElasticsearchSettings{
 		Node: Node{
 			Master:    true,
 			Data:      true,
 			Ingest:    true,
 			ML:        true,
-			Transform: true,
+			Transform: false,
 		},
 	}
-	if !ver.IsSameOrAfter(version.From(7, 7, 0)) {
-		// this setting did not exist before 7.7.0 expressed here by setting it to false this allows us to keep working with just one model
-		settings.Node.Transform = false
+	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
+		// this setting did not exist before 7.7.0 its default depends on the node.data value
+		settings.Node.Transform = true
+		if cfg == nil {
+			return settings
+		}
+		dataNode, err := cfg.Bool(NodeData, -1, commonv1.CfgOptions...)
+		if err == nil && !dataNode {
+			settings.Node.Transform = false
+		}
 	}
 	return settings
 }
 
 // Unpack unpacks Config into a typed subset.
 func UnpackConfig(c *commonv1.Config, ver version.Version) (ElasticsearchSettings, error) {
-	esSettings := DefaultCfg(ver)
 	if c == nil {
 		// make this nil safe to allow a ptr value to work around Json serialization issues
-		return esSettings, nil
+		return DefaultCfg(ucfg.New(), ver), nil
 	}
 	config, err := ucfg.NewFrom(c.Data, commonv1.CfgOptions...)
 	if err != nil {
-		return esSettings, err
+		return ElasticsearchSettings{}, err
 	}
+	esSettings := DefaultCfg(config, ver)
 	err = config.Unpack(&esSettings, commonv1.CfgOptions...)
 	return esSettings, err
 }

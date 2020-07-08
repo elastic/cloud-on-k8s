@@ -15,87 +15,118 @@ import (
 
 func TestConfig_RoleDefaults(t *testing.T) {
 	type args struct {
-		c2  commonv1.Config
+		c   commonv1.Config
 		ver version.Version
 	}
 	tests := []struct {
-		name string
-		c    commonv1.Config
-		args args
-		want bool
+		name    string
+		args    args
+		wantCfg Node
 	}{
 		{
-			name: "empty is equal",
-			c:    commonv1.Config{},
+			name: "empty equals defaults",
 			args: args{},
-			want: true,
+			wantCfg: Node{
+				Master:    true,
+				Data:      true,
+				Ingest:    true,
+				ML:        true,
+				Transform: false,
+			},
 		},
 		{
-			name: "same is equal",
-			c: commonv1.Config{
-				Data: map[string]interface{}{
-					NodeMaster: true,
-				},
-			},
+			name: "same as default",
 			args: args{
-				c2: commonv1.Config{
+				c: commonv1.Config{
 					Data: map[string]interface{}{
 						NodeMaster: true,
 					},
 				},
 			},
-			want: true,
+			wantCfg: Node{
+				Master:    true,
+				Data:      true,
+				Ingest:    true,
+				ML:        true,
+				Transform: false,
+			},
 		},
 		{
-			name: "detect differences",
-			c: commonv1.Config{
-				Data: map[string]interface{}{
-					NodeMaster: false,
-					NodeData:   true,
-				},
-			},
+			name: "differ from default",
 			args: args{
-				c2: commonv1.Config{
+				c: commonv1.Config{
 					Data: map[string]interface{}{
-						NodeData: true,
+						NodeData: false,
 					},
 				},
 			},
-			want: false,
+			wantCfg: Node{
+				Master:    true,
+				Data:      false,
+				Ingest:    true,
+				ML:        true,
+				Transform: false,
+			},
 		},
 		{
-			name: "version specific default differences 1",
-			c: commonv1.Config{
-				Data: map[string]interface{}{
-					NodeTransform: true,
-				},
-			},
-			args: args{
-				ver: version.From(7, 5, 0),
-			},
-			want: false,
-		},
-		{
-			name: "version specific default differences 2",
-			c: commonv1.Config{
-				Data: map[string]interface{}{
-					NodeTransform: true,
-				},
-			},
+			name: "version specific default differences: transform",
 			args: args{
 				ver: version.From(7, 7, 0),
 			},
-			want: true,
+			wantCfg: Node{
+				Master:    true,
+				Data:      true,
+				Ingest:    true,
+				ML:        true,
+				Transform: true,
+			},
+		},
+		{
+			name: "transform data interdependency",
+			args: args{
+				c: commonv1.Config{
+					Data: map[string]interface{}{
+						"node": map[string]interface{}{
+							"data": false,
+						},
+					},
+				},
+				ver: version.From(7, 7, 0),
+			},
+			wantCfg: Node{
+				Master:    true,
+				Data:      false,
+				Ingest:    true,
+				ML:        true,
+				Transform: false,
+			},
+		},
+		{
+			name: "transform data interdependency",
+			args: args{
+				c: commonv1.Config{
+					Data: map[string]interface{}{
+						NodeData:      false,
+						NodeTransform: true,
+					},
+				},
+				ver: version.From(7, 7, 0),
+			},
+			wantCfg: Node{
+				Master:    true,
+				Data:      false,
+				Ingest:    true,
+				ML:        true,
+				Transform: true,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c1, err := UnpackConfig(&tt.c, tt.args.ver)
+			got, err := UnpackConfig(&tt.args.c, tt.args.ver)
 			require.NoError(t, err)
-			c2, err := UnpackConfig(&tt.args.c2, tt.args.ver)
-			require.NoError(t, err)
-			if got := c1.Node == c2.Node; got != tt.want {
-				t.Errorf("Config.EqualRoles() = %v, want %v", got, tt.want)
+			if got.Node != tt.wantCfg {
+				t.Errorf("Config.EqualRoles() = %+v, want %+v", got, tt.wantCfg)
 			}
 		})
 	}
@@ -209,9 +240,17 @@ func TestConfig_Unpack(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Unpack is nil safe",
-			args:    nil,
-			want:    DefaultCfg(ver),
+			name: "Unpack is nil safe",
+			args: nil,
+			want: ElasticsearchSettings{
+				Node: Node{
+					Master:    true,
+					Data:      true,
+					Ingest:    true,
+					ML:        true,
+					Transform: true,
+				},
+			},
 			wantErr: false,
 		},
 	}

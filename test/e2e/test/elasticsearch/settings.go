@@ -9,6 +9,7 @@ import (
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/go-ucfg"
 )
 
 func MustNumDataNodes(es esv1.Elasticsearch) int {
@@ -24,7 +25,7 @@ func MustNumDataNodes(es esv1.Elasticsearch) int {
 
 func isDataNode(node esv1.NodeSet, ver version.Version) bool {
 	if node.Config == nil {
-		return esv1.DefaultCfg(ver).Node.Data // if not specified use the default
+		return esv1.DefaultCfg(ucfg.New(), ver).Node.Data // if not specified use the default
 	}
 	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
 	if err != nil {
