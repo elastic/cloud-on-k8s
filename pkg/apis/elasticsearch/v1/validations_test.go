@@ -166,6 +166,33 @@ func Test_hasMaster(t *testing.T) {
 			},
 			expectErrors: false,
 		},
+		{
+			name: "has master in roles",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.9.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]interface{}{
+									"node.roles": []string{"data"},
+								},
+							},
+							Count: 1,
+						},
+						{
+							Config: &commonv1.Config{
+								Data: map[string]interface{}{
+									"node.roles": []string{"master"},
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

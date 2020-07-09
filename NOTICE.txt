@@ -1767,11 +1767,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/sethvargo/go-password
-Version : v0.1.3
-Time    : 2019-10-10T18:40:17Z
+Version : v0.2.0
+Time    : 2020-07-05T15:15:25Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/sethvargo/go-password@v0.1.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/sethvargo/go-password@v0.2.0/LICENSE:
 
 Copyright 2017 Seth Vargo <seth@sethvargo.com>
 

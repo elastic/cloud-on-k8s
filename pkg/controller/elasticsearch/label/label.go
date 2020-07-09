@@ -112,7 +112,7 @@ func NewLabels(es types.NamespacedName) map[string]string {
 func NewPodLabels(
 	es types.NamespacedName,
 	ssetName string,
-	version version.Version,
+	ver version.Version,
 	nodeRoles esv1.Node,
 	configHash string,
 	scheme string,
@@ -120,13 +120,13 @@ func NewPodLabels(
 	// cluster name based labels
 	labels := NewLabels(es)
 	// version label
-	labels[VersionLabelName] = version.String()
+	labels[VersionLabelName] = ver.String()
 
 	// node types labels
-	NodeTypesMasterLabelName.Set(nodeRoles.Master, labels)
-	NodeTypesDataLabelName.Set(nodeRoles.Data, labels)
-	NodeTypesIngestLabelName.Set(nodeRoles.Ingest, labels)
-	NodeTypesMLLabelName.Set(nodeRoles.ML, labels)
+	NodeTypesMasterLabelName.Set(nodeRoles.HasMasterRole(), labels)
+	NodeTypesDataLabelName.Set(nodeRoles.HasDataRole(), labels)
+	NodeTypesIngestLabelName.Set(nodeRoles.HasIngestRole(), labels)
+	NodeTypesMLLabelName.Set(nodeRoles.HasMLRole(), labels)
 
 	// config hash label, to rotate pods on config changes
 	labels[ConfigHashLabelName] = configHash
