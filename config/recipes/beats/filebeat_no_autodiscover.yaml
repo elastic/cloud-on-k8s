@@ -26,10 +26,11 @@ spec:
         hostNetwork: true
         securityContext:
           runAsUser: 0
-          # If using Red Hat OpenShift uncomment this:
-          #privileged: true
         containers:
         - name: filebeat
+          # If using Red Hat OpenShift uncomment this:
+          #securityContext:
+            #privileged: true
           volumeMounts:
           - name: varlogcontainers
             mountPath: /var/log/containers
