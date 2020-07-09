@@ -41,7 +41,7 @@ func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 	return steps
 }
 
-// BeforeAfterSequence returns a list of steps corresponding to a workflow that allows defining list of step to execute
+// BeforeAfterSequence returns a list of steps corresponding to a workflow that allows defining a list of steps to execute
 // before and after builder workflow (before steps, init, create, checks, deletes, after steps)
 func BeforeAfterSequence(before StepsFunc, after StepsFunc, builders ...Builder) StepList {
 	steps := StepList{}
