@@ -14,7 +14,7 @@ require (
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
-	github.com/go-test/deep v1.0.6
+	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.1
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
