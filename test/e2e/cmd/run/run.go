@@ -72,9 +72,9 @@ func doRun(flags runFlags) error {
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
+			helper.deployTestSecrets,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
-			helper.deployTestSecret,
 			helper.deployFilebeat,
 			helper.deployMetricbeat,
 			helper.deployTestJob,
@@ -95,12 +95,13 @@ func doRun(flags runFlags) error {
 
 type helper struct {
 	runFlags
-	eventLog       string
-	kubectlWrapper *command.Kubectl
-	testContext    test.Context
-	testSecrets    map[string]string
-	scratchDir     string
-	cleanupFuncs   []func()
+	eventLog        string
+	kubectlWrapper  *command.Kubectl
+	testContext     test.Context
+	testSecrets     map[string]string
+	operatorSecrets map[string]string
+	scratchDir      string
+	cleanupFuncs    []func()
 }
 
 func (h *helper) createScratchDir() error {
@@ -190,7 +191,7 @@ func (h *helper) initTestSecrets() error {
 	if h.testLicense != "" {
 		bytes, err := ioutil.ReadFile(h.testLicense)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.testLicense, err)
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
@@ -199,7 +200,7 @@ func (h *helper) initTestSecrets() error {
 	if h.testLicensePKeyPath != "" {
 		bytes, err := ioutil.ReadFile(h.testLicensePKeyPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
 		}
 		h.testSecrets["dev-private.key"] = string(bytes)
 		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
@@ -208,7 +209,7 @@ func (h *helper) initTestSecrets() error {
 	if h.monitoringSecrets != "" {
 		bytes, err := ioutil.ReadFile(h.monitoringSecrets)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.monitoringSecrets, err)
 		}
 
 		monitoringSecrets := struct {
@@ -216,16 +217,24 @@ func (h *helper) initTestSecrets() error {
 			MonitoringUser string `json:"monitoringUser"`
 			MonitoringPass string `json:"monitoringPass"`
 			MonitoringCa   string `json:"monitoringCa"`
+			APMServerCert  string `json:"apm_server_cert"`
+			APMSecretToken string `json:"apm_secret_token"`
+			APMServerURL   string `json:"apm_server_url"`
 		}{}
 
 		if err := json.Unmarshal(bytes, &monitoringSecrets); err != nil {
-			return err
+			return fmt.Errorf("unmarshal %v, %w", h.monitoringSecrets, err)
 		}
 
 		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIP
 		h.testSecrets["monitoring-user"] = monitoringSecrets.MonitoringUser
 		h.testSecrets["monitoring-pass"] = monitoringSecrets.MonitoringPass
 		h.testSecrets["monitoring-ca"] = monitoringSecrets.MonitoringCa
+
+		h.operatorSecrets = map[string]string{}
+		h.operatorSecrets["apm_server_cert"] = monitoringSecrets.APMServerCert
+		h.operatorSecrets["apm_secret_token"] = monitoringSecrets.APMSecretToken
+		h.operatorSecrets["apm_server_url"] = monitoringSecrets.APMServerURL
 	}
 
 	return nil
@@ -309,15 +318,17 @@ func (h *helper) deployMetricbeat() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/metricbeat.yaml", h.testContext)
 }
 
-func (h *helper) deployTestSecret() error {
+func (h *helper) deployTestSecrets() error {
 	log.Info("Deploying e2e test secret")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/secret.yaml",
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/secrets.yaml",
 		struct {
-			Secrets map[string]string
-			Context test.Context
+			Secrets         map[string]string
+			OperatorSecrets map[string]string
+			Context         test.Context
 		}{
-			Secrets: h.testSecrets,
-			Context: h.testContext,
+			Secrets:         h.testSecrets,
+			OperatorSecrets: h.operatorSecrets,
+			Context:         h.testContext,
 		},
 	)
 }
