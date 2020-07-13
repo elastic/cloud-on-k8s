@@ -204,7 +204,7 @@ This example restricts Elasticsearch nodes so they are only scheduled on Kuberne
 [id="{p}-availability-zone-awareness"]
 == Availability zone awareness
 
-By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an availability zone-aware Elasticsearch cluster:
+By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can create an availability zone-aware Elasticsearch cluster. Note that by default ECK creates a `k8s_node_name` attribute with the name of the Kubernetes node running the pod, and configures Elasticsearch to use this attribute. This allows Elasticsearch to allocate primary and replica shards on different Kubernetes nodes, even if there are multiple Elasticsearch Pods on the same Kubernetes node. To preserve this behavior while also making Elasticsearch aware of the availability zone, include the `k8s_node_name` attribute in the comma-separated `cluster.routing.allocation.awareness.attributes` list:
 
 [source,yaml,subs="attributes"]
 ----
@@ -219,7 +219,7 @@ spec:
     count: 1
     config:
       node.attr.zone: europe-west3-a
-      cluster.routing.allocation.awareness.attributes: zone
+      cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
     podTemplate:
       spec:
         affinity:
@@ -235,7 +235,7 @@ spec:
     count: 1
     config:
       node.attr.zone: europe-west3-b
-      cluster.routing.allocation.awareness.attributes: zone
+      cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
     podTemplate:
       spec:
         affinity:
