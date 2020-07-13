@@ -33,6 +33,7 @@ ECK can be configured using either command line flags or environment variables.
 |webhook-pods-label |"" |Label used to select pods running the webhook server.
 |webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
 |webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
+|webhook-configuration-name |"elastic-webhook.k8s.elastic.co" |Name of K8s ValidatingWebhookConfiguration to be used for webhook params.
 |===
 
 

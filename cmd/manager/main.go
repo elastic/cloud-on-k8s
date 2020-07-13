@@ -61,9 +61,9 @@ import (
 )
 
 const (
-	DefaultMetricPort        = 0 // disabled
-	WebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
-	WebhookPort              = 9443
+	DefaultMetricPort               = 0 // disabled
+	DefaultWebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
+	WebhookPort                     = 9443
 )
 
 var (
@@ -167,6 +167,11 @@ func init() {
 		operator.WebhookSecretFlag,
 		"",
 		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
+	)
+	Cmd.Flags().String(
+		operator.WebhookConfigurationNameFlag,
+		DefaultWebhookConfigurationName,
+		fmt.Sprintf("Name of K8s ValidatingWebhookConfiguration to be used for webhook params (defaults to %s)", DefaultWebhookConfigurationName),
 	)
 
 	// enable using dashed notation in flags and underscores in env
@@ -446,7 +451,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		webhookParams := webhook.Params{
 			Namespace:                viper.GetString(operator.OperatorNamespaceFlag),
 			SecretName:               viper.GetString(operator.WebhookSecretFlag),
-			WebhookConfigurationName: WebhookConfigurationName,
+			WebhookConfigurationName: viper.GetString(operator.WebhookConfigurationNameFlag),
 			Rotation:                 certRotation,
 		}
 
