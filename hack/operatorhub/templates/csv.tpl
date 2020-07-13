@@ -5,9 +5,9 @@ metadata:
     capabilities: Full Lifecycle
     categories: Database
     certified: 'false'
-    containerImage: {{ .OperatorImage }}:{{ .NewVersion }}
+    containerImage: {{ .OperatorRepo }}:{{ .NewVersion }}
     createdAt: {{ now | date "2006-01-02 15:04:05" }}
-    description: Run Elasticsearch, Kibana and the APM Server on Kubernetes and OpenShift
+    description: Run Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
     support: elastic.co
     alm-examples: |-
@@ -131,11 +131,11 @@ spec:
     Current features:
 
 
-    *  Elasticsearch, Kibana and APM Server deployments
+    *  Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats deployments
 
     *  TLS Certificates management
 
-    *  Safe Elasticsearch cluster configuration & topology changes
+    *  Safe Elasticsearch cluster configuration and topology changes
 
     *  Persistent volumes usage
 
@@ -176,7 +176,7 @@ spec:
             spec:
               serviceAccountName: elastic-operator
               containers:
-              - image: {{ .OperatorImage }}:{{ .NewVersion }}
+              - image: {{ .OperatorRepo }}:{{ .NewVersion }}
                 name: manager
                 args: ["manager", "--log-verbosity=0"]
                 env:
@@ -184,8 +184,12 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: OPERATOR_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.operatorNamespace']
                 - name: OPERATOR_IMAGE
-                  value: {{ .OperatorImage }}:{{ .NewVersion }}
+                  value: {{ .OperatorRepo }}:{{ .NewVersion }}
                 resources:
                   limits:
                     cpu: 1

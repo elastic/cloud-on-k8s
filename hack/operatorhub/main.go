@@ -1,17 +1,24 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package main
 
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/Masterminds/sprig"
 	gyaml "github.com/ghodss/yaml"
@@ -23,14 +30,23 @@ import (
 )
 
 const (
+	manifestURL  = "https://download.elastic.co/downloads/eck/%s/all-in-one.yaml"
 	operatorName = "elastic-operator"
+	packageName  = "elastic-cloud-eck"
+
+	csvTemplateFile     = "csv.tpl"
+	packageTemplateFile = "package.tpl"
+
+	crdFileSuffix     = "crd.yaml"
+	csvFileSuffix     = "clusterserviceversion.yaml"
+	packageFileSuffix = "package.yaml"
 )
 
 type cmdArgs struct {
 	confPath     string
 	allInOnePath string
-	templatePath string
-	outPath      string
+	templatesDir string
+	outDir       string
 }
 
 var args = cmdArgs{}
@@ -38,8 +54,8 @@ var args = cmdArgs{}
 func main() {
 	cmd := &cobra.Command{
 		Use:           "operatorhub",
-		Short:         "Generate Operator Hub CSV and other files",
-		Example:       "./operatorhub --conf=example/config.yaml --out=$TMP/eck",
+		Short:         "Generate Operator Hub files",
+		Example:       "./operatorhub --conf=config.yaml --out=${GIT_ROOT}/community-operators/upstream-community-operators/elastic-cloud",
 		Version:       "0.1.0",
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -49,11 +65,11 @@ func main() {
 	cmd.Flags().StringVar(&args.confPath, "conf", "", "Path to config file")
 	_ = cmd.MarkFlagRequired("conf")
 
-	cmd.Flags().StringVar(&args.outPath, "out", "", "Path to output the artefacts")
+	cmd.Flags().StringVar(&args.outDir, "out", "", "Path to the output directory")
 	_ = cmd.MarkFlagRequired("out")
 
-	cmd.Flags().StringVar(&args.allInOnePath, "all-in-one", "../../config/all-in-one.yaml", "Path to all-in-one.yaml")
-	cmd.Flags().StringVar(&args.templatePath, "template", "template/csv.tpl", "Path to the CSV template")
+	cmd.Flags().StringVar(&args.allInOnePath, "all-in-one", "", "Path to all-in-one.yaml")
+	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -67,7 +83,14 @@ func doRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	extracts, err := extractYAMLParts(args.allInOnePath)
+	allInOneStream, err := getAllInOneStream(conf, args.allInOnePath)
+	if err != nil {
+		return err
+	}
+
+	defer allInOneStream.Close()
+
+	extracts, err := extractYAMLParts(allInOneStream)
 	if err != nil {
 		return err
 	}
@@ -77,15 +100,15 @@ func doRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	return render(params, args.templatePath, args.outPath)
+	return render(params, args.templatesDir, args.outDir)
 }
 
 type config struct {
-	NewVersion    string `json:"newVersion"`
-	PrevVersion   string `json:"prevVersion"`
-	StackVersion  string `json:"stackVersion"`
-	OperatorImage string `json:"operatorImage"`
-	CRDs          []struct {
+	NewVersion   string `json:"newVersion"`
+	PrevVersion  string `json:"prevVersion"`
+	StackVersion string `json:"stackVersion"`
+	OperatorRepo string `json:"operatorRepo"`
+	CRDs         []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 		Description string `json:"description"`
@@ -106,6 +129,53 @@ func loadConfig(path string) (*config, error) {
 	return &conf, nil
 }
 
+func getAllInOneStream(conf *config, allInOnePath string) (io.ReadCloser, error) {
+	if allInOnePath == "" {
+		return allInOneFromWeb(conf.NewVersion)
+	}
+
+	f, err := os.Open(allInOnePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open %s: %w", allInOnePath, err)
+	}
+
+	return f, nil
+}
+
+func allInOneFromWeb(version string) (io.ReadCloser, error) {
+	url := fmt.Sprintf(manifestURL, version)
+
+	client := http.Client{}
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelFunc()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request to %s: %w", url, err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to GET %s: %w", url, err)
+	}
+
+	defer func() {
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request error: %s", resp.Status)
+	}
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, resp.Body)
+
+	return ioutil.NopCloser(buf), err
+}
+
 type CRD struct {
 	Name        string
 	Group       string
@@ -121,20 +191,13 @@ type yamlExtracts struct {
 	operatorRBAC []rbacv1.PolicyRule
 }
 
-func extractYAMLParts(path string) (*yamlExtracts, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open %s: %w", path, err)
-	}
-
-	defer f.Close()
-
+func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, fmt.Errorf("failed to register api-extensions: %w", err)
 	}
 
 	decoder := scheme.Codecs.UniversalDeserializer()
-	yamlReader := yaml.NewYAMLReader(bufio.NewReader(f))
+	yamlReader := yaml.NewYAMLReader(bufio.NewReader(stream))
 
 	parts := &yamlExtracts{
 		crds: make(map[string]*CRD),
@@ -173,13 +236,13 @@ func extractYAMLParts(path string) (*yamlExtracts, error) {
 }
 
 type RenderParams struct {
-	NewVersion    string
-	ShortVersion  string
-	PrevVersion   string
-	StackVersion  string
-	OperatorImage string
-	OperatorRBAC  string
-	CRDList       []*CRD
+	NewVersion   string
+	ShortVersion string
+	PrevVersion  string
+	StackVersion string
+	OperatorRepo string
+	OperatorRBAC string
+	CRDList      []*CRD
 }
 
 func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, error) {
@@ -193,6 +256,7 @@ func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, err
 	crdList := make([]*CRD, 0, len(extracts.crds))
 
 	var missing []string
+
 	for _, crd := range extracts.crds {
 		if strings.TrimSpace(crd.Description) == "" || strings.TrimSpace(crd.DisplayName) == "" {
 			missing = append(missing, crd.Name)
@@ -216,55 +280,82 @@ func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, err
 
 	rbac, err := gyaml.Marshal(extracts.operatorRBAC)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal operator RBCA rules: %w", err)
+		return nil, fmt.Errorf("failed to marshal operator RBAC rules: %w", err)
 	}
 
 	return &RenderParams{
-		NewVersion:    conf.NewVersion,
-		ShortVersion:  strings.Join(versionParts[:2], "."),
-		PrevVersion:   conf.PrevVersion,
-		StackVersion:  conf.StackVersion,
-		OperatorImage: conf.OperatorImage,
-		CRDList:       crdList,
-		OperatorRBAC:  string(rbac),
+		NewVersion:   conf.NewVersion,
+		ShortVersion: strings.Join(versionParts[:2], "."),
+		PrevVersion:  conf.PrevVersion,
+		StackVersion: conf.StackVersion,
+		OperatorRepo: conf.OperatorRepo,
+		CRDList:      crdList,
+		OperatorRBAC: string(rbac),
 	}, nil
 }
 
-func render(params *RenderParams, templatePath, outPath string) error {
-	outDir := filepath.Join(outPath, params.NewVersion)
-	if err := os.MkdirAll(outDir, 0766); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", outDir, err)
+func render(params *RenderParams, templatesDir, outDir string) error {
+	versionDir := filepath.Join(outDir, params.NewVersion)
+
+	// if the directory exists, throw an error because overwriting/merging is dangerous
+	_, err := os.Stat(versionDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to stat %s: %w", versionDir, err)
+		}
+	} else {
+		return fmt.Errorf("directory already exists: %s", versionDir)
 	}
 
-	if err := renderCSV(params, templatePath, outDir); err != nil {
+	if err := os.MkdirAll(versionDir, 0o766); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", versionDir, err)
+	}
+
+	if err := renderCSVFile(params, templatesDir, versionDir); err != nil {
 		return err
 	}
 
-	return renderCRDs(params, outDir)
+	if err := renderCRDs(params, versionDir); err != nil {
+		return err
+	}
+
+	// package file is written outside the version directory
+	return renderPackageFile(params, templatesDir, outDir)
 }
 
-func renderCSV(params *RenderParams, templatePath, outDir string) error {
+func renderCSVFile(params *RenderParams, templatesDir, outDir string) error {
+	templateFile := filepath.Join(templatesDir, csvTemplateFile)
+	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.v%s.%s", packageName, params.NewVersion, csvFileSuffix))
+
+	return renderTemplate(params, templateFile, csvFile)
+}
+
+func renderPackageFile(params *RenderParams, templatesDir, outDir string) error {
+	templateFile := filepath.Join(templatesDir, packageTemplateFile)
+	pkgFile := filepath.Join(outDir, fmt.Sprintf("%s.%s", packageName, packageFileSuffix))
+
+	return renderTemplate(params, templateFile, pkgFile)
+}
+
+func renderTemplate(params *RenderParams, templatePath, outPath string) error {
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to parse template at %s: %w", templatePath, err)
 	}
 
-	csvFileName := fmt.Sprintf("elastic-cloud-eck.v%s.clusterserviceversion.yaml", params.NewVersion)
-	csvPath := filepath.Join(outDir, csvFileName)
-
-	csvFile, err := os.Create(csvPath)
+	outFile, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
-		return fmt.Errorf("failed to create %s: %w", csvPath, err)
+		return fmt.Errorf("failed to open file for writing [%s]: %w", outPath, err)
 	}
 
-	defer csvFile.Close()
+	defer outFile.Close()
 
-	return tmpl.Execute(csvFile, params)
+	return tmpl.Execute(outFile, params)
 }
 
 func renderCRDs(params *RenderParams, outDir string) error {
 	for _, crd := range params.CRDList {
-		crdFileName := fmt.Sprintf("%s.crd.yaml", strings.ToLower(crd.Name))
+		crdFileName := fmt.Sprintf("%s.%s", strings.ToLower(crd.Name), crdFileSuffix)
 		crdPath := filepath.Join(outDir, crdFileName)
 
 		crdFile, err := os.Create(crdPath)
