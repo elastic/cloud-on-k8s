@@ -13,7 +13,7 @@ When using the `elasticsearchRef` field to establish a connection to Elasticsear
 
 The restriction of cross-namespace associations is disabled by default. Once enabled, it only enforces an access control for resources deployed across two different namespaces. You can still create associations between resources deployed in a same namespace.
 
-Associations are allowed as long as the `ServiceAccount` specified in the associated resource can execute HTTP `GET` requests against the referenced Elasticsearch object.
+Associations are allowed as long as the `ServiceAccount` used by the associated resource can execute HTTP `GET` requests against the referenced Elasticsearch object.
 
 IMPORTANT: ECK automatically removes any associations that do not have the correct access rights. If you have existing associations, do not enable this feature without creating the required `Roles` and `RoleBindings` as described in the following sections.
 
