@@ -125,7 +125,8 @@ spec:
       version: {{ .Version }}
     {{- end }}
   description: 'Elastic Cloud on Kubernetes automates the deployment, provisioning,
-    management, and orchestration of Elasticsearch, Kibana and the APM Server on Kubernetes.
+    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and 
+    Enterprise Search on Kubernetes.
 
 
     Current features:
