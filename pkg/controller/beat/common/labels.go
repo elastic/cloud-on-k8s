@@ -20,6 +20,6 @@ const (
 func NewLabels(beat beatv1beta1.Beat) map[string]string {
 	return map[string]string{
 		common.TypeLabelName: TypeLabelValue,
-		NameLabelName:        Name(beat.Name, beat.Spec.Type),
+		NameLabelName:        beat.Name,
 	}
 }
