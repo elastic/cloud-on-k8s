@@ -8,11 +8,11 @@ Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, me
 
 #### Filebeat with autodiscover - `filebeat_autodiscover.yaml`
 
-Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespace will have logs shipped to Elasticsearch cluster.
+Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespace will have logs shipped to a Elasticsearch cluster.
 
 #### Filebeat with autodiscover for metadata - `filebeat_autodiscover_by_metadata.yaml`
 
-Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod logs to be shipped to Elasticsearch cluster:
+Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod logs to be shipped to a Elasticsearch cluster:
 
 - Pod is in `log-namespace` namespace
 - Pod has `log-label: "true"` label 
@@ -27,7 +27,7 @@ Deploys Heartbeat as a single Pod deployment that monitors the health of Elastic
 
 #### Auditbeat - `auditbeat_hosts.yaml`
 
-Deploys Auditbeat as DaemonSet that checks file integrity and audits file operations on the host system.
+Deploys Auditbeat as a DaemonSet that checks file integrity and audits file operations on the host system.
 
 #### Journalbeat - `journalbeat_hosts.yaml`
 
