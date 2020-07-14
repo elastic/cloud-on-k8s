@@ -9,7 +9,7 @@ endif::[]
 
 This section describes how to restrict associations that can be created between resources managed by ECK.
 
-When using the `elasticsearchRef` field to establish a trust relationship between Elasticsearch, Kibana, or APM Server resources, by default the association is allowed as long as both resources are deployed to namespaces managed by that particular ECK instance. The association is successful even if the user does not have access to one of the namespaces, or has only access to Kibana resources and not Elasticsearch resources.
+When using the `elasticsearchRef` field to establish a connection to Elasticsearch from Kibana, APM Server, Enterprise Search, or Beats resources, by default the association is allowed as long as both resources are deployed to namespaces managed by that particular ECK instance. The association will succeed even if the user creating the association does not have access to one of the namespaces or the Elasticsearch resource.
 
 The restriction of cross-namespace associations is disabled by default. Once enabled, it only enforces an access control for resources deployed across two different namespaces. You can still create associations between resources deployed in a same namespace.
 
