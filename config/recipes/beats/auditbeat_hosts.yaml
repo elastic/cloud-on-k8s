@@ -38,16 +38,9 @@ spec:
 
     processors:
     - add_cloud_metadata: {}
+    - add_host_metadata: {}
     - add_process_metadata:
         match_pids: ['process.pid']
-    - add_kubernetes_metadata:
-        host: ${HOSTNAME}
-        default_indexers.enabled: false
-        default_matchers.enabled: false
-        indexers:
-        - container:
-        matchers:
-        - fields.lookup_fields: ['container.id']
   daemonSet:
     podTemplate:
       spec:

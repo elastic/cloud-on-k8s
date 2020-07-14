@@ -22,14 +22,8 @@ spec:
       timeout: 30s
       period: 10s
     processors:
-    - add_cloud_metadata:
-    - add_kubernetes_metadata:
-        host: ${HOSTNAME}
-        indexers:
-        - ip_port:
-        matchers:
-        - field_format:
-            format: '%{[ip]}:%{[port]}'
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
   daemonSet:
     podTemplate:
       spec:
