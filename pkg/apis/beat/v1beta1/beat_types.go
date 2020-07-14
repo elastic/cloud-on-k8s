@@ -11,6 +11,10 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
+var (
+	KnownTypes = []string{"filebeat", "metricbeat", "heartbeat", "auditbeat", "journalbeat", "packetbeat"}
+)
+
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
 	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, etc.).
