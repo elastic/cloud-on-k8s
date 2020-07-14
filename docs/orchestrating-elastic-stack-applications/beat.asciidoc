@@ -203,8 +203,12 @@ You can specify the Beat to deploy and its version through `type` and `version` 
 
 ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
 
-- `image` element in the specification must point to the image to be deployed
--  a role must exist in Elasticsearch and have the permissions required by the Beat. The role name must be `eck_beat_$type_role`, where `$type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+1. `image` element in the specification must point to the image to be deployed
+2. the following roles must exist in Elasticsearch:ave the permissions required by the Bea
+- if `elasticsearchRef` is provided, a role with `eck_beat_es_$type_role` name must exist, where `$type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+- if `kibanaRef` is provided, then, similarily to the above, a role with `eck_beat_kibana_$type_role` name must exist. This role must have the permissions required by the Beat for the dashboard setup purposes.
+
+Alternatively to the 2. above, a user can be created in Elasticsearch and its credentials included in Beats `config` specification element  for Elasticsearch output, Kibana setup or both. If `elasticsearchRef` and `kibanaRef` are also used, ECK will still manage CA mounting and rollover, while using the provided user credentials.
 
 
 [id="{p}-beat-set-up-kibana-dashboards"]
