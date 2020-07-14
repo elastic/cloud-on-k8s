@@ -167,7 +167,7 @@ func extractFromFile(
 		return nil, nil, err
 	}
 
-	builders, objects := transform(namespace, fullTestName, suffix, transformations, objects)
+	builders, objects := transformToE2E(namespace, fullTestName, suffix, transformations, objects)
 	return builders, objects, nil
 }
 
@@ -212,7 +212,7 @@ func makeObjectSteps(
 		}
 }
 
-func transform(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []runtime.Object) ([]test.Builder, []runtime.Object) {
+func transformToE2E(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []runtime.Object) ([]test.Builder, []runtime.Object) {
 	var builders []test.Builder
 	var otherObjects []runtime.Object
 	for _, object := range objects {

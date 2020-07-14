@@ -18,6 +18,7 @@ spec:
       schedule: '@every 5s'
       hosts: ["kibana-kb-http.default.svc:5601"]
   deployment:
+    replicas: 1
     podTemplate:
       spec:
         dnsPolicy: ClusterFirstWithHostNet
