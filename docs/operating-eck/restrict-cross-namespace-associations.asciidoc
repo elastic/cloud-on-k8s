@@ -78,7 +78,7 @@ spec:
   serviceAccountName: associated-resource-sa
 ----
 
-In the above example, `associated-resource` can be of any `Kind` that requires an association to be created, for example `Kibana` or the `APMServer`.
+In the above example, `associated-resource` can be of any `Kind` that requires an association to be created, for example `Kibana` or `ApmServer`.
 You can find https://github.com/elastic/cloud-on-k8s/blob/master/config/recipes/associations-rbac/apm_es_kibana_rbac.yaml[a complete example in the ECK GitHub repository].
 
 NOTE: If the `serviceAccountName` is not set, ECK uses the `ServiceAccount` called `default`.
