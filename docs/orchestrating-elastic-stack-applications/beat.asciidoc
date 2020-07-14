@@ -11,6 +11,7 @@ This section describes how to configure and deploy Beats with ECK.
 
 * <<{p}-beat-quickstart,Quickstart>>
 * <<{p}-beat-configuration,Configuration>>
+* <<{p}-beat-configuration-examples,Configuration Examples>>
 * <<{p}-beat-troubleshooting,Troubleshooting>>
 
 [id="{p}-beat-quickstart"]
@@ -63,6 +64,8 @@ spec:
             path: /var/lib/docker/containers
 EOF
 ----
+
+For more ready-to-use manifest examples, please see <<{p}-beat-configuration-examples,Configuration Examples>>.
 
 . Monitor Beats
 +
@@ -361,6 +364,80 @@ rules:
 === Deploying Beats in secured clusters
 
 To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you must grant additional permissions to the Service Account used by the Beat Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Beats and their features might require different settings set in their PSP/SCC.
+
+
+[id="{p}-beat-configuration-examples"]
+== Configuration Examples
+
+Below you can find manifests that address a number of common use cases and can be your starting point in exploring Beats deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. All of them contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
+
+==== Metricbeat for Kubernetes monitoring
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/metricbeat_hosts.yaml
+```
+
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
+
+==== Filebeat with autodiscover
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/filebeat_autodiscover.yaml
+```
+
+Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespaces will have logs shipped to an Elasticsearch cluster.
+
+==== Filebeat with autodiscover for metadata
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/filebeat_autodiscover.yaml
+```
+
+Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod's logs to be shipped to an Elasticsearch cluster:
+
+- Pod is in `log-namespace` namespace
+- Pod has `log-label: "true"` label
+
+==== Filebeat without autodiscover
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/filebeat_no_autodiscover.yaml
+```
+
+Deploys Filebeat as a DaemonSet with autodiscover feature disabled. Uses entire logs directory on the host as the input. Doesn't require any RBAC resources as no Kubernetes APIs are used.
+
+==== Heartbeat monitoring Elasticsearch and Kibana health
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/heartbeat_es_kb_heatlh.yaml
+```
+
+Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
+
+==== Auditbeat
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/auditbeat_hosts.yaml
+```
+
+Deploys Auditbeat as a DaemonSet that checks file integrity and audits file operations on the host system.
+
+==== Journalbeat
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/journalbeat_hosts.yaml
+```
+
+Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
+
+
+==== Packetbeat monitoring DNS and HTTP traffic
+
+```yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/1.2/config/recipes/beats/packetbeat_dns_http.yaml
+```
+
+Deploys Packetbeat as a DaemonSet that monitors DNS on port `53` and HTTP(S) traffic on ports `80`, `8000`, `8080` and `9200`.
 
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting
