@@ -21,7 +21,6 @@ require (
 	github.com/google/go-cmp v0.5.0
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.9
 	github.com/influxdata/tdigest v0.0.1 // indirect
@@ -42,16 +41,16 @@ require (
 	go.uber.org/automaxprocs v1.3.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
-	golang.org/x/net v0.0.0-20191011234655-491137f69257 // indirect
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
+	golang.org/x/tools v0.0.0-20191125144606-a911d9008d1f
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.2
-	k8s.io/client-go v0.17.2
+	k8s.io/api v0.18.4
+	k8s.io/apimachinery v0.18.4
+	k8s.io/client-go v0.18.4
 	k8s.io/klog/v2 v2.0.0
-	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f
+	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
 	sigs.k8s.io/controller-runtime v0.6.1
 	sigs.k8s.io/controller-tools v0.2.5
 )
