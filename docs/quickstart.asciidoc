@@ -42,7 +42,7 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
 
-. Monitor the operator logs:
+. Monitor the operator logs (watch for `Starting workers`):
 +
 [source,sh]
 ----
