@@ -1,0 +1,20 @@
+newVersion: 1.2.0-bc3
+prevVersion: 1.1.2
+stackVersion: 7.8.0
+operatorRepo: docker.elastic.co/eck/eck-operator
+crds:
+  - name: elasticsearches.elasticsearch.k8s.elastic.co
+    displayName: Elasticsearch Cluster
+    description: Instance of an Elasticsearch cluster
+  - name: kibanas.kibana.k8s.elastic.co
+    displayName: Kibana
+    description: Kibana instance
+  - name: apmservers.apm.k8s.elastic.co
+    displayName: APM Server
+    description: APM Server instance
+  - name: enterprisesearches.enterprisesearch.k8s.elastic.co
+    displayName: Enterprise Search
+    description: Enterprise Search instance
+  - name: beats.beat.k8s.elastic.co
+    displayName: Beats
+    description: Beats instance
