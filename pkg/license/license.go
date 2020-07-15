@@ -7,18 +7,20 @@ package license
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -98,10 +100,14 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 // This relies on UnconditionalUpdates being supported configmaps and may change in k8s v2: https://github.com/kubernetes/kubernetes/issues/21330
 func (r LicensingResolver) Save(info LicensingInfo) error {
 	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", licensingCfgMapName, "license_info", info)
-	cm := corev1.ConfigMap{
+	nsn := types.NamespacedName{
+		Namespace: r.operatorNs,
+		Name:      licensingCfgMapName,
+	}
+	expected := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: r.operatorNs,
-			Name:      licensingCfgMapName,
+			Namespace: nsn.Namespace,
+			Name:      nsn.Name,
 			Labels: map[string]string{
 				common.TypeLabelName: Type,
 			},
@@ -109,12 +115,18 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 		Data: info.toMap(),
 	}
 
-	err := r.client.Update(&cm)
-	if apierrors.IsNotFound(err) {
-		return r.client.Create(&cm)
-	}
-
-	return err
+	reconciled := &corev1.ConfigMap{}
+	return reconciler.ReconcileResource(reconciler.Params{
+		Client:     r.client,
+		Expected:   &expected,
+		Reconciled: reconciled,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(expected.Data, reconciled.Data)
+		},
+		UpdateReconciled: func() {
+			expected.DeepCopyInto(reconciled)
+		},
+	})
 }
 
 // getOperatorLicense gets the operator license.

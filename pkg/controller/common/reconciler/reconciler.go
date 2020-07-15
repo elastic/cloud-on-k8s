@@ -156,8 +156,15 @@ func ReconcileResource(params Params) error {
 				return err
 			}
 		}
+		reconciledMeta, err := meta.Accessor(params.Reconciled)
+		if err != nil {
+			return err
+		}
+		// retain the resource version to avoid unconditional updates as a work around for https://github.com/kubernetes-sigs/controller-runtime/pull/926
+		resourceVersion := reconciledMeta.GetResourceVersion()
 		params.UpdateReconciled()
-		err := params.Client.Update(params.Reconciled)
+		reconciledMeta.SetResourceVersion(resourceVersion)
+		err = params.Client.Update(params.Reconciled)
 		if err != nil {
 			return err
 		}
