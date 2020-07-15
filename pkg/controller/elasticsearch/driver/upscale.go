@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -46,19 +47,19 @@ func HandleUpscaleAndSpecChanges(
 	// adjust expected replicas to control nodes creation and deletion
 	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("adjust resources: %w", err)
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
 		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reconcile config: %w", err)
 		}
 		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reconcile service: %w", err)
 		}
 		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reconcile sset %w", err)
 		}
 		// update actual with the reconciled ones for next steps to work with up-to-date information
 		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
@@ -83,7 +84,7 @@ func adjustResources(
 	}
 	// adapt resources configuration to match adjusted replicas
 	if err := adjustZenConfig(ctx.k8sClient, ctx.es, adjustedResources); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("adjust discovery config: %w", err)
 	}
 	return adjustedResources, nil
 }
