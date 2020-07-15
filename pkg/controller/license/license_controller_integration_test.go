@@ -75,6 +75,12 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
+	testNS := corev1.Namespace{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "elastic-system",
+		},
+	}
+	require.NoError(t, c.Create(&testNS))
 
 	// Create the EnterpriseLicense object
 	require.NoError(t, CreateEnterpriseLicense(
