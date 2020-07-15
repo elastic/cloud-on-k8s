@@ -5,6 +5,7 @@
 package rbac
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gobuffalo/flect"
@@ -26,7 +27,7 @@ var log = logf.Log.WithName("access-review")
 
 type AccessReviewer interface {
 	// AccessAllowed checks that the given ServiceAccount is allowed to get an other object.
-	AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error)
+	AccessAllowed(ctx context.Context, serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error)
 }
 
 type SubjectAccessReviewer struct {
@@ -45,7 +46,7 @@ func NewPermissiveAccessReviewer() AccessReviewer {
 	return &permissiveAccessReviewer{}
 }
 
-func (s *SubjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error) {
+func (s *SubjectAccessReviewer) AccessAllowed(ctx context.Context, serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error) {
 	metaObject, err := meta.Accessor(object)
 	if err != nil {
 		return false, nil
@@ -70,7 +71,7 @@ func (s *SubjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 
 	sar := newSubjectAccessReview(metaObject, object, serviceAccount, sourceNamespace)
 
-	sar, err = s.client.AuthorizationV1().SubjectAccessReviews().Create(sar)
+	sar, err = s.client.AuthorizationV1().SubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -112,6 +113,6 @@ type permissiveAccessReviewer struct{}
 
 var _ AccessReviewer = &permissiveAccessReviewer{}
 
-func (s *permissiveAccessReviewer) AccessAllowed(_ string, _ string, _ runtime.Object) (bool, error) {
+func (s *permissiveAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
 	return true, nil
 }

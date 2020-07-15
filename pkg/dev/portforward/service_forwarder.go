@@ -38,12 +38,12 @@ type ServiceForwarder struct {
 var _ Forwarder = &ServiceForwarder{}
 
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
-var defaultPodForwarderFactory = ForwarderFactory(func(network, addr string) (Forwarder, error) {
+var defaultPodForwarderFactory = ForwarderFactory(func(ctx context.Context, network, addr string) (Forwarder, error) {
 	clientset, err := newDefaultKubernetesClientset()
 	if err != nil {
 		return nil, err
 	}
-	return NewPodForwarder(network, addr, clientset)
+	return NewPodForwarder(ctx, network, addr, clientset)
 })
 
 // NewServiceForwarder returns a new initialized service forwarder

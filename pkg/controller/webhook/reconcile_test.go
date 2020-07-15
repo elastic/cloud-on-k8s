@@ -5,6 +5,7 @@
 package webhook
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"testing"
@@ -51,18 +52,19 @@ func TestParams_ReconcileResources(t *testing.T) {
 			},
 		)
 
-	if err := w.ReconcileResources(clientset); err != nil {
+	if err := w.ReconcileResources(context.Background(), clientset); err != nil {
 		t.Errorf("Params.ReconcileResources() error = %v", err)
 	}
 
+	ctx := context.Background()
 	// Secret and ValidatingWebhookConfiguration must have been filled with the certificates
 	// retrieve current webhook server cert secret
-	webhookServerSecret, err := clientset.CoreV1().Secrets(w.Namespace).Get(w.SecretName, metav1.GetOptions{})
+	webhookServerSecret, err := clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(w.WebhookConfigurationName, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.WebhookConfigurationName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle := webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	assert.True(t, len(caBundle) > 0)
@@ -72,22 +74,22 @@ func TestParams_ReconcileResources(t *testing.T) {
 
 	// Delete the content of the secret, certificates should be recreated
 	webhookServerSecret.Data = map[string][]byte{}
-	_, err = clientset.CoreV1().Secrets(w.Namespace).Update(webhookServerSecret)
+	_, err = clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{})
 	assert.NoError(t, err)
-	webhookServerSecret, err = clientset.CoreV1().Secrets(w.Namespace).Get(w.SecretName, metav1.GetOptions{})
+	webhookServerSecret, err = clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(webhookServerSecret.Data))
 
-	if err := w.ReconcileResources(clientset); err != nil {
+	if err := w.ReconcileResources(ctx, clientset); err != nil {
 		t.Errorf("Params.ReconcileResources() error = %v", err)
 	}
 
-	webhookServerSecret, err = clientset.CoreV1().Secrets(w.Namespace).Get(w.SecretName, metav1.GetOptions{})
+	webhookServerSecret, err = clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the new ca
-	webhookConfiguration, err = clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(w.WebhookConfigurationName, metav1.GetOptions{})
+	webhookConfiguration, err = clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.WebhookConfigurationName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle = webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	// Check again that the cert in the secret has been signed by the caBundle

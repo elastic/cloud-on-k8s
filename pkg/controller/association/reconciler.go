@@ -196,7 +196,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 	// from this point we have checked that all the associated resources are set and have been found.
 
 	// check if reference to Elasticsearch is allowed to be established
-	if allowed, err := CheckAndUnbind(r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
+	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
 		return commonv1.AssociationPending, err
 	}
 

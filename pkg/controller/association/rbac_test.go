@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -24,7 +25,7 @@ type fakeAccessReviewer struct {
 	err     error
 }
 
-func (f *fakeAccessReviewer) AccessAllowed(_ string, _ string, _ runtime.Object) (bool, error) {
+func (f *fakeAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
 	return f.allowed, f.err
 }
 
@@ -111,7 +112,7 @@ func TestCheckAndUnbind(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CheckAndUnbind(tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder, tt.args.recorder)
+			got, err := CheckAndUnbind(context.Background(), tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder, tt.args.recorder)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckAndUnbind() error = %v, wantErr %v", err, tt.wantErr)
 				return

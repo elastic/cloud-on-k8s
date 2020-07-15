@@ -5,6 +5,8 @@
 package remoteca
 
 import (
+	"context"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -17,11 +19,12 @@ var log = logf.Log.WithName("remotecluster-remoteca")
 
 // isRemoteClusterAssociationAllowed checks if a bi-directional association is allowed between 2 clusters.
 func isRemoteClusterAssociationAllowed(
+	ctx context.Context,
 	accessReviewer rbac.AccessReviewer,
 	localEs, remoteEs *esv1.Elasticsearch,
 	eventRecorder record.EventRecorder,
 ) (bool, error) {
-	accessAllowed, err := accessReviewer.AccessAllowed(localEs.Spec.ServiceAccountName, localEs.Namespace, remoteEs)
+	accessAllowed, err := accessReviewer.AccessAllowed(ctx, localEs.Spec.ServiceAccountName, localEs.Namespace, remoteEs)
 	if err != nil {
 		return false, err
 	}
@@ -29,7 +32,7 @@ func isRemoteClusterAssociationAllowed(
 		logNotAllowedAssociation(localEs, remoteEs, eventRecorder)
 		return false, nil
 	}
-	accessAllowed, err = accessReviewer.AccessAllowed(remoteEs.Spec.ServiceAccountName, remoteEs.Namespace, localEs)
+	accessAllowed, err = accessReviewer.AccessAllowed(ctx, remoteEs.Spec.ServiceAccountName, remoteEs.Namespace, localEs)
 	if err != nil {
 		return false, err
 	}

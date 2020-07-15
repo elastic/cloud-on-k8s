@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -59,7 +60,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					Name("anyuid").
 					Body(patch)
 
-				result := patchClient.Do()
+				result := patchClient.Do(context.Background())
 				require.NoError(t, result.Error())
 			},
 		},

@@ -189,7 +189,7 @@ var (
 
 type denyAllAccessReviewer struct{}
 
-func (a denyAllAccessReviewer) AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error) {
+func (a denyAllAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
 	return false, nil
 }
 
