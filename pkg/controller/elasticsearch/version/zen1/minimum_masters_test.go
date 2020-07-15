@@ -158,6 +158,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		{
 			name:               "no v6 nodes",
 			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Namespace: ns, Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
+			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,
 			c:                  k8s.WrappedFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...),
 		},

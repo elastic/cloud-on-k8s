@@ -87,7 +87,7 @@ func TestReconcile(t *testing.T) {
 	reconciled, err = Reconcile(k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec
-	require.Equal(t, pointer.Int32(3), reconciled.Spec.Replicas)
+	require.Equal(t, 3, int(*reconciled.Spec.Replicas))
 	require.NotEqual(t, reconciled.Labels[hash.TemplateHashLabelName], reconciledAgain.Labels[hash.TemplateHashLabelName])
 	err = k8sClient.Get(k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)

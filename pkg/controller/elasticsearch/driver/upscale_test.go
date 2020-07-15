@@ -133,6 +133,10 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(10)
+	// re-fetch es to simulate actual reconciliation behaviour
+	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
+	// update context with current version of Elasticsearch resource
+	ctx.es = es
 	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
