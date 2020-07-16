@@ -17,7 +17,7 @@ Associations are allowed as long as the `ServiceAccount` used by the associated 
 
 IMPORTANT: ECK automatically removes any associations that do not have the correct access rights. If you have existing associations, do not enable this feature without creating the required `Roles` and `RoleBindings` as described in the following sections.
 
-To enable the restriction of cross-namespace associations, start the operator with the `--enforce-rbac-on-refs` flag. 
+To enable the restriction of cross-namespace associations, start the operator with the `--enforce-rbac-on-refs` flag.
 
 . Create a `ClusterRole` to allow HTTP `GET` requests to be run against Elasticsearch objects:
 +
@@ -79,7 +79,7 @@ spec:
 ----
 
 In the above example, `associated-resource` can be of any `Kind` that requires an association to be created, for example `Kibana` or `ApmServer`.
-You can find https://github.com/elastic/cloud-on-k8s/blob/master/config/recipes/associations-rbac/apm_es_kibana_rbac.yaml[a complete example in the ECK GitHub repository].
+You can find link:{eck_github}/blob/{eck_release_branch}/config/recipes/associations-rbac/apm_es_kibana_rbac.yaml[a complete example in the ECK GitHub repository].
 
 NOTE: If the `serviceAccountName` is not set, ECK uses the default service account assigned to the pod by the link:https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#service-account-admission-controller[Service Account Admission Controller].
 
