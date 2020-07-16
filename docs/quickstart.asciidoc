@@ -278,11 +278,10 @@ The cluster that you deployed in this quickstart guide only allocates a persiste
 [id="{p}-check-samples"]
 == Check out the samples
 
-You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/config/samples[in the project repository].
-To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].
+You can find a set of sample resources link:{eck_github}/tree/{eck_release_branch}/config/samples[in the project repository].
 
-For a full description of each `CustomResourceDefinition`, go to link:https://github.com/elastic/cloud-on-k8s/tree/master/config/crds[the project repository].
-You can also retrieve it from the cluster. For example, describe the Elasticsearch CRD specification with:
+For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository].
+You can also retrieve information about a CRD from the cluster. For example, describe the Elasticsearch CRD specification with:
 
 [source,sh]
 ----
