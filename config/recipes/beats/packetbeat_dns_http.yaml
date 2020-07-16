@@ -60,4 +60,4 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch
----
+...

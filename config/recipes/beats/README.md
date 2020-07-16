@@ -1,18 +1,19 @@
-# Beats Configuration Library
+# Beats Configuration Examples
 
 This directory contains yaml manifests with example configurations for Beats. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. All of them contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources. 
 
+
 #### Metricbeat for Kubernetes monitoring - `metricbeat_hosts.yaml`
 
-Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, memory, network, filesystem) and Kubernetes resources (nodes, pods, containers, volumes).
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
 
 #### Filebeat with autodiscover - `filebeat_autodiscover.yaml`
 
-Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespace will have logs shipped to a Elasticsearch cluster.
+Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespaces will have logs shipped to an Elasticsearch cluster.
 
 #### Filebeat with autodiscover for metadata - `filebeat_autodiscover_by_metadata.yaml`
 
-Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod logs to be shipped to a Elasticsearch cluster:
+Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod's logs to be shipped to an Elasticsearch cluster:
 
 - Pod is in `log-namespace` namespace
 - Pod has `log-label: "true"` label 
@@ -32,7 +33,6 @@ Deploys Auditbeat as a DaemonSet that checks file integrity and audits file oper
 #### Journalbeat - `journalbeat_hosts.yaml`
 
 Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
-
 
 #### Packetbeat monitoring DNS and HTTP traffic - `packetbeat_dns_http.yaml`
 
