@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -39,6 +40,12 @@ func TestReconcile(t *testing.T) {
 	defer stop()
 
 	now := time.Now()
+	testNS := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: operatorNs,
+		},
+	}
+	require.NoError(t, c.Create(&testNS))
 
 	// Create trial initialisation is controlled via config
 	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))

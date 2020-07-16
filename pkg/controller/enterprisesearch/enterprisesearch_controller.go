@@ -189,7 +189,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &ent, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, fmt.Errorf("updating controller version: %w", err))
 	}
 
 	if !association.IsConfiguredIfSet(&ent, r.recorder) {
@@ -252,23 +252,23 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 	// toggle read-only mode for Enterprise Search version upgrades
 	upgrade := VersionUpgrade{k8sClient: r.K8sClient(), recorder: r.Recorder(), ent: ent, dialer: r.Dialer}
 	if err := upgrade.Handle(ctx); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("version upgrade: %w", err)
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
 	configHash, err := buildConfigHash(r.K8sClient(), ent, configSecret)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("build config hash: %w", err)
 	}
 
 	deploy, err := r.reconcileDeployment(ctx, ent, configHash)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("reconcile deployment: %w", err)
 	}
 
 	err = r.updateStatus(ent, deploy, svc.Name)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("updating status: %w", err)
 	}
 
 	return results.Aggregate()

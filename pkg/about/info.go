@@ -5,6 +5,8 @@
 package about
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +52,7 @@ func (i OperatorInfo) IsDefined() bool {
 
 // GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config, an operator namespace.
 func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
-	operatorUUID, err := getOperatorUUID(clientset, operatorNs)
+	operatorUUID, err := getOperatorUUID(context.Background(), clientset, operatorNs)
 	if err != nil {
 		return OperatorInfo{}, err
 	}
@@ -76,11 +78,11 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 }
 
 // getOperatorUUID returns the operator UUID by retrieving a config map or creating it if it does not exist.
-func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.UID, error) {
+func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operatorNs string) (types.UID, error) {
 	c := clientset.CoreV1().ConfigMaps(operatorNs)
 
 	// get the config map
-	reconciledCfgMap, err := c.Get(UUIDCfgMapName, metav1.GetOptions{})
+	reconciledCfgMap, err := c.Get(ctx, UUIDCfgMapName, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return types.UID(""), err
 	}
@@ -97,7 +99,7 @@ func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.U
 				UUIDCfgMapKey: string(newUUID),
 			},
 		}
-		_, err = c.Create(&cfgMap)
+		_, err = c.Create(ctx, &cfgMap, metav1.CreateOptions{})
 		if err != nil {
 			return types.UID(""), err
 		}
@@ -113,7 +115,7 @@ func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.U
 			reconciledCfgMap.Data = map[string]string{}
 		}
 		reconciledCfgMap.Data[UUIDCfgMapKey] = string(newUUID)
-		_, err := c.Update(reconciledCfgMap)
+		_, err := c.Update(ctx, reconciledCfgMap, metav1.UpdateOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return types.UID(""), err
 		}

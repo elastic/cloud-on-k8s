@@ -50,7 +50,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 			previousValue, ok := actualPod.Annotations[UpdateAnnotation]
 			assert.True(t, ok)
 			// Trigger a new update
-			MarkPodAsUpdated(tt.args.c, tt.args.pod)
+			MarkPodAsUpdated(tt.args.c, *actualPod)
 			// Ensure the label is updated
 			actualPod = &corev1.Pod{}
 			assert.NoError(t, tt.args.c.Get(key, actualPod))

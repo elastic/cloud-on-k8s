@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,13 +25,14 @@ type Unbinder interface {
 
 // CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
 func CheckAndUnbind(
+	ctx context.Context,
 	accessReviewer rbac.AccessReviewer,
 	association commonv1.Association,
 	referencedObject runtime.Object,
 	unbinder Unbinder,
 	eventRecorder record.EventRecorder,
 ) (bool, error) {
-	allowed, err := accessReviewer.AccessAllowed(association.ServiceAccountName(), association.GetNamespace(), referencedObject)
+	allowed, err := accessReviewer.AccessAllowed(ctx, association.ServiceAccountName(), association.GetNamespace(), referencedObject)
 	if err != nil {
 		return false, err
 	}

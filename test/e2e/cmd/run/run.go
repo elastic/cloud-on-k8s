@@ -278,7 +278,7 @@ func (h *helper) waitForOperatorToBeReady() error {
 	podName := fmt.Sprintf("%s-0", h.testContext.Operator.Name)
 
 	return retry.UntilSuccess(func() error {
-		pod, err := client.CoreV1().Pods(h.testContext.Operator.Namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(h.testContext.Operator.Namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -543,8 +543,8 @@ func getLogStream(client *kubernetes.Clientset, pod string, namespace string) (i
 		Timestamps:   true,
 	}
 
-	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts).Context(context.Background())
-	return req.Stream()
+	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts)
+	return req.Stream(context.Background())
 }
 
 func parseLog(line string) (time.Time, string, error) {

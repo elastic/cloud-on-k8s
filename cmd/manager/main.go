@@ -5,6 +5,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -451,7 +452,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		}
 
 		// Force a first reconciliation to create the resources before the server is started
-		if err := webhookParams.ReconcileResources(clientset); err != nil {
+		if err := webhookParams.ReconcileResources(context.Background(), clientset); err != nil {
 			log.Error(err, "unable to setup and fill the webhook certificates")
 			os.Exit(1)
 		}

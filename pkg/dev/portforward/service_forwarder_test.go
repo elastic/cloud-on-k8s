@@ -118,7 +118,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 				),
 			},
 			tweaks: func(f *ServiceForwarder) {
-				f.podForwarderFactory = func(network, addr string) (Forwarder, error) {
+				f.podForwarderFactory = func(_ context.Context, network, addr string) (Forwarder, error) {
 					return &stubForwarder{
 						onDialContext: func(ctx context.Context) (net.Conn, error) {
 							return nil, fmt.Errorf("would dial: %s", addr)
