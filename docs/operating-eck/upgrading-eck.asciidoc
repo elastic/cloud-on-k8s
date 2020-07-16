@@ -66,7 +66,7 @@ kubectl annotate elasticsearch quickstart $RM_ANNOTATION
 
 <1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed-`
 
-NOTE: The ECK source repository contains a link:https://github.com/elastic/cloud-on-k8s/tree/master/hack/annotator[shell script] to assist with mass addition/deletion of annotations.
+NOTE: The ECK source repository contains a link:{eck_github}/tree/{eck_release_branch}/hack/annotator[shell script] to assist with mass addition/deletion of annotations.
 
 
 [float]
