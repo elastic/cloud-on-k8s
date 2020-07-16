@@ -24,7 +24,7 @@ Deploys Filebeat as a DaemonSet with autodiscover feature disabled. Uses entire 
 
 #### Heartbeat monitoring Elasticsearch and Kibana health - `heartbeat_es_kb_heatlh.yaml`
 
-Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints.
+Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
 
 #### Auditbeat - `auditbeat_hosts.yaml`
 
