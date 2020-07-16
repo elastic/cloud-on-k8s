@@ -69,6 +69,9 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 	if strings.Contains(beat.Spec.Type, ",") {
 		return "", fmt.Errorf("beat type %s should not contain a comma", beat.Spec.Type)
 	}
+	if _, ok := beatv1beta1.KnownTypes[beat.Spec.Type]; !ok {
+		return fmt.Sprintf("eck_beat_es_%s_role", beat.Spec.Type), nil
+	}
 
 	v, err := version.Parse(beat.Spec.Version)
 	if err != nil {
