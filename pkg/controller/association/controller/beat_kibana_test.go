@@ -27,8 +27,14 @@ func Test_getBeatKibanaRoles(t *testing.T) {
 		},
 		{
 			name:    "not a valid version",
-			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "not-a-version"}},
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "not-a-version", Type: "filebeat"}},
 			wantErr: true,
+		},
+		{
+			name:    "different Community Beat version", // we are not able to validate community Beat version
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "not-a-version", Type: "community_beat"}},
+			want:    "eck_beat_kibana_community_beat_role",
+			wantErr: false,
 		},
 		{
 			name:    "<7.3 Beat",
@@ -46,6 +52,12 @@ func Test_getBeatKibanaRoles(t *testing.T) {
 			name:    ">=7.8 Beat",
 			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.8.0", Type: string(filebeat.Type)}},
 			want:    "kibana_admin,ingest_admin,beats_admin,eck_beat_kibana_filebeat_role_v77",
+			wantErr: false,
+		},
+		{
+			name:    "community Beat",
+			args:    &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "1.2.0", Type: "community_beat"}},
+			want:    "eck_beat_kibana_community_beat_role",
 			wantErr: false,
 		},
 	}

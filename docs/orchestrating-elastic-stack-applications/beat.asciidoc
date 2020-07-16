@@ -203,9 +203,12 @@ You can specify the Beat to deploy and its version through `type` and `version` 
 
 ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
 
-- `image` element in the specification must point to the image to be deployed
--  a role must exist in Elasticsearch and have the permissions required by the Beat. The role name must be `eck_beat_$type_role`, where `$type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+1. `image` element in the specification must point to the image to be deployed
+2. the following roles must exist in Elasticsearch:
+- if `elasticsearchRef` is provided, a role with `eck_beat_es_$type_role` name must exist, where `$type` is the Beat type. For example, when deploying `kafkabeat`, the role name would be `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+- if `kibanaRef` is provided, then, as above, a role named `eck_beat_kibana_$type_role` must exist with the permissions required to setup Kibana dashboards.
 
+Alternatively, create a user in Elasticsearch and include the credentials in the Beats `config` for Elasticsearch output, Kibana setup or both. If `elasticsearchRef` and `kibanaRef` are also defined, ECK will use the provided user credentials when setting up the connections.
 
 [id="{p}-beat-set-up-kibana-dashboards"]
 === Set up Kibana dashboards
