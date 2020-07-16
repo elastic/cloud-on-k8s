@@ -160,9 +160,10 @@ func ReconcileResource(params Params) error {
 		if err != nil {
 			return err
 		}
-		// retain the resource version to avoid unconditional updates as a work around for https://github.com/kubernetes-sigs/controller-runtime/pull/926
+		// retain the resource version to avoid unconditional updates
 		resourceVersion := reconciledMeta.GetResourceVersion()
 		params.UpdateReconciled()
+		// and set the resource version back into the resource to indicate the state we are basing the update off of
 		reconciledMeta.SetResourceVersion(resourceVersion)
 		err = params.Client.Update(params.Reconciled)
 		if err != nil {
