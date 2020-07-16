@@ -91,7 +91,7 @@ var (
 )
 
 func init() {
-	for _, beat := range beatv1beta1.KnownTypes {
+	for beat := range beatv1beta1.KnownTypes {
 		PredefinedRoles[BeatEsRoleName(V77, beat)] = esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{

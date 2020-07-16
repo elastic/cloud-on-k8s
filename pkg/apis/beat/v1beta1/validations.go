@@ -11,7 +11,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 var (
@@ -58,8 +57,7 @@ func checkAtMostOneDeploymentOption(b *Beat) field.ErrorList {
 }
 
 func checkImageIfTypeUnknown(b *Beat) field.ErrorList {
-	if !stringsutil.StringInSlice(b.Spec.Type, KnownTypes) &&
-		b.Spec.Image == "" {
+	if _, ok := KnownTypes[b.Spec.Type]; !ok && b.Spec.Image == "" {
 		return field.ErrorList{
 			field.Required(
 				field.NewPath("spec").Child("image"),

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	KnownTypes = []string{"filebeat", "metricbeat", "heartbeat", "auditbeat", "journalbeat", "packetbeat"}
+	KnownTypes = map[string]struct{}{"filebeat": {}, "metricbeat": {}, "heartbeat": {}, "auditbeat": {}, "journalbeat": {}, "packetbeat": {}}
 )
 
 // BeatSpec defines the desired state of a Beat.

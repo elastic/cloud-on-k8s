@@ -22,7 +22,6 @@ import (
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 const (
@@ -70,8 +69,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 	if strings.Contains(beat.Spec.Type, ",") {
 		return "", fmt.Errorf("beat type %s should not contain a comma", beat.Spec.Type)
 	}
-
-	if !stringsutil.StringInSlice(beat.Spec.Type, beatv1beta1.KnownTypes) {
+	if _, ok := beatv1beta1.KnownTypes[beat.Spec.Type]; !ok {
 		return fmt.Sprintf("eck_beat_es_%s_role", beat.Spec.Type), nil
 	}
 

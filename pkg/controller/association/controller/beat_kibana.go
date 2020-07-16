@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -77,7 +76,7 @@ func getBeatKibanaRoles(associated commonv1.Associated) (string, error) {
 		return "", fmt.Errorf("beat type %s should not contain a comma", beat.Spec.Type)
 	}
 
-	if !stringsutil.StringInSlice(beat.Spec.Type, beatv1beta1.KnownTypes) {
+	if _, ok := beatv1beta1.KnownTypes[beat.Spec.Type]; !ok {
 		return fmt.Sprintf("eck_beat_kibana_%s_role", beat.Spec.Type), nil
 	}
 
