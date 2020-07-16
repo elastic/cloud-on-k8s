@@ -1,2 +1,2 @@
 * link:https://discuss.elastic.co/c/eck[ECK Discuss forums] to ask any question
-* link:https://github.com/elastic/cloud-on-k8s/issues[Github issues] for bugs and feature requests
+* link:{eck_github}/issues[Github issues] for bugs and feature requests
