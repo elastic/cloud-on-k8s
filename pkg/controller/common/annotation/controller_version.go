@@ -65,7 +65,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 		return err
 	}
 	log.V(1).Info("updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
-	return client.Update(obj)
+	return errors.WithStack(client.Update(obj))
 }
 
 // ReconcileCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation
