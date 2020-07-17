@@ -75,6 +75,8 @@ You then need to configure the CA as one of the trusted CAs in `cluster-two`. If
 
 NOTE: Beware of copying the source Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
 
+NOTE: CA certificates are automatically rotated after one year by default. You can link:k8s-operator-config.html[configure] this period. Make sure to keep the copy of the certificates Secret up-to-date.
+
 If `cluster-two` is also managed by an ECK instance, proceed as follows:
 
 Create a secret with the CA certificate you just extracted:
