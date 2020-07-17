@@ -90,6 +90,31 @@ func TestMetricbeatHostsRecipe(t *testing.T) {
 	runBeatRecipe(t, "metricbeat_hosts.yaml", customize)
 }
 
+func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		// update ref to monitored cluster credentials
+		newKeyName := fmt.Sprintf("%s-es-elastic-user", builder.Beat.Spec.ElasticsearchRef.Name)
+		builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = newKeyName
+
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(
+				// TODO: see if we can add validation for ccr, ml_job, and shard metricsets
+				beat.HasMonitoringEvent("type:cluster_stats"),
+				beat.HasMonitoringEvent("type:enrich_coordinator_stats"),
+				// from the elasticsearch.index metricset
+				beat.HasMonitoringEvent("type:index_stats"),
+				beat.HasMonitoringEvent("type:index_recovery"),
+				// elasticsearch.index.summary metricset
+				beat.HasMonitoringEvent("type:indices_stats"),
+				beat.HasMonitoringEvent("node_stats.node_master:true"),
+				beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
+			)
+	}
+
+	runBeatRecipe(t, "stack_monitoring.yaml", customize)
+}
+
 func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		cfg := settings.MustCanonicalConfig(builder.Beat.Spec.Config.Data)
