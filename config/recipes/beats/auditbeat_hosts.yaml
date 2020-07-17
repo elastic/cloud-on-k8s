@@ -46,7 +46,7 @@ spec:
       spec:
         hostPID: true  # Required by auditd module
         dnsPolicy: ClusterFirstWithHostNet
-        hostNetwork: true
+        hostNetwork: true # Allows to provide richer host metadata
         automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
         securityContext:
           runAsUser: 0
@@ -70,6 +70,17 @@ spec:
           hostPath:
             path: /run/containerd
             type: DirectoryOrCreate
+        # Uncomment the below when running on GKE. See https://github.com/elastic/beats/issues/8523 for more context.
+        #- name: run
+        #  hostPath:
+        #    path: /run
+        #initContainers:
+        #- name: cos-init
+        #  image: docker.elastic.co/beats/auditbeat:7.8.0
+        #  volumeMounts:
+        #  - name: run
+        #    mountPath: /run
+        #  command: ['sh', '-c', 'export SYSTEMD_IGNORE_CHROOT=1 && systemctl stop systemd-journald-audit.socket && systemctl mask systemd-journald-audit.socket && systemctl restart systemd-journald']
         containers:
         - name: auditbeat
           securityContext:

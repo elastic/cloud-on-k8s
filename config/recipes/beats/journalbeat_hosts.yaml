@@ -31,7 +31,7 @@ spec:
             name: run-journal
           - mountPath: /etc/machine-id
             name: machine-id
-        hostNetwork: true
+        hostNetwork: true # Allows to provide richer host metadata
         securityContext:
           runAsUser: 0
         terminationGracePeriodSeconds: 30

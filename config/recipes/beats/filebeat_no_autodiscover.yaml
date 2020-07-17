@@ -23,7 +23,7 @@ spec:
         automountServiceAccountToken: true
         terminationGracePeriodSeconds: 30
         dnsPolicy: ClusterFirstWithHostNet
-        hostNetwork: true
+        hostNetwork: true # Allows to provide richer host metadata
         securityContext:
           runAsUser: 0
         containers:

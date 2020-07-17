@@ -83,7 +83,7 @@ spec:
           - mountPath: /hostfs/proc
             name: proc
         dnsPolicy: ClusterFirstWithHostNet
-        hostNetwork: true
+        hostNetwork: true # Allows to provide richer host metadata
         securityContext:
           runAsUser: 0
         terminationGracePeriodSeconds: 30

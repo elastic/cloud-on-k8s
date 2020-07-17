@@ -21,8 +21,6 @@ spec:
     replicas: 1
     podTemplate:
       spec:
-        dnsPolicy: ClusterFirstWithHostNet
-        hostNetwork: true
         securityContext:
           runAsUser: 0
 ---
