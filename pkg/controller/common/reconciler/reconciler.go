@@ -111,7 +111,7 @@ func ReconcileResource(params Params) error {
 		// Create the object, which modifies params.Reconciled in-place
 		err = params.Client.Create(params.Reconciled)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		return nil
 	}
@@ -167,7 +167,7 @@ func ReconcileResource(params Params) error {
 		reconciledMeta.SetResourceVersion(resourceVersion)
 		err = params.Client.Update(params.Reconciled)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		if params.PostUpdate != nil {
 			params.PostUpdate()

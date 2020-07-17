@@ -185,5 +185,5 @@ func setInitialMasterNodesAnnotation(k8sClient k8s.Client, es esv1.Elasticsearch
 		es.Annotations = map[string]string{}
 	}
 	es.Annotations[initialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
-	return pkgerrors.WithStack(k8sClient.Update(&es))
+	return k8sClient.Update(&es)
 }
