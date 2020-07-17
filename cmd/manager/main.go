@@ -171,7 +171,7 @@ func init() {
 	Cmd.Flags().String(
 		operator.WebhookConfigurationNameFlag,
 		DefaultWebhookConfigurationName,
-		fmt.Sprintf("Name of K8s ValidatingWebhookConfiguration to be used for webhook params (defaults to %s)", DefaultWebhookConfigurationName),
+		fmt.Sprintf("Name of the Kubernetes ValidatingWebhookConfiguration resource (defaults to %s). Only used when enable-webhook is true.", DefaultWebhookConfigurationName),
 	)
 
 	// enable using dashed notation in flags and underscores in env
