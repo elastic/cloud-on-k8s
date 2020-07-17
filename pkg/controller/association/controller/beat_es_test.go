@@ -58,32 +58,32 @@ func Test_getBeatRoles(t *testing.T) {
 		{
 			name:  "test roles for 7.3.0 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.3.0"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v73",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v73",
 		},
 		{
 			name:  "test roles for 7.4.99 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.4.99"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v73",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v73",
 		},
 		{
 			name:  "test roles for 7.5.0 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.5.0"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v75",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v75",
 		},
 		{
 			name:  "test roles for 7.6.99 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.6.99"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v75",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v75",
 		},
 		{
 			name:  "test roles for 7.7.0 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "metricbeat", Version: "7.7.0"}},
-			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_metricbeat_role_v77",
+			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_metricbeat_role_v77",
 		},
 		{
 			name:  "test roles for 7.99.99 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "metricbeat", Version: "7.99.99"}},
-			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_metricbeat_role_v77",
+			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_metricbeat_role_v77",
 		},
 		{
 			name:  "test roles for 1.2.0 community Beat",

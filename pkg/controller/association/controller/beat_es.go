@@ -88,7 +88,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"kibana_admin",
 			"ingest_admin",
 			"beats_admin",
-			"remote_monitoring_user",
+			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V77, beat.Spec.Type),
 		}, ","), nil
 	case v.IsSameOrAfter(version.From(7, 5, 0)):
@@ -96,7 +96,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"kibana_user",
 			"ingest_admin",
 			"beats_admin",
-			"remote_monitoring_user",
+			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V75, beat.Spec.Type),
 		}, ","), nil
 	case v.IsSameOrAfter(version.From(7, 3, 0)):
@@ -104,7 +104,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"kibana_user",
 			"ingest_admin",
 			"beats_admin",
-			"remote_monitoring_user",
+			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V73, beat.Spec.Type),
 		}, ","), nil
 	default:
