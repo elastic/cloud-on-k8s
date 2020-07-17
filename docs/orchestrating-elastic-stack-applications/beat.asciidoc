@@ -379,7 +379,6 @@ Below you can find manifests that address a number of common use cases and can b
 kubectl apply -f {beats_url}/metricbeat_hosts.yaml
 ----
 
-
 Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
 
 === Filebeat with autodiscover
