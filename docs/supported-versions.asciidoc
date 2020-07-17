@@ -2,7 +2,7 @@
 * Kubernetes 1.12+ or OpenShift 3.11+
 * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 * Elasticsearch, Kibana, APM Server: 6.8+, 7.1+
-* Enterprise Search: 7.6+
+* Enterprise Search: 7.7+
 * Beats: 7.0+
 
 ECK should work with all conformant installers as listed in these link:https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer[FAQs]. Distributions include source patches and so may not work as-is with ECK.
