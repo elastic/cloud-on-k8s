@@ -9,22 +9,22 @@ CAUTION: Some of these examples use the `node.store.allow_mmap: false` configura
 
 ==== Metricbeat for Kubernetes monitoring - `metricbeat_hosts.yaml`
 
-Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
 
 ==== Filebeat with autodiscover - `filebeat_autodiscover.yaml`
 
-Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespaces will have logs shipped to an Elasticsearch cluster.
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It will collect logs from pods in every namespace and load them to the connected Elasticsearch cluster.
 
 ==== Filebeat with autodiscover for metadata - `filebeat_autodiscover_by_metadata.yaml`
 
-Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod's logs to be shipped to an Elasticsearch cluster:
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. Logs from pods matching the following criteria will be shipped to the connected Elasticsearch cluster:
 
 - Pod is in `log-namespace` namespace
 - Pod has `log-label: "true"` label
 
 ==== Filebeat without autodiscover - `filebeat_no_autodiscover.yaml`
 
-Deploys Filebeat as a DaemonSet with autodiscover feature disabled. Uses entire logs directory on the host as the input. Doesn't require any RBAC resources as no Kubernetes APIs are used.
+Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the entire logs directory on the host as the input source. This configuration does not require any RBAC resources as no Kubernetes APIs are used.
 
 ==== Heartbeat monitoring Elasticsearch and Kibana health - `heartbeat_es_kb_heatlh.yaml`
 
