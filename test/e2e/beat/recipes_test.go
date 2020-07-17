@@ -1,0 +1,197 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
+package beat
+
+import (
+	"fmt"
+	"path"
+	"strings"
+	"testing"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
+)
+
+func TestFilebeatNoAutodiscoverRecipe(t *testing.T) {
+	name := "fb-no-autodiscover"
+	pod, loggedString := loggingTestPod(name)
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(
+				beat.HasMessageContaining(loggedString),
+			)
+	}
+
+	runBeatRecipe(t, "filebeat_no_autodiscover.yaml", customize, pod)
+}
+
+func TestFilebeatAutodiscoverRecipe(t *testing.T) {
+	name := "fb-autodiscover"
+	pod, loggedString := loggingTestPod(name)
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(
+				beat.HasEventFromPod(pod.Name),
+				beat.HasMessageContaining(loggedString),
+			)
+	}
+
+	runBeatRecipe(t, "filebeat_autodiscover.yaml", customize, pod)
+}
+
+func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
+	name := "fb-autodiscover-meta"
+	podBad, badLog := loggingTestPod(name + "-bad")
+	podLabel, goodLog := loggingTestPod(name + "-label")
+	podLabel.Labels["log-label"] = "true"
+
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+			WithESValidations(
+				beat.HasEventFromPod(podLabel.Name),
+				beat.HasMessageContaining(goodLog),
+				beat.NoMessageContaining(badLog),
+			)
+	}
+
+	runBeatRecipe(t, "filebeat_autodiscover_by_metadata.yaml", customize, podLabel, podBad)
+}
+
+func TestMetricbeatHostsRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(
+				beat.HasEvent("event.dataset:system.cpu"),
+				beat.HasEvent("event.dataset:system.load"),
+				beat.HasEvent("event.dataset:system.memory"),
+				beat.HasEvent("event.dataset:system.network"),
+				beat.HasEvent("event.dataset:system.process"),
+				beat.HasEvent("event.dataset:system.process.summary"),
+				beat.HasEvent("event.dataset:system.fsstat"),
+			)
+	}
+
+	runBeatRecipe(t, "metricbeat_hosts.yaml", customize)
+}
+
+func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		cfg := settings.MustCanonicalConfig(builder.Beat.Spec.Config.Data)
+		yamlBytes, err := cfg.Render()
+		require.NoError(t, err)
+
+		spec := builder.Beat.Spec
+		newEsHost := fmt.Sprintf("%s.%s.svc", esv1.HTTPService(spec.ElasticsearchRef.Name), builder.Beat.Namespace)
+		newKbHost := fmt.Sprintf("%s.%s.svc", kibana.HTTPService(spec.KibanaRef.Name), builder.Beat.Namespace)
+
+		yaml := string(yamlBytes)
+		yaml = strings.ReplaceAll(yaml, "elasticsearch-es-http.default.svc", newEsHost)
+		yaml = strings.ReplaceAll(yaml, "kibana-kb-http.default.svc", newKbHost)
+
+		builder.Beat.Spec.Config = &commonv1.Config{}
+		err = settings.MustParseConfig([]byte(yaml)).Unpack(&builder.Beat.Spec.Config.Data)
+		require.NoError(t, err)
+
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(
+				beat.HasEvent("monitor.status:up"),
+			)
+	}
+
+	runBeatRecipe(t, "heartbeat_es_kb_health.yaml", customize)
+}
+
+func TestAuditbeatHostsRecipe(t *testing.T) {
+	if test.Ctx().Provider == "kind" {
+		// kind doesn't support configuring required settings
+		// see https://github.com/elastic/cloud-on-k8s/issues/3328 for more context
+		t.SkipNow()
+	}
+
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.AuditbeatPSPClusterRoleName).
+			WithESValidations(
+				beat.HasEvent("event.dataset:file"),
+				beat.HasEvent("event.module:file_integrity"),
+			)
+	}
+
+	runBeatRecipe(t, "auditbeat_hosts.yaml", customize)
+}
+
+func TestPacketbeatDnsHttpRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesVersion == "1.12") {
+			// there are some issues with kind 1.12 and tracking http traffic
+			builder = builder.WithESValidations(beat.HasEvent("event.dataset:http"))
+		}
+
+		return builder.
+			WithRoles(beat.PacketbeatPSPClusterRoleName).
+			WithESValidations(
+				beat.HasEvent("event.dataset:flow"),
+				beat.HasEvent("event.dataset:dns"),
+			)
+	}
+
+	runBeatRecipe(t, "packetbeat_dns_http.yaml", customize)
+}
+
+func TestJournalbeatHostsRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.JournalbeatPSPClusterRoleName)
+	}
+
+	runBeatRecipe(t, "journalbeat_hosts.yaml", customize)
+}
+
+func runBeatRecipe(
+	t *testing.T,
+	fileName string,
+	customize func(builder beat.Builder) beat.Builder,
+	additionalObjects ...runtime.Object,
+) {
+	filePath := path.Join("../../../config/recipes/beats", fileName)
+	namespace := test.Ctx().ManagedNamespace(0)
+	suffix := rand.String(4)
+
+	transformationsWrapped := func(builder test.Builder) test.Builder {
+		beatBuilder, ok := builder.(beat.Builder)
+		if !ok {
+			return builder
+		}
+
+		if customize != nil {
+			beatBuilder = customize(beatBuilder)
+		}
+
+		return beatBuilder.
+			WithESValidations(beat.HasEventFromBeat(beatcommon.Type(beatBuilder.Beat.Spec.Type)))
+	}
+
+	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
+}
+
+func loggingTestPod(name string) (*corev1.Pod, string) {
+	podBuilder := beat.NewPodBuilder(name)
+	return &podBuilder.Pod, podBuilder.Logged
+}

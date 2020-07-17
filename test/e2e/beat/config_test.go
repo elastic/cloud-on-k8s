@@ -37,6 +37,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 	testPodBuilder := beat.NewPodBuilder(name)
 
 	fbBuilder := beat.NewBuilder(name).
+		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithType(filebeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
@@ -59,7 +60,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	mbBuilder := beat.NewBuilder(name).
 		WithType(metricbeat.Type).
-		WithRoles(beat.MetricbeatClusterRoleName).
+		WithRoles(beat.MetricbeatClusterRoleName, beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(metricbeat.Type),
@@ -85,6 +86,7 @@ func TestHeartbeatConfig(t *testing.T) {
 
 	hbBuilder := beat.NewBuilder(name).
 		WithType(heartbeat.Type).
+		WithRoles(beat.PSPClusterRoleName).
 		WithDeployment().
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
@@ -120,6 +122,7 @@ func TestBeatSecureSettings(t *testing.T) {
 
 	fbBuilder := beat.NewBuilder(name).
 		WithType(filebeat.Type).
+		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithSecureSettings(secretName).
 		WithObjects(secret).
@@ -191,6 +194,7 @@ processors:
 
 	fbBuilder := beat.NewBuilder(name).
 		WithType(filebeat.Type).
+		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithConfigRef(secretName).
 		WithObjects(secret).

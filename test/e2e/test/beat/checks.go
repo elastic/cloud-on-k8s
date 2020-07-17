@@ -27,11 +27,37 @@ func HasMessageContaining(message string) ValidationFunc {
 	return HasEvent(fmt.Sprintf("message:%s", message))
 }
 
+func NoMessageContaining(message string) ValidationFunc {
+	return NoEvent(fmt.Sprintf("message:%s", message))
+}
+
 func HasEvent(query string) ValidationFunc {
 	return hasEvent(fmt.Sprintf("/*beat*/_search?q=%s", query))
 }
 
+func NoEvent(query string) ValidationFunc {
+	return noEvent(fmt.Sprintf("/*beat*/_search?q=%s", query))
+}
+
 func hasEvent(url string) ValidationFunc {
+	return checkEvent(url, func(hitsCount int) error {
+		if hitsCount == 0 {
+			return fmt.Errorf("hit count should be more than 0 for %s", url)
+		}
+		return nil
+	})
+}
+
+func noEvent(url string) ValidationFunc {
+	return checkEvent(url, func(hitsCount int) error {
+		if hitsCount != 0 {
+			return fmt.Errorf("hit count should be 0 for %s", url)
+		}
+		return nil
+	})
+}
+
+func checkEvent(url string, check func(int) error) ValidationFunc {
 	return func(esClient client.Client) error {
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
@@ -52,8 +78,8 @@ func hasEvent(url string) ValidationFunc {
 		if err != nil {
 			return err
 		}
-		if len(results.Hits.Hits) == 0 {
-			return fmt.Errorf("hit count should be more than 0 for %s", url)
+		if err := check(len(results.Hits.Hits)); err != nil {
+			return err
 		}
 
 		return nil
