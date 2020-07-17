@@ -7,6 +7,7 @@ package user
 import (
 	"fmt"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 
 	"gopkg.in/yaml.v2"
@@ -90,7 +91,7 @@ var (
 )
 
 func init() {
-	for _, beat := range []string{"filebeat", "metricbeat", "heartbeat", "auditbeat", "journalbeat", "packetbeat"} {
+	for beat := range beatv1beta1.KnownTypes {
 		PredefinedRoles[BeatEsRoleName(V77, beat)] = esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{
