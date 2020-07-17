@@ -117,7 +117,7 @@ spec:
   version: 7.8.0
   nodeSets:
   - name: default
-    count: 3
+    count: 1
     config:
       node.store.allow_mmap: false
       # https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-metricbeat.html
@@ -154,7 +154,7 @@ spec:
   version: 7.8.0
   nodeSets:
   - name: default
-    count: 3
+    count: 1
     config:
       node.store.allow_mmap: false
 ---
@@ -168,7 +168,7 @@ spec:
   elasticsearchRef:
     name: elasticsearch-monitoring
   config:
-    # enable the UI to reflect container level CPU usage, only takes works if CPU limits are set on the monitored ES cluster
+    # enable the UI to reflect container level CPU usage, only displays info if CPU limits are set on the monitored ES cluster
     # https://www.elastic.co/guide/en/kibana/current/monitoring-settings-kb.html
     xpack.monitoring.ui.container.elasticsearch.enabled: true
 ...
