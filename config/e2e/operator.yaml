@@ -226,7 +226,16 @@ spec:
       - image: {{ .OperatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--namespaces", "{{ .Operator.ManagedNamespaces | join "," }}", "--enable-webhook", "--log-verbosity=1", "--metrics-port=9090"]
+        args:
+        - "manager"
+        - "--namespaces"
+        - "{{ .Operator.ManagedNamespaces | join "," }}"
+        - "--enable-webhook"
+        - "--log-verbosity=1"
+        - "--metrics-port=9090"
+        {{ if .MonitoringSecrets }}
+        - "--enable-tracing"
+        {{end}}
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -234,6 +243,22 @@ spec:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SECRET
             value: webhook-server-secret
+          {{ if .MonitoringSecrets }}
+          - name: ELASTIC_APM_SERVER_CERT
+            value: "/mnt/elastic/apm.crt"
+          - name: ELASTIC_APM_SERVER_URL
+            valueFrom:
+              secretKeyRef:
+                name: "eck-{{ .TestRun }}"
+                key: apm_server_url
+          - name: ELASTIC_APM_SECRET_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "eck-{{ .TestRun }}"
+                key: apm_secret_token
+          - name: ELASTIC_APM_ENVIRONMENT
+            value: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+          {{end}}
         resources:
           limits:
             cpu: 1
@@ -252,12 +277,19 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - name: apm-cert
+          mountPath: /mnt/elastic/apm.crt
+          subPath: "apm_server_cert"
+          readOnly: true
       terminationGracePeriodSeconds: 10
       volumes:
       - name: cert
         secret:
           defaultMode: 420
           secretName: webhook-server-secret
+      - name: apm-cert
+        secret:
+          secretName: "eck-{{ .TestRun }}"
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
