@@ -48,8 +48,20 @@ func (b Builder) SkipTest() bool {
 
 }
 
-func NewBuilderWithoutSuffix(name string) Builder {
-	return newBuilder(name, "")
+// NewBuilderFromBeat creates a Beat builder from an existing Beat config. Sets all additional Builder fields
+// appropriately.
+func NewBuilderFromBeat(beat *beatv1beta1.Beat) Builder {
+	var podTemplate *corev1.PodTemplateSpec
+	if beat.Spec.DaemonSet != nil {
+		podTemplate = &beat.Spec.DaemonSet.PodTemplate
+	} else if beat.Spec.Deployment != nil {
+		podTemplate = &beat.Spec.Deployment.PodTemplate
+	}
+
+	return Builder{
+		Beat:        *beat,
+		PodTemplate: podTemplate,
+	}
 }
 
 func NewBuilder(name string) Builder {
@@ -73,8 +85,7 @@ func newBuilder(name string, suffix string) Builder {
 	}.
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
-		WithDaemonSet().
-		WithRoles(AutodiscoverClusterRoleName, PSPClusterRoleName)
+		WithDaemonSet()
 }
 
 type ValidationFunc func(client.Client) error
@@ -196,9 +207,10 @@ func (b Builder) WithRoles(clusterRoleNames ...string) Builder {
 }
 
 func bind(b Builder, clusterRoleName string) Builder {
-	saName := fmt.Sprintf("%s-sa", b.Beat.Name)
+	saName := b.PodTemplate.Spec.ServiceAccountName
 
-	if b.PodTemplate.Spec.ServiceAccountName != saName {
+	if saName == "" {
+		saName = fmt.Sprintf("%s-sa", b.Beat.Name)
 		b = b.WithPodTemplateServiceAccount(saName)
 		sa := &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
