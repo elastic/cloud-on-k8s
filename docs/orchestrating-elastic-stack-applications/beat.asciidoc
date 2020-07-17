@@ -66,7 +66,7 @@ spec:
 EOF
 ----
 
-For more ready-to-use manifest examples, please see <<{p}-beat-configuration-examples,Configuration Examples>>.
+See <<{p}-beat-configuration-examples>> for more ready-to-use manifests.
 
 . Monitor Beats
 +
@@ -372,7 +372,6 @@ To deploy Beats in clusters with the Pod Security Policy admission controller en
 
 Below you can find manifests that address a number of common use cases and can be your starting point in exploring Beats deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. All of them contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
 
-[source,sh,subs="attributes"]
 === Metricbeat for Kubernetes monitoring
 
 [source,sh,subs="attributes"]
@@ -381,7 +380,7 @@ kubectl apply -f {beats_url}/metricbeat_hosts.yaml
 ----
 
 
-Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
 
 === Filebeat with autodiscover
 
@@ -390,7 +389,7 @@ Deploys Metricbeat as a DaemonSet that monitors the host resource usage (cpu, me
 kubectl apply -f {beats_url}/filebeat_autodiscover.yaml
 ----
 
-Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all namespaces will have logs shipped to an Elasticsearch cluster.
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It will collect logs from pods in every namespace and load them to the connected Elasticsearch cluster.
 
 === Filebeat with autodiscover for metadata
 
@@ -399,7 +398,7 @@ Deploys Filebeat as DaemonSet with autodiscover feature enabled. All pods in all
 kubectl apply -f {beats_url}/filebeat_autodiscover_by_metadata.yaml
 ----
 
-Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling any of the two conditions below will cause a given Pod's logs to be shipped to an Elasticsearch cluster:
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. Logs from pods matching the following criteria will be shipped to the connected Elasticsearch cluster:
 
 - Pod is in `log-namespace` namespace
 - Pod has `log-label: "true"` label
@@ -411,7 +410,7 @@ Deploys Filebeat as a DaemonSet with autodiscover feature enabled. Fullfilling a
 kubectl apply -f {beats_url}/filebeat_no_autodiscover.yaml
 ----
 
-Deploys Filebeat as a DaemonSet with autodiscover feature disabled. Uses entire logs directory on the host as the input. Doesn't require any RBAC resources as no Kubernetes APIs are used.
+Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the entire logs directory on the host as the input source. This configuration does not require any RBAC resources as no Kubernetes APIs are used.
 
 === Heartbeat monitoring Elasticsearch and Kibana health
 
