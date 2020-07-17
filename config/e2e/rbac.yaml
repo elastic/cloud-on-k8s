@@ -84,6 +84,10 @@ rules:
       - configmaps
       - events
       - serviceaccounts
+      # to create resources defined in recipes
+      - namespaces
+      - nodes
+      - nodes/stats
     verbs:
       - get
       - list
@@ -112,11 +116,12 @@ rules:
     - clusterroles
     verbs:
     - bind
-    - get
+    # to create resources defined in recipes
   - apiGroups:
     - "rbac.authorization.k8s.io"
     resources:
     - clusterrolebindings
+    - clusterroles
     verbs:
     - get
     - list
@@ -131,11 +136,26 @@ rules:
       - deployments
       - statefulsets
       - daemonsets
+      - replicasets # to create resources defined in recipes
     verbs:
       - get
       - list
       - watch
       - delete
+    # to create resources defined in recipes
+  - apiGroups:
+    - "extensions"
+    resources:
+    - replicasets
+    verbs:
+    - get
+    - list
+    - watch
+    # to create resources defined in recipes
+  - nonResourceURLs:
+    - "/metrics"
+    verbs:
+    - get
   - apiGroups:
       - elasticsearch.k8s.elastic.co
     resources:
