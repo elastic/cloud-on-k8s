@@ -205,7 +205,7 @@ func runBeatRecipe(
 		if !ok {
 			return builder
 		}
-
+		beatBuilder.Suffix = suffix
 		if customize != nil {
 			beatBuilder = customize(beatBuilder)
 		}
