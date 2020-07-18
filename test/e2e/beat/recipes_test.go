@@ -93,8 +93,9 @@ func TestMetricbeatHostsRecipe(t *testing.T) {
 func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		// update ref to monitored cluster credentials
-		newKeyName := fmt.Sprintf("%s-es-elastic-user", builder.Beat.Spec.ElasticsearchRef.Name)
-		builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = newKeyName
+		currSecretName := builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name
+		newSecretName := strings.Replace(currSecretName, "elasticsearch", fmt.Sprintf("elasticsearch-%s", builder.Suffix), 1)
+		builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = newSecretName
 
 		return builder.
 			WithRoles(beat.PSPClusterRoleName).
