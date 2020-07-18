@@ -186,6 +186,12 @@ func runBeatRecipe(
 			t.SkipNow()
 		}
 
+		// OpenShift requires different securityContext than provided in the recipe.
+		// Skipping it altogether to reduce maintenance burden.
+		if test.Ctx().Provider == "ocp" {
+			t.SkipNow()
+		}
+
 		if customize != nil {
 			beatBuilder = customize(beatBuilder)
 		}
