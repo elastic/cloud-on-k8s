@@ -10,10 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
@@ -180,6 +182,16 @@ func runBeatRecipe(
 			return builder
 		}
 
+		if isStackIncompatible(beatBuilder.Beat) {
+			t.SkipNow()
+		}
+
+		// OpenShift requires different securityContext than provided in the recipe.
+		// Skipping it altogether to reduce maintenance burden.
+		if test.Ctx().Provider == "ocp" {
+			t.SkipNow()
+		}
+
 		if customize != nil {
 			beatBuilder = customize(beatBuilder)
 		}
@@ -189,6 +201,13 @@ func runBeatRecipe(
 	}
 
 	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
+}
+
+// isStackIncompatible returns true iff Beat version is higher than tested Stack version
+func isStackIncompatible(beat beatv1beta1.Beat) bool {
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	beatVersion := version.MustParse(beat.Spec.Version)
+	return beatVersion.IsAfter(stackVersion)
 }
 
 func loggingTestPod(name string) (*corev1.Pod, string) {
