@@ -154,7 +154,7 @@ spec:
   version: 7.8.0
   nodeSets:
   - name: default
-    count: 1
+    count: 3
     config:
       node.store.allow_mmap: false
 ---
