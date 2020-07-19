@@ -187,3 +187,13 @@ spec:
     ports:
       - port: 9443
 ----
+
+[id="{p}-disable-webhook"]
+== Disable the webhook
+
+To disable the webhook, set the <<{p}-operator-config, `enable-webhook`>> operator configuration flag to `false` and remove the `ValidatingWebhookConfiguration` named `elastic-webhook.k8s.elastic.co`:
+
+[source,sh]
+----
+kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elastic-webhook.k8s.elastic.co
+----

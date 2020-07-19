@@ -227,7 +227,7 @@ func TestAuditbeatConfig(t *testing.T) {
 	abBuilder := beat.NewBuilder(name).
 		WithType(auditbeat.Type).
 		WithKibanaRef(kbBuilder.Ref()).
-		WithRoles(beat.AuditbeatPSPClusterRoleName).
+		WithRoles(beat.AuditbeatPSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(auditbeat.Type),
@@ -253,7 +253,7 @@ func TestPacketbeatConfig(t *testing.T) {
 	pbBuilder := beat.NewBuilder(name).
 		WithType(packetbeat.Type).
 		WithKibanaRef(kbBuilder.Ref()).
-		WithRoles(beat.PacketbeatPSPClusterRoleName).
+		WithRoles(beat.PacketbeatPSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(packetbeat.Type),
@@ -279,7 +279,7 @@ func TestJournalbeatConfig(t *testing.T) {
 
 	jbBuilder := beat.NewBuilder(name).
 		WithType(journalbeat.Type).
-		WithRoles(beat.JournalbeatPSPClusterRoleName).
+		WithRoles(beat.JournalbeatPSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(journalbeat.Type),
