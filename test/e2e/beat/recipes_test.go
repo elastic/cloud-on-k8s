@@ -93,6 +93,8 @@ func TestMetricbeatHostsRecipe(t *testing.T) {
 }
 
 func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
+	name := "fb-autodiscover"
+	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
 		// update ref to monitored cluster credentials
 		currSecretName := builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name
@@ -102,6 +104,7 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 		return builder.
 			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
+				// metricbeat validations
 				// TODO: see if we can add validation for ccr, ml_job, and shard metricsets
 				beat.HasMonitoringEvent("type:cluster_stats"),
 				beat.HasMonitoringEvent("type:enrich_coordinator_stats"),
@@ -112,6 +115,9 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 				beat.HasMonitoringEvent("type:indices_stats"),
 				beat.HasMonitoringEvent("node_stats.node_master:true"),
 				beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
+				// filebeat validations
+				beat.HasEventFromPod(pod.Name),
+				beat.HasMessageContaining(loggedString),
 			)
 	}
 
