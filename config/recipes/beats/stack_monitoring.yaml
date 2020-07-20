@@ -153,8 +153,6 @@ spec:
           #privileged: true
         containers:
         - name: filebeat
-          ports:
-          - containerPort: 5066
           volumeMounts:
           - name: varlogcontainers
             mountPath: /var/log/containers
