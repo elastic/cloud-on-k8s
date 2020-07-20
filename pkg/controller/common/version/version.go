@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
@@ -128,6 +130,32 @@ func (v *Version) IsAfter(other Version) bool {
 	return v.Major > other.Major ||
 		(v.Major == other.Major && v.Minor > other.Minor) ||
 		(v.Major == other.Major && v.Minor == other.Minor && v.Patch > other.Patch)
+}
+
+// MinInPods returns the lowest version parsed from labels in the given Pods.
+func MinInPods(pods []corev1.Pod, labelName string) (*Version, error) {
+	versions := make([]Version, 0, len(pods))
+	for _, p := range pods {
+		v, err := FromLabels(p.Labels, labelName)
+		if err != nil {
+			return nil, err
+		}
+		versions = append(versions, *v)
+	}
+	return Min(versions), nil
+}
+
+// MinInPods returns the lowest version parsed from labels in the given StatefulSets template.
+func MinInStatefulSets(ssets []appsv1.StatefulSet, labelName string) (*Version, error) {
+	versions := make([]Version, 0, len(ssets))
+	for _, s := range ssets {
+		v, err := FromLabels(s.Spec.Template.Labels, labelName)
+		if err != nil {
+			return nil, err
+		}
+		versions = append(versions, *v)
+	}
+	return Min(versions), nil
 }
 
 // Min returns the minimum version in vs or nil.

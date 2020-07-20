@@ -48,29 +48,13 @@ type EnterpriseSearchSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-// EnterpriseSearchHealth expresses the health of the Enterprise Search instances.
-type EnterpriseSearchHealth string
-
-const (
-	// EnterpriseSearchRed means no instance is currently available.
-	EnterpriseSearchRed EnterpriseSearchHealth = "red"
-	// EnterpriseSearchGreen means at least one instance is available.
-	EnterpriseSearchGreen EnterpriseSearchHealth = "green"
-)
-
 // EnterpriseSearchStatus defines the observed state of EnterpriseSearch
 type EnterpriseSearchStatus struct {
-	commonv1.ReconcilerStatus `json:",inline"`
-	Health                    EnterpriseSearchHealth `json:"health,omitempty"`
+	commonv1.DeploymentStatus `json:",inline"`
 	// ExternalService is the name of the service associated to the Enterprise Search Pods.
 	ExternalService string `json:"service,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
-}
-
-// IsDegraded returns true if the current status is worse than the previous.
-func (ent EnterpriseSearchStatus) IsDegraded(prev EnterpriseSearchStatus) bool {
-	return prev.Health == EnterpriseSearchGreen && ent.Health != EnterpriseSearchGreen
 }
 
 // IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted

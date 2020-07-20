@@ -14,9 +14,27 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// ReconcilerStatus represents status information about desired/available nodes.
-type ReconcilerStatus struct {
+type DeploymentHealth string
+
+const (
+	GreenHealth DeploymentHealth = "green"
+	RedHealth   DeploymentHealth = "red"
+)
+
+// DeploymentStatus represents status information about a deployment.
+type DeploymentStatus struct {
+	// AvailableNodes is the number of available instances.
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
+	// Version of the stack resource currently running. During version upgrades, multiple versions may run
+	// in parallel: this value specifies the lowest version currently running.
+	Version string `json:"version,omitempty"`
+	// Health of the deployment.
+	Health DeploymentHealth `json:"health,omitempty"`
+}
+
+// IsDegraded returns true if the current status is worse than the previous.
+func (ds DeploymentStatus) IsDegraded(prev DeploymentStatus) bool {
+	return prev.Health == GreenHealth && ds.Health != GreenHealth
 }
 
 // SecretRef is a reference to a secret that exists in the same namespace.

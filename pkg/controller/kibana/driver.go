@@ -161,7 +161,13 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	state.UpdateKibanaState(reconciledDp)
+
+	existingPods, err := k8s.PodsMatchingLabels(d.K8sClient(), kb.Namespace, map[string]string{KibanaNameLabelName: kb.Name})
+	if err != nil {
+		return results.WithError(err)
+	}
+	state.Kibana.Status.DeploymentStatus = common.DeploymentStatus(state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, KibanaVersionLabelName)
+
 	return results
 }
 

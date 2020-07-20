@@ -45,26 +45,10 @@ type KibanaSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-// KibanaHealth expresses the status of the Kibana instances.
-type KibanaHealth string
-
-const (
-	// KibanaRed means no instance is currently available.
-	KibanaRed KibanaHealth = "red"
-	// KibanaGreen means at least one instance is available.
-	KibanaGreen KibanaHealth = "green"
-)
-
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
-	commonv1.ReconcilerStatus `json:",inline"`
-	Health                    KibanaHealth               `json:"health,omitempty"`
+	commonv1.DeploymentStatus `json:",inline"`
 	AssociationStatus         commonv1.AssociationStatus `json:"associationStatus,omitempty"`
-}
-
-// IsDegraded returns true if the current status is worse than the previous.
-func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
-	return prev.Health == KibanaGreen && ks.Health != KibanaGreen
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted

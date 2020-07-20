@@ -52,20 +52,9 @@ type ApmServerSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-// ApmServerHealth expresses the status of the Apm Server instances.
-type ApmServerHealth string
-
-const (
-	// ApmServerRed means no instance is currently available.
-	ApmServerRed ApmServerHealth = "red"
-	// ApmServerGreen means at least one instance is available.
-	ApmServerGreen ApmServerHealth = "green"
-)
-
 // ApmServerStatus defines the observed state of ApmServer
 type ApmServerStatus struct {
-	commonv1.ReconcilerStatus `json:",inline"`
-	Health                    ApmServerHealth `json:"health,omitempty"`
+	commonv1.DeploymentStatus `json:",inline"`
 	// ExternalService is the name of the service the agents should connect to.
 	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
@@ -74,11 +63,6 @@ type ApmServerStatus struct {
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
 	// KibanaAssociationStatus is the status of any auto-linking to Kibana.
 	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
-}
-
-// IsDegraded returns true if the current status is worse than the previous.
-func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
-	return prev.Health == ApmServerGreen && as.Health != ApmServerGreen
 }
 
 // +kubebuilder:object:root=true

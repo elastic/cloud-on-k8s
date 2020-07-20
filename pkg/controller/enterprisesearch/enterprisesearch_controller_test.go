@@ -314,10 +314,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}},
 			svcName: "http-service",
 			wantStatus: entv1beta1.EnterpriseSearchStatus{
-				ReconcilerStatus: commonv1.ReconcilerStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
+					Version:        "",
+					Health:         "green",
 				},
-				Health:          "green",
 				ExternalService: "http-service",
 			},
 			wantStatusUpdateCalled: true,
@@ -337,10 +338,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}},
 			svcName: "http-service",
 			wantStatus: entv1beta1.EnterpriseSearchStatus{
-				ReconcilerStatus: commonv1.ReconcilerStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
+					Version:        "",
+					Health:         "green",
 				},
-				Health:          "green",
 				ExternalService: "http-service",
 				Association:     commonv1.AssociationEstablished,
 			},
@@ -360,10 +362,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}},
 			svcName: "http-service",
 			wantStatus: entv1beta1.EnterpriseSearchStatus{
-				ReconcilerStatus: commonv1.ReconcilerStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
+					Version:        "",
+					Health:         "red",
 				},
-				Health:          "red",
 				ExternalService: "http-service",
 			},
 			wantStatusUpdateCalled: true,
@@ -372,10 +375,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			name: "update existing status when replicas count changes",
 			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Status: entv1beta1.EnterpriseSearchStatus{
-					ReconcilerStatus: commonv1.ReconcilerStatus{
+					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
+						Version:        "",
+						Health:         "green",
 					},
-					Health:          "green",
 					ExternalService: "http-service",
 				}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
@@ -389,10 +393,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}},
 			svcName: "http-service",
 			wantStatus: entv1beta1.EnterpriseSearchStatus{
-				ReconcilerStatus: commonv1.ReconcilerStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 4,
+					Version:        "",
+					Health:         "green",
 				},
-				Health:          "green",
 				ExternalService: "http-service",
 			},
 			wantStatusUpdateCalled: true,
@@ -401,10 +406,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			name: "don't do a status update if not necessary",
 			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Status: entv1beta1.EnterpriseSearchStatus{
-					ReconcilerStatus: commonv1.ReconcilerStatus{
+					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
+						Version:        "",
+						Health:         "green",
 					},
-					Health:          "green",
 					ExternalService: "http-service",
 				}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
@@ -418,10 +424,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}},
 			svcName: "http-service",
 			wantStatus: entv1beta1.EnterpriseSearchStatus{
-				ReconcilerStatus: commonv1.ReconcilerStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
+					Version:        "",
+					Health:         "green",
 				},
-				Health:          "green",
 				ExternalService: "http-service",
 			},
 			wantStatusUpdateCalled: false,
@@ -430,10 +437,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			name: "emit an event when health goes from green to red",
 			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Status: entv1beta1.EnterpriseSearchStatus{
-					ReconcilerStatus: commonv1.ReconcilerStatus{
+					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
+						Version:        "",
+						Health:         "green",
 					},
-					Health:          "green",
 					ExternalService: "http-service",
 				}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
@@ -447,10 +455,11 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}},
 			svcName: "http-service",
 			wantStatus: entv1beta1.EnterpriseSearchStatus{
-				ReconcilerStatus: commonv1.ReconcilerStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
+					Version:        "",
+					Health:         "red",
 				},
-				Health:          "red",
 				ExternalService: "http-service",
 			},
 			wantEvent:              true,

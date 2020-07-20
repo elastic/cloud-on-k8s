@@ -6,11 +6,13 @@ package reconcile
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -25,6 +27,8 @@ type ResourcesState struct {
 	CurrentPodsByPhase map[corev1.PodPhase][]corev1.Pod
 	// DeletingPods are all deleted Elasticsearch pods.
 	DeletingPods []corev1.Pod
+	// StatefulSets are all existing StatefulSets for the cluster.
+	StatefulSets sset.StatefulSetList
 	// ExternalService is the user-facing service related to the Elasticsearch cluster.
 	ExternalService corev1.Service
 }
@@ -59,6 +63,11 @@ func NewResourcesStateFromAPI(c k8s.Client, es esv1.Elasticsearch) (*ResourcesSt
 		currentPodsByPhase[p.Status.Phase] = podsInPhase
 	}
 
+	ssets, err := sset.RetrieveActualStatefulSets(c, types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+	if err != nil {
+		return nil, err
+	}
+
 	externalService, err := services.GetExternalService(c, es)
 	if err != nil {
 		return nil, err
@@ -69,6 +78,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es esv1.Elasticsearch) (*ResourcesSt
 		CurrentPods:        currentPods,
 		CurrentPodsByPhase: currentPodsByPhase,
 		DeletingPods:       deletingPods,
+		StatefulSets:       ssets,
 		ExternalService:    externalService,
 	}
 

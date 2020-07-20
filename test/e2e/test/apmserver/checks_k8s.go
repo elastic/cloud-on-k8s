@@ -7,6 +7,9 @@ package apmserver
 import (
 	"fmt"
 
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +25,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
+		CheckStatus(b, k),
 	}
 }
 
@@ -197,4 +201,33 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		}
 		return expected
 	})
+}
+
+func CheckStatus(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "APMServer status should be updated",
+		Test: test.Eventually(func() error {
+			var as apmv1.ApmServer
+			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &as); err != nil {
+				return err
+			}
+			// don't check association statuses that may vary across tests
+			as.Status.ElasticsearchAssociationStatus = ""
+			as.Status.KibanaAssociationStatus = ""
+
+			expected := apmv1.ApmServerStatus{
+				ExternalService:       b.ApmServer.Name + "-apm-http",
+				SecretTokenSecretName: b.ApmServer.Name + "-apm-token",
+				DeploymentStatus: commonv1.DeploymentStatus{
+					AvailableNodes: b.ApmServer.Spec.Count,
+					Version:        b.ApmServer.Spec.Version,
+					Health:         "green",
+				},
+			}
+			if as.Status != expected {
+				return fmt.Errorf("expected status %+v but got %+v", expected, as.Status)
+			}
+			return nil
+		}),
+	}
 }

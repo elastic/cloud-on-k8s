@@ -226,7 +226,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	if reflect.DeepEqual(current.Status, state.Kibana.Status) {
 		return nil
 	}
-	if state.Kibana.Status.IsDegraded(current.Status) {
+	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.V(1).Info("Updating status",
@@ -258,15 +258,4 @@ type State struct {
 // state reset to empty.
 func NewState(request reconcile.Request, kb *kbv1.Kibana) State {
 	return State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
-}
-
-// UpdateKibanaState updates the Kibana status based on the given deployment.
-func (s State) UpdateKibanaState(deployment appsv1.Deployment) {
-	s.Kibana.Status.AvailableNodes = deployment.Status.AvailableReplicas
-	s.Kibana.Status.Health = kbv1.KibanaRed
-	for _, c := range deployment.Status.Conditions {
-		if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
-			s.Kibana.Status.Health = kbv1.KibanaGreen
-		}
-	}
 }

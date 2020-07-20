@@ -328,7 +328,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 	if reflect.DeepEqual(current.Status, state.ApmServer.Status) {
 		return nil
 	}
-	if state.ApmServer.Status.IsDegraded(current.Status) {
+	if state.ApmServer.Status.IsDegraded(current.Status.DeploymentStatus) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",

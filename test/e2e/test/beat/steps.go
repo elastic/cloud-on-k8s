@@ -113,7 +113,37 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{}
+	return test.StepList{
+		{
+			Name: "Beat status should be updated",
+			Test: test.Eventually(func() error {
+				var beat beatv1beta1.Beat
+				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &beat); err != nil {
+					return err
+				}
+				// don't check association statuses that may vary across tests
+				beat.Status.ElasticsearchAssociationStatus = ""
+				beat.Status.KibanaAssocationStatus = ""
+
+				expected := beatv1beta1.BeatStatus{
+					Version: b.Beat.Spec.Version,
+					Health:  "green",
+				}
+				if b.Beat.Spec.Deployment != nil {
+					expected.ExpectedNodes = *b.Beat.Spec.Deployment.Replicas
+					expected.AvailableNodes = *b.Beat.Spec.Deployment.Replicas
+				} else {
+					// don't check the replicas count for daemonsets
+					beat.Status.ExpectedNodes = 0
+					beat.Status.AvailableNodes = 0
+				}
+				if beat.Status != expected {
+					return fmt.Errorf("expected status %+v but got %+v", expected, beat.Status)
+				}
+				return nil
+			}),
+		},
+	}
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {

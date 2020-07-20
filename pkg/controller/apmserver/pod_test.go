@@ -58,6 +58,13 @@ func TestNewPodSpec(t *testing.T) {
 				},
 			},
 			want: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"apm.k8s.elastic.co/name":    "fake-apm",
+						"apm.k8s.elastic.co/version": "7.0.1",
+						"common.k8s.elastic.co/type": "apm-server",
+					},
+				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						configSecretVol.Volume(), configVolume.Volume(),
