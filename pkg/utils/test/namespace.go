@@ -23,5 +23,5 @@ func EnsureNamespace(c k8s.Client, ns string) error {
 	if errors.IsNotFound(err) {
 		return c.Create(&expected)
 	}
-	return nil
+	return err
 }
