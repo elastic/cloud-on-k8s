@@ -97,7 +97,7 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
 		// update ref to monitored cluster credentials
-		if builder.Beat.ObjectMeta.Name == "metricbeat" {
+		if strings.HasPrefix(builder.Beat.ObjectMeta.Name, "metricbeat") {
 			currSecretName := builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name
 			newSecretName := strings.Replace(currSecretName, "elasticsearch", fmt.Sprintf("elasticsearch-%s", builder.Suffix), 1)
 			builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = newSecretName
