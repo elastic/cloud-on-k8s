@@ -56,27 +56,9 @@ spec:
                     # TODO: switch this to "certificate" when available: https://github.com/elastic/beats/issues/8164
                     ssl.verification_mode: "none"
                     xpack.enabled: true
-              - condition:
-                  contains:
-                    kubernetes.labels.scrape: beats
-                config:
-                  - module: beat
-                    metricsets:
-                      - stats
-                      - state
-                    period: 10s
-                    hosts: "http://${data.host}:${data.port}"
-                    # username: ${MONITORED_ES_USERNAME}
-                    # password: ${MONITORED_ES_PASSWORD}
-                    # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
-                    # TODO: switch this to "certificate" when available: https://github.com/elastic/beats/issues/8164
-                    ssl.verification_mode: "none"
-                    xpack.enabled: true
     processors:
     - add_cloud_metadata: {}
     logging.json: true
-    monitoring.enabled: true
-    # monitoring.override_cluster_uuid: v61kJi_4QY6h-DKC7MSxUg
   deployment:
     podTemplate:
       spec:
@@ -157,16 +139,8 @@ spec:
     - add_cloud_metadata: {}
     - add_host_metadata: {}
     logging.json: true
-    http.enabled: true
-    http.host: "0.0.0.0"
-    # monitoring.enabled: true
-    monitoring.enabled: false
-    # monitoring.override_cluster_uuid: v61kJi_4QY6h-DKC7MSxUg
   daemonSet:
     podTemplate:
-      metadata:
-        labels:
-          scrape: beats
       spec:
         serviceAccountName: filebeat
         automountServiceAccountToken: true
