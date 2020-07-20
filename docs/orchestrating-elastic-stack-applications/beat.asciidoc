@@ -415,6 +415,15 @@ kubectl apply -f {beats_url}/filebeat_no_autodiscover.yaml
 
 Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the entire logs directory on the host as the input source. This configuration does not require any RBAC resources as no Kubernetes APIs are used.
 
+=== Metricbeat for Elasticsearch and Kibana Stack Monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/stack_monitoring.yaml
+----
+
+Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring]. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana. Combine with one of the Filebeat recipes but update the `elasticsearchRef` to point to the `elasticsearch-monitoring` cluster for the full Stack Monitoring experience.
+
 === Heartbeat monitoring Elasticsearch and Kibana health
 
 [source,sh,subs="attributes"]
