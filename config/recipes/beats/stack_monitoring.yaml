@@ -138,6 +138,7 @@ spec:
     processors:
     - add_cloud_metadata: {}
     - add_host_metadata: {}
+    logging.json: true
   daemonSet:
     podTemplate:
       spec:

@@ -123,7 +123,7 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 			)
 	}
 
-	runBeatRecipe(t, "stack_monitoring.yaml", customize)
+	runBeatRecipe(t, "stack_monitoring.yaml", customize, pod)
 }
 
 func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
