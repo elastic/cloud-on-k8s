@@ -1,0 +1,174 @@
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: metricbeat
+spec:
+  type: metricbeat
+  version: 7.8.0
+  elasticsearchRef:
+    name: elasticsearch-monitoring
+  config:
+    metricbeat:
+      autodiscover:
+        providers:
+          - type: kubernetes
+            scope: cluster
+            hints.enabled: true
+            templates:
+              - condition:
+                  contains:
+                    kubernetes.labels.scrape: es
+                config:
+                  - module: elasticsearch
+                    metricsets:
+                      - ccr
+                      - cluster_stats
+                      - enrich
+                      - index
+                      - index_recovery
+                      - index_summary
+                      - ml_job
+                      - node_stats
+                      - shard
+                    period: 10s
+                    # TODO switch to using named ports in 7.9.0 when https://github.com/elastic/beats/pull/19398 is added
+                    hosts: "https://${data.host}:9200"
+                    username: ${MONITORED_ES_USERNAME}
+                    password: ${MONITORED_ES_PASSWORD}
+                    # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
+                    # TODO: switch this to "certificate" when available: https://github.com/elastic/beats/issues/8164
+                    ssl.verification_mode: "none"
+                    xpack.enabled: true
+              - condition:
+                  contains:
+                    kubernetes.labels.scrape: kb
+                config:
+                  - module: kibana
+                    metricsets:
+                      - stats
+                    period: 10s
+                    hosts: "https://${data.host}:${data.port}"
+                    username: ${MONITORED_ES_USERNAME}
+                    password: ${MONITORED_ES_PASSWORD}
+                    # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
+                    # TODO: switch this to "certificate" when available: https://github.com/elastic/beats/issues/8164
+                    ssl.verification_mode: "none"
+                    xpack.enabled: true
+    processors:
+    - add_cloud_metadata: {}
+    logging.json: true
+  deployment:
+    podTemplate:
+      spec:
+        serviceAccountName: metricbeat
+        automountServiceAccountToken: true
+        # required to read /etc/beat.yml
+        securityContext:
+          runAsUser: 0
+        containers:
+        - name: metricbeat
+          env:
+          - name: MONITORED_ES_USERNAME
+            value: elastic
+          - name: MONITORED_ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: elastic
+                name: elasticsearch-es-elastic-user
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: metricbeat
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metricbeat
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metricbeat
+subjects:
+- kind: ServiceAccount
+  name: metricbeat
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: metricbeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 7.8.0
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+      # https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-metricbeat.html
+      xpack.monitoring.collection.enabled: true
+      xpack.monitoring.elasticsearch.collection.enabled: false
+    podTemplate:
+      metadata:
+        labels:
+          scrape: es
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 7.8.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    # https://www.elastic.co/guide/en/kibana/current/monitoring-metricbeat.html
+    xpack.monitoring.kibana.collection.enabled: false
+    xpack.monitoring.collection.enabled: true
+  podTemplate:
+    metadata:
+      labels:
+        scrape: kb
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-monitoring
+spec:
+  version: 7.8.0
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-monitoring
+spec:
+  version: 7.8.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch-monitoring
+  config:
+    # enable the UI to reflect container level CPU usage, only displays info if CPU limits are set on the monitored ES cluster
+    # https://www.elastic.co/guide/en/kibana/current/monitoring-settings-kb.html
+    xpack.monitoring.ui.container.elasticsearch.enabled: true
+...
