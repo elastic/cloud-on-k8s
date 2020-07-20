@@ -40,6 +40,9 @@ type Builder struct {
 
 	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
 	PodTemplate *corev1.PodTemplateSpec
+
+	// Suffix is the suffix that is added to e2e test resources
+	Suffix string
 }
 
 func (b Builder) SkipTest() bool {
@@ -82,6 +85,7 @@ func newBuilder(name string, suffix string) Builder {
 				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
+		Suffix: suffix,
 	}.
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
