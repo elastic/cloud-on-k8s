@@ -56,7 +56,9 @@ There are 3 test suites:
 - **Integration tests** - some tests are flagged as integration as they can take more than a few milliseconds to complete. It's usually recommended to separate them from the rest of the unit tests that run fast. Usually they include disk I/O operations, network I/O operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
 
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
-      They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios. To run a specific e2e test, you can use something similar to `make TESTS_MATCH=TestMetricbeatStackMonitoringRecipe clean docker-build docker-push e2e-docker-build e2e-docker-push e2e-run`. This will run the e2e test with your latest commit.
+      They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios. To run a specific e2e test, you can use something similar to `make TESTS_MATCH=TestMetricbeatStackMonitoringRecipe clean docker-build docker-push e2e-docker-build e2e-docker-push e2e-run`. This will run the e2e test with your latest commit and is very close to how it will run in CI.
+
+      A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
 
 ### Logging
 
