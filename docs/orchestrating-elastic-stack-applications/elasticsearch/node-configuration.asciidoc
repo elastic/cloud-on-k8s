@@ -22,6 +22,7 @@ spec:
       node.ingest: false
       node.ml: false
       xpack.ml.enabled: true
+      node.transform: false
       node.remote_cluster_client: false
   - name: data
     count: 10
@@ -30,6 +31,7 @@ spec:
       node.data: true
       node.ingest: true
       node.ml: true
+      node.transform: true
       node.remote_cluster_client: false
 ----
 
