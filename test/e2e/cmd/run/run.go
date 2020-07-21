@@ -414,10 +414,12 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 	informer := factory.Core().V1().Pods().Informer()
 
-	jobStarted := false                  // keep track of the first Pod running event
-	podSucceeded := false                // keep track of when we're done
-	streamStatus := make(chan error, 1)  // receive log errors or EOF (nil)
-	stopLogStream := make(chan struct{}) // notify the log stream it can stop when EOF
+	jobStarted := false   // keep track of the first Pod running event
+	podSucceeded := false // keep track of when we're done
+
+	streamErrors := make(chan error, 1)     // receive log stream errors
+	stopLogStream := make(chan struct{})    // notify the log stream it can stop when EOF
+	logStreamStopped := make(chan struct{}) // wait for the log stream goroutine to be over
 
 	var err error
 
@@ -433,14 +435,16 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				if !jobStarted {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
-					go h.streamTestJobOutput(streamStatus, stopLogStream, client, newPod.Name)
+					go func() {
+						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
+						close(logStreamStopped)
+					}()
 				} else {
 					select {
-					case streamErr := <-streamStatus:
+					case streamErr := <-streamErrors:
 						if streamErr != nil {
 							log.Error(streamErr, "Stream failure")
 							err = streamErr
-							cancelFunc()
 						}
 					default:
 					}
@@ -454,17 +458,14 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				podSucceeded = true
 				// notify the log stream goroutine that it can stop at the end of its stream buffer
 				close(stopLogStream)
-				// but wait for that buffer to be fully processed first
-				streamErr := <-streamStatus
-				if streamErr != nil {
-					log.Error(streamErr, "Stream failure")
-					err = streamErr
-				}
 				// we're done, stop the informer
 				cancelFunc()
 			case corev1.PodFailed:
 				log.Info("Pod is in failed state", "name", newPod.Name)
 				err = errors.New("tests failed")
+				// notify the log stream goroutine that it can stop at the end of its stream buffer
+				close(stopLogStream)
+				// we're done, stop the informer
 				cancelFunc()
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
@@ -478,6 +479,8 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	})
 
 	informer.Run(ctx.Done())
+	// wait for the log stream to be fully flushed
+	<-logStreamStopped
 	return err
 }
 
@@ -538,8 +541,6 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 				}
 			}
 			log.Info("Log stream ended")
-			// communicate to monitorTestJob that all logs of the current batch have been processed
-			streamStatus <- nil
 			// retry
 		}
 	}
