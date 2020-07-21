@@ -145,7 +145,7 @@ func MinInPods(pods []corev1.Pod, labelName string) (*Version, error) {
 	return Min(versions), nil
 }
 
-// MinInPods returns the lowest version parsed from labels in the given StatefulSets template.
+// MinInStatefulSets returns the lowest version parsed from labels in the given StatefulSets template.
 func MinInStatefulSets(ssets []appsv1.StatefulSet, labelName string) (*Version, error) {
 	versions := make([]Version, 0, len(ssets))
 	for _, s := range ssets {
