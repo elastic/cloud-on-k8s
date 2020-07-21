@@ -53,18 +53,6 @@ oc adm pod-network make-projects-global elastic-system
 ----
 oc new-project elastic # creates the elastic project
 ----
-+
-By default the operator watches and creates resources in the `default` namespace. You need to patch the operator to manage resources in another namespace.
-+
-[source,shell]
-----
-kubectl patch statefulset/elastic-operator \
-  -n elastic-system \
-  --type='json' \
-  --patch '[{"op":"add","path":"/spec/template/spec/containers/0/env/-","value": {"name": "NAMESPACE", "value": "elastic"}}]'
-----
-+
-Replace `elastic` in the examples above with the name of the namespace in which you want to deploy your resources.
 
 . [Optional] Allow another user or a group of users to manage the Elastic resources:
 +
