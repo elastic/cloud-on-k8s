@@ -115,10 +115,11 @@ func TestGet(t *testing.T) {
 		assertEqual(t, want, have)
 	})
 
-	t.Run("kibana_defaults", func(t *testing.T) {
+	t.Run("kibana_defaults_v7", func(t *testing.T) {
 		kb := kbv1.Kibana{
 			Spec: kbv1.KibanaSpec{
-				Count: 100,
+				Count:   100,
+				Version: "7.8.0",
 			},
 		}
 
@@ -134,10 +135,31 @@ func TestGet(t *testing.T) {
 		assertEqual(t, want, have)
 	})
 
+	t.Run("kibana_defaults_v8", func(t *testing.T) {
+		kb := kbv1.Kibana{
+			Spec: kbv1.KibanaSpec{
+				Count:   100,
+				Version: "8.0.0",
+			},
+		}
+
+		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		require.NoError(t, err)
+
+		want := LicensingInfo{
+			TotalManagedMemory:      214.748,
+			EnterpriseResourceUnits: 4,
+			EckLicenseLevel:         "basic",
+		}
+
+		assertEqual(t, want, have)
+	})
+
 	t.Run("kibana_with_resource_limits", func(t *testing.T) {
 		kb := kbv1.Kibana{
 			Spec: kbv1.KibanaSpec{
-				Count: 100,
+				Count:   100,
+				Version: "7.8.0",
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
@@ -169,7 +191,8 @@ func TestGet(t *testing.T) {
 	t.Run("kibana_with_node_opts", func(t *testing.T) {
 		kb := kbv1.Kibana{
 			Spec: kbv1.KibanaSpec{
-				Count: 100,
+				Count:   100,
+				Version: "7.8.0",
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
@@ -214,7 +237,11 @@ func Test_Start(t *testing.T) {
 			Name: "es-test",
 		},
 		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 40}}}}
-	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
+	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{
+		Version: "7.8.0",
+		Count:   2,
+	},
+	}
 	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
 	k8sClient := k8s.FakeClient(&es, &kb, &apm)
 	refreshPeriod := 1 * time.Second

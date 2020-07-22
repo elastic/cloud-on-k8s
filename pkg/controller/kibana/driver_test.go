@@ -521,7 +521,14 @@ func expectedDeploymentParams() deployment.Params {
 							},
 						},
 					},
-					Resources: DefaultResources,
+					Resources: corev1.ResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
 				}},
 				AutomountServiceAccountToken: &false,
 			},
@@ -700,6 +707,72 @@ func TestNewService(t *testing.T) {
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
+}
+
+func TestGetDefaultResources(t *testing.T) {
+	tests := []struct {
+		name string
+		kb   kbv1.Kibana
+		want corev1.ResourceRequirements
+	}{
+		{
+			name: "v6.8.0",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "6.8.0",
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		},
+		{
+			name: "v7.0.0",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "7.0.0",
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		},
+		{
+			name: "v8.0.0",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "8.0.0",
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := GetDefaultResources(tc.kb)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+
 }
 
 func mkService() corev1.Service {

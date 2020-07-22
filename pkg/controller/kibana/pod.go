@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
@@ -30,16 +31,6 @@ var (
 	// Kibana running in the main container.
 	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
 	DataVolume = volume.NewEmptyDirVolume(DataVolumeName, DataVolumeMountPath)
-
-	DefaultMemoryLimits = resource.MustParse("1Gi")
-	DefaultResources    = corev1.ResourceRequirements{
-		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: DefaultMemoryLimits,
-		},
-		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: DefaultMemoryLimits,
-		},
-	}
 
 	// DefaultAnnotations are the default annotations for the Kibana pods
 	DefaultAnnotations = map[string]string{
@@ -73,8 +64,10 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 	labels := NewLabels(kb.Name)
 	labels[KibanaVersionLabelName] = kb.Spec.Version
 	ports := getDefaultContainerPorts(kb)
+	// validation is already performed at beginning of reconciliation
+	defaultResources, _ := GetDefaultResources(kb)
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
-		WithResources(DefaultResources).
+		WithResources(defaultResources).
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, kb.Spec.Version)).
@@ -90,6 +83,30 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 	}
 
 	return builder.PodTemplate
+}
+
+// GetDefaultResources returns the default resource requirements for a given Kibana
+func GetDefaultResources(kb kbv1.Kibana) (corev1.ResourceRequirements, error) {
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return corev1.ResourceRequirements{}, err
+	}
+
+	var memLimit resource.Quantity
+	// Kibana v8+ OOMs with only 1Gi of RAM, but older versions run fine
+	if ver.IsSameOrAfter(version.From(8, 0, 0)) {
+		memLimit = resource.MustParse("2Gi")
+	} else {
+		memLimit = resource.MustParse("1Gi")
+	}
+	return corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: memLimit,
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: memLimit,
+		},
+	}, nil
 }
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.

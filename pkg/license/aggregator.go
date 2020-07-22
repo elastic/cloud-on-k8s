@@ -88,11 +88,16 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 
 	var total resource.Quantity
 	for _, kb := range kbList.Items {
+		defaultResources, err := kibana.GetDefaultResources(kb)
+		if err != nil {
+			return resource.Quantity{}, errors.Wrap(err, "failed to get default Kibana resources")
+		}
+		defaultLimit := *defaultResources.Limits.Memory()
 		mem, err := containerMemLimits(
 			kb.Spec.PodTemplate.Spec.Containers,
 			kbv1.KibanaContainerName,
 			kibana.EnvNodeOpts, memFromNodeOptions,
-			kibana.DefaultMemoryLimits,
+			defaultLimit,
 		)
 		if err != nil {
 			return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Kibana memory")

@@ -20,6 +20,15 @@ import (
 )
 
 func TestNewPodTemplateSpec(t *testing.T) {
+
+	defaultv7Resources := corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		},
+	}
 	tests := []struct {
 		name       string
 		kb         kbv1.Kibana
@@ -81,7 +90,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Equal(t, DefaultResources, GetKibanaContainer(pod.Spec).Resources)
+				assert.Equal(t, defaultv7Resources, GetKibanaContainer(pod.Spec).Resources)
 			},
 		},
 		{
