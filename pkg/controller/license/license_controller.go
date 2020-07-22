@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -226,7 +227,7 @@ func (r *ReconcileLicenses) minVersion(cluster esv1.Elasticsearch) (*version.Ver
 	if err != nil {
 		return nil, err
 	}
-	minVersion, err := label.MinVersion(pods)
+	minVersion, err := version.MinInPods(pods, eslabel.VersionLabelName)
 	if err != nil {
 		return nil, err
 	}
