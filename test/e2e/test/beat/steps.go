@@ -18,6 +18,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -130,8 +131,9 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					Health:  "green",
 				}
 				if b.Beat.Spec.Deployment != nil {
-					expected.ExpectedNodes = *b.Beat.Spec.Deployment.Replicas
-					expected.AvailableNodes = *b.Beat.Spec.Deployment.Replicas
+					expectedReplicas := pointer.Int32OrDefault(b.Beat.Spec.Deployment.Replicas, int32(1))
+					expected.ExpectedNodes = expectedReplicas
+					expected.AvailableNodes = expectedReplicas
 				} else {
 					// don't check the replicas count for daemonsets
 					beat.Status.ExpectedNodes = 0
