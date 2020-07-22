@@ -10,6 +10,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestParse(t *testing.T) {
@@ -369,6 +372,185 @@ func TestFromLabels(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func ptr(v Version) *Version {
+	return &v
+}
+
+func TestMinInPods(t *testing.T) {
+	type args struct {
+		pods      []corev1.Pod
+		labelName string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Version
+		wantErr bool
+	}{
+		{
+			name: "returns the min version of the list",
+			args: args{
+				pods: []corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+				},
+				labelName: "version-label",
+			},
+			want:    ptr(MustParse("7.7.0")),
+			wantErr: false,
+		},
+		{
+			name: "all Pods run the same version",
+			args: args{
+				pods: []corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+				},
+				labelName: "version-label",
+			},
+			want:    ptr(MustParse("7.7.1")),
+			wantErr: false,
+		},
+		{
+			name: "invalid version: error out",
+			args: args{
+				pods: []corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "invalid"}}},
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+				},
+				labelName: "version-label",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "no value for the version label: error out",
+			args: args{
+				pods: []corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"another-label": "7.7.1"}}},
+				},
+				labelName: "another-label",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "empty list of Pods",
+			args: args{
+				pods:      nil,
+				labelName: "version-label",
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MinInPods(tt.args.pods, tt.args.labelName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MinInPods() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MinInPods() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMinInStatefulSets(t *testing.T) {
+	ssetWithPodLabel := func(labelName string, value string) appsv1.StatefulSet {
+		return appsv1.StatefulSet{Spec: appsv1.StatefulSetSpec{Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelName: value}}}}}
+	}
+
+	type args struct {
+		ssets     []appsv1.StatefulSet
+		labelName string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Version
+		wantErr bool
+	}{
+		{
+			name: "returns the min version of the list",
+			args: args{
+				ssets: []appsv1.StatefulSet{
+					ssetWithPodLabel("version-label", "7.7.1"),
+					ssetWithPodLabel("version-label", "7.7.0"),
+					ssetWithPodLabel("version-label", "7.7.0"),
+					ssetWithPodLabel("version-label", "7.7.1"),
+				},
+				labelName: "version-label",
+			},
+			want:    ptr(MustParse("7.7.0")),
+			wantErr: false,
+		},
+		{
+			name: "all StatefulSets specify the same version",
+			args: args{
+				ssets: []appsv1.StatefulSet{
+					ssetWithPodLabel("version-label", "7.7.1"),
+					ssetWithPodLabel("version-label", "7.7.1"),
+				},
+				labelName: "version-label",
+			},
+			want:    ptr(MustParse("7.7.1")),
+			wantErr: false,
+		},
+		{
+			name: "invalid version: error out",
+			args: args{
+				ssets: []appsv1.StatefulSet{
+					ssetWithPodLabel("version-label", "invalid"),
+					ssetWithPodLabel("version-label", "7.7.1"),
+				},
+				labelName: "version-label",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "no value for the version label: error out",
+			args: args{
+				ssets: []appsv1.StatefulSet{
+					ssetWithPodLabel("version-label", "invalid"),
+					ssetWithPodLabel("another-label", "7.7.1"),
+				},
+				labelName: "another-label",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "empty list of StatefulSets",
+			args: args{
+				ssets:     nil,
+				labelName: "version-label",
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MinInStatefulSets(tt.args.ssets, tt.args.labelName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MinInStatefulSets() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MinInStatefulSets() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

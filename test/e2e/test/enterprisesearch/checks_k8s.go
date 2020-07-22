@@ -12,6 +12,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -24,6 +26,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
+		CheckStatus(b, k),
 	}
 }
 
@@ -205,4 +208,29 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		}
 		return expected
 	})
+}
+
+func CheckStatus(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "EnterpriseSearch status should be updated",
+		Test: test.Eventually(func() error {
+			var ent v1beta1.EnterpriseSearch
+			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
+				return err
+			}
+			expected := v1beta1.EnterpriseSearchStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
+					AvailableNodes: b.EnterpriseSearch.Spec.Count,
+					Version:        b.EnterpriseSearch.Spec.Version,
+					Health:         "green",
+				},
+				ExternalService: b.EnterpriseSearch.Name + "-ent-http",
+				Association:     commonv1.AssociationEstablished,
+			}
+			if ent.Status != expected {
+				return fmt.Errorf("expected status %+v but got %+v", expected, ent.Status)
+			}
+			return nil
+		}),
+	}
 }

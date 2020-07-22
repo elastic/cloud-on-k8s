@@ -11,6 +11,8 @@ const (
 	ApmServerNameLabelName = "apm.k8s.elastic.co/name"
 	// Type represents the apm server type
 	Type = "apm-server"
+	// APMVersionLabelName used to propagate APMServer version from the spec to the pods
+	APMVersionLabelName = "apm.k8s.elastic.co/version"
 )
 
 // NewLabels constructs a new set of labels for an ApmServer pod

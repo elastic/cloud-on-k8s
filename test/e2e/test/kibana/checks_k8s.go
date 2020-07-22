@@ -12,6 +12,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -24,6 +26,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
+		CheckStatus(b, k),
 	}
 }
 
@@ -193,4 +196,30 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		}
 		return expected
 	})
+}
+
+func CheckStatus(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Kibana status should be updated",
+		Test: test.Eventually(func() error {
+			var kb kbv1.Kibana
+			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
+				return err
+			}
+			// don't check the association status that may vary across tests
+			kb.Status.AssociationStatus = ""
+			expected := kbv1.KibanaStatus{
+				DeploymentStatus: commonv1.DeploymentStatus{
+					AvailableNodes: b.Kibana.Spec.Count,
+					Version:        b.Kibana.Spec.Version,
+					Health:         "green",
+				},
+				AssociationStatus: "",
+			}
+			if kb.Status != expected {
+				return fmt.Errorf("expected status %+v but got %+v", expected, kb.Status)
+			}
+			return nil
+		}),
+	}
 }

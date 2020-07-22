@@ -82,11 +82,14 @@ type DeploymentSpec struct {
 
 // BeatStatus defines the observed state of a Beat.
 type BeatStatus struct {
-	// +kubebuilder:validation:Optional
-	commonv1.ReconcilerStatus `json:",inline"`
+	// Version of the stack resource currently running. During version upgrades, multiple versions may run
+	// in parallel: this value specifies the lowest version currently running.
+	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	ExpectedNodes int32 `json:"expectedNodes,omitempty"`
+	// +kubebuilder:validation:Optional
+	AvailableNodes int32 `json:"availableNodes,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	Health BeatHealth `json:"health,omitempty"`

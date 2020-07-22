@@ -152,7 +152,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	min, err := label.MinVersion(resourcesState.CurrentPods)
+	min, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
 	if err != nil {
 		return results.WithError(err)
 	}

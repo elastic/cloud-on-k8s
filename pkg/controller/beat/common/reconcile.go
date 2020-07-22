@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -131,9 +132,14 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 func updateStatus(params DriverParams, ready, desired int32) error {
 	beat := params.Beat
 
+	pods, err := k8s.PodsMatchingLabels(params.K8sClient(), beat.Namespace, map[string]string{NameLabelName: beat.Name})
+	if err != nil {
+		return err
+	}
 	beat.Status.AvailableNodes = ready
 	beat.Status.ExpectedNodes = desired
 	beat.Status.Health = CalculateHealth(beat.GetAssociations(), ready, desired)
+	beat.Status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
 
 	return params.Client.Status().Update(&beat)
 }
