@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -414,10 +415,12 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 	informer := factory.Core().V1().Pods().Informer()
 
-	jobStarted := false                  // keep track of the first Pod running event
-	podSucceeded := false                // keep track of when we're done
-	streamStatus := make(chan error, 1)  // receive log errors or EOF (nil)
+	jobStarted := false   // keep track of the first Pod running event
+	podSucceeded := false // keep track of when we're done
+
+	streamErrors := make(chan error, 1)  // receive log stream errors
 	stopLogStream := make(chan struct{}) // notify the log stream it can stop when EOF
+	logStreamWg := sync.WaitGroup{}      // wait for the log stream goroutine to be over
 
 	var err error
 
@@ -433,14 +436,18 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				if !jobStarted {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
-					go h.streamTestJobOutput(streamStatus, stopLogStream, client, newPod.Name)
+
+					logStreamWg.Add(1)
+					go func() {
+						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
+						logStreamWg.Done()
+					}()
 				} else {
 					select {
-					case streamErr := <-streamStatus:
+					case streamErr := <-streamErrors:
 						if streamErr != nil {
 							log.Error(streamErr, "Stream failure")
 							err = streamErr
-							cancelFunc()
 						}
 					default:
 					}
@@ -454,17 +461,14 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				podSucceeded = true
 				// notify the log stream goroutine that it can stop at the end of its stream buffer
 				close(stopLogStream)
-				// but wait for that buffer to be fully processed first
-				streamErr := <-streamStatus
-				if streamErr != nil {
-					log.Error(streamErr, "Stream failure")
-					err = streamErr
-				}
 				// we're done, stop the informer
 				cancelFunc()
 			case corev1.PodFailed:
 				log.Info("Pod is in failed state", "name", newPod.Name)
 				err = errors.New("tests failed")
+				// notify the log stream goroutine that it can stop at the end of its stream buffer
+				close(stopLogStream)
+				// we're done, stop the informer
 				cancelFunc()
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
@@ -478,10 +482,12 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	})
 
 	informer.Run(ctx.Done())
+	// wait for the log stream to be fully flushed
+	logStreamWg.Wait()
 	return err
 }
 
-func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
+func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
 		jl, err := newJSONLogToFile(testsLogFile)
@@ -508,7 +514,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 			log.Info("Streaming pod logs", "name", pod)
 			stream, err := getLogStream(client, pod, h.testContext.E2ENamespace)
 			if err != nil {
-				streamStatus <- err
+				streamErrors <- err
 				continue // retry
 			}
 			defer stream.Close()
@@ -520,7 +526,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 
 				timestamp, logLine, err := parseLog(string(line))
 				if err != nil {
-					streamStatus <- err
+					streamErrors <- err
 					continue
 				}
 
@@ -533,13 +539,11 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 				pastPreviousLogStream = true
 				lastTimestamp = timestamp
 				if _, err := writer.Write([]byte(logLine + "\n")); err != nil {
-					streamStatus <- err
+					streamErrors <- err
 					return
 				}
 			}
 			log.Info("Log stream ended")
-			// communicate to monitorTestJob that all logs of the current batch have been processed
-			streamStatus <- nil
 			// retry
 		}
 	}
