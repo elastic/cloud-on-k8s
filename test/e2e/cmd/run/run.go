@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -417,9 +418,9 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	jobStarted := false   // keep track of the first Pod running event
 	podSucceeded := false // keep track of when we're done
 
-	streamErrors := make(chan error, 1)     // receive log stream errors
-	stopLogStream := make(chan struct{})    // notify the log stream it can stop when EOF
-	logStreamStopped := make(chan struct{}) // wait for the log stream goroutine to be over
+	streamErrors := make(chan error, 1)  // receive log stream errors
+	stopLogStream := make(chan struct{}) // notify the log stream it can stop when EOF
+	logStreamWg := sync.WaitGroup{}      // wait for the log stream goroutine to be over
 
 	var err error
 
@@ -436,8 +437,9 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
 					go func() {
+						logStreamWg.Add(1)
 						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
-						close(logStreamStopped)
+						logStreamWg.Done()
 					}()
 				} else {
 					select {
@@ -480,7 +482,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 	informer.Run(ctx.Done())
 	// wait for the log stream to be fully flushed
-	<-logStreamStopped
+	logStreamWg.Wait()
 	return err
 }
 
