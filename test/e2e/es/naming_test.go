@@ -61,6 +61,7 @@ func testLongestPossibleName(t *testing.T) {
 	kbName := strings.Join([]string{kbNamePrefix, strings.Repeat("x", name.MaxResourceNameLength-len(kbNamePrefix)-1)}, "-")
 	kbBuilder := kibana.NewBuilderWithoutSuffix(kbName).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithNodeCount(1).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
@@ -69,6 +70,7 @@ func testLongestPossibleName(t *testing.T) {
 	apmName := strings.Join([]string{apmNamePrefix, strings.Repeat("x", name.MaxResourceNameLength-len(apmNamePrefix)-1)}, "-")
 	apmBuilder := apmserver.NewBuilderWithoutSuffix(apmName).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithNodeCount(1).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithConfig(map[string]interface{}{
