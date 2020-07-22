@@ -436,8 +436,9 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				if !jobStarted {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
+
+					logStreamWg.Add(1)
 					go func() {
-						logStreamWg.Add(1)
 						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
 						logStreamWg.Done()
 					}()
