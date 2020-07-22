@@ -23,7 +23,7 @@ const (
 
 // DeploymentStatus represents status information about a deployment.
 type DeploymentStatus struct {
-	// AvailableNodes is the number of available instances.
+	// AvailableNodes is the number of available replicas in the deployment.
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run
 	// in parallel: this value specifies the lowest version currently running.

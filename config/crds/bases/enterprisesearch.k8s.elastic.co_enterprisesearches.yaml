@@ -6149,7 +6149,8 @@ spec:
                 clusters.
               type: string
             availableNodes:
-              description: AvailableNodes is the number of available instances.
+              description: AvailableNodes is the number of available replicas in the
+                deployment.
               format: int32
               type: integer
             health:
