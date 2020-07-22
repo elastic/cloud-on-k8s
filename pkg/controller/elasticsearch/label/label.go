@@ -40,6 +40,8 @@ const (
 	NodeTypesIngestLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
 	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
 	NodeTypesMLLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
+	// NodeTypesTransformLabelName is a label set to true on nodes with the transform role
+	NodeTypesTransformLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
@@ -103,7 +105,7 @@ func NewPodLabels(
 	nodeRoles esv1.Node,
 	configHash string,
 	scheme string,
-) (map[string]string, error) {
+) map[string]string {
 	// cluster name based labels
 	labels := NewLabels(es)
 	// version label
@@ -114,6 +116,10 @@ func NewPodLabels(
 	NodeTypesDataLabelName.Set(nodeRoles.HasDataRole(), labels)
 	NodeTypesIngestLabelName.Set(nodeRoles.HasIngestRole(), labels)
 	NodeTypesMLLabelName.Set(nodeRoles.HasMLRole(), labels)
+	// transform nodes were only added in 7.7.0 so we should not annotate previous versions with them
+	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
+		NodeTypesTransformLabelName.Set(nodeRoles.HasTransformRole(), labels)
+	}
 
 	// config hash label, to rotate pods on config changes
 	labels[ConfigHashLabelName] = configHash
@@ -125,7 +131,7 @@ func NewPodLabels(
 		labels[k] = v
 	}
 
-	return labels, nil
+	return labels
 }
 
 // NewConfigLabels returns labels to apply for an Elasticsearch Config secret.

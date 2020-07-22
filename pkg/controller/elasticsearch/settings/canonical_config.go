@@ -7,6 +7,8 @@ package settings
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/go-ucfg"
 )
 
 // CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
@@ -20,8 +22,8 @@ func NewCanonicalConfig() CanonicalConfig {
 }
 
 // Unpack returns a typed subset of Elasticsearch settings.
-func (c CanonicalConfig) Unpack() (esv1.ElasticsearchSettings, error) {
-	cfg := esv1.DefaultCfg
+func (c CanonicalConfig) Unpack(ver version.Version) (esv1.ElasticsearchSettings, error) {
+	cfg := esv1.DefaultCfg((*ucfg.Config)(c.CanonicalConfig), ver)
 	err := c.CanonicalConfig.Unpack(&cfg)
 	return cfg, err
 }
