@@ -109,6 +109,23 @@ metadata:
                       "name": "elasticsearch-sample"
                   }
               }
+          },
+          {
+              "apiVersion": "enterprisesearch.k8s.elastic.co/v1beta1",
+              "kind": "EnterpriseSearch",
+              "metadata": {
+                  "name": "ent-sample"
+              },
+              "spec": {
+                  "version": "{{ .StackVersion }}",
+                  "config": {
+                      "ent_search.external_url": "https://localhost:3002"
+                  },
+                  "count": 1,
+                  "elasticsearchRef": {
+                      "name": "elasticsearch-sample"
+                  }
+              }
           }
       ]
   name: elastic-cloud-eck.v{{ .NewVersion }}

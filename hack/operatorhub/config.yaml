@@ -1,4 +1,4 @@
-newVersion: 1.2.0-bc3
+newVersion: 1.2.0
 prevVersion: 1.1.2
 stackVersion: 7.8.0
 operatorRepo: docker.elastic.co/eck/eck-operator
