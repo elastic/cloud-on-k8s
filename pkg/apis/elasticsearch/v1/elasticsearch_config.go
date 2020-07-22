@@ -109,7 +109,7 @@ func DefaultCfg(cfg *ucfg.Config, ver version.Version) ElasticsearchSettings {
 	return settings
 }
 
-// Unpack unpacks Config into a typed subset.
+// UnpackConfig unpacks Config into a typed subset.
 func UnpackConfig(c *commonv1.Config, ver version.Version) (ElasticsearchSettings, error) {
 	if c == nil {
 		// make this nil safe to allow a ptr value to work around Json serialization issues
