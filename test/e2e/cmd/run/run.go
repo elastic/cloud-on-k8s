@@ -484,7 +484,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	return err
 }
 
-func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
+func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
 		jl, err := newJSONLogToFile(testsLogFile)
@@ -511,7 +511,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 			log.Info("Streaming pod logs", "name", pod)
 			stream, err := getLogStream(client, pod, h.testContext.E2ENamespace)
 			if err != nil {
-				streamStatus <- err
+				streamErrors <- err
 				continue // retry
 			}
 			defer stream.Close()
@@ -523,7 +523,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 
 				timestamp, logLine, err := parseLog(string(line))
 				if err != nil {
-					streamStatus <- err
+					streamErrors <- err
 					continue
 				}
 
@@ -536,7 +536,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 				pastPreviousLogStream = true
 				lastTimestamp = timestamp
 				if _, err := writer.Write([]byte(logLine + "\n")); err != nil {
-					streamStatus <- err
+					streamErrors <- err
 					return
 				}
 			}
