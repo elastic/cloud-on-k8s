@@ -11,6 +11,7 @@ endif::[]
 --
 - <<{p}-operator-config>>
 - <<{p}-webhook>>
+- <<{p}-restrict-cross-namespace-associations>>
 - <<{p}-licensing>>
 - <<{p}-troubleshooting>>
 - <<{p}-upgrading-eck>>

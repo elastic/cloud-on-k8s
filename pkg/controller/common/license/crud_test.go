@@ -15,6 +15,10 @@ import (
 )
 
 func TestUpdateEnterpriseLicense(t *testing.T) {
+	nsn := types.NamespacedName{
+		Namespace: "test-ns",
+		Name:      "license",
+	}
 	type args struct {
 		c      k8s.Client
 		secret v1.Secret
@@ -29,9 +33,11 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 		{
 			name: "updates labels preserving existing ones",
 			args: args{
-				c: k8s.WrappedFakeClient(&v1.Secret{}),
+				c: k8s.WrappedFakeClient(&v1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}),
 				secret: v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:      nsn.Name,
+						Namespace: nsn.Namespace,
 						Labels: map[string]string{
 							"my-label": "value",
 						},
@@ -42,7 +48,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
-				err := client.Get(types.NamespacedName{}, &sec)
+				err := client.Get(nsn, &sec)
 				require.NoError(t, err)
 				require.Equal(t, sec.Labels["my-label"], "value")
 				require.Contains(t, sec.Labels, LicenseLabelScope)
@@ -51,14 +57,16 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 		{
 			name: "basic update",
 			args: args{
-				c:      k8s.WrappedFakeClient(&v1.Secret{}),
-				secret: v1.Secret{},
-				l:      licenseFixtureV3,
+				c: k8s.WrappedFakeClient(&v1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}),
+				secret: v1.Secret{
+					ObjectMeta: k8s.ToObjectMeta(nsn),
+				},
+				l: licenseFixtureV3,
 			},
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
-				err := client.Get(types.NamespacedName{}, &sec)
+				err := client.Get(nsn, &sec)
 				require.NoError(t, err)
 				require.Equal(t, string(licenseFixtureV3.License.Type), sec.Labels[LicenseLabelType])
 				require.Equal(t, string(LicenseScopeOperator), sec.Labels[LicenseLabelScope])

@@ -5,6 +5,7 @@
 package rbac
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -206,7 +207,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			s := &SubjectAccessReviewer{
 				client: tt.fields.clientProvider(),
 			}
-			got, err := s.AccessAllowed(tt.args.serviceAccount, tt.args.sourceNamespace, tt.args.object)
+			got, err := s.AccessAllowed(context.Background(), tt.args.serviceAccount, tt.args.sourceNamespace, tt.args.object)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SubjectAccessReviewer.AccessAllowed() error = %v, wantErr %v", err, tt.wantErr)
 				return

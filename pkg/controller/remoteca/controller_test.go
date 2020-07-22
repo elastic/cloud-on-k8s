@@ -5,6 +5,7 @@
 package remoteca
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -75,7 +76,7 @@ type fakeAccessReviewer struct {
 	err     error
 }
 
-func (f *fakeAccessReviewer) AccessAllowed(_ string, _ string, _ runtime.Object) (bool, error) {
+func (f *fakeAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
 	return f.allowed, f.err
 }
 

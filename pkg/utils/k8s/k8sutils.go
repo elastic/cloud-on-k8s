@@ -104,3 +104,12 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 	}
 	return nil
 }
+
+// PodsMatchingLabels returns Pods from the given namespace matching the given labels.
+func PodsMatchingLabels(c Client, namespace string, labels map[string]string) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	if err := c.List(&pods, client.InNamespace(namespace), client.MatchingLabels(labels)); err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}

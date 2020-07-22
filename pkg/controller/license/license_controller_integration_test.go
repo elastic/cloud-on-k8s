@@ -75,6 +75,7 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
+	require.NoError(t, test.EnsureNamespace(c, "elastic-system"))
 
 	// Create the EnterpriseLicense object
 	require.NoError(t, CreateEnterpriseLicense(

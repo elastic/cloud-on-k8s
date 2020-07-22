@@ -5,7 +5,6 @@
 package apmserver
 
 import (
-	"reflect"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -13,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,6 +58,13 @@ func TestNewPodSpec(t *testing.T) {
 				},
 			},
 			want: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"apm.k8s.elastic.co/name":    "fake-apm",
+						"apm.k8s.elastic.co/version": "7.0.1",
+						"common.k8s.elastic.co/type": "apm-server",
+					},
+				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						configSecretVol.Volume(), configVolume.Volume(),
@@ -75,9 +82,15 @@ func TestNewPodSpec(t *testing.T) {
 									},
 								},
 								{
-									Name: "POD_NAME",
+									Name: settings.EnvPodName,
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+									},
+								},
+								{
+									Name: settings.EnvNodeName,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
 									},
 								},
 								{
@@ -105,9 +118,9 @@ func TestNewPodSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := newPodSpec(&tt.as, tt.p); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewPodSpec() = %v, want %v", got, tt.want)
-			}
+			got := newPodSpec(&tt.as, tt.p)
+			diff := deep.Equal(tt.want, got)
+			assert.Empty(t, diff)
 		})
 	}
 }

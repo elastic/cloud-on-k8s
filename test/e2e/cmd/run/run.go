@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -72,9 +73,9 @@ func doRun(flags runFlags) error {
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
+			helper.deployTestSecrets,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
-			helper.deployTestSecret,
 			helper.deployFilebeat,
 			helper.deployMetricbeat,
 			helper.deployTestJob,
@@ -95,12 +96,13 @@ func doRun(flags runFlags) error {
 
 type helper struct {
 	runFlags
-	eventLog       string
-	kubectlWrapper *command.Kubectl
-	testContext    test.Context
-	testSecrets    map[string]string
-	scratchDir     string
-	cleanupFuncs   []func()
+	eventLog        string
+	kubectlWrapper  *command.Kubectl
+	testContext     test.Context
+	testSecrets     map[string]string
+	operatorSecrets map[string]string
+	scratchDir      string
+	cleanupFuncs    []func()
 }
 
 func (h *helper) createScratchDir() error {
@@ -190,7 +192,7 @@ func (h *helper) initTestSecrets() error {
 	if h.testLicense != "" {
 		bytes, err := ioutil.ReadFile(h.testLicense)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.testLicense, err)
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
@@ -199,7 +201,7 @@ func (h *helper) initTestSecrets() error {
 	if h.testLicensePKeyPath != "" {
 		bytes, err := ioutil.ReadFile(h.testLicensePKeyPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
 		}
 		h.testSecrets["dev-private.key"] = string(bytes)
 		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
@@ -208,7 +210,7 @@ func (h *helper) initTestSecrets() error {
 	if h.monitoringSecrets != "" {
 		bytes, err := ioutil.ReadFile(h.monitoringSecrets)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.monitoringSecrets, err)
 		}
 
 		monitoringSecrets := struct {
@@ -216,16 +218,24 @@ func (h *helper) initTestSecrets() error {
 			MonitoringUser string `json:"monitoringUser"`
 			MonitoringPass string `json:"monitoringPass"`
 			MonitoringCa   string `json:"monitoringCa"`
+			APMServerCert  string `json:"apm_server_cert"`
+			APMSecretToken string `json:"apm_secret_token"`
+			APMServerURL   string `json:"apm_server_url"`
 		}{}
 
 		if err := json.Unmarshal(bytes, &monitoringSecrets); err != nil {
-			return err
+			return fmt.Errorf("unmarshal %v, %w", h.monitoringSecrets, err)
 		}
 
 		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIP
 		h.testSecrets["monitoring-user"] = monitoringSecrets.MonitoringUser
 		h.testSecrets["monitoring-pass"] = monitoringSecrets.MonitoringPass
 		h.testSecrets["monitoring-ca"] = monitoringSecrets.MonitoringCa
+
+		h.operatorSecrets = map[string]string{}
+		h.operatorSecrets["apm_server_cert"] = monitoringSecrets.APMServerCert
+		h.operatorSecrets["apm_secret_token"] = monitoringSecrets.APMSecretToken
+		h.operatorSecrets["apm_server_url"] = monitoringSecrets.APMServerURL
 	}
 
 	return nil
@@ -278,7 +288,7 @@ func (h *helper) waitForOperatorToBeReady() error {
 	podName := fmt.Sprintf("%s-0", h.testContext.Operator.Name)
 
 	return retry.UntilSuccess(func() error {
-		pod, err := client.CoreV1().Pods(h.testContext.Operator.Namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(h.testContext.Operator.Namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -309,15 +319,17 @@ func (h *helper) deployMetricbeat() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/metricbeat.yaml", h.testContext)
 }
 
-func (h *helper) deployTestSecret() error {
+func (h *helper) deployTestSecrets() error {
 	log.Info("Deploying e2e test secret")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/secret.yaml",
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/secrets.yaml",
 		struct {
-			Secrets map[string]string
-			Context test.Context
+			Secrets         map[string]string
+			OperatorSecrets map[string]string
+			Context         test.Context
 		}{
-			Secrets: h.testSecrets,
-			Context: h.testContext,
+			Secrets:         h.testSecrets,
+			OperatorSecrets: h.operatorSecrets,
+			Context:         h.testContext,
 		},
 	)
 }
@@ -403,10 +415,12 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 	informer := factory.Core().V1().Pods().Informer()
 
-	jobStarted := false                  // keep track of the first Pod running event
-	podSucceeded := false                // keep track of when we're done
-	streamStatus := make(chan error, 1)  // receive log errors or EOF (nil)
+	jobStarted := false   // keep track of the first Pod running event
+	podSucceeded := false // keep track of when we're done
+
+	streamErrors := make(chan error, 1)  // receive log stream errors
 	stopLogStream := make(chan struct{}) // notify the log stream it can stop when EOF
+	logStreamWg := sync.WaitGroup{}      // wait for the log stream goroutine to be over
 
 	var err error
 
@@ -422,14 +436,18 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				if !jobStarted {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
-					go h.streamTestJobOutput(streamStatus, stopLogStream, client, newPod.Name)
+
+					logStreamWg.Add(1)
+					go func() {
+						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
+						logStreamWg.Done()
+					}()
 				} else {
 					select {
-					case streamErr := <-streamStatus:
+					case streamErr := <-streamErrors:
 						if streamErr != nil {
 							log.Error(streamErr, "Stream failure")
 							err = streamErr
-							cancelFunc()
 						}
 					default:
 					}
@@ -443,17 +461,14 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				podSucceeded = true
 				// notify the log stream goroutine that it can stop at the end of its stream buffer
 				close(stopLogStream)
-				// but wait for that buffer to be fully processed first
-				streamErr := <-streamStatus
-				if streamErr != nil {
-					log.Error(streamErr, "Stream failure")
-					err = streamErr
-				}
 				// we're done, stop the informer
 				cancelFunc()
 			case corev1.PodFailed:
 				log.Info("Pod is in failed state", "name", newPod.Name)
 				err = errors.New("tests failed")
+				// notify the log stream goroutine that it can stop at the end of its stream buffer
+				close(stopLogStream)
+				// we're done, stop the informer
 				cancelFunc()
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
@@ -467,10 +482,12 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	})
 
 	informer.Run(ctx.Done())
+	// wait for the log stream to be fully flushed
+	logStreamWg.Wait()
 	return err
 }
 
-func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
+func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
 		jl, err := newJSONLogToFile(testsLogFile)
@@ -497,7 +514,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 			log.Info("Streaming pod logs", "name", pod)
 			stream, err := getLogStream(client, pod, h.testContext.E2ENamespace)
 			if err != nil {
-				streamStatus <- err
+				streamErrors <- err
 				continue // retry
 			}
 			defer stream.Close()
@@ -509,7 +526,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 
 				timestamp, logLine, err := parseLog(string(line))
 				if err != nil {
-					streamStatus <- err
+					streamErrors <- err
 					continue
 				}
 
@@ -522,13 +539,11 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, stop <-chan stru
 				pastPreviousLogStream = true
 				lastTimestamp = timestamp
 				if _, err := writer.Write([]byte(logLine + "\n")); err != nil {
-					streamStatus <- err
+					streamErrors <- err
 					return
 				}
 			}
 			log.Info("Log stream ended")
-			// communicate to monitorTestJob that all logs of the current batch have been processed
-			streamStatus <- nil
 			// retry
 		}
 	}
@@ -543,8 +558,8 @@ func getLogStream(client *kubernetes.Clientset, pod string, namespace string) (i
 		Timestamps:   true,
 	}
 
-	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts).Context(context.Background())
-	return req.Stream()
+	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts)
+	return req.Stream(context.Background())
 }
 
 func parseLog(line string) (time.Time, string, error) {

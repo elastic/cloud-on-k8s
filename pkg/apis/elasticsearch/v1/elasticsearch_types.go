@@ -301,9 +301,13 @@ const (
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
-	commonv1.ReconcilerStatus `json:",inline"`
-	Health                    ElasticsearchHealth             `json:"health,omitempty"`
-	Phase                     ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	// AvailableNodes is the number of available instances.
+	AvailableNodes int32 `json:"availableNodes,omitempty"`
+	// Version of the stack resource currently running. During version upgrades, multiple versions may run
+	// in parallel: this value specifies the lowest version currently running.
+	Version string                          `json:"version,omitempty"`
+	Health  ElasticsearchHealth             `json:"health,omitempty"`
+	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {

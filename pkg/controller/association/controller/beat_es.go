@@ -69,6 +69,9 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 	if strings.Contains(beat.Spec.Type, ",") {
 		return "", fmt.Errorf("beat type %s should not contain a comma", beat.Spec.Type)
 	}
+	if _, ok := beatv1beta1.KnownTypes[beat.Spec.Type]; !ok {
+		return fmt.Sprintf("eck_beat_es_%s_role", beat.Spec.Type), nil
+	}
 
 	v, err := version.Parse(beat.Spec.Version)
 	if err != nil {
@@ -85,7 +88,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"kibana_admin",
 			"ingest_admin",
 			"beats_admin",
-			"remote_monitoring_user",
+			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V77, beat.Spec.Type),
 		}, ","), nil
 	case v.IsSameOrAfter(version.From(7, 5, 0)):
@@ -93,7 +96,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"kibana_user",
 			"ingest_admin",
 			"beats_admin",
-			"remote_monitoring_user",
+			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V75, beat.Spec.Type),
 		}, ","), nil
 	case v.IsSameOrAfter(version.From(7, 3, 0)):
@@ -101,7 +104,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"kibana_user",
 			"ingest_admin",
 			"beats_admin",
-			"remote_monitoring_user",
+			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V73, beat.Spec.Type),
 		}, ","), nil
 	default:

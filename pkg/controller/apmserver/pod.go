@@ -85,6 +85,9 @@ type PodSpecParams struct {
 }
 
 func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
+	labels := NewLabels(as.Name)
+	labels[APMVersionLabelName] = p.Version
+
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
 		"config",
@@ -105,6 +108,7 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 
 	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, apmv1.ApmServerContainerName).
+		WithLabels(labels).
 		WithResources(DefaultResources).
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).

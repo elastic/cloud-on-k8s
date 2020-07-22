@@ -167,7 +167,7 @@ func doReconcile(
 			}
 			return reconcile.Result{}, err
 		}
-		accessAllowed, err := isRemoteClusterAssociationAllowed(r.accessReviewer, localEs, remoteEs, r.recorder)
+		accessAllowed, err := isRemoteClusterAssociationAllowed(ctx, r.accessReviewer, localEs, remoteEs, r.recorder)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

@@ -89,19 +89,6 @@ func ExtractVersion(labels map[string]string) (*version.Version, error) {
 	return version.FromLabels(labels, VersionLabelName)
 }
 
-// MinVersion extracts the currently running Elasticsearch versions from the running pods
-func MinVersion(pods []corev1.Pod) (*version.Version, error) {
-	vs := make([]version.Version, 0, len(pods))
-	for _, pod := range pods {
-		v, err := ExtractVersion(pod.Labels)
-		if err != nil {
-			return nil, err
-		}
-		vs = append(vs, *v)
-	}
-	return version.Min(vs), nil
-}
-
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
 func NewLabels(es types.NamespacedName) map[string]string {
 	return map[string]string{

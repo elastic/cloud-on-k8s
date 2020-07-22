@@ -67,8 +67,8 @@ type PortForwarder interface {
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 // NewPodForwarder returns a new initialized podForwarder
-func NewPodForwarder(network, addr string, clientset *kubernetes.Clientset) (*PodForwarder, error) {
-	podNSN, err := parsePodAddr(addr, clientset)
+func NewPodForwarder(ctx context.Context, network, addr string, clientset *kubernetes.Clientset) (*PodForwarder, error) {
+	podNSN, err := parsePodAddr(ctx, addr, clientset)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ var podDNSRegex = regexp.MustCompile(`^.+\..+$`)
 var podIPv4Regex = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
 
 // parsePodAddr parses the pod name and namespace from an address.
-func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
+func parsePodAddr(ctx context.Context, addr string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.Namespac
 	if podIPv4Regex.MatchString(host) {
 		// we got an IP address
 		// try to map it to a pod name and namespace
-		return getPodWithIP(host, clientSet)
+		return getPodWithIP(ctx, host, clientSet)
 	}
 	if podDNSRegex.MatchString(host) {
 		// retrieve pod name and namespace from addr
@@ -132,12 +132,13 @@ func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.Namespac
 }
 
 // getPodWithIP requests the apiserver for pods with the given IP assigned.
-func getPodWithIP(ip string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
+func getPodWithIP(ctx context.Context, ip string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
 	pods, err := clientSet.CoreV1().
 		Pods("").
-		List(metav1.ListOptions{
-			FieldSelector: fmt.Sprintf("status.podIP=%s", ip),
-		})
+		List(ctx,
+			metav1.ListOptions{
+				FieldSelector: fmt.Sprintf("status.podIP=%s", ip),
+			})
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +208,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 
 	if f.clientset != nil {
 		log.V(1).Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
-		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(metav1.ListOptions{
+		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(ctx, metav1.ListOptions{
 			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
 		})
 		if err != nil {

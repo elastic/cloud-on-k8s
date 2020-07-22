@@ -17,7 +17,7 @@ type ForwarderStore struct {
 }
 
 // ForwarderFactory is a function that can produce forwarders
-type ForwarderFactory func(network, addr string) (Forwarder, error)
+type ForwarderFactory func(ctx context.Context, network, addr string) (Forwarder, error)
 
 // NewForwarderStore creates a new initialized forwarderStore
 func NewForwarderStore() *ForwarderStore {
@@ -40,7 +40,7 @@ func (s *ForwarderStore) GetOrCreateForwarder(network, addr string, factory Forw
 		return fwd, nil
 	}
 
-	fwd, err := factory(network, addr)
+	fwd, err := factory(context.Background(), network, addr)
 	if err != nil {
 		return nil, err
 	}

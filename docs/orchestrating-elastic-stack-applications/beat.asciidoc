@@ -1,4 +1,5 @@
 :page_id: beat
+:beats_url: https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/config/recipes/beats
 ifdef::env-github[]
 ****
 link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
@@ -11,6 +12,7 @@ This section describes how to configure and deploy Beats with ECK.
 
 * <<{p}-beat-quickstart,Quickstart>>
 * <<{p}-beat-configuration,Configuration>>
+* <<{p}-beat-configuration-examples,Configuration Examples>>
 * <<{p}-beat-troubleshooting,Troubleshooting>>
 
 [id="{p}-beat-quickstart"]
@@ -63,6 +65,8 @@ spec:
             path: /var/lib/docker/containers
 EOF
 ----
+
+See <<{p}-beat-configuration-examples>> for more ready-to-use manifests.
 
 . Monitor Beats
 +
@@ -203,9 +207,12 @@ You can specify the Beat to deploy and its version through `type` and `version` 
 
 ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
 
-- `image` element in the specification must point to the image to be deployed
--  a role must exist in Elasticsearch and have the permissions required by the Beat. The role name must be `eck_beat_$type_role`, where `$type` is the Beat type. For example, when deploying `type: kafkabeat`, the role name would be `eck_beat_kafkabeat_role`. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+1. `image` element in the specification must point to the image to be deployed
+2. the following roles must exist in Elasticsearch:
+- if `elasticsearchRef` is provided, a role with `eck_beat_es_$type_role` name must exist, where `$type` is the Beat type. For example, when deploying `kafkabeat`, the role name would be `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+- if `kibanaRef` is provided, then, as above, a role named `eck_beat_kibana_$type_role` must exist with the permissions required to setup Kibana dashboards.
 
+Alternatively, create a user in Elasticsearch and include the credentials in the Beats `config` for Elasticsearch output, Kibana setup or both. If `elasticsearchRef` and `kibanaRef` are also defined, ECK will use the provided user credentials when setting up the connections.
 
 [id="{p}-beat-set-up-kibana-dashboards"]
 === Set up Kibana dashboards
@@ -358,6 +365,101 @@ rules:
 === Deploying Beats in secured clusters
 
 To deploy Beats in clusters with the Pod Security Policy admission controller enabled, or in OpenShift clusters, you must grant additional permissions to the Service Account used by the Beat Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Beats and their features might require different settings set in their PSP/SCC.
+
+
+[id="{p}-beat-configuration-examples"]
+== Configuration Examples
+
+Below you can find manifests that address a number of common use cases and can be your starting point in exploring Beats deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
+
+IMPORTANT: These examples are for illustration purposes only and should not be considered to be production-ready.
+
+CAUTION: Some of these examples use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+=== Metricbeat for Kubernetes monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/metricbeat_hosts.yaml
+----
+
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
+
+=== Filebeat with autodiscover
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/filebeat_autodiscover.yaml
+----
+
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It will collect logs from pods in every namespace and load them to the connected Elasticsearch cluster.
+
+=== Filebeat with autodiscover for metadata
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/filebeat_autodiscover_by_metadata.yaml
+----
+
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. Logs from pods matching the following criteria will be shipped to the connected Elasticsearch cluster:
+
+- Pod is in `log-namespace` namespace
+- Pod has `log-label: "true"` label
+
+=== Filebeat without autodiscover
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/filebeat_no_autodiscover.yaml
+----
+
+Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the entire logs directory on the host as the input source. This configuration does not require any RBAC resources as no Kubernetes APIs are used.
+
+=== Metricbeat for Elasticsearch and Kibana Stack Monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/stack_monitoring.yaml
+----
+
+Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring]. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana. Combine with one of the Filebeat recipes but update the `elasticsearchRef` to point to the `elasticsearch-monitoring` cluster for the full Stack Monitoring experience.
+
+=== Heartbeat monitoring Elasticsearch and Kibana health
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/heartbeat_es_kb_heatlh.yaml
+----
+
+Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
+
+=== Auditbeat
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/auditbeat_hosts.yaml
+----
+
+Deploys Auditbeat as a DaemonSet that checks file integrity and audits file operations on the host system.
+
+=== Journalbeat
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/journalbeat_hosts.yaml
+----
+
+Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
+
+
+=== Packetbeat monitoring DNS and HTTP traffic
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/packetbeat_dns_http.yaml
+----
+
+Deploys Packetbeat as a DaemonSet that monitors DNS on port `53` and HTTP(S) traffic on ports `80`, `8000`, `8080` and `9200`.
 
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting

@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -189,7 +188,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &ent, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, fmt.Errorf("updating controller version: %w", err))
 	}
 
 	if !association.IsConfiguredIfSet(&ent, r.recorder) {
@@ -252,23 +251,23 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 	// toggle read-only mode for Enterprise Search version upgrades
 	upgrade := VersionUpgrade{k8sClient: r.K8sClient(), recorder: r.Recorder(), ent: ent, dialer: r.Dialer}
 	if err := upgrade.Handle(ctx); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("version upgrade: %w", err)
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
 	configHash, err := buildConfigHash(r.K8sClient(), ent, configSecret)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("build config hash: %w", err)
 	}
 
 	deploy, err := r.reconcileDeployment(ctx, ent, configHash)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("reconcile deployment: %w", err)
 	}
 
 	err = r.updateStatus(ent, deploy, svc.Name)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("updating status: %w", err)
 	}
 
 	return results.Aggregate()
@@ -288,24 +287,20 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1beta
 }
 
 func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1beta1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) error {
-	newStatus := entv1beta1.EnterpriseSearchStatus{
-		Health: entv1beta1.EnterpriseSearchRed,
-		ReconcilerStatus: commonv1.ReconcilerStatus{
-			AvailableNodes: deploy.Status.AvailableReplicas,
-		},
-		ExternalService: svcName,
-		Association:     ent.Status.Association,
+	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ent.Namespace, map[string]string{EnterpriseSearchNameLabelName: ent.Name})
+	if err != nil {
+		return err
 	}
-	for _, c := range deploy.Status.Conditions {
-		if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
-			newStatus.Health = entv1beta1.EnterpriseSearchGreen
-		}
+	newStatus := entv1beta1.EnterpriseSearchStatus{
+		DeploymentStatus: common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName),
+		ExternalService:  svcName,
+		Association:      ent.Status.Association,
 	}
 
 	if reflect.DeepEqual(newStatus, ent.Status) {
 		return nil // nothing to do
 	}
-	if newStatus.IsDegraded(ent.Status) {
+	if newStatus.IsDegraded(ent.Status.DeploymentStatus) {
 		r.recorder.Event(&ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Enterprise Search health degraded")
 	}
 	log.V(1).Info("Updating status",

@@ -26,14 +26,24 @@ func Test_getBeatRoles(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "injecting a role should fail",
+			name:    "injecting a role with official Beat should fail",
+			assoc:   &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat,superuser"}},
+			wantErr: true,
+		},
+		{
+			name:    "injecting a role with community Beat should fail",
 			assoc:   &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "somebeat,superuser"}},
 			wantErr: true,
 		},
 		{
-			name:    "invalid version",
-			assoc:   &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.7.0.1"}},
+			name:    "invalid official Beat version",
+			assoc:   &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.7.0.1a", Type: "filebeat"}},
 			wantErr: true,
+		},
+		{
+			name:  "different Community Beat version", // we are not able to validate community Beat version
+			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Version: "7.7.0.1a", Type: "somebeat"}},
+			want:  "eck_beat_es_somebeat_role",
 		},
 		{
 			name:  "test roles for 7.0.0 official Beat",
@@ -48,42 +58,42 @@ func Test_getBeatRoles(t *testing.T) {
 		{
 			name:  "test roles for 7.3.0 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.3.0"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v73",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v73",
 		},
 		{
 			name:  "test roles for 7.4.99 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.4.99"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v73",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v73",
 		},
 		{
 			name:  "test roles for 7.5.0 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.5.0"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v75",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v75",
 		},
 		{
 			name:  "test roles for 7.6.99 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "filebeat", Version: "7.6.99"}},
-			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_filebeat_role_v75",
+			want:  "kibana_user,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_filebeat_role_v75",
 		},
 		{
 			name:  "test roles for 7.7.0 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "metricbeat", Version: "7.7.0"}},
-			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_metricbeat_role_v77",
+			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_metricbeat_role_v77",
 		},
 		{
 			name:  "test roles for 7.99.99 official Beat",
 			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "metricbeat", Version: "7.99.99"}},
-			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_metricbeat_role_v77",
+			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_agent,eck_beat_es_metricbeat_role_v77",
 		},
 		{
-			name:  "test roles for 7.0.0 community Beat",
-			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "somebeat", Version: "7.0.0"}},
-			want:  "kibana_user,ingest_admin,beats_admin,monitoring_user,eck_beat_es_somebeat_role_v70",
+			name:  "test roles for 1.2.0 community Beat",
+			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "somebeat", Version: "1.2.0"}},
+			want:  "eck_beat_es_somebeat_role",
 		},
 		{
-			name:  "test roles for 7.99.99 community Beat",
-			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "somebeat", Version: "7.99.99"}},
-			want:  "kibana_admin,ingest_admin,beats_admin,remote_monitoring_user,eck_beat_es_somebeat_role_v77",
+			name:  "test roles for 3.4.0 community Beat",
+			assoc: &beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{Type: "somebeat", Version: "3.4.0"}},
+			want:  "eck_beat_es_somebeat_role",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

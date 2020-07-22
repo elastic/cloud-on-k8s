@@ -16,6 +16,7 @@ The goal of this document is to provide a high-level overview on how you can get
     - [Submit your changes](#submit-your-changes)
       - [Sign the CLA](#sign-the-cla)
       - [Prepare a Pull Request](#prepare-a-pull-request)
+    - [Backports](#backports)
   - [Contribute to ECK documentation](#contribute-to-eck-documentation)
   - [Design documents](#design-documents)
 
@@ -55,7 +56,9 @@ There are 3 test suites:
 - **Integration tests** - some tests are flagged as integration as they can take more than a few milliseconds to complete. It's usually recommended to separate them from the rest of the unit tests that run fast. Usually they include disk I/O operations, network I/O operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
 
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
-      They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios.
+      They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios. To run a specific e2e test, you can use something similar to `make TESTS_MATCH=TestMetricbeatStackMonitoringRecipe clean docker-build docker-push e2e-docker-build e2e-docker-push e2e-run`. This will run the e2e test with your latest commit and is very close to how it will run in CI.
+
+      A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
 
 ### Logging
 
@@ -98,6 +101,22 @@ Here are some good practices for a good pull request:
 - Run and pass unit and integration tests with `make unit` and `make integration`.
 - Write a short and self-explanatory title.
 - Write a clear description to make the code reviewer understand what the PR is about.
+
+### Backports
+
+New PRs should target the `master` branch, then be backported as necessary. The original PR to master should contain labels of the versions it will be backported to. The actual backport PR should be labeled `backport`. You can use https://github.com/sqren/backport to generate backport PRs easily. An example `.backportrc.json` may be:
+
+```json
+{
+  "upstream": "elastic/cloud-on-k8s",
+  "targetBranchChoices": [
+    { "name": "1.2", "checked": true },
+    "1.1",
+    "1.0"
+  ],
+  "targetPRLabels": ["backport"]
+}
+```
 
 ## Contribute to ECK documentation
 

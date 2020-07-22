@@ -5,6 +5,8 @@
 package webhook
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -23,16 +25,16 @@ type Params struct {
 
 // ReconcileResources reconciles the certificates used by the webhook client and the webhook server.
 // It also returns the duration after which a certificate rotation should be scheduled.
-func (w *Params) ReconcileResources(clientset kubernetes.Interface) error {
+func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.Interface) error {
 	// retrieve current webhook server cert secret
-	webhookServerSecret, err := clientset.CoreV1().Secrets(w.Namespace).Get(w.SecretName, metav1.GetOptions{})
+	webhookServerSecret, err := clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
 	if err != nil {
 		// 404 is still considered as an error, webhook secret is expected to be created before the operator is started
 		return err
 	}
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(w.WebhookConfigurationName, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.WebhookConfigurationName, metav1.GetOptions{})
 	if err != nil {
 		// 404 is also considered as an error, webhook configuration is expected to be created before the operator is started
 		return err
@@ -54,7 +56,7 @@ func (w *Params) ReconcileResources(clientset kubernetes.Interface) error {
 		for i := range webhookConfiguration.Webhooks {
 			webhookConfiguration.Webhooks[i].ClientConfig.CABundle = newCertificates.caCert
 		}
-		if _, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Update(webhookConfiguration); err != nil {
+		if _, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Update(ctx, webhookConfiguration, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 
@@ -63,7 +65,7 @@ func (w *Params) ReconcileResources(clientset kubernetes.Interface) error {
 			certificates.CertFileName: newCertificates.serverCert,
 			certificates.KeyFileName:  newCertificates.serverKey,
 		}
-		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(webhookServerSecret); err != nil {
+		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 	}

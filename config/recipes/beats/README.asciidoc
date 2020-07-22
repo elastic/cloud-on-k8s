@@ -1,0 +1,47 @@
+= Beats Configuration Examples
+
+This directory contains yaml manifests with example configurations for Beats. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. All of them contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
+
+IMPORTANT: These examples are for illustration purposes only and should not be considered to be production-ready.
+
+CAUTION: Some of these examples use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+
+==== Metricbeat for Kubernetes monitoring - `metricbeat_hosts.yaml`
+
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
+
+==== Filebeat with autodiscover - `filebeat_autodiscover.yaml`
+
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It will collect logs from pods in every namespace and load them to the connected Elasticsearch cluster.
+
+==== Filebeat with autodiscover for metadata - `filebeat_autodiscover_by_metadata.yaml`
+
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. Logs from pods matching the following criteria will be shipped to the connected Elasticsearch cluster:
+
+- Pod is in `log-namespace` namespace
+- Pod has `log-label: "true"` label
+
+==== Filebeat without autodiscover - `filebeat_no_autodiscover.yaml`
+
+Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the entire logs directory on the host as the input source. This configuration does not require any RBAC resources as no Kubernetes APIs are used.
+
+==== Metricbeat for Elasticsearch and Kibana Stack Monitoring - `stack_monitoring.yaml`
+
+Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring]. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana. Combine with one of the Filebeat recipes but update the `elasticsearchRef` to point to the `elasticsearch-monitoring` cluster for the full Stack Monitoring experience.
+
+==== Heartbeat monitoring Elasticsearch and Kibana health - `heartbeat_es_kb_heatlh.yaml`
+
+Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
+
+==== Auditbeat - `auditbeat_hosts.yaml`
+
+Deploys Auditbeat as a DaemonSet that checks file integrity and audits file operations on the host system.
+
+==== Journalbeat - `journalbeat_hosts.yaml`
+
+Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
+
+==== Packetbeat monitoring DNS and HTTP traffic - `packetbeat_dns_http.yaml`
+
+Deploys Packetbeat as a DaemonSet that monitors DNS on port `53` and HTTP(S) traffic on ports `80`, `8000`, `8080` and `9200`.

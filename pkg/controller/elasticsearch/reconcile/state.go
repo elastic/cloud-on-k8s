@@ -8,12 +8,17 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+var log = logf.Log.WithName("elasticsearch-controller")
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
@@ -39,6 +44,27 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	return nodesAvailable
 }
 
+func (s *State) fetchMinRunningVersion(resourcesState ResourcesState) (*version.Version, error) {
+	minPodVersion, err := version.MinInPods(resourcesState.AllPods, label.VersionLabelName)
+	if err != nil {
+		log.Error(err, "failed to parse running Pods version", "namespace", s.cluster.Namespace, "es_name", s.cluster.Name)
+		return nil, err
+	}
+	minSsetVersion, err := version.MinInStatefulSets(resourcesState.StatefulSets, label.VersionLabelName)
+	if err != nil {
+		log.Error(err, "failed to parse running Pods version", "namespace", s.cluster.Namespace, "es_name", s.cluster.Name)
+		return nil, err
+	}
+
+	if minPodVersion == nil {
+		return minSsetVersion, nil
+	}
+	if minSsetVersion == nil {
+		return minPodVersion, nil
+	}
+	return version.Min([]version.Version{*minPodVersion, *minSsetVersion}), nil
+}
+
 func (s *State) updateWithPhase(
 	phase esv1.ElasticsearchOrchestrationPhase,
 	resourcesState ResourcesState,
@@ -46,6 +72,13 @@ func (s *State) updateWithPhase(
 ) *State {
 	s.status.AvailableNodes = int32(len(AvailableElasticsearchNodes(resourcesState.CurrentPods)))
 	s.status.Phase = phase
+
+	lowestVersion, err := s.fetchMinRunningVersion(resourcesState)
+	if err != nil {
+		// error already handled in fetchMinRunningVersion, move on with the status update
+	} else if lowestVersion != nil {
+		s.status.Version = lowestVersion.String()
+	}
 
 	s.status.Health = esv1.ElasticsearchUnknownHealth
 	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {

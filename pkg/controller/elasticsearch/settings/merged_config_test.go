@@ -37,6 +37,8 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
 			},
 		},
 		{
@@ -51,6 +53,8 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
 			},
 		},
 		{
@@ -69,6 +73,8 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
 			},
 		},
 		{
@@ -79,6 +85,8 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFileFile1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNativeNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
 			},
 		},
 		{

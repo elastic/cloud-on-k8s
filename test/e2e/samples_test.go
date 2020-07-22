@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -31,24 +30,12 @@ func TestSamples(t *testing.T) {
 
 	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
-		testName := mkTestName(t, sample)
+		testName := helper.MkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
 		t.Run(testName, func(t *testing.T) {
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
 	}
-}
-
-func mkTestName(t *testing.T, path string) string {
-	t.Helper()
-
-	baseName := filepath.Base(path)
-	baseName = strings.TrimSuffix(baseName, ".yaml")
-	parentDir := filepath.Base(filepath.Dir(path))
-	testName := filepath.Join(parentDir, baseName)
-
-	// testName will be used as label, so avoid using illegal chars
-	return strings.ReplaceAll(testName, "/", "-")
 }
 
 func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testName string) []test.Builder {

@@ -39,7 +39,7 @@ func TestForwardingDialer_DialContext(t *testing.T) {
 	customError := errors.New("DialContext test error")
 
 	d := NewForwardingDialer()
-	d.forwarderFactory = func(_ client.Client, network, addr string) (Forwarder, error) {
+	d.forwarderFactory = func(_ context.Context, _ client.Client, network, addr string) (Forwarder, error) {
 		return &stubForwarder{
 			network: network, addr: addr,
 			onDialContext: func(ctx context.Context) (net.Conn, error) {

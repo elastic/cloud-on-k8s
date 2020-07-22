@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"fmt"
 	"path"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -15,6 +16,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
+
+// the name of the ES attribute indicating the pod's current k8s node
+const nodeAttrK8sNodeName = "k8s_node_name"
+
+var nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived from the given
 // parameters. The user provided config overrides have precedence over the ECK config.
@@ -49,6 +55,10 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 		// derive IP dynamically from the pod IP, injected as env var
 		esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
 		esv1.NetworkHost:        "0.0.0.0",
+
+		// allow ES to be aware of k8s node the pod is running on when allocating shards
+		esv1.ShardAwarenessAttributes: nodeAttrK8sNodeName,
+		nodeAttrNodeName:              "${" + EnvNodeName + "}",
 
 		esv1.PathData: volume.ElasticsearchDataMountPath,
 		esv1.PathLogs: volume.ElasticsearchLogsMountPath,

@@ -274,6 +274,14 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 					return fmt.Errorf("version %s does not match expected version %s", version, b.Elasticsearch.Spec.Version)
 				}
 			}
+			// check reported version in the resource status
+			var es esv1.Elasticsearch
+			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+				return err
+			}
+			if es.Status.Version != b.Elasticsearch.Spec.Version {
+				return fmt.Errorf("version %s in status does not match expected version %s", es.Status.Version, b.Elasticsearch.Spec.Version)
+			}
 			return nil
 		}),
 	}

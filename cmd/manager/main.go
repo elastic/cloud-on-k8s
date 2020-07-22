@@ -5,6 +5,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -61,9 +62,9 @@ import (
 )
 
 const (
-	DefaultMetricPort        = 0 // disabled
-	WebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
-	WebhookPort              = 9443
+	DefaultMetricPort               = 0 // disabled
+	DefaultWebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
+	WebhookPort                     = 9443
 )
 
 var (
@@ -167,6 +168,11 @@ func init() {
 		operator.WebhookSecretFlag,
 		"",
 		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
+	)
+	Cmd.Flags().String(
+		operator.WebhookConfigurationNameFlag,
+		DefaultWebhookConfigurationName,
+		fmt.Sprintf("Name of the Kubernetes ValidatingWebhookConfiguration resource (defaults to %s). Only used when enable-webhook is true.", DefaultWebhookConfigurationName),
 	)
 
 	// enable using dashed notation in flags and underscores in env
@@ -446,12 +452,12 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		webhookParams := webhook.Params{
 			Namespace:                viper.GetString(operator.OperatorNamespaceFlag),
 			SecretName:               viper.GetString(operator.WebhookSecretFlag),
-			WebhookConfigurationName: WebhookConfigurationName,
+			WebhookConfigurationName: viper.GetString(operator.WebhookConfigurationNameFlag),
 			Rotation:                 certRotation,
 		}
 
 		// Force a first reconciliation to create the resources before the server is started
-		if err := webhookParams.ReconcileResources(clientset); err != nil {
+		if err := webhookParams.ReconcileResources(context.Background(), clientset); err != nil {
 			log.Error(err, "unable to setup and fill the webhook certificates")
 			os.Exit(1)
 		}

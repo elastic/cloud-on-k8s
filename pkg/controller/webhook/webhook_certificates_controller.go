@@ -5,6 +5,7 @@
 package webhook
 
 import (
+	"context"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
@@ -49,18 +50,19 @@ type ReconcileWebhookResources struct {
 
 func (r *ReconcileWebhookResources) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
-	res := r.reconcileInternal()
+	ctx := context.Background()
+	res := r.reconcileInternal(ctx)
 	return res.Aggregate()
 }
 
-func (r *ReconcileWebhookResources) reconcileInternal() *reconciler.Results {
+func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reconciler.Results {
 	res := &reconciler.Results{}
-	if err := r.webhookParams.ReconcileResources(r.clientset); err != nil {
+	if err := r.webhookParams.ReconcileResources(ctx, r.clientset); err != nil {
 		return res.WithError(err)
 	}
 
 	// Get the latest content of the webhook CA
-	webhookServerSecret, err := r.clientset.CoreV1().Secrets(r.webhookParams.Namespace).Get(r.webhookParams.SecretName, metav1.GetOptions{})
+	webhookServerSecret, err := r.clientset.CoreV1().Secrets(r.webhookParams.Namespace).Get(ctx, r.webhookParams.SecretName, metav1.GetOptions{})
 	if err != nil {
 		return res.WithError(err)
 	}

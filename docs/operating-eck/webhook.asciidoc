@@ -14,16 +14,16 @@ The webhook is composed of 4 main components. Here is a brief description of eac
 . A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it is configured with the `webhook` enabled. See <<{p}-operator-config,Configuring ECK>> for more information about the `enable-webhook` flag.
 . A Secret containing the required certificates to secure the connection between the API server and the webhook server.
 Like the ValidatingWebhookConfiguration, it must be created before starting the operator, even if it is empty. By default its name is `elastic-webhook-server-cert`.
-The content of this Secret and the lifecycle of the certificates are automatically managed for you. ECK generates a dedicated and separate certificate authority and ensures that all components are rotated before the expiration date. The certificate authority is also used to configure the `caBundle` field of the `ValidatingWebhookConfiguration`. You can disable this feature if you want to manage the certificates yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See an example of the latter below.
+The content of this Secret and the lifecycle of the certificates are automatically managed for you. ECK generates a dedicated and separate certificate authority and ensures that all components are rotated before the expiration date. The certificate authority is also used to configure the `caBundle` field of the `ValidatingWebhookConfiguration`. You can disable this feature if you want to manage the certificates yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See <<{p}-webhook-cert-manager,this example>>.
 
-
+[id="{p}-webhook-cert-manager"]
 == Manage the webhook certificate with cert-manager
 
-If ECK is currently running you first must ensure that the automatic certificate management feature is disabled. This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
+If ECK is currently running, first make sure that the automatic certificate management feature is disabled. To do this, add the `--manage-webhook-certs=false` flag to the operator deployment manifest.
 
-Then, cert-manager v0.11+ must be installed as described in the https://docs.cert-manager.io/en/latest/getting-started/install/[cert-manager documentation].
+Then, install cert-manager v0.11+ as described in the https://docs.cert-manager.io/en/latest/getting-started/install/[cert-manager documentation].
 
-The following example shows how to create all the resources that a webhook requires to function.
+This example shows how to create all the resources that a webhook requires to function.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -112,13 +112,13 @@ On startup, the operator deploys an https://kubernetes.io/docs/reference/access-
 
 For troubleshooting, you can change the https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook configuration to `Fail`, which will cause creations and updates to error out if there is an error contacting the webhook.
 
-On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], you may see requests creating or updating Elastic resources take a long time to complete or timeout. If so, you will need to add a firewall rule allowing port 9443 from the API server so that it can contact the webhook. See the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on adding rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more detail.
+On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], requests for creating or updating Elastic resources might take a long time to complete or time out. In this case, you have to add a firewall rule allowing port 9443 from the API server so that it can contact the webhook. See the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on adding rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more details.
 
 Refer to <<{p}-webhook-network-policies>> for more information about network policies that might be preventing communication between the Kubernetes API server and the webhook server.
 
 [float]
 === Validation failures
-If the validation webhook is preventing you from making changes due to the unknown fields validation like below, you can force the webhook to ignore it by removing the`kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
+If the validation webhook is preventing you from making changes due to the unknown fields validation like in the example below, you can force the webhook to ignore it by removing the`kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
 
 ```
 admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: Elasticsearch.elasticsearch.k8s.elastic.co "quickstart" is invalid: some-misspelled-field: Invalid value: "some-misspelled-field": some-misspelled-field field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown
@@ -133,14 +133,14 @@ Webhooks require network connectivity between the Kubernetes API server and the 
 Error from server (Timeout): error when creating "elasticsearch.yaml": Timeout: request did not complete within requested timeout 30s
 ....
 
-If you encounter the above error, try re-running the command with a higher request timeout as follows:
+If you get this error, try re-running the command with a higher request timeout as follows:
 
 [source,sh,subs="attributes"]
 ----
 kubectl --request-timeout=1m apply -f elasticsearch.yaml
 ----
 
-As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, the above command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource. One possible reason for this is that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] might be blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
+As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, the above command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource. It is possible that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] is blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case, and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
 
 
 [source,yaml,subs="attributes"]
@@ -160,7 +160,7 @@ spec:
       - port: 9443
 ----
 
-You may want to restrict webhook access to just the Kubernetes API server. Currently this requires knowing the IP address of the API server -- which can be obtained through the command:
+If you want to restrict the webhook access only to the Kubernetes API server, you must know the IP address of the API server, that you can obtain through this command:
 
 [source,sh,subs="attributes"]
 ----
@@ -186,4 +186,14 @@ spec:
           cidr: 10.1.0.1/32
     ports:
       - port: 9443
+----
+
+[id="{p}-disable-webhook"]
+== Disable the webhook
+
+To disable the webhook, set the <<{p}-operator-config, `enable-webhook`>> operator configuration flag to `false` and remove the `ValidatingWebhookConfiguration` named `elastic-webhook.k8s.elastic.co`:
+
+[source,sh]
+----
+kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elastic-webhook.k8s.elastic.co
 ----

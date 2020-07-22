@@ -40,6 +40,8 @@ func TestReconcile(t *testing.T) {
 
 	now := time.Now()
 
+	require.NoError(t, test.EnsureNamespace(c, operatorNs))
+
 	// Create trial initialisation is controlled via config
 	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
 	checker := license.NewLicenseChecker(c, operatorNs)

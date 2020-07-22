@@ -22,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func (r *ReconcileApmServer) reconcileApmServerDeployment(
@@ -74,7 +74,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, tokenSecret)
+
+	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), as.Namespace, map[string]string{ApmServerNameLabelName: as.Name})
+	if err != nil {
+		return state, err
+	}
+	state.UpdateApmServerState(result, pods, tokenSecret)
 	return state, nil
 }
 
@@ -84,7 +89,6 @@ func (r *ReconcileApmServer) deploymentParams(
 ) (deployment.Params, error) {
 
 	podSpec := newPodSpec(as, params)
-	podLabels := NewLabels(as.Name)
 
 	// Build a checksum of the configuration, the keystore, and the cert files used by ES and Kibana.
 	// The checksum is added to the pod labels so a change triggers a rolling update. This is done because Apm Server
@@ -144,10 +148,8 @@ func (r *ReconcileApmServer) deploymentParams(
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
 	}
 
-	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+	podSpec.Labels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	// TODO: also need to hash secret token?
-
-	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
 		Name:            Deployment(as.Name),

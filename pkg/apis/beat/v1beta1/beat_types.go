@@ -11,6 +11,10 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
+var (
+	KnownTypes = map[string]struct{}{"filebeat": {}, "metricbeat": {}, "heartbeat": {}, "auditbeat": {}, "journalbeat": {}, "packetbeat": {}}
+)
+
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
 	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, etc.).
@@ -78,11 +82,14 @@ type DeploymentSpec struct {
 
 // BeatStatus defines the observed state of a Beat.
 type BeatStatus struct {
-	// +kubebuilder:validation:Optional
-	commonv1.ReconcilerStatus `json:",inline"`
+	// Version of the stack resource currently running. During version upgrades, multiple versions may run
+	// in parallel: this value specifies the lowest version currently running.
+	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	ExpectedNodes int32 `json:"expectedNodes,omitempty"`
+	// +kubebuilder:validation:Optional
+	AvailableNodes int32 `json:"availableNodes,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	Health BeatHealth `json:"health,omitempty"`

@@ -156,8 +156,16 @@ func ReconcileResource(params Params) error {
 				return err
 			}
 		}
+		reconciledMeta, err := meta.Accessor(params.Reconciled)
+		if err != nil {
+			return err
+		}
+		// retain the resource version to avoid unconditional updates
+		resourceVersion := reconciledMeta.GetResourceVersion()
 		params.UpdateReconciled()
-		err := params.Client.Update(params.Reconciled)
+		// and set the resource version back into the resource to indicate the state we are basing the update off of
+		reconciledMeta.SetResourceVersion(resourceVersion)
+		err = params.Client.Update(params.Reconciled)
 		if err != nil {
 			return err
 		}
