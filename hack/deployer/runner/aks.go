@@ -10,15 +10,15 @@ import (
 )
 
 func init() {
-	drivers[AKSDriverID] = &AKSDriverFactory{}
+	drivers[AksDriverID] = &AksDriverFactory{}
 }
 
 const (
-	AKSDriverID                    = "aks"
-	AKSVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
-	AKSResourceGroupVaultFieldName = "resource-group"
-	AKSConfigFileName              = "deployer-config-aks.yml"
-	DefaultAKSRunConfigTemplate    = `id: aks-dev
+	AksDriverID                    = "aks"
+	AksVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
+	AksResourceGroupVaultFieldName = "resource-group"
+	AksConfigFileName              = "deployer-config-aks.yml"
+	DefaultAksRunConfigTemplate    = `id: aks-dev
 overrides:
   clusterName: %s-dev-cluster
   aks:
@@ -26,16 +26,16 @@ overrides:
 `
 )
 
-type AKSDriverFactory struct {
+type AksDriverFactory struct {
 }
 
-type AKSDriver struct {
+type AksDriver struct {
 	plan        Plan
 	ctx         map[string]interface{}
 	vaultClient *VaultClient
 }
 
-func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
+func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
 	var vaultClient *VaultClient
 	if plan.VaultInfo != nil {
 		var err error
@@ -44,30 +44,30 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 			return nil, err
 		}
 
-		if plan.AKS.ResourceGroup == "" {
-			resourceGroup, err := vaultClient.Get(AKSVaultPath, AKSResourceGroupVaultFieldName)
+		if plan.Aks.ResourceGroup == "" {
+			resourceGroup, err := vaultClient.Get(AksVaultPath, AksResourceGroupVaultFieldName)
 			if err != nil {
 				return nil, err
 			}
-			plan.AKS.ResourceGroup = resourceGroup
+			plan.Aks.ResourceGroup = resourceGroup
 		}
 	}
 
-	return &AKSDriver{
+	return &AksDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
-			"ResourceGroup":     plan.AKS.ResourceGroup,
+			"ResourceGroup":     plan.Aks.ResourceGroup,
 			"ClusterName":       plan.ClusterName,
-			"NodeCount":         plan.AKS.NodeCount,
+			"NodeCount":         plan.Aks.NodeCount,
 			"MachineType":       plan.MachineType,
 			"KubernetesVersion": plan.KubernetesVersion,
-			"Location":          plan.AKS.Location,
+			"Location":          plan.Aks.Location,
 		},
 		vaultClient: vaultClient,
 	}, nil
 }
 
-func (d *AKSDriver) Execute() error {
+func (d *AksDriver) Execute() error {
 	if err := d.auth(); err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (d *AKSDriver) Execute() error {
 			return err
 		}
 
-		if err := NewCommand(d.plan.AKS.DiskSetup).Run(); err != nil {
+		if err := NewCommand(d.plan.Aks.DiskSetup).Run(); err != nil {
 			return err
 		}
 	default:
@@ -111,11 +111,11 @@ func (d *AKSDriver) Execute() error {
 	return nil
 }
 
-func (d *AKSDriver) auth() error {
+func (d *AksDriver) auth() error {
 	if d.plan.ServiceAccount {
 		log.Print("Authenticating as service account...")
 
-		secrets, err := d.vaultClient.GetMany(AKSVaultPath, "appId", "password", "tenant")
+		secrets, err := d.vaultClient.GetMany(AksVaultPath, "appId", "password", "tenant")
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func (d *AKSDriver) auth() error {
 	return NewCommand("az login").Run()
 }
 
-func (d *AKSDriver) clusterExists() (bool, error) {
+func (d *AksDriver) clusterExists() (bool, error) {
 	log.Print("Checking if cluster exists...")
 
 	cmd := "az aks show --name {{.ClusterName}} --resource-group {{.ResourceGroup}}"
@@ -148,14 +148,14 @@ func (d *AKSDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *AKSDriver) create() error {
+func (d *AksDriver) create() error {
 	log.Print("Creating cluster...")
 
 	servicePrincipal := ""
 	if d.plan.ServiceAccount {
 		// our service principal doesn't have permissions to create a service principal for aks cluster
 		// instead, we reuse the current service principal as the one for aks cluster
-		secrets, err := d.vaultClient.GetMany(AKSVaultPath, "appId", "password")
+		secrets, err := d.vaultClient.GetMany(AksVaultPath, "appId", "password")
 		if err != nil {
 			return err
 		}
@@ -173,13 +173,13 @@ func (d *AKSDriver) create() error {
 	return nil
 }
 
-func (d *AKSDriver) GetCredentials() error {
+func (d *AksDriver) GetCredentials() error {
 	log.Print("Getting credentials...")
 	cmd := `az aks get-credentials --overwrite-existing --resource-group {{.ResourceGroup}} --name {{.ClusterName}}`
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
-func (d *AKSDriver) delete() error {
+func (d *AksDriver) delete() error {
 	log.Print("Deleting cluster...")
 	cmd := "az aks delete --yes --name {{.ClusterName}} --resource-group {{.ResourceGroup}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
