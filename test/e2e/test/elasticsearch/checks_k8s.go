@@ -34,7 +34,7 @@ const (
 	// but it occasionally takes longer for various reasons (long Pod creation time, long volume binding, etc.).
 	// We use a longer timeout here to not be impacted too much by those external factors, and only fail
 	// if things seem to be stuck.
-	RollingUpgradeTimeout = 15 * time.Minute
+	RollingUpgradeTimeout = 30 * time.Minute
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
