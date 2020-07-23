@@ -30,7 +30,7 @@ Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the
 
 Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring] and Filebeat using autodiscover. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana. Note: in this example, TLS verification is disabled when Metricbeat communicates with the monitored cluster, which is insecure and should not be used in production. This can be resolved by using custom certificates and configuring Metricbeat to verify them.
 
-==== Heartbeat monitoring Elasticsearch and Kibana health - `heartbeat_es_kb_heatlh.yaml`
+==== Heartbeat monitoring Elasticsearch and Kibana health - `heartbeat_es_kb_health.yaml`
 
 Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
 

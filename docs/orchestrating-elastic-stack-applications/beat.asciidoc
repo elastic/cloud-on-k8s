@@ -428,7 +428,7 @@ Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elas
 
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f {beats_url}/heartbeat_es_kb_heatlh.yaml
+kubectl apply -f {beats_url}/heartbeat_es_kb_health.yaml
 ----
 
 Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
