@@ -7,8 +7,6 @@ spec:
   version: 7.8.0
   elasticsearchRef:
     name: elasticsearch
-  kibanaRef:
-    name: kibana
   config:
     heartbeat.monitors:
     - type: tcp
