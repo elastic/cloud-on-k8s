@@ -22,7 +22,7 @@ func ExecuteCommand() *cobra.Command {
 			}
 
 			if operation != "" {
-				runConfig.Overrides["operation"] = operation
+				runConfig.Overrides.Operation = operation
 			}
 
 			driver, err := runner.GetDriver(plans.Plans, runConfig)

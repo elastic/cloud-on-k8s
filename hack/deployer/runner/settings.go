@@ -24,7 +24,7 @@ type Plan struct {
 	KubernetesVersion string       `yaml:"kubernetesVersion"`
 	MachineType       string       `yaml:"machineType"`
 	Gke               *GkeSettings `yaml:"gke,omitempty"`
-	Aks               *AksSettings `yaml:"aks,omitempty"`
+	AKS               *AKSSettings `yaml:"aks,omitempty"`
 	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
 	EKS               *EKSSettings `yaml:"eks,omitempty"`
 	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
@@ -53,8 +53,8 @@ type GkeSettings struct {
 	DiskSetup        string `yaml:"diskSetup"`
 }
 
-// AksSettings encapsulates settings specific to AKS
-type AksSettings struct {
+// AKSSettings encapsulates settings specific to AKS
+type AKSSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
 	NodeCount     int    `yaml:"nodeCount"`
@@ -88,8 +88,8 @@ type EKSSettings struct {
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
 type RunConfig struct {
-	Id        string                 `yaml:"id"` // nolint
-	Overrides map[string]interface{} `yaml:"overrides"`
+	Id        string `yaml:"id"` // nolint
+	Overrides Plan   `yaml:"overrides"`
 }
 
 func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
