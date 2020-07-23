@@ -47,6 +47,7 @@ plans:
   aks:
     nodeCount: 3
     location: westeurope
+    diskSetup: kubectl apply -k hack/deployer/config/local-disks
 - id: aks-dev
   operation: create
   clusterName: dev

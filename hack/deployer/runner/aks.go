@@ -97,7 +97,11 @@ func (d *AksDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(DefaultStorageClass); err != nil {
+		if err := createStorageClass(NoProvisioner); err != nil {
+			return err
+		}
+
+		if err := NewCommand(d.plan.Aks.DiskSetup).Run(); err != nil {
 			return err
 		}
 	default:

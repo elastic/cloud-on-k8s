@@ -6,4 +6,4 @@ patchesJson6902:
       version: v1
       kind: DaemonSet
       name: local-volume-provisioner
-    path: gke-ssd-patch.yaml
+    path: non-aws-ssd-patch.yaml
