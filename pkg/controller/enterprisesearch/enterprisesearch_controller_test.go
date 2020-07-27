@@ -313,21 +313,28 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
+	// retrieve the updated ent resource
+	require.NoError(t, r.Client.Get(k8s.ExtractNamespacedName(&ent), &ent))
 
 	// update EnterpriseSearch to 7.8.0: the deployment should stay in version 7.7.0 since
 	// Elasticsearch still runs 7.7.0
 	ent.Spec.Version = "7.8.0"
+	err = r.Client.Update(&ent)
+	require.NoError(t, err)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
+	// retrieve the updated ent resource
+	require.NoError(t, r.Client.Get(k8s.ExtractNamespacedName(&ent), &ent))
 
 	// update the associated Elasticsearch to 7.8.0: Enterprise Search should now be upgraded to 7.8.0
 	assocConf := ent.AssociationConf()
 	assocConf.Version = "7.8.0"
 	ent.SetAssociationConf(assocConf)
-	r.doReconcile(context.Background(), ent)
+	_, err = r.doReconcile(context.Background(), ent)
+	require.NoError(t, err)
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.0", dep.Spec.Template.Labels[VersionLabelName])
