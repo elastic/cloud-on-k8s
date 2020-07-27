@@ -54,7 +54,7 @@ func TestBeatKibanaRef(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref())
 
-	fbBuilder = applyYamls(t, fbBuilder, e2eFilebeatConfig, e2eFilebeatPodTemplate)
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
 
 	mbBuilder := beat.NewBuilder(name).
 		WithType(metricbeat.Type).
@@ -63,7 +63,7 @@ func TestBeatKibanaRef(t *testing.T) {
 		WithKibanaRef(kbBuilder.Ref()).
 		WithRoles(beat.MetricbeatClusterRoleName)
 
-	mbBuilder = applyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
+	mbBuilder = beat.ApplyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
 
 	hbBuilder := beat.NewBuilder(name).
 		WithType(heartbeat.Type).
@@ -73,7 +73,7 @@ func TestBeatKibanaRef(t *testing.T) {
 
 	configYaml := fmt.Sprintf(e2eHeartBeatConfigTpl, esv1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
 
-	hbBuilder = applyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
+	hbBuilder = beat.ApplyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
 
 	dashboardCheck := func(client *test.K8sClient) test.StepList {
 		return test.StepList{

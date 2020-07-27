@@ -278,3 +278,19 @@ func (b Builder) RuntimeObjects() []runtime.Object {
 }
 
 var _ test.Builder = Builder{}
+
+func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Builder {
+	if configYaml != "" {
+		b.Beat.Spec.Config = &commonv1.Config{}
+		err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)
+		require.NoError(t, err)
+	}
+
+	if podTemplateYaml != "" {
+		// use ghodss as settings package has issues with unpacking volumes part of the yamls
+		err := ghodssyaml.Unmarshal([]byte(podTemplateYaml), b.PodTemplate)
+		require.NoError(t, err)
+	}
+
+	return b
+}
