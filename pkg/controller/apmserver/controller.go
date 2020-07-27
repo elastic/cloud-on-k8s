@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
@@ -249,6 +250,15 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return res, err
+	}
+
+	asVersion, err := version.Parse(as.Spec.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
+	if !association.AllowVersion(*asVersion, as, logger) {
+		return reconcile.Result{}, nil // will eventually retry
 	}
 
 	state, err = r.reconcileApmServerDeployment(ctx, state, as)

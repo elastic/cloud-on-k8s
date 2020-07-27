@@ -138,6 +138,11 @@ func (d *driver) Reconcile(
 		return results
 	}
 
+	logger := log.WithValues("namespace", kb.Namespace, "kb_name", kb.Name)
+	if !association.AllowVersion(d.version, kb, logger) {
+		return results // will eventually retry
+	}
+
 	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version)
 	if err != nil {
 		return results.WithError(err)

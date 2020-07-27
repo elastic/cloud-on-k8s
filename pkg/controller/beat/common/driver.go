@@ -13,12 +13,14 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -72,6 +74,14 @@ func Reconcile(
 	defaultImage container.Image,
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
+
+	beatVersion, err := version.Parse(params.Beat.Spec.Version)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !association.AllowVersion(*beatVersion, &params.Beat, params.Logger) {
+		return results // will eventually retry
+	}
 
 	configHash := sha256.New224()
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {

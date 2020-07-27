@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"unsafe"
 
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	v1 "k8s.io/api/core/v1"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -101,6 +103,38 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 	}
 
 	return assocConf.AuthSecretKey, string(data), nil
+}
+
+// AllowVersion returns true if the given resourceVersion is lower or equal to the associations version.
+// For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
+// Referenced resources version is parsed from the association conf annotation.
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger) bool {
+	for _, assoc := range associated.GetAssociations() {
+		assocRef := assoc.AssociationRef()
+		if !assocRef.IsDefined() {
+			// no association specified, move on
+			continue
+		}
+		if assoc.AssociationConf() == nil || assoc.AssociationConf().Version == "" {
+			// no conf reported yet, this may be the initial resource creation
+			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
+				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+			return false
+		}
+		refVer, err := version.Parse(assoc.AssociationConf().Version)
+		if err != nil {
+			logger.Error(err, "Invalid version found in association conf", "association_version", refVer)
+			return false
+		}
+		if !refVer.IsSameOrAfter(resourceVersion) {
+			// the version of the referenced resource (example: Elasticsearch) is lower than
+			// the desired version of the reconciled resource (example: Kibana)
+			logger.Info("Delaying version deployment since an associated resource is not upgraded yet",
+				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name, "ref_version", refVer)
+			return false
+		}
+	}
+	return true
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.

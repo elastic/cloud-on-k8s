@@ -5,6 +5,7 @@
 package enterprisesearch
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -278,6 +280,57 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
 	checkResources()
+}
+
+func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t *testing.T) {
+	// associate Enterprise Search 7.7.0 to Elasticsearch 7.7.0
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "some-es"}}
+	ent := entv1beta1.EnterpriseSearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+		Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
+	esTLSCertsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
+		Data: map[string][]byte{
+			certificates.CertFileName: []byte("es-cert-data"),
+		},
+	}
+	ent.SetAssociationConf(&commonv1.AssociationConf{
+		Version:        "7.7.0",
+		AuthSecretName: "ent-user",
+		CASecretName:   "es-tls-certs",
+		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"})
+
+	r := &ReconcileEnterpriseSearch{
+		Client:         k8s.WrappedFakeClient(&ent, &es, &esTLSCertsSecret),
+		dynamicWatches: watches.NewDynamicWatches(),
+		recorder:       record.NewFakeRecorder(10),
+		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
+	}
+	_, err := r.doReconcile(context.Background(), ent)
+	require.NoError(t, err)
+	// the Enterprise Search deployment should be created and specify version 7.7.0
+	var dep appsv1.Deployment
+	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	require.NoError(t, err)
+	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
+
+	// update EnterpriseSearch to 7.8.0: the deployment should stay in version 7.7.0 since
+	// Elasticsearch still runs 7.7.0
+	ent.Spec.Version = "7.8.0"
+	_, err = r.doReconcile(context.Background(), ent)
+	require.NoError(t, err)
+	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	require.NoError(t, err)
+	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
+
+	// update the associated Elasticsearch to 7.8.0: Enterprise Search should now be upgraded to 7.8.0
+	assocConf := ent.AssociationConf()
+	assocConf.Version = "7.8.0"
+	ent.SetAssociationConf(assocConf)
+	r.doReconcile(context.Background(), ent)
+	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	require.NoError(t, err)
+	require.Equal(t, "7.8.0", dep.Spec.Template.Labels[VersionLabelName])
 }
 
 type fakeClientStatusCall struct {
