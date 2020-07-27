@@ -98,25 +98,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	}
 
 	// Watch pods belonging to ES clusters
-	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(
-				func(object handler.MapObject) []reconcile.Request {
-					labels := object.Meta.GetLabels()
-					clusterName, isSet := labels[label.ClusterNameLabelName]
-					if !isSet {
-						return nil
-					}
-					return []reconcile.Request{
-						{
-							NamespacedName: types.NamespacedName{
-								Namespace: object.Meta.GetNamespace(),
-								Name:      clusterName,
-							},
-						},
-					}
-				}),
-		}); err != nil {
+	if err := watches.WatchPods(c, label.ClusterNameLabelName); err != nil {
 		return err
 	}
 

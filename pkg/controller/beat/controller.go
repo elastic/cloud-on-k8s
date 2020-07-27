@@ -92,6 +92,12 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 		return err
 	}
 
+	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
+	// Watching Deployments or DaemonSets only may lead to missing some events.
+	if err := watches.WatchPods(c, beatcommon.NameLabelName); err != nil {
+		return err
+	}
+
 	// Watch Secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,

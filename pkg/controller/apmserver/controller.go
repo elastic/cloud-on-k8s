@@ -112,6 +112,12 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 		return err
 	}
 
+	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
+	// Watching Deployments only may lead to missing some events.
+	if err := watches.WatchPods(c, ApmServerNameLabelName); err != nil {
+		return err
+	}
+
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
