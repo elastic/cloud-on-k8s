@@ -38,6 +38,36 @@ func (so kbSavedObjects) HasDashboardsWithPrefix(prefix string) bool {
 	return false
 }
 
+func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
+	name := "test-beat-kibanaref-no-tls"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithTLSDisabled(true)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithNodeCount(1).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithTLSDisabled(true)
+
+	fbBuilder := beat.NewBuilder(name).
+		WithType(filebeat.Type).
+		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithKibanaRef(kbBuilder.Ref())
+
+	fbBuilder = applyYamls(t, fbBuilder, e2eFilebeatConfig, e2eFilebeatPodTemplate)
+
+	dashboardCheck := getDashboardCheck(
+		esBuilder,
+		kbBuilder,
+		map[string]bool{
+			"Filebeat": true,
+		})
+
+	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder).RunSequential(t)
+}
+
 func TestBeatKibanaRef(t *testing.T) {
 	name := "test-beat-kibanaref"
 
@@ -75,7 +105,20 @@ func TestBeatKibanaRef(t *testing.T) {
 
 	hbBuilder = applyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
 
-	dashboardCheck := func(client *test.K8sClient) test.StepList {
+	dashboardCheck := getDashboardCheck(
+		esBuilder,
+		kbBuilder,
+		map[string]bool{
+			"Filebeat":   true,
+			"Metricbeat": true,
+			"Heartbeat":  false,
+		})
+
+	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder, mbBuilder, hbBuilder).RunSequential(t)
+}
+
+func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder, beatToDashboardsPresence map[string]bool) test.StepsFunc {
+	return func(client *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Verify dashboards installed",
@@ -98,29 +141,13 @@ func TestBeatKibanaRef(t *testing.T) {
 					if dashboards.Total == 0 {
 						return fmt.Errorf("expected >0 dashboards but got 0")
 					}
-					for _, check := range []struct {
-						beat             string
-						expectDashboards bool
-					}{
-						{
-							beat:             "Filebeat",
-							expectDashboards: true,
-						},
-						{
-							beat:             "Metricbeat",
-							expectDashboards: true,
-						},
-						{
-							beat:             "Heartbeat",
-							expectDashboards: false,
-						},
-					} {
+					for beat, expectDashboards := range beatToDashboardsPresence {
 						// We are exploiting the fact here that Beats dashboards follow a naming convention that starts with the
 						// name of the beat in square brackets. This test will obviously break if future versions of Beats
 						// abandon this naming convention.
-						hasDashboards := dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", check.beat))
-						if hasDashboards != check.expectDashboards {
-							return fmt.Errorf("expected  %s dashboard [%v], found dashboards [%v]", check.beat, check.expectDashboards, hasDashboards)
+						hasDashboards := dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", beat))
+						if hasDashboards != expectDashboards {
+							return fmt.Errorf("expected  %s dashboard [%v], found dashboards [%v]", beat, expectDashboards, hasDashboards)
 						}
 					}
 					return nil
@@ -128,6 +155,4 @@ func TestBeatKibanaRef(t *testing.T) {
 			},
 		}
 	}
-
-	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder, mbBuilder, hbBuilder).RunSequential(t)
 }
