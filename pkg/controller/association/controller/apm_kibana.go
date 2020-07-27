@@ -25,12 +25,13 @@ import (
 
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:    "apm",
-		AssociationObjTemplate: func() commonv1.Association { return &apmv1.ApmKibanaAssociation{} },
-		ExternalServiceURL:     getKibanaExternalURL,
-		ElasticsearchRef:       getElasticsearchFromKibana,
-		AssociatedNamer:        kibana.Namer,
-		AssociationName:        "apm-kibana",
+		AssociatedShortName:       "apm",
+		AssociationObjTemplate:    func() commonv1.Association { return &apmv1.ApmKibanaAssociation{} },
+		ExternalServiceURL:        getKibanaExternalURL,
+		ReferencedResourceVersion: referencedKibanaStatusVersion,
+		ElasticsearchRef:          getElasticsearchFromKibana,
+		AssociatedNamer:           kibana.Namer,
+		AssociationName:           "apm-kibana",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
@@ -72,6 +73,16 @@ func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (strin
 		return "", err
 	}
 	return stringsutil.Concat(kb.Spec.HTTP.Protocol(), "://", kibana.HTTPService(kb.Name), ".", kb.Namespace, ".svc:", strconv.Itoa(kibana.HTTPPort)), nil
+}
+
+// referencedKibanaStatusVersion returns the currently running version of Kibana
+// reported in its status.
+func referencedKibanaStatusVersion(c k8s.Client, kbRef types.NamespacedName) (string, error) {
+	var kb kbv1.Kibana
+	if err := c.Get(kbRef, &kb); err != nil {
+		return "", err
+	}
+	return kb.Status.Version, nil
 }
 
 // getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
