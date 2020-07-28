@@ -6,7 +6,6 @@ package enterprisesearch
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
@@ -30,49 +28,6 @@ import (
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
-
-func Test_podsToReconcilerequest(t *testing.T) {
-	tests := []struct {
-		name   string
-		object handler.MapObject
-		want   []reconcile.Request
-	}{
-		{
-			name: "ent search pod",
-			object: handler.MapObject{
-				Meta: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "ns",
-					Labels: map[string]string{EnterpriseSearchNameLabelName: "name"}},
-				},
-				Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "ns",
-					Labels: map[string]string{EnterpriseSearchNameLabelName: "name"}},
-				},
-			},
-			want: []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Namespace: "ns",
-						Name:      "name",
-					},
-				},
-			},
-		},
-		{
-			name: "not an ent search pod",
-			object: handler.MapObject{
-				Meta:   &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "ns"}},
-				Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "ns"}},
-			},
-			want: nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := podsToReconcilerequest(tt.object); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("podsToReconcilerequest() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 	// unmanaged resource, should do nothing

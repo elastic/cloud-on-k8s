@@ -70,22 +70,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	}
 }
 
-func podsToReconcilerequest(object handler.MapObject) []reconcile.Request {
-	labels := object.Meta.GetLabels()
-	entName, isSet := labels[EnterpriseSearchNameLabelName]
-	if !isSet {
-		return nil
-	}
-	return []reconcile.Request{
-		{
-			NamespacedName: types.NamespacedName{
-				Namespace: object.Meta.GetNamespace(),
-				Name:      entName,
-			},
-		},
-	}
-}
-
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
 	err := c.Watch(&source.Kind{Type: &entv1beta1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
@@ -101,12 +85,9 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 		return err
 	}
 
-	// Watch Pods to be notified about Pods going up/down during version upgrades.
-	// Unfortunately watching deployment only is not enough since we may miss a Pod deletion event.
-	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(podsToReconcilerequest),
-		}); err != nil {
+	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
+	// Watching Deployments only may lead to missing some events.
+	if err := watches.WatchPods(c, EnterpriseSearchNameLabelName); err != nil {
 		return err
 	}
 

@@ -81,7 +81,11 @@ type AssociationConf struct {
 
 // IsConfigured returns true if all the fields are set.
 func (ac *AssociationConf) IsConfigured() bool {
-	return ac.AuthIsConfigured() && ac.CAIsConfigured() && ac.URLIsConfigured()
+	if ac.GetCACertProvided() && !ac.CAIsConfigured() {
+		return false
+	}
+
+	return ac.AuthIsConfigured() && ac.URLIsConfigured()
 }
 
 // AuthIsConfigured returns true if all the auth fields are set.

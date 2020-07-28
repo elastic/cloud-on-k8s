@@ -2,6 +2,9 @@
 // Added to help overcome some recurring github connection issues
 @Library('apm@current') _
 
+def failedTests = []
+def lib
+
 pipeline {
 
     agent {
@@ -29,6 +32,8 @@ pipeline {
                     junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
+                        lib = load ".ci/common/tests.groovy"
+                        failedTests = lib.getListOfFailedTests()
                         googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                             credentialsId: "devops-ci-gcs-plugin",
                             pattern: "*.tgz",
@@ -43,6 +48,24 @@ pipeline {
     }
 
     post {
+        unsuccessful {
+            script {
+                if (params.SEND_NOTIFICATIONS) {
+                    Set<String> filter = new HashSet<>()
+                    filter.addAll(failedTests)
+                    def msg = lib.generateSlackMessage("E2E tests in EKS failed!", env.BUILD_URL, filter)
+
+                    slackSend(
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: true
+                    )
+                }
+            }
+        }
         cleanup {
             script {
                 sh '.ci/setenvconfig cleanup/eks'

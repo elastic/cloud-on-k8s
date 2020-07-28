@@ -156,6 +156,16 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithTLSDisabled(disabled bool) Builder {
+	if b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate == nil {
+		b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
+	} else {
+		b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate = b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
+	}
+	b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {

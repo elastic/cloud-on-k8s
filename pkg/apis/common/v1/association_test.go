@@ -25,6 +25,7 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 			assocConf: &AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "elastic",
+				CACertProvided: true,
 				CASecretName:   "ca-secret",
 			},
 			want: false,
@@ -32,9 +33,10 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 		{
 			name: "missing auth secret name",
 			assocConf: &AssociationConf{
-				AuthSecretKey: "elastic",
-				CASecretName:  "ca-secret",
-				URL:           "https://my-es.svc",
+				AuthSecretKey:  "elastic",
+				CACertProvided: true,
+				CASecretName:   "ca-secret",
+				URL:            "https://my-es.svc",
 			},
 			want: false,
 		},
@@ -42,6 +44,7 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 			name: "missing auth secret key",
 			assocConf: &AssociationConf{
 				AuthSecretName: "auth-secret",
+				CACertProvided: true,
 				CASecretName:   "ca-secret",
 				URL:            "https://my-es.svc",
 			},
@@ -52,9 +55,20 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 			assocConf: &AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "elastic",
+				CACertProvided: true,
 				URL:            "https://my-es.svc",
 			},
 			want: false,
+		},
+		{
+			name: "correctly configured without CA",
+			assocConf: &AssociationConf{
+				AuthSecretName: "auth-secret",
+				AuthSecretKey:  "elastic",
+				CACertProvided: false,
+				URL:            "https://my-es.svc",
+			},
+			want: true,
 		},
 		{
 			name: "correctly configured",
