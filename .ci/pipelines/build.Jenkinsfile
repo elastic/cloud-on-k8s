@@ -41,6 +41,9 @@ pipeline {
                     }
                 }
                 stage('Upload YAML manifest to S3') {
+                    when {
+                        buildingTag()
+                    }
                     steps {
                         script {
                             env.VERSION = readFromEnvFile("VERSION")
