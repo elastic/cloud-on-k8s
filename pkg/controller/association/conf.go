@@ -76,6 +76,8 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
+			"ref_namespace", ref.Namespace,
+			"ref_name", ref.Name,
 		)
 		return false
 	}
