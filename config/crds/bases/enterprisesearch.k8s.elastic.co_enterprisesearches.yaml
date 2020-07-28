@@ -16,7 +16,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Enterprise Search version
     name: version
     type: string

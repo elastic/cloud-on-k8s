@@ -6,21 +6,6 @@ metadata:
   creationTimestamp: null
   name: apmservers.apm.k8s.elastic.co
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.health
-    name: health
-    type: string
-  - JSONPath: .status.availableNodes
-    description: Available nodes
-    name: nodes
-    type: integer
-  - JSONPath: .spec.version
-    description: APM version
-    name: version
-    type: string
-  - JSONPath: .metadata.creationTimestamp
-    name: age
-    type: date
   group: apm.k8s.elastic.co
   names:
     categories:
@@ -454,10 +439,40 @@ spec:
           type: object
   version: v1
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .status.version
+      description: APM version
+      name: version
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1
     served: true
     storage: true
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .spec.version
+      description: APM version
+      name: version
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1beta1
     served: true
     storage: false
   - name: v1alpha1
@@ -494,7 +509,7 @@ spec:
     description: Beat type
     name: type
     type: string
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Beat version
     name: version
     type: string
@@ -697,24 +712,6 @@ metadata:
   creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.health
-    name: health
-    type: string
-  - JSONPath: .status.availableNodes
-    description: Available nodes
-    name: nodes
-    type: integer
-  - JSONPath: .spec.version
-    description: Elasticsearch version
-    name: version
-    type: string
-  - JSONPath: .status.phase
-    name: phase
-    type: string
-  - JSONPath: .metadata.creationTimestamp
-    name: age
-    type: date
   group: elasticsearch.k8s.elastic.co
   names:
     categories:
@@ -1748,10 +1745,46 @@ spec:
           type: object
   version: v1
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .status.version
+      description: Elasticsearch version
+      name: version
+      type: string
+    - JSONPath: .status.phase
+      name: phase
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1
     served: true
     storage: true
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .spec.version
+      description: Elasticsearch version
+      name: version
+      type: string
+    - JSONPath: .status.phase
+      name: phase
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1beta1
     served: true
     storage: false
   - name: v1alpha1
@@ -1780,7 +1813,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Enterprise Search version
     name: version
     type: string
@@ -2189,21 +2222,6 @@ metadata:
   creationTimestamp: null
   name: kibanas.kibana.k8s.elastic.co
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.health
-    name: health
-    type: string
-  - JSONPath: .status.availableNodes
-    description: Available nodes
-    name: nodes
-    type: integer
-  - JSONPath: .spec.version
-    description: Kibana version
-    name: version
-    type: string
-  - JSONPath: .metadata.creationTimestamp
-    name: age
-    type: date
   group: kibana.k8s.elastic.co
   names:
     categories:
@@ -2608,10 +2626,40 @@ spec:
           type: object
   version: v1
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .status.version
+      description: Kibana version
+      name: version
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1
     served: true
     storage: true
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .spec.version
+      description: Kibana version
+      name: version
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1beta1
     served: true
     storage: false
   - name: v1alpha1
