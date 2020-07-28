@@ -27,4 +27,4 @@ The following Elasticsearch settings are managed by ECK:
 * `xpack.security.transport.ssl.key`
 * `xpack.security.transport.ssl.verification_mode`
 
-CAUTION: While ECK does not prevent you from setting any of these settings yourself, you are strongly discouraged from doing so and we cannot offer support for any user provided Elasticsearch configuration that does use any of these settings.
+CAUTION: It is not recommended to change these ECK settings. We don't support user-provided Elasticsearch configurations that use any of these settings.
