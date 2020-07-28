@@ -97,7 +97,11 @@ func (d *AksDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(DefaultStorageClass); err != nil {
+		if err := createStorageClass(NoProvisioner); err != nil {
+			return err
+		}
+
+		if err := NewCommand(d.plan.Aks.DiskSetup).Run(); err != nil {
 			return err
 		}
 	default:
@@ -160,7 +164,7 @@ func (d *AksDriver) create() error {
 
 	cmd := `az aks create --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --location {{.Location}} ` +
 		`--node-count {{.NodeCount}} --node-vm-size {{.MachineType}} --kubernetes-version {{.KubernetesVersion}} ` +
-		`--node-osdisk-size 30 --enable-addons http_application_routing --generate-ssh-keys` + servicePrincipal
+		`--node-osdisk-size 30 --enable-addons http_application_routing --output none --generate-ssh-keys` + servicePrincipal
 
 	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 		return err

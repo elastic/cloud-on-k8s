@@ -58,6 +58,7 @@ type AksSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
 	NodeCount     int    `yaml:"nodeCount"`
+	DiskSetup     string `yaml:"diskSetup"`
 }
 
 // OcpSettings encapsulates settings specific to OCP on GCloud
