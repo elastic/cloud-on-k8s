@@ -46,32 +46,37 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	// Single-node ES clusters cannot be green with APM indices (see https://github.com/elastic/apm-server/issues/414).
 	es := elasticsearch.NewBuilder("es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithVersion(initialVersion)
+		WithVersion(initialVersion).
+		WithRestrictedSecurityContext()
 	esUpdated := es.WithVersion(updatedVersion)
 	esRef := commonv1.ObjectSelector{Namespace: es.Elasticsearch.Namespace, Name: es.Elasticsearch.Name}
 	kb := kibana.NewBuilder("kb").
 		WithNodeCount(1).
 		WithVersion(initialVersion).
-		WithElasticsearchRef(esRef)
+		WithElasticsearchRef(esRef).
+		WithRestrictedSecurityContext()
 	kbUpdated := kb.WithVersion(updatedVersion)
 	kbRef := commonv1.ObjectSelector{Namespace: kb.Kibana.Namespace, Name: kb.Kibana.Name}
 	apm := apmserver.NewBuilder("apm").
 		WithNodeCount(1).
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
-		WithKibanaRef(kbRef)
+		WithKibanaRef(kbRef).
+		WithRestrictedSecurityContext()
 	apmUpdated := apm.WithVersion(updatedVersion)
 	ent := enterprisesearch.NewBuilder("ent").
 		WithNodeCount(1).
 		WithVersion(initialVersion).
-		WithElasticsearchRef(esRef)
+		WithElasticsearchRef(esRef).
+		WithRestrictedSecurityContext()
 	entUpdated := ent.WithVersion(updatedVersion)
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
 		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
-		WithKibanaRef(kbRef)
+		WithKibanaRef(kbRef).
+		WithRestrictedSecurityContext()
 	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
 	fbUpdated := fb.WithVersion(updatedVersion)
 
