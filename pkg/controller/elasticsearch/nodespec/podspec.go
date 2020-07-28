@@ -56,7 +56,11 @@ func BuildPodTemplateSpec(
 	}
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
-	if setDefaultFsGroup {
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	if ver.IsSameOrAfter(version.MinDefaultFSGroupVersion) && setDefaultFsGroup {
 		builder = builder.WithFsGroup(defaultFsGroup)
 	}
 

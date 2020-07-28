@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
 
 	"github.com/stretchr/testify/assert"
@@ -88,16 +89,55 @@ var sampleES = esv1.Elasticsearch{
 }
 
 func TestBuildPodTemplateSpecWithDefaultFsGroup(t *testing.T) {
-	nodeSet := sampleES.Spec.NodeSets[0]
-	ver, err := version.Parse(sampleES.Spec.Version)
-	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config)
-	require.NoError(t, err)
+	for _, tt := range []struct {
+		name              string
+		version           version.Version
+		setDefaultFSGroup bool
+		wantFSGroup       *int64
+	}{
+		{
+			name:              "pre-8.0, setting off",
+			version:           version.MustParse("7.8.0"),
+			setDefaultFSGroup: false,
+			wantFSGroup:       nil,
+		},
+		{
+			name:              "pre-8.0, setting on",
+			version:           version.MustParse("7.8.0"),
+			setDefaultFSGroup: true,
+			wantFSGroup:       nil,
+		},
+		{
+			name:              "8.0+, setting off",
+			version:           version.MustParse("8.0.0"),
+			setDefaultFSGroup: false,
+			wantFSGroup:       nil,
+		},
+		{
+			name:              "8.0+, setting on",
+			version:           version.MustParse("8.0.0"),
+			setDefaultFSGroup: true,
+			wantFSGroup:       pointer.Int64(1000),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			es := *sampleES.DeepCopy()
+			es.Spec.Version = tt.version.String()
+			nodeSet := es.Spec.NodeSets[0]
 
-	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil, true)
-	require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, es.Spec.HTTP, *nodeSet.Config)
+			require.NoError(t, err)
 
-	require.Equal(t, int64(1000), *actual.Spec.SecurityContext.FSGroup)
+			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
+			require.NoError(t, err)
+
+			if tt.wantFSGroup == nil {
+				require.Nil(t, actual.Spec.SecurityContext)
+			} else {
+				require.Equal(t, *tt.wantFSGroup, *actual.Spec.SecurityContext.FSGroup)
+			}
+		})
+	}
 }
 
 func TestBuildPodTemplateSpec(t *testing.T) {

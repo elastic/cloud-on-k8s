@@ -7,11 +7,11 @@ package defaults
 import (
 	"sort"
 
-	corev1 "k8s.io/api/core/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // PodDownwardEnvVars returns default environment variables created from the downward API.

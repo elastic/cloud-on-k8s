@@ -27,7 +27,7 @@ type Parameters struct {
 	// MaxConcurrentReconciles controls the number of goroutines per controller.
 	MaxConcurrentReconciles int
 	// SetDefaultFsGroup determines whether the operator should set the default
-	// filesystem group for Pod security context.
+	// filesystem group for Pod security context on ES 8.0+. Ignored pre-8.0.
 	SetDefaultFsGroup bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer

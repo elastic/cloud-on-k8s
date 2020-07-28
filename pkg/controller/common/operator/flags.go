@@ -20,7 +20,7 @@ const (
 	MetricsPortFlag              = "metrics-port"
 	NamespacesFlag               = "namespaces"
 	OperatorNamespaceFlag        = "operator-namespace"
-	SetDefaultFsGroupFlag       = "set-default-fsgroup"
+	SetDefaultFsGroupFlag        = "set-default-fsgroup"
 	WebhookCertDirFlag           = "webhook-cert-dir"
 	WebhookSecretFlag            = "webhook-secret"
 	WebhookConfigurationNameFlag = "webhook-configuration-name"

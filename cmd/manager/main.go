@@ -177,7 +177,7 @@ func init() {
 	Cmd.Flags().Bool(
 		operator.SetDefaultFsGroupFlag,
 		true,
-		"Enables setting the default filesystem group in Pods security context",
+		"Enables setting the default filesystem group in Pods security context on ES 8.0+",
 	)
 
 	// enable using dashed notation in flags and underscores in env
