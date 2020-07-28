@@ -92,7 +92,7 @@ touch filerealm/users filerealm/users_roles
 
 # create user 'myuser' with role 'monitoring_user'
 docker run \
-    -v $(pwd)/filerealm:/usr/share/elasticsearch/config \
+    -v ${pwd}/filerealm:/usr/share/elasticsearch/config \
     docker.elastic.co/elasticsearch/elasticsearch:{version} \
     bin/elasticsearch-users useradd myuser -p mypassword -r monitoring_user
 
