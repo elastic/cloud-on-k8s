@@ -7,18 +7,20 @@ endif::[]
 [id="{p}-{page_id}"]
 = Uninstall ECK
 
-Before uninstalling the operator, remove all Elastic resources in all namespaces:
+To uninstall the operator:
 
+. Remove all Elastic resources in all namespaces:
++
 [source,shell]
 ----
 kubectl get namespaces --no-headers -o custom-columns=:metadata.name \
   | xargs -n1 kubectl delete elastic --all -n
 ----
++
+This deletes all underlying Elasticsearch, Kibana, and APM Server resources like pods, secrets, services, and so on.
 
-This deletes all underlying Elasticsearch, Kibana, and APM Server resources (pods, secrets, services, etc.).
-
-Then, you can uninstall the operator:
-
+. Uninstall the operator:
++
 [source,shell,subs="attributes"]
 ----
 kubectl delete -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
