@@ -56,7 +56,7 @@ func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref())
 
-	fbBuilder = applyYamls(t, fbBuilder, e2eFilebeatConfig, e2eFilebeatPodTemplate)
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
 
 	dashboardCheck := getDashboardCheck(
 		esBuilder,
