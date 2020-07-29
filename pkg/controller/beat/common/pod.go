@@ -75,13 +75,13 @@ func buildPodTemplate(
 	podTemplate := params.GetPodTemplate()
 
 	spec := &params.Beat.Spec
-	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
-		WithResources(defaultResources).
-		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
-		WithArgs("-e", "-c", ConfigMountPath)
+
+	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
+		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
+		VersionLabelName:    spec.Version})
 
 	dataVolume := createDataVolume(params)
-	volumes := []volume.VolumeLike{
+	vols := []volume.VolumeLike{
 		volume.NewSecretVolume(
 			ConfigSecretName(spec.Type, params.Beat.Name),
 			ConfigVolumeName,
@@ -101,25 +101,33 @@ func buildPodTemplate(
 			association.AssociatedType()+"-certs",
 			certificatesDir(association),
 		)
-		volumes = append(volumes, caVolume)
-
+		vols = append(vols, caVolume)
 	}
 
-	for _, v := range volumes {
-		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
+	volumes := make([]corev1.Volume, len(vols))
+	volumeMounts := make([]corev1.VolumeMount, len(vols))
+	var initContainers []corev1.Container
+
+	for _, v := range vols {
+		volumes = append(volumes, v.Volume())
+		volumeMounts = append(volumeMounts, v.VolumeMount())
 	}
 
 	if keystoreResources != nil {
 		_, _ = configHash.Write([]byte(keystoreResources.Version))
-		builder.WithInitContainers(keystoreResources.InitContainer).
-			WithVolumes(keystoreResources.Volume).
-			WithInitContainerDefaults()
+		volumes = append(volumes, keystoreResources.Volume)
+		initContainers = append(initContainers, keystoreResources.InitContainer)
 	}
 
-	builder = builder.
-		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
-			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-			VersionLabelName:    spec.Version}))
+	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
+		WithLabels(labels).
+		WithResources(defaultResources).
+		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
+		WithArgs("-e", "-c", ConfigMountPath).
+		WithVolumes(volumes...).
+		WithVolumeMounts(volumeMounts...).
+		WithInitContainers(initContainers...).
+		WithInitContainerDefaults()
 
 	return builder.PodTemplate
 }

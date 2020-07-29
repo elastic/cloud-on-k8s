@@ -53,23 +53,27 @@ var (
 )
 
 func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
+	// ensure the Pod gets rotated on config change
+	labels := map[string]string{ConfigHashLabelName: configHash}
+
+	defaultContainerPorts := []corev1.ContainerPort{
+		{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
+	}
+
 	cfgVolume := ConfigSecretVolume(ent)
 	readinessProbeVolume := ReadinessProbeSecretVolume(ent)
 	logsVolume := volume.NewEmptyDirVolume("logs", LogVolumeMountPath)
 
-	builder := defaults.NewPodTemplateBuilder(
-		ent.Spec.PodTemplate, entv1beta1.EnterpriseSearchContainerName).
+	builder := defaults.NewPodTemplateBuilder(ent.Spec.PodTemplate, entv1beta1.EnterpriseSearchContainerName).
+		WithLabels(labels).
 		WithResources(DefaultResources).
 		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ent.Spec.Version)).
-		WithPorts([]corev1.ContainerPort{
-			{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
-		}).
+		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(ReadinessProbe).
+		WithEnv(DefaultEnv...).
 		WithVolumes(cfgVolume.Volume(), readinessProbeVolume.Volume(), logsVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount(), readinessProbeVolume.VolumeMount(), logsVolume.VolumeMount()).
-		WithEnv(DefaultEnv...).
-		// ensure the Pod gets rotated on config change
-		WithLabels(map[string]string{ConfigHashLabelName: configHash})
+		WithInitContainerDefaults()
 
 	builder = withESCertsVolume(builder, ent)
 	builder = withHTTPCertsVolume(builder, ent)

@@ -128,6 +128,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
 			},
 		},
 		{

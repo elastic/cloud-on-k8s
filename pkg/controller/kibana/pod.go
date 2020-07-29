@@ -72,7 +72,18 @@ func readinessProbe(useTLS bool) corev1.Probe {
 func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
 	labels := NewLabels(kb.Name)
 	labels[KibanaVersionLabelName] = kb.Spec.Version
+
 	ports := getDefaultContainerPorts(kb)
+
+	volumes := []corev1.Volume{DataVolume.Volume()}
+	volumeMounts := []corev1.VolumeMount{DataVolume.VolumeMount()}
+	var initContainers []corev1.Container
+
+	if keystore != nil {
+		volumes = append(volumes, keystore.Volume)
+		initContainers = append(initContainers, keystore.InitContainer)
+	}
+
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
@@ -80,14 +91,10 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
-		WithVolumes(DataVolume.Volume()).
-		WithVolumeMounts(DataVolume.VolumeMount())
-
-	if keystore != nil {
-		builder.WithVolumes(keystore.Volume).
-			WithInitContainers(keystore.InitContainer).
-			WithInitContainerDefaults()
-	}
+		WithVolumes(volumes...).
+		WithVolumeMounts(volumeMounts...).
+		WithInitContainers(initContainers...).
+		WithInitContainerDefaults()
 
 	return builder.PodTemplate
 }

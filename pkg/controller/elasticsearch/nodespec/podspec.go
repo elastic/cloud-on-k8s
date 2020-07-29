@@ -38,8 +38,7 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName).
-		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, es.Spec.Version))
+	defaultContainerPorts := getDefaultContainerPorts(es)
 
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(es.Name),
@@ -49,9 +48,11 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	defaultContainerPorts := getDefaultContainerPorts(es)
 
-	builder = builder.
+	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName).
+		WithLabels(labels).
+		WithAnnotations(DefaultAnnotations).
+		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, es.Spec.Version)).
 		WithResources(DefaultResources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
 		WithPorts(defaultContainerPorts).
@@ -60,11 +61,9 @@ func BuildPodTemplateSpec(
 		WithEnv(DefaultEnvVars(es.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)))...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
-		WithLabels(labels).
-		WithAnnotations(DefaultAnnotations).
 		WithInitContainers(initContainers...).
-		WithPreStopHook(*NewPreStopHook()).
-		WithInitContainerDefaults()
+		WithInitContainerDefaults().
+		WithPreStopHook(*NewPreStopHook())
 
 	return builder.PodTemplate, nil
 }
