@@ -102,17 +102,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: "eck-{{ .TestRun }}"
-                  key: monitoring-user
+                  key: monitoring_user
             - name: MONITORING_PASS
               valueFrom:
                 secretKeyRef:
                   name: "eck-{{ .TestRun }}"
-                  key: monitoring-pass
+                  key: monitoring_pass
             - name: MONITORING_IP
               valueFrom:
                 secretKeyRef:
                   name: "eck-{{ .TestRun }}"
-                  key: monitoring-ip
+                  key: monitoring_ip
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
@@ -147,7 +147,7 @@ spec:
             - name: monitoring-ca
               mountPath: /mnt/elastic/monitoring-ca.crt
               readOnly: true
-              subPath: monitoring-ca
+              subPath: monitoring_ca
       volumes:
         - name: config
           configMap:
