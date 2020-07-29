@@ -22,8 +22,8 @@ update_chart() {
     fi
 
     cp -f "$ALL_CRDS" "${CHART_DIR}/crds/all-crds.yaml"
-    "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+#version: $VERSION#" "${CHART_DIR}/values.yaml"
-    "$SED" -E "s#appVersion: [0-9]+\.[0-9]+\.[0-9]+#appVersion: $VERSION#" "${CHART_DIR}/Chart.yaml"
+    "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+.*#version: $VERSION#" "${CHART_DIR}/values.yaml"
+    "$SED" -E "s#appVersion: [0-9]+\.[0-9]+\.[0-9]+.*#appVersion: $VERSION#" "${CHART_DIR}/Chart.yaml"
 }
 
 sed_gnu() {
