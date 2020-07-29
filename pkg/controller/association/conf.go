@@ -7,6 +7,7 @@ package association
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"unsafe"
 
@@ -131,9 +132,11 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if !refVer.IsSameOrAfter(resourceVersion) {
 			// the version of the referenced resource (example: Elasticsearch) is lower than
 			// the desired version of the reconciled resource (example: Kibana)
-			msg := "Delaying version deployment since an associated resource is not upgraded yet"
-			logger.Info(msg, "version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name, "ref_version", refVer)
-			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
+			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
+				"version", resourceVersion, "ref_version", refVer,
+				"ref_type", assoc.AssociatedType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
+				fmt.Sprintf("Delaying version deployment since the referenced %s is not upgraded yet", assoc.AssociatedType()))
 			return false
 		}
 	}
