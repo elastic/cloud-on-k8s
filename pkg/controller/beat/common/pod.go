@@ -104,8 +104,8 @@ func buildPodTemplate(
 		vols = append(vols, caVolume)
 	}
 
-	volumes := make([]corev1.Volume, len(vols))
-	volumeMounts := make([]corev1.VolumeMount, len(vols))
+	volumes := make([]corev1.Volume, 0, len(vols))
+	volumeMounts := make([]corev1.VolumeMount, 0, len(vols))
 	var initContainers []corev1.Container
 
 	for _, v := range vols {
