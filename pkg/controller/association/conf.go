@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,7 +68,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 	if (&ref).IsDefined() && !association.AssociationConf().IsConfigured() {
 		r.Event(
 			association,
-			v1.EventTypeWarning,
+			corev1.EventTypeWarning,
 			events.EventAssociationError,
 			"Association backend for "+association.AssociatedType()+" is not configured",
 		)
@@ -95,7 +94,7 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 	}
 
 	secretObjKey := types.NamespacedName{Namespace: association.GetNamespace(), Name: assocConf.AuthSecretName}
-	var secret v1.Secret
+	var secret corev1.Secret
 	if err := c.Get(secretObjKey, &secret); err != nil {
 		return "", "", err
 	}
