@@ -98,7 +98,7 @@ type BeatStatus struct {
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	KibanaAssocationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
+	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 }
 
 type BeatHealth string
@@ -221,11 +221,11 @@ func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationCon
 }
 
 func (b *BeatKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return b.Status.KibanaAssocationStatus
+	return b.Status.KibanaAssociationStatus
 }
 
 func (b *BeatKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	b.Status.KibanaAssocationStatus = status
+	b.Status.KibanaAssociationStatus = status
 }
 
 func (b *BeatKibanaAssociation) Associated() commonv1.Associated {
