@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -110,7 +111,7 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 // AllowVersion returns true if the given resourceVersion is lower or equal to the associations' versions.
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
 // Referenced resources version is parsed from the association conf annotation.
-func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger) bool {
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) bool {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
 		if !assocRef.IsDefined() {
@@ -131,8 +132,9 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if !refVer.IsSameOrAfter(resourceVersion) {
 			// the version of the referenced resource (example: Elasticsearch) is lower than
 			// the desired version of the reconciled resource (example: Kibana)
-			logger.Info("Delaying version deployment since an associated resource is not upgraded yet",
-				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name, "ref_version", refVer)
+			msg := "Delaying version deployment since an associated resource is not upgraded yet"
+			logger.Info(msg, "version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name, "ref_version", refVer)
+			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
 			return false
 		}
 	}

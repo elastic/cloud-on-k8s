@@ -429,9 +429,10 @@ func TestAllowVersion(t *testing.T) {
 		associated      commonv1.Associated
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name      string
+		args      args
+		want      bool
+		wantEvent bool
 	}{
 		{
 			name: "no association specified: allow",
@@ -458,12 +459,13 @@ func TestAllowVersion(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "one referenced resource runs a lower version: don't allow",
+			name: "one referenced resource runs a lower version: don't allow and emit an event",
 			args: args{
 				resourceVersion: version.MustParse("7.7.0"),
 				associated:      apmTwoAssocWithVersions([]string{"7.7.0", "7.6.0"}),
 			},
-			want: false,
+			want:      false,
+			wantEvent: true,
 		},
 		{
 			name: "no version set in the association conf: don't allow",
@@ -492,10 +494,22 @@ func TestAllowVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		logger := log.WithValues("a", "b")
+		recorder := record.NewFakeRecorder(10)
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger); got != tt.want {
+			if got := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); got != tt.want {
 				t.Errorf("AllowVersion() = %v, want %v", got, tt.want)
 			}
 		})
+		if tt.wantEvent {
+			require.NotEmpty(t, <-recorder.Events)
+		} else {
+			// no event expected
+			select {
+			case e := <-recorder.Events:
+				require.Fail(t, "no event expected but got one", "event", e)
+			default:
+				// ok
+			}
+		}
 	}
 }

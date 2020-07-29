@@ -139,7 +139,7 @@ func (d *driver) Reconcile(
 	}
 
 	logger := log.WithValues("namespace", kb.Namespace, "kb_name", kb.Name)
-	if !association.AllowVersion(d.version, kb, logger) {
+	if !association.AllowVersion(d.version, kb, logger, d.Recorder()) {
 		return results // will eventually retry
 	}
 
