@@ -85,7 +85,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 	}
 
 	volumeMounts := append(
-		initcontainer.PluginVolumes.EsContainerVolumeMounts(),
+		initcontainer.PluginVolumes.ContainerVolumeMounts(),
 		esvolume.DefaultDataVolumeMount,
 		esvolume.DefaultLogsVolumeMount,
 		usersSecretVolume.VolumeMount(),

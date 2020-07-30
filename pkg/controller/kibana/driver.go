@@ -13,7 +13,6 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,24 +35,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
-
-// initContainersParameters is used to generate the init container that will load the secure settings into a keystore
-var initContainersParameters = keystore.InitContainerParameters{
-	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
-	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
-	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-	KeystoreVolumePath:            DataVolumeMountPath,
-	Resources: corev1.ResourceRequirements{
-		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("128Mi"),
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-		},
-		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("128Mi"),
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-		},
-	},
-}
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
 var minSupportedVersion = version.From(6, 8, 0)
@@ -195,6 +176,10 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 }
 
 func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
+	initContainersParameters, err := newInitContainersParameters(kb)
+	if err != nil {
+		return deployment.Params{}, err
+	}
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
@@ -207,7 +192,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		return deployment.Params{}, err
 	}
 
-	kibanaPodSpec := NewPodTemplateSpec(*kb, keystoreResources)
+	kibanaPodSpec := NewPodTemplateSpec(*kb, keystoreResources, d.buildVolumes(kb))
 
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
@@ -220,17 +205,6 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	// we need to deref the secret here to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if err := commonassociation.WriteAssocsToConfigHash(d.client, kb.GetAssociations(), configChecksum); err != nil {
 		return deployment.Params{}, err
-	}
-
-	volumes := []commonvolume.SecretVolume{SecretVolume(*kb)}
-
-	if kb.AssociationConf().CAIsConfigured() {
-		esCertsVolume := esCaCertSecretVolume(*kb)
-		volumes = append(volumes, esCertsVolume)
-		for i := range kibanaPodSpec.Spec.InitContainers {
-			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
-				esCertsVolume.VolumeMount())
-		}
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
@@ -246,16 +220,6 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
-
-		httpCertsVolume := certificates.HTTPCertSecretVolume(Namer, kb.Name)
-		volumes = append(volumes, httpCertsVolume)
-	}
-
-	// attach volumes
-	kibanaContainer := GetKibanaContainer(kibanaPodSpec.Spec)
-	for _, volume := range volumes {
-		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, volume.Volume())
-		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, volume.VolumeMount())
 	}
 
 	// get config secret to add its content to the config checksum
@@ -285,6 +249,21 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		PodTemplateSpec: kibanaPodSpec,
 		Strategy:        strategyType,
 	}, nil
+}
+
+func (d *driver) buildVolumes(kb *kbv1.Kibana) []commonvolume.VolumeLike {
+	volumes := []commonvolume.VolumeLike{DataVolume, ConfigSharedVolume, ConfigVolume(*kb)}
+
+	if kb.AssociationConf().CAIsConfigured() {
+		esCertsVolume := esCaCertSecretVolume(*kb)
+		volumes = append(volumes, esCertsVolume)
+	}
+
+	if kb.Spec.HTTP.TLS.Enabled() {
+		httpCertsVolume := certificates.HTTPCertSecretVolume(Namer, kb.Name)
+		volumes = append(volumes, httpCertsVolume)
+	}
+	return volumes
 }
 
 func NewService(kb kbv1.Kibana) *corev1.Service {
