@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
 const (
@@ -70,7 +69,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources, volumes []commonvolume.VolumeLike) corev1.PodTemplateSpec {
+func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) corev1.PodTemplateSpec {
 	labels := NewLabels(kb.Name)
 	labels[KibanaVersionLabelName] = kb.Spec.Version
 
