@@ -293,7 +293,7 @@ func (r *Reconciler) getElasticsearch(
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName()); err != nil && !apierrors.IsConflict(err) {
-				r.log(association).Error(err, "Failed to remove Elasticsearch association conf")
+				r.log(association).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
 			return esv1.Elasticsearch{}, commonv1.AssociationPending, nil

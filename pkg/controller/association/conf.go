@@ -126,7 +126,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		}
 		refVer, err := version.Parse(assoc.AssociationConf().Version)
 		if err != nil {
-			logger.Error(err, "Invalid version found in association conf", "association_version", assoc.AssociationConf().Version)
+			logger.Error(err, "Invalid version found in association configuration", "association_version", assoc.AssociationConf().Version)
 			return false
 		}
 		if !refVer.IsSameOrAfter(resourceVersion) {
