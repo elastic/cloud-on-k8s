@@ -26,7 +26,6 @@ type ElasticsearchSpec struct {
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 	// +kubebuilder:validation:MinItems=1
 	NodeSets []NodeSet `json:"nodeSets"`
 
@@ -41,7 +40,6 @@ type ElasticsearchSpec struct {
 	PodDisruptionBudget *commonv1beta1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
@@ -76,7 +74,6 @@ type NodeSet struct {
 	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
 	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
 	// Items defined here take precedence over any default claims added by the operator with the same name.
-	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
