@@ -27,7 +27,7 @@ const (
 	ConfigVolumeMountPath              = "/usr/share/kibana/config"
 	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
 
-	InternalConfigVolumeName      = "elastic-internal-elasticsearch-config"
+	InternalConfigVolumeName      = "elastic-internal-kibana-config"
 	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
 
 	telemetryFilename = "telemetry.yml"
