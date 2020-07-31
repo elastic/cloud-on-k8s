@@ -110,7 +110,7 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 
 // AllowVersion returns true if the given resourceVersion is lower or equal to the associations' versions.
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
-// A difference in the patch version is ignored: Kibana 7.8.1 can be deployed alongside Elasticsearch 7.8.0.
+// A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
 // Referenced resources version is parsed from the association conf annotation.
 func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) bool {
 	for _, assoc := range associated.GetAssociations() {
