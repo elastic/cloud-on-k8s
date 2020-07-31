@@ -246,9 +246,9 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				params := expectedDeploymentParams()
-				params.PodTemplateSpec.Spec.Volumes = append(params.PodTemplateSpec.Spec.Volumes[:1], params.PodTemplateSpec.Spec.Volumes[2:]...)
-				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:1], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[2:]...)
-				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:1], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[2:]...)
+				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
+				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
+				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
 				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
@@ -448,19 +448,19 @@ func expectedDeploymentParams() deployment.Params {
 			Spec: corev1.PodSpec{
 				Volumes: []corev1.Volume{
 					{
-						Name: "elastic-internal-elasticsearch-config",
+						Name: certificates.HTTPCertificatesSecretVolumeName,
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-config",
+								SecretName: "test-kb-http-certs-internal",
 								Optional:   &false,
 							},
 						},
 					},
 					{
-						Name: certificates.HTTPCertificatesSecretVolumeName,
+						Name: "elastic-internal-kibana-config",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-http-certs-internal",
+								SecretName: "test-kb-config",
 								Optional:   &false,
 							},
 						},
@@ -508,14 +508,14 @@ func expectedDeploymentParams() deployment.Params {
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "elastic-internal-elasticsearch-config",
-							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
-						},
-						{
 							Name:      certificates.HTTPCertificatesSecretVolumeName,
 							ReadOnly:  true,
 							MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+						},
+						{
+							Name:      "elastic-internal-kibana-config",
+							ReadOnly:  true,
+							MountPath: InternalConfigVolumeMountPath,
 						},
 						ConfigSharedVolume.InitContainerVolumeMount(),
 						{
@@ -544,14 +544,14 @@ func expectedDeploymentParams() deployment.Params {
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "elastic-internal-elasticsearch-config",
-							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
-						},
-						{
 							Name:      certificates.HTTPCertificatesSecretVolumeName,
 							ReadOnly:  true,
 							MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+						},
+						{
+							Name:      "elastic-internal-kibana-config",
+							ReadOnly:  true,
+							MountPath: InternalConfigVolumeMountPath,
 						},
 						ConfigSharedVolume.VolumeMount(),
 						{
