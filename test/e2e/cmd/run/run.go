@@ -214,10 +214,10 @@ func (h *helper) initTestSecrets() error {
 		}
 
 		monitoringSecrets := struct {
-			MonitoringIP   string `json:"monitoringIp"`
-			MonitoringUser string `json:"monitoringUser"`
-			MonitoringPass string `json:"monitoringPass"`
-			MonitoringCa   string `json:"monitoringCa"`
+			MonitoringIP   string `json:"monitoring_ip"`
+			MonitoringUser string `json:"monitoring_user"`
+			MonitoringPass string `json:"monitoring_pass"`
+			MonitoringCA   string `json:"monitoring_ca"`
 			APMServerCert  string `json:"apm_server_cert"`
 			APMSecretToken string `json:"apm_secret_token"`
 			APMServerURL   string `json:"apm_server_url"`
@@ -227,10 +227,10 @@ func (h *helper) initTestSecrets() error {
 			return fmt.Errorf("unmarshal %v, %w", h.monitoringSecrets, err)
 		}
 
-		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIP
-		h.testSecrets["monitoring-user"] = monitoringSecrets.MonitoringUser
-		h.testSecrets["monitoring-pass"] = monitoringSecrets.MonitoringPass
-		h.testSecrets["monitoring-ca"] = monitoringSecrets.MonitoringCa
+		h.testSecrets["monitoring_ip"] = monitoringSecrets.MonitoringIP
+		h.testSecrets["monitoring_user"] = monitoringSecrets.MonitoringUser
+		h.testSecrets["monitoring_pass"] = monitoringSecrets.MonitoringPass
+		h.testSecrets["monitoring_ca"] = monitoringSecrets.MonitoringCA
 
 		h.operatorSecrets = map[string]string{}
 		h.operatorSecrets["apm_server_cert"] = monitoringSecrets.APMServerCert
