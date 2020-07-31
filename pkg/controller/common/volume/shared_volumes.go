@@ -6,7 +6,7 @@ package volume
 
 import corev1 "k8s.io/api/core/v1"
 
-// SharedVolume between the init container and the ES container.
+// SharedVolume between the init container and the main container.
 type SharedVolume struct {
 	VolumeName             string // Volume name
 	InitContainerMountPath string // Mount path in the init container
