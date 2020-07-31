@@ -75,8 +75,7 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
-		WithKibanaRef(kbRef).
-		WithRestrictedSecurityContext()
+		WithKibanaRef(kbRef)
 	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
 	fbUpdated := fb.WithVersion(updatedVersion)
 
