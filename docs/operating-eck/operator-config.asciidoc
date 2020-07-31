@@ -18,6 +18,7 @@ ECK can be configured using either command line flags or environment variables.
 |ca-cert-validity |8760h |Duration representing the validity period of a generated CA certificate.
 |cert-rotate-before |24h |Duration representing how long before expiration TLS certificates should be re-issued.
 |cert-validity |8760h |Duration representing the validity period of a generated TLS certificate.
+|config |"" | Path to a file containing the operator configuration.
 |container-registry |docker.elastic.co | Container registry to use for pulling Elastic Stack container images.
 |debug-http-listen |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
 |development |false |Enable development mode. Only available as a CLI flag.
@@ -51,4 +52,41 @@ Duration values should be specified as numeric values suffixed by the time unit.
 |===
 
 
-Edit the `elastic-operator` StatefulSet to change any of the flag values. <<{p}-eck-debug-logs>> illustrates how to change the log level of the operator using this method.
+If you have a large number of configuration options to specify, use the `--config` flag to point to a file containing those options. For example, assume you have a file named `eck-config.yaml` with the following content:
+
+.eck-config.yaml
+[source,yaml]
+----
+log-verbosity: 2
+metrics-port: 6060
+namespaces: [ns1, ns2, ns3]
+----
+
+The operator can be started using any of the following methods to achieve the same end result:
+
+.Configuration file method
+[source,sh]
+----
+./elastic-operator manager --config=eck-config.yaml
+----
+
+.Command-line flags method
+[source,sh]
+----
+./elastic-operator manager --log-verbosity=2 --metrics-port=6060 --namespaces=ns1,ns2,ns3
+----
+
+.Environment variables method
+[source,sh]
+----
+LOG_VERBOSITY=2 METRICS_PORT=6060 NAMESPACES="ns1,ns2,ns3" ./elastic-operator manager
+----
+
+If you use a combination of all or some of the methods listed above, the descending order of precedence in case of a conflict is as follows:
+
+- Flag
+- Environment variable
+- File
+
+
+You can edit the `elastic-operator` ConfigMap to change the operator configuration. A manual restart of the operator is required for the changes to take effect. Alternatively, you can edit the `elastic-operator` StatefulSet  and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
