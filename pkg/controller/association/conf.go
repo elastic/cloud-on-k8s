@@ -137,7 +137,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 				"version", resourceVersion, "ref_version", refVer,
 				"ref_type", assoc.AssociatedType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
-				fmt.Sprintf("Delaying version deployment since the referenced %s is not upgraded yet", assoc.AssociatedType()))
+				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociatedType()))
 			return false
 		}
 	}
