@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func Test_toMillis(t *testing.T) {
+func TestToMillis(t *testing.T) {
 	type args struct {
 		t time.Time
 	}
