@@ -7,12 +7,14 @@ package association
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"unsafe"
 
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,6 +23,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -66,7 +69,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 	if (&ref).IsDefined() && !association.AssociationConf().IsConfigured() {
 		r.Event(
 			association,
-			v1.EventTypeWarning,
+			corev1.EventTypeWarning,
 			events.EventAssociationError,
 			"Association backend for "+association.AssociatedType()+" is not configured",
 		)
@@ -74,6 +77,8 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
+			"ref_namespace", ref.Namespace,
+			"ref_name", ref.Name,
 		)
 		return false
 	}
@@ -90,7 +95,7 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 	}
 
 	secretObjKey := types.NamespacedName{Namespace: association.GetNamespace(), Name: assocConf.AuthSecretName}
-	var secret v1.Secret
+	var secret corev1.Secret
 	if err := c.Get(secretObjKey, &secret); err != nil {
 		return "", "", err
 	}
@@ -101,6 +106,42 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 	}
 
 	return assocConf.AuthSecretKey, string(data), nil
+}
+
+// AllowVersion returns true if the given resourceVersion is lower or equal to the associations' versions.
+// For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
+// A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
+// Referenced resources version is parsed from the association conf annotation.
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) bool {
+	for _, assoc := range associated.GetAssociations() {
+		assocRef := assoc.AssociationRef()
+		if !assocRef.IsDefined() {
+			// no association specified, move on
+			continue
+		}
+		if assoc.AssociationConf() == nil || assoc.AssociationConf().Version == "" {
+			// no conf reported yet, this may be the initial resource creation
+			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
+				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+			return false
+		}
+		refVer, err := version.Parse(assoc.AssociationConf().Version)
+		if err != nil {
+			logger.Error(err, "Invalid version found in association configuration", "association_version", assoc.AssociationConf().Version)
+			return false
+		}
+		if !refVer.IsSameOrAfterIgnoringPatch(resourceVersion) {
+			// the version of the referenced resource (example: Elasticsearch) is lower than
+			// the desired version of the reconciled resource (example: Kibana)
+			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
+				"version", resourceVersion, "ref_version", refVer,
+				"ref_type", assoc.AssociatedType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
+				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociatedType()))
+			return false
+		}
+	}
+	return true
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.

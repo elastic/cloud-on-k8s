@@ -25,12 +25,13 @@ import (
 
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociationObjTemplate: func() commonv1.Association { return &beatv1beta1.BeatKibanaAssociation{} },
-		ElasticsearchRef:       getElasticsearchFromKibana,
-		ExternalServiceURL:     getKibanaExternalURL,
-		AssociatedNamer:        kibana.Namer,
-		AssociationName:        "beat-kibana",
-		AssociatedShortName:    "beat",
+		AssociationObjTemplate:    func() commonv1.Association { return &beatv1beta1.BeatKibanaAssociation{} },
+		ElasticsearchRef:          getElasticsearchFromKibana,
+		ExternalServiceURL:        getKibanaExternalURL,
+		ReferencedResourceVersion: referencedKibanaStatusVersion,
+		AssociatedNamer:           kibana.Namer,
+		AssociationName:           "beat-kibana",
+		AssociatedShortName:       "beat",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				BeatAssociationLabelName:      associated.Name,

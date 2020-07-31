@@ -63,12 +63,20 @@ var (
 			}
 			return services.ExternalServiceURL(es), nil
 		},
+		ReferencedResourceVersion: func(c k8s.Client, esRef types.NamespacedName) (string, error) {
+			var es esv1.Elasticsearch
+			if err := c.Get(esRef, &es); err != nil {
+				return "", err
+			}
+			return es.Status.Version, nil
+		},
 		CASecretLabelName: "elasticsearch.k8s.elastic.co/cluster-name",
 	}
 
-	kibanaNamespace     = "kbns"
-	esNamespace         = "esns"
-	sampleES            = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"}}
+	kibanaNamespace = "kbns"
+	esNamespace     = "esns"
+	sampleES        = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
+		Status: esv1.ElasticsearchStatus{Version: "7.7.0"}}
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
 			ObjectMeta: metav1.ObjectMeta{
@@ -87,7 +95,7 @@ var (
 		sample := sampleKibanaWithESRef()
 		kb := (&sample).DeepCopy()
 		kb.Annotations = map[string]string{
-			kb.AssociationConfAnnotationName(): "{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://esname-es-http.esns.svc:9200\"}",
+			kb.AssociationConfAnnotationName(): "{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://esname-es-http.esns.svc:9200\",\"version\":\"7.7.0\"}",
 		}
 		return *kb
 	}

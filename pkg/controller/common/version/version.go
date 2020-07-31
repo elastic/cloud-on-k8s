@@ -115,9 +115,27 @@ func MustParse(version string) Version {
 	return *v
 }
 
+func (v *Version) Copy() *Version {
+	return &Version{
+		Major: v.Major,
+		Minor: v.Minor,
+		Patch: v.Patch,
+		Label: v.Label,
+	}
+}
+
 // IsSameOrAfter returns true if the receiver is the same version or newer than the argument. Labels are ignored.
 func (v *Version) IsSameOrAfter(other Version) bool {
 	return v.IsSame(other) || v.IsAfter(other)
+}
+
+// IsSameOrAfterIgnoringPatch returns true if the receiver is the same version or newer than the argument,
+// considering major and minor versions only (patch is ignored).
+func (v *Version) IsSameOrAfterIgnoringPatch(other Version) bool {
+	other.Patch = 0
+	vCopy := v.Copy()
+	vCopy.Patch = 0
+	return vCopy.IsSameOrAfter(other)
 }
 
 // IsSameOrAfter returns true if the receiver is the same version as the argument. Labels are ignored.

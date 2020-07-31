@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -222,6 +223,15 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return res, err
+	}
+
+	entVersion, err := version.Parse(ent.Spec.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
+	if !association.AllowVersion(*entVersion, ent.Associated(), logger, r.recorder) {
+		return reconcile.Result{}, nil // will eventually retry once updated
 	}
 
 	configSecret, err := ReconcileConfig(r, ent)

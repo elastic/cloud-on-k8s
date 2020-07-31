@@ -8,12 +8,9 @@ import (
 	"fmt"
 	"testing"
 
-	ghodssyaml "github.com/ghodss/yaml"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
@@ -21,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/journalbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/packetbeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -45,7 +41,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 			beat.HasEventFromPod(testPodBuilder.Pod.Name),
 			beat.HasMessageContaining(testPodBuilder.Logged))
 
-	fbBuilder = applyYamls(t, fbBuilder, e2eFilebeatConfig, e2eFilebeatPodTemplate)
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
@@ -73,7 +69,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 			beat.HasEvent("event.dataset:system.fsstat"),
 		)
 
-	mbBuilder = applyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
+	mbBuilder = beat.ApplyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 }
@@ -95,7 +91,7 @@ func TestHeartbeatConfig(t *testing.T) {
 
 	configYaml := fmt.Sprintf(e2eHeartBeatConfigTpl, v1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
 
-	hbBuilder = applyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
+	hbBuilder = beat.ApplyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
 }
@@ -151,7 +147,7 @@ processors:
 - add_host_metadata: {}
 `
 
-	fbBuilder = applyYamls(t, fbBuilder, config, e2eFilebeatPodTemplate)
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, config, E2EFilebeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
@@ -203,7 +199,7 @@ processors:
 			beat.HasEvent("agent.name:"+agentName),
 		)
 
-	fbBuilder = applyYamls(t, fbBuilder, "", e2eFilebeatPodTemplate)
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, "", E2EFilebeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder).RunSequential(t)
 }
@@ -235,7 +231,7 @@ func TestAuditbeatConfig(t *testing.T) {
 			beat.HasEvent("event.module:file_integrity"),
 		)
 
-	abBuilder = applyYamls(t, abBuilder, e2eAuditbeatConfig, e2eAuditbeatPodTemplate)
+	abBuilder = beat.ApplyYamls(t, abBuilder, e2eAuditbeatConfig, e2eAuditbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, abBuilder).RunSequential(t)
 }
@@ -266,7 +262,7 @@ func TestPacketbeatConfig(t *testing.T) {
 		pbBuilder = pbBuilder.WithESValidations(beat.HasEvent("event.dataset:http"))
 	}
 
-	pbBuilder = applyYamls(t, pbBuilder, e2ePacketbeatConfig, e2ePacketbeatPodTemplate)
+	pbBuilder = beat.ApplyYamls(t, pbBuilder, e2ePacketbeatConfig, e2ePacketbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, pbBuilder).RunSequential(t)
 }
@@ -285,25 +281,9 @@ func TestJournalbeatConfig(t *testing.T) {
 			beat.HasEventFromBeat(journalbeat.Type),
 		)
 
-	jbBuilder = applyYamls(t, jbBuilder, e2eJournalbeatConfig, e2eJournalbeatPodTemplate)
+	jbBuilder = beat.ApplyYamls(t, jbBuilder, e2eJournalbeatConfig, e2eJournalbeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, jbBuilder).RunSequential(t)
 }
 
 // --- helpers
-
-func applyYamls(t *testing.T, b beat.Builder, configYaml, podTemplateYaml string) beat.Builder {
-	if configYaml != "" {
-		b.Beat.Spec.Config = &commonv1.Config{}
-		err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)
-		require.NoError(t, err)
-	}
-
-	if podTemplateYaml != "" {
-		// use ghodss as settings package has issues with unpacking volumes part of the yamls
-		err := ghodssyaml.Unmarshal([]byte(podTemplateYaml), b.PodTemplate)
-		require.NoError(t, err)
-	}
-
-	return b
-}

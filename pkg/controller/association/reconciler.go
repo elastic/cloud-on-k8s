@@ -67,6 +67,9 @@ type AssociationInfo struct {
 	SetDynamicWatches func(association commonv1.Association, watches watches.DynamicWatches) error
 	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for this association.
 	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
+	// ReferencedResourceVersion returns the currently running version of the referenced resource.
+	// It may return an empty string if the version is unknown.
+	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
 }
 
 // userLabelSelector returns labels selecting the ES user secret, including association labels and user type label.
@@ -241,6 +244,13 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		return commonv1.AssociationPending, err // maybe not created yet
 	}
 
+	// Propagate the currently running version of the referenced resource (example: Elasticsearch version).
+	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
+	ver, err := r.ReferencedResourceVersion(r.Client, associationRef.NamespacedName())
+	if err != nil {
+		return commonv1.AssociationPending, err
+	}
+
 	// construct the expected association configuration
 	authSecretRef := UserSecretKeySelector(association, r.UserSecretSuffix)
 	expectedAssocConf := &commonv1.AssociationConf{
@@ -249,6 +259,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		CACertProvided: caSecret.CACertProvided,
 		CASecretName:   caSecret.Name,
 		URL:            url,
+		Version:        ver,
 	}
 
 	// update the association configuration if necessary
@@ -282,7 +293,7 @@ func (r *Reconciler) getElasticsearch(
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName()); err != nil && !apierrors.IsConflict(err) {
-				r.log(association).Error(err, "Failed to remove Elasticsearch output from EnterpriseSearch object")
+				r.log(association).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
 			return esv1.Elasticsearch{}, commonv1.AssociationPending, nil
@@ -312,12 +323,12 @@ func (r *Reconciler) updateAssocConf(
 	defer span.End()
 
 	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
-		r.log(association).Info("Updating spec with Elasticsearch association configuration")
+		r.log(association).Info("Updating association configuration")
 		if err := UpdateAssociationConf(r.Client, association.Associated(), expectedAssocConf, association.AssociationConfAnnotationName()); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}
-			r.log(association).Error(err, "Failed to update EnterpriseSearch association configuration")
+			r.log(association).Error(err, "Failed to update association configuration")
 			return commonv1.AssociationPending, err
 		}
 		association.SetAssociationConf(expectedAssocConf)
