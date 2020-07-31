@@ -24,5 +24,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # Copy the operator binary into a lighter image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
+
+USER 1001
+
 ENTRYPOINT ["./elastic-operator"]
 CMD ["manager"]
