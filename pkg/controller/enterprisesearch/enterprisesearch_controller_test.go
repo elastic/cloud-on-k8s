@@ -293,6 +293,18 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.0", dep.Spec.Template.Labels[VersionLabelName])
+	// retrieve the updated ent resource
+	require.NoError(t, r.Client.Get(k8s.ExtractNamespacedName(&ent), &ent))
+
+	// update EnterpriseSearch to 7.8.1: this should be allowed even though Elasticsearch
+	// is running 7.8.0 (different patch versions)
+	ent.Spec.Version = "7.8.1"
+	err = r.Client.Update(&ent)
+	require.NoError(t, err)
+	_, err = r.doReconcile(context.Background(), ent)
+	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	require.NoError(t, err)
+	require.Equal(t, "7.8.1", dep.Spec.Template.Labels[VersionLabelName])
 }
 
 type fakeClientStatusCall struct {
