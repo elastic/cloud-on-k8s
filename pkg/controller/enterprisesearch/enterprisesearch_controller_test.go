@@ -302,6 +302,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	err = r.Client.Update(&ent)
 	require.NoError(t, err)
 	_, err = r.doReconcile(context.Background(), ent)
+	require.NoError(t, err)
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.1", dep.Spec.Template.Labels[VersionLabelName])
