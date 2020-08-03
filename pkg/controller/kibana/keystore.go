@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-// keystoreInConfigDirVersion is the version in which the keystore is no longer stored in the data directory but in the configuration one.
+// keystoreInConfigDirVersion is the version in which the keystore is no longer stored in the data directory but in the config one.
 var keystoreInConfigDirVersion = version.From(7, 9, 0)
 
 // newInitContainersParameters is used to generate the init container that will load the secure settings into a keystore
