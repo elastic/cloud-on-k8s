@@ -1,7 +1,7 @@
 operator:
   name: elastic-operator
   namespace: elastic-system
-  version: 1.2.0
+  version: 1.2.1
 
   selectorLabels:
     control-plane: elastic-operator
