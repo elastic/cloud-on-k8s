@@ -1105,7 +1105,6 @@ Image is the Elasticsearch Docker image to deploy.
 HTTP holds HTTP layer settings for Elasticsearch.
 *`nodeSets`* _xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_::
 NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 *`updateStrategy`* _xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_::
 UpdateStrategy specifies how updates to the cluster should be performed.
 *`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
@@ -1114,7 +1113,6 @@ The default budget selects all cluster pods and sets `maxUnavailable` to 1. To d
 to the empty value (`{}` in YAML).
 *`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-changebudget"]
@@ -1177,7 +1175,6 @@ HTTP holds HTTP layer settings for Elasticsearch.
 _xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_
 |
 NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 | *`updateStrategy`* +
 _xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_
 |
@@ -1192,7 +1189,6 @@ to the empty value (`{}` in YAML).
 _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-nodeset"]
@@ -1232,7 +1228,6 @@ _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persi
 VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
 Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
 Items defined here take precedence over any default claims added by the operator with the same name.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-updatestrategy"]
@@ -1301,7 +1296,6 @@ Image is the Elasticsearch Docker image to deploy.
 HTTP holds HTTP layer settings for Elasticsearch.
 *`nodeSets`* _xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$[]NodeSet$$]_::
 NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 *`updateStrategy`* _xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]_::
 UpdateStrategy specifies how updates to the cluster should be performed.
 *`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
@@ -1310,7 +1304,6 @@ The default budget selects all cluster pods and sets `maxUnavailable` to 1. To d
 to the empty value (`{}` in YAML).
 *`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-changebudget"]
@@ -1373,7 +1366,6 @@ HTTP holds HTTP layer settings for Elasticsearch.
 _xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$[]NodeSet$$]_
 |
 NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 | *`updateStrategy`* +
 _xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]_
 |
@@ -1388,7 +1380,6 @@ to the empty value (`{}` in YAML).
 _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-nodeset"]
@@ -1428,7 +1419,6 @@ _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persi
 VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
 Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
 Items defined here take precedence over any default claims added by the operator with the same name.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-updatestrategy"]
