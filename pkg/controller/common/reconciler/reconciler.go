@@ -161,16 +161,16 @@ func ReconcileResource(params Params) error {
 			return err
 		}
 
-		expectedMeta, err := meta.Accessor(params.Expected)
-		if err != nil {
-			return err
-		}
 		// retain the resource version to avoid unconditional updates
 		resourceVersion := reconciledMeta.GetResourceVersion()
 		params.UpdateReconciled()
 		// and set the resource version back into the resource to indicate the state we are basing the update off of
 		reconciledMeta.SetResourceVersion(resourceVersion)
 		// also keep the owner references up to date
+		expectedMeta, err := meta.Accessor(params.Expected)
+		if err != nil {
+			return err
+		}
 		expectedOwners := expectedMeta.GetOwnerReferences()
 		if expectedOwners != nil {
 			// we can safely assume we have just one reference here given that it was created just above
