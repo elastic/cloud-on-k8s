@@ -26,7 +26,7 @@ fi
 
 echo "Setup Kibana configuration"
 
-ln -sf /mnt/elastic-internal/kibana-config/* /mnt/elastic-internal/kibana-config-local/
+ln -sf ` + InternalConfigVolumeMountPath + `/* ` + InitContainerConfigVolumeMountPath + `/
 
 touch "${init_config_initialized_flag}"
 echo "Kibana configuration successfully prepared."
