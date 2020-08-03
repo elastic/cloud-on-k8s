@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # Copy the operator binary into a lighter image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
 
-RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all 
+RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
 
