@@ -121,8 +121,6 @@ spec:
   version: 7.8.0
   elasticsearchRef:
     name: elasticsearch-monitoring
-    # Currently this setting requires Kibana to have TLS enabled.
-    # See https://github.com/elastic/cloud-on-k8s/issues/3523 for more information.
   kibanaRef:
     name: kibana-monitoring
   config:
