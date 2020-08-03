@@ -2019,11 +2019,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/viper
-Version : v1.7.0
-Time    : 2020-05-09T09:42:39Z
+Version : v1.7.1
+Time    : 2020-07-31T21:39:06Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.7.1/LICENSE:
 
 The MIT License (MIT)
 
