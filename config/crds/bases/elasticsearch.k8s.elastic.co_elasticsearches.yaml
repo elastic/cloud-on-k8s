@@ -371,8 +371,8 @@ spec:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
               nodeSets:
-                description: 'NodeSets allow specifying groups of Elasticsearch nodes
-                  sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html'
+                description: NodeSets allow specifying groups of Elasticsearch nodes
+                  sharing the same configuration and Pod templates.
                 items:
                   description: NodeSet is the specification for a group of Elasticsearch
                     nodes sharing the same configuration and a Pod template.
@@ -6698,12 +6698,12 @@ spec:
                           type: object
                       type: object
                     volumeClaimTemplates:
-                      description: 'VolumeClaimTemplates is a list of persistent volume
+                      description: VolumeClaimTemplates is a list of persistent volume
                         claims to be used by each Pod in this NodeSet. Every claim
                         in this list must have a matching volumeMount in one of the
                         containers defined in the PodTemplate. Items defined here
                         take precedence over any default claims added by the operator
-                        with the same name. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html'
+                        with the same name.
                       items:
                         description: PersistentVolumeClaim is a user's request for
                           and claim to a persistent volume
@@ -7677,8 +7677,8 @@ spec:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
               nodeSets:
-                description: 'NodeSets allow specifying groups of Elasticsearch nodes
-                  sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html'
+                description: NodeSets allow specifying groups of Elasticsearch nodes
+                  sharing the same configuration and Pod templates.
                 items:
                   description: NodeSet is the specification for a group of Elasticsearch
                     nodes sharing the same configuration and a Pod template.
@@ -14004,12 +14004,12 @@ spec:
                           type: object
                       type: object
                     volumeClaimTemplates:
-                      description: 'VolumeClaimTemplates is a list of persistent volume
+                      description: VolumeClaimTemplates is a list of persistent volume
                         claims to be used by each Pod in this NodeSet. Every claim
                         in this list must have a matching volumeMount in one of the
                         containers defined in the PodTemplate. Items defined here
                         take precedence over any default claims added by the operator
-                        with the same name. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html'
+                        with the same name.
                       items:
                         description: PersistentVolumeClaim is a user's request for
                           and claim to a persistent volume
