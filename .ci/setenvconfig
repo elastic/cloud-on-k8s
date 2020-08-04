@@ -218,6 +218,12 @@ MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secr
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 TEST_TIMEOUT = 10m
+
+PIPELINE=e2e/eks
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=eks
+CLUSTER_NAME=$BUILD_TAG
+KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
