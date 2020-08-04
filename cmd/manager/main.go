@@ -115,6 +115,11 @@ func init() {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	Cmd.Flags().String(
+		operator.ContainerSuffixFlag,
+		"",
+		"Container image suffix to use when downloading Elastic Stack container images",
+	)
+	Cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
@@ -241,6 +246,13 @@ func execute() {
 	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
+
+	// set a custom container suffix if specified
+	containerSuffix := viper.GetString(operator.ContainerSuffixFlag)
+	if containerSuffix != "" {
+		log.Info("Setting default container suffix", "container_suffix", containerSuffix)
+		container.SetContainerSuffix(containerSuffix)
+	}
 
 	// Get a config to talk to the apiserver
 	log.Info("Setting up client for manager")

@@ -11,6 +11,7 @@ const (
 	CertRotateBeforeFlag         = "cert-rotate-before"
 	CertValidityFlag             = "cert-validity"
 	ContainerRegistryFlag        = "container-registry"
+	ContainerSuffixFlag          = "container-suffix"
 	DebugHTTPListenFlag          = "debug-http-listen"
 	EnableTracingFlag            = "enable-tracing"
 	EnableWebhookFlag            = "enable-webhook"
