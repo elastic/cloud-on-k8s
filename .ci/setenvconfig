@@ -64,40 +64,6 @@ overrides:
 CFG
 ;;
 
-######################################
-  e2e/custom-operator-image)
-######################################
-
-write_env <<ENV
-IMG_SUFFIX = -ci
-E2E_REGISTRY_NAMESPACE = eck-ci
-
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
-
-OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-
-PIPELINE=e2e/custom-operator-image
-BUILD_NUMBER=$BUILD_NUMBER
-E2E_PROVIDER=gke
-CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
-KUBERNETES_VERSION=$JKS_PARAM_K8S_VERSION
-ENV
-write_deployer_config <<CFG
-id: gke-ci
-overrides:
-  clusterName: eck-e2e-$BUILD_NUMBER
-  kubernetesVersions: $JKS_PARAM_K8S_VERSION
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-CFG
-;;
 
 ######################################
   e2e/gke-k8s-versions)
