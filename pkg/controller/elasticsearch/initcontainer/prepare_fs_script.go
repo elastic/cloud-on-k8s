@@ -8,12 +8,14 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
 // TemplateParams are the parameters manipulated in the scriptTemplate
 type TemplateParams struct {
 	// SharedVolumes are directories to persist in shared volumes
-	PluginVolumes SharedVolumeArray
+	PluginVolumes volume.SharedVolumeArray
 	// LinkedFiles are files to link individually
 	LinkedFiles LinkedFilesArray
 	// ChownToElasticsearch are paths that need to be chowned to the Elasticsearch user/group.
@@ -100,11 +102,11 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	# so installed plugins files can to be used by the ES container
 	mv_start=$(date +%s)
 	{{range .PluginVolumes.Array}}
-		if [[ -z "$(ls -A {{.EsContainerMountPath}})" ]]; then
-			echo "Empty dir {{.EsContainerMountPath}}"
+		if [[ -z "$(ls -A {{.ContainerMountPath}})" ]]; then
+			echo "Empty dir {{.ContainerMountPath}}"
 		else
-			echo "Copying {{.EsContainerMountPath}}/* to {{.InitContainerMountPath}}/"
-			cp -av {{.EsContainerMountPath}}/* {{.InitContainerMountPath}}/
+			echo "Copying {{.ContainerMountPath}}/* to {{.InitContainerMountPath}}/"
+			cp -av {{.ContainerMountPath}}/* {{.InitContainerMountPath}}/
 		fi
 	{{end}}
 	echo "Files copy duration: $(duration $mv_start) sec."
