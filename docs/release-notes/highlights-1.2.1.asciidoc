@@ -1,0 +1,35 @@
+[[release-highlights-1.2.1]]
+== 1.2.1 release highlights
+
+This is a patch release to address some issues found after the 1.2.0 release. See <<release-highlights-1.2.0>> for the full highlights of the 1.2.x series.
+
+
+[float]
+[id="{p}-121-fixes"]
+=== Fixes
+
+[float]
+[id="{p}-121-fix-kibana-keystore"]
+==== Support for Kibana 7.9.0
+
+Support has been added for managing secure settings for Kibana 7.9.0 which expects the keystore to be located at a different path from previous versions.
+
+[float]
+[id="{p}-121-bug-kibana-ref"]
+==== APM Server and Beats not starting up when referenced Kibana has TLS disabled
+
+APM Server and Beats resources should no longer fail to start if the Kibana referenced using `kibanaRef` has TLS disabled.
+
+[float]
+[id="{p}-121-bug-memory-corruption"]
+==== Elasticsearch failing to start under certain conditions
+
+Having the Istio CNI plugin enabled or enabling `automountServiceAccountToken` in the pod template should no longer prevent the Elasticsearch containers from failing to start with the error message `/usr/local/bin/docker-entrypoint.sh: line 49: /usr/share/elasticsearch/bin/elasticsearch-env-from-file: No such file or directory`.
+
+
+[float]
+[id="{p}-121-known-issues"]
+=== Known issues
+
+- Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#transform-node[transform nodes] are not automatically labelled by the operator. If you need to identify transform nodes, use the `podTemplate` of the `nodeSet` to add your own label.
+- If you want to try out Workplace Search, use the <<{p}-licensing,ECK trial licensing>> mechanism instead of clicking on the _Start a Free Trial_ button on the Enterprise Search splash screen.
