@@ -24,6 +24,19 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # Copy the operator binary into a lighter image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
 
+ARG VERSION
+
+# Add required ECK labels and override labels from base image
+LABEL name="Elastic Cloud on Kubernetes" \
+      io.k8s.display-name="Elastic Cloud on Kubernetes" \
+      maintainer="eck@elastic.co" \
+      vendor="Elastic" \
+      version="$VERSION" \
+      url="https://www.elastic.co/guide/en/cloud-on-k8s/" \
+      summary="Run Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats on Kubernetes and OpenShift" \
+      description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
+      io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes"
+
 RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
