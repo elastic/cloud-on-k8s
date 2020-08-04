@@ -26,28 +26,28 @@ const (
 // Volumes that are shared between the prepare-fs init container and the ES container
 var (
 	// EsBinSharedVolume contains the ES bin/ directory
-	EsBinSharedVolume = SharedVolume{
-		Name:                   "elastic-internal-elasticsearch-bin-local",
+	EsBinSharedVolume = volume.SharedVolume{
+		VolumeName:             "elastic-internal-elasticsearch-bin-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-bin-local",
-		EsContainerMountPath:   "/usr/share/elasticsearch/bin",
+		ContainerMountPath:     "/usr/share/elasticsearch/bin",
 	}
 
 	// EsConfigSharedVolume contains the ES config/ directory
-	EsConfigSharedVolume = SharedVolume{
-		Name:                   "elastic-internal-elasticsearch-config-local",
+	EsConfigSharedVolume = volume.SharedVolume{
+		VolumeName:             "elastic-internal-elasticsearch-config-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-config-local",
-		EsContainerMountPath:   esvolume.ConfigVolumeMountPath,
+		ContainerMountPath:     esvolume.ConfigVolumeMountPath,
 	}
 
 	// EsPluginsSharedVolume contains the ES plugins/ directory
-	EsPluginsSharedVolume = SharedVolume{
-		Name:                   "elastic-internal-elasticsearch-plugins-local",
+	EsPluginsSharedVolume = volume.SharedVolume{
+		VolumeName:             "elastic-internal-elasticsearch-plugins-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-plugins-local",
-		EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
+		ContainerMountPath:     "/usr/share/elasticsearch/plugins",
 	}
 
-	PluginVolumes = SharedVolumeArray{
-		Array: []SharedVolume{
+	PluginVolumes = volume.SharedVolumeArray{
+		Array: []volume.SharedVolume{
 			EsConfigSharedVolume,
 			EsPluginsSharedVolume,
 			EsBinSharedVolume,
@@ -59,23 +59,23 @@ var (
 		Array: []LinkedFile{
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", filerealm.UsersFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", filerealm.UsersFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", filerealm.UsersFile),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.RolesFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", user.RolesFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", user.RolesFile),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", filerealm.UsersRolesFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", filerealm.UsersRolesFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", filerealm.UsersRolesFile),
 			},
 			{
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", settings.ConfigFileName),
+				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", settings.ConfigFileName),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.UnicastHostsVolumeMountPath, "/", esvolume.UnicastHostsFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", esvolume.UnicastHostsFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", esvolume.UnicastHostsFile),
 			},
 		},
 	}

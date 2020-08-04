@@ -7,6 +7,8 @@ package kibana
 import (
 	"testing"
 
+	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -37,11 +39,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
-				assert.Len(t, pod.Spec.InitContainers, 0)
-				assert.Len(t, pod.Spec.Volumes, 1)
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.Volumes, 0)
 				kibanaContainer := GetKibanaContainer(pod.Spec)
 				require.NotNil(t, kibanaContainer)
-				assert.Equal(t, 1, len(kibanaContainer.VolumeMounts))
+				assert.Equal(t, 0, len(kibanaContainer.VolumeMounts))
 				assert.Equal(t, container.ImageRepository(container.KibanaImage, "7.1.0"), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
@@ -59,8 +61,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Volume:        corev1.Volume{Name: "vol"},
 			},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Len(t, pod.Spec.Volumes, 2)
+				assert.Len(t, pod.Spec.InitContainers, 2)
+				assert.Len(t, pod.Spec.Volumes, 1)
 			},
 		},
 		{
@@ -127,8 +129,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.InitContainers, 2)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
+				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[1].Image)
 			},
 		},
 		{
@@ -206,14 +209,16 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				},
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.Volumes, 2)
-				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 2)
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 3)
+				assert.Len(t, pod.Spec.Volumes, 1)
+				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 1)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodTemplateSpec(tt.kb, tt.keystore)
+			got := NewPodTemplateSpec(tt.kb, tt.keystore, []commonvolume.VolumeLike{})
 			tt.assertions(got)
 		})
 	}

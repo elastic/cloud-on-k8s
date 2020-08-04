@@ -23,9 +23,28 @@ import (
 
 // Constants to use for the config files in a Kibana pod.
 const (
-	VolumeName        = "config"
-	VolumeMountPath   = "/usr/share/kibana/" + VolumeName
+	ConfigVolumeName                   = "elastic-internal-kibana-config-local"
+	ConfigVolumeMountPath              = "/usr/share/kibana/config"
+	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
+
+	// InternalConfigVolumeName is a volume which contains the generated configuration.
+	InternalConfigVolumeName      = "elastic-internal-kibana-config"
+	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
+
 	telemetryFilename = "telemetry.yml"
+)
+
+var (
+	// ConfigSharedVolume contains the Kibana config/ directory, it's an empty volume where the required configuration
+	// is initialized by the elastic-internal-init-config init container. Its content is then shared by the init container
+	// that creates the keystore and the main Kibana container.
+	// This is needed in order to have in a same directory both the generated configuration and the keystore file  which
+	// is created in /usr/share/kibana/config since Kibana 7.9
+	ConfigSharedVolume = volume.SharedVolume{
+		VolumeName:             ConfigVolumeName,
+		InitContainerMountPath: InitContainerConfigVolumeMountPath,
+		ContainerMountPath:     ConfigVolumeMountPath,
+	}
 )
 
 // ECK is a helper struct to marshal telemetry information.
@@ -33,18 +52,18 @@ type ECK struct {
 	ECK about.OperatorInfo `json:"eck"`
 }
 
-// SecretVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
-func SecretVolume(kb kbv1.Kibana) volume.SecretVolume {
+// ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
+func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
 		SecretName(kb),
-		VolumeName,
-		VolumeMountPath,
+		InternalConfigVolumeName,
+		InternalConfigVolumeMountPath,
 	)
 }
 
 // SecretName is the name of the secret that holds the Kibana config for the given Kibana resource.
 func SecretName(kb kbv1.Kibana) string {
-	return kb.Name + "-kb-" + VolumeName
+	return kb.Name + "-kb-config"
 }
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
