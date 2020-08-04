@@ -37,9 +37,13 @@ LABEL name="Elastic Cloud on Kubernetes" \
       description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
       io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes"
 
+# Update the base image packages to the latest versions
 RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
+
+# Copy NOTICE.txt and LICENSE.txt into the image
+COPY *.txt /licenses/
 
 USER 1001
 
