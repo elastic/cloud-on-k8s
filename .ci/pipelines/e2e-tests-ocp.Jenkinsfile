@@ -23,6 +23,13 @@ pipeline {
     }
 
     stages {
+        stage('Load common scripts') {
+            steps {
+                script {
+                    lib = load ".ci/common/tests.groovy"
+                }
+            }
+        }
         stage("Run E2E tests") {
             steps {
                 sh '.ci/setenvconfig e2e/ocp'
@@ -33,7 +40,6 @@ pipeline {
                     junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
-                        lib = load ".ci/common/tests.groovy"
                         failedTests = lib.getListOfFailedTests()
                         googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                             credentialsId: "devops-ci-gcs-plugin",
