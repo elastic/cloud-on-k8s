@@ -69,6 +69,9 @@ const (
 	DefaultMetricPort               = 0 // disabled
 	DefaultWebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort                     = 9443
+
+	restartDelay             = 10 * time.Second // time to wait before restarting the operator when configuration changes
+	debugHTTPShutdownTimeout = 5 * time.Second  // time to allow for the debug HTTP server to shutdown
 )
 
 var (
@@ -86,13 +89,6 @@ func Command() *cobra.Command {
 				if err := viper.ReadInConfig(); err != nil {
 					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
 				}
-
-				viper.WatchConfig()
-				viper.OnConfigChange(func(_ fsnotify.Event) {
-					if log != nil {
-						log.Info("Detected an update to the configuration file. Restart the operator for the changes to take effect.")
-					}
-				})
 			}
 
 			// enable using dashed notation in flags and underscores in env
@@ -104,9 +100,7 @@ func Command() *cobra.Command {
 
 			viper.AutomaticEnv()
 			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
-
 			log = logf.Log.WithName("manager")
-			log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 
 			return nil
 		},
@@ -219,6 +213,69 @@ func Command() *cobra.Command {
 }
 
 func doRun(_ *cobra.Command, _ []string) error {
+	signalChan := signals.SetupSignalHandler()
+
+	// no config file to watch so start the operator
+	if configFile == "" {
+		return startOperator(signalChan)
+	}
+
+	// receive config file update events over a channel
+	confUpdateChan := make(chan struct{}, 1)
+
+	viper.WatchConfig()
+	viper.OnConfigChange(func(evt fsnotify.Event) {
+		switch evt.Op {
+		case fsnotify.Create, fsnotify.Write:
+			confUpdateChan <- struct{}{}
+		}
+	})
+
+	// start the operator in a goroutine
+	errChan := make(chan error, 1)
+	stopChan := make(chan struct{})
+	launchOperator(stopChan, errChan)
+
+	// watch for events
+	for {
+		select {
+		case err := <-errChan: // operator failed
+			log.Error(err, "Shutting down due to error")
+			close(stopChan)
+			return err
+		case <-signalChan: // signal received
+			log.Info("Signal received: shutting down")
+			close(stopChan)
+			err := <-errChan
+
+			return err
+		case <-confUpdateChan: // config file updated
+			log.Info("Restarting to apply updated configuration")
+			close(stopChan)
+
+			if err := <-errChan; err != nil {
+				log.Error(err, "Encountered error from previous operator run")
+			}
+
+			// sleep to allow time for resource cleanup from the previous run
+			time.Sleep(restartDelay)
+
+			stopChan = make(chan struct{})
+			launchOperator(stopChan, errChan)
+		}
+	}
+}
+
+func launchOperator(stopChan <-chan struct{}, errChan chan<- error) {
+	go func() {
+		err := startOperator(stopChan)
+		errChan <- err
+	}()
+}
+
+func startOperator(stopChan <-chan struct{}) error {
+	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
+
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
 		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
@@ -246,6 +303,17 @@ func doRun(_ *cobra.Command, _ []string) error {
 		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
 
 		go func() {
+			go func() {
+				<-stopChan
+
+				ctx, cancelFunc := context.WithTimeout(context.Background(), debugHTTPShutdownTimeout)
+				defer cancelFunc()
+
+				if err := pprofServer.Shutdown(ctx); err != nil {
+					log.Error(err, "Failed to shutdown debug HTTP server")
+				}
+			}()
+
 			if err := pprofServer.ListenAndServe(); !errors.Is(http.ErrServerClosed, err) {
 				log.Error(err, "Failed to start debug HTTP server")
 				panic(err)
@@ -404,7 +472,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(stopChan); err != nil {
 		log.Error(err, "Unable to run the manager")
 		return err
 	}
