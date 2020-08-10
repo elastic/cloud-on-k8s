@@ -24,12 +24,11 @@ spec:
         terminationGracePeriodSeconds: 30
         dnsPolicy: ClusterFirstWithHostNet
         hostNetwork: true # Allows to provide richer host metadata
-        securityContext:
-          runAsUser: 0
         containers:
         - name: filebeat
-          # If using Red Hat OpenShift uncomment this:
-          #securityContext:
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
             #privileged: true
           volumeMounts:
           - name: varlogcontainers
