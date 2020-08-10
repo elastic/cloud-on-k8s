@@ -70,8 +70,7 @@ const (
 	DefaultWebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort                     = 9443
 
-	restartDelay             = 10 * time.Second // time to wait before restarting the operator when configuration changes
-	debugHTTPShutdownTimeout = 5 * time.Second  // time to allow for the debug HTTP server to shutdown
+	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
 
 var (
@@ -150,6 +149,11 @@ func Command() *cobra.Command {
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
 	cmd.Flags().Bool(
+		operator.DisableConfigWatch,
+		false,
+		"Disable watching the config file for changes",
+	)
+	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
@@ -223,13 +227,17 @@ func doRun(_ *cobra.Command, _ []string) error {
 	// receive config file update events over a channel
 	confUpdateChan := make(chan struct{}, 1)
 
-	viper.WatchConfig()
-	viper.OnConfigChange(func(evt fsnotify.Event) {
-		switch evt.Op {
-		case fsnotify.Create, fsnotify.Write:
-			confUpdateChan <- struct{}{}
-		}
-	})
+	// start watching the file for changes unless the DisableConfigWatch flag is set
+	if !viper.GetBool(operator.DisableConfigWatch) {
+		log.Info("Watching config file for changes", "file", configFile)
+		viper.WatchConfig()
+		viper.OnConfigChange(func(evt fsnotify.Event) {
+			switch evt.Op {
+			case fsnotify.Create, fsnotify.Write:
+				confUpdateChan <- struct{}{}
+			}
+		})
+	}
 
 	// start the operator in a goroutine
 	errChan := make(chan error, 1)
@@ -242,26 +250,23 @@ func doRun(_ *cobra.Command, _ []string) error {
 		case err := <-errChan: // operator failed
 			log.Error(err, "Shutting down due to error")
 			close(stopChan)
+
 			return err
 		case <-signalChan: // signal received
 			log.Info("Signal received: shutting down")
 			close(stopChan)
-			err := <-errChan
 
-			return err
+			return <-errChan
 		case <-confUpdateChan: // config file updated
-			log.Info("Restarting to apply updated configuration")
+			log.Info("Shutting down to apply updated configuration")
 			close(stopChan)
 
 			if err := <-errChan; err != nil {
 				log.Error(err, "Encountered error from previous operator run")
+				return err
 			}
 
-			// sleep to allow time for resource cleanup from the previous run
-			time.Sleep(restartDelay)
-
-			stopChan = make(chan struct{})
-			launchOperator(stopChan, errChan)
+			return nil
 		}
 	}
 }

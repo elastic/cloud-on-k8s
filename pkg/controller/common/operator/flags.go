@@ -13,6 +13,7 @@ const (
 	ConfigFlag                   = "config"
 	ContainerRegistryFlag        = "container-registry"
 	DebugHTTPListenFlag          = "debug-http-listen"
+	DisableConfigWatch           = "disable-config-watch"
 	EnableTracingFlag            = "enable-tracing"
 	EnableWebhookFlag            = "enable-webhook"
 	EnforceRBACOnRefsFlag        = "enforce-rbac-on-refs"
