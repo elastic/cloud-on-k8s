@@ -192,10 +192,14 @@ func (r RolesFileContent) FileBytes() ([]byte, error) {
 	return yaml.Marshal(&r)
 }
 
-// mergeWith merges multiple rolesFileContent, giving priority to other.
+// mergeWith merges multiple rolesFileContent, giving priority to other returning a new RolesFileContent.
 func (r RolesFileContent) MergeWith(other RolesFileContent) RolesFileContent {
-	for roleName, roleSpec := range other {
-		r[roleName] = roleSpec
+	result := make(RolesFileContent)
+	for roleName, roleSpec := range r {
+		result[roleName] = roleSpec
 	}
-	return r
+	for roleName, roleSpec := range other {
+		result[roleName] = roleSpec
+	}
+	return result
 }
