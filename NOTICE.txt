@@ -367,11 +367,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-logr/logr
-Version : v0.1.0
-Time    : 2018-06-29T23:58:05Z
+Version : v0.2.0
+Time    : 2020-06-11T22:35:53Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v0.1.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v0.2.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3533,11 +3533,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.18.6/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.0.0
-Time    : 2020-04-09T16:29:44Z
+Version : v2.3.0
+Time    : 2020-07-02T13:48:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.3.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
