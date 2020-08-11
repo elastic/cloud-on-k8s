@@ -397,7 +397,7 @@ e2e-run:
 		--skip-cleanup=$(E2E_SKIP_CLEANUP)
 
 e2e-generate-xml:
-	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json || (echo "Failed to generate xml report" && cat e2e-tests.json && false)
+	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
