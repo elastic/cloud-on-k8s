@@ -106,14 +106,9 @@ func TestResultsAggregate(t *testing.T) {
 			want:    reconcile.Result{Requeue: true},
 		},
 		{
-			name:    "specific result under MaximumRequeueAfter",
-			results: &Results{currResult: reconcile.Result{RequeueAfter: 1 * time.Hour}, currKind: specificKind},
-			want:    reconcile.Result{RequeueAfter: 1 * time.Hour},
-		},
-		{
-			name:    "specific result over MaximumRequeueAfter",
+			name:    "specific result",
 			results: &Results{currResult: reconcile.Result{RequeueAfter: 24 * time.Hour}, currKind: specificKind},
-			want:    reconcile.Result{RequeueAfter: MaximumRequeueAfter},
+			want:    reconcile.Result{RequeueAfter: 24 * time.Hour},
 		},
 	}
 

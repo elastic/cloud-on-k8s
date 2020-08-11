@@ -6,16 +6,12 @@ package reconciler
 
 import (
 	"context"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-// MaximumRequeueAfter is the maximum period of time in which we requeue a reconciliation.
-const MaximumRequeueAfter = 10 * time.Hour
 
 type resultKind int
 
@@ -109,12 +105,5 @@ func (r *Results) Apply(step string, recoverableStep func(context.Context) (reco
 
 // Aggregate returns the highest priority reconcile result and any errors seen so far.
 func (r *Results) Aggregate() (reconcile.Result, error) {
-	if r.currResult.RequeueAfter > MaximumRequeueAfter {
-		// A client-go leaky timer issue will cause memory leaks for long requeue periods,
-		// see https://github.com/elastic/cloud-on-k8s/issues/1984.
-		// To prevent this from happening, let's restrict the requeue to a fixed short-term value.
-		// TODO: remove once https://github.com/kubernetes/client-go/issues/701 is fixed.
-		r.currResult.RequeueAfter = MaximumRequeueAfter
-	}
 	return r.currResult, k8serrors.NewAggregate(r.errors)
 }
