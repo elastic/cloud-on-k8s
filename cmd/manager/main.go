@@ -232,7 +232,9 @@ func doRun(_ *cobra.Command, _ []string) error {
 		log.Info("Watching config file for changes", "file", configFile)
 		viper.WatchConfig()
 		viper.OnConfigChange(func(evt fsnotify.Event) {
-			switch evt.Op {
+			if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
+				confUpdateChan <- struct{}{}
+			}
 			case fsnotify.Create, fsnotify.Write:
 				confUpdateChan <- struct{}{}
 			}
