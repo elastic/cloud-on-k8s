@@ -81,7 +81,7 @@ var (
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manager",
-		Short: "Start the ECK operator",
+		Short: "Start the Elastic Cloud on Kubernetes operator",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			// enable using dashed notation in flags and underscores in env
 			viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -114,7 +114,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.AutoPortForwardFlag,
 		false,
-		"enables automatic port-forwarding "+
+		"Enables automatic port-forwarding "+
 			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
 	)
 	cmd.Flags().Duration(
@@ -141,7 +141,7 @@ func Command() *cobra.Command {
 		&configFile,
 		operator.ConfigFlag,
 		"",
-		"Path to the ECK configuration file",
+		"Path to the file containing the operator configuration",
 	)
 	cmd.Flags().String(
 		operator.ContainerRegistryFlag,
@@ -156,7 +156,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.DisableConfigWatch,
 		false,
-		"Disable watching the config file for changes",
+		"Disable watching the configuration file for changes",
 	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
@@ -190,12 +190,12 @@ func Command() *cobra.Command {
 	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,
 		nil,
-		"comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
+		"Comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
 	)
 	cmd.Flags().String(
 		operator.OperatorNamespaceFlag,
 		"",
-		"K8s namespace the operator runs in",
+		"Kubernetes namespace the operator runs in",
 	)
 	cmd.Flags().String(
 		operator.WebhookCertDirFlag,
@@ -206,7 +206,7 @@ func Command() *cobra.Command {
 	cmd.Flags().String(
 		operator.WebhookSecretFlag,
 		"",
-		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
+		fmt.Sprintf("Kubernetes secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
 	cmd.Flags().String(
 		operator.WebhookConfigurationNameFlag,
@@ -387,7 +387,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	opts.Port = WebhookPort
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
-		log.Error(err, "Unable to create controller manager")
+		log.Error(err, "Failed to create controller manager")
 		return err
 	}
 
@@ -411,7 +411,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	// Setup a client to set the operator uuid config map
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, "Unable to create Kubernetes client")
+		log.Error(err, "Failed to create Kubernetes client")
 		return err
 	}
 
@@ -475,7 +475,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
 	if err := mgr.Start(stopChan); err != nil {
-		log.Error(err, "Unable to run the manager")
+		log.Error(err, "Failed to start the controller manager")
 		return err
 	}
 
