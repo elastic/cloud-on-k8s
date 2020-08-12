@@ -83,13 +83,6 @@ func Command() *cobra.Command {
 		Use:   "manager",
 		Short: "Start the ECK operator",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			if configFile != "" {
-				viper.SetConfigFile(configFile)
-				if err := viper.ReadInConfig(); err != nil {
-					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
-				}
-			}
-
 			// enable using dashed notation in flags and underscores in env
 			viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
@@ -98,6 +91,18 @@ func Command() *cobra.Command {
 			}
 
 			viper.AutomaticEnv()
+
+			if configFile != "" {
+				viper.SetConfigFile(configFile)
+				if err := viper.ReadInConfig(); err != nil {
+					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
+				}
+
+				if !viper.GetBool(operator.DisableConfigWatch) {
+					viper.WatchConfig()
+				}
+			}
+
 			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
 			log = logf.Log.WithName("manager")
 
@@ -218,25 +223,21 @@ func Command() *cobra.Command {
 
 func doRun(_ *cobra.Command, _ []string) error {
 	signalChan := signals.SetupSignalHandler()
+	disableConfigWatch := viper.GetBool(operator.DisableConfigWatch)
 
-	// no config file to watch so start the operator
-	if configFile == "" {
+	// no config file to watch so start the operator directly
+	if configFile == "" || disableConfigWatch {
 		return startOperator(signalChan)
 	}
 
 	// receive config file update events over a channel
 	confUpdateChan := make(chan struct{}, 1)
 
-	// start watching the file for changes unless the DisableConfigWatch flag is set
-	if !viper.GetBool(operator.DisableConfigWatch) {
-		log.Info("Watching config file for changes", "file", configFile)
-		viper.WatchConfig()
-		viper.OnConfigChange(func(evt fsnotify.Event) {
-			if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
-				confUpdateChan <- struct{}{}
-			}
-		})
-	}
+	viper.OnConfigChange(func(evt fsnotify.Event) {
+		if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
+			confUpdateChan <- struct{}{}
+		}
+	})
 
 	// start the operator in a goroutine
 	errChan := make(chan error, 1)
