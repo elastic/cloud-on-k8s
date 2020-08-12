@@ -162,7 +162,7 @@ metadata:
   name: heartbeat-quickstart
 spec:
   type: heartbeat
-  version: 7.8.0
+  version: {version}
   elasticsearchRef:
     name: quickstart
   configRef:
