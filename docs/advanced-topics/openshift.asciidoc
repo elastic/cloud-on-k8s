@@ -233,7 +233,7 @@ kibana-sample-kb-97c6b6b8d-lqfd2 scc:restricted
 
 Deploying Beats on Openshift may require some privileged permissions. This section describes how to create a ServiceAccount, add the ServiceAccount to the `privileged` SCC, and use it to run Beats.
 
-The following example assumes that Beats is deployed in the Namespace `elastic` with the ServiceAccount `filebeat`. You can replace these values according to your environment.
+The following example assumes that Beats is deployed in the Namespace `elastic` with the ServiceAccount `heartbeat`. You can replace these values according to your environment.
 
 NOTE: If you used the examples from the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory], the ServiceAccount may already exist.
 
@@ -241,13 +241,13 @@ NOTE: If you used the examples from the link:{eck_github}/tree/{eck_release_bran
 +
 [source,shell]
 ----
-oc create serviceaccount filebeat -n elastic
+oc create serviceaccount heartbeat -n elastic
 ----
 . Add the ServiceAccount to the required SCC
 +
 [source,shell]
 ----
-oc adm policy add-scc-to-user privileged -z filebeat -n elastic
+oc adm policy add-scc-to-user privileged -z heartbeat -n elastic
 ----
 . Update the Beat manifest to use the new ServiceAccount, for example:
 +
@@ -274,7 +274,7 @@ spec:
     replicas: 1
     podTemplate:
       spec:
-        serviceAccountName: filebeat
+        serviceAccountName: heartbeat
         securityContext:
           runAsUser: 0
 ----
@@ -294,3 +294,36 @@ chcon -Rt svirt_sandbox_file_t /var/lib/elastic/heartbeat/heartbeat-data/
 ----
 
 Repeat this step on all the hosts where the heartbeat Pod can be deployed.
+
+Some Beats may require additional permissions. For example `Filebeat` needs additional privileges to read other containers logs on the host. This can be done using the `privileged` field in the security context of the container spec:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: filebeat
+spec:
+  type: filebeat
+...
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: filebeat
+        automountServiceAccountToken: true
+...
+        containers:
+        - name: filebeat
+          securityContext:
+            runAsUser: 0
+            privileged: true # This is required to access other containers logs
+          volumeMounts:
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+        volumes:
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+----
+
+See complete examples in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory]
