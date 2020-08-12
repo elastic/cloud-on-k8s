@@ -231,11 +231,11 @@ kibana-sample-kb-97c6b6b8d-lqfd2 scc:restricted
 [id="{p}-openshift-beats"]
 == Grant privileged permissions to Beats
 
-Deploying Beats on Openshift may require some privileged permissions. This section describes how to create a ServiceAccount, add the ServiceAccount to the `privileged` SCC and then use it to run Beats.
+Deploying Beats on Openshift may require some privileged permissions. This section describes how to create a ServiceAccount, add the ServiceAccount to the `privileged` SCC, and use it to run Beats.
 
-The following example assumes that Beats is deployed in a Namespace named `elastic` and we want to run Beats with a ServiceAccount named `filebeat`, replace these values according to your environment.
+The following example assumes that Beats is deployed in the Namespace `elastic` with the ServiceAccount `filebeat`. You can replace these values according to your environment.
 
-NOTE: If you have used the examples from the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory] the ServiceAccount may already exist.
+NOTE: If you used the examples from the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory], the ServiceAccount may already exist.
 
 . Create a dedicated ServiceAccount
 +
@@ -286,11 +286,11 @@ If SELinux is enabled the Beat Pod may fail with the following message:
 Exiting: Failed to create Beat meta file: open /usr/share/heartbeat/data/meta.json.new: permission denied
 ----
 
-In order to fix this error the label `svirt_sandbox_file_t` must be applied to the directory `/var/lib/elastic/heartbeat/heartbeat-data/` on the Kubernetes node:
+To fix this error, apply the label `svirt_sandbox_file_t` to the directory `/var/lib/elastic/heartbeat/heartbeat-data/` on the Kubernetes node:
 
 [source,shell]
 ----
 chcon -Rt svirt_sandbox_file_t /var/lib/elastic/heartbeat/heartbeat-data/
 ----
 
-This should be done on all the hosts where the heartbeat Pod can be deployed.
+Repeat this step on all the hosts where the heartbeat Pod can be deployed.
