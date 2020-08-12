@@ -235,16 +235,17 @@ func doRun(_ *cobra.Command, _ []string) error {
 			if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
 				confUpdateChan <- struct{}{}
 			}
-			case fsnotify.Create, fsnotify.Write:
-				confUpdateChan <- struct{}{}
-			}
 		})
 	}
 
 	// start the operator in a goroutine
 	errChan := make(chan error, 1)
 	stopChan := make(chan struct{})
-	launchOperator(stopChan, errChan)
+
+	go func() {
+		err := startOperator(stopChan)
+		errChan <- err
+	}()
 
 	// watch for events
 	for {
@@ -271,13 +272,6 @@ func doRun(_ *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
-}
-
-func launchOperator(stopChan <-chan struct{}, errChan chan<- error) {
-	go func() {
-		err := startOperator(stopChan)
-		errChan <- err
-	}()
 }
 
 func startOperator(stopChan <-chan struct{}) error {
