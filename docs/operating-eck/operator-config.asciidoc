@@ -22,6 +22,7 @@ ECK can be configured using either command line flags or environment variables.
 |container-registry |docker.elastic.co | Container registry to use for pulling Elastic Stack container images.
 |debug-http-listen |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
 |development |false |Enable development mode. Only available as a CLI flag.
+|disable-config-watch| false| Watch the configuration file for changes and restart to apply them. Only effective when the `--config` flag is used to set the configuration file.
 |enable-tracing | false | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. See link:https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html[Apm Go Agent reference] for details.
 |enable-webhook | false | Enables a validating webhook server in the operator process.
 |enforce-rbac-on-refs| false | Enables restrictions on cross-namespace resource association through RBAC.
@@ -31,10 +32,10 @@ ECK can be configured using either command line flags or environment variables.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
-|webhook-pods-label |"" |Label used to select pods running the webhook server.
-|webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
 |webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
 |webhook-configuration-name |"elastic-webhook.k8s.elastic.co" |Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.
+|webhook-pods-label |"" |Label used to select pods running the webhook server.
+|webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
 |===
 
 
@@ -89,4 +90,4 @@ If you use a combination of all or some of the methods listed above, the descend
 - File
 
 
-You can edit the `elastic-operator` ConfigMap to change the operator configuration. A manual restart of the operator is required for the changes to take effect. Alternatively, you can edit the `elastic-operator` StatefulSet  and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
+You can edit the `elastic-operator` ConfigMap to change the operator configuration. Unless the `--disable-config-watch` flag is set, the operator should restart automatically to apply the new changes. Alternatively, you can edit the `elastic-operator` StatefulSet  and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
