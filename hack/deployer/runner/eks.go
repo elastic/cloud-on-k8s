@@ -35,7 +35,7 @@ nodeGroups:
   - name: ng-1
     instanceType: {{.MachineType}}
     desiredCapacity: {{.NodeCount}}
-    ami: static
+    ami: {{.NodeAMI}}
     iam:
       instanceProfileARN: {{.InstanceProfileARN}}
       instanceRoleARN: {{.InstanceRoleARN}}
