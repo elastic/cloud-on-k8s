@@ -26,4 +26,4 @@ spec:
 
 Check the https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Kubernetes Publishing Services (ServiceTypes)] that are currently available.
 
-NOTE: When you change the `clusterIP` setting of the service, ECK deletes and re-creates the service, as `clusterIP` is an immutable field. Typically this does not affect connectivity, as the transport module uses long-lived TCP connections, but may cause a small network disruption between Elasticsearch nodes.
+NOTE: When you change the `clusterIP` setting of the service, ECK deletes and re-creates the service, as `clusterIP` is an immutable field. This will cause a short network disruption, but in most cases it should not affect existing connections as the transport module uses long-lived TCP connections. 
