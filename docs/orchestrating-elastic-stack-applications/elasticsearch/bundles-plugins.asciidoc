@@ -8,13 +8,15 @@ endif::[]
 [id="{p}-{page_id}"]
 = Custom configuration files and plugins
 
-To run Elasticsearch with specific plugins or configuration files installed on ECK you have two options:
+To run Elasticsearch with specific plugins or configuration files installed on ECK, you have two options:
 
-1. Create a custom Docker image with the plugins or files pre-installed.
-2. Install the plugins or configuration files at Pod startup time.
+. Create a custom Docker image with the plugins or files pre-installed.
++
+This option allows you to verify the correctness of the image before rolling it out to your ECK installation.
 
-NOTE: The first option has the advantage that you can verify the correctness of the image before rolling it out to your ECK installation, while the second option gives you
-maximum flexibility. But the second option also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
+. Install the plugins or configuration files at Pod startup time.
++
+This option gives you maximum flexibility, but you can catch errors only at runtime. Also, plugin installation at runtime needs access to the Internet from your cluster
 and downloads each plugin multiple times, once for each Elasticsearch node.
 
 See <<{p}-custom-images,Creating custom images>> for instructions on how to build custom Docker images based on the official Elastic images.
