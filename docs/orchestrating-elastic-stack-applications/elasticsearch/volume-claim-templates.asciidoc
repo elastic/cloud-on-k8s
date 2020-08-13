@@ -47,4 +47,4 @@ spec:
           emptyDir: {}
 ----
 
-CAUTION: Using `emptyDir` is not recommended as it might lead to permanent data loss.
+CAUTION: Don't use `emptyDir` as it might generate permanent data loss.
