@@ -22,6 +22,7 @@ data:
     {{- end }}
     {{- if .Values.config.webhook.enabled }}
     enable-webhook: true
+    webhook-name: {{ .Values.config.webhook.name }}
       {{- if not .Values.config.webhook.manageCerts }}
     manage-webhook-certs: false
     webhook-cert-dir: {{ .Values.config.webhook.certsDir }}

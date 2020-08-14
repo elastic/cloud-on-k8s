@@ -112,7 +112,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 	}
 
 	webhookConfiguration := types.NamespacedName{
-		Name: webhookParams.WebhookConfigurationName,
+		Name: webhookParams.Name,
 	}
 
 	if err := c.Watch(&source.Kind{Type: &v1beta1.ValidatingWebhookConfiguration{}}, &watches.NamedWatch{
