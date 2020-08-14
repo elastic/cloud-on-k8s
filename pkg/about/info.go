@@ -6,6 +6,7 @@ package about
 
 import (
 	"context"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,6 +40,22 @@ type BuildInfo struct {
 	Hash     string `json:"hash"`
 	Date     string `json:"date"`
 	Snapshot string `json:"snapshot"`
+}
+
+// VersionString returns the version information formatted according to the SemVer specification.
+func (bi BuildInfo) VersionString() string {
+	var sb strings.Builder
+
+	sb.WriteString(bi.Version)
+
+	if bi.Snapshot == "true" && !strings.HasSuffix(bi.Version, "-SNAPSHOT") {
+		sb.WriteString("-SNAPSHOT")
+	}
+
+	sb.WriteString("+")
+	sb.WriteString(bi.Hash)
+
+	return sb.String()
 }
 
 // IsDefined returns true if the info's default values have been replaced.

@@ -8,7 +8,6 @@ import (
 	"flag"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
@@ -23,9 +22,10 @@ import (
 const (
 	EcsVersion     = "1.4.0"
 	EcsServiceType = "eck"
+	FlagName       = "log-verbosity"
 )
 
-var verbosity = flag.Int("log-verbosity", 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
+var verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
 
 // BindFlags attaches logging flags to the given flag set.
 func BindFlags(flags *pflag.FlagSet) {
@@ -108,12 +108,6 @@ func determineLogLevel(v *int) zap.AtomicLevel {
 }
 
 func getVersionString() string {
-	var version strings.Builder
 	buildInfo := about.GetBuildInfo()
-
-	version.WriteString(buildInfo.Version)
-	version.WriteString("-")
-	version.WriteString(buildInfo.Hash)
-
-	return version.String()
+	return buildInfo.VersionString()
 }

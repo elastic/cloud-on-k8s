@@ -6,6 +6,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -42,8 +43,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
+	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"github.com/fsnotify/fsnotify"
+	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
@@ -65,128 +69,215 @@ const (
 	DefaultMetricPort               = 0 // disabled
 	DefaultWebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort                     = 9443
+
+	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
 
 var (
-	// Cmd is the cobra command to start the manager.
-	Cmd = &cobra.Command{
-		Use:   "manager",
-		Short: "Start the operator manager",
-		Long: `manager starts the manager for this operator,
- which will in turn create the necessary controller.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			execute()
-		},
-	}
-
-	log = logf.Log.WithName("manager")
+	configFile string
+	log        logr.Logger
 )
 
-func init() {
-	Cmd.Flags().Bool(
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "manager",
+		Short: "Start the Elastic Cloud on Kubernetes operator",
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			// enable using dashed notation in flags and underscores in env
+			viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+
+			if err := viper.BindPFlags(cmd.Flags()); err != nil {
+				return fmt.Errorf("failed to bind flags: %w", err)
+			}
+
+			viper.AutomaticEnv()
+
+			if configFile != "" {
+				viper.SetConfigFile(configFile)
+				if err := viper.ReadInConfig(); err != nil {
+					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
+				}
+
+				if !viper.GetBool(operator.DisableConfigWatch) {
+					viper.WatchConfig()
+				}
+			}
+
+			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
+			log = logf.Log.WithName("manager")
+
+			return nil
+		},
+		RunE: doRun,
+	}
+
+	cmd.Flags().Bool(
 		operator.AutoPortForwardFlag,
 		false,
-		"enables automatic port-forwarding "+
+		"Enables automatic port-forwarding "+
 			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
 	)
-	Cmd.Flags().Duration(
+	cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration CA certificates should be reissued",
 	)
-	Cmd.Flags().Duration(
+	cmd.Flags().Duration(
 		operator.CACertValidityFlag,
 		certificates.DefaultCertValidity,
 		"Duration representing how long before a newly created CA cert expires",
 	)
-	Cmd.Flags().Duration(
+	cmd.Flags().Duration(
 		operator.CertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
-	Cmd.Flags().Duration(
+	cmd.Flags().Duration(
 		operator.CertValidityFlag,
 		certificates.DefaultCertValidity,
 		"Duration representing how long before a newly created TLS certificate expires",
 	)
-	Cmd.Flags().String(
+	cmd.Flags().StringVar(
+		&configFile,
+		operator.ConfigFlag,
+		"",
+		"Path to the file containing the operator configuration",
+	)
+	cmd.Flags().String(
 		operator.ContainerRegistryFlag,
 		container.DefaultContainerRegistry,
 		"Container registry to use when downloading Elastic Stack container images",
 	)
-	Cmd.Flags().String(
+	cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
-	Cmd.Flags().Bool(
+	cmd.Flags().Bool(
+		operator.DisableConfigWatch,
+		false,
+		"Disable watching the configuration file for changes",
+	)
+	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
-	Cmd.Flags().Bool(
+	cmd.Flags().Bool(
 		operator.EnableTracingFlag,
 		false,
 		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html")
-	Cmd.Flags().Bool(
+	cmd.Flags().Bool(
 		operator.EnableWebhookFlag,
 		false,
 		"Enables a validating webhook server in the operator process.",
 	)
-	Cmd.Flags().Bool(
+	cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
 		true,
 		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
 	)
-	Cmd.Flags().Int(
+	cmd.Flags().Int(
 		operator.MaxConcurrentReconcilesFlag,
 		3,
 		"Sets maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, Apm Server etc). Affects the ability of the operator to process changes concurrently.",
 	)
-	Cmd.Flags().Int(
+	cmd.Flags().Int(
 		operator.MetricsPortFlag,
 		DefaultMetricPort,
 		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
 	)
-	Cmd.Flags().StringSlice(
+	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,
 		nil,
-		"comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
+		"Comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
 	)
-	Cmd.Flags().String(
+	cmd.Flags().String(
 		operator.OperatorNamespaceFlag,
 		"",
-		"K8s namespace the operator runs in",
+		"Kubernetes namespace the operator runs in",
 	)
-	Cmd.Flags().String(
+	cmd.Flags().String(
 		operator.WebhookCertDirFlag,
 		// this is controller-runtime's own default, copied here for making the default explicit when using `--help`
 		filepath.Join(os.TempDir(), "k8s-webhook-server", "serving-certs"),
 		"Path to the directory that contains the webhook server key and certificate",
 	)
-	Cmd.Flags().String(
+	cmd.Flags().String(
 		operator.WebhookSecretFlag,
 		"",
-		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
+		fmt.Sprintf("Kubernetes secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
-	Cmd.Flags().String(
+	cmd.Flags().String(
 		operator.WebhookConfigurationNameFlag,
 		DefaultWebhookConfigurationName,
 		fmt.Sprintf("Name of the Kubernetes ValidatingWebhookConfiguration resource (defaults to %s). Only used when enable-webhook is true.", DefaultWebhookConfigurationName),
 	)
 
-	// enable using dashed notation in flags and underscores in env
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	logconf.BindFlags(cmd.Flags())
 
-	if err := viper.BindPFlags(Cmd.Flags()); err != nil {
-		log.Error(err, "Unexpected error while binding flags")
-		os.Exit(1)
-	}
+	_ = cmd.MarkFlagFilename(operator.ConfigFlag)
 
-	viper.AutomaticEnv()
+	return cmd
 }
 
-func execute() {
+func doRun(_ *cobra.Command, _ []string) error {
+	signalChan := signals.SetupSignalHandler()
+	disableConfigWatch := viper.GetBool(operator.DisableConfigWatch)
+
+	// no config file to watch so start the operator directly
+	if configFile == "" || disableConfigWatch {
+		return startOperator(signalChan)
+	}
+
+	// receive config file update events over a channel
+	confUpdateChan := make(chan struct{}, 1)
+
+	viper.OnConfigChange(func(evt fsnotify.Event) {
+		if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
+			confUpdateChan <- struct{}{}
+		}
+	})
+
+	// start the operator in a goroutine
+	errChan := make(chan error, 1)
+	stopChan := make(chan struct{})
+
+	go func() {
+		err := startOperator(stopChan)
+		errChan <- err
+	}()
+
+	// watch for events
+	for {
+		select {
+		case err := <-errChan: // operator failed
+			log.Error(err, "Shutting down due to error")
+			close(stopChan)
+
+			return err
+		case <-signalChan: // signal received
+			log.Info("Signal received: shutting down")
+			close(stopChan)
+
+			return <-errChan
+		case <-confUpdateChan: // config file updated
+			log.Info("Shutting down to apply updated configuration")
+			close(stopChan)
+
+			if err := <-errChan; err != nil {
+				log.Error(err, "Encountered error from previous operator run")
+				return err
+			}
+
+			return nil
+		}
+	}
+}
+
+func startOperator(stopChan <-chan struct{}) error {
+	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
+
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
 		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
@@ -195,7 +286,7 @@ func execute() {
 	}))
 	if err != nil {
 		log.Error(err, "Error setting GOMAXPROCS")
-		os.Exit(1)
+		return err
 	}
 
 	if dev.Enabled {
@@ -214,17 +305,28 @@ func execute() {
 		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
 
 		go func() {
-			err := pprofServer.ListenAndServe()
-			panic(err)
+			go func() {
+				<-stopChan
+
+				ctx, cancelFunc := context.WithTimeout(context.Background(), debugHTTPShutdownTimeout)
+				defer cancelFunc()
+
+				if err := pprofServer.Shutdown(ctx); err != nil {
+					log.Error(err, "Failed to shutdown debug HTTP server")
+				}
+			}()
+
+			if err := pprofServer.ListenAndServe(); !errors.Is(http.ErrServerClosed, err) {
+				log.Error(err, "Failed to start debug HTTP server")
+				panic(err)
+			}
 		}()
 	}
 
 	var dialer net.Dialer
 	autoPortForward := viper.GetBool(operator.AutoPortForwardFlag)
 	if !dev.Enabled && autoPortForward {
-		panic(fmt.Sprintf(
-			"Enabling %s without enabling development mode not allowed", operator.AutoPortForwardFlag,
-		))
+		return fmt.Errorf("development mode must be enabled to use %s", operator.AutoPortForwardFlag)
 	} else if autoPortForward {
 		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
 		dialer = portforward.NewForwardingDialer()
@@ -232,9 +334,9 @@ func execute() {
 
 	operatorNamespace := viper.GetString(operator.OperatorNamespaceFlag)
 	if operatorNamespace == "" {
-		log.Error(fmt.Errorf("%s is a required flag", operator.OperatorNamespaceFlag),
-			"required configuration missing")
-		os.Exit(1)
+		err := fmt.Errorf("operator namespace must be specified using %s", operator.OperatorNamespaceFlag)
+		log.Error(err, "Required configuration missing")
+		return err
 	}
 
 	// set the default container registry
@@ -243,8 +345,12 @@ func execute() {
 	container.SetContainerRegistry(containerRegistry)
 
 	// Get a config to talk to the apiserver
-	log.Info("Setting up client for manager")
-	cfg := ctrl.GetConfigOrDie()
+	cfg, err := ctrl.GetConfig()
+	if err != nil {
+		log.Error(err, "Failed to obtain client configuration")
+		return err
+	}
+
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
 	controllerscheme.SetupScheme()
@@ -252,7 +358,6 @@ func execute() {
 	controllerscheme.SetupV1beta1Scheme()
 
 	// Create a new Cmd to provide shared dependencies and start components
-	log.Info("Setting up manager")
 	opts := ctrl.Options{
 		Scheme:  clientgoscheme.Scheme,
 		CertDir: viper.GetString(operator.WebhookCertDirFlag),
@@ -282,28 +387,40 @@ func execute() {
 	opts.Port = WebhookPort
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
-		log.Error(err, "unable to create controller manager")
-		os.Exit(1)
+		log.Error(err, "Failed to create controller manager")
+		return err
 	}
 
 	// Verify cert validity options
-	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
+	caCertValidity, caCertRotateBefore, err := validateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
+	if err != nil {
+		log.Error(err, "Invalid CA certificate rotation parameters")
+		return err
+	}
+
 	log.V(1).Info("Using certificate authority rotation parameters", operator.CACertValidityFlag, caCertValidity, operator.CACertRotateBeforeFlag, caCertRotateBefore)
-	certValidity, certRotateBefore := ValidateCertExpirationFlags(operator.CertValidityFlag, operator.CertRotateBeforeFlag)
+
+	certValidity, certRotateBefore, err := validateCertExpirationFlags(operator.CertValidityFlag, operator.CertRotateBeforeFlag)
+	if err != nil {
+		log.Error(err, "Invalid certificate rotation parameters")
+		return err
+	}
+
 	log.V(1).Info("Using certificate rotation parameters", operator.CertValidityFlag, certValidity, operator.CertRotateBeforeFlag, certRotateBefore)
 
 	// Setup a client to set the operator uuid config map
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, "unable to create k8s clientset")
-		os.Exit(1)
+		log.Error(err, "Failed to create Kubernetes client")
+		return err
 	}
 
 	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
 	if err != nil {
-		log.Error(err, "unable to get operator info")
-		os.Exit(1)
+		log.Error(err, "Failed to get operator info")
+		return err
 	}
+
 	log.Info("Setting up controllers")
 	var tracer *apm.Tracer
 	if viper.GetBool(operator.EnableTracingFlag) {
@@ -338,63 +455,8 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
-	if err = apmserver.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ApmServer")
-		os.Exit(1)
-	}
-	if err = elasticsearch.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "Elasticsearch")
-		os.Exit(1)
-	}
-	if err = kibana.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "Kibana")
-		os.Exit(1)
-	}
-	if err = enterprisesearch.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
-		os.Exit(1)
-	}
-	if err = beat.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "Beat")
-		os.Exit(1)
-	}
-	if err = associationctl.AddApmES(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "apm-es-association")
-		os.Exit(1)
-	}
-	if err = associationctl.AddApmKibana(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "apm-kibana-association")
-		os.Exit(1)
-	}
-	if err = associationctl.AddKibanaES(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "kibana-es-association")
-		os.Exit(1)
-	}
-	if err = associationctl.AddEntES(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ent-es-association")
-		os.Exit(1)
-	}
-	if err = associationctl.AddBeatES(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "beat-es-association")
-		os.Exit(1)
-	}
-	if err = associationctl.AddBeatKibana(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "beat-kibana-association")
-		os.Exit(1)
-	}
-
-	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "RemoteClusterCertificateAuthorites")
-		os.Exit(1)
-	}
-
-	if err = license.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "License")
-		os.Exit(1)
-	}
-	if err = licensetrial.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
-		os.Exit(1)
+	if err := registerControllers(mgr, params, accessReviewer); err != nil {
+		return err
 	}
 
 	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
@@ -411,20 +473,68 @@ func execute() {
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "unable to run the manager")
-		os.Exit(1)
+
+	if err := mgr.Start(stopChan); err != nil {
+		log.Error(err, "Failed to start the controller manager")
+		return err
 	}
+
+	return nil
 }
 
-func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration) {
+func registerControllers(mgr manager.Manager, params operator.Parameters, accessReviewer rbac.AccessReviewer) error {
+	controllers := []struct {
+		name         string
+		registerFunc func(manager.Manager, operator.Parameters) error
+	}{
+		{name: "APMServer", registerFunc: apmserver.Add},
+		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
+		{name: "Kibana", registerFunc: kibana.Add},
+		{name: "EnterpriseSearch", registerFunc: enterprisesearch.Add},
+		{name: "Beats", registerFunc: beat.Add},
+		{name: "License", registerFunc: license.Add},
+		{name: "LicenseTrial", registerFunc: licensetrial.Add},
+	}
+
+	for _, c := range controllers {
+		if err := c.registerFunc(mgr, params); err != nil {
+			log.Error(err, "Failed to register controller", "controller", c.name)
+			return fmt.Errorf("failed to register %s controller: %w", c.name, err)
+		}
+	}
+
+	assocControllers := []struct {
+		name         string
+		registerFunc func(manager.Manager, rbac.AccessReviewer, operator.Parameters) error
+	}{
+		{name: "RemoteCA", registerFunc: remoteca.Add},
+		{name: "APM-ES", registerFunc: associationctl.AddApmES},
+		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
+		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},
+		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
+		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
+		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
+	}
+
+	for _, c := range assocControllers {
+		if err := c.registerFunc(mgr, accessReviewer, params); err != nil {
+			log.Error(err, "Failed to register association controller", "controller", c.name)
+			return fmt.Errorf("failed to register %s association controller: %w", c.name, err)
+		}
+	}
+
+	return nil
+}
+
+func validateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration, error) {
 	certValidity := viper.GetDuration(validityFlag)
 	certRotateBefore := viper.GetDuration(rotateBeforeFlag)
+
 	if certRotateBefore > certValidity {
-		log.Error(fmt.Errorf("%s must be larger than %s", validityFlag, rotateBeforeFlag), "")
-		os.Exit(1)
+		return certValidity, certRotateBefore, fmt.Errorf("%s must be larger than %s", validityFlag, rotateBeforeFlag)
 	}
-	return certValidity, certRotateBefore
+
+	return certValidity, certRotateBefore, nil
 }
 
 func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
@@ -508,7 +618,6 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		log.V(1).Info("Webhook certificate file present on filesystem", "path", keyPath)
 		return true, nil
 	})
-
 	if err != nil {
 		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
 		os.Exit(1)
