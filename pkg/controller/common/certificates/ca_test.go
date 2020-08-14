@@ -39,6 +39,7 @@ func TestCA_CreateCertificate(t *testing.T) {
 		Subject: pkix.Name{
 			CommonName: cn,
 		},
+		DNSNames: []string{cn},
 		NotAfter: time.Now().Add(365 * 24 * time.Hour),
 
 		PublicKeyAlgorithm: x509.RSA,
