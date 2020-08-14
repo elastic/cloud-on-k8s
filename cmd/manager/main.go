@@ -114,11 +114,6 @@ func Command() *cobra.Command {
 	}
 
 	cmd.Flags().Bool(
-		operator.EnableLeaderElection,
-		true,
-		"Enable leader election. Enabling this will ensure there is only one active operator.",
-	)
-	cmd.Flags().Bool(
 		operator.AutoPortForwardFlag,
 		false,
 		"Enables automatic port-forwarding "+
@@ -169,6 +164,11 @@ func Command() *cobra.Command {
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
+	)
+	cmd.Flags().Bool(
+		operator.EnableLeaderElection,
+		true,
+		"Enable leader election. Enabling this will ensure there is only one active operator.",
 	)
 	cmd.Flags().Bool(
 		operator.EnableTracingFlag,
@@ -486,7 +486,7 @@ func startOperator(stopChan <-chan struct{}) error {
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
 func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace string) {
-	<-mgr.Elected() // wait for this operator  instance to be elected
+	<-mgr.Elected() // wait for this operator instance to be elected
 
 	// Start the resource reporter
 	go func() {
