@@ -20,11 +20,10 @@ import (
 )
 
 func TestParams_ReconcileResources(t *testing.T) {
-
 	w := Params{
-		Namespace:                "elastic-system",
-		SecretName:               "elastic-webhook-server-cert",
-		WebhookConfigurationName: "elastic-webhook.k8s.elastic.co",
+		Name:       "elastic-webhook.k8s.elastic.co",
+		Namespace:  "elastic-system",
+		SecretName: "elastic-webhook-server-cert",
 		Rotation: certificates.RotationParams{
 			Validity:     certificates.DefaultCertValidity,
 			RotateBefore: certificates.DefaultRotateBefore,
@@ -64,7 +63,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.WebhookConfigurationName, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle := webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	assert.True(t, len(caBundle) > 0)
@@ -89,12 +88,11 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the new ca
-	webhookConfiguration, err = clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.WebhookConfigurationName, metav1.GetOptions{})
+	webhookConfiguration, err = clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle = webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	// Check again that the cert in the secret has been signed by the caBundle
 	verifyCertificates(t, caBundle, webhookServerSecret.Data["tls.crt"])
-
 }
 
 func verifyCertificates(t *testing.T, rootCert []byte, serverCert []byte) {
