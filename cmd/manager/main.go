@@ -214,9 +214,14 @@ func Command() *cobra.Command {
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
 
-	logconf.BindFlags(cmd.Flags())
+	// hide development mode flags from the usage message
+	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
+	_ = cmd.Flags().MarkHidden(operator.DebugHTTPListenFlag)
 
+	// configure filename auto-completion for the config flag
 	_ = cmd.MarkFlagFilename(operator.ConfigFlag)
+
+	logconf.BindFlags(cmd.Flags())
 
 	return cmd
 }
