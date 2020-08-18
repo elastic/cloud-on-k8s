@@ -337,6 +337,7 @@ docker-build: go-generate
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
