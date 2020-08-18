@@ -91,3 +91,58 @@ If you use a combination of all or some of the methods listed above, the descend
 
 
 You can edit the `elastic-operator` ConfigMap to change the operator configuration. Unless the `--disable-config-watch` flag is set, the operator should restart automatically to apply the new changes. Alternatively, you can edit the `elastic-operator` StatefulSet  and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
+
+[float]
+[id="{p}-{page_id}-olm"]
+== Configure ECK under Operator Lifecycle Manager
+
+If you use link:https://github.com/operator-framework/operator-lifecycle-manager[Operator Lifecycle Manager (OLM)] to install and run ECK, follow the steps below to configure the operator.
+
+- Create a new ConfigMap in the same namespace as the operator. It should contain a key named `eck.yaml` pointing to the desired configuration values.
++
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elastic-operator
+  namespace: openshift-operators
+data:
+  eck.yaml: |-
+    log-verbosity: 0
+    metrics-port: 6060 
+    container-registry: docker.elastic.co
+    max-concurrent-reconciles: 3
+    ca-cert-validity: 8760h
+    ca-cert-rotate-before: 24h
+    cert-validity: 8760h
+    cert-rotate-before: 24h
+----
+
+- Update your link:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/subscription-config.md[Subscription] to mount the ConfigMap under `/conf`.
++
+[source,yaml,subs="attributes"]
+----
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: elastic-cloud-eck
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: elastic-cloud-eck
+  source: elastic-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: elastic-cloud-eck.v{eck_version}
+  config:
+    volumes:
+      - name: config
+        configMap:
+          name: elastic-operator
+    volumeMounts:
+      - name: config
+        mountPath: /conf
+        readOnly: true
+----
+
