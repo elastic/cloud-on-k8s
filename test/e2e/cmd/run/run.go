@@ -524,7 +524,7 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 			for scan.Scan() {
 				line := scan.Bytes()
 
-				timestamp, logLine, err := parseLog(string(line))
+				timestamp, err := parseLog(line)
 				if err != nil {
 					streamErrors <- err
 					continue
@@ -538,42 +538,49 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 				// new log to process
 				pastPreviousLogStream = true
 				lastTimestamp = timestamp
-				if _, err := writer.Write([]byte(logLine + "\n")); err != nil {
+				if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
 					streamErrors <- err
 					return
 				}
 			}
-			log.Info("Log stream ended")
+			if err := scan.Err(); err != nil {
+				log.Error(err, "Log stream ended")
+			} else {
+				log.Info("Log stream ended")
+			}
 			// retry
 		}
 	}
 }
 
 func getLogStream(client *kubernetes.Clientset, pod string, namespace string) (io.ReadCloser, error) {
-	sinceSeconds := int64(30)
+	sinceSeconds := int64(60 * 5)
 	opts := &corev1.PodLogOptions{
 		Container:    "e2e",
 		Follow:       true,
 		SinceSeconds: &sinceSeconds,
-		Timestamps:   true,
+		Timestamps:   false,
 	}
 
 	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts)
 	return req.Stream(context.Background())
 }
 
-func parseLog(line string) (time.Time, string, error) {
-	// format: <date> <log>
-	// example: 2020-07-02T13:29:47.671331815Z my log here
-	splits := strings.SplitN(line, " ", 2)
-	if len(splits) != 2 {
-		return time.Time{}, "", fmt.Errorf("cannot parse timestamp in %s", line)
+type LogLine struct {
+	Time string
+}
+
+// parseLog extract the timestamp from a log, it is expected that the line is well formatted jsonline
+func parseLog(line []byte) (time.Time, error) {
+	var logLine LogLine
+	if err := json.Unmarshal(line, &logLine); err != nil {
+		return time.Time{}, err
 	}
-	timestamp, err := time.Parse(time.RFC3339Nano, splits[0])
+	timestamp, err := time.Parse(time.RFC3339Nano, logLine.Time)
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, err
 	}
-	return timestamp, splits[1], nil
+	return timestamp, nil
 }
 
 func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {
