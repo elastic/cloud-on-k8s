@@ -66,9 +66,9 @@ import (
 )
 
 const (
-	DefaultMetricPort               = 0 // disabled
-	DefaultWebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
-	WebhookPort                     = 9443
+	DefaultMetricPort  = 0 // disabled
+	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
+	WebhookPort        = 9443
 
 	LeaderElectionConfigMapName = "elastic-operator-leader"
 
@@ -216,9 +216,9 @@ func Command() *cobra.Command {
 		fmt.Sprintf("Kubernetes secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
 	cmd.Flags().String(
-		operator.WebhookConfigurationNameFlag,
-		DefaultWebhookConfigurationName,
-		fmt.Sprintf("Name of the Kubernetes ValidatingWebhookConfiguration resource (defaults to %s). Only used when enable-webhook is true.", DefaultWebhookConfigurationName),
+		operator.WebhookNameFlag,
+		DefaultWebhookName,
+		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
 
 	logconf.BindFlags(cmd.Flags())
@@ -579,10 +579,10 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		log.Info("Automatic management of the webhook certificates enabled")
 		// Ensure that all the certificates needed by the webhook server are already created
 		webhookParams := webhook.Params{
-			Namespace:                viper.GetString(operator.OperatorNamespaceFlag),
-			SecretName:               viper.GetString(operator.WebhookSecretFlag),
-			WebhookConfigurationName: viper.GetString(operator.WebhookConfigurationNameFlag),
-			Rotation:                 certRotation,
+			Name:       viper.GetString(operator.WebhookNameFlag),
+			Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
+			SecretName: viper.GetString(operator.WebhookSecretFlag),
+			Rotation:   certRotation,
 		}
 
 		// Force a first reconciliation to create the resources before the server is started
