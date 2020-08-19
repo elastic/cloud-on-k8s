@@ -12,6 +12,7 @@ require (
 	github.com/elastic/go-ucfg v0.8.3
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
 	github.com/go-test/deep v1.0.7
@@ -21,7 +22,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/vault/api v1.0.4
-	github.com/imdario/mergo v0.3.10
+	github.com/imdario/mergo v0.3.11
 	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/pelletier/go-toml v1.4.0 // indirect
@@ -44,12 +45,12 @@ require (
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
-	k8s.io/api v0.18.4
-	k8s.io/apimachinery v0.18.4
-	k8s.io/client-go v0.18.4
+	k8s.io/api v0.18.6
+	k8s.io/apimachinery v0.18.6
+	k8s.io/client-go v0.18.6
 	k8s.io/klog/v2 v2.0.0
 	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
-	sigs.k8s.io/controller-runtime v0.6.1
+	sigs.k8s.io/controller-runtime v0.6.2
 	sigs.k8s.io/controller-tools v0.2.5
 )
 

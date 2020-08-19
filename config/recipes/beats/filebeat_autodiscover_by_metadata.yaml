@@ -4,7 +4,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.8.0
+  version: 7.8.1
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -34,12 +34,12 @@ spec:
         terminationGracePeriodSeconds: 30
         dnsPolicy: ClusterFirstWithHostNet
         hostNetwork: true # Allows to provide richer host metadata
-        securityContext:
-          runAsUser: 0
-          # If using Red Hat OpenShift uncomment this:
-          #privileged: true
         containers:
         - name: filebeat
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
+            #privileged: true
           volumeMounts:
           - name: varlogcontainers
             mountPath: /var/log/containers
@@ -96,7 +96,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.8.0
+  version: 7.8.1
   nodeSets:
   - name: default
     count: 3
@@ -108,7 +108,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.8.0
+  version: 7.8.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

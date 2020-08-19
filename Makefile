@@ -337,6 +337,7 @@ docker-build: go-generate
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
@@ -365,7 +366,7 @@ switch-registry-dev: # just use the default values of variables
 E2E_REGISTRY_NAMESPACE ?= eck-dev
 E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-STACK_VERSION          ?= 7.8.0
+STACK_VERSION          ?= 7.8.1
 E2E_JSON               ?= false
 TEST_TIMEOUT           ?= 5m
 E2E_SKIP_CLEANUP       ?= false
@@ -397,7 +398,7 @@ e2e-run:
 		--skip-cleanup=$(E2E_SKIP_CLEANUP)
 
 e2e-generate-xml:
-	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json || (echo "Failed to generate xml report" && cat e2e-tests.json && false)
+	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:

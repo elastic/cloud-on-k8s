@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.operator.name }}
+  namespace: {{ .Values.operator.namespace }}
+data:
+  eck.yaml: |-
+    log-verbosity: {{ .Values.config.logVerbosity }}
+    metrics-port: {{ .Values.config.metricsPort }}
+    container-registry: {{ .Values.config.containerRegistry }}
+    max-concurrent-reconciles: {{ .Values.config.maxConcurrentReconciles }}
+    ca-cert-validity: {{ .Values.config.ca.validity }}
+    ca-cert-rotate-before: {{ .Values.config.ca.rotateBefore }}
+    cert-validity: {{ .Values.config.certificates.validity }}
+    cert-rotate-before: {{ .Values.config.certificates.rotateBefore }}
+    {{- if .Values.config.tracing.enabled }}
+    enable-tracing: true
+    {{- end }}
+    {{- if .Values.config.refs.enforceRBAC }}
+    enforce-rbac-on-refs: true
+    {{- end }}
+    {{- if .Values.config.webhook.enabled }}
+    enable-webhook: true
+    webhook-name: {{ .Values.config.webhook.name }}
+      {{- if not .Values.config.webhook.manageCerts }}
+    manage-webhook-certs: false
+    webhook-cert-dir: {{ .Values.config.webhook.certsDir }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.config.managedNamespaces }}
+    namespaces: [{{ join "," .Values.config.managedNamespaces  }}]
+    {{- end }}
+    {{- if not .Values.config.beat.manageAutoDiscoverRBAC }}
+    manage-beat-autodiscover-rbac: false
+    {{- end }}

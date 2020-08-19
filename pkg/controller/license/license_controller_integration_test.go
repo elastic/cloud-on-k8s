@@ -174,10 +174,10 @@ func TestDelayingQueueInvariants(t *testing.T) {
 			name: "no dedup'ing when delaying",
 			adds: func(q workqueue.DelayingInterface) {
 				q.Add(item)
-				q.AddAfter(item, 1*time.Millisecond)
+				q.AddAfter(item, 500*time.Millisecond)
 			},
 			expectedObservations: 2,
-			timeout:              10 * time.Millisecond,
+			timeout:              1 * time.Second,
 		},
 		{
 			name: "but dedup's and updates item within the wait queue",
