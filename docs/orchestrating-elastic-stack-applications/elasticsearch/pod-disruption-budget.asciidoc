@@ -9,7 +9,6 @@ endif::[]
 = Pod disruption budget
 
 A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] (PDB) allows you to limit the disruption to your application when its pods need to be rescheduled for some reason such as upgrades or routine maintenance work on the Kubernetes nodes.
-Elasticsearch makes sure that some indices don't become unavailable.
 
 ECK manages a default PDB per Elasticsearch resource. It allows one Elasticsearch Pod to be taken down, as long as the cluster has a `green` health. Single-node clusters are not considered highly available and can always be disrupted.
 
