@@ -18,40 +18,40 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// FakeStreamProvider provides a new FakeStream
-type FakeStreamProvider struct {
+// FakeLogStreamProvider provides a new FakeLogStream
+type FakeLogStreamProvider struct {
 	withError, failed bool
 	data              []byte
 	stop              chan<- struct{}
 }
 
-// FakeStream can send an error in the middle of the stream
-type FakeStream struct {
-	*FakeStreamProvider
+// FakeLogStream can send an error in the middle of the stream
+type FakeLogStream struct {
+	*FakeLogStreamProvider
 	pos    int
 	reader io.Reader
 }
 
-// NewFakeStreamProvider returns a new fake StreamProvider. If withError is true the FakeStream
+// NewFakeLogStreamProvider returns a new fake LogStreamProvider. If withError is true the FakeLogStream
 // will return an one-time error when reaching half of the stream.
-func NewFakeStreamProvider(data []byte, stop chan<- struct{}, withError bool) StreamProvider {
-	return &FakeStreamProvider{
+func NewFakeLogStreamProvider(data []byte, stop chan<- struct{}, withError bool) LogStreamProvider {
+	return &FakeLogStreamProvider{
 		withError: withError,
 		data:      data,
 		stop:      stop,
 	}
 }
 
-func (usp *FakeStreamProvider) NewStream() (io.ReadCloser, error) {
-	return &FakeStream{
-		FakeStreamProvider: usp,
-		pos:                0,
-		reader:             bytes.NewReader(usp.data),
+func (usp *FakeLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
+	return &FakeLogStream{
+		FakeLogStreamProvider: usp,
+		pos:                   0,
+		reader:                bytes.NewReader(usp.data),
 	}, nil
 }
 
 // Read reads the underlying bytes or returns an error when half of the stream has been sent
-func (us *FakeStream) Read(p []byte) (int, error) {
+func (us *FakeLogStream) Read(p []byte) (int, error) {
 	n, err := us.reader.Read(p)
 	us.pos += n
 	if us.withError && !us.failed && us.pos > len(us.data)/2 {
@@ -65,12 +65,12 @@ func (us *FakeStream) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (us *FakeStream) Close() error {
+func (us *FakeLogStream) Close() error {
 	// noop
 	return nil
 }
 
-// Test_helper_streamTestJobOutput_withError simulates an error while the stream is read using the FakeStreamProvider
+// Test_helper_streamTestJobOutput_withError simulates an error while the stream is read using the FakeLogStreamProvider
 func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 
 	log = logf.Log.WithName("streamTestJobOutput_withError")
@@ -78,7 +78,7 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 	stopLogStream := make(chan struct{})
 	sampleLogs, err := ioutil.ReadFile("testdata/stream.json")
 	require.NoError(t, err)
-	streamProvider := NewFakeStreamProvider(sampleLogs, stopLogStream, true)
+	streamProvider := NewFakeLogStreamProvider(sampleLogs, stopLogStream, true)
 
 	h := &helper{}
 	streamErrors := make(chan error, 4096)
@@ -103,7 +103,7 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 	stopLogStream := make(chan struct{})
 	sampleLogs, err := ioutil.ReadFile("testdata/stream.json")
 	require.NoError(t, err)
-	streamProvider := NewFakeStreamProvider(sampleLogs, stopLogStream, false)
+	streamProvider := NewFakeLogStreamProvider(sampleLogs, stopLogStream, false)
 
 	h := &helper{}
 	streamErrors := make(chan error, 4096)

@@ -450,7 +450,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 							outputs = append(outputs, jl)
 						}
 						writer := io.MultiWriter(outputs...)
-						streamProvider := &KubernetesStreamProvider{
+						streamProvider := &PodLogStreamProvider{
 							client:    client,
 							pod:       newPod.Name,
 							namespace: h.testContext.E2ENamespace,
@@ -503,16 +503,16 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	return err
 }
 
-type StreamProvider interface {
-	NewStream() (io.ReadCloser, error)
+type LogStreamProvider interface {
+	NewLogStream() (io.ReadCloser, error)
 }
 
-type KubernetesStreamProvider struct {
+type PodLogStreamProvider struct {
 	client         *kubernetes.Clientset
 	pod, namespace string
 }
 
-func (ksp KubernetesStreamProvider) NewStream() (io.ReadCloser, error) {
+func (ksp PodLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
 	sinceSeconds := int64(60 * 5)
 	opts := &corev1.PodLogOptions{
 		Container:    "e2e",
@@ -526,7 +526,7 @@ func (ksp KubernetesStreamProvider) NewStream() (io.ReadCloser, error) {
 }
 
 func (h *helper) streamTestJobOutput(
-	streamProvider StreamProvider,
+	streamProvider LogStreamProvider,
 	writer io.Writer,
 	streamErrors chan<- error,
 	stop <-chan struct{},
@@ -544,7 +544,7 @@ func (h *helper) streamTestJobOutput(
 			return
 		default:
 			log.Info("Streaming pod logs", "name", pod)
-			stream, err := streamProvider.NewStream()
+			stream, err := streamProvider.NewLogStream()
 			if err != nil {
 				streamErrors <- err
 				continue // retry
