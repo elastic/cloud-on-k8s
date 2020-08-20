@@ -32,6 +32,8 @@ type FakeStream struct {
 	reader io.Reader
 }
 
+// NewFakeStreamProvider returns a new fake StreamProvider. If withError is true the FakeStream
+// will return an one-time error when reaching half of the stream.
 func NewFakeStreamProvider(data []byte, stop chan<- struct{}, withError bool) StreamProvider {
 	return &FakeStreamProvider{
 		withError: withError,
@@ -51,7 +53,7 @@ func (usp *FakeStreamProvider) NewStream() (io.ReadCloser, error) {
 // Read reads the underlying bytes or returns an error when half of the stream has been sent
 func (us *FakeStream) Read(p []byte) (int, error) {
 	n, err := us.reader.Read(p)
-	us.pos = us.pos + n
+	us.pos += n
 	if us.withError && !us.failed && us.pos > len(us.data)/2 {
 		us.failed = true
 		return 0, fmt.Errorf("test error")
