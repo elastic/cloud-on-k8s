@@ -12,6 +12,7 @@ const (
 	CertValidityFlag            = "cert-validity"
 	ConfigFlag                  = "config"
 	ContainerRegistryFlag       = "container-registry"
+	ContainerSuffixFlag         = "container-suffix"
 	DebugHTTPListenFlag         = "debug-http-listen"
 	DisableConfigWatch          = "disable-config-watch"
 	EnableTracingFlag           = "enable-tracing"

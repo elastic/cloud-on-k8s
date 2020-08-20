@@ -10,11 +10,18 @@ import (
 
 const DefaultContainerRegistry = "docker.elastic.co"
 
-var containerRegistry = DefaultContainerRegistry
+var (
+	containerRegistry = DefaultContainerRegistry
+	containerSuffix   = ""
+)
 
 // SetContainerRegistry sets the global container registry used to download Elastic stack images.
 func SetContainerRegistry(registry string) {
 	containerRegistry = registry
+}
+
+func SetContainerSuffix(suffix string) {
+	containerSuffix = suffix
 }
 
 type Image string
@@ -34,5 +41,5 @@ const (
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
 func ImageRepository(img Image, version string) string {
-	return fmt.Sprintf("%s/%s:%s", containerRegistry, img, version)
+	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, img, containerSuffix, version)
 }
