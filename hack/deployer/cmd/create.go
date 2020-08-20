@@ -65,7 +65,11 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
+				// optional variables for local dev use
+				token, _ := os.LookupEnv("GITHUB_TOKEN")
+				vaultAddr, _ := os.LookupEnv("VAULT_ADDR")
+
+				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret, vaultAddr, token)
 				fullPath := path.Join(filePath, runner.OcpConfigFileName)
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
 					return err

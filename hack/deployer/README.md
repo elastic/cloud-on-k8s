@@ -28,6 +28,15 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
     make switch-aks bootstrap-cloud
     ```
 
+* OpenShift
+
+  * Set `VAULT_ADDR` and `GITHUB_TOKEN` appropriately
+  * Run from the [project root](/):
+
+    ```bash
+    make switch-ocp bootstrap-cloud
+    ```
+
 ### Deprovision
 
 ```bash

@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,6 +28,9 @@ overrides:
   ocp:
     gCloudProject: %s
     pullSecret: '%s'
+  vaultInfo:
+    address: '%s'
+    token: '%s'
 `
 
 	OcpInstallerConfigTemplate = `apiVersion: v1
@@ -182,10 +186,12 @@ func (d *OcpDriver) Execute() error {
 }
 
 func (d *OcpDriver) auth() error {
-
 	if d.plan.ServiceAccount {
-		log.Println("Authenticating as service account...")
+		if d.plan.VaultInfo == nil {
+			return errors.New("Vault auth info is required")
+		}
 
+		log.Println("Authenticating as service account...")
 		client, err := NewClient(*d.plan.VaultInfo)
 		if err != nil {
 			return err
