@@ -439,7 +439,23 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 					logStreamWg.Add(1)
 					go func() {
-						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
+						outputs := []io.Writer{os.Stdout}
+						if h.logToFile {
+							jl, err := newJSONLogToFile(testsLogFile)
+							if err != nil {
+								log.Error(err, "Failed to create log file for test output")
+								return
+							}
+							defer jl.Close()
+							outputs = append(outputs, jl)
+						}
+						writer := io.MultiWriter(outputs...)
+						streamProvider := &KubernetesStreamProvider{
+							client:    client,
+							pod:       newPod.Name,
+							namespace: h.testContext.E2ENamespace,
+						}
+						h.streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream, newPod.Name)
 						logStreamWg.Done()
 					}()
 				} else {
@@ -487,19 +503,35 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	return err
 }
 
-func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
-	outputs := []io.Writer{os.Stdout}
-	if h.logToFile {
-		jl, err := newJSONLogToFile(testsLogFile)
-		if err != nil {
-			log.Error(err, "Failed to create log file for test output")
-			return
-		}
-		defer jl.Close()
-		outputs = append(outputs, jl)
-	}
-	writer := io.MultiWriter(outputs...)
+type StreamProvider interface {
+	NewStream() (io.ReadCloser, error)
+}
 
+type KubernetesStreamProvider struct {
+	client         *kubernetes.Clientset
+	pod, namespace string
+}
+
+func (ksp KubernetesStreamProvider) NewStream() (io.ReadCloser, error) {
+	sinceSeconds := int64(60 * 5)
+	opts := &corev1.PodLogOptions{
+		Container:    "e2e",
+		Follow:       true,
+		SinceSeconds: &sinceSeconds,
+		Timestamps:   false,
+	}
+
+	req := ksp.client.CoreV1().Pods(ksp.namespace).GetLogs(ksp.pod, opts)
+	return req.Stream(context.Background())
+}
+
+func (h *helper) streamTestJobOutput(
+	streamProvider StreamProvider,
+	writer io.Writer,
+	streamErrors chan<- error,
+	stop <-chan struct{},
+	pod string,
+) {
 	// The log stream may end abruptly in some environments where the network isn't reliable.
 	// Let's retry when that happens. To avoid duplicate log entries, keep track of the last
 	// Kubernetes log timestamp: we don't want to reprocess entries with a lower timestamp.
@@ -512,7 +544,7 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 			return
 		default:
 			log.Info("Streaming pod logs", "name", pod)
-			stream, err := getLogStream(client, pod, h.testContext.E2ENamespace)
+			stream, err := streamProvider.NewStream()
 			if err != nil {
 				streamErrors <- err
 				continue // retry
@@ -551,19 +583,6 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 			// retry
 		}
 	}
-}
-
-func getLogStream(client *kubernetes.Clientset, pod string, namespace string) (io.ReadCloser, error) {
-	sinceSeconds := int64(60 * 5)
-	opts := &corev1.PodLogOptions{
-		Container:    "e2e",
-		Follow:       true,
-		SinceSeconds: &sinceSeconds,
-		Timestamps:   false,
-	}
-
-	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts)
-	return req.Stream(context.Background())
 }
 
 type LogLine struct {
