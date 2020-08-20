@@ -23,7 +23,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
-	name := "test-version-upgrade-to-7x"
+	name := "test-beat-upgrade-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
@@ -50,7 +50,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, fbBuilder},
-		[]test.Builder{esBuilder, fbBuilder.WithVersion(dstVersion)}, // TODO MutatedFrom?
+		[]test.Builder{esBuilder, fbBuilder.WithVersion(dstVersion)},
 		[]test.Watcher{test.NewVersionWatcher(beatcommon.VersionLabelName, opts...)},
 	)
 }
