@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	ghodssyaml "github.com/ghodss/yaml"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -133,6 +134,15 @@ func (b Builder) WithDeployment() Builder {
 	b.PodTemplate = &b.Beat.Spec.Deployment.PodTemplate
 
 	return b
+}
+
+func (b Builder) WithDeploymentStrategy(s appsv1.DeploymentStrategy) Builder {
+	modifiedBuilder := b
+	if b.Beat.Spec.Deployment == nil {
+		modifiedBuilder = b.WithDeployment()
+	}
+	modifiedBuilder.Beat.Spec.Deployment.Strategy = s
+	return modifiedBuilder
 }
 
 func (b Builder) WithESValidations(validations ...ValidationFunc) Builder {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -59,7 +58,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
 		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
-		[]test.Watcher{NewReadinessWatcher(opts...), NewVersionWatcher(opts...)},
+		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
 	)
 }
 
@@ -129,7 +128,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 		t,
 		[]test.Builder{esBuilder, kbBuilder1},
 		[]test.Builder{esBuilder, kbBuilder2, kbBuilder3},
-		[]test.Watcher{w, NewVersionWatcher(opts...)},
+		[]test.Watcher{w, test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
 	)
 }
 
@@ -150,29 +149,5 @@ func NewReadinessWatcher(opts ...client.ListOption) test.Watcher {
 		},
 		func(k *test.K8sClient, t *testing.T) {
 			assert.Contains(t, readinessObservations, 0)
-		})
-}
-
-// NewVersionWatcher returns a watcher that asserts that in all observations all Kibana pods were running the same
-// Kibana version. It relies on the assumption that pod initialization and termination take more than 1 second
-// (observations resolution), so different versions running at the same time could always be caught.
-func NewVersionWatcher(opts ...client.ListOption) test.Watcher {
-	var podObservations [][]v1.Pod
-	return test.NewWatcher(
-		"watch pods versions: should not observe multiples versions running at once",
-		1*time.Second,
-		func(k *test.K8sClient, t *testing.T) {
-			if pods, err := k.GetPods(opts...); err != nil {
-				t.Logf("failed to list pods: %v", err)
-			} else {
-				podObservations = append(podObservations, pods)
-			}
-		},
-		func(k *test.K8sClient, t *testing.T) {
-			for _, pods := range podObservations {
-				for i := 1; i < len(pods); i++ {
-					assert.Equal(t, pods[i-1].Labels[kibana2.KibanaVersionLabelName], pods[i].Labels[kibana2.KibanaVersionLabelName])
-				}
-			}
 		})
 }
