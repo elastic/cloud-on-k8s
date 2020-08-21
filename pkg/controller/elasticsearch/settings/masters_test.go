@@ -129,6 +129,20 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			wantErr:         false,
 			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
 		},
+		{
+			name: "Can handle IPv6 addresses",
+			args: args{
+				pods: []corev1.Pod{ //
+					newPodWithIP("master2", "fd00:10:244:0:2::3", true),
+					newPodWithIP("master3", "fd00:10:244:0:2::5", true),
+					newPodWithIP("master1", "fd00:10:244:0:2::2", true),
+				},
+				c:  k8s.WrappedFakeClient(),
+				es: es,
+			},
+			wantErr:         false,
+			expectedContent: "[fd00:10:244:0:2::2]:9300\n[fd00:10:244:0:2::3]:9300\n[fd00:10:244:0:2::5]:9300",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

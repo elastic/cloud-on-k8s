@@ -6,9 +6,10 @@ package settings
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -58,7 +59,7 @@ func UpdateSeedHostsConfigMap(
 		if len(master.Status.PodIP) > 0 { // do not add pod with no IPs
 			seedHosts = append(
 				seedHosts,
-				fmt.Sprintf("%s:%d", master.Status.PodIP, network.TransportPort),
+				net.JoinHostPort(master.Status.PodIP, strconv.FormatInt(network.TransportPort, 10)),
 			)
 		}
 	}
