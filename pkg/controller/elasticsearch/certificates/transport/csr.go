@@ -11,12 +11,12 @@ import (
 	"net"
 	"time"
 
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 // createValidatedCertificateTemplate validates a CSR and creates a certificate template.
@@ -90,8 +90,8 @@ func buildGeneralNames(
 		// add the transport service name for remote cluster connections initially connecting through the service
 		// the DNS name has to match the seed hosts configured in the remote cluster settings
 		{DNSName: fmt.Sprintf("%s.%s.svc", esv1.TransportService(cluster.Name), cluster.Namespace)},
-		{IPAddress: netutil.MaybeIPTo4(podIP)},
-		{IPAddress: net.ParseIP("127.0.0.1").To4()},
+		{IPAddress: netutil.IpToRFCForm(podIP)},
+		{IPAddress: netutil.IpToRFCForm(netutil.LoopbackFor(podIP))},
 	}
 
 	return generalNames, nil
