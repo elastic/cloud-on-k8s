@@ -159,7 +159,7 @@ func TestNewMergedESConfig(t *testing.T) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)
 				// default config is still there
-				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: ${POD_IP}")))
+				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: ${POD_NAME}.${HEADLESS_SERVICE_NAME}")))
 				// but has been overridden
 				require.True(t, bytes.Contains(cfgBytes, []byte("seed_providers: something-else")))
 				require.Equal(t, 1, bytes.Count(cfgBytes, []byte("seed_providers:")))

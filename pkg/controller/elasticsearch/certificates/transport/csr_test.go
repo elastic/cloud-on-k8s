@@ -93,6 +93,7 @@ func Test_buildGeneralNames(t *testing.T) {
 				{OtherName: *otherName},
 				{DNSName: expectedCommonName},
 				{DNSName: expectedTransportSvcName},
+				{DNSName: "test-pod-name.test-sset"},
 				{IPAddress: net.ParseIP(testIP).To4()},
 				{IPAddress: net.ParseIP("127.0.0.1").To4()},
 			},
