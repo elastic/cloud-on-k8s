@@ -362,7 +362,7 @@ func createValidatedHTTPCertificateTemplate(
 				dnsNames = append(dnsNames, san.DNS)
 			}
 			if san.IP != "" {
-				ipAddresses = append(ipAddresses, netutil.MaybeIPTo4(net.ParseIP(san.IP)))
+				ipAddresses = append(ipAddresses, netutil.IPToRFCForm(net.ParseIP(san.IP)))
 			}
 		}
 	}

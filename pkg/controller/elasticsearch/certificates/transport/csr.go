@@ -97,8 +97,8 @@ func buildGeneralNames(
 		{DNSName: fmt.Sprintf("%s.%s.svc", esv1.TransportService(cluster.Name), cluster.Namespace)},
 		// add the resolvable DNS name of the Pod as published by Elasticsearch
 		{DNSName: fmt.Sprintf("%s.%s", pod.Name, svcName)},
-		{IPAddress: netutil.IpToRFCForm(podIP)},
-		{IPAddress: netutil.IpToRFCForm(netutil.LoopbackFor(podIP))},
+		{IPAddress: netutil.IPToRFCForm(podIP)},
+		{IPAddress: netutil.IPToRFCForm(netutil.LoopbackFor(podIP))},
 	}
 
 	return generalNames, nil

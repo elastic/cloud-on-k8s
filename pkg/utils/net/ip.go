@@ -8,17 +8,9 @@ import (
 	"net"
 )
 
-// MaybeIPTo4 attempts to convert the provided net.IP to a 4-byte representation if possible, otherwise does nothing.
-func MaybeIPTo4(ipAddress net.IP) net.IP {
-	if ip := ipAddress.To4(); ip != nil {
-		return ip
-	}
-	return ipAddress
-}
-
-// IpToRFCForm normalizes the IP address given to fit the expected network byte order octet form described in
+// IPToRFCForm normalizes the IP address given to fit the expected network byte order octet form described in
 // https://tools.ietf.org/html/rfc5280#section-4.2.1.6
-func IpToRFCForm(ip net.IP) net.IP {
+func IPToRFCForm(ip net.IP) net.IP {
 	if ip := ip.To4(); ip != nil {
 		return ip
 	}
