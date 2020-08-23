@@ -53,7 +53,7 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 		esv1.ClusterName: clusterName,
 
 		// derive IP dynamically from the pod IP, injected as env var
-		esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
+		esv1.NetworkPublishHost: "[${" + EnvPodIP + "}]",
 		esv1.NetworkHost:        "0.0.0.0",
 
 		// allow ES to be aware of k8s node the pod is running on when allocating shards
