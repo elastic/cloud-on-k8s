@@ -86,7 +86,7 @@ dependencies:
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
-generate: tidy generate-crds generate-api-docs generate-notice-file
+generate: tidy generate-crds generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -103,6 +103,9 @@ generate-crds: go-generate controller-gen
 	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
+
+generate-config-file:
+	@hack/config-extractor/extract.sh
 
 generate-api-docs:
 	@hack/api-docs/build.sh
@@ -333,7 +336,7 @@ switch-eks:
 ##  --    Docker images    --  ##
 #################################
 
-docker-build: go-generate
+docker-build: go-generate generate-config-file
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
