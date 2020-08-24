@@ -132,7 +132,7 @@ ECK performs a rolling upgrade of the corresponding Elasticsearch nodes. It foll
 +
 ECK creates a new NodeSet with the new name, migrates data away from the old NodeSet, and then removes it. During this process the Elasticsearch cluster could temporarily have more nodes than normal. The Elasticsearch <<{p}-update-strategy,update strategy>> controls how many nodes can exist above or below the target node count during the upgrade.
 
-In all these cases, ECK handles StatefulSet operations according to the Elasticsearch orchestration best practices, by adjusting these orchestration settings accordingly:
+In all these cases, ECK handles StatefulSet operations according to the Elasticsearch orchestration best practices by adjusting the following orchestration settings:
 
 *  `discovery.seed_hosts`
 *  `cluster.initial_master_nodes`
