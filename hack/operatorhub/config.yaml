@@ -1,6 +1,6 @@
-newVersion: 1.2.1
-prevVersion: 1.2.0
-stackVersion: 7.8.1
+newVersion: 1.3.0
+prevVersion: 1.2.1
+stackVersion: 7.9.0
 operatorRepo: docker.elastic.co/eck/eck-operator
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
