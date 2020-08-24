@@ -389,7 +389,7 @@ spec:
                   properties:
                     config:
                       description: Config holds the Elasticsearch configuration.
-                      type: Any
+                      type: object
                     count:
                       description: Count of Elasticsearch nodes to deploy.
                       format: int32
@@ -7706,7 +7706,7 @@ spec:
                   properties:
                     config:
                       description: Config holds the Elasticsearch configuration.
-                      type: Any
+                      type: object
                     count:
                       description: Count of Elasticsearch nodes to deploy.
                       format: int32

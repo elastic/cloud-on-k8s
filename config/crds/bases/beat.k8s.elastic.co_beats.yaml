@@ -66,7 +66,7 @@ spec:
             config:
               description: Config holds the Beat configuration. At most one of [`Config`,
                 `ConfigRef`] can be specified.
-              type: Any
+              type: object
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Beat configuration. Beat settings must be specified

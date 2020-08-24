@@ -58,7 +58,7 @@ spec:
           properties:
             config:
               description: Config holds the Enterprise Search configuration.
-              type: Any
+              type: object
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Enterprise Search configuration. Configuration

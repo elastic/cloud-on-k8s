@@ -60,7 +60,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
-                type: Any
+                type: object
               count:
                 description: Count of Kibana instances to deploy.
                 format: int32
@@ -6343,7 +6343,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
-                type: Any
+                type: object
               count:
                 description: Count of Kibana instances to deploy.
                 format: int32
