@@ -42,12 +42,16 @@ func NewFakeLogStreamProvider(data []byte, stop chan<- struct{}, withError bool)
 	}
 }
 
-func (usp *FakeLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
+func (f *FakeLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
 	return &FakeLogStream{
-		FakeLogStreamProvider: usp,
+		FakeLogStreamProvider: f,
 		pos:                   0,
-		reader:                bytes.NewReader(usp.data),
+		reader:                bytes.NewReader(f.data),
 	}, nil
+}
+
+func (f *FakeLogStreamProvider) String() string {
+	return "test_pod"
 }
 
 // Read reads the underlying bytes or returns an error when half of the stream has been sent
@@ -80,12 +84,10 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 	require.NoError(t, err)
 	streamProvider := NewFakeLogStreamProvider(sampleLogs, stopLogStream, true)
 
-	h := &helper{}
 	streamErrors := make(chan error, 4096)
 	writer := bytes.NewBuffer([]byte{})
-	h.streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream, "test_pod")
+	streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
 
-	// Check that the data written are the
 	got, err := ioutil.ReadAll(writer)
 	require.NoError(t, err)
 
@@ -93,6 +95,7 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 	errorCount := len(streamErrors)
 	assert.Equal(t, 1, errorCount)
 
+	// Check that the data are the expected ones
 	assert.Equal(t, sampleLogs, got)
 }
 
@@ -105,10 +108,9 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 	require.NoError(t, err)
 	streamProvider := NewFakeLogStreamProvider(sampleLogs, stopLogStream, false)
 
-	h := &helper{}
 	streamErrors := make(chan error, 4096)
 	writer := bytes.NewBuffer([]byte{})
-	h.streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream, "test_pod")
+	streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
 
 	// Check that the data written are the
 	got, err := ioutil.ReadAll(writer)

@@ -455,7 +455,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 							pod:       newPod.Name,
 							namespace: h.testContext.E2ENamespace,
 						}
-						h.streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream, newPod.Name)
+						streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
 						logStreamWg.Done()
 					}()
 				} else {
@@ -504,6 +504,7 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 }
 
 type LogStreamProvider interface {
+	fmt.Stringer
 	NewLogStream() (io.ReadCloser, error)
 }
 
@@ -512,7 +513,7 @@ type PodLogStreamProvider struct {
 	pod, namespace string
 }
 
-func (ksp PodLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
+func (p PodLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
 	sinceSeconds := int64(60 * 5)
 	opts := &corev1.PodLogOptions{
 		Container:    "e2e",
@@ -521,16 +522,19 @@ func (ksp PodLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
 		Timestamps:   false,
 	}
 
-	req := ksp.client.CoreV1().Pods(ksp.namespace).GetLogs(ksp.pod, opts)
+	req := p.client.CoreV1().Pods(p.namespace).GetLogs(p.pod, opts)
 	return req.Stream(context.Background())
 }
 
-func (h *helper) streamTestJobOutput(
+func (p PodLogStreamProvider) String() string {
+	return p.pod
+}
+
+func streamTestJobOutput(
 	streamProvider LogStreamProvider,
 	writer io.Writer,
 	streamErrors chan<- error,
 	stop <-chan struct{},
-	pod string,
 ) {
 	// The log stream may end abruptly in some environments where the network isn't reliable.
 	// Let's retry when that happens. To avoid duplicate log entries, keep track of the last
@@ -543,7 +547,7 @@ func (h *helper) streamTestJobOutput(
 			log.Info("Log stream stopped")
 			return
 		default:
-			log.Info("Streaming pod logs", "name", pod)
+			log.Info("Streaming pod logs", "name", streamProvider)
 			stream, err := streamProvider.NewLogStream()
 			if err != nil {
 				streamErrors <- err
