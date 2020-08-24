@@ -44,7 +44,7 @@ func extractConfig(stream io.Reader) (string, error) {
 		yamlBytes, err := yamlReader.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return "", fmt.Errorf("failed to find key %s in config map %s", keyName, configMapName)
+				return "", fmt.Errorf("failed to find ConfigMap named %s", configMapName)
 			}
 
 			return "", fmt.Errorf("failed to read YAML: %w", err)
