@@ -19,7 +19,7 @@ This section covers the following topics:
 [id="{p}-nodesets"]
 == NodeSets overview
 
-NodeSets are used to specify the Elasticsearch cluster. Each NodeSet represents a group of Elasticsearch nodes that share the same specification, both Elasticsearch configuration and Kubernetes Pod configuration.
+NodeSets are used to specify the topology of the Elasticsearch cluster. Each NodeSet represents a group of Elasticsearch nodes that share the same Elasticsearch configuration and Kubernetes Pod configuration.
 
 [source,yaml,subs="attributes"]
 ----
