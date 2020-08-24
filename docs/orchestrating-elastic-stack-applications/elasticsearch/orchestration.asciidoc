@@ -164,7 +164,7 @@ If the above conditions are met, then ECK can delete a Pod for upgrade even if t
 
 The health of the cluster is deliberately ignored in the following cases:
 
-** Is all the Elasticsearch nodes of a NodeSet are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the NodeSet.
+** If all the Elasticsearch nodes of a NodeSet are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the NodeSet.
 ** If an Elasticsearch node to upgrade is not healthy, and not part of the Elasticsearch cluster, the operator ignores the cluster health and upgrades the Elasticsearch node.
 
 * Elasticsearch versions cannot be downgraded. For example, it is impossible to downgrade an existing cluster from version 7.3.0 to 7.2.0. This is not supported by Elasticsearch.
@@ -176,4 +176,3 @@ Specifically, if the Elasticsearch index settings demand a higher number of shar
 
 ** Adjust the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-update-settings.html[index settings] to a number of replicas that allow the desired node removal.
 ** Use link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#dynamic-index-settings[`auto_expand_replicas`] to automatically adjust the replicas to the number of data nodes in the cluster.
-
