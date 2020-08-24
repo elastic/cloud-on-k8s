@@ -24,7 +24,7 @@ spec:
     description: Beat type
     name: type
     type: string
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Beat version
     name: version
     type: string

@@ -8,21 +8,6 @@ metadata:
   creationTimestamp: null
   name: kibanas.kibana.k8s.elastic.co
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.health
-    name: health
-    type: string
-  - JSONPath: .status.availableNodes
-    description: Available nodes
-    name: nodes
-    type: integer
-  - JSONPath: .spec.version
-    description: Kibana version
-    name: version
-    type: string
-  - JSONPath: .metadata.creationTimestamp
-    name: age
-    type: date
   group: kibana.k8s.elastic.co
   names:
     categories:
@@ -38,7 +23,22 @@ spec:
     status: {}
   version: v1
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .status.version
+      description: Kibana version
+      name: version
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: Kibana represents a Kibana resource in a Kubernetes cluster.
@@ -6321,7 +6321,22 @@ spec:
         type: object
     served: true
     storage: true
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - JSONPath: .status.health
+      name: health
+      type: string
+    - JSONPath: .status.availableNodes
+      description: Available nodes
+      name: nodes
+      type: integer
+    - JSONPath: .spec.version
+      description: Kibana version
+      name: version
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: Kibana represents a Kibana resource in a Kubernetes cluster.

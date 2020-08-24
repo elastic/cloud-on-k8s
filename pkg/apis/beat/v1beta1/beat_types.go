@@ -127,7 +127,7 @@ const (
 // +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
 // +kubebuilder:printcolumn:name="type",type="string",JSONPath=".spec.type",description="Beat type"
-// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Beat version"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Beat version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:storageversion
 type Beat struct {

@@ -14,7 +14,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: APM version
     name: version
     type: string
@@ -494,7 +494,7 @@ spec:
     description: Beat type
     name: type
     type: string
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Beat version
     name: version
     type: string
@@ -705,7 +705,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Elasticsearch version
     name: version
     type: string
@@ -1780,7 +1780,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Enterprise Search version
     name: version
     type: string
@@ -2197,7 +2197,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Kibana version
     name: version
     type: string
