@@ -93,7 +93,7 @@ ECK orchestrates NodeSet changes with no downtime and makes sure that:
 **  `discovery.zen.minimum_master_nodes`
 **  `_cluster/voting_config_exclusions`
 
-*  Rolling upgrades are performed safely, reusing the PersistentVolumes of the upgraded Elasticsearch nodes.
+*  Rolling upgrades are performed safely with existing PersistentVolumes reused where possible.
 
 [id="{p}-statefulsets"]
 == StatefulSets orchestration
