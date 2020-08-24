@@ -142,7 +142,7 @@ In all these cases, ECK handles StatefulSet operations according to the Elastics
 [id="{p}-orchestration-limitations"]
 == Limitations
 
-Based on how Kubernetes and StatefulSets operate, ECK orchestration has the following limitations:
+Due to relying on Kubernetes primitives such as StatefulSets, the ECK orchestration process has some inherent limitations.
 
 * Storage requirements (including volume size) of an existing NodeSet cannot be updated. link:https://github.com/kubernetes/enhancements/issues/661[StatefulSet volumes expansion] is not available in Kubernetes yet. To upgrade the storage size, you can create a new NodeSet, or rename an existing one. Renaming a NodeSet automatically creates a new StatefulSet with the specified storage size. The original StatefulSet is removed once the Elasticsearch data is migrated to the nodes of the new StatefulSet.
 
