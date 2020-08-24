@@ -146,7 +146,7 @@ Due to relying on Kubernetes primitives such as StatefulSets, the ECK orchestrat
 
 * Storage requirements (including volume size) of an existing NodeSet cannot be updated. link:https://github.com/kubernetes/enhancements/issues/661[StatefulSet volumes expansion] is not available in Kubernetes yet. To upgrade the storage size, you can add a new NodeSet or modify an existing one by renaming it first. Changing the name of the NodeSet  triggers the creation of a new StatefulSet which will then inherit the newly updated storage size as well. ECK will ensure that the data from the old StatefulSet is migrated to the new one before the old one is deleted.
 
-* Cluster availability is not guaranteed in the following cases:
+* Cluster availability during rolling upgrades is not guaranteed for the following cases:
 
 ** Single-node clusters
 ** Clusters containing indices with no replicas
