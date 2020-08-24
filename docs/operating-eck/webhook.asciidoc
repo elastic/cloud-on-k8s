@@ -50,9 +50,9 @@ You can customise almost all aspects of the webhook setup by changing the <<{p}-
 |Configuration option | Default value |Description
 |enable-webhook       | false   | This must be set to `true` to enable the webhook server.
 |manage-webhook-certs | true    | Set to `false` to disable auto-generating the certificate for the webhook. If disabled, you must provide your own certificates using one of the methods described later in this document.
-|webhook-cert-dir     | /tmp/k8s-webhook-server/serving-certs | Path to mount the certificate
-|webhook-name         | elastic-webhook.k8s.elastic.co | Name of the `ValidatingWebhookConfiguration`. As webhook configurations are cluster resources (not restricted to a single namespace), this allows you to run multiple copies of the operator with each instance having its own webhook.
-|webhook-secret       | elastic-webhook-server-cert | Name of the secret containing the certificate for the webhook server
+|webhook-cert-dir     | /tmp/k8s-webhook-server/serving-certs | Path to mount the certificate.
+|webhook-name         | elastic-webhook.k8s.elastic.co | Name of the `ValidatingWebhookConfiguration` resource.
+|webhook-secret       | elastic-webhook-server-cert | Name of the secret containing the certificate for the webhook server.
 |===
 
 
