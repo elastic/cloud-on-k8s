@@ -98,7 +98,7 @@ ECK orchestrates NodeSet changes with no downtime and makes sure that:
 [id="{p}-statefulsets"]
 == StatefulSets orchestration
 
-Behind the scenes, ECK translates each NodeSet specified in the Elasticsearch resource into a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSet in Kubernetes]. The StatefulSet specification is based on the NodeSet specification:
+Behind the scenes, ECK translates each NodeSet specified in the Elasticsearch resource into a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSet in Kubernetes]. The NodeSet specification is based on the StatefulSet specification:
 
 * `count` corresponds to the number of replicas in the StatefulSet. A StatefulSet replica is a Pod -- which corresponds to an Elasticsearch node.
 * `podTemplate` can be used to specify  <<{p}-customize-pods,custom settings>> for the Elasticsearch Pod, overriding the default ones set by ECK on the generated StatefulSet specification.
