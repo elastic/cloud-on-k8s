@@ -76,7 +76,7 @@ ECK handles smooth upgrades from one cluster specification to another. You can a
 
 *  Add five additional Elasticsearch data nodes: In `data-nodes` change the value in the `count` field from 10 to 15.
 
-*  Increase the RAM memory limit of data nodes to 32Gi: Set a link:k8s-managing-compute-resources.html[different resources limit] in the existing `data-nodes` NodeSet.
+*  Increase the memory limit of data nodes to 32Gi: Set a <<{p}-managing-compute-resources,different resource limit>> in the existing `data-nodes` NodeSet.
 
 * Replace dedicated master and dedicated data nodes with nodes having both master and data roles: Replace the two existing NodeSets by a single one with a different name and the appropriate Elasticsearch configuration settings.
 
