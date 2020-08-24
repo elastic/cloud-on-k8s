@@ -148,9 +148,8 @@ Based on how Kubernetes and StatefulSets operate, ECK orchestration has the foll
 
 * Cluster availability is not guaranteed in the following cases:
 
-** During the rolling upgrade of single-node clusters
-
-** For clusters that have indices with no replicas
+** Single-node clusters
+** Clusters containing indices with no replicas
 
 If an Elasticsearch node holds the only copy of a shard, this shard becomes unavailable while the node is upgraded. Clusters with more than one node and at least one replica per index are recommended.
 
