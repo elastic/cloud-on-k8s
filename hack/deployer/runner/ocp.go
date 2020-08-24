@@ -188,7 +188,7 @@ func (d *OcpDriver) Execute() error {
 func (d *OcpDriver) auth() error {
 	if d.plan.ServiceAccount {
 		if d.plan.VaultInfo == nil {
-			return errors.New("Vault auth info is required")
+			return errors.New("vault auth info is required")
 		}
 
 		log.Println("Authenticating as service account...")
