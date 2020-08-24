@@ -538,7 +538,7 @@ func streamTestJobOutput(
 ) {
 	// The log stream may end abruptly in some environments where the network isn't reliable.
 	// Let's retry when that happens. To avoid duplicate log entries, keep track of the last
-	// Kubernetes log timestamp: we don't want to reprocess entries with a lower timestamp.
+	// test log timestamp: we don't want to reprocess entries with a lower timestamp.
 	// If the stream drops in between several logs that share the same timestamp, the second half will be lost.
 	lastTimestamp := time.Time{}
 	for {

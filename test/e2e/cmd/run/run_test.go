@@ -112,7 +112,7 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 	writer := bytes.NewBuffer([]byte{})
 	streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
 
-	// Check that the data written are the
+	// Check that the data are the expected ones
 	got, err := ioutil.ReadAll(writer)
 	require.NoError(t, err)
 
@@ -138,6 +138,20 @@ func Test_parseLog(t *testing.T) {
 				line: `{"Time":"2020-08-19T07:55:30.02987855Z","Action":"output","Package":"github.com/elastic/cloud-on-k8s/test/e2e/beat","Test":"TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready","Output":"=== RUN   TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready\n"}`,
 			},
 			want: time.Date(2020, time.August, 19, 07, 55, 30, 29878550, time.UTC),
+		},
+		{
+			name: "corrupted timestamp",
+			args: args{
+				line: `{"Time":"2020-08-19T07:55:30.02987855Z2020-08-19T07:55:30.02987855Z","Output":"=== RUN   TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready\n"}`,
+			},
+			wantErr: true,
+		},
+		{
+			name: "corrupted json",
+			args: args{
+				line: `{"Time":"2020-08-19T07:55:30.02987855Z,"Output":"=== RUN   TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready\n"}`,
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
