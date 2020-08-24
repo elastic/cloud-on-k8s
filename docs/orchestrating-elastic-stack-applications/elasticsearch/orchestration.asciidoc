@@ -124,7 +124,7 @@ ECK increases the replicas of the corresponding StatefulSet.
 ECK migrates data away from the Elasticsearch nodes due to be removed and then decreases the replicas of the corresponding StatefulSet. <<{p}-volume-claim-templates,PersistentVolumeClaims>> belonging to the removed nodes are automatically removed as well.
 * An existing NodeSet is removed.
 +
-ECK migrates data away from the corresponding Elasticsearch nodes to be removed, decreases the StatefulSet replicas accordingly, and removes the corresponding StatefulSet.
+ECK migrates data away from the Elasticsearch nodes in the NodeSet and removes the underlying StatefulSet.
 * The specification of an existing NodeSet is updated. For example, the Elasticsearch configuration, or the PodTemplate resources requirements.
 +
 ECK performs a rolling upgrade of the corresponding Elasticsearch nodes. To do so, it follows link:https://www.elastic.co/guide/en/elasticsearch/reference/current/rolling-upgrades.html[Elasticsearch rolling upgrade best practices], to slowly upgrade Pods to the newest revision while preventing unavailability of the Elasticsearch cluster. In most cases, it corresponds to restarting Elasticsearch nodes one by one and reusing the same PersistentVolume data. Note that some cluster topologies may cause the cluster to be unavailable during the upgrade. See the <<{p}-orchestration-limitations,Limitations>> section.
