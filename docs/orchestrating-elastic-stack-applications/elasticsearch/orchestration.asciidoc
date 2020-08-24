@@ -111,7 +111,7 @@ When a Pod is removed and recreated (maybe with a newer revision), the StatefulS
 [id="{p}-upgrade-patterns"]
 == Cluster upgrade patterns
 
-Depending on how the NodeSets are updated, ECK handles the Kubernetes resources reconciliation in various ways.
+Depending on how the NodeSets are updated, ECK handles the Kubernetes resource reconciliation in various ways.
 
 * A new NodeSet is added to the Elasticsearch resource.
 +
