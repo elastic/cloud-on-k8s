@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: apmservers.apm.k8s.elastic.co
 spec:
@@ -55,7 +55,7 @@ spec:
           properties:
             config:
               description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
-              type: object
+              type: Any
             count:
               description: Count of APM Server instances to deploy.
               format: int32
@@ -474,7 +474,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: beats.beat.k8s.elastic.co
 spec:
@@ -536,7 +536,7 @@ spec:
             config:
               description: Config holds the Beat configuration. At most one of [`Config`,
                 `ConfigRef`] can be specified.
-              type: object
+              type: Any
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Beat configuration. Beat settings must be specified
@@ -693,7 +693,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
@@ -1063,7 +1063,7 @@ spec:
                 properties:
                   config:
                     description: Config holds the Elasticsearch configuration.
-                    type: object
+                    type: Any
                   count:
                     description: Count of Elasticsearch nodes to deploy.
                     format: int32
@@ -1768,7 +1768,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
@@ -1822,7 +1822,7 @@ spec:
           properties:
             config:
               description: Config holds the Enterprise Search configuration.
-              type: object
+              type: Any
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Enterprise Search configuration. Configuration
@@ -2185,7 +2185,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: kibanas.kibana.k8s.elastic.co
 spec:
@@ -2238,7 +2238,7 @@ spec:
           properties:
             config:
               description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
-              type: object
+              type: Any
             count:
               description: Count of Kibana instances to deploy.
               format: int32
