@@ -85,7 +85,7 @@ openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 365 -subj "/CN=elastic-w
 kubectl create secret -n elastic-system generic elastic-webhook-server-custom-cert --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
 ----
 
-- Encode your CA trust chain as base64 and set it as the value of `caBundle` fields in the `ValidatingWebhookConfiguration`. Note that there are multiple `caBundle` fields in the webhook configuration.
+- Encode your CA trust chain as base64 and set it as the value of the `caBundle` fields in the `ValidatingWebhookConfiguration`. Note that there are multiple `caBundle` fields in the webhook configuration.
 
 - Install the operator with the following options:
 +
