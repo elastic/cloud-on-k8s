@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -179,16 +180,13 @@ func (r *ReconcileTrials) startTrialActivation() error {
 
 func (r *ReconcileTrials) completeTrialActivation(license types.NamespacedName) (reconcile.Result, error) {
 	if r.trialState.CompleteTrialActivation() {
+
 		expectedStatus, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		var existingStatus corev1.Secret
-		if err := r.Get(k8s.ExtractNamespacedName(&expectedStatus), &existingStatus); err != nil {
-			return reconcile.Result{}, err
-		}
-		expectedStatus.ResourceVersion = existingStatus.ResourceVersion
-		return reconcile.Result{}, r.Update(&expectedStatus)
+		_, err = reconciler.ReconcileSecret(r, expectedStatus, nil)
+		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
