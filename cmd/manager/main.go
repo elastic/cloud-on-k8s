@@ -218,7 +218,7 @@ func Command() *cobra.Command {
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
-	Cmd.Flags().Bool(
+	cmd.Flags().Bool(
 		operator.SetDefaultSecurityContextFlag,
 		true,
 		"Enables setting the default security context of Elasticsearch 8.0+ Pods, ignored pre-8.0",

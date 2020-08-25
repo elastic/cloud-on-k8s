@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -24,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 const (
@@ -61,7 +61,7 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	if ver.IsSameOrAfter(version.MinDefaultFSGroupVersion) && setDefaultSecurityContext {
+	if ver.IsSameOrAfter(version.MinDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			FSGroup: pointer.Int64(defaultFsGroup),
 		})

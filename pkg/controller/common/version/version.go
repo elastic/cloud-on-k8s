@@ -24,8 +24,8 @@ var (
 )
 
 var (
-	// MinDefaultFSGroupVersion is the minimal version for which the operator will inspect DefaultFSGroup flag.
-	MinDefaultFSGroupVersion = MustParse("8.0.0")
+	// MinDefaultSecurityContextVersion is the minimal version for which the operator will inspect set-default-security-context flag.
+	MinDefaultSecurityContextVersion = MustParse("8.0.0")
 )
 
 // MinMaxVersion holds the minimum and maximum supported versions.
