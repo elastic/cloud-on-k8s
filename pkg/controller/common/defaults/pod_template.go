@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -298,16 +297,6 @@ func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuil
 	if b.PodTemplate.Spec.AutomountServiceAccountToken == nil {
 		t := true
 		b.PodTemplate.Spec.AutomountServiceAccountToken = &t
-	}
-	return b
-}
-
-func (b *PodTemplateBuilder) WithFsGroup(defaultFsGroup int64) *PodTemplateBuilder {
-	if b.PodTemplate.Spec.SecurityContext == nil {
-		b.PodTemplate.Spec.SecurityContext = &corev1.PodSecurityContext{}
-	}
-	if b.PodTemplate.Spec.SecurityContext.FSGroup == nil {
-		b.PodTemplate.Spec.SecurityContext.FSGroup = pointer.Int64(defaultFsGroup)
 	}
 	return b
 }

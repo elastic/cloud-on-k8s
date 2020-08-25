@@ -38,7 +38,7 @@ func BuildExpectedResources(
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
-	setDefaultFsGroup bool,
+	setDefaultSecurityContext bool,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
@@ -59,7 +59,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultFsGroup)
+		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
 		if err != nil {
 			return nil, err
 		}

@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -35,7 +36,7 @@ func BuildPodTemplateSpec(
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
-	setDefaultFsGroup bool,
+	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
 	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
@@ -60,8 +61,10 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	if ver.IsSameOrAfter(version.MinDefaultFSGroupVersion) && setDefaultFsGroup {
-		builder = builder.WithFsGroup(defaultFsGroup)
+	if ver.IsSameOrAfter(version.MinDefaultFSGroupVersion) && setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
+			FSGroup: pointer.Int64(defaultFsGroup),
+		})
 	}
 
 	builder = builder.

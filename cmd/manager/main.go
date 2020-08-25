@@ -175,9 +175,9 @@ func init() {
 		fmt.Sprintf("Name of the Kubernetes ValidatingWebhookConfiguration resource (defaults to %s). Only used when enable-webhook is true.", DefaultWebhookConfigurationName),
 	)
 	Cmd.Flags().Bool(
-		operator.SetDefaultFsGroupFlag,
+		operator.SetDefaultSecurityContextFlag,
 		true,
-		"Enables setting the default filesystem group in Pods security context on ES 8.0+",
+		"Enables setting the default security context of Elasticsearch 8.0+ Pods, ignored pre-8.0",
 	)
 
 	// enable using dashed notation in flags and underscores in env
@@ -326,9 +326,9 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-		MaxConcurrentReconciles: viper.GetInt(operator.MaxConcurrentReconcilesFlag),
-		SetDefaultFsGroup:       viper.GetBool(operator.SetDefaultFsGroupFlag),
-		Tracer:                  tracer,
+		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
+		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
+		Tracer:                    tracer,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
