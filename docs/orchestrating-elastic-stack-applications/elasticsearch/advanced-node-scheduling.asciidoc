@@ -67,7 +67,7 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodesSets:
+  nodeSets:
   - name: default
     count: 3
     podTemplate:

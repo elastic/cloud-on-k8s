@@ -214,10 +214,10 @@ func (h *helper) initTestSecrets() error {
 		}
 
 		monitoringSecrets := struct {
-			MonitoringIP   string `json:"monitoringIp"`
-			MonitoringUser string `json:"monitoringUser"`
-			MonitoringPass string `json:"monitoringPass"`
-			MonitoringCa   string `json:"monitoringCa"`
+			MonitoringIP   string `json:"monitoring_ip"`
+			MonitoringUser string `json:"monitoring_user"`
+			MonitoringPass string `json:"monitoring_pass"`
+			MonitoringCA   string `json:"monitoring_ca"`
 			APMServerCert  string `json:"apm_server_cert"`
 			APMSecretToken string `json:"apm_secret_token"`
 			APMServerURL   string `json:"apm_server_url"`
@@ -227,10 +227,10 @@ func (h *helper) initTestSecrets() error {
 			return fmt.Errorf("unmarshal %v, %w", h.monitoringSecrets, err)
 		}
 
-		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIP
-		h.testSecrets["monitoring-user"] = monitoringSecrets.MonitoringUser
-		h.testSecrets["monitoring-pass"] = monitoringSecrets.MonitoringPass
-		h.testSecrets["monitoring-ca"] = monitoringSecrets.MonitoringCa
+		h.testSecrets["monitoring_ip"] = monitoringSecrets.MonitoringIP
+		h.testSecrets["monitoring_user"] = monitoringSecrets.MonitoringUser
+		h.testSecrets["monitoring_pass"] = monitoringSecrets.MonitoringPass
+		h.testSecrets["monitoring_ca"] = monitoringSecrets.MonitoringCA
 
 		h.operatorSecrets = map[string]string{}
 		h.operatorSecrets["apm_server_cert"] = monitoringSecrets.APMServerCert
@@ -439,7 +439,23 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 
 					logStreamWg.Add(1)
 					go func() {
-						h.streamTestJobOutput(streamErrors, stopLogStream, client, newPod.Name)
+						outputs := []io.Writer{os.Stdout}
+						if h.logToFile {
+							jl, err := newJSONLogToFile(testsLogFile)
+							if err != nil {
+								log.Error(err, "Failed to create log file for test output")
+								return
+							}
+							defer jl.Close()
+							outputs = append(outputs, jl)
+						}
+						writer := io.MultiWriter(outputs...)
+						streamProvider := &PodLogStreamProvider{
+							client:    client,
+							pod:       newPod.Name,
+							namespace: h.testContext.E2ENamespace,
+						}
+						streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
 						logStreamWg.Done()
 					}()
 				} else {
@@ -487,22 +503,42 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	return err
 }
 
-func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan struct{}, client *kubernetes.Clientset, pod string) {
-	outputs := []io.Writer{os.Stdout}
-	if h.logToFile {
-		jl, err := newJSONLogToFile(testsLogFile)
-		if err != nil {
-			log.Error(err, "Failed to create log file for test output")
-			return
-		}
-		defer jl.Close()
-		outputs = append(outputs, jl)
-	}
-	writer := io.MultiWriter(outputs...)
+type LogStreamProvider interface {
+	fmt.Stringer
+	NewLogStream() (io.ReadCloser, error)
+}
 
+type PodLogStreamProvider struct {
+	client         *kubernetes.Clientset
+	pod, namespace string
+}
+
+func (p PodLogStreamProvider) NewLogStream() (io.ReadCloser, error) {
+	sinceSeconds := int64(60 * 5)
+	opts := &corev1.PodLogOptions{
+		Container:    "e2e",
+		Follow:       true,
+		SinceSeconds: &sinceSeconds,
+		Timestamps:   false,
+	}
+
+	req := p.client.CoreV1().Pods(p.namespace).GetLogs(p.pod, opts)
+	return req.Stream(context.Background())
+}
+
+func (p PodLogStreamProvider) String() string {
+	return p.pod
+}
+
+func streamTestJobOutput(
+	streamProvider LogStreamProvider,
+	writer io.Writer,
+	streamErrors chan<- error,
+	stop <-chan struct{},
+) {
 	// The log stream may end abruptly in some environments where the network isn't reliable.
 	// Let's retry when that happens. To avoid duplicate log entries, keep track of the last
-	// Kubernetes log timestamp: we don't want to reprocess entries with a lower timestamp.
+	// test log timestamp: we don't want to reprocess entries with a lower timestamp.
 	// If the stream drops in between several logs that share the same timestamp, the second half will be lost.
 	lastTimestamp := time.Time{}
 	for {
@@ -511,8 +547,8 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 			log.Info("Log stream stopped")
 			return
 		default:
-			log.Info("Streaming pod logs", "name", pod)
-			stream, err := getLogStream(client, pod, h.testContext.E2ENamespace)
+			log.Info("Streaming pod logs", "name", streamProvider)
+			stream, err := streamProvider.NewLogStream()
 			if err != nil {
 				streamErrors <- err
 				continue // retry
@@ -524,7 +560,7 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 			for scan.Scan() {
 				line := scan.Bytes()
 
-				timestamp, logLine, err := parseLog(string(line))
+				timestamp, err := parseLog(line)
 				if err != nil {
 					streamErrors <- err
 					continue
@@ -538,42 +574,36 @@ func (h *helper) streamTestJobOutput(streamErrors chan<- error, stop <-chan stru
 				// new log to process
 				pastPreviousLogStream = true
 				lastTimestamp = timestamp
-				if _, err := writer.Write([]byte(logLine + "\n")); err != nil {
+				if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
 					streamErrors <- err
 					return
 				}
 			}
-			log.Info("Log stream ended")
+			if err := scan.Err(); err != nil {
+				log.Error(err, "Log stream ended")
+			} else {
+				log.Info("Log stream ended")
+			}
 			// retry
 		}
 	}
 }
 
-func getLogStream(client *kubernetes.Clientset, pod string, namespace string) (io.ReadCloser, error) {
-	sinceSeconds := int64(30)
-	opts := &corev1.PodLogOptions{
-		Container:    "e2e",
-		Follow:       true,
-		SinceSeconds: &sinceSeconds,
-		Timestamps:   true,
-	}
-
-	req := client.CoreV1().Pods(namespace).GetLogs(pod, opts)
-	return req.Stream(context.Background())
+type LogLine struct {
+	Time string
 }
 
-func parseLog(line string) (time.Time, string, error) {
-	// format: <date> <log>
-	// example: 2020-07-02T13:29:47.671331815Z my log here
-	splits := strings.SplitN(line, " ", 2)
-	if len(splits) != 2 {
-		return time.Time{}, "", fmt.Errorf("cannot parse timestamp in %s", line)
+// parseLog extract the timestamp from a log, it is expected that the line is well formatted jsonline
+func parseLog(line []byte) (time.Time, error) {
+	var logLine LogLine
+	if err := json.Unmarshal(line, &logLine); err != nil {
+		return time.Time{}, err
 	}
-	timestamp, err := time.Parse(time.RFC3339Nano, splits[0])
+	timestamp, err := time.Parse(time.RFC3339Nano, logLine.Time)
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, err
 	}
-	return timestamp, splits[1], nil
+	return timestamp, nil
 }
 
 func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {

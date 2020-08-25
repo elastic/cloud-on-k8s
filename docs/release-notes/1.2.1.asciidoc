@@ -1,0 +1,25 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.2.1]]
+== {n} version 1.2.1
+
+
+
+
+[[enhancement-1.2.1]]
+[float]
+=== Enhancements
+
+* Add support for keystore with Kibana 7.9.0 {pull}3566[#3566] (issue: {issue}3528[#3528])
+
+[[bug-1.2.1]]
+[float]
+=== Bug fixes
+
+* Avoid pollution of map constants via defensive copy {pull}3599[#3599]
+* Fix filebeat securityContext in recipes {pull}3596[#3596]
+* Check if CA Secret is expected before validating its name {pull}3527[#3527] (issue: {issue}3523[#3523])
+* Fix memory corruption from pod template validation {pull}3524[#3524] (issue: {issue}3421[#3421])
+
+

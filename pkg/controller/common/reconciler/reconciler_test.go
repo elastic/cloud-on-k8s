@@ -10,10 +10,12 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,9 +23,9 @@ import (
 )
 
 func withoutControllerRef(obj runtime.Object) runtime.Object {
-	copy := obj.DeepCopyObject()
-	copy.(metav1.Object).SetOwnerReferences(nil)
-	return copy
+	copied := obj.DeepCopyObject()
+	copied.(metav1.Object).SetOwnerReferences(nil)
+	return copied
 }
 
 func noopModifier() {}
@@ -41,25 +43,28 @@ func (w wrong) DeepCopyObject() runtime.Object {
 var _ runtime.Object = wrong{}
 
 func TestReconcileResource(t *testing.T) {
+	true := true
+
+	objectKey := types.NamespacedName{Name: "test", Namespace: "foo"}
+	obj := &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(objectKey)}
 
 	type args struct {
 		Expected         runtime.Object
 		Reconciled       runtime.Object
+		Owner            metav1.Object
 		NeedsUpdate      func() bool
 		UpdateReconciled func()
 	}
 
-	objectKey := types.NamespacedName{Name: "test", Namespace: "foo"}
-	obj := &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(objectKey)}
 	secretData := map[string][]byte{"bar": []byte("shush")}
 
 	tests := []struct {
-		name            string
-		args            func() args
-		initialObjects  []runtime.Object
-		argAssertion    func(args args)
-		errorAssertion  func(err error)
-		clientAssertion func(c k8s.Client)
+		name                 string
+		args                 func() args
+		initialObjects       []runtime.Object
+		argAssertion         func(args args)
+		exptectedErrorMsg    string
+		serverStateAssertion func(serverState corev1.Secret)
 	}{
 		{
 			name: "Error: Expected must not be nil",
@@ -72,9 +77,7 @@ func TestReconcileResource(t *testing.T) {
 					},
 				}
 			},
-			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "Expected must not be nil")
-			},
+			exptectedErrorMsg: "Expected must not be nil",
 		},
 		{
 			name: "Error: NeedsUpdate must not be nil",
@@ -85,9 +88,7 @@ func TestReconcileResource(t *testing.T) {
 					UpdateReconciled: noopModifier,
 				}
 			},
-			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "NeedsUpdate must not be nil")
-			},
+			exptectedErrorMsg: "NeedsUpdate must not be nil",
 		},
 		{
 			name: "Error: Reconcile must not be nil",
@@ -96,9 +97,7 @@ func TestReconcileResource(t *testing.T) {
 					Expected: obj.DeepCopy(),
 				}
 			},
-			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "Reconciled must not be nil")
-			},
+			exptectedErrorMsg: "Reconciled must not be nil",
 		},
 		{
 			name: "Error: UpdateReconciled must be defined",
@@ -108,9 +107,7 @@ func TestReconcileResource(t *testing.T) {
 					Reconciled: &corev1.Secret{},
 				}
 			},
-			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "UpdateReconciled must not be nil")
-			},
+			exptectedErrorMsg: "UpdateReconciled must not be nil",
 		},
 		{
 			name: "Error: Expected needs to implement runtime.Object and meta.Object",
@@ -124,9 +121,7 @@ func TestReconcileResource(t *testing.T) {
 					},
 				}
 			},
-			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "object does not implement the Object interfaces")
-			},
+			exptectedErrorMsg: "object does not implement the Object interfaces",
 		},
 		{
 			name: "Create resource if not found",
@@ -141,10 +136,8 @@ func TestReconcileResource(t *testing.T) {
 					},
 				}
 			},
-			clientAssertion: func(c k8s.Client) {
-				var found corev1.Secret
-				assert.NoError(t, c.Get(objectKey, &found))
-				diff := comparison.Diff(obj, withoutControllerRef(&found))
+			serverStateAssertion: func(serverState corev1.Secret) {
+				diff := comparison.Diff(obj, withoutControllerRef(&serverState))
 				assert.Empty(t, diff)
 			},
 			argAssertion: func(args args) {
@@ -205,10 +198,8 @@ func TestReconcileResource(t *testing.T) {
 				// should be unchanged
 				assert.Equal(t, "be quiet", string(args.Expected.(*corev1.Secret).Data["bar"]))
 			},
-			clientAssertion: func(c k8s.Client) {
-				var found corev1.Secret
-				assert.NoError(t, c.Get(objectKey, &found))
-				assert.Equal(t, "be quiet", string(found.Data["bar"]))
+			serverStateAssertion: func(serverState corev1.Secret) {
+				assert.Equal(t, "be quiet", string(serverState.Data["bar"]))
 			},
 		},
 		{
@@ -250,11 +241,46 @@ func TestReconcileResource(t *testing.T) {
 				// should be updated to the server state
 				assert.Equal(t, "other", args.Reconciled.(*corev1.Secret).Labels["label"])
 			},
-			clientAssertion: func(c k8s.Client) {
-				var found corev1.Secret
-				assert.NoError(t, c.Get(objectKey, &found))
+			serverStateAssertion: func(serverState corev1.Secret) {
 				// should be unchanged as it is ignored by the custom differ
-				assert.Equal(t, "other", found.Labels["label"])
+				assert.Equal(t, "other", serverState.Labels["label"])
+			},
+		},
+		{
+			name: "Update owner reference if changed",
+			args: func() args {
+				return args{
+					Expected:   obj.DeepCopy(),
+					Reconciled: &corev1.Secret{},
+					Owner: &appsv1.Deployment{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: objectKey.Namespace,
+							Name:      "newOwner",
+						},
+					},
+					NeedsUpdate: func() bool {
+						return true
+					},
+					// owner reference update should happen automatically, so noop is OK
+					UpdateReconciled: noopModifier,
+				}
+			},
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       objectKey.Namespace,
+						Name:            objectKey.Name,
+						OwnerReferences: []metav1.OwnerReference{{Name: "oldOwner", Controller: &true}},
+					},
+				},
+			},
+			argAssertion: func(args args) {
+				accessor, err := meta.Accessor(args.Reconciled)
+				require.NoError(t, err)
+				require.Equal(t, "newOwner", accessor.GetOwnerReferences()[0].Name)
+			},
+			serverStateAssertion: func(serverState corev1.Secret) {
+				require.Equal(t, "newOwner", serverState.OwnerReferences[0].Name)
 			},
 		},
 	}
@@ -265,7 +291,7 @@ func TestReconcileResource(t *testing.T) {
 			args := tt.args()
 			p := Params{
 				Client:           client,
-				Owner:            &appsv1.Deployment{}, //just a dummy
+				Owner:            args.Owner,
 				Expected:         args.Expected,
 				Reconciled:       args.Reconciled,
 				NeedsUpdate:      args.NeedsUpdate,
@@ -273,15 +299,17 @@ func TestReconcileResource(t *testing.T) {
 			}
 
 			err := ReconcileResource(p)
-			if (err != nil) != (tt.errorAssertion != nil) {
-				t.Errorf("ReconcileResource() error = %v, wantErr %v", err, tt.errorAssertion != nil)
+			if (err != nil) != (tt.exptectedErrorMsg != "") {
+				t.Errorf("ReconcileResource() error = %v, wantErr %v", err, tt.exptectedErrorMsg != "")
 				return
 			}
-			if tt.errorAssertion != nil {
-				tt.errorAssertion(err)
+			if tt.exptectedErrorMsg != "" {
+				assert.Contains(t, err.Error(), tt.exptectedErrorMsg)
 			}
-			if tt.clientAssertion != nil {
-				tt.clientAssertion(client)
+			if tt.serverStateAssertion != nil {
+				var serverState corev1.Secret
+				require.NoError(t, client.Get(objectKey, &serverState))
+				tt.serverStateAssertion(serverState)
 			}
 			if tt.argAssertion != nil {
 				tt.argAssertion(args)

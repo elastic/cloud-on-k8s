@@ -160,11 +160,24 @@ func ReconcileResource(params Params) error {
 		if err != nil {
 			return err
 		}
+
 		// retain the resource version to avoid unconditional updates
 		resourceVersion := reconciledMeta.GetResourceVersion()
 		params.UpdateReconciled()
 		// and set the resource version back into the resource to indicate the state we are basing the update off of
 		reconciledMeta.SetResourceVersion(resourceVersion)
+		// also keep the owner references up to date
+		expectedMeta, err := meta.Accessor(params.Expected)
+		if err != nil {
+			return err
+		}
+		expectedOwners := expectedMeta.GetOwnerReferences()
+		if expectedOwners != nil {
+			// we can safely assume we have just one reference here given that it was created just above
+			// but we don't want to replace wholesale in case a user has set an additional reference
+			k8s.OverrideControllerReference(reconciledMeta, expectedOwners[0])
+		}
+
 		err = params.Client.Update(params.Reconciled)
 		if err != nil {
 			return err

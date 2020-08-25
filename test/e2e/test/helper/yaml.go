@@ -182,7 +182,7 @@ func makeObjectSteps(
 				meta, err := meta2.Accessor(objects[ii])
 				require.NoError(t, err)
 				steps = steps.WithStep(test.Step{
-					Name: fmt.Sprintf("Create %s/%s", meta.GetNamespace(), meta.GetNamespace()),
+					Name: fmt.Sprintf("Create %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
 					Test: func(t *testing.T) {
 						err := k.Client.Create(objects[ii])
 						if !k8serrors.IsAlreadyExists(err) {
@@ -199,7 +199,7 @@ func makeObjectSteps(
 				meta, err := meta2.Accessor(objects[ii])
 				require.NoError(t, err)
 				steps = steps.WithStep(test.Step{
-					Name: fmt.Sprintf("Delete %s/%s", meta.GetNamespace(), meta.GetNamespace()),
+					Name: fmt.Sprintf("Delete %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
 					Test: func(t *testing.T) {
 						err := k.Client.Delete(objects[ii])
 						if !k8serrors.IsNotFound(err) {

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: apmservers.apm.k8s.elastic.co
 spec:
@@ -14,7 +14,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: APM version
     name: version
     type: string
@@ -474,7 +474,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: beats.beat.k8s.elastic.co
 spec:
@@ -494,7 +494,7 @@ spec:
     description: Beat type
     name: type
     type: string
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Beat version
     name: version
     type: string
@@ -693,7 +693,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
@@ -705,7 +705,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Elasticsearch version
     name: version
     type: string
@@ -1055,8 +1055,8 @@ spec:
               description: Image is the Elasticsearch Docker image to deploy.
               type: string
             nodeSets:
-              description: 'NodeSets allow specifying groups of Elasticsearch nodes
-                sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html'
+              description: NodeSets allow specifying groups of Elasticsearch nodes
+                sharing the same configuration and Pod templates.
               items:
                 description: NodeSet is the specification for a group of Elasticsearch
                   nodes sharing the same configuration and a Pod template.
@@ -1081,12 +1081,12 @@ spec:
                       the Pods belonging to this NodeSet.
                     type: object
                   volumeClaimTemplates:
-                    description: 'VolumeClaimTemplates is a list of persistent volume
+                    description: VolumeClaimTemplates is a list of persistent volume
                       claims to be used by each Pod in this NodeSet. Every claim in
                       this list must have a matching volumeMount in one of the containers
                       defined in the PodTemplate. Items defined here take precedence
                       over any default claims added by the operator with the same
-                      name. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html'
+                      name.
                     items:
                       description: PersistentVolumeClaim is a user's request for and
                         claim to a persistent volume
@@ -1768,7 +1768,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
@@ -1780,7 +1780,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Enterprise Search version
     name: version
     type: string
@@ -2185,7 +2185,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: kibanas.kibana.k8s.elastic.co
 spec:
@@ -2197,7 +2197,7 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
-  - JSONPath: .spec.version
+  - JSONPath: .status.version
     description: Kibana version
     name: version
     type: string

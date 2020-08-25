@@ -13,14 +13,13 @@ ECK can be configured using either command line flags or environment variables.
 [width="100%",cols=".^35m,.^25m,.^40d",options="header"]
 |===
 |Flag |Default|Description
-|auto-port-forward |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
 |ca-cert-rotate-before |24h |Duration representing how long before expiration CA certificates should be re-issued.
 |ca-cert-validity |8760h |Duration representing the validity period of a generated CA certificate.
 |cert-rotate-before |24h |Duration representing how long before expiration TLS certificates should be re-issued.
 |cert-validity |8760h |Duration representing the validity period of a generated TLS certificate.
+|config |"" | Path to a file containing the operator configuration.
 |container-registry |docker.elastic.co | Container registry to use for pulling Elastic Stack container images.
-|debug-http-listen |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
-|development |false |Enable development mode. Only available as a CLI flag.
+|disable-config-watch| false| Watch the configuration file for changes and restart to apply them. Only effective when the `--config` flag is used to set the configuration file.
 |enable-tracing | false | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. See link:https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html[Apm Go Agent reference] for details.
 |enable-webhook | false | Enables a validating webhook server in the operator process.
 |enforce-rbac-on-refs| false | Enables restrictions on cross-namespace resource association through RBAC.
@@ -30,10 +29,10 @@ ECK can be configured using either command line flags or environment variables.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
+|webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
+|webhook-name |"elastic-webhook.k8s.elastic.co" |Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when `enable-webhook` is true.
 |webhook-pods-label |"" |Label used to select pods running the webhook server.
 |webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
-|webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
-|webhook-configuration-name |"elastic-webhook.k8s.elastic.co" |Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.
 |===
 
 
@@ -51,4 +50,96 @@ Duration values should be specified as numeric values suffixed by the time unit.
 |===
 
 
-Edit the `elastic-operator` StatefulSet to change any of the flag values. <<{p}-eck-debug-logs>> illustrates how to change the log level of the operator using this method.
+If you have a large number of configuration options to specify, use the `--config` flag to point to a file containing those options. For example, assume you have a file named `eck-config.yaml` with the following content:
+
+.eck-config.yaml
+[source,yaml]
+----
+log-verbosity: 2
+metrics-port: 6060
+namespaces: [ns1, ns2, ns3]
+----
+
+The operator can be started using any of the following methods to achieve the same end result:
+
+.Configuration file method
+[source,sh]
+----
+./elastic-operator manager --config=eck-config.yaml
+----
+
+.Command-line flags method
+[source,sh]
+----
+./elastic-operator manager --log-verbosity=2 --metrics-port=6060 --namespaces=ns1,ns2,ns3
+----
+
+.Environment variables method
+[source,sh]
+----
+LOG_VERBOSITY=2 METRICS_PORT=6060 NAMESPACES="ns1,ns2,ns3" ./elastic-operator manager
+----
+
+If you use a combination of all or some of the methods listed above, the descending order of precedence in case of a conflict is as follows:
+
+- Flag
+- Environment variable
+- File
+
+
+You can edit the `elastic-operator` ConfigMap to change the operator configuration. Unless the `--disable-config-watch` flag is set, the operator should restart automatically to apply the new changes. Alternatively, you can edit the `elastic-operator` StatefulSet  and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
+
+[float]
+[id="{p}-{page_id}-olm"]
+== Configure ECK under Operator Lifecycle Manager
+
+If you use link:https://github.com/operator-framework/operator-lifecycle-manager[Operator Lifecycle Manager (OLM)] to install and run ECK, follow the steps below to configure the operator.
+
+- Create a new ConfigMap in the same namespace as the operator. It should contain a key named `eck.yaml` pointing to the desired configuration values.
++
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elastic-operator
+  namespace: openshift-operators
+data:
+  eck.yaml: |-
+    log-verbosity: 0
+    metrics-port: 6060 
+    container-registry: docker.elastic.co
+    max-concurrent-reconciles: 3
+    ca-cert-validity: 8760h
+    ca-cert-rotate-before: 24h
+    cert-validity: 8760h
+    cert-rotate-before: 24h
+----
+
+- Update your link:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/subscription-config.md[Subscription] to mount the ConfigMap under `/conf`.
++
+[source,yaml,subs="attributes"]
+----
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: elastic-cloud-eck
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: elastic-cloud-eck
+  source: elastic-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: elastic-cloud-eck.v{eck_version}
+  config:
+    volumes:
+      - name: config
+        configMap:
+          name: elastic-operator
+    volumeMounts:
+      - name: config
+        mountPath: /conf
+        readOnly: true
+----
+

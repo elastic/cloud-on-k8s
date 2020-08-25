@@ -7,6 +7,9 @@ package apmserver
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -14,8 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewPodSpec(t *testing.T) {
@@ -164,6 +165,45 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.as), tc.want)
+		})
+	}
+}
+
+func Test_newPodSpec_withInitContainers(t *testing.T) {
+	tests := []struct {
+		name       string
+		as         apmv1.ApmServer
+		assertions func(pod corev1.PodTemplateSpec)
+	}{
+		{
+			name: "user-provided init containers should inherit from the default main container image",
+			as: apmv1.ApmServer{Spec: apmv1.ApmServerSpec{
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						InitContainers: []corev1.Container{
+							{
+								Name: "user-init-container",
+							},
+						},
+					},
+				},
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := PodSpecParams{
+				Version:         tt.as.Spec.Version,
+				CustomImageName: tt.as.Spec.Image,
+				PodTemplate:     tt.as.Spec.PodTemplate,
+			}
+			got := newPodSpec(&tt.as, params)
+			tt.assertions(got)
 		})
 	}
 }

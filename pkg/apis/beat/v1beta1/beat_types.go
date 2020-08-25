@@ -98,7 +98,7 @@ type BeatStatus struct {
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	KibanaAssocationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
+	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 }
 
 type BeatHealth string
@@ -127,7 +127,7 @@ const (
 // +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
 // +kubebuilder:printcolumn:name="type",type="string",JSONPath=".spec.type",description="Beat type"
-// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Beat version"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Beat version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:storageversion
 type Beat struct {
@@ -221,11 +221,11 @@ func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationCon
 }
 
 func (b *BeatKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return b.Status.KibanaAssocationStatus
+	return b.Status.KibanaAssociationStatus
 }
 
 func (b *BeatKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	b.Status.KibanaAssocationStatus = status
+	b.Status.KibanaAssociationStatus = status
 }
 
 func (b *BeatKibanaAssociation) Associated() commonv1.Associated {

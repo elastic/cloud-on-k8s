@@ -106,28 +106,32 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 
 	ports := getDefaultContainerPorts(*as)
 
-	builder := defaults.NewPodTemplateBuilder(
-		p.PodTemplate, apmv1.ApmServerContainerName).
-		WithLabels(labels).
-		WithResources(DefaultResources).
-		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
-		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
-		WithPorts(ports).
-		WithCommand(command).
-		WithVolumes(configVolume.Volume(), configSecretVolume.Volume()).
-		WithVolumeMounts(configVolume.VolumeMount(), configSecretVolume.VolumeMount()).
-		WithEnv(env...)
+	volumes := []corev1.Volume{configVolume.Volume(), configSecretVolume.Volume()}
+	volumeMounts := []corev1.VolumeMount{configVolume.VolumeMount(), configSecretVolume.VolumeMount()}
+	var initContainers []corev1.Container
 
 	if p.keystoreResources != nil {
 		dataVolume := keystore.DataVolume(
 			strings.ToLower(as.Kind),
 			DataVolumePath,
 		)
-		builder.WithInitContainers(p.keystoreResources.InitContainer).
-			WithVolumes(p.keystoreResources.Volume, dataVolume.Volume()).
-			WithVolumeMounts(dataVolume.VolumeMount()).
-			WithInitContainerDefaults()
+		volumes = append(volumes, p.keystoreResources.Volume, dataVolume.Volume())
+		volumeMounts = append(volumeMounts, dataVolume.VolumeMount())
+		initContainers = append(initContainers, p.keystoreResources.InitContainer)
 	}
+
+	builder := defaults.NewPodTemplateBuilder(p.PodTemplate, apmv1.ApmServerContainerName).
+		WithLabels(labels).
+		WithResources(DefaultResources).
+		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
+		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
+		WithPorts(ports).
+		WithCommand(command).
+		WithEnv(env...).
+		WithVolumes(volumes...).
+		WithVolumeMounts(volumeMounts...).
+		WithInitContainers(initContainers...).
+		WithInitContainerDefaults()
 
 	return builder.PodTemplate
 }

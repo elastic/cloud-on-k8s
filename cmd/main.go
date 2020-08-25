@@ -6,25 +6,26 @@ package main
 
 import (
 	"github.com/elastic/cloud-on-k8s/cmd/manager"
+	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/spf13/cobra"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func main() {
-	var rootCmd = &cobra.Command{Use: "elastic-operator"}
-	rootCmd.AddCommand(manager.Cmd)
+	buildInfo := about.GetBuildInfo()
+
+	rootCmd := &cobra.Command{
+		Use:          "elastic-operator",
+		Short:        "Elastic Cloud on Kubernetes (ECK) operator",
+		Version:      buildInfo.VersionString(),
+		SilenceUsage: true,
+	}
+	rootCmd.AddCommand(manager.Command())
+
 	// development mode is only available as a command line flag to avoid accidentally enabling it
 	rootCmd.PersistentFlags().BoolVar(&dev.Enabled, "development", false, "turns on development mode")
-	log.BindFlags(rootCmd.PersistentFlags())
+	_ = rootCmd.PersistentFlags().MarkHidden("development")
 
-	cobra.OnInitialize(func() {
-		log.InitLogger()
-	})
-
-	if err := rootCmd.Execute(); err != nil {
-		logf.Log.WithName("main").Error(err, "Unexpected error while executing command")
-	}
+	_ = rootCmd.Execute()
 }

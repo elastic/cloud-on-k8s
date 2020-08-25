@@ -5,6 +5,7 @@
 package user
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -42,4 +43,105 @@ click_admins:
 	require.NoError(t, yaml.Unmarshal(asBytes, &rAgain))
 	// the initial yaml and the serialized/de-serialized rolesFileContent should be the same
 	require.Equal(t, r, rAgain)
+}
+
+func TestRolesFileContent_MergeWith(t *testing.T) {
+	type args struct {
+		other RolesFileContent
+	}
+	tests := []struct {
+		name   string
+		r      RolesFileContent
+		args   args
+		want   RolesFileContent
+		assert func(r, other, result RolesFileContent)
+	}{
+
+		{
+			name: "when r is nil",
+			r:    nil,
+			args: args{
+				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+		},
+		{
+			name: "when other is nil",
+			r:    RolesFileContent(map[string]interface{}{"a": "c"}),
+			args: args{
+				other: nil,
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+		},
+		{
+			name: "when both are nil",
+			r:    nil,
+			args: args{
+				other: nil,
+			},
+			want: RolesFileContent(map[string]interface{}{}),
+		},
+		{
+			name: "when r is empty",
+			r:    RolesFileContent(map[string]interface{}{}),
+			args: args{
+				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+		},
+		{
+			name: "when other is empty",
+			r:    RolesFileContent(map[string]interface{}{"a": "c"}),
+			args: args{
+				other: RolesFileContent(map[string]interface{}{}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+		},
+		{
+			name: "when r has more items",
+			r:    RolesFileContent(map[string]interface{}{"a": "b", "d": "e"}),
+			args: args{
+				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c", "d": "e"}),
+		},
+		{
+			name: "when other has more items",
+			r:    RolesFileContent(map[string]interface{}{"a": "b"}),
+			args: args{
+				other: RolesFileContent(map[string]interface{}{"a": "c", "d": "e"}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c", "d": "e"}),
+		},
+		{
+			name: "does give priority to other",
+			r:    RolesFileContent(map[string]interface{}{"a": "b"}),
+			args: args{
+				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+		},
+		{
+			name: "does not mutate in place",
+			r:    RolesFileContent(map[string]interface{}{"a": "b"}),
+			args: args{
+				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+			},
+			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			assert: func(r, other, result RolesFileContent) {
+				require.Equal(t, r, RolesFileContent(map[string]interface{}{"a": "b"}))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.r.MergeWith(tt.args.other)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MergeWith() = %v, want %v", got, tt.want)
+			}
+			if tt.assert != nil {
+				tt.assert(tt.r, tt.args.other, got)
+			}
+		})
+	}
 }

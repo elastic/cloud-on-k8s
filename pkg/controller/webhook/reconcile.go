@@ -15,9 +15,9 @@ import (
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
 type Params struct {
-	Namespace                string
-	SecretName               string
-	WebhookConfigurationName string
+	Name       string
+	Namespace  string
+	SecretName string
 
 	// Certificate options
 	Rotation certificates.RotationParams
@@ -34,7 +34,7 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 	}
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.WebhookConfigurationName, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	if err != nil {
 		// 404 is also considered as an error, webhook configuration is expected to be created before the operator is started
 		return err

@@ -18,6 +18,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -410,4 +411,105 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
 	require.Nil(t, got.AssociationConf())
+}
+
+func TestAllowVersion(t *testing.T) {
+	apmNoAssoc := &apmv1.ApmServer{}
+	apmTwoAssoc := &apmv1.ApmServer{Spec: apmv1.ApmServerSpec{
+		ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}, KibanaRef: commonv1.ObjectSelector{Name: "some-kb"}}}
+	apmTwoAssocWithVersions := func(versions []string) *apmv1.ApmServer {
+		apm := apmTwoAssoc.DeepCopy()
+		for i, assoc := range apm.GetAssociations() {
+			assoc.SetAssociationConf(&commonv1.AssociationConf{Version: versions[i]})
+		}
+		return apm
+	}
+	type args struct {
+		resourceVersion version.Version
+		associated      commonv1.Associated
+	}
+	tests := []struct {
+		name      string
+		args      args
+		want      bool
+		wantEvent bool
+	}{
+		{
+			name: "no association specified: allow",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmNoAssoc.DeepCopy(),
+			},
+			want: true,
+		},
+		{
+			name: "referenced resources run the same version: allow",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmTwoAssocWithVersions([]string{"7.7.0", "7.7.0"}),
+			},
+			want: true,
+		},
+		{
+			name: "some referenced resources run a higher version: allow",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmTwoAssocWithVersions([]string{"7.8.0", "7.7.0"}),
+			},
+			want: true,
+		},
+		{
+			name: "one referenced resource runs a lower version: don't allow and emit an event",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmTwoAssocWithVersions([]string{"7.7.0", "7.6.0"}),
+			},
+			want:      false,
+			wantEvent: true,
+		},
+		{
+			name: "no version set in the association conf: don't allow",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmTwoAssocWithVersions([]string{"", ""}),
+			},
+			want: false,
+		},
+		{
+			name: "association conf annotation is not set yet: don't allow",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmTwoAssoc,
+			},
+			want: false,
+		},
+		{
+			name: "invalid version in the association conf: don't allow",
+			args: args{
+				resourceVersion: version.MustParse("7.7.0"),
+				associated:      apmTwoAssocWithVersions([]string{"7.7.0", "invalid"}),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		logger := log.WithValues("a", "b")
+		recorder := record.NewFakeRecorder(10)
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); got != tt.want {
+				t.Errorf("AllowVersion() = %v, want %v", got, tt.want)
+			}
+		})
+		if tt.wantEvent {
+			require.NotEmpty(t, <-recorder.Events)
+		} else {
+			// no event expected
+			select {
+			case e := <-recorder.Events:
+				require.Fail(t, "no event expected but got one", "event", e)
+			default:
+				// ok
+			}
+		}
+	}
 }

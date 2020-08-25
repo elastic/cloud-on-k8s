@@ -69,10 +69,12 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
+func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) corev1.PodTemplateSpec {
 	labels := NewLabels(kb.Name)
 	labels[KibanaVersionLabelName] = kb.Spec.Version
+
 	ports := getDefaultContainerPorts(kb)
+
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
@@ -80,16 +82,18 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
-		WithVolumes(DataVolume.Volume()).
-		WithVolumeMounts(DataVolume.VolumeMount())
+		WithInitContainers(initConfigContainer(kb))
+
+	for _, volume := range volumes {
+		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
+	}
 
 	if keystore != nil {
 		builder.WithVolumes(keystore.Volume).
-			WithInitContainers(keystore.InitContainer).
-			WithInitContainerDefaults()
+			WithInitContainers(keystore.InitContainer)
 	}
 
-	return builder.PodTemplate
+	return builder.WithInitContainerDefaults().PodTemplate
 }
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.

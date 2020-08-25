@@ -26,16 +26,16 @@ func TestReconcileService(t *testing.T) {
 		},
 	}
 
-	existingSvc := mkService()
+	existingSvc := mkService(owner)
 	client := k8s.WrappedFakeClient(owner, existingSvc)
 
-	expectedSvc := mkService()
+	expectedSvc := mkService(owner)
 	delete(expectedSvc.Labels, "lbl2")
 	delete(expectedSvc.Annotations, "ann2")
 	expectedSvc.Labels["lbl3"] = "lblval3"
 	expectedSvc.Annotations["ann3"] = "annval3"
 
-	wantSvc := mkService()
+	wantSvc := mkService(owner)
 	wantSvc.Labels["lbl3"] = "lblval3"
 	wantSvc.Annotations["ann3"] = "annval3"
 
@@ -44,13 +44,23 @@ func TestReconcileService(t *testing.T) {
 	comparison.AssertEqual(t, wantSvc, haveSvc)
 }
 
-func mkService() *corev1.Service {
+func mkService(owner *kbv1.Kibana) *corev1.Service {
+	true := true
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "owner-svc",
 			Namespace:   "test",
 			Labels:      map[string]string{"lbl1": "lblval1", "lbl2": "lbl2val"},
 			Annotations: map[string]string{"ann1": "annval1", "ann2": "annval2"},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "kibana.k8s.elastic.co/v1",
+					Kind:               "Kibana",
+					Name:               owner.Name,
+					Controller:         &true,
+					BlockOwnerDeletion: &true,
+				},
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},

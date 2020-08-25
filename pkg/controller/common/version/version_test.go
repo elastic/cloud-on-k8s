@@ -555,3 +555,67 @@ func TestMinInStatefulSets(t *testing.T) {
 		})
 	}
 }
+
+func TestVersion_IsSameOrAfterIgnoringPatch(t *testing.T) {
+	tests := []struct {
+		name  string
+		v     Version
+		other Version
+		want  bool
+	}{
+		{
+			name:  "same version",
+			v:     MustParse("7.8.1"),
+			other: MustParse("7.8.1"),
+			want:  true,
+		},
+		{
+			name:  "lower patch version",
+			v:     MustParse("7.8.1"),
+			other: MustParse("7.8.2"),
+			want:  true,
+		},
+		{
+			name:  "higher patch version",
+			v:     MustParse("7.8.2"),
+			other: MustParse("7.8.1"),
+			want:  true,
+		},
+		{
+			name:  "lower minor",
+			v:     MustParse("7.7.1"),
+			other: MustParse("7.8.1"),
+			want:  false,
+		},
+		{
+			name:  "higher minor",
+			v:     MustParse("7.8.1"),
+			other: MustParse("7.7.1"),
+			want:  true,
+		},
+		{
+			name:  "lower major",
+			v:     MustParse("6.7.1"),
+			other: MustParse("7.7.1"),
+			want:  false,
+		},
+		{
+			name:  "higher major",
+			v:     MustParse("7.7.1"),
+			other: MustParse("6.7.1"),
+			want:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vCopy := tt.v.Copy()
+			otherCopy := tt.other.Copy()
+			if got := tt.v.IsSameOrAfterIgnoringPatch(tt.other); got != tt.want {
+				t.Errorf("IsSameOrAfterIgnoringPatch() = %v, want %v", got, tt.want)
+			}
+			// ensure v and other haven't been modified
+			require.Equal(t, *vCopy, tt.v)
+			require.Equal(t, *otherCopy, tt.other)
+		})
+	}
+}

@@ -5,7 +5,7 @@
 package beat
 
 var (
-	e2eFilebeatConfig = `filebeat:
+	E2EFilebeatConfig = `filebeat:
   autodiscover:
     providers:
     - type: kubernetes
@@ -21,7 +21,7 @@ processors:
 - add_host_metadata: {}
 `
 
-	e2eFilebeatPodTemplate = `spec:
+	E2EFilebeatPodTemplate = `spec:
   automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   containers:
   - name: filebeat

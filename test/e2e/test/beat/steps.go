@@ -124,7 +124,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				}
 				// don't check association statuses that may vary across tests
 				beat.Status.ElasticsearchAssociationStatus = ""
-				beat.Status.KibanaAssocationStatus = ""
+				beat.Status.KibanaAssociationStatus = ""
 
 				expected := beatv1beta1.BeatStatus{
 					Version: b.Beat.Spec.Version,

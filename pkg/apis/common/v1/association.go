@@ -67,13 +67,16 @@ type Association interface {
 	SetAssociationStatus(status AssociationStatus)
 }
 
-// AssociationConf holds the association configuration of an Elasticsearch cluster.
+// AssociationConf holds the association configuration of a referenced resource in an association.
 type AssociationConf struct {
 	AuthSecretName string `json:"authSecretName"`
 	AuthSecretKey  string `json:"authSecretKey"`
 	CACertProvided bool   `json:"caCertProvided"`
 	CASecretName   string `json:"caSecretName"`
 	URL            string `json:"url"`
+	// Version of the referenced resource. If a version upgrade is in progress,
+	// matches the lowest running version. May be empty if unknown.
+	Version string `json:"version"`
 }
 
 // IsConfigured returns true if all the fields are set.
@@ -142,4 +145,11 @@ func (ac *AssociationConf) GetURL() string {
 		return ""
 	}
 	return ac.URL
+}
+
+func (ac *AssociationConf) GetVersion() string {
+	if ac == nil {
+		return ""
+	}
+	return ac.Version
 }

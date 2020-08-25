@@ -6,7 +6,9 @@ package beat
 
 import (
 	"fmt"
+	"testing"
 
+	ghodssyaml "github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,10 +18,12 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -96,6 +100,11 @@ type ValidationFunc func(client.Client) error
 
 func (b Builder) WithType(typ beatcommon.Type) Builder {
 	b.Beat.Spec.Type = string(typ)
+	return b
+}
+
+func (b Builder) WithVersion(version string) Builder {
+	b.Beat.Spec.Version = version
 	return b
 }
 
@@ -278,3 +287,19 @@ func (b Builder) RuntimeObjects() []runtime.Object {
 }
 
 var _ test.Builder = Builder{}
+
+func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Builder {
+	if configYaml != "" {
+		b.Beat.Spec.Config = &commonv1.Config{}
+		err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)
+		require.NoError(t, err)
+	}
+
+	if podTemplateYaml != "" {
+		// use ghodss as settings package has issues with unpacking volumes part of the yamls
+		err := ghodssyaml.Unmarshal([]byte(podTemplateYaml), b.PodTemplate)
+		require.NoError(t, err)
+	}
+
+	return b
+}
