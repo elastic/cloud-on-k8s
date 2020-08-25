@@ -85,7 +85,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// 1. reconcile trial status secret
 	if err := r.reconcileTrialStatus(request.NamespacedName, license); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, pkgerrors.Wrap(err, "while reconciling trial status")
 	}
 
 	// 2. reconcile the trial license itself
@@ -114,7 +114,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 	var trialStatus corev1.Secret
 	err := r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
-		if !r.trialState.IsTrialStarted() {
+		if r.trialState.IsEmpty() {
 			// we have no state in memory nor in the status secret: start the activation process
 			if err := r.startTrialActivation(); err != nil {
 				return err
@@ -179,11 +179,16 @@ func (r *ReconcileTrials) startTrialActivation() error {
 
 func (r *ReconcileTrials) completeTrialActivation(license types.NamespacedName) (reconcile.Result, error) {
 	if r.trialState.CompleteTrialActivation() {
-		status, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
+		expectedStatus, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		return reconcile.Result{}, r.Update(&status)
+		var existingStatus corev1.Secret
+		if err := r.Get(k8s.ExtractNamespacedName(&expectedStatus), &existingStatus); err != nil {
+			return reconcile.Result{}, err
+		}
+		expectedStatus.ResourceVersion = existingStatus.ResourceVersion
+		return reconcile.Result{}, r.Update(&expectedStatus)
 	}
 	return reconcile.Result{}, nil
 }
