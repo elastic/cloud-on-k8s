@@ -475,10 +475,11 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		name        string
 		runtimeObjs []runtime.Object
 		ent         entv1beta1.EnterpriseSearch
+		ipFamily    corev1.IPFamily
 		wantCmd     string
 	}{
 		{
-			name:        "create default readiness probe script (no es association)",
+			name:        "create default readiness probe script (no es association, IPv4)",
 			runtimeObjs: nil,
 			ent: entv1beta1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -486,7 +487,20 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Name:      "sample",
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+		},
+		{
+			name:        "create default readiness probe script (no es association, IPv6)",
+			runtimeObjs: nil,
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+			},
+			ipFamily: corev1.IPv6Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://[::1]:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
 		},
 		{
 			name: "update existing readiness probe script if different",
@@ -507,7 +521,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Name:      "sample",
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
 		},
 		{
 			name: "with ES association: use ES user credentials",
@@ -529,7 +544,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					},
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:password -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:password -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
 		},
 		{
 			name: "with es credentials in a user-provided config secret",
@@ -555,7 +571,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					},
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:mypassword -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:mypassword -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
 		},
 	}
 	for _, tt := range tests {
@@ -566,7 +583,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
+			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

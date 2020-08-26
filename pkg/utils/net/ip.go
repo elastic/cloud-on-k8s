@@ -22,10 +22,10 @@ func IPToRFCForm(ip net.IP) net.IP {
 
 // LoopbackFor returns the loopback address for the given IP family.
 func LoopbackFor(ipFamily corev1.IPFamily) net.IP {
-	if ipFamily == corev1.IPv4Protocol {
-		return net.ParseIP("127.0.0.1")
+	if ipFamily == corev1.IPv6Protocol {
+		return net.IPv6loopback
 	}
-	return net.IPv6loopback
+	return net.ParseIP("127.0.0.1")
 }
 
 // LoopbackHostPort formats a loopback address and port correctly for the given IP family.
@@ -43,8 +43,8 @@ func InAddrAnyFor(ipFamily corev1.IPFamily) net.IP {
 
 // ToIPFamily tries to detect the IP family (IPv4 or IPv6) based on the given IP string.
 func ToIPFamily(ipStr string) corev1.IPFamily {
-	if ip := net.ParseIP(ipStr); len(ip) == net.IPv6len {
-		return corev1.IPv6Protocol
+	if ip := net.ParseIP(ipStr); ip.To4() != nil {
+		return corev1.IPv4Protocol
 	}
-	return corev1.IPv4Protocol
+	return corev1.IPv6Protocol
 }

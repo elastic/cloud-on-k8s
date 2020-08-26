@@ -59,7 +59,7 @@ func UpdateSeedHostsConfigMap(
 		if len(master.Status.PodIP) > 0 { // do not add pod with no IPs
 			seedHosts = append(
 				seedHosts,
-				net.JoinHostPort(master.Status.PodIP, strconv.FormatInt(network.TransportPort, 10)),
+				net.JoinHostPort(master.Status.PodIP, strconv.Itoa(network.TransportPort)),
 			)
 		}
 	}
