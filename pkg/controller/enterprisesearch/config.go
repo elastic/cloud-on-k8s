@@ -120,8 +120,8 @@ func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.Cano
 	# request timeout can be overridden from an environment variable
 	READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=` + fmt.Sprintf("%d", ReadinessProbeTimeoutSec) + `}
 
-	# request the health endpoint and expect http status code 200
-	status=$(curl -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
+	# request the health endpoint and expect http status code 200. Turning globbing off for unescaped IPv6 addresses
+	status=$(curl -g -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
 	curl_rc=$?
 
 	if [[ ${curl_rc} -ne 0 ]]; then
