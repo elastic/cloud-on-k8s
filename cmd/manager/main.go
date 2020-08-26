@@ -34,6 +34,7 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
@@ -440,6 +441,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 	params := operator.Parameters{
 		Dialer:            dialer,
+		IPFamily:          net.AutodetectIPFamily(os.Getenv(settings.EnvPodIP)),
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
 		CACertRotation: certificates.RotationParams{

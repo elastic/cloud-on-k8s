@@ -444,7 +444,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(driver, tt.ent)
+			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -566,7 +566,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent)
+			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

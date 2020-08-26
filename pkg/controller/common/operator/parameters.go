@@ -6,6 +6,7 @@ package operator
 
 import (
 	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -20,6 +21,8 @@ type Parameters struct {
 	OperatorInfo about.OperatorInfo
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
+	// IPFamily represents the IP family to use when creating configuration and services.
+	IPFamily corev1.IPFamily
 	// CACertRotation defines the rotation params for CA certificates.
 	CACertRotation certificates.RotationParams
 	// CertRotation defines the rotation params for non-CA certificates.

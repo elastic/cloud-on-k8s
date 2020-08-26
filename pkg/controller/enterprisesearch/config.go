@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,8 +54,8 @@ func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVo
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (corev1.Secret, error) {
-	cfg, err := newConfig(driver, ent)
+func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+	cfg, err := newConfig(driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -141,7 +143,7 @@ func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.Cano
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
@@ -163,7 +165,7 @@ func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*setti
 	if err != nil {
 		return nil, err
 	}
-	cfg := defaultConfig(ent)
+	cfg := defaultConfig(ent, ipFamily)
 
 	// merge with user settings last so they take precedence
 	err = cfg.MergeWith(reusedCfg, tlsCfg, associationCfg, userProvidedCfg, userProvidedSecretCfg)
@@ -227,10 +229,10 @@ func parseConfigRef(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*
 	return common.ParseConfigRef(driver, &ent, ent.Spec.ConfigRef, ConfigFilename)
 }
 
-func defaultConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
+func defaultConfig(ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
-		"ent_search.listen_host":         "0.0.0.0",
+		"ent_search.listen_host":         net.InAddrAnyFor(ipFamily).String(),
 		"filebeat_log_directory":         LogVolumeMountPath,
 		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,

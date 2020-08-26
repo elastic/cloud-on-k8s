@@ -44,6 +44,7 @@ type driver struct {
 	dynamicWatches watches.DynamicWatches
 	recorder       record.EventRecorder
 	version        version.Version
+	ipFamily       corev1.IPFamily
 }
 
 func (d *driver) DynamicWatches() watches.DynamicWatches {
@@ -65,6 +66,7 @@ func newDriver(
 	watches watches.DynamicWatches,
 	recorder record.EventRecorder,
 	kb *kbv1.Kibana,
+	ipFamily corev1.IPFamily,
 ) (*driver, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
@@ -83,6 +85,7 @@ func newDriver(
 		dynamicWatches: watches,
 		recorder:       recorder,
 		version:        *ver,
+		ipFamily:       ipFamily,
 	}, nil
 }
 
@@ -124,7 +127,7 @@ func (d *driver) Reconcile(
 		return results // will eventually retry
 	}
 
-	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version)
+	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily)
 	if err != nil {
 		return results.WithError(err)
 	}
