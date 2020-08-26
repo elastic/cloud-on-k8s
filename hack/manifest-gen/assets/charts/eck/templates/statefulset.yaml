@@ -37,7 +37,8 @@ spec:
                 fieldPath: metadata.namespace
           - name: POD_IP
             valueFrom:
-              fieldPath: status.podIP
+              fieldRef:
+                fieldPath: status.podIP
           {{- if .Values.config.webhook.enabled }}
           - name: WEBHOOK_SECRET
             value: "{{ .Values.config.webhook.certsSecret }}"
