@@ -75,7 +75,7 @@ func runningTrialSample(t *testing.T) licensing.TrialState {
 	return state
 }
 
-func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
+func simulateLicenseInit(t *testing.T, k k8s.Client, secret corev1.Secret) licensing.TrialState {
 	l := licensing.EnterpriseLicense{
 		License: licensing.LicenseSpec{
 			Type: licensing.LicenseTypeEnterpriseTrial,
@@ -86,6 +86,11 @@ func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
 	err = state.InitTrialLicense(&l)
 	require.NoError(t, err)
 	require.NoError(t, licensing.UpdateEnterpriseLicense(k, secret, l))
+	return state
+}
+
+func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
+	state := simulateLicenseInit(t, k, secret)
 	state.CompleteTrialActivation()
 	statusSecret := trialStatusSecretSample(t, state)
 	require.NoError(t, k.Create(statusSecret))
@@ -165,6 +170,20 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 				}(),
 				trialState: licensing.TrialState{}, // simulating restart
 			},
+			wantErr:    false,
+			assertions: requireValidTrial,
+		},
+		{
+			name: "can start trial after error during trial status retrieval",
+			fields: func() fields {
+				trialLicense := trialLicenseSecretSample(true, nil)
+				client := k8s.WrappedFakeClient(trialLicense)
+				state := simulateLicenseInit(t, client, *trialLicense) // no trial status
+				return fields{
+					Client:     client,
+					trialState: state,
+				}
+			}(),
 			wantErr:    false,
 			assertions: requireValidTrial,
 		},
