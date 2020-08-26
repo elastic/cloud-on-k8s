@@ -66,14 +66,15 @@ fi
 
 # Check if we are using IPv6
 if [[ $POD_IP =~ .*:.* ]]; then
-  LOOPBACK=[::1]
+  LOOPBACK=[::1] 
 else 
   LOOPBACK=127.0.01
 fi
 
 # request Elasticsearch on /
+# we are turning globbing off to allow for unescaped [] in case of IPv6
 ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://${LOOPBACK}:9200/"
-status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -XGET -s -k ${BASIC_AUTH} $ENDPOINT)
+status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -XGET -g -s -k ${BASIC_AUTH} $ENDPOINT)
 curl_rc=$?
 
 if [[ ${curl_rc} -ne 0 ]]; then
