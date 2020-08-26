@@ -10,7 +10,7 @@ operator:
     repository: docker.elastic.co/eck/eck-operator
     pullPolicy: IfNotPresent
 
-  replicas: 2
+  replicas: 1
 
   resources:
     limits:
