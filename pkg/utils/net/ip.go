@@ -6,6 +6,7 @@ package net
 
 import (
 	"net"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -19,12 +20,17 @@ func IPToRFCForm(ip net.IP) net.IP {
 	return ip.To16()
 }
 
-func LoopbackFor(ip net.IP) net.IP {
-	lb := net.IPv6loopback
-	if ip.To4() != nil {
-		lb = net.ParseIP("127.0.0.1")
+// LoopbackFor returns the loopback address for the given IP family.
+func LoopbackFor(ipFamily corev1.IPFamily) net.IP {
+	if ipFamily == corev1.IPv4Protocol {
+		return net.ParseIP("127.0.0.1")
 	}
-	return lb
+	return net.IPv6loopback
+}
+
+// LoopbackHostPort formats a loopback address and port correctly for the given IP family.
+func LoopbackHostPort(ipFamily corev1.IPFamily, port int) string {
+	return net.JoinHostPort(LoopbackFor(ipFamily).String(), strconv.Itoa(port))
 }
 
 // InAddrAnyFor returns the special IP address to bind to any IP address (0.0.0.0 or ::) depending on IP family.
@@ -35,8 +41,8 @@ func InAddrAnyFor(ipFamily corev1.IPFamily) net.IP {
 	return net.IPv6zero
 }
 
-//AutodetectIPFamily tries to detect the IP family (IPv4 or IPv6) based on the given IP string.
-func AutodetectIPFamily(ipStr string) corev1.IPFamily {
+// ToIPFamily tries to detect the IP family (IPv4 or IPv6) based on the given IP string.
+func ToIPFamily(ipStr string) corev1.IPFamily {
 	if ip := net.ParseIP(ipStr); len(ip) == net.IPv6len {
 		return corev1.IPv6Protocol
 	}

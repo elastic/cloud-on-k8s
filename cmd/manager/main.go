@@ -441,7 +441,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 	params := operator.Parameters{
 		Dialer:            dialer,
-		IPFamily:          net.AutodetectIPFamily(os.Getenv(settings.EnvPodIP)),
+		IPFamily:          net.ToIPFamily(os.Getenv(settings.EnvPodIP)),
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
 		CACertRotation: certificates.RotationParams{

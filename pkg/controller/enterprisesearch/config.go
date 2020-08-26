@@ -65,7 +65,7 @@ func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, i
 		return corev1.Secret{}, err
 	}
 
-	readinessProbeBytes, err := readinessProbeScript(ent, cfg)
+	readinessProbeBytes, err := readinessProbeScript(ent, cfg, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -95,8 +95,8 @@ type partialConfigWithESAuth struct {
 }
 
 // readinessProbeScript returns a bash script that requests the health endpoint.
-func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig) ([]byte, error) {
-	url := fmt.Sprintf("%s://127.0.0.1:%d/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), HTTPPort)
+func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig, ipFamily corev1.IPFamily) ([]byte, error) {
+	url := fmt.Sprintf("%s://%s/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), net.LoopbackHostPort(ipFamily, HTTPPort))
 
 	// retrieve Elasticsearch user credentials from the aggregated config since it could be user-provided
 	var esAuth partialConfigWithESAuth
