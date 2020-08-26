@@ -5,6 +5,8 @@
 package certificates
 
 import (
+	"errors"
+
 	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -90,7 +92,7 @@ func (s CertificatesSecret) Validate() error {
 		return pkgerrors.Errorf("can't find private key %s in %s/%s", KeyFileName, s.Namespace, s.Name)
 	}
 	_, err := ParsePEMPrivateKey(key)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrEncryptedPrivateKey) {
 		return err
 	}
 	// Validate host certificate

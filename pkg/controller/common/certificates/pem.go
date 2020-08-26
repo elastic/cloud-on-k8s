@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var ErrEncryptedPrivateKey = errors.New("encrypted private key")
+
 // ParsePEMCerts returns a list of certificates from the given PEM certs data
 // Based on the code of x509.CertPool.AppendCertsFromPEM (https://golang.org/src/crypto/x509/cert_pool.go)
 // We don't rely on x509.CertPool.AppendCertsFromPEM directly here since it returns an interface from which
@@ -57,6 +59,7 @@ func EncodePEMPrivateKey(privateKey rsa.PrivateKey) []byte {
 }
 
 // ParsePEMPrivateKey parses the given private key in the PEM format
+// ErrEncryptedPrivateKey is returned as an error if the private key is encrypted.
 func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil {
@@ -64,6 +67,9 @@ func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
 	}
 
 	switch {
+	case x509.IsEncryptedPEMBlock(block):
+		// Private key is encrypted, do not attempt to parse it
+		return nil, ErrEncryptedPrivateKey
 	case block.Type == "PRIVATE KEY":
 		return parsePKCS8PrivateKey(block.Bytes)
 	case block.Type == "RSA PRIVATE KEY" && len(block.Headers) == 0:
