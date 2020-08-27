@@ -8,6 +8,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -260,7 +262,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 					},
 					Env: append(
 						[]corev1.EnvVar{{Name: "my-env", Value: "my-value"}},
-						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name)))...),
+						DefaultEnvVars(sampleES.Spec.HTTP, sset.HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name)))...),
 					Resources:      DefaultResources,
 					VolumeMounts:   volumeMounts,
 					ReadinessProbe: NewReadinessProbe(),
