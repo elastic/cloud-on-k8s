@@ -65,7 +65,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.9.0-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.10.0-SNAPSHOT")
                         }
                     }
                 }
