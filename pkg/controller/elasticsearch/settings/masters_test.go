@@ -33,6 +33,7 @@ func newPodWithIP(name, ip string, master bool) corev1.Pod {
 		},
 	}
 	label.NodeTypesMasterLabelName.Set(master, p.Labels)
+	p.Labels[label.StatefulSetNameLabelName] = "test-sset"
 	return p
 }
 
@@ -97,7 +98,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es: es,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.3.3:9300\n10.0.9.2:9300",
+			expectedContent: "master1.test-sset\nmaster3.test-sset",
 		},
 		{
 			name: "All masters have IPs, some nodes don't",
@@ -113,7 +114,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es: es,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
+			expectedContent: "master1.test-sset\nmaster2.test-sset\nmaster3.test-sset",
 		},
 		{
 			name: "Ordering of pods should not matter",
@@ -127,21 +128,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es: es,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
-		},
-		{
-			name: "Can handle IPv6 addresses",
-			args: args{
-				pods: []corev1.Pod{ //
-					newPodWithIP("master2", "fd00:10:244:0:2::3", true),
-					newPodWithIP("master3", "fd00:10:244:0:2::5", true),
-					newPodWithIP("master1", "fd00:10:244:0:2::2", true),
-				},
-				c:  k8s.WrappedFakeClient(),
-				es: es,
-			},
-			wantErr:         false,
-			expectedContent: "[fd00:10:244:0:2::2]:9300\n[fd00:10:244:0:2::3]:9300\n[fd00:10:244:0:2::5]:9300",
+			expectedContent: "master1.test-sset\nmaster2.test-sset\nmaster3.test-sset",
 		},
 	}
 	for _, tt := range tests {

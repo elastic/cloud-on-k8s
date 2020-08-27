@@ -27,12 +27,6 @@ var (
 	f = false
 )
 
-// HeadlessServiceName returns the name of the headless service for the given StatefulSet.
-func HeadlessServiceName(ssetName string) string {
-	// just use the sset name
-	return ssetName
-}
-
 // HeadlessService returns a headless service for the given StatefulSet
 func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 	nsn := k8s.ExtractNamespacedName(es)
@@ -40,7 +34,7 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: nsn.Namespace,
-			Name:      HeadlessServiceName(ssetName),
+			Name:      sset.HeadlessServiceName(ssetName),
 			Labels:    label.NewStatefulSetLabels(nsn, ssetName),
 		},
 		Spec: corev1.ServiceSpec{
@@ -115,7 +109,7 @@ func BuildStatefulSet(
 			// use default revision history limit
 			RevisionHistoryLimit: nil,
 			// build a headless service per StatefulSet, matching the StatefulSet labels
-			ServiceName: HeadlessServiceName(statefulSetName),
+			ServiceName: sset.HeadlessServiceName(statefulSetName),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: ssetSelector,
 			},
