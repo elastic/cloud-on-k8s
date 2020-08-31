@@ -58,3 +58,5 @@ config:
 
   beat:
     manageAutoDiscoverRBAC: true
+
+  setDefaultSecurityContext: true
