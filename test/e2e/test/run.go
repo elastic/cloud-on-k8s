@@ -4,15 +4,30 @@
 
 package test
 
+import "testing"
+
+func shouldSkipTest(builders ...Builder) bool {
+	for _, b := range builders {
+		// ignore the test if some builders cannot be tested
+		if b.SkipTest() {
+			return true
+		}
+	}
+	return false
+}
+
+func skipIfIncompatibleBuilders(t *testing.T, builders ...Builder) {
+	if shouldSkipTest(builders...) {
+		t.Skip("Skipping test due to an incompatible builder")
+	}
+}
+
 // Sequence returns a list of steps corresponding to the basic workflow (some optional init steps, then init steps,
 // create steps, check steps, then something and delete steps to terminate).
 func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 	steps := StepList{}
-	for _, b := range builders {
-		// ignore the test if some builders cannot be tested
-		if b.SkipTest() {
-			return steps
-		}
+	if shouldSkipTest(builders...){
+		return steps
 	}
 
 	k := NewK8sClientOrFatal()
@@ -45,11 +60,8 @@ func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 // before and after builder workflow (before steps, init, create, checks, deletes, after steps)
 func BeforeAfterSequence(before StepsFunc, after StepsFunc, builders ...Builder) StepList {
 	steps := StepList{}
-	for _, b := range builders {
-		// ignore the test if some builders cannot be tested
-		if b.SkipTest() {
-			return steps
-		}
+	if shouldSkipTest(builders...){
+		return steps
 	}
 
 	k := NewK8sClientOrFatal()

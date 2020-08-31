@@ -63,10 +63,6 @@ func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 		WithVersion(srcVersion).
 		WithRestrictedSecurityContext()
 
-	if ent.SkipTest() {
-		t.SkipNow() // invalid version
-	}
-
 	entUpgraded := ent.WithVersion(dstVersion).WithMutatedFrom(&ent)
 
 	// During the version upgrade, the operator will toggle Enterprise Search read-only mode.

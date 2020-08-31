@@ -31,17 +31,13 @@ type Builder struct {
 
 var _ test.Builder = Builder{}
 
+// SkipTest returns true if the version is not at least 7.7.0, or if the version is incompatible with Openshift.
 func (b Builder) SkipTest() bool {
-	// no Enterprise Search before 7.7.0
-	testVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !testVersion.IsSameOrAfter(minVersion) {
-		return true
-	}
-	// 7.9.0 is incompatible with OCP environments
-	if testVersion.IsSame(ocpIncompatibleVersion) && test.Ctx().OcpCluster {
-		return true
-	}
-	return false
+	v := version.MustParse(b.EnterpriseSearch.Spec.Version)
+	// skip if not at least 7.0
+	return !v.IsSameOrAfter(minVersion) ||
+		// or running 7.9.0 on Openshift
+		(test.Ctx().OcpCluster && v.IsSame(ocpIncompatibleVersion))
 }
 
 func NewBuilder(name string) Builder {
