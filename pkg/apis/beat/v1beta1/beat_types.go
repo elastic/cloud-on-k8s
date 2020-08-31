@@ -5,6 +5,7 @@
 package v1beta1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -78,6 +79,8 @@ type DaemonSetSpec struct {
 type DeploymentSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	Replicas    *int32                 `json:"replicas,omitempty"`
+	// +kubebuilder:validation:Optional
+	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }
 
 // BeatStatus defines the observed state of a Beat.
