@@ -26,7 +26,7 @@ func skipIfIncompatibleBuilders(t *testing.T, builders ...Builder) {
 // create steps, check steps, then something and delete steps to terminate).
 func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 	steps := StepList{}
-	if shouldSkipTest(builders...){
+	if shouldSkipTest(builders...) {
 		return steps
 	}
 
@@ -60,7 +60,7 @@ func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 // before and after builder workflow (before steps, init, create, checks, deletes, after steps)
 func BeforeAfterSequence(before StepsFunc, after StepsFunc, builders ...Builder) StepList {
 	steps := StepList{}
-	if shouldSkipTest(builders...){
+	if shouldSkipTest(builders...) {
 		return steps
 	}
 
