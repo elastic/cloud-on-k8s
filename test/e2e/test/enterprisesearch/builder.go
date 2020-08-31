@@ -18,6 +18,9 @@ import (
 
 var (
 	minVersion = version.MustParse("7.7.0")
+	// Enterprise Search 7.9.0 is incompatible with Openshift default SCC due to file permission errors.
+	// See https://github.com/elastic/cloud-on-k8s/issues/3656.
+	ocpIncompatibleVersion = version.MustParse("7.9.0")
 )
 
 // Builder to create Enterprise Search.
@@ -28,10 +31,13 @@ type Builder struct {
 
 var _ test.Builder = Builder{}
 
+// SkipTest returns true if the version is not at least 7.7.0, or if the version is incompatible with Openshift.
 func (b Builder) SkipTest() bool {
-	// no Enterprise Search before 7.7.0
-	testVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	return !testVersion.IsSameOrAfter(minVersion)
+	v := version.MustParse(b.EnterpriseSearch.Spec.Version)
+	// skip if not at least 7.0
+	return !v.IsSameOrAfter(minVersion) ||
+		// or running 7.9.0 on Openshift
+		(test.Ctx().OcpCluster && v.IsSame(ocpIncompatibleVersion))
 }
 
 func NewBuilder(name string) Builder {
