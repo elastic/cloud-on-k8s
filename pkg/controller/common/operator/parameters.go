@@ -27,7 +27,7 @@ type Parameters struct {
 	// MaxConcurrentReconciles controls the number of goroutines per controller.
 	MaxConcurrentReconciles int
 	// SetDefaultSecurityContext enables setting the default security context
-	// of Elasticsearch 8.0+ Pods, ignored pre-8.0
+	// with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0
 	SetDefaultSecurityContext bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer

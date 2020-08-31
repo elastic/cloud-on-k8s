@@ -26,9 +26,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-const (
-	defaultFsGroup = 1000
-)
+// Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,
+// we cannot chown the mounted volumes to the right user (id 1000) in an init container.
+// Instead, we can rely on Kubernetes `securityContext.fsGroup` feature: by setting it to 1000
+// mounted volumes can correctly be accessed by the default container user.
+// On some restricted environments (custom PSPs or Openshift), setting the Pod security context
+// is forbidden: the user can either set `--set-default-security-context=false`, or override the
+// podTemplate securityContext to an empty value.
+var minDefaultSecurityContextVersion = version.MustParse("8.0.0")
+
+const defaultFsGroup = 1000
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
@@ -61,7 +68,7 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	if ver.IsSameOrAfter(version.MinDefaultSecurityContextVersion) && setDefaultSecurityContext {
+	if ver.IsSameOrAfter(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			FSGroup: pointer.Int64(defaultFsGroup),
 		})

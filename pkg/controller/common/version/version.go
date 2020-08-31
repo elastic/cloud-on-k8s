@@ -23,11 +23,6 @@ var (
 	SupportedBeatVersions             = MinMaxVersion{Min: From(7, 0, 0), Max: From(8, 99, 99)}
 )
 
-var (
-	// MinDefaultSecurityContextVersion is the minimal version for which the operator will inspect set-default-security-context flag.
-	MinDefaultSecurityContextVersion = MustParse("8.0.0")
-)
-
 // MinMaxVersion holds the minimum and maximum supported versions.
 type MinMaxVersion struct {
 	Min Version
