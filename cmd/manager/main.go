@@ -218,6 +218,11 @@ func Command() *cobra.Command {
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
+	cmd.Flags().Bool(
+		operator.SetDefaultSecurityContextFlag,
+		true,
+		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0.",
+	)
 
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
@@ -455,8 +460,9 @@ func startOperator(stopChan <-chan struct{}) error {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-		MaxConcurrentReconciles: viper.GetInt(operator.MaxConcurrentReconcilesFlag),
-		Tracer:                  tracer,
+		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
+		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
+		Tracer:                    tracer,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
