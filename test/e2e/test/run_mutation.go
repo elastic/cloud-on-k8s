@@ -11,6 +11,7 @@ import (
 // RunMutations tests resources changes on given resources.
 // If the resource to mutate to is the same as the original resource, then all tests should still pass.
 func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder) {
+	skipIfIncompatibleBuilders(t, append(creationBuilders, mutationBuilders...)...)
 	k := NewK8sClientOrFatal()
 	steps := StepList{}
 
@@ -38,6 +39,7 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 }
 
 func RunMutationsWhileWatching(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder, watchers []Watcher) {
+	skipIfIncompatibleBuilders(t, append(creationBuilders, mutationBuilders...)...)
 	k := NewK8sClientOrFatal()
 	steps := StepList{}
 

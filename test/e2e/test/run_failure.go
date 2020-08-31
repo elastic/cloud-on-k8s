@@ -25,6 +25,7 @@ func RunUnrecoverableFailureScenario(t *testing.T, failureSteps StepsFunc, build
 }
 
 func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, builders ...Builder) {
+	skipIfIncompatibleBuilders(t, builders...)
 	k := NewK8sClientOrFatal()
 
 	steps := StepList{}

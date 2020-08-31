@@ -252,7 +252,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		Selector:        NewLabels(kb.Name),
 		Labels:          NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
-		Strategy:        strategyType,
+		Strategy:        appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }
 
