@@ -7,6 +7,7 @@ package v1
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -19,18 +20,20 @@ import (
 
 const (
 	cfgInvalidMsg            = "Configuration invalid"
-	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
-	parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	invalidSanIPErrMsg       = "Invalid SAN IP address. Must be a valid IPv4 address"
-	pvcImmutableMsg          = "Volume claim templates cannot be modified"
-	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
-	unsupportedVersionErrMsg = "Unsupported version"
-	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	duplicateNodeSets        = "NodeSet names must be unique"
+	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
+	invalidRoleConfigMsg     = "Conflicting role configurations detected. Use node.roles array instead of node.master, node.data, node.ml, node.ingest and node.transform"
+	invalidSanIPErrMsg       = "Invalid SAN IP address. Must be a valid IPv4 address"
+	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
+	mixedRoleConfigMsg       = "Detected a combination of node.roles and %s. Use only node.roles"
 	noDowngradesMsg          = "Downgrades are not supported"
-	unsupportedVersionMsg    = "Unsupported version"
+	nodeRolesInOldVersionMsg = "node.roles setting is not available in this version of Elasticsearch"
+	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	pvcImmutableMsg          = "Volume claim templates cannot be modified"
+	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
+	unsupportedVersionMsg    = "Unsupported version"
 )
 
 type validation func(*Elasticsearch) field.ErrorList
@@ -39,7 +42,7 @@ type validation func(*Elasticsearch) field.ErrorList
 var validations = []validation{
 	noUnknownFields,
 	validName,
-	hasMaster,
+	hasCorrectNodeRoles,
 	supportedVersion,
 	validSanIP,
 }
@@ -87,28 +90,89 @@ func supportedVersion(es *Elasticsearch) field.ErrorList {
 			return field.ErrorList{}
 		}
 	}
-	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionErrMsg)}
+	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionMsg)}
 }
 
-// hasMaster checks if the given Elasticsearch cluster has at least one master node.
-func hasMaster(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	var hasMaster bool
+// hasCorrectNodeRoles checks whether Elasticsearch node roles are correctly configured.
+// The rules are:
+// There must be at least one master node.
+// node.roles are only supported on Elasticsearch 7.9.0 and above
+func hasCorrectNodeRoles(es *Elasticsearch) field.ErrorList {
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		return append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
 	}
-	for i, t := range es.Spec.NodeSets {
-		cfg, err := UnpackConfig(t.Config, *v)
-		if err != nil {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i), t.Config, cfgInvalidMsg))
+
+	seenMaster := false
+
+	var errs field.ErrorList
+
+	confField := func(index int) *field.Path {
+		return field.NewPath("spec").Child("nodeSets").Index(index).Child("config")
+	}
+
+	for i, ns := range es.Spec.NodeSets {
+		cfg := &ElasticsearchSettings{}
+		if err := UnpackConfig(ns.Config, *v, cfg); err != nil {
+			errs = append(errs, field.Invalid(confField(i), ns.Config, cfgInvalidMsg))
+
+			continue
 		}
-		hasMaster = hasMaster || (cfg.Node.HasMasterRole() && t.Count > 0)
+
+		// check that node.roles is not used with an older Elasticsearch version
+		if cfg.Node.Roles != nil && !v.IsSameOrAfter(version.From(7, 9, 0)) {
+			errs = append(errs, field.Invalid(confField(i), ns.Config, nodeRolesInOldVersionMsg))
+
+			continue
+		}
+
+		// check that node.roles and node attributes are not mixed
+		nodeRoleAttrs := getNodeRoleAttrs(cfg)
+		if len(cfg.Node.Roles) > 0 && len(nodeRoleAttrs) > 0 {
+			errs = append(errs, field.Forbidden(confField(i), fmt.Sprintf(mixedRoleConfigMsg, strings.Join(nodeRoleAttrs, ","))))
+		}
+
+		// check if this nodeSet has the master role
+		seenMaster = seenMaster || (cfg.Node.HasMasterRole() && !cfg.Node.HasVotingOnlyRole() && ns.Count > 0)
 	}
-	if !hasMaster {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, masterRequiredMsg))
+
+	if !seenMaster {
+		errs = append(errs, field.Required(field.NewPath("spec").Child("nodeSets"), masterRequiredMsg))
 	}
+
 	return errs
+}
+
+func getNodeRoleAttrs(cfg *ElasticsearchSettings) []string {
+	var nodeRoleAttrs []string
+
+	if cfg.Node != nil {
+		if cfg.Node.Data != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, NodeData)
+		}
+
+		if cfg.Node.Ingest != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, NodeIngest)
+		}
+
+		if cfg.Node.Master != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, NodeMaster)
+		}
+
+		if cfg.Node.ML != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, NodeML)
+		}
+
+		if cfg.Node.Transform != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, NodeTransform)
+		}
+
+		if cfg.Node.VotingOnly != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, NodeVotingOnly)
+		}
+	}
+
+	return nodeRoleAttrs
 }
 
 func validSanIP(es *Elasticsearch) field.ErrorList {

@@ -3772,11 +3772,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/utils
-Version : v0.0.0-20200603063816-c1c6865ac451
-Time    : 2020-06-03T06:38:16Z
+Version : v0.0.0-20200821003339-5e75c0163111
+Time    : 2020-08-21T00:33:39Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20200603063816-c1c6865ac451/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20200821003339-5e75c0163111/LICENSE:
 
 
                                  Apache License

@@ -5,14 +5,14 @@
 package v1
 
 import (
-	"reflect"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/go-test/deep"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/pointer"
 )
 
 func TestConfig_RoleDefaults(t *testing.T) {
@@ -29,15 +29,15 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "empty equals defaults",
 			args: args{},
 			wantCfg: Node{
-				Master:    true,
-				Data:      true,
-				Ingest:    true,
-				ML:        true,
-				Transform: false,
+				Master:    pointer.BoolPtr(true),
+				Data:      pointer.BoolPtr(true),
+				Ingest:    pointer.BoolPtr(true),
+				ML:        pointer.BoolPtr(true),
+				Transform: pointer.BoolPtr(false),
 			},
 		},
 		{
-			name: "same as default",
+			name: "set node.master=true",
 			args: args{
 				c: commonv1.Config{
 					Data: map[string]interface{}{
@@ -46,15 +46,15 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				},
 			},
 			wantCfg: Node{
-				Master:    true,
-				Data:      true,
-				Ingest:    true,
-				ML:        true,
-				Transform: false,
+				Master:    pointer.BoolPtr(true),
+				Data:      pointer.BoolPtr(true),
+				Ingest:    pointer.BoolPtr(true),
+				ML:        pointer.BoolPtr(true),
+				Transform: pointer.BoolPtr(false),
 			},
 		},
 		{
-			name: "differ from default",
+			name: "set node.data=false",
 			args: args{
 				c: commonv1.Config{
 					Data: map[string]interface{}{
@@ -63,28 +63,27 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				},
 			},
 			wantCfg: Node{
-				Master:    true,
-				Data:      false,
-				Ingest:    true,
-				ML:        true,
-				Transform: false,
+				Master:    pointer.BoolPtr(true),
+				Data:      pointer.BoolPtr(false),
+				Ingest:    pointer.BoolPtr(true),
+				ML:        pointer.BoolPtr(true),
+				Transform: pointer.BoolPtr(false),
 			},
 		},
 		{
-			name: "version specific default differences: transform",
+			name: "defaults for versions above 7.7.0",
 			args: args{
 				ver: version.From(7, 7, 0),
 			},
 			wantCfg: Node{
-				Master:    true,
-				Data:      true,
-				Ingest:    true,
-				ML:        true,
-				Transform: true,
+				Master: pointer.BoolPtr(true),
+				Data:   pointer.BoolPtr(true),
+				Ingest: pointer.BoolPtr(true),
+				ML:     pointer.BoolPtr(true),
 			},
 		},
 		{
-			name: "transform data interdependency",
+			name: "set node.data=false on 7.7.0",
 			args: args{
 				c: commonv1.Config{
 					Data: map[string]interface{}{
@@ -96,15 +95,14 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				ver: version.From(7, 7, 0),
 			},
 			wantCfg: Node{
-				Master:    true,
-				Data:      false,
-				Ingest:    true,
-				ML:        true,
-				Transform: false,
+				Master: pointer.BoolPtr(true),
+				Data:   pointer.BoolPtr(false),
+				Ingest: pointer.BoolPtr(true),
+				ML:     pointer.BoolPtr(true),
 			},
 		},
 		{
-			name: "transform data interdependency",
+			name: "set node.transform=true and node.data=false on 7.7.0",
 			args: args{
 				c: commonv1.Config{
 					Data: map[string]interface{}{
@@ -115,21 +113,20 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				ver: version.From(7, 7, 0),
 			},
 			wantCfg: Node{
-				Master:    true,
-				Data:      false,
-				Ingest:    true,
-				ML:        true,
-				Transform: true,
+				Master:    pointer.BoolPtr(true),
+				Data:      pointer.BoolPtr(false),
+				Ingest:    pointer.BoolPtr(true),
+				ML:        pointer.BoolPtr(true),
+				Transform: pointer.BoolPtr(true),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := UnpackConfig(&tt.args.c, tt.args.ver)
+			got := DefaultCfg(tt.args.ver)
+			err := UnpackConfig(&tt.args.c, tt.args.ver, &got)
 			require.NoError(t, err)
-			if !reflect.DeepEqual(got.Node, tt.wantCfg) {
-				t.Errorf("Config.EqualRoles() = %+v, want %+v", got.Node, tt.wantCfg)
-			}
+			compare.JSONEqual(t, tt.wantCfg, got.Node)
 		})
 	}
 }
@@ -163,65 +160,148 @@ var expectedJSONized = commonv1.Config{
 }
 
 func TestConfig_HasRole(t *testing.T) {
-	tests := []struct {
-		name                                                                        string
-		roles                                                                       []string
-		expectedMaster, expectedData, expectedIngest, expectedML, expectedTransform bool
+	testCases := []struct {
+		name           string
+		node           *Node
+		wantMaster     bool
+		wantData       bool
+		wantIngest     bool
+		wantML         bool
+		wantTransform  bool
+		wantVotingOnly bool
 	}{
 		{
-			name:              "all roles",
-			roles:             []string{"master", "data", "ingest", "ml", "transform"},
-			expectedMaster:    true,
-			expectedData:      true,
-			expectedIngest:    true,
-			expectedML:        true,
-			expectedTransform: true,
+			name:           "nil node",
+			wantMaster:     true,
+			wantData:       true,
+			wantIngest:     true,
+			wantML:         true,
+			wantTransform:  true,
+			wantVotingOnly: false,
 		},
 		{
-			name:              "master and data roles",
-			roles:             []string{"master", "data"},
-			expectedMaster:    true,
-			expectedData:      true,
-			expectedIngest:    false,
-			expectedML:        false,
-			expectedTransform: false,
+			name:           "empty node",
+			node:           &Node{},
+			wantMaster:     true,
+			wantData:       true,
+			wantIngest:     true,
+			wantML:         true,
+			wantTransform:  true,
+			wantVotingOnly: false,
 		},
 		{
-			name:              "ingest and ml roles",
-			roles:             []string{"ingest", "ml"},
-			expectedMaster:    false,
-			expectedData:      false,
-			expectedIngest:    true,
-			expectedML:        true,
-			expectedTransform: false,
+			name: "node role attributes (all)",
+			node: &Node{
+				Master:    pointer.BoolPtr(true),
+				Data:      pointer.BoolPtr(true),
+				Ingest:    pointer.BoolPtr(true),
+				ML:        pointer.BoolPtr(true),
+				Transform: pointer.BoolPtr(true),
+			},
+			wantMaster:     true,
+			wantData:       true,
+			wantIngest:     true,
+			wantML:         true,
+			wantTransform:  true,
+			wantVotingOnly: false,
 		},
 		{
-			name:              "ingest only",
-			roles:             []string{"ingest"},
-			expectedMaster:    false,
-			expectedData:      false,
-			expectedIngest:    true,
-			expectedML:        false,
-			expectedTransform: false,
+			name: "node role attributes (no data)",
+			node: &Node{
+				Data: pointer.BoolPtr(false),
+			},
+			wantMaster:     true,
+			wantData:       false,
+			wantIngest:     true,
+			wantML:         true,
+			wantTransform:  false,
+			wantVotingOnly: false,
 		},
 		{
-			name:              "no roles",
-			roles:             []string{},
-			expectedMaster:    false,
-			expectedData:      false,
-			expectedIngest:    false,
-			expectedML:        false,
-			expectedTransform: false,
+			name: "node role attributes (ingest only)",
+			node: &Node{
+				Master:     pointer.BoolPtr(false),
+				Data:       pointer.BoolPtr(false),
+				Ingest:     pointer.BoolPtr(true),
+				ML:         pointer.BoolPtr(false),
+				Transform:  pointer.BoolPtr(false),
+				VotingOnly: pointer.BoolPtr(false),
+			},
+			wantMaster:     false,
+			wantData:       false,
+			wantIngest:     true,
+			wantML:         false,
+			wantTransform:  false,
+			wantVotingOnly: false,
+		},
+		{
+			name: "mixed node.roles and node role attributes",
+			node: &Node{
+				Master:     pointer.BoolPtr(false),
+				Data:       pointer.BoolPtr(false),
+				Ingest:     pointer.BoolPtr(true),
+				ML:         pointer.BoolPtr(false),
+				Transform:  pointer.BoolPtr(false),
+				VotingOnly: pointer.BoolPtr(false),
+				Roles:      []string{"master"},
+			},
+			wantMaster:     true,
+			wantData:       false,
+			wantIngest:     false,
+			wantML:         false,
+			wantTransform:  false,
+			wantVotingOnly: false,
+		},
+		{
+			name:           "node.roles (all)",
+			node:           &Node{Roles: []string{"master", "data", "ingest", "ml", "transform"}},
+			wantMaster:     true,
+			wantData:       true,
+			wantIngest:     true,
+			wantML:         true,
+			wantTransform:  true,
+			wantVotingOnly: false,
+		},
+		{
+			name:           "node.roles (master and data)",
+			node:           &Node{Roles: []string{"master", "data"}},
+			wantMaster:     true,
+			wantData:       true,
+			wantIngest:     false,
+			wantML:         false,
+			wantTransform:  false,
+			wantVotingOnly: false,
+		},
+		{
+			name:           "node.roles (ingest only)",
+			node:           &Node{Roles: []string{"ingest"}},
+			wantMaster:     false,
+			wantData:       false,
+			wantIngest:     true,
+			wantML:         false,
+			wantTransform:  false,
+			wantVotingOnly: false,
+		},
+		{
+			name:           "node.roles (no roles)",
+			node:           &Node{Roles: []string{}},
+			wantMaster:     false,
+			wantData:       false,
+			wantIngest:     false,
+			wantML:         false,
+			wantTransform:  false,
+			wantVotingOnly: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			node := Node{Roles: tt.roles}
-			assert.Equal(t, tt.expectedMaster, node.HasMasterRole())
-			assert.Equal(t, tt.expectedData, node.HasDataRole())
-			assert.Equal(t, tt.expectedIngest, node.HasIngestRole())
-			assert.Equal(t, tt.expectedML, node.HasMLRole())
-			assert.Equal(t, tt.expectedTransform, node.HasTransformRole())
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.wantMaster, tc.node.HasMasterRole())
+			require.Equal(t, tc.wantData, tc.node.HasDataRole())
+			require.Equal(t, tc.wantIngest, tc.node.HasIngestRole())
+			require.Equal(t, tc.wantML, tc.node.HasMLRole())
+			require.Equal(t, tc.wantTransform, tc.node.HasTransformRole())
+			require.Equal(t, tc.wantVotingOnly, tc.node.HasVotingOnlyRole())
 		})
 	}
 }
@@ -279,6 +359,22 @@ func TestConfig_Unpack(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "no node config",
+			args: &commonv1.Config{
+				Data: map[string]interface{}{
+					"cluster": map[string]interface{}{
+						"initial_master_nodes": []string{"a", "b"},
+					},
+				},
+			},
+			want: ElasticsearchSettings{
+				Cluster: ClusterSettings{
+					InitialMasterNodes: []string{"a", "b"},
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "happy path",
 			args: &commonv1.Config{
 				Data: map[string]interface{}{
@@ -292,12 +388,9 @@ func TestConfig_Unpack(t *testing.T) {
 				},
 			},
 			want: ElasticsearchSettings{
-				Node: Node{
-					Master:    false,
-					Data:      true,
-					Ingest:    true,
-					ML:        true,
-					Transform: true,
+				Node: &Node{
+					Master: pointer.BoolPtr(false),
+					Data:   pointer.BoolPtr(true),
 				},
 				Cluster: ClusterSettings{
 					InitialMasterNodes: []string{"a", "b"},
@@ -318,14 +411,8 @@ func TestConfig_Unpack(t *testing.T) {
 				},
 			},
 			want: ElasticsearchSettings{
-				Node: Node{
+				Node: &Node{
 					Roles: []string{"master", "data"},
-					// We are still expecting the default values for the legacy roles settings
-					Master:    true,
-					Data:      true,
-					Ingest:    true,
-					ML:        true,
-					Transform: true,
 				},
 				Cluster: ClusterSettings{
 					InitialMasterNodes: []string{"a", "b"},
@@ -334,30 +421,21 @@ func TestConfig_Unpack(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Unpack is nil safe",
-			args: nil,
-			want: ElasticsearchSettings{
-				Node: Node{
-					Master:    true,
-					Data:      true,
-					Ingest:    true,
-					ML:        true,
-					Transform: true,
-				},
-			},
+			name:    "Unpack is nil safe",
+			args:    nil,
+			want:    ElasticsearchSettings{},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := UnpackConfig(tt.args, ver)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Unpack() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			got := ElasticsearchSettings{}
+			err := UnpackConfig(tt.args, ver, &got)
+			if tt.wantErr {
+				require.Error(t, err)
 			}
-			if diff := deep.Equal(tt.want, got); diff != nil {
-				t.Error(diff)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
