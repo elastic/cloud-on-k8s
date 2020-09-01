@@ -148,19 +148,7 @@ func (d *AksDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-// workaroundAzureCliBug works around a cluster creation bug in azure-cli 2.11.0
-// see https://github.com/Azure/azure-cli/issues/14915.
-func (d *AksDriver) workaroundAzureCliBug() error {
-	cmd := "az extension add --name aks-preview"
-	return NewCommand(cmd).Run()
-}
-
 func (d *AksDriver) create() error {
-	// TODO: remove once https://github.com/Azure/azure-cli/issues/14915 is fixed in azure-cli
-	if err := d.workaroundAzureCliBug(); err != nil {
-		return err
-	}
-
 	log.Print("Creating cluster...")
 
 	servicePrincipal := ""
