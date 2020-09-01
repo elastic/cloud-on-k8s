@@ -9,12 +9,20 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var (
 	StorageClassProvisionerRegExp = regexp.MustCompile(`provisioner:.+\n`)
 	DefaultStorageClass           = ""
 	NoProvisioner                 = "kubernetes.io/no-provisioner"
+)
+
+// Retrieving the default storage class is retried up to getDefaultScRetries times,
+// waiting getDefaultScDelay between each attempt.
+const (
+	getDefaultScRetries = 20
+	getDefaultScDelay = 30*time.Second
 )
 
 // createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"
@@ -27,25 +35,9 @@ func createStorageClass(provisioner string) error {
 		return nil
 	}
 
-	defaultName := ""
-	for _, annotation := range []string{
-		`storageclass\.kubernetes\.io/is-default-class`,
-		`storageclass\.beta\.kubernetes\.io/is-default-class`,
-	} {
-		template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
-		baseScs, err := NewCommand(fmt.Sprintf(template, annotation)).OutputList()
-		if err != nil {
-			return err
-		}
-
-		if len(baseScs) != 0 {
-			defaultName = baseScs[0]
-			break
-		}
-	}
-
-	if defaultName == "" {
-		return fmt.Errorf("default storageclass not found")
+	defaultName, err := getDefaultStorageClassName()
+	if err != nil {
+		return err
 	}
 
 	sc, err := NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
@@ -66,4 +58,38 @@ func createStorageClass(provisioner string) error {
 	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, sc)).Run()
+}
+
+func getDefaultStorageClassName() (string, error) {
+	get := func() (string, error) {
+		for _, annotation := range []string{
+			`storageclass\.kubernetes\.io/is-default-class`,
+			`storageclass\.beta\.kubernetes\.io/is-default-class`,
+		} {
+			template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
+			baseScs, err := NewCommand(fmt.Sprintf(template, annotation)).OutputList()
+			if err != nil {
+				return "", err
+			}
+
+			if len(baseScs) != 0 {
+				return baseScs[0], nil
+			}
+		}
+		return "", fmt.Errorf("default storageclass not found")
+	}
+
+	// Some providers (AKS) may not have the default storage class created yet,
+	// let's retry getting it several times in case that happens.
+	attempt := 1
+	for {
+		name, err := get()
+		if err != nil && attempt < getDefaultScRetries{
+			log.Printf("failed to retrieve the default storageclass, retrying in %s: %s\n", getDefaultScDelay, err.Error())
+			time.Sleep(getDefaultScDelay)
+			attempt++
+			continue
+		}
+		return name, err
+	}
 }
