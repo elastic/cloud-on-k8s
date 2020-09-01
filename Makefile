@@ -369,7 +369,7 @@ switch-registry-dev: # just use the default values of variables
 E2E_REGISTRY_NAMESPACE ?= eck-dev
 E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-STACK_VERSION          ?= 7.8.1
+E2E_STACK_VERSION      ?= 7.9.0
 E2E_JSON               ?= false
 TEST_TIMEOUT           ?= 5m
 E2E_SKIP_CLEANUP       ?= false
@@ -388,7 +388,7 @@ e2e-run:
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
-		--elastic-stack-version=$(STACK_VERSION) \
+		--elastic-stack-version=$(E2E_STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \
@@ -416,7 +416,7 @@ e2e-local:
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
-		--elastic-stack-version=$(STACK_VERSION) \
+		--elastic-stack-version=$(E2E_STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \

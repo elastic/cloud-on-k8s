@@ -285,7 +285,7 @@ TEST_LICENSE_PKEY_PATH = $testLicensePKeyPath
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = ${operatorImage}
-STACK_VERSION = ${stackVersion}
+E2E_STACK_VERSION = ${stackVersion}
 
 PIPELINE=e2e/stack-versions
 BUILD_NUMBER=$BUILD_NUMBER
