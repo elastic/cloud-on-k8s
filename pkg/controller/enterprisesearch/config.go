@@ -6,9 +6,8 @@ package enterprisesearch
 
 import (
 	"fmt"
+	"net"
 	"path/filepath"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 const (
@@ -96,7 +96,7 @@ type partialConfigWithESAuth struct {
 
 // readinessProbeScript returns a bash script that requests the health endpoint.
 func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig, ipFamily corev1.IPFamily) ([]byte, error) {
-	url := fmt.Sprintf("%s://%s/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), net.LoopbackHostPort(ipFamily, HTTPPort))
+	url := fmt.Sprintf("%s://%s/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), netutil.LoopbackHostPort(ipFamily, HTTPPort))
 
 	// retrieve Elasticsearch user credentials from the aggregated config since it could be user-provided
 	var esAuth partialConfigWithESAuth
@@ -229,10 +229,18 @@ func parseConfigRef(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*
 	return common.ParseConfigRef(driver, &ent, ent.Spec.ConfigRef, ConfigFilename)
 }
 
+func inAddrAnyFor(ipFamily corev1.IPFamily) string {
+	if ipFamily == corev1.IPv4Protocol {
+		return net.IPv4zero.String()
+	}
+	// Enterprise Search even in its most recent version 7.9.0 cannot properly handle contracted IPv6 addresses like "::"
+	return "0:0:0:0:0:0:0:0"
+}
+
 func defaultConfig(ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
-		"ent_search.listen_host":         net.InAddrAnyFor(ipFamily).String(),
+		"ent_search.listen_host":         inAddrAnyFor(ipFamily),
 		"filebeat_log_directory":         LogVolumeMountPath,
 		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,

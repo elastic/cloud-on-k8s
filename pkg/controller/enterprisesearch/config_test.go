@@ -231,12 +231,13 @@ func TestReconcileConfig(t *testing.T) {
 		name        string
 		runtimeObjs []runtime.Object
 		ent         entv1beta1.EnterpriseSearch
+		ipFamily    corev1.IPFamily
 		// we don't compare the exact secret content because some keys are random, but we at least check
 		// all entries in this array exist in the reconciled secret, and there are not more rows
 		wantSecretEntries []string
 	}{
 		{
-			name:        "create default config secret",
+			name:        "create default config secret (IPv4)",
 			runtimeObjs: nil,
 			ent: entv1beta1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -244,12 +245,42 @@ func TestReconcileConfig(t *testing.T) {
 					Name:      "sample",
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"ent_search:",
 				"external_url: https://localhost:3002",
 				"filebeat_log_directory: /var/log/enterprise-search",
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name:        "create default config secret (IPv6)",
+			runtimeObjs: nil,
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+			},
+			ipFamily: corev1.IPv6Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"ent_search:",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: \"0:0:0:0:0:0:0:0\"",
 				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
@@ -278,6 +309,7 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			ent: entv1beta1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
@@ -323,6 +355,7 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"elasticsearch:",
@@ -366,6 +399,7 @@ func TestReconcileConfig(t *testing.T) {
 					}},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"ent_search:",
@@ -414,6 +448,7 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"ent_search:",
@@ -444,7 +479,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
+			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
