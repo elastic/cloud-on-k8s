@@ -55,6 +55,27 @@ kubectl get pod elastic-operator-0 -n elastic-system -o=jsonpath='{range .spec.c
 
 If the output of the above command contains both `manager` and `istio-proxy`, ECK has been successfully installed with the Istio sidecar injected.
 
+[NOTE]
+====
+
+In order for the <<{p}-webhook,validating webhook>> to work under Istio, you need to exclude the inbound port 9443 from being proxied. This can be done by editing the template definition of the `elastic-operator` StatefulSet to add the following annotations to the operator pod:
+
+[source,yaml]
+----
+[...]
+spec:
+  template:
+    metadata:
+      annotations:
+        traffic.sidecar.istio.io/excludeInboundPorts: "9443"
+        traffic.sidecar.istio.io/includeInboundPorts: '*'
+[...]
+----
+
+As the default `failurePolicy` of the webhook is `Ignore`, the operator will continue to function even if the above annotations are not present. The downside is that you will be able to submit an invalid manifest using `kubectl` without receiving any immediate feedback. ECK has a fallback validation mechanism that reports validation failures as events associated with the relevant resource ({eck_resources_list}) that must be manually discovered by running `kubectl describe ...`  
+
+====
+
 
 [id="{p}-service-mesh-istio-stack-connection"]
 === Connect Elastic Stack applications to the Istio service mesh
