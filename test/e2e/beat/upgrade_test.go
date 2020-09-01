@@ -29,7 +29,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 
 	name := "test-beat-upgrade-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
 	fbBuilder := beat.NewBuilder(name).
