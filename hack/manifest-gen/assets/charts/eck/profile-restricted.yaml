@@ -5,6 +5,3 @@ config:
 
   webhook:
     enabled: false
-
-  beat:
-    manageAutoDiscoverRBAC: false

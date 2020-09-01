@@ -32,6 +32,3 @@ data:
     {{- if .Values.config.managedNamespaces }}
     namespaces: [{{ join "," .Values.config.managedNamespaces  }}]
     {{- end }}
-    {{- if not .Values.config.beat.manageAutoDiscoverRBAC }}
-    manage-beat-autodiscover-rbac: false
-    {{- end }}

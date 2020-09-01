@@ -58,8 +58,11 @@ config:
     manageCerts: true
     name: elastic-webhook.k8s.elastic.co
     serviceName: elastic-webhook-server
+    failurePolicy: Ignore
 
-  beat:
-    manageAutoDiscoverRBAC: true
+  softMultiTenancy:
+    enabled: false
+
+  kubeAPIServerIP: null
 
   setDefaultSecurityContext: true

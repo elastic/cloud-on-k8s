@@ -1,6 +1,6 @@
+{{- if not .Values.config.createClusterScopedResources }}
 {{- range .Values.config.managedNamespaces }}
 {{- $namespace := . }}
-{{- if not $.Values.config.createClusterScopedResources }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -9,7 +9,6 @@ metadata:
   namespace: {{ $namespace }}
 rules:
 {{ template "rbac.rules" . | toYaml | indent 2 }}
-{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -19,21 +18,6 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: {{- if $.Values.config.createClusterScopedResources }} ClusterRole {{- else }} Role {{- end }}
-  name: {{ $.Values.operator.name }}
-subjects:
-- kind: ServiceAccount
-  name: {{ $.Values.operator.name }}
-  namespace: {{ $.Values.operator.namespace }}
-{{- else }}
-{{- if $.Values.config.createClusterScopedResources }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ $.Values.operator.name }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
   name: {{ $.Values.operator.name }}
 subjects:
 - kind: ServiceAccount

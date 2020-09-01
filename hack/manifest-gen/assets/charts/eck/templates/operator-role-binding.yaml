@@ -2,13 +2,15 @@
 {{- if not $operatorNSIsManaged -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: {{- if $.Values.config.createClusterScopedResources }} ClusterRoleBinding {{- else }} RoleBinding {{- end }}
 metadata:
   name: {{ .Values.operator.name }}
+{{- if not $.Values.config.createClusterScopedResources }}
   namespace: {{ .Values.operator.namespace }}
+{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: {{- if $.Values.config.createClusterScopedResources }} ClusterRole {{- else }} Role {{- end }}
   name: {{ .Values.operator.name }}
 subjects:
 - kind: ServiceAccount
