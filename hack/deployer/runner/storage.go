@@ -22,7 +22,7 @@ var (
 // waiting getDefaultScDelay between each attempt.
 const (
 	getDefaultScRetries = 20
-	getDefaultScDelay = 30*time.Second
+	getDefaultScDelay   = 30 * time.Second
 )
 
 // createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"
@@ -84,7 +84,7 @@ func getDefaultStorageClassName() (string, error) {
 	attempt := 1
 	for {
 		name, err := get()
-		if err != nil && attempt < getDefaultScRetries{
+		if err != nil && attempt < getDefaultScRetries {
 			log.Printf("failed to retrieve the default storageclass, retrying in %s: %s\n", getDefaultScDelay, err.Error())
 			time.Sleep(getDefaultScDelay)
 			attempt++
