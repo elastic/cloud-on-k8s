@@ -1,0 +1,126 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: test-elasticsearch
+spec:
+  version: 7.9.0
+  nodeSets:
+  - name: master-a
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms4g -Xmx4g"
+          resources:
+            requests:
+              memory: 8Gi
+              cpu: 2
+            limits:
+              memory: 8Gi
+  - name: master-b
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms4g -Xmx4g"
+          resources:
+            requests:
+              memory: 8Gi
+              cpu: 1
+            limits:
+              memory: 8Gi
+  - name: master-c
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms4g -Xmx4g"
+          resources:
+            requests:
+              memory: 8Gi
+              cpu: 1
+            limits:
+              memory: 8Gi
+  - name: hot-a
+    count: 3
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms16g -Xmx16g"
+  - name: warm-a
+    count: 3
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms32g -Xmx32g"
+          resources:
+            requests:
+              memory: 58Gi
+              cpu: 4
+            limits:
+              memory: 58Gi
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: test-kibana-1
+spec:
+  version: 7.9.0
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          resources:
+            requests:
+              memory: 4Gi
+            limits:
+              memory: 4Gi
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: test-kibana-2
+spec:
+  version: 7.9.0
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          env:
+            - name: NODE_OPTS
+              value: "--max-old-space-size=2048"
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: test-apm
+spec:
+  version: 7.9.0
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+        - name: apm-server
+          resources:
+            requests:
+              memory: 2Gi
+            limits:
+              memory: 2Gi
