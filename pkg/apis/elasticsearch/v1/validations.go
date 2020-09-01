@@ -22,7 +22,6 @@ const (
 	cfgInvalidMsg            = "Configuration invalid"
 	duplicateNodeSets        = "NodeSet names must be unique"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
-	invalidRoleConfigMsg     = "Conflicting role configurations detected. Use node.roles array instead of node.master, node.data, node.ml, node.ingest and node.transform"
 	invalidSanIPErrMsg       = "Invalid SAN IP address. Must be a valid IPv4 address"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	mixedRoleConfigMsg       = "Detected a combination of node.roles and %s. Use only node.roles"
