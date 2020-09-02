@@ -13,9 +13,11 @@ endif::[]
 - <<{p}-custom-images>>
 - <<{p}-service-meshes>>
 - <<{p}-traffic-splitting>>
+- <<{p}-network-policies>>
 --
 
 include::openshift.asciidoc[leveloffset=+1]
 include::custom-images.asciidoc[leveloffset=+1]
 include::service-meshes.asciidoc[leveloffset=+1]
 include::traffic-splitting.asciidoc[leveloffset=+1]
+include::network-policies.asciidoc[leveloffset=+1]

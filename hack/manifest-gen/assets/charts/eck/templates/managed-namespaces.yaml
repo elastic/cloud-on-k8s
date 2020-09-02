@@ -1,0 +1,12 @@
+{{- if .Values.config.softMultiTenancy.enabled -}}
+{{- range .Values.config.managedNamespaces }}
+{{- $namespace := . }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $namespace }}
+  labels:
+    eck.k8s.elastic.co/tenant: {{ $namespace }}
+{{- end -}}
+{{- end -}}
