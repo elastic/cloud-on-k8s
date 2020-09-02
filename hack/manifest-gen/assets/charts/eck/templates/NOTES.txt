@@ -1,0 +1,2 @@
+1. Inspect the operator logs by running the following command:
+   kubectl logs -n {{ .Release.Namespace }} $(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "eck.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")

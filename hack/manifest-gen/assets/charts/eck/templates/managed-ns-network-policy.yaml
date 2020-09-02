@@ -1,12 +1,16 @@
-{{- if .Values.config.softMultiTenancy.enabled -}}
-{{- range .Values.config.managedNamespaces -}}
+{{- if .Values.softMultiTenancy.enabled -}}
+{{- $fullName := include "eck.fullname" . -}}
+{{- $name := include "eck.name" . -}}
+{{- range .Values.managedNamespaces -}}
 {{- $namespace := . }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: eck-elasticsearch
+  name: "{{ $name }}-elasticsearch"
   namespace: {{ $namespace }}
+  labels:
+    {{- include "eck.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -36,10 +40,10 @@ spec:
         # Operator
         - namespaceSelector:
             matchLabels:
-              eck.k8s.elastic.co/operator-name: "{{ $.Values.operator.name }}"
+              name: "{{ $.Release.Namespace }}"
           podSelector:
             matchLabels:
-            {{- toYaml $.Values.operator.selectorLabels | nindent 14 }}
+              {{- include "eck.selectorLabels" $ | nindent 14 }}
         # Within namespace
         - namespaceSelector:
             matchLabels:
@@ -59,8 +63,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: eck-kibana
+  name: "{{ $name }}-kibana"
   namespace: {{ $namespace }}
+  labels:
+    {{- include "eck.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -95,8 +101,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: eck-apm-server
+  name: "{{ $name }}-apm-server"
   namespace: {{ $namespace }}
+  labels:
+    {{- include "eck.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -142,8 +150,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: eck-enterprise-search
+  name: "{{ $name }}-enterprise-search"
   namespace: {{ $namespace }}
+  labels:
+    {{- include "eck.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -178,8 +188,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: eck-beats
+  name: "{{ $name }}-beats"
   namespace: {{ $namespace }}
+  labels:
+    {{- include "eck.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:

@@ -1,21 +1,23 @@
-{{- if .Values.config.webhook.enabled -}}
+{{- if .Values.webhook.enabled -}}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: {{ .Values.config.webhook.name }}
-{{- if .Values.config.webhook.certManagerCert }}
+  name: {{ .Values.webhook.name }}
+  labels:
+    {{- include "eck.labels" . | nindent 4 }}
+{{- if .Values.webhook.certManagerCert }}
   annotations:
-    cert-manager.io/inject-ca-from: "{{ .Values.operator.namespace }}/{{ .Values.config.webhook.certManagerCert }}"
+    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ .Values.webhook.certManagerCert }}"
 {{- end }}
 webhooks:
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-apm-k8s-elastic-co-v1-apmserver
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-apm-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -28,12 +30,12 @@ webhooks:
     resources:
     - apmservers
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -46,12 +48,12 @@ webhooks:
     resources:
     - apmservers
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-beat-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -64,12 +66,30 @@ webhooks:
     resources:
     - beats
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+  name: elastic-ent-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - enterprisesearch.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - enterprisesearches
+- clientConfig:
+    caBundle: {{ .Values.webhook.caBundle }}
+    service:
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-es-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -82,12 +102,12 @@ webhooks:
     resources:
     - elasticsearches
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-es-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -100,12 +120,12 @@ webhooks:
     resources:
     - elasticsearches
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-kibana-k8s-elastic-co-v1-kibana
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-kb-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -118,12 +138,12 @@ webhooks:
     resources:
     - kibanas
 - clientConfig:
-    caBundle: {{ .Values.config.webhook.caBundle }}
+    caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.config.webhook.serviceName }}
-      namespace: {{ .Values.operator.namespace }}
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
-  failurePolicy: {{ .Values.config.webhook.failurePolicy }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -139,21 +159,25 @@ webhooks:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.config.webhook.serviceName }}
-  namespace: {{ .Values.operator.namespace }}
+  name: {{ .Values.webhook.serviceName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eck.labels" . | nindent 4 }}
 spec:
   ports:
     - name: https
       port: 443
       targetPort: 9443
   selector:
-    {{- toYaml .Values.operator.selectorLabels | nindent 4 }}
-{{- if .Values.config.webhook.manageCerts }}
+    {{- include "eck.selectorLabels" . | nindent 4 }}
+{{- if .Values.webhook.manageCerts }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: "{{ .Values.config.webhook.certsSecret }}"
-  namespace: {{ .Values.operator.namespace }}
+  name: "{{ .Values.webhook.certsSecret }}"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eck.labels" . | nindent 4 }}
 {{- end }}
 {{- end -}}

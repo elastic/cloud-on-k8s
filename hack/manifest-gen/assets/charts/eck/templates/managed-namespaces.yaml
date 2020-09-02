@@ -1,5 +1,5 @@
-{{- if .Values.config.softMultiTenancy.enabled -}}
-{{- range .Values.config.managedNamespaces }}
+{{- if .Values.softMultiTenancy.enabled -}}
+{{- range .Values.managedNamespaces }}
 {{- $namespace := . }}
 ---
 apiVersion: v1
@@ -7,6 +7,7 @@ kind: Namespace
 metadata:
   name: {{ $namespace }}
   labels:
+    {{- include "eck.labels" $ | nindent 4 }}
     eck.k8s.elastic.co/tenant: {{ $namespace }}
 {{- end -}}
 {{- end -}}

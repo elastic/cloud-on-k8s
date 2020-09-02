@@ -1,7 +1,9 @@
+{{- if .Values.internal.createOperatorNamespace -}}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.operator.namespace }}
+  name: {{ .Release.Namespace }}
   labels:
-    eck.k8s.elastic.co/operator-name: {{ .Values.operator.name }}
+    name: {{ .Release.Namespace }}
+{{- end -}}
