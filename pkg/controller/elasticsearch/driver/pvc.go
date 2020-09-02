@@ -5,14 +5,21 @@
 package driver
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"fmt"
+	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GarbageCollectPVCs ensures PersistentVolumeClaims created for the given es resource are deleted
@@ -65,4 +72,55 @@ func pvcsToRemove(
 		toRemove = append(toRemove, pvc)
 	}
 	return toRemove
+}
+
+func pvcsToResize(statefulSet appsv1.StatefulSet) (map[string]resource.Quantity, error) {
+	names := make(map[string]resource.Quantity, 0)
+	for key, value := range statefulSet.Annotations {
+		if !strings.HasPrefix(key, nodespec.ResizedVolumeAnnotationName) {
+			continue
+		}
+		claimName := strings.TrimPrefix(key, nodespec.ResizedVolumeAnnotationName)
+		for _, podName := range sset.PodNames(statefulSet) {
+			pvcName := fmt.Sprintf("%s-%s", claimName, podName)
+			quantity, err := resource.ParseQuantity(value)
+			if err != nil {
+				return nil, err
+			}
+			names[pvcName] = quantity
+		}
+	}
+	return names, nil
+}
+
+func resizePVCs(c k8s.Client, statefulSet appsv1.StatefulSet) error {
+	toResize, err := pvcsToResize(statefulSet)
+	if err != nil {
+		return err
+	}
+	for pvcName, newStorage := range toResize {
+		var pvc corev1.PersistentVolumeClaim
+		err := c.Get(types.NamespacedName{Namespace: statefulSet.Namespace, Name: pvcName}, &pvc)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if !pvc.DeletionTimestamp.IsZero() {
+			// pvc is scheduled for deletion, there's no point in resizing it
+			continue
+		}
+		existingStorage := pvc.Spec.Resources.Requests.Storage()
+		if existingStorage != nil && !existingStorage.Equal(newStorage) {
+			log.Info("Resizing PVC storage requests",
+				"namespace", statefulSet.Namespace, "pvc_name", pvcName,
+				"old_value", existingStorage.String(), "new_value", newStorage.String())
+			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = newStorage
+			if err := c.Update(&pvc); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

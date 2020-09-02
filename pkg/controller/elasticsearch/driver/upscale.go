@@ -61,6 +61,9 @@ func HandleUpscaleAndSpecChanges(
 		if err != nil {
 			return nil, fmt.Errorf("reconcile sset %w", err)
 		}
+		if err := resizePVCs(ctx.k8sClient, reconciled); err != nil {
+			return nil, fmt.Errorf("resize PVC: %w", err)
+		}
 		// update actual with the reconciled ones for next steps to work with up-to-date information
 		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
 	}

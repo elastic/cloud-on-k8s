@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -50,7 +49,7 @@ type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList
 var updateValidations = []updateValidation{
 	noDowngrades,
 	validUpgradePath,
-	pvcModification,
+	//pvcModification,
 }
 
 func (es *Elasticsearch) check(validations []validation) field.ErrorList {
@@ -144,28 +143,28 @@ func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
-func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	if current == nil || proposed == nil {
-		return errs
-	}
-	for i, node := range proposed.Spec.NodeSets {
-		currNode := getNode(node.Name, current)
-		if currNode == nil {
-			// this is a new sset, so there is nothing to check
-			continue
-		}
-
-		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
-		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims.
-		// Checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
-		if !apiequality.Semantic.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), node.VolumeClaimTemplates, pvcImmutableMsg))
-		}
-	}
-	return errs
-}
+//// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
+//func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
+//	var errs field.ErrorList
+//	if current == nil || proposed == nil {
+//		return errs
+//	}
+//	for i, node := range proposed.Spec.NodeSets {
+//		currNode := getNode(node.Name, current)
+//		if currNode == nil {
+//			// this is a new sset, so there is nothing to check
+//			continue
+//		}
+//
+//		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
+//		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims.
+//		// Checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
+//		if !apiequality.Semantic.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
+//			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), node.VolumeClaimTemplates, pvcImmutableMsg))
+//		}
+//	}
+//	return errs
+//}
 
 func noDowngrades(current, proposed *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList

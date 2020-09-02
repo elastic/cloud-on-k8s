@@ -7,6 +7,7 @@ package nodespec
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -21,6 +22,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+)
+
+const (
+	ResizedVolumeAnnotationName = "elasticsearch.k8s.elastic.co/resized-volume-"
 )
 
 var (
@@ -90,7 +95,8 @@ func BuildStatefulSet(
 
 	// maybe inherit volumeClaimTemplates ownerRefs from the existing StatefulSet
 	var existingClaims []corev1.PersistentVolumeClaim
-	if existingSset, exists := existingStatefulSets.GetByName(statefulSetName); exists {
+	existingSset, ssetExists := existingStatefulSets.GetByName(statefulSetName)
+	if ssetExists {
 		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
 	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims, es)
@@ -123,6 +129,13 @@ func BuildStatefulSet(
 			VolumeClaimTemplates: claims,
 			Template:             podTemplate,
 		},
+	}
+
+	if ssetExists {
+		// ensure we reuse the existing storage requirements, we'll handle pvc resize ourselves
+		if err := inheritStorageSizeFromExistingClaims(&sset, existingClaims); err != nil {
+			return appsv1.StatefulSet{}, err
+		}
 	}
 
 	// store a hash of the sset resource in its labels for comparison purposes
@@ -175,6 +188,37 @@ func setVolumeClaimsControllerReference(
 		claims = append(claims, claim)
 	}
 	return claims, nil
+}
+
+func inheritStorageSizeFromExistingClaims(sset *appsv1.StatefulSet, existingClaims []corev1.PersistentVolumeClaim) error {
+	for _, existingClaim := range existingClaims {
+		for i, newClaim := range sset.Spec.VolumeClaimTemplates {
+			if existingClaim.Name != newClaim.Name {
+				continue
+			}
+			existingStorageReq := existingClaim.Spec.Resources.Requests.Storage()
+			newStorageReq := newClaim.Spec.Resources.Requests.Storage()
+			if existingStorageReq == nil || newStorageReq == nil {
+				continue
+			}
+			if newStorageReq.Equal(*existingStorageReq) {
+				continue
+			}
+			// the new spec specifies a different storage req than the existing one
+			// reuse the existing storage req since volume claim templates are immutable
+			sset.Spec.VolumeClaimTemplates[i].Spec.Resources.Requests[corev1.ResourceStorage] = *existingStorageReq
+			// annotate the sset with the desired storage req for a resize to be handled separately
+			setResizedVolumeAnnotation(sset, newClaim.Name, *newStorageReq)
+		}
+	}
+	return nil
+}
+
+func setResizedVolumeAnnotation(sset *appsv1.StatefulSet, claimName string, desired resource.Quantity) {
+	if sset.Annotations == nil {
+		sset.Annotations = make(map[string]string, 1)
+	}
+	sset.Annotations[ResizedVolumeAnnotationName+claimName] = desired.String()
 }
 
 // getClaimMatchingName returns a claim matching the given name.
