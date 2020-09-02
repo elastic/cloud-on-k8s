@@ -6,8 +6,10 @@ package settings
 
 import (
 	"context"
+	"net"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -15,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
@@ -57,7 +59,7 @@ func UpdateSeedHostsConfigMap(
 		if len(master.Status.PodIP) > 0 { // do not add pod with no IPs
 			seedHosts = append(
 				seedHosts,
-				sset.PodDNSName(master),
+				net.JoinHostPort(master.Status.PodIP, strconv.Itoa(network.TransportPort)),
 			)
 		}
 	}

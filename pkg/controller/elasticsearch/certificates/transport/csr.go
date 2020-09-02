@@ -11,8 +11,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -73,6 +73,9 @@ func buildGeneralNames(
 		return nil, errors.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
 	}
 
+	ssetName := pod.Labels[label.StatefulSetNameLabelName]
+	svcName := nodespec.HeadlessServiceName(ssetName)
+
 	commonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
 
 	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
@@ -93,7 +96,7 @@ func buildGeneralNames(
 		// the DNS name has to match the seed hosts configured in the remote cluster settings
 		{DNSName: fmt.Sprintf("%s.%s.svc", esv1.TransportService(cluster.Name), cluster.Namespace)},
 		// add the resolvable DNS name of the Pod as published by Elasticsearch
-		{DNSName: sset.PodDNSName(pod)},
+		{DNSName: fmt.Sprintf("%s.%s", pod.Name, svcName)},
 		{IPAddress: netutil.IPToRFCForm(podIP)},
 		{IPAddress: netutil.IPToRFCForm(netutil.LoopbackFor(netutil.ToIPFamily(podIP.String())))},
 	}

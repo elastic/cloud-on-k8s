@@ -124,8 +124,8 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.Equal(t, pointer.Int32(4), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
 	// headless services should be created for both
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: sset.HeadlessServiceName("sset1")}, &corev1.Service{}))
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: sset.HeadlessServiceName("sset2")}, &corev1.Service{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
 	// config should be created for both
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset1")}, &corev1.Secret{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))

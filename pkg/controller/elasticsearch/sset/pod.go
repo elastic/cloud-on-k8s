@@ -20,18 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
-// HeadlessServiceName returns the name of the headless service for the given StatefulSet.
-func HeadlessServiceName(ssetName string) string {
-	// just use the sset name
-	return ssetName
-}
-
-//PodDNSName returns the DNS resolvable name of the given pod resolvable within the namespace.
-func PodDNSName(pod corev1.Pod) string {
-	ssetName := pod.Labels[label.StatefulSetNameLabelName]
-	return fmt.Sprintf("%s.%s", pod.Name, HeadlessServiceName(ssetName))
-}
-
 // PodName returns the name of the pod with the given ordinal for this StatefulSet.
 func PodName(ssetName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", ssetName, ordinal)
