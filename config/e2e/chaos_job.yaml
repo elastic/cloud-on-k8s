@@ -1,0 +1,43 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "chaos-{{ .Context.TestRun }}"
+  namespace: {{ .Context.E2ENamespace }}
+  labels:
+    test-run: {{ .Context.TestRun }}
+spec:
+  ttlSecondsAfterFinished: 360
+  template:
+    metadata:
+      annotations:
+        co.elastic.logs/json.keys_under_root: "true"
+      labels:
+        test-run: {{ .Context.TestRun }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+{{ if not .Context.OcpCluster }}
+        fsGroup: 101
+        runAsUser: 101
+        runAsGroup: 0
+{{ end }}
+      serviceAccountName: {{ .Context.E2EServiceAccount }}
+      containers:
+        - name: e2e
+          image: {{ .Context.E2EImage }}
+          args:
+          - "--operator-namespace"
+          - "{{ .Context.Operator.Namespace }}"
+          - "--operator-name"
+          - "{{ .Context.Operator.Name }}"
+          #- "--delete-operator-delay=2m"
+          #- "--update-operator-replicas-delay=5m"
+          env:
+          - name: CHAOS
+            value: "true"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+      restartPolicy: Never
+  backoffLimit: 0 # don't retry if chaos pod has failed

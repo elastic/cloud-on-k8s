@@ -100,6 +100,7 @@ type Context struct {
 	Provider              string            `json:"provider"`
 	ClusterName           string            `json:"clusterName"`
 	KubernetesVersion     string            `json:"kubernetes_version"`
+	DeployChaosJob        bool              `json:"deploy_chaos_job"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
@@ -116,5 +117,6 @@ type ClusterResource struct {
 // NamespaceOperator is cluster resource with an associated namespace to manage.
 type NamespaceOperator struct {
 	ClusterResource
+	Replicas          int      `json:"operator_replicas"`
 	ManagedNamespaces []string `json:"managed_namespaces"`
 }

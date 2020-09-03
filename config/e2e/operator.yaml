@@ -204,6 +204,7 @@ spec:
     matchLabels:
       control-plane: {{ .Operator.Name }}
   serviceName: {{ .Operator.Name }}
+  replicas: {{ .Operator.Replicas }}
   template:
     metadata:
       annotations:
