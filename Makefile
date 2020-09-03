@@ -144,6 +144,7 @@ integration-xml: clean generate-crds
 
 lint:
 	golangci-lint run
+	hack/manifest-gen/test.sh
 
 shellcheck:
 	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
