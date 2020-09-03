@@ -10,8 +10,8 @@ endif::[]
 The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a Kibana instance with ECK.
 The following sections describe how to customize a Kibana deployment to suit your requirements.
 
-* <<{p}-kibana-eck-managed-es,Connect to an Elasticsearch cluster with ECK>>
-* <<{p}-kibana-external-es,Connect to an Elasticsearch cluster without ECK>>
+* <<{p}-kibana-eck-managed-es,Connect to an Elasticsearch cluster managed by ECK>>
+* <<{p}-kibana-external-es,Connect to an Elasticsearch cluster not managed by ECK>>
 * <<{p}-kibana-advanced-configuration,Advanced configuration>>
 ** <<{p}-kibana-pod-configuration,Pod Configuration>>
 ** <<{p}-kibana-configuration,Kibana Configuration>>
@@ -44,7 +44,7 @@ spec:
 
 The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana.
 
-NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to Kibana namespace. If this behavior is not desired, more than one ECK instance can be deployed. Kibana cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance.
+NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to Kibana namespace. Kibana cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information about cross-namespace relationship, see <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
 
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
@@ -226,7 +226,7 @@ spec:
 === Load balancer settings and TLS SANs
 
 By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated with the Kibana deployment.
-If you want to expose Kibana externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer], you have to include a custom DNS name or IP in the self-generated certificate.
+If you want to expose Kibana externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer], it is recommended to include a custom DNS name or IP in the self-generated certificate.
 
 [source,yaml,subs="attributes"]
 ----
