@@ -131,7 +131,7 @@ GCS credentials are automatically propagated into each Elasticsearch node's keys
 [id="{p}-create-repository"]
 == Register the repository in Elasticsearch
 
-. Create the GCS snapshot repository in Elasticsearch. You can either use the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] in Kibana (in version >= 7.4.0) or follow the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
+. Create the GCS snapshot repository in Elasticsearch. You can either use the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] in Kibana version 7.4.0 or higher, or follow the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
 
 +
 [source,sh]
@@ -156,9 +156,9 @@ PUT /_snapshot/my_gcs_repository/test-snapshot
 [id="{p}-setup-cronjob"]
 == Periodic snapshots with Snapshot Lifecycle Management
 
-You can use the https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[snapshot lifecycle management APIs] to manage policies for the time and frequency of automatic snapshots (in versions >= 7.4.0).
+You can use the https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[snapshot lifecycle management APIs] to manage policies for the time and frequency of automatic snapshots (in version 7.4.0 or higher).
 
-The https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] allows you to manage these policies directly in Kibana as well.
+The https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] allows you to manage these policies directly in Kibana.
 
 
 == Periodic snapshots with a CronJob
@@ -206,4 +206,4 @@ spec:
 kubectl apply -f snapshotter.yml
 ----
 
-For more details see https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[Kubernetes CronJobs].
+For more details, see https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[Kubernetes CronJobs].

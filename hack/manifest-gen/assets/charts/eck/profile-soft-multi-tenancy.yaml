@@ -1,0 +1,13 @@
+config:
+  createClusterScopedResources: true
+
+  managedNamespaces: ["team-a", "team-b"]
+
+  refs:
+    enforceRBAC: true
+
+  webhook:
+    enabled: true
+
+  softMultiTenancy:
+    enabled: true

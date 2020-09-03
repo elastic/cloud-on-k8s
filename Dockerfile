@@ -41,6 +41,7 @@ LABEL name="Elastic Cloud on Kubernetes" \
 RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
+COPY config/eck.yaml /conf/eck.yaml
 
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/

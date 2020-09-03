@@ -89,6 +89,15 @@ ECK is instrumented with Elastic APM tracing. To run ECK locally with tracing en
 ENABLE_TRACING=true ELASTIC_APM_SERVER_URL=https://<apm-server-url> ELASTIC_APM_SECRET_TOKEN=<token> ELASTIC_APM_VERIFY_SERVER_CERT=false make run
 ```
 
+### Development mode
+
+Starting the operator with the `--development` flag enables the development mode. The following set of flags become available for use in this mode.
+
+| Flag | Description |
+| ---- | ----------- |
+| `auto-port-forward` | Allows the operator to be run locally (outside of a Kubernetes cluster) by port-forwarding to the remote cluster. |
+| `debug-http-listen` | Address to start the debug server which provides access to pprof endpoints. Default is `localhost:6060`. |
+
 ## Recommended reading
 
 * [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)

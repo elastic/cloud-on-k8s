@@ -45,6 +45,6 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1beta1.EnterpriseSe
 		Selector:        deploymentLabels,
 		Labels:          deploymentLabels,
 		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
+		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}
 }

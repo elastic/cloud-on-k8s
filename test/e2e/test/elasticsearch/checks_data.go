@@ -106,7 +106,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	}
 	resp, err = esClient.Request(context.Background(), indexCreation)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create index: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -122,7 +122,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		}
 		resp, err = esClient.Request(context.Background(), r)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to index document %d/%d: %w", i, dc.docCount, err)
 		}
 		defer resp.Body.Close()
 	}

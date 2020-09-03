@@ -23,7 +23,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
+
+// Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,
+// we cannot chown the mounted volumes to the right user (id 1000) in an init container.
+// Instead, we can rely on Kubernetes `securityContext.fsGroup` feature: by setting it to 1000
+// mounted volumes can correctly be accessed by the default container user.
+// On some restricted environments (custom PSPs or Openshift), setting the Pod security context
+// is forbidden: the user can either set `--set-default-security-context=false`, or override the
+// podTemplate securityContext to an empty value.
+var minDefaultSecurityContextVersion = version.MustParse("8.0.0")
+
+const defaultFsGroup = 1000
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
@@ -31,6 +43,7 @@ func BuildPodTemplateSpec(
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
+	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
 	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
@@ -49,7 +62,19 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName).
+	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName)
+
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	if ver.IsSameOrAfter(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
+			FSGroup: pointer.Int64(defaultFsGroup),
+		})
+	}
+
+	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, es.Spec.Version)).

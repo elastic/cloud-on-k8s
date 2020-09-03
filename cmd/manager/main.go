@@ -151,6 +151,11 @@ func Command() *cobra.Command {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
+		operator.ContainerSuffixFlag,
+		"",
+		"Container image suffix to use when downloading Elastic Stack container images",
+	)
+	cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
@@ -220,10 +225,20 @@ func Command() *cobra.Command {
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
+	cmd.Flags().Bool(
+		operator.SetDefaultSecurityContextFlag,
+		true,
+		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0.",
+	)
+
+	// hide development mode flags from the usage message
+	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
+	_ = cmd.Flags().MarkHidden(operator.DebugHTTPListenFlag)
+
+	// configure filename auto-completion for the config flag
+	_ = cmd.MarkFlagFilename(operator.ConfigFlag)
 
 	logconf.BindFlags(cmd.Flags())
-
-	_ = cmd.MarkFlagFilename(operator.ConfigFlag)
 
 	return cmd
 }
@@ -351,6 +366,13 @@ func startOperator(stopChan <-chan struct{}) error {
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
+	// set a custom container suffix if specified
+	containerSuffix := viper.GetString(operator.ContainerSuffixFlag)
+	if containerSuffix != "" {
+		log.Info("Setting default container suffix", "container_suffix", containerSuffix)
+		container.SetContainerSuffix(containerSuffix)
+	}
+
 	// Get a config to talk to the apiserver
 	cfg, err := ctrl.GetConfig()
 	if err != nil {
@@ -448,8 +470,9 @@ func startOperator(stopChan <-chan struct{}) error {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-		MaxConcurrentReconciles: viper.GetInt(operator.MaxConcurrentReconcilesFlag),
-		Tracer:                  tracer,
+		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
+		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
+		Tracer:                    tracer,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {

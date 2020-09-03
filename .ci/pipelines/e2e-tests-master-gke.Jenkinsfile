@@ -61,6 +61,12 @@ pipeline {
 
                     if (env.SHELL_EXIT_CODE != 0) {
                         failedTests = lib.getListOfFailedTests()
+
+                        googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
+                            credentialsId: "devops-ci-gcs-plugin",
+                            pattern: "*.tgz",
+                            sharedPublicly: true,
+                            showInline: true
                     }
 
                     sh 'exit $SHELL_EXIT_CODE'
