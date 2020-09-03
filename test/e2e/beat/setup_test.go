@@ -18,6 +18,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type kbSavedObjects struct {
@@ -140,6 +142,9 @@ func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder
 					}
 					if dashboards.Total == 0 {
 						return fmt.Errorf("expected >0 dashboards but got 0")
+					}
+					for _, db := range dashboards.SavedObjects {
+						logf.Log.Info("Found dashboard", "title", db.Attributes.Title)
 					}
 					for beat, expectDashboards := range beatToDashboardsPresence {
 						// We are exploiting the fact here that Beats dashboards follow a naming convention that starts with the
