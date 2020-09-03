@@ -7,7 +7,6 @@ package beat
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -18,8 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type kbSavedObjects struct {
@@ -29,15 +26,6 @@ type kbSavedObjects struct {
 			Title string `json:"title"`
 		} `json:"attributes"`
 	} `json:"saved_objects"`
-}
-
-func (so kbSavedObjects) HasDashboardsWithPrefix(prefix string) bool {
-	for _, obj := range so.SavedObjects {
-		if strings.HasPrefix(obj.Attributes.Title, prefix) {
-			return true
-		}
-	}
-	return false
 }
 
 func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
@@ -130,30 +118,27 @@ func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder
 						return err
 					}
 
-					body, err := kibana.DoRequest(client, kbBuilder.Kibana, password,
-						"GET", "/api/saved_objects/_find?type=dashboard", nil,
-					)
-					if err != nil {
-						return err
-					}
-					var dashboards kbSavedObjects
-					if err := json.Unmarshal(body, &dashboards); err != nil {
-						return err
-					}
-					if dashboards.Total == 0 {
-						return fmt.Errorf("expected >0 dashboards but got 0")
-					}
-					for _, db := range dashboards.SavedObjects {
-						logf.Log.Info("Found dashboard", "title", db.Attributes.Title)
-					}
 					for beat, expectDashboards := range beatToDashboardsPresence {
-						// We are exploiting the fact here that Beats dashboards follow a naming convention that starts with the
-						// name of the beat in square brackets. This test will obviously break if future versions of Beats
-						// abandon this naming convention.
-						hasDashboards := dashboards.HasDashboardsWithPrefix(fmt.Sprintf("[%s ", beat))
-						if hasDashboards != expectDashboards {
-							return fmt.Errorf("expected  %s dashboard [%v], found dashboards [%v]", beat, expectDashboards, hasDashboards)
+						// We are exploiting the fact here that Beats dashboards follow a naming convention that contains the
+						// name of the beat. This test will obviously break if future versions of Beats abandon this naming convention.
+						query := fmt.Sprintf("/api/saved_objects/_find?type=dashboard&search_fields=title&search=%s", beat)
+						body, err := kibana.DoRequest(client, kbBuilder.Kibana, password,
+							"GET", query, nil,
+						)
+						if err != nil {
+							return err
 						}
+						var dashboards kbSavedObjects
+						if err := json.Unmarshal(body, &dashboards); err != nil {
+							return err
+						}
+						if dashboards.Total == 0 && expectDashboards {
+							return fmt.Errorf("expected %s dashboards, but found none", beat)
+						}
+						if dashboards.Total != 0 && !expectDashboards {
+							return fmt.Errorf("expected no %s dashboards, but found some", beat)
+						}
+
 					}
 					return nil
 				}),
