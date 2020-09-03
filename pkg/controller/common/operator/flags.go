@@ -15,6 +15,7 @@ const (
 	ContainerSuffixFlag           = "container-suffix"
 	DebugHTTPListenFlag           = "debug-http-listen"
 	DisableConfigWatch            = "disable-config-watch"
+	EnableLeaderElection          = "enable-leader-election"
 	EnableTracingFlag             = "enable-tracing"
 	EnableWebhookFlag             = "enable-webhook"
 	EnforceRBACOnRefsFlag         = "enforce-rbac-on-refs"

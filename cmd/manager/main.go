@@ -70,6 +70,8 @@ const (
 	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort        = 9443
 
+	LeaderElectionConfigMapName = "elastic-operator-leader"
+
 	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
 
@@ -167,6 +169,11 @@ func Command() *cobra.Command {
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
+	)
+	cmd.Flags().Bool(
+		operator.EnableLeaderElection,
+		true,
+		"Enable leader election. Enabling this will ensure there is only one active operator.",
 	)
 	cmd.Flags().Bool(
 		operator.EnableTracingFlag,
@@ -381,8 +388,11 @@ func startOperator(stopChan <-chan struct{}) error {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
-		Scheme:  clientgoscheme.Scheme,
-		CertDir: viper.GetString(operator.WebhookCertDirFlag),
+		Scheme:                  clientgoscheme.Scheme,
+		CertDir:                 viper.GetString(operator.WebhookCertDirFlag),
+		LeaderElection:          viper.GetBool(operator.EnableLeaderElection),
+		LeaderElectionID:        LeaderElectionConfigMapName,
+		LeaderElectionNamespace: operatorNamespace,
 	}
 
 	// configure the manager cache based on the number of managed namespaces
@@ -482,15 +492,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
-	garbageCollectUsers(cfg, managedNamespaces)
-
-	go func() {
-		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
-		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
-		r.Start(licensing.ResourceReporterFrequency)
-	}()
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -503,6 +505,22 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 
 	return nil
+}
+
+// asyncTasks schedules some tasks to be started when this instance of the operator is elected
+func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace string) {
+	<-mgr.Elected() // wait for this operator instance to be elected
+
+	// Start the resource reporter
+	go func() {
+		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
+		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
+		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
+		r.Start(licensing.ResourceReporterFrequency)
+	}()
+
+	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+	garbageCollectUsers(cfg, managedNamespaces)
 }
 
 func registerControllers(mgr manager.Manager, params operator.Parameters, accessReviewer rbac.AccessReviewer) error {

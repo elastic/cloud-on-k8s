@@ -10,6 +10,7 @@ spec:
   selector:
     matchLabels:
       {{- toYaml .Values.operator.selectorLabels | nindent 6 }}
+  replicas: {{ .Values.operator.replicas }}
   serviceName: {{ .Values.operator.name }}
   template:
     metadata:
