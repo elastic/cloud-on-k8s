@@ -100,9 +100,9 @@ The last two steps above can be accomplished using the link:{eck_github}/tree/{e
 [source, sh]
 ----
 ./manifest-gen.sh -g \
-  --set=config.webhook.manageCerts=false \
-  --set=config.webhook.certsSecret=elastic-webhook-server-custom-cert \
-  --set=config.webhook.caBundle=$(base64 -w 0 ca.crt) | kubectl apply -f -
+  --set=webhook.manageCerts=false \
+  --set=webhook.certsSecret=elastic-webhook-server-custom-cert \
+  --set=webhook.caBundle=$(base64 -w 0 ca.crt) | kubectl apply -f -
 ----
 
 ====
@@ -159,9 +159,9 @@ The last two steps above can be accomplished using the link:{eck_github}/tree/{e
 [source, sh]
 ----
 ./manifest-gen.sh -g \
-  --set=config.webhook.manageCerts=false \
-  --set=config.webhook.certsSecret=elastic-webhook-server-cert \
-  --set=config.webhook.certManagerCert=elastic-webhook-server-cert | kubectl apply -f -
+  --set=webhook.manageCerts=false \
+  --set=webhook.certsSecret=elastic-webhook-server-cert \
+  --set=webhook.certManagerCert=elastic-webhook-server-cert | kubectl apply -f -
 ----
 
 ====

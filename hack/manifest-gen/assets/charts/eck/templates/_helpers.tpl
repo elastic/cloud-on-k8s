@@ -34,12 +34,14 @@ Create chart name and version as used by the chart label.
 Common labels
 */}}
 {{- define "eck.labels" -}}
-helm.sh/chart: {{ include "eck.chart" . }}
 {{ include "eck.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
+{{- if not .Values.internal.manifestGen }}
+helm.sh/chart: {{ include "eck.chart" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -48,7 +50,6 @@ Selector labels
 {{- define "eck.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "eck.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-control-plane: elastic-operator
 {{- end }}
 
 {{/*

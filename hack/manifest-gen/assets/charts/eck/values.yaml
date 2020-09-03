@@ -135,4 +135,4 @@ config:
 
 # for internal use only.
 internal:
-  createOperatorNamespace: false
+  manifestGen: false

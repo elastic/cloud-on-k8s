@@ -209,18 +209,20 @@ deploy: check-gke install-crds build-operator-image apply-operator
 apply-operator:
 ifeq ($(strip $(MANAGED_NAMESPACES)),)
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
-		--set=operator.version=$(IMG_VERSION) \
-		--set=operator.image.repository=$(BASE_IMG) \
-		--set=operator.namespace=$(OPERATOR_NAMESPACE) \
-		--set=operator.name=$(OPERATOR_NAME) | kubectl apply -f -
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) | kubectl apply -f -
 else
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--profile=restricted \
-		--set=operator.version=$(IMG_VERSION) \
-		--set=operator.image.repository=$(BASE_IMG) \
-		--set=operator.namespace=$(OPERATOR_NAMESPACE) \
-		--set=operator.name=$(OPERATOR_NAME) \
-		--set=config.managedNamespaces="{$(MANAGED_NAMESPACES)}" | kubectl apply -f -
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) \
+		--set=managedNamespaces="{$(MANAGED_NAMESPACES)}" | kubectl apply -f -
 endif
 
 apply-psp:
@@ -231,10 +233,11 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 # merge all-in-one crds with operator manifests
 generate-all-in-one:
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
-		--set=operator.version=$(IMG_VERSION) \
-		--set=operator.image.repository=$(BASE_IMG) \
-		--set=operator.namespace=$(OPERATOR_NAMESPACE) \
-		--set=operator.name=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release

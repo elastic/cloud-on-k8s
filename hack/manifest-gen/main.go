@@ -9,8 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/elastic/cloud-on-k8s/hack/manifest-gen/internal"
 	"github.com/spf13/cobra"
+
+	"github.com/elastic/cloud-on-k8s/hack/manifest-gen/internal"
 )
 
 var (
@@ -83,22 +84,22 @@ Global operator:
     $ manifest-gen generate
 
 Global operator with the validation webhook disabled:
-    $ manifest-gen generate --set=config.webhook.enabled=false
+    $ manifest-gen generate --set=webhook.enabled=false
 
 Global operator with resource memory limit increased to 300Mi and CPU limit increased to 2:
-    $ manifest-gen generate --set=operator.resources.limits.cpu=2,operator.resources.limits.memory=300Mi
+    $ manifest-gen generate --set=resources.limits.cpu=2,resources.limits.memory=300Mi
 
 Restricted operator without CRDs, managing the "elastic-system" namespace:
     $ manifest-gen generate --profile=restricted --exclude-crds
 
 Restricted operator installed to and managing the single namespace named "namespacex":
-    $ manifest-gen generate --profile=restricted --set=operator.namespace=namespacex --set=config.managedNamespaces='{namespacex}'
+    $ manifest-gen generate --profile=restricted --namespace=namespacex --set=managedNamespaces='{namespacex}'
 
 Restricted operator managing "elastic-system", "nsa" and "nsb":
-    $ manifest-gen generate --profile=restricted --set=config.managedNamespaces='{elastic-system, nsa, nsb}'
+    $ manifest-gen generate --profile=restricted --set=managedNamespaces='{elastic-system, nsa, nsb}'
 
 Restricted operator with tracing configured:
-    $ manifest-gen generate --profile=restricted --set=config.tracing.enabled=true --set=config.tracing.config.ELASTIC_APM_SERVER_URL=http://apm:8200
+    $ manifest-gen generate --profile=restricted --set=tracing.enabled=true --set=tracing.config.ELASTIC_APM_SERVER_URL=http://apm:8200
 `
 
 	cmd := &cobra.Command{
@@ -118,6 +119,7 @@ Restricted operator with tracing configured:
 	cmd.Flags().BoolVar(&generateFlags.ExcludeCRDs, "exclude-crds", false, "Exclude CRDs from generated manifest")
 	cmd.Flags().StringArrayVar(&generateFlags.Values, "set", []string{}, "Set additional options")
 	cmd.Flags().StringArrayVar(&generateFlags.ValueFiles, "values", []string{}, "Set additional options from file(s)")
+	cmd.Flags().StringVarP(&generateFlags.OperatorNamespace, "namespace", "n", "elastic-system", "Operator namespace")
 
 	return cmd
 }

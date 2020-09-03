@@ -1,4 +1,4 @@
-{{- if .Values.internal.createOperatorNamespace -}}
+{{- if .Values.internal.manifestGen -}}
 ---
 apiVersion: v1
 kind: Namespace
