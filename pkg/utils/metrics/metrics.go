@@ -18,7 +18,7 @@ const (
 
 	LicenseLevelLabel      = "license_level"
 	OperatorNamespaceLabel = "operator_namespace"
-	UuidLabel              = "uuid"
+	UUIDLabel              = "uuid"
 )
 
 var (
@@ -26,7 +26,7 @@ var (
 		Subsystem: namespace,
 		Name:      LeaderKey,
 		Help:      "Gauge used to evaluate if an instance is elected",
-	}, []string{UuidLabel, OperatorNamespaceLabel}))
+	}, []string{UUIDLabel, OperatorNamespaceLabel}))
 
 	// LicensingMaxERUGauge reports the maximum allowed enterprise resource units for licensing purposes.
 	LicensingMaxERUGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{

@@ -26,7 +26,6 @@ type runFlags struct {
 	elasticStackVersion   string
 	kubeConfig            string
 	operatorImage         string
-	operatorReplicas      int
 	testLicensePKeyPath   string
 	testContextOutPath    string
 	testLicense           string
@@ -34,19 +33,20 @@ type runFlags struct {
 	testRegex             string
 	testRunName           string
 	monitoringSecrets     string
-	commandTimeout        time.Duration
-	autoPortForwarding    bool
-	skipCleanup           bool
-	local                 bool
-	logToFile             bool
-	ignoreWebhookFailures bool
-	logVerbosity          int
-	testTimeout           time.Duration
 	pipeline              string
 	buildNumber           string
 	provider              string
 	clusterName           string
 	kubernetesVersion     string
+	operatorReplicas      int
+	commandTimeout        time.Duration
+	logVerbosity          int
+	testTimeout           time.Duration
+	autoPortForwarding    bool
+	skipCleanup           bool
+	local                 bool
+	logToFile             bool
+	ignoreWebhookFailures bool
 	deployChaosJob        bool
 }
 

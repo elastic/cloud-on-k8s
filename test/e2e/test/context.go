@@ -92,6 +92,7 @@ type Context struct {
 	MonitoringSecrets     string            `json:"monitoring_secrets"`
 	TestTimeout           time.Duration     `json:"test_timeout"`
 	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
+	DeployChaosJob        bool              `json:"deploy_chaos_job"`
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
 	OcpCluster            bool              `json:"ocp_cluster"`
@@ -100,7 +101,6 @@ type Context struct {
 	Provider              string            `json:"provider"`
 	ClusterName           string            `json:"clusterName"`
 	KubernetesVersion     string            `json:"kubernetes_version"`
-	DeployChaosJob        bool              `json:"deploy_chaos_job"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
