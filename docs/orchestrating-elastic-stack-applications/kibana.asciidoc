@@ -31,7 +31,7 @@ You can connect an Elasticsearch cluster that is either managed by ECK or not ma
 
 
 [id="{p}-kibana-eck-managed-es"]
-=== Connect to an Elasticsearch cluster managed by ECK
+=== Elasticsearch is managed by ECK
 
 It is quite straightforward to connect a Kibana instance to an Elasticsearch cluster managed by ECK:
 
@@ -56,7 +56,7 @@ NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as l
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
 [id="{p}-kibana-external-es"]
-=== Connect to an Elasticsearch cluster not managed by ECK
+=== Elasticsearch is not managed by ECK
 
 You can also configure Kibana to connect to an Elasticsearch cluster that is managed by a different installation of ECK, or runs outside the Kubernetes cluster. In this case, you need the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
 
