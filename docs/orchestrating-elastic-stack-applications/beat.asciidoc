@@ -292,7 +292,24 @@ spec:
 [id="{p}-beat-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Beats may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed.
+Depending on the use case, Beats may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  deployment:
+    strategy: Recreate
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
+----
+
+Consider picking the `Recreate` strategy if you are using a `hostPath` volume as the Beats data directory to avoid two Pods competing for the same directory.
 
 [id="{p}-beat-role-based-access-control-for-beats"]
 === Role Based Access Control for Beats
@@ -477,3 +494,14 @@ When `kubectl` is used to modify a resource, it calculates a diff between the us
 
 - change `some_key: null` to `some_key: {}` - if it doesn't change config semantics
 - instead of `config` use `configRef` and reference a Secret containing the config - Secret data doesn't go through the same diffing process
+
+
+=== Pod fails to start after update
+
+If you have configured a Beat to run as a `Deployment` and you are using a `hostPath` volume as the Beats data directory, you might encounter an error similar to the following:
+[source,shell script]
+----
+ERROR   instance/beat.go:958    Exiting: data path already locked by another beat. Please make sure that multiple beats are not sharing the same data path (path.data).
+----
+
+This can happen if the new Pod is scheduled on the same Kubernetes node as the old Pod and is now trying to use the same data directory. Use a <<{p}-beat-chose-the-deployment-model,`Recreate`>> deployment strategy to avoid this problem.
