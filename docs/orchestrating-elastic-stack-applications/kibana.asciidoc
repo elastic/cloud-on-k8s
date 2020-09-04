@@ -10,8 +10,9 @@ endif::[]
 The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a Kibana instance with ECK.
 The following sections describe how to customize a Kibana deployment to suit your requirements.
 
-* <<{p}-kibana-eck-managed-es,Connect to an Elasticsearch cluster managed by ECK>>
-* <<{p}-kibana-external-es,Connect to an Elasticsearch cluster not managed by ECK>>
+* <<{p}-kibana-es,Connect to an Elasticsearch cluster>>
+** <<{p}-kibana-eck-managed-es,Connect to an Elasticsearch cluster managed by ECK>>
+** <<{p}-kibana-external-es,Connect to an Elasticsearch cluster not managed by ECK>>
 * <<{p}-kibana-advanced-configuration,Advanced configuration>>
 ** <<{p}-kibana-pod-configuration,Pod Configuration>>
 ** <<{p}-kibana-configuration,Kibana Configuration>>
@@ -23,8 +24,14 @@ The following sections describe how to customize a Kibana deployment to suit you
 ** <<{p}-kibana-http-disable-tls,Disable TLS>>
 ** <<{p}-kibana-plugins>>
 
+[id="{p}-kibana-es"]
+== Connect to an Elasticsearch cluster
+
+You can connect an Elasticsearch cluster that is either managed by ECK or not managed by ECK. 
+
+
 [id="{p}-kibana-eck-managed-es"]
-== Connect to an Elasticsearch cluster with ECK
+=== Connect to an Elasticsearch cluster managed by ECK
 
 It is quite straightforward to connect a Kibana instance to an Elasticsearch cluster managed by ECK:
 
@@ -49,7 +56,7 @@ NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as l
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
 [id="{p}-kibana-external-es"]
-== Connect to an Elasticsearch cluster without ECK
+=== Connect to an Elasticsearch cluster not managed by ECK
 
 You can also configure Kibana to connect to an Elasticsearch cluster that is managed by a different installation of ECK, or runs outside the Kubernetes cluster. In this case, you need the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
 
