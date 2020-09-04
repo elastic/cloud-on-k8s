@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -86,6 +87,93 @@ var sampleES = esv1.Elasticsearch{
 	},
 }
 
+func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
+	for _, tt := range []struct {
+		name                string
+		version             version.Version
+		setDefaultFSGroup   bool
+		userSecurityContext *corev1.PodSecurityContext
+		wantSecurityContext *corev1.PodSecurityContext
+	}{
+		{
+			name:                "pre-8.0, setting off, no user context",
+			version:             version.MustParse("7.8.0"),
+			setDefaultFSGroup:   false,
+			userSecurityContext: nil,
+			wantSecurityContext: nil,
+		},
+		{
+			name:                "pre-8.0, setting off, user context",
+			version:             version.MustParse("7.8.0"),
+			setDefaultFSGroup:   false,
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+		},
+		{
+			name:                "pre-8.0, setting on, no user context",
+			version:             version.MustParse("7.8.0"),
+			setDefaultFSGroup:   true,
+			userSecurityContext: nil,
+			wantSecurityContext: nil,
+		},
+		{
+			name:                "pre-8.0, setting on, user context",
+			version:             version.MustParse("7.8.0"),
+			setDefaultFSGroup:   true,
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+		},
+		{
+			name:                "8.0+, setting off, no user context",
+			version:             version.MustParse("8.0.0"),
+			setDefaultFSGroup:   false,
+			userSecurityContext: nil,
+			wantSecurityContext: nil,
+		},
+		{
+			name:                "8.0+, setting off, user context",
+			version:             version.MustParse("8.0.0"),
+			setDefaultFSGroup:   false,
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+		},
+		{
+			name:                "8.0+, setting on, no user context",
+			version:             version.MustParse("8.0.0"),
+			setDefaultFSGroup:   true,
+			userSecurityContext: nil,
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(1000)},
+		},
+		{
+			name:                "8.0+, setting on, user context",
+			version:             version.MustParse("8.0.0"),
+			setDefaultFSGroup:   true,
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+		},
+		{
+			name:                "8.0+, setting on, empty user context",
+			version:             version.MustParse("8.0.0"),
+			setDefaultFSGroup:   true,
+			userSecurityContext: &corev1.PodSecurityContext{},
+			wantSecurityContext: &corev1.PodSecurityContext{},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			es := *sampleES.DeepCopy()
+			es.Spec.Version = tt.version.String()
+			es.Spec.NodeSets[0].PodTemplate.Spec.SecurityContext = tt.userSecurityContext
+
+			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, es.Spec.HTTP, *es.Spec.NodeSets[0].Config)
+			require.NoError(t, err)
+
+			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
+		})
+	}
+}
+
 func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
@@ -93,7 +181,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config)
 	require.NoError(t, err)
 
-	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil)
+	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec

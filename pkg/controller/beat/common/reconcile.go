@@ -95,6 +95,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Labels:          NewLabels(rp.beat),
 		PodTemplateSpec: rp.podTemplate,
 		Replicas:        pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
+		Strategy:        rp.beat.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {
 		return 0, 0, err

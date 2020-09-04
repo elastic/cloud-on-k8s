@@ -16,15 +16,15 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
 	github.com/go-test/deep v1.0.7
-	github.com/gobuffalo/flect v0.2.1
+	github.com/gobuffalo/flect v0.2.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
-	github.com/google/go-cmp v0.5.1
-	github.com/google/uuid v1.1.1
+	github.com/google/go-cmp v0.5.2
+	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.11
 	github.com/influxdata/tdigest v0.0.1 // indirect
-	github.com/magiconair/properties v1.8.1
+	github.com/magiconair/properties v1.8.2
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -39,7 +39,7 @@ require (
 	go.elastic.co/apm v1.8.0
 	go.elastic.co/apm/module/apmelasticsearch v1.8.0
 	go.uber.org/automaxprocs v1.3.0
-	go.uber.org/zap v1.15.0
+	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
@@ -49,9 +49,9 @@ require (
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
 	k8s.io/klog/v2 v2.0.0
-	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
+	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
 	sigs.k8s.io/controller-runtime v0.6.2
-	sigs.k8s.io/controller-tools v0.2.5
+	sigs.k8s.io/controller-tools v0.4.0
 )
 
 // this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this

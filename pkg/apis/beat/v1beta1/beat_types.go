@@ -5,6 +5,7 @@
 package v1beta1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -78,6 +79,8 @@ type DaemonSetSpec struct {
 type DeploymentSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	Replicas    *int32                 `json:"replicas,omitempty"`
+	// +kubebuilder:validation:Optional
+	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }
 
 // BeatStatus defines the observed state of a Beat.
@@ -127,7 +130,7 @@ const (
 // +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
 // +kubebuilder:printcolumn:name="type",type="string",JSONPath=".spec.type",description="Beat type"
-// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Beat version"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Beat version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:storageversion
 type Beat struct {

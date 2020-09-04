@@ -8,6 +8,13 @@
   path: /spec/validation
 - op: remove
   path: /spec/versions/1/schema
+# Move additionalPrinterColumns of the v1 version to the top-level, and remove it from the v1beta1 version.
+# This is in order to be compatible with k8s 1.11.
+- op: move
+  from: /spec/versions/0/additionalPrinterColumns
+  path: /spec/additionalPrinterColumns
+- op: remove
+  path: /spec/versions/1/additionalPrinterColumns
 # Remove validation.openAPIV3Schema.type that causes failures on k8s 1.11.
 # This should have been fixed with https://github.com/kubernetes-sigs/controller-tools/pull/72, but it looks like
 # this commit has been lost in history. See https://github.com/kubernetes-sigs/controller-tools/issues/296.

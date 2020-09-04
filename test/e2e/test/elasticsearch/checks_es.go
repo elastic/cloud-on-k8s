@@ -153,8 +153,8 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
-					cfg, err := esv1.UnpackConfig(topoElem.Config, *v)
-					if err != nil {
+					cfg := esv1.DefaultCfg(*v)
+					if err := esv1.UnpackConfig(topoElem.Config, *v, &cfg); err != nil {
 						return err
 					}
 
@@ -183,7 +183,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 	}
 }
 
-func compareRoles(expected esv1.Node, actualRoles []string) bool {
+func compareRoles(expected *esv1.Node, actualRoles []string) bool {
 	for _, r := range actualRoles {
 		switch r {
 		case "master":

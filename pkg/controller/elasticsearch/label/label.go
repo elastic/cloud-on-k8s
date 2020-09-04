@@ -102,7 +102,7 @@ func NewPodLabels(
 	es types.NamespacedName,
 	ssetName string,
 	ver version.Version,
-	nodeRoles esv1.Node,
+	nodeRoles *esv1.Node,
 	configHash string,
 	scheme string,
 ) map[string]string {

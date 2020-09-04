@@ -14,6 +14,7 @@ import (
 var CfgOptions = []ucfg.Option{ucfg.PathSep(".")}
 
 // Config represents untyped YAML configuration.
+// +kubebuilder:validation:Type=object
 type Config struct {
 	// Data holds the configuration keys and values.
 	// This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528

@@ -246,7 +246,9 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	panic("implement me")
+	return b.UpgradeTestSteps(k).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k))
 }
 
 func (b Builder) MutationReversalTestContext() test.ReversalTestContext {

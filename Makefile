@@ -23,8 +23,8 @@ GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/nu
 
 # find or download controller-gen
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.2.5)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.4.0)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -86,7 +86,7 @@ dependencies:
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
-generate: tidy generate-crds generate-api-docs generate-notice-file
+generate: tidy generate-crds generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -98,11 +98,14 @@ go-generate:
 generate-crds: go-generate controller-gen
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
 	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
+
+generate-config-file:
+	@hack/config-extractor/extract.sh
 
 generate-api-docs:
 	@hack/api-docs/build.sh
@@ -333,7 +336,7 @@ switch-eks:
 ##  --    Docker images    --  ##
 #################################
 
-docker-build: go-generate
+docker-build: go-generate generate-config-file
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
@@ -366,7 +369,7 @@ switch-registry-dev: # just use the default values of variables
 E2E_REGISTRY_NAMESPACE ?= eck-dev
 E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-STACK_VERSION          ?= 7.8.1
+E2E_STACK_VERSION      ?= 7.9.0
 E2E_JSON               ?= false
 TEST_TIMEOUT           ?= 5m
 E2E_SKIP_CLEANUP       ?= false
@@ -385,7 +388,7 @@ e2e-run:
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
-		--elastic-stack-version=$(STACK_VERSION) \
+		--elastic-stack-version=$(E2E_STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \
@@ -413,7 +416,7 @@ e2e-local:
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
-		--elastic-stack-version=$(STACK_VERSION) \
+		--elastic-stack-version=$(E2E_STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \

@@ -8,6 +8,10 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var NOOPCheck func(k *K8sClient, t *testing.T) = nil
@@ -84,4 +88,28 @@ func (w *Watcher) stop() {
 	if !w.watchOnce {
 		w.stopChan <- struct{}{}
 	}
+}
+
+// NewVersionWatcher returns a watcher that asserts that in all observations all pods were running the same
+// version. It relies on the assumption that pod initialization and termination take more than 1 second
+// (observations resolution), so different versions running at the same time could always be caught.
+func NewVersionWatcher(versionLabel string, opts ...client.ListOption) Watcher {
+	var podObservations [][]v1.Pod
+	return NewWatcher(
+		"watch pods versions: should not observe multiples versions running at once",
+		1*time.Second,
+		func(k *K8sClient, t *testing.T) {
+			if pods, err := k.GetPods(opts...); err != nil {
+				t.Logf("failed to list pods: %v", err)
+			} else {
+				podObservations = append(podObservations, pods)
+			}
+		},
+		func(k *K8sClient, t *testing.T) {
+			for _, pods := range podObservations {
+				for i := 1; i < len(pods); i++ {
+					assert.Equal(t, pods[i-1].Labels[versionLabel], pods[i].Labels[versionLabel])
+				}
+			}
+		})
 }

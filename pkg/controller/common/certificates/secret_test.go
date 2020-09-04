@@ -73,6 +73,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
 	corruptedKey := loadFileBytes("corrupted.key")
+	encryptedKey := loadFileBytes("encrypted.key")
 
 	tests := []struct {
 		name    string
@@ -128,6 +129,16 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		},
 		{
 			name: "Corrupted key",
+			s: CertificatesSecret{
+				Data: map[string][]byte{
+					CertFileName: tls,
+					KeyFileName:  encryptedKey,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Encrypted private key",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
 					CertFileName: tls,

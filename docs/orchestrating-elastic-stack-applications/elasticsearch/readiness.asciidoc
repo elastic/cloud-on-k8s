@@ -8,7 +8,9 @@ endif::[]
 [id="{p}-{page_id}"]
 = Readiness probe
 
-By default, the readiness probe checks that the pod can successfully respond to HTTP requests within a three second timeout. This is acceptable in most cases. In some cases (such as when the cluster is under heavy load), it may be helpful to increase the timeout. This allows the pod to stay in a `Ready` state and thus be part of the Elasticsearch service even if it is responding slowly. To adjust the timeout, set the `READINESS_PROBE_TIMEOUT` environment variable in the pod template. The readiness probe configuration also must be updated with the new timeout. For example, to increase the API call timeout to ten seconds and the overall check time to twelve seconds:
+By default, the readiness probe checks that the Pod responds to HTTP requests within a timeout of three seconds. This is acceptable in most cases. However, when the cluster is under heavy load, you might need to increase the timeout. This allows the Pod to stay in a `Ready` state and be part of the Elasticsearch service even if it is responding slowly. To adjust the timeout, set the `READINESS_PROBE_TIMEOUT` environment variable in the Pod template and update the readiness probe configuration with the new timeout. 
+
+This example describes how to increase the API call timeout to ten seconds and the overall check time to twelve seconds:
 
 [source,yaml,subs="attributes"]
 ----
@@ -39,4 +41,4 @@ spec:
 
 ----
 
-Note that this will require restarting the pods.
+Note that this requires restarting the Pods.

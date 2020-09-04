@@ -10,9 +10,11 @@ operator:
     repository: docker.elastic.co/eck/eck-operator
     pullPolicy: IfNotPresent
 
+  replicas: 1
+
   resources:
     limits:
-      cpu: 1
+      cpu: "1"
       memory: 512Mi
     requests:
       cpu: 100m
@@ -49,12 +51,20 @@ config:
     enforceRBAC: false
 
   webhook:
-    enabled: true
-    manageCerts: true
+    caBundle: Cg==
+    certManagerCert: null
     certsDir: "/tmp/k8s-webhook-server/serving-certs"
     certsSecret: elastic-webhook-server-cert
+    enabled: true
+    failurePolicy: Ignore
+    manageCerts: true
     name: elastic-webhook.k8s.elastic.co
     serviceName: elastic-webhook-server
+    failurePolicy: Ignore
 
-  beat:
-    manageAutoDiscoverRBAC: true
+  softMultiTenancy:
+    enabled: false
+
+  kubeAPIServerIP: null
+
+  setDefaultSecurityContext: true

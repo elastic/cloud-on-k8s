@@ -142,7 +142,7 @@ spec:
       version: {{ .Version }}
     {{- end }}
   description: 'Elastic Cloud on Kubernetes automates the deployment, provisioning,
-    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and 
+    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and
     Enterprise Search on Kubernetes.
 
 
@@ -196,7 +196,7 @@ spec:
               containers:
               - image: {{ .OperatorRepo }}:{{ .NewVersion }}
                 name: manager
-                args: ["manager", "--log-verbosity=0"]
+                args: ["manager", "--config=/conf/eck.yaml"]
                 env:
                 - name: NAMESPACES
                   valueFrom:

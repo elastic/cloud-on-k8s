@@ -26,8 +26,10 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 				Spec: ElasticsearchSpec{
 					Version: "7.4.0",
 					NodeSets: []NodeSet{
-						{Name: "foo", Count: 1}, {Name: "foo", Count: 1},
-						{Name: "bar", Count: 1}, {Name: "bar", Count: 1},
+						{Name: "foo", Count: 1},
+						{Name: "foo", Count: 1},
+						{Name: "bar", Count: 1},
+						{Name: "bar", Count: 1},
 					},
 				},
 			},
@@ -79,7 +81,25 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 	}
 }
 
-func Test_hasMaster(t *testing.T) {
+func Test_hasCorrectNodeRoles(t *testing.T) {
+	type m map[string]interface{}
+
+	esWithRoles := func(version string, count int32, nodeSetRoles ...m) *Elasticsearch {
+		x := es(version)
+		for _, nsc := range nodeSetRoles {
+			data := nsc
+
+			x.Spec.NodeSets = append(x.Spec.NodeSets, NodeSet{
+				Count: count,
+				Config: &commonv1.Config{
+					Data: data,
+				},
+			})
+		}
+
+		return x
+	}
+
 	tests := []struct {
 		name         string
 		es           *Elasticsearch
@@ -87,119 +107,54 @@ func Test_hasMaster(t *testing.T) {
 	}{
 		{
 			name:         "no topology",
-			es:           es("6.8.0"),
+			es:           esWithRoles("6.8.0", 1),
 			expectErrors: true,
 		},
 		{
-			name: "topology but no master",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.0.0",
-					NodeSets: []NodeSet{
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									NodeMaster: "false",
-									NodeData:   "false",
-									NodeIngest: "false",
-									NodeML:     "false",
-								},
-							},
-						},
-					},
-				},
-			},
+			name:         "no master defined (node attributes)",
+			es:           esWithRoles("7.6.0", 1, m{NodeMaster: "false", NodeData: "true"}, m{NodeMaster: "true", NodeVotingOnly: "true"}),
 			expectErrors: true,
 		},
 		{
-			name: "master but zero sized",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.0.0",
-					NodeSets: []NodeSet{
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									NodeMaster: "true",
-									NodeData:   "false",
-									NodeIngest: "false",
-									NodeML:     "false",
-								},
-							},
-						},
-					},
-				},
-			},
+			name:         "no master defined (node roles)",
+			es:           esWithRoles("7.9.0", 1, m{NodeRoles: []string{DataRole}}, m{NodeRoles: []string{MasterRole, VotingOnlyRole}}),
 			expectErrors: true,
 		},
 		{
-			name: "has master",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.0.0",
-					NodeSets: []NodeSet{
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									NodeMaster: "false",
-									NodeData:   "true",
-									NodeIngest: "false",
-									NodeML:     "false",
-								},
-							},
-							Count: 1,
-						},
-
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									NodeMaster: "true",
-									NodeData:   "false",
-									NodeIngest: "false",
-									NodeML:     "false",
-								},
-							},
-							Count: 1,
-						},
-					},
-				},
-			},
-			expectErrors: false,
+			name:         "zero master nodes (node attributes)",
+			es:           esWithRoles("7.6.0", 0, m{NodeMaster: "true", NodeData: "true"}, m{NodeData: "true"}),
+			expectErrors: true,
 		},
 		{
-			name: "has master in roles",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.9.0",
-					NodeSets: []NodeSet{
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"node.roles": []string{"data"},
-								},
-							},
-							Count: 1,
-						},
-						{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"node.roles": []string{"master"},
-								},
-							},
-							Count: 1,
-						},
-					},
-				},
-			},
-			expectErrors: false,
+			name:         "zero master nodes (node roles)",
+			es:           esWithRoles("7.9.0", 0, m{NodeRoles: []string{MasterRole, DataRole}}, m{NodeRoles: []string{DataRole}}),
+			expectErrors: true,
+		},
+		{
+			name:         "mixed node attributes and node roles",
+			es:           esWithRoles("7.9.0", 1, m{NodeMaster: "true", NodeRoles: []string{DataRole}}, m{NodeRoles: []string{DataRole, TransformRole}}),
+			expectErrors: true,
+		},
+		{
+			name:         "node roles on older version",
+			es:           esWithRoles("7.6.0", 1, m{NodeRoles: []string{MasterRole}}, m{NodeRoles: []string{DataRole}}),
+			expectErrors: true,
+		},
+		{
+			name: "valid configuration (node attributes)",
+			es:   esWithRoles("7.6.0", 3, m{NodeMaster: "true", NodeData: "true"}, m{NodeData: "true"}),
+		},
+		{
+			name: "valid configuration (node roles)",
+			es:   esWithRoles("7.9.0", 3, m{NodeRoles: []string{MasterRole, DataRole}}, m{NodeRoles: []string{DataRole}}),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := hasMaster(tt.es)
-			actualErrors := len(actual) > 0
-			if tt.expectErrors != actualErrors {
-				t.Errorf("failed hasMaster(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.NodeSets)
+			result := hasCorrectNodeRoles(tt.es)
+			hasErrors := len(result) > 0
+			if tt.expectErrors != hasErrors {
+				t.Errorf("expectedErrors=%t hasErrors=%t result=%+v", tt.expectErrors, hasErrors, result)
 			}
 		})
 	}
@@ -625,7 +580,6 @@ func TestValidation_noDowngrades(t *testing.T) {
 }
 
 func Test_validUpgradePath(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		current      *Elasticsearch
@@ -676,8 +630,7 @@ func Test_validUpgradePath(t *testing.T) {
 }
 
 func Test_noUnknownFields(t *testing.T) {
-
-	var GetEsWithLastApplied = func(lastApplied string) Elasticsearch {
+	GetEsWithLastApplied := func(lastApplied string) Elasticsearch {
 		return Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{

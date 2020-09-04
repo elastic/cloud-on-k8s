@@ -158,6 +158,6 @@ func (r *ReconcileApmServer) deploymentParams(
 		Selector:        NewLabels(as.Name),
 		Labels:          NewLabels(as.Name),
 		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
+		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }
