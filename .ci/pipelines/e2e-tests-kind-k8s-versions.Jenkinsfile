@@ -76,7 +76,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17" "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17", "ipv6")
                         }
                     }
                 }
