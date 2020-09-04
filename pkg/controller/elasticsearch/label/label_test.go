@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 )
 
 func TestClusterFromResourceLabels(t *testing.T) {
@@ -96,7 +97,7 @@ func TestNewPodLabels(t *testing.T) {
 		es         types.NamespacedName
 		ssetName   string
 		ver        version.Version
-		nodeRoles  v1.Node
+		nodeRoles  *v1.Node
 		configHash string
 		scheme     string
 	}
@@ -116,12 +117,12 @@ func TestNewPodLabels(t *testing.T) {
 				es:       nameFixture,
 				ssetName: "sset",
 				ver:      version.From(7, 1, 0),
-				nodeRoles: v1.Node{
-					Master:    false,
-					Data:      false,
-					Ingest:    false,
-					ML:        false,
-					Transform: false,
+				nodeRoles: &v1.Node{
+					Master:    pointer.BoolPtr(false),
+					Data:      pointer.BoolPtr(false),
+					Ingest:    pointer.BoolPtr(false),
+					ML:        pointer.BoolPtr(false),
+					Transform: pointer.BoolPtr(false),
 				},
 				configHash: "hash",
 				scheme:     "https",
@@ -146,12 +147,12 @@ func TestNewPodLabels(t *testing.T) {
 				es:       nameFixture,
 				ssetName: "sset",
 				ver:      version.From(7, 7, 0),
-				nodeRoles: v1.Node{
-					Master:    false,
-					Data:      true,
-					Ingest:    false,
-					ML:        false,
-					Transform: true,
+				nodeRoles: &v1.Node{
+					Master:    pointer.BoolPtr(false),
+					Data:      pointer.BoolPtr(true),
+					Ingest:    pointer.BoolPtr(false),
+					ML:        pointer.BoolPtr(false),
+					Transform: pointer.BoolPtr(true),
 				},
 				configHash: "hash",
 				scheme:     "https",
