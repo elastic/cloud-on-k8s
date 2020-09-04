@@ -21,7 +21,8 @@ check() {
     local TEST_NAME="$1"
 
     echo "[TEST] $TEST_NAME"
-    docker run -it -v "${TEMP_DIR}":/fixtures garethr/kubeval "/fixtures/${TEST_NAME}.yaml" --kubernetes-version="$KUBE_VERSION" --ignore-missing-schemas --quiet
+    # Weird stdin redirection to make ShellCheck happy. Read as: cat "${TEMP_DIR}/${TEST_NAME}.yaml" | docker run ... 
+    < "${TEMP_DIR}/${TEST_NAME}.yaml" docker run -i garethr/kubeval "-" --kubernetes-version="$KUBE_VERSION" --ignore-missing-schemas --quiet --force-color
     echo ""
 }
 
