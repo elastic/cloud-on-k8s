@@ -1,6 +1,6 @@
 // This library overrides the default checkout behavior to enable sleep+retries if there are errors
 // Added to help overcome some recurring github connection issues
-@Library('apm@current') _
+// @Library('apm@current') _
 
 def failedTests = []
 def lib
