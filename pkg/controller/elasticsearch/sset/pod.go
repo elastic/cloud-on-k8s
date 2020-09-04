@@ -26,7 +26,7 @@ func HeadlessServiceName(ssetName string) string {
 	return ssetName
 }
 
-//PodDNSName returns the DNS resolvable name of the given pod resolvable within the namespace.
+// PodDNSName returns the DNS resolvable name of the given pod resolvable within the namespace.
 func PodDNSName(pod corev1.Pod) string {
 	ssetName := pod.Labels[label.StatefulSetNameLabelName]
 	return fmt.Sprintf("%s.%s", pod.Name, HeadlessServiceName(ssetName))
