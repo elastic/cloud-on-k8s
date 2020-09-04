@@ -117,6 +117,7 @@ write_env <<ENV
 IMG_SUFFIX = -ci
 E2E_REGISTRY_NAMESPACE = eck-ci
 
+TESTS_MATCH = TestSmoke
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
