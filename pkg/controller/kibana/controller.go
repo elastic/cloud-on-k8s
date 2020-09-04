@@ -191,7 +191,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, err
 	}
 
-	driver, err := newDriver(r, r.dynamicWatches, r.recorder, kb)
+	driver, err := newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}

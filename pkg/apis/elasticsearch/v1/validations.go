@@ -180,7 +180,7 @@ func validSanIP(es *Elasticsearch) field.ErrorList {
 	if selfSignedCerts != nil {
 		for _, san := range selfSignedCerts.SubjectAlternativeNames {
 			if san.IP != "" {
-				ip := netutil.MaybeIPTo4(net.ParseIP(san.IP))
+				ip := netutil.IPToRFCForm(net.ParseIP(san.IP))
 				if ip == nil {
 					errs = append(errs, field.Invalid(field.NewPath("spec").Child("http", "tls", "selfSignedCertificate", "subjectAlternativeNames"), san.IP, invalidSanIPErrMsg))
 				}

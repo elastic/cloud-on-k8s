@@ -11,11 +11,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // fixtures
@@ -34,6 +34,9 @@ var (
 	testPod = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-pod-name",
+			Labels: map[string]string{
+				label.StatefulSetNameLabelName: "test-sset",
+			},
 		},
 		Status: corev1.PodStatus{
 			PodIP: testIP,

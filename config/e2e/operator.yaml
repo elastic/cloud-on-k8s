@@ -259,6 +259,10 @@ spec:
           - name: ELASTIC_APM_ENVIRONMENT
             value: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
           {{end}}
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
         resources:
           limits:
             cpu: 1

@@ -8,13 +8,6 @@ import (
 	"context"
 	"path"
 
-	ucfg "github.com/elastic/go-ucfg"
-	"github.com/pkg/errors"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
@@ -25,6 +18,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/go-ucfg"
+	"github.com/pkg/errors"
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -68,7 +68,7 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version) (CanonicalConfig, error) {
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -93,7 +93,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 
-	cfg := settings.MustCanonicalConfig(baseSettings(&kb))
+	cfg := settings.MustCanonicalConfig(baseSettings(&kb, ipFamily))
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 	versionSpecificCfg := VersionDefaults(&kb, v)
 
@@ -222,10 +222,10 @@ func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.Canoni
 	return settings.MustCanonicalConfig(r), nil
 }
 
-func baseSettings(kb *kbv1.Kibana) map[string]interface{} {
+func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) map[string]interface{} {
 	conf := map[string]interface{}{
 		ServerName: kb.Name,
-		ServerHost: "0.0.0.0",
+		ServerHost: net.InAddrAnyFor(ipFamily).String(),
 		XpackMonitoringUIContainerElasticsearchEnabled: true,
 	}
 

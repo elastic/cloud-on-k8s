@@ -8,18 +8,17 @@ import (
 	"bytes"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func entWithConfigRef(secretName string) entv1beta1.EnterpriseSearch {
@@ -231,12 +230,13 @@ func TestReconcileConfig(t *testing.T) {
 		name        string
 		runtimeObjs []runtime.Object
 		ent         entv1beta1.EnterpriseSearch
+		ipFamily    corev1.IPFamily
 		// we don't compare the exact secret content because some keys are random, but we at least check
 		// all entries in this array exist in the reconciled secret, and there are not more rows
 		wantSecretEntries []string
 	}{
 		{
-			name:        "create default config secret",
+			name:        "create default config secret (IPv4)",
 			runtimeObjs: nil,
 			ent: entv1beta1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -244,12 +244,42 @@ func TestReconcileConfig(t *testing.T) {
 					Name:      "sample",
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"ent_search:",
 				"external_url: https://localhost:3002",
 				"filebeat_log_directory: /var/log/enterprise-search",
 				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name:        "create default config secret (IPv6)",
+			runtimeObjs: nil,
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+			},
+			ipFamily: corev1.IPv6Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"ent_search:",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: \"0:0:0:0:0:0:0:0\"",
 				"log_directory: /var/log/enterprise-search",
 				"ssl:",
 				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
@@ -278,6 +308,7 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			ent: entv1beta1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
@@ -323,6 +354,7 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"elasticsearch:",
@@ -366,6 +398,7 @@ func TestReconcileConfig(t *testing.T) {
 					}},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"ent_search:",
@@ -414,6 +447,7 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
+			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
 				"ent_search:",
@@ -444,7 +478,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(driver, tt.ent)
+			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -475,10 +509,11 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		name        string
 		runtimeObjs []runtime.Object
 		ent         entv1beta1.EnterpriseSearch
+		ipFamily    corev1.IPFamily
 		wantCmd     string
 	}{
 		{
-			name:        "create default readiness probe script (no es association)",
+			name:        "create default readiness probe script (no es association, IPv4)",
 			runtimeObjs: nil,
 			ent: entv1beta1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -486,7 +521,20 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Name:      "sample",
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+		},
+		{
+			name:        "create default readiness probe script (no es association, IPv6)",
+			runtimeObjs: nil,
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+			},
+			ipFamily: corev1.IPv6Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://[::1]:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
 		},
 		{
 			name: "update existing readiness probe script if different",
@@ -507,7 +555,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Name:      "sample",
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
 		},
 		{
 			name: "with ES association: use ES user credentials",
@@ -529,7 +578,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					},
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:password -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:password -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
 		},
 		{
 			name: "with es credentials in a user-provided config secret",
@@ -555,7 +605,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					},
 				},
 			},
-			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:mypassword -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+			ipFamily: corev1.IPv4Protocol,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:mypassword -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
 		},
 	}
 	for _, tt := range tests {
@@ -566,7 +617,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent)
+			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

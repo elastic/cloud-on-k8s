@@ -11,12 +11,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // createValidatedCertificateTemplate validates a CSR and creates a certificate template.
@@ -71,6 +72,9 @@ func buildGeneralNames(
 		return nil, errors.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
 	}
 
+	ssetName := pod.Labels[label.StatefulSetNameLabelName]
+	svcName := nodespec.HeadlessServiceName(ssetName)
+
 	commonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
 
 	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
@@ -90,8 +94,10 @@ func buildGeneralNames(
 		// add the transport service name for remote cluster connections initially connecting through the service
 		// the DNS name has to match the seed hosts configured in the remote cluster settings
 		{DNSName: fmt.Sprintf("%s.%s.svc", esv1.TransportService(cluster.Name), cluster.Namespace)},
-		{IPAddress: netutil.MaybeIPTo4(podIP)},
-		{IPAddress: net.ParseIP("127.0.0.1").To4()},
+		// add the resolvable DNS name of the Pod as published by Elasticsearch
+		{DNSName: fmt.Sprintf("%s.%s", pod.Name, svcName)},
+		{IPAddress: netutil.IPToRFCForm(podIP)},
+		{IPAddress: netutil.IPToRFCForm(netutil.LoopbackFor(netutil.ToIPFamily(podIP.String())))},
 	}
 
 	return generalNames, nil

@@ -9,6 +9,11 @@ import (
 	"fmt"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ucfg "github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/go-test/deep"
@@ -17,12 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var defaultConfig = []byte(`
@@ -164,8 +163,9 @@ func TestNewConfigSettings(t *testing.T) {
 		},
 	}
 	type args struct {
-		client k8s.Client
-		kb     func() kbv1.Kibana
+		client   k8s.Client
+		kb       func() kbv1.Kibana
+		ipFamily corev1.IPFamily
 	}
 	tests := []struct {
 		name    string
@@ -174,12 +174,30 @@ func TestNewConfigSettings(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "default config",
+			name: "default config IPv4",
 			args: args{
-				client: k8s.WrappedFakeClient(existingSecret),
-				kb:     mkKibana,
+				client:   k8s.WrappedFakeClient(existingSecret),
+				kb:       mkKibana,
+				ipFamily: corev1.IPv4Protocol,
 			},
 			want: defaultConfig,
+		},
+		{
+			name: "default config IPv6",
+			args: args{
+				client:   k8s.WrappedFakeClient(existingSecret),
+				kb:       mkKibana,
+				ipFamily: corev1.IPv6Protocol,
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err, "cfg", cfg)
+				err = (*ucfg.Config)(cfg).SetString("server.host", -1, "::", settings.Options...)
+				require.NoError(t, err)
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
 		},
 		{
 			name: "without TLS",
@@ -196,6 +214,7 @@ func TestNewConfigSettings(t *testing.T) {
 					}
 					return kb
 				},
+				ipFamily: corev1.IPv4Protocol,
 			},
 			want: func() []byte {
 				cfg, err := settings.ParseConfig(defaultConfig)
@@ -244,6 +263,7 @@ func TestNewConfigSettings(t *testing.T) {
 						},
 					},
 				)),
+				ipFamily: corev1.IPv4Protocol,
 			},
 			want: func() []byte {
 				cfg, err := settings.ParseConfig(defaultConfig)
@@ -270,6 +290,7 @@ func TestNewConfigSettings(t *testing.T) {
 					}
 					return kb
 				},
+				ipFamily: corev1.IPv4Protocol,
 			},
 			want: append(defaultConfig, []byte(`foo: bar`)...),
 		},
@@ -294,6 +315,7 @@ func TestNewConfigSettings(t *testing.T) {
 					}
 					return kb
 				},
+				ipFamily: corev1.IPv4Protocol,
 			},
 			want: append(defaultConfig, []byte(`logging.verbose: false`)...),
 		},
@@ -313,6 +335,7 @@ func TestNewConfigSettings(t *testing.T) {
 					kb := mkKibana()
 					return kb
 				},
+				ipFamily: corev1.IPv4Protocol,
 			},
 			want: defaultConfig,
 		},
@@ -321,7 +344,7 @@ func TestNewConfigSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 6, 0)
-			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v)
+			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
@@ -347,7 +370,7 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
 	for _, key := range []string{XpackSecurityEncryptionKey, XpackReportingEncryptionKey, XpackEncryptedSavedObjectsEncryptionKey} {
 		val, err := (*ucfg.Config)(got.CanonicalConfig).String(key, -1, settings.Options...)
@@ -374,7 +397,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	}
 	client := k8s.WrapClient(fake.NewFakeClient(existingSecret))
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -403,7 +426,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb.Spec.Config = &cfg
 	client := k8s.WrapClient(fake.NewFakeClient())
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
@@ -416,7 +439,7 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	kb.Spec.Version = "7.5.0"
 	client := k8s.WrapClient(fake.NewFakeClient())
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }

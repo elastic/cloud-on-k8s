@@ -34,6 +34,7 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
@@ -52,6 +53,7 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
 	"go.uber.org/automaxprocs/maxprocs"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -183,6 +185,11 @@ func Command() *cobra.Command {
 		operator.EnableWebhookFlag,
 		false,
 		"Enables a validating webhook server in the operator process.",
+	)
+	cmd.Flags().String(
+		operator.IPFamilyFlag,
+		"",
+		"Set the IP family to use. Possible values: IPv4, IPv6, \"\" (= auto-detect) ",
 	)
 	cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
@@ -440,6 +447,12 @@ func startOperator(stopChan <-chan struct{}) error {
 
 	log.V(1).Info("Using certificate rotation parameters", operator.CertValidityFlag, certValidity, operator.CertRotateBeforeFlag, certRotateBefore)
 
+	ipFamily, err := chooseAndValidateIPFamily(viper.GetString(operator.IPFamilyFlag), net.ToIPFamily(os.Getenv(settings.EnvPodIP)))
+	if err != nil {
+		log.Error(err, "Invalid IP family parameter")
+		return err
+	}
+
 	// Setup a client to set the operator uuid config map
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -460,6 +473,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 	params := operator.Parameters{
 		Dialer:            dialer,
+		IPFamily:          ipFamily,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
 		CACertRotation: certificates.RotationParams{
@@ -521,6 +535,19 @@ func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []strin
 
 	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
 	garbageCollectUsers(cfg, managedNamespaces)
+}
+
+func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
+	switch strings.ToLower(ipFamilyStr) {
+	case "":
+		return ipFamilyDefault, nil
+	case "ipv4":
+		return corev1.IPv4Protocol, nil
+	case "ipv6":
+		return corev1.IPv6Protocol, nil
+	default:
+		return ipFamilyDefault, fmt.Errorf("IP family can be one of: IPv4, IPv6 or \"\" to auto-detect, but was %s", ipFamilyStr)
+	}
 }
 
 func registerControllers(mgr manager.Manager, params operator.Parameters, accessReviewer rbac.AccessReviewer) error {

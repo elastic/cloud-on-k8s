@@ -19,6 +19,7 @@ const (
 	EnableTracingFlag             = "enable-tracing"
 	EnableWebhookFlag             = "enable-webhook"
 	EnforceRBACOnRefsFlag         = "enforce-rbac-on-refs"
+	IPFamilyFlag                  = "ip-family"
 	ManageWebhookCertsFlag        = "manage-webhook-certs"
 	MaxConcurrentReconcilesFlag   = "max-concurrent-reconciles"
 	MetricsPortFlag               = "metrics-port"
