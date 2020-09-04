@@ -43,7 +43,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.12.10", "1.12")
+                            runTests(lib, failedTests, "kindest/node:v1.12.10", "1.12", "ipv4")
                         }
                     }
                 }
@@ -54,7 +54,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.16.9", "1.16")
+                            runTests(lib, failedTests, "kindest/node:v1.16.9", "1.16", "ipv4")
                         }
                     }
                 }
@@ -65,7 +65,18 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17")
+                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17", "ipv4")
+                        }
+                    }
+                }
+                stage("1.17.5") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17" "ipv6")
                         }
                     }
                 }
@@ -99,8 +110,8 @@ pipeline {
 
 }
 
-def runTests(lib, failedTests, kindNodeImage, clusterVersion) {
-    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage $clusterVersion"
+def runTests(lib, failedTests, kindNodeImage, clusterVersion, ipFamily) {
+    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage $clusterVersion $ipFamily"
     script {
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=kind-e2e ci')
 

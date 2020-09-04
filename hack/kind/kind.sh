@@ -19,6 +19,7 @@ log_lvl=("-v" "$KIND_LOG_LEVEL")
 
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
 NODES=3
+IP_FAMILY=ipv4
 MANIFEST=/tmp/cluster.yml
 
 workers=
@@ -37,6 +38,8 @@ function create_manifest() {
 cat <<EOT > ${MANIFEST}
 kind: Cluster
 apiVersion: kind.sigs.k8s.io/v1alpha3
+networking:
+  ipFamily: ${IP_FAMILY}
 nodes:
   - role: control-plane
 EOT
@@ -118,6 +121,10 @@ while (( "$#" )); do
     ;;
     --nodes) # how many nodes
       NODES=$2
+      shift 2
+    ;;
+    --ip-family) # which IP family to configure in kind (needs to be aligned with Docker config)
+      IP_FAMILY=$2
       shift 2
     ;;
     -*)
