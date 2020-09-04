@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
@@ -55,6 +53,7 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
 	"go.uber.org/automaxprocs/maxprocs"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
