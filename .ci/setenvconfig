@@ -111,7 +111,6 @@ CFG
 
 kindNodeImage=$2
 clusterVersion=$3
-ipFamilty=$4
 
 write_env <<ENV
 IMG_SUFFIX = -ci
