@@ -69,7 +69,7 @@ pipeline {
                         }
                     }
                 }
-                stage("1.17.5") {
+                stage("1.17.5 IPv6") {
                     agent {
                         label 'eck'
                     }
