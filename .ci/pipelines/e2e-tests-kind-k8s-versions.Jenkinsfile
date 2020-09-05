@@ -36,7 +36,7 @@ pipeline {
         stage('Run tests on different versions of vanilla K8s') {
             // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
             parallel {
-               /* stage("1.12.10") {
+                stage("1.12.10") {
                     agent {
                         label 'eck'
                     }
@@ -68,7 +68,7 @@ pipeline {
                             runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17", "ipv4")
                         }
                     }
-                }*/
+                }
                 stage("1.17.5") {
                     agent {
                         label 'eck'
