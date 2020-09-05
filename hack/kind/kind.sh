@@ -84,8 +84,6 @@ function setup_kind_cluster() {
     echo "No existing kind cluster with name ${CLUSTER_NAME}. Continue..."
   fi
 
-  cat ${MANIFEST}
-
   config_opts=()
   if [[ ${NODES} -gt 0 ]]; then
     config_opts+=("--config" "${MANIFEST}")
@@ -104,7 +102,7 @@ function setup_kind_cluster() {
   kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true
   kubectl --kubeconfig="${TMPKUBECONFIG}" apply -f "${scriptpath}/local-path-storage.yaml"
 
-  kubectl get nodes -o custom-columns=podCIDR:.spec.podCIDR
+  kubectl get nodes
   echo "Kind setup complete"
 }
 
