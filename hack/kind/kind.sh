@@ -102,7 +102,6 @@ function setup_kind_cluster() {
   kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true
   kubectl --kubeconfig="${TMPKUBECONFIG}" apply -f "${scriptpath}/local-path-storage.yaml"
 
-  kubectl get nodes
   echo "Kind setup complete"
 }
 
