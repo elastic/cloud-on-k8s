@@ -236,8 +236,8 @@ For more details on how to configure the APM agents to work with custom certific
 
 This section covers the following topics:
 
-** <<{p}-apm-service,APM Server service>>
-** <<{p}-apm-secret-token,APM Server secret token>>
+** <<{p}-apm-service>>
+** <<{p}-apm-secret-token>>
 
 
 [id="{p}-apm-service"]
