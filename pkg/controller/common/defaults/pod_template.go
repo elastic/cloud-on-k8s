@@ -183,7 +183,9 @@ func (b *PodTemplateBuilder) WithTerminationGracePeriod(period int64) *PodTempla
 // - VolumeMounts from the main container are added to the init container VolumeMounts, unless they would conflict
 //   with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
 // - default environment variables
-func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
+//
+// This method can also be used to set some additional environment variables.
+func (b *PodTemplateBuilder) WithInitContainerDefaults(additionalEnvVars ...corev1.EnvVar) *PodTemplateBuilder {
 	mainContainer := b.containerDefaulter.Container()
 	for i := range b.PodTemplate.Spec.InitContainers {
 		b.PodTemplate.Spec.InitContainers[i] =
@@ -191,7 +193,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
 				// Inherit image and volume mounts from main container in the Pod
 				WithImage(mainContainer.Image).
 				WithVolumeMounts(mainContainer.VolumeMounts).
-				WithEnv(PodDownwardEnvVars()).
+				WithEnv(ExtendPodDownwardEnvVars(additionalEnvVars...)).
 				Container()
 	}
 	return b

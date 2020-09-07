@@ -74,6 +74,7 @@ func BuildPodTemplateSpec(
 		})
 	}
 
+	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
@@ -83,11 +84,11 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(es.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)))...).
+		WithEnv(DefaultEnvVars(es.Spec.HTTP, headlessServiceName)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults().
+		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
 		WithPreStopHook(*NewPreStopHook())
 
 	return builder.PodTemplate, nil
