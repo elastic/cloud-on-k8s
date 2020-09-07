@@ -1,5 +1,6 @@
 {{/*
 Expand the name of the chart.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "eck.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
@@ -25,6 +26,7 @@ If release name contains chart name it will be used as a full name.
 
 {{/*
 Create chart name and version as used by the chart label.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "eck.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
