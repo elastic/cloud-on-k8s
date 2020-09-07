@@ -244,7 +244,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			InitContainers: append(initContainers, corev1.Container{
 				Name:         "additional-init-container",
 				Image:        "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-				Env:          defaults.PodDownwardEnvVars(),
+				Env:          defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}),
 				VolumeMounts: volumeMounts,
 			}),
 			Containers: []corev1.Container{
