@@ -78,10 +78,10 @@ apm-server-quickstart-apm-server-69b447ddc5-fflc6   1/1     Running   0         
 
 This section covers the following topics:
 
-** <<{p}-apm-agent-central-configuration,Use APM Agent central configuration>>
-** <<{p}-apm-customize-configuration,Customize the APM Server configuration>>
-** <<{p}-apm-secure-settings,APM Secrets keystore for secure settings>>
-** <<{p}-apm-existing-es,Reference an existing Elasticsearch cluster>>
+** <<{p}-apm-agent-central-configuration>>
+** <<{p}-apm-customize-configuration>>
+** <<{p}-apm-secure-settings>>
+** <<{p}-apm-existing-es>>
 
 
 [id="{p}-apm-agent-central-configuration"]
