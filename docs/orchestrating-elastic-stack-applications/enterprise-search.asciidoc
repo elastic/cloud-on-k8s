@@ -9,13 +9,13 @@ endif::[]
 
 This section describes how to deploy, configure and access Enterprise Search with ECK.
 
-* <<{p}-enterprise-search-quickstart,Quickstart>>
-* <<{p}-enterprise-search-configuration,Configuration>>
+* <<{p}-enterprise-search-quickstart>>
+* <<{p}-enterprise-search-configuration>>
 
 [id="{p}-enterprise-search-quickstart"]
 == Quickstart
 
-NOTE: Workplace Search requires an Enterprise license on ECK. Give it a try with a link:k8s-licensing.html[trial license].
+Workplace Search requires an Enterprise license on ECK. You can start with a 30-day link:k8s-licensing.html[trial license].
 
 . Apply the following specification to deploy Enterprise Search. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in link:k8s-quickstart.html[Elasticsearch quickstart].
 +
@@ -69,7 +69,7 @@ enterprise-search-quickstart-ent-58b84db85-dl7c6    1/1     Running   0         
 kubectl logs -f enterprise-search-quickstart-ent-58b84db85-dl7c6
 ----
 
-. Access Enterprise Search
+. Access Enterprise Search.
 +
 A ClusterIP Service is automatically created for the deployment, and can be used to access the Enterprise Search API from within the Kubernetes cluster:
 +
@@ -87,7 +87,7 @@ kubectl port-forward service/enterprise-search-quickstart-ent-http 3002
 +
 Open `https://localhost:3002` in your browser.
 +
-NOTE: Your browser will show a warning because the self-signed certificate configured by default is not verified by a known certificate authority and not trusted by your browser. Acknowledge the warning for the purposes of this quickstart but it is highly recommended that you <<{p}-enterprise-search-expose,configure valid certificates>> for any production deployments.
+NOTE: Your browser will show a warning because the self-signed certificate configured by default is not verified by a known certificate authority and not trusted by your browser. Acknowledge the warning for the purposes of this quickstart, but for a production deployment we recommend to <<{p}-enterprise-search-expose,configure valid certificates>>.
 +
 Login as the `elastic` user created link:k8s-quickstart.html[with the Elasticsearch cluster]. Its password can be obtained with:
 +
@@ -102,12 +102,12 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 [id="{p}-enterprise-search-upgrade-specification"]
 === Upgrade the Enterprise Search specification
 
-Any setting can be changed in the Enterprise Search yaml specification, including version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Enterprise Search Pods.
+In the Enterprise Search YAML specification, you can change settings and version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Enterprise Search Pods.
 
 [id="{p}-enterprise-search-custom-configuration"]
 === Customize Enterprise Search configuration
 
-ECK sets up a default Enterprise Search link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[configuration]. Customize it through the `config` element in the specification.
+ECK sets up a default Enterprise Search link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[configuration]. To customize it, use the `config` element in the specification.
 
 At a minimum, you must set `ent_search.external_url` to the desired URL.
 
@@ -132,7 +132,7 @@ spec:
 [id="{p}-enterprise-search-secret-configuration"]
 === Reference Kubernetes Secrets for sensitive settings
 
-Some sensitive settings are best stored in Kubernetes Secrets, referenced in the Enterprise Search specification.
+Sensitive settings are best stored in Kubernetes Secrets, referenced in the Enterprise Search specification.
 
 This example sets up a Secret with SMTP credentials:
 
@@ -168,7 +168,7 @@ stringData:
     email.account.email_defaults.from: my@email.com
 ----
 
-ECK merges the content of `config` and `configRef` into a single internal Secret. In case of duplicate settings, the configRef secret has precedence.
+ECK merges the content of `config` and `configRef` into a single internal Secret. In case of duplicate settings, the `configRef` secret has precedence.
 
 [id="{p}-enterprise-search-custom-pod-template"]
 === Customize the Pod template
