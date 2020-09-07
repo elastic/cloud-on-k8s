@@ -180,7 +180,7 @@ You need to store the certificate authority of the Elasticsearch cluster in a se
 kubectl create secret generic es-ca --from-file=tls.crt=elasticsearch-ca.crt
 ----
 +
-NOTE: The file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use with the APM Server.
+NOTE: The `elasticsearch-ca.crt` file must contain the CA certificate of the Elasticsearch cluster you want to use with the APM Server.
 
 . Mount this secret using the Pod template, and reference the file in the `config` of the APM Server.
 +
