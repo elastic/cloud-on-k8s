@@ -24,8 +24,7 @@ metadata:
                       {
                           "name": "default",
                           "config": {
-                              "node.master": true,
-                              "node.data": true,
+                              "node.roles": ["master", "data"]
                               "node.attr.attr_name": "attr_value",
                               "node.store.allow_mmap": false
                           },
