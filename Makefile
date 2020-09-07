@@ -516,6 +516,7 @@ kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
+		--ip-family ${IP_FAMILY} \
 		--nodes 3 \
 		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 

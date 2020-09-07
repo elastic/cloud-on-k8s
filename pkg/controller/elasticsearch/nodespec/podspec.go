@@ -8,10 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-
-	corev1 "k8s.io/api/core/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -23,9 +19,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,
@@ -76,6 +74,7 @@ func BuildPodTemplateSpec(
 		})
 	}
 
+	headlessServiceName := sset.HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
@@ -85,11 +84,11 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(es.Spec.HTTP, sset.HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)))...).
+		WithEnv(DefaultEnvVars(es.Spec.HTTP, headlessServiceName)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults().
+		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
 		WithPreStopHook(*NewPreStopHook())
 
 	return builder.PodTemplate, nil
