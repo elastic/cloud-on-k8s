@@ -28,42 +28,33 @@ spec:
   - name: master
     count: 3
     config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: ["master"]
   # Dedicated data nodes
   - name: data
     count: 6
     config:
-      node.master: false
-      node.data: true
-      node.ingest: false
-      node.ml: false
+      node.roles: ["data"]
   # Dedicated ingest nodes
   - name: ingest
     count: 3
     config:
-      node.master: false
-      node.data: false
-      node.ingest: true
-      node.ml: false
+      node.roles: ["ingest"]
   # Dedicated coordinator nodes
   - name: coordinator
     count: 3
     config:
-      node.master: false
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: !!seq ""
   # Dedicated machine learning nodes
   - name: ml
     count: 3
     config:
-      node.master: false
-      node.data: false
-      node.ingest: false
-      node.ml: true
+      node.roles: ["ml"]
+  # Dedicated transform nodes
+  - name: transform
+    count: 3
+    config:
+      node.roles: ["transform"]
+
 ----
 
 [float]
@@ -91,6 +82,7 @@ spec:
     elasticsearch.k8s.elastic.co/node-data: "false"
     elasticsearch.k8s.elastic.co/node-ingest: "false"
     elasticsearch.k8s.elastic.co/node-ml: "false"
+    elasticsearch.k8s.elastic.co/node-transform: "false"
 ----
 
 .Ingest nodes

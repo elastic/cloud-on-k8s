@@ -17,22 +17,31 @@ spec:
   - name: masters
     count: 3
     config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: ["master"]
       xpack.ml.enabled: true
-      node.transform: false
       node.remote_cluster_client: false
   - name: data
     count: 10
     config:
-      node.master: false
-      node.data: true
-      node.ingest: true
-      node.ml: true
-      node.transform: true
+      node.roles: ["data", "ingest", "ml", "transform"]
       node.remote_cluster_client: false
 ----
 
 For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
+
+[NOTE]
+====
+
+Marking a node as link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#coordinating-only-node[coordinating-only] in ECK requires a YAML type tag due to an issue in a supporting library.
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: coordinator
+    count: 3
+    config:
+      node.roles: !!seq ""
+----
+
+====
