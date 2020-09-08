@@ -262,9 +262,9 @@ func associationConfig(c k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings
 	}
 	// origin of authenticated ent users setting changed starting 8.x
 	if ver.IsSameOrAfter(version.From(8, 0, 0)) {
-		cfg = settings.MustCanonicalConfig(map[string]string{
+		cfg = settings.MustCanonicalConfig(map[string]interface{}{
 			"ent_search.auth.native1.source": "elasticsearch-native",
-			"ent_search.auth.native1.order": "-100",
+			"ent_search.auth.native1.order": -100,
 		})
 	}
 
