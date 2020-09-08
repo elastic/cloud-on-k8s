@@ -87,7 +87,7 @@ kubectl port-forward service/enterprise-search-quickstart-ent-http 3002
 +
 Open `https://localhost:3002` in your browser.
 +
-NOTE: Your browser will show a warning because the self-signed certificate configured by default is not verified by a known certificate authority and not trusted by your browser. Acknowledge the warning for the purposes of this quickstart, but for a production deployment we recommend to <<{p}-enterprise-search-expose,configure valid certificates>>.
+NOTE: Your browser will show a warning because the self-signed certificate configured by default is not verified by a known certificate authority and not trusted by your browser. Acknowledge the warning for the purposes of this quickstart, but for a production deployment we recommend <<{p}-enterprise-search-expose,configuring valid certificates>>.
 +
 Login as the `elastic` user created link:k8s-quickstart.html[with the Elasticsearch cluster]. Its password can be obtained with:
 +
