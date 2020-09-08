@@ -33,8 +33,7 @@ spec:
   - name: master-nodes
     count: 3
     config:
-      master: true
-      data: false
+      node.roles: ["master"]
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -48,8 +47,7 @@ spec:
   - name: data-nodes
     count: 10
     config:
-      master: false
-      data: true
+      node.roles: ["data"]
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data

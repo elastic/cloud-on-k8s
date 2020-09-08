@@ -246,9 +246,6 @@ spec:
   - name: default
     count: 3
     config:
-      node.master: true
-      node.data: true
-      node.ingest: true
       node.store.allow_mmap: false
     volumeClaimTemplates:
     - metadata:
@@ -275,9 +272,6 @@ spec:
   - name: default-10gi
     count: 3
     config:
-      node.master: true
-      node.data: true
-      node.ingest: true
       node.store.allow_mmap: false
     volumeClaimTemplates:
     - metadata:

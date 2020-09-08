@@ -35,19 +35,13 @@ spec:
   - name: master
     count: 3
     config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.ml: false
-      node.transform: false
+      node.roles: ["master"]
       node.remote_cluster_client: false
   # 3 ingest-data nodes
   - name: ingest-data
     count: 3
     config:
-      node.master: false
-      node.data: true
-      node.ingest: true
+      node.roles: ["data", "ingest"]
 ----
 
 [id="{p}-affinity-options"]
