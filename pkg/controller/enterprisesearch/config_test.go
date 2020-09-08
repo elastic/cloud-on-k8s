@@ -46,11 +46,14 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	}
 }
 
-func entWithAssociation(name string, associationConf commonv1.AssociationConf) entv1beta1.EnterpriseSearch {
+func entWithAssociation(name string, version string, associationConf commonv1.AssociationConf) entv1beta1.EnterpriseSearch {
 	ent := entv1beta1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      name,
+		},
+		Spec: entv1beta1.EnterpriseSearchSpec{
+			Version: version,
 		},
 	}
 	ent.SetAssociationConf(&associationConf)
@@ -243,6 +246,9 @@ func TestReconcileConfig(t *testing.T) {
 					Namespace: "ns",
 					Name:      "sample",
 				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+				},
 			},
 			ipFamily: corev1.IPv4Protocol,
 			wantSecretEntries: []string{
@@ -271,6 +277,9 @@ func TestReconcileConfig(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
 				},
 			},
 			ipFamily: corev1.IPv6Protocol,
@@ -314,6 +323,9 @@ func TestReconcileConfig(t *testing.T) {
 					Namespace: "ns",
 					Name:      "sample",
 				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+				},
 			},
 			wantSecretEntries: []string{
 				"allow_es_settings_modification: true",
@@ -336,7 +348,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name: "with Elasticsearch association",
-			ent: entWithAssociation("sample", commonv1.AssociationConf{
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
 				AuthSecretName: "sample-ent-user",
 				AuthSecretKey:  "ns-sample-ent-user",
 				CACertProvided: true,
@@ -384,6 +396,57 @@ func TestReconcileConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "with Elasticsearch association, support new auth config starting 8x",
+			ent: entWithAssociation("sample", "8.0.0", commonv1.AssociationConf{
+				AuthSecretName: "sample-ent-user",
+				AuthSecretKey:  "ns-sample-ent-user",
+				CACertProvided: true,
+				CASecretName:   "sample-ent-es-ca",
+				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+			}),
+			runtimeObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-user",
+					},
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate_authority: /mnt/elastic-internal/es-certs/tls.crt",
+				"enabled: true",
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"native1:",
+				"source: elasticsearch-native",
+				"order: -100",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
 			name:        "with user-provided config overrides",
 			runtimeObjs: nil,
 			ent: entv1beta1.EnterpriseSearch{
@@ -392,6 +455,7 @@ func TestReconcileConfig(t *testing.T) {
 					Name:      "sample",
 				},
 				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
@@ -438,6 +502,7 @@ func TestReconcileConfig(t *testing.T) {
 					Name:      "sample",
 				},
 				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
@@ -520,6 +585,9 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Namespace: "ns",
 					Name:      "sample",
 				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+				},
 			},
 			ipFamily: corev1.IPv4Protocol,
 			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
@@ -531,6 +599,9 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
 				},
 			},
 			ipFamily: corev1.IPv6Protocol,
@@ -554,13 +625,16 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Namespace: "ns",
 					Name:      "sample",
 				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+				},
 			},
 			ipFamily: corev1.IPv4Protocol,
 			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
 		},
 		{
 			name: "with ES association: use ES user credentials",
-			ent: entWithAssociation("sample", commonv1.AssociationConf{
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
 				AuthSecretName: "sample-ent-user",
 				AuthSecretKey:  "ns-sample-ent-user",
 				CACertProvided: true,
@@ -600,6 +674,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					Name:      "sample",
 				},
 				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.0",
 					ConfigRef: &commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{SecretName: "my-config"},
 					},
