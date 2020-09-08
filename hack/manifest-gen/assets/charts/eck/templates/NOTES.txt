@@ -1,0 +1,2 @@
+1. Inspect the operator logs by running the following command:
+   kubectl logs -n {{ .Release.Namespace }} sts/{{ .Release.Name }}
