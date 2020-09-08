@@ -501,7 +501,7 @@ When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If 
 
 When `kubectl` is used to modify a resource, it calculates the diff between the user applied and the existing configuration. This diff has special  link:https://tools.ietf.org/html/rfc7396#section-1[semantics] that forces the removal of keys if they have special values. For example,  if the user-applied configuration contains `some_key: null` (or equivalent `some_key: ~`), this is interpreted as an instruction to remove `some_key`. In Beats configurations, this is often a problem when it comes to defining things like link:https://www.elastic.co/guide/en/beats/filebeat/current/add-cloud-metadata.html[processors]. To avoid this problem:
 
-- Change `some_key: null` to `some_key: {}`, if it doesn't change config semantics.
+- Use `some_key: {}` (empty map) or `some_key: []` (empty array) instead of `some_key: null` if doing so does not affect the behaviour. This might not be possible in all cases as some applications distinguish between null values and empty values and behave differently.
 - Instead of using `config` to define configuration inline, use `configRef` and store the configuration in a Secret.
 
 
