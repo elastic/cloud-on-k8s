@@ -10,13 +10,10 @@ endif::[]
 
 ECK does not come with its own storage mechanism for Elasticsearch data. It is compatible with any Kubernetes storage option. It is recommended to use PersistentVolumes, by configuring the <<{p}-volume-claim-templates,VolumeClaimTemplates>> section of the Elasticsearch resource.
 
-Multiple PersistentVolume storage classes are available, depending on your Kubernetes setup. Their specifications impact Elasticsearch performance and operations. There is no best solution to suit everyone: it is important to understand the trade-off in various available options.
+Multiple PersistentVolume storage classes are available, depending on your Kubernetes setup. Their specifications impact Elasticsearch performance and operations. There is no best solution to suit everyone: it is important to understand the trade-offs between various available options.
 
 [float]
 == Network-attached or Local PersistentVolumes
-
-[float]
-=== Trade-off
 
 PersistentVolumes come in two flavours, with a different performance/price/operations trade-off. ECK handles both the same way.
 
@@ -25,29 +22,29 @@ They provide a major operational benefit: if the host goes down, or needs to be 
 
 **Local PersistentVolumes** are bound to a particular host, and generally map a directory on the filesystem. Once bound to a Local PersistentVolume, a Pod can only be scheduled on the same host. If that host goes down, or needs to be replaced, the Pod cannot be scheduled on a different host. It remains in a `Pending` state until the host is available, or until the PersistentVolumeClaim is manually deleted. For that reason, Local PersistentVolumes bring more operational overhead.
 
-In both cases, **performance varies** depending on the underlying hardware and implementation. Generally speaking, local SSDs give the best performance. The fastest network-attached volumes from major Cloud providers still give decent performance, that may match your Elasticsearch use cases. We recommend link:https://github.com/elastic/rally[benchmarking] your storage options against the expected Elasticsearch usage before drawing any conclusion.
+In both cases, **performance varies** depending on the underlying hardware and implementation. Generally speaking, local SSDs give the best performance. The fastest network-attached volumes from major Cloud providers still give decent performance that may match your Elasticsearch use cases. We recommend link:https://github.com/elastic/rally[benchmarking] your storage options against the expected Elasticsearch usage before drawing any conclusion.
 
 [float]
-=== Local PersistentVolumes operations
+== Local PersistentVolumes operations
 
 [float]
-==== Host maintenance
+=== Host maintenance
 
-To take a host out of the Kubernetes cluster temporarily, it is common to cordon, then drain it. Kubernetes deletes Elasticsearch Pods scheduled on that host automatically, as long as the <<{p}-pod-disruption-budget,PodDisruptionBudget>> allows it. In other terms, a Pod can be deleted only if the Elasticsearch cluster has a green health. Once deleted, it cannot be scheduled again on the cordoned host: the Pod stays `Pending`, waiting for that host to come back online. The next Pod can be automatically deleted when the Elasticsearch cluster health becomes green again.
+To take a host out of the Kubernetes cluster temporarily, it is common to cordon, then drain it. Kubernetes deletes Elasticsearch Pods scheduled on that host automatically, as long as the <<{p}-pod-disruption-budget,PodDisruptionBudget>> allows it. By default, ECK manages a PodDisruptionBudget that allows one Pod to be taken down, as long as the cluster has a green health. Once deleted, that Pod cannot be scheduled again on the cordoned host: the Pod stays `Pending`, waiting for that host to come back online. The next Pod can be automatically deleted when the Elasticsearch cluster health becomes green again.
 
 Some hosted Kubernetes offerings only respect the PodDisruptionBudget for a certain amount of time, before killing all Pods on the node. For example, link:https://cloud.google.com/kubernetes-engine/docs/concepts/cluster-upgrades[GKE automated version upgrade] rotates all nodes without preserving local volumes, and respects the PodDisruptionBudget for a maximum of 1 hour. In such cases it is preferable to link:https://cloud.google.com/kubernetes-engine/docs/concepts/cluster-upgrades#upgrading_manually[manually handle the cluster version upgrade].
 
 [float]
-==== Host removal
+=== Host removal
 
 If a host experiences a failure, or is permanently removed, its local data is likely lost. The corresponding Pod stays `Pending` because it cannot attach the PersistentVolume anymore. For the Pod to be scheduled on a different host with a new empty volume, it is necessary to manually remove both the PersistenteVolumeClaim and the Pod. A new Pod is automatically created with a new empty PersistentVolume. Elasticsearch shard replication will then ensure data recovery on the new instance.
 
 [float]
-=== Local PersistentVolums provisioners
+== Local PersistentVolums provisioners
 
 There are multiple ways to provision Local PersistentVolumes:
 
-**Manual provisioning**: manually link:https://kubernetes.io/blog/2018/04/13/local-persistent-volumes-beta/#creating-a-local-persistent-volume[create PersistentVolume resources], matching a local path to a specific host.
+**Manual provisioning**: manually link:https://kubernetes.io/blog/2018/04/13/local-persistent-volumes-beta/#creating-a-local-persistent-volume[create PersistentVolume resources], matching a local path to a specific host. Data must be manually removed once the PersistentVolumes are released.
 
 **Static provisioning**: run a program that automatically discovers the existing partitions on each host, and creates the corresponding PersistentVolume resources. The link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[Local PersistentVolume Static Provisioner] is a great way to get started.
 
