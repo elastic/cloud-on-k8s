@@ -65,12 +65,12 @@ spec:
             path: /var/lib/docker/containers
 EOF
 ----
-
++
 See <<{p}-beat-configuration-examples>> for more ready-to-use manifests.
 
-. Monitor Beats
+. Monitor Beats.
 +
-Retrieve details about the Filebeat:
+Retrieve details about the Filebeat.
 +
 [source,sh]
 ----
@@ -82,8 +82,8 @@ kubectl get beat
 NAME                  HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
 quickstart            green    3           3          filebeat   {version}     2m
 ----
-+
-List all the Pods belonging to a given Beat:
+
+. List all the Pods belonging to a given Beat.
 +
 [source,sh]
 ----
@@ -97,24 +97,26 @@ quickstart-beat-filebeat-tkz65            1/1     Running   0          3m45s
 quickstart-beat-filebeat-kx5jt            1/1     Running   0          3m45s
 quickstart-beat-filebeat-nb6qh            1/1     Running   0          3m45s
 ----
-+
-. Access logs for one of the Pods
+
+. Access logs for one of the Pods.
 +
 [source,sh]
 ----
 kubectl logs -f quickstart-beat-filebeat-tkz65
 ----
 
-. Access logs ingested by Filebeat
+. Access logs ingested by Filebeat.
 +
-- follow the Elasticsearch deployment link:k8s-deploy-elasticsearch.html[guide] and run:
+You have two options:
++
+- Follow the Elasticsearch deployment link:k8s-deploy-elasticsearch.html[guide] and run:
 +
 [source,sh]
 ----
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 ----
 +
-- or follow the Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to *Kibana* > *Discover*.
+- Follow the Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to *Kibana* > *Discover*.
 
 [id="{p}-beat-configuration"]
 == Configuration
@@ -122,12 +124,12 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 [id="{p}-beat-upgrade-specification"]
 === Upgrade the Beat specification
 
-Any setting can be changed in the Beat YAML specification, including version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Beat Pods. Depending on specification settings used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up the Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
+In the Beat YAML specification you can change settings and version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Beat Pods. Depending on the specification settings that you used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up the Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
 
 [id="{p}-beat-custom-configuration"]
 === Customize Beat configuration
 
-The Beat configuration is provided through the `config` element:
+The Beat configuration is defined in the `config` element:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -186,7 +188,7 @@ stringData:
       hosts: ["quickstart-es-http.default.svc:9200"]
 ----
 
-For more details about Beats configuration, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/beats-reference.html[Beats documentation].
+For more details, see the link:https://https://www.elastic.co/guide/en/beats/libbeat/current/config-file-format.html[Beats configuration] section.
 
 [id="{p}-beat-deploy-elastic-beat"]
 === Deploy a Beat
@@ -200,17 +202,21 @@ ECK supports the deployment of the following Beats:
 - link:https://www.elastic.co/beats/packetbeat[Packetbeat]
 - link:https://www.elastic.co/guide/en/beats/journalbeat/current/index.html[Journalbeat]
 
-You can specify the Beat to deploy and its version through `type` and `version` elements. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
+For each Beat you want to deploy, you can specify the `type` and `version` elements. ECK creates a new user in Elasticsearch with a minimal set of appropriate roles and permissions to enable the use of all Beats features.
 
 [id="{p}-beat-deploy-community-beat"]
 === Deploy a Community Beat
 
-ECK supports the deployment of any Community Beat. `type` and `version` specification elements have to be provided. In addition:
+ECK supports the deployment of any Community Beat. 
 
-1. `image` element in the specification must point to the image to be deployed
-2. the following roles must exist in Elasticsearch:
-- if `elasticsearchRef` is provided, a role with `eck_beat_es_$type_role` name must exist, where `$type` is the Beat type. For example, when deploying `kafkabeat`, the role name would be `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
-- if `kibanaRef` is provided, then, as above, a role named `eck_beat_kibana_$type_role` must exist with the permissions required to setup Kibana dashboards.
+. Specify the `type` and `version` elements.
+
+. Set the `image` element to point to the image to be deployed.
+
+. Make sure the following roles exist in Elasticsearch:
++
+- If `elasticsearchRef` is provided, create the role `eck_beat_es_$type_role`, where `$type` is the Beat type. For example, when deploying `kafkabeat`, the role name is `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+- If `kibanaRef` is provided, create the role `eck_beat_kibana_$type_role` with the permissions required to setup Kibana dashboards.
 
 Alternatively, create a user in Elasticsearch and include the credentials in the Beats `config` for Elasticsearch output, Kibana setup or both. If `elasticsearchRef` and `kibanaRef` are also defined, ECK will use the provided user credentials when setting up the connections.
 
@@ -237,7 +243,7 @@ ECK will create a new user in Elasticsearch with a minimal set of appropriate ro
 [id="{p}-beat-secrets-keystore-for-secure-settings"]
 === Secrets keystore for secure settings
 
-Beats offer a secret keystore for sensitive settings that need to be provided in the config, for example passwords. This avoids storing them in the config directly.
+Beats offer a secrets keystore for sensitive settings, like passwords. This avoids storing them in the configuration directly.
 
 ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings securely:
 
@@ -389,9 +395,7 @@ To deploy Beats in clusters with the Pod Security Policy admission controller en
 
 Below you can find manifests that address a number of common use cases and can be your starting point in exploring Beats deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
 
-IMPORTANT: These examples are for illustration purposes only and should not be considered to be production-ready.
-
-CAUTION: Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
+CAUTION: The examples in this section are purely descriptive and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
 === Metricbeat for Kubernetes monitoring
 
@@ -400,7 +404,10 @@ CAUTION: Some of these examples use the `node.store.allow_mmap: false` setting w
 kubectl apply -f {beats_url}/metricbeat_hosts.yaml
 ----
 
-Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem) and Kubernetes resources (Nodes, Pods, Containers, Volumes).
+Deploys Metricbeat as a DaemonSet that monitors the usage of the following resources:
+
+*  Host: CPU, memory, network, filesystem.
+*  Kubernetes: Nodes, Pods, Containers, Volumes.
 
 === Filebeat with autodiscover
 
@@ -409,7 +416,7 @@ Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, me
 kubectl apply -f {beats_url}/filebeat_autodiscover.yaml
 ----
 
-Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It will collect logs from pods in every namespace and load them to the connected Elasticsearch cluster.
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It collects logs from Pods in every namespace and load them to the connected Elasticsearch cluster.
 
 === Filebeat with autodiscover for metadata
 
@@ -418,7 +425,7 @@ Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It will c
 kubectl apply -f {beats_url}/filebeat_autodiscover_by_metadata.yaml
 ----
 
-Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. Logs from pods matching the following criteria will be shipped to the connected Elasticsearch cluster:
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. Logs from Pods that match the following criteria are shipped to the connected Elasticsearch cluster:
 
 - Pod is in `log-namespace` namespace
 - Pod has `log-label: "true"` label
@@ -439,7 +446,9 @@ Deploys Filebeat as a DaemonSet with the autodiscover feature disabled. Uses the
 kubectl apply -f {beats_url}/stack_monitoring.yaml
 ----
 
-Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring] and Filebeat using autodiscover. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana. Note: in this example, TLS verification is disabled when Metricbeat communicates with the monitored cluster, which is insecure and should not be used in production. This can be resolved by using custom certificates and configuring Metricbeat to verify them.
+Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring] and Filebeat using autodiscover. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana. 
+
+NOTE: In this example, TLS verification is disabled when Metricbeat communicates with the monitored cluster, which is not secure and should not be used in production. To solve this, use custom certificates and configure Metricbeat to verify them.
 
 === Heartbeat monitoring Elasticsearch and Kibana health
 
@@ -448,7 +457,7 @@ Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elas
 kubectl apply -f {beats_url}/heartbeat_es_kb_health.yaml
 ----
 
-Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Note that Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
+Deploys Heartbeat as a single Pod deployment that monitors the health of Elasticsearch and Kibana by TCP probing their Service endpoints. Heartbeat expects that Elasticsearch and Kibana are deployed in the `default` namespace.
 
 === Auditbeat
 
@@ -484,16 +493,16 @@ Deploys Packetbeat as a DaemonSet that monitors DNS on port `53` and HTTP(S) tra
 [id="{p}-beat-beat-pods-are-crashing-when-kibanaref-is-specified"]
 === Beat Pods are crashing when kibanaRef is specified
 
-When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Beat process exits and the Pod restarts. This may happen when Kibana is not yet up or when Beat user is not yet created in Elasticsearch. The Pod may restart a few times when it is first deployed. Afterwards, the Beat should run successfully.
+When `kibanaRef` is specified, Beat tries to connect to the Kibana instance. If it's unable to do so, the Beat process exits and the Pod restarts. This may happen when Kibana is not yet up or when a Beat user is not yet created in Elasticsearch. The Pod may restart a few times when it is first deployed. Afterwards, the Beat should run successfully.
 
 
 [id="{p}-beat-configuration-containing-key-null-is-malformed"]
 === Configuration containing key: null is malformed
 
-When `kubectl` is used to modify a resource, it calculates a diff between the user applied and the already existing config. This diff has a special semantics link:https://tools.ietf.org/html/rfc7396#section-1[defined], that forces the removal of a particular key by setting its value to `null`. When user applied config contains `some_key: null` (or equivalent `some_key: ~`) it's interpreted as an instruction to remove `some_key`, often resulting in a malformed config. In Beat configs, this is often the case with link:https://www.elastic.co/guide/en/beats/filebeat/current/add-cloud-metadata.html[processors]. To avoid this:
+When `kubectl` is used to modify a resource, it calculates a diff between the user applied and the existing configuration. This diff has a special  link:https://tools.ietf.org/html/rfc7396#section-1[semantics], that forces the removal of a particular key by setting its value to `null`. When the user-applied configuration contains `some_key: null` (or equivalent `some_key: ~`), this is interpreted as an instruction to remove `some_key`, often resulting in a malformed configuration. In Beat configurations, this is often the case with link:https://www.elastic.co/guide/en/beats/filebeat/current/add-cloud-metadata.html[processors]. To avoid this:
 
-- change `some_key: null` to `some_key: {}` - if it doesn't change config semantics
-- instead of `config` use `configRef` and reference a Secret containing the config - Secret data doesn't go through the same diffing process
+- Change `some_key: null` to `some_key: {}`, if it doesn't change config semantics.
+- Instead of `config` use `configRef` and reference a Secret containing the configuration. Secret data doesn't go through the same diff process.
 
 
 === Pod fails to start after update
