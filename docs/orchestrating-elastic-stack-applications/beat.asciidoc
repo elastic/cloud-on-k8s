@@ -109,7 +109,7 @@ kubectl logs -f quickstart-beat-filebeat-tkz65
 +
 You have two options:
 +
-- Follow the Elasticsearch deployment link:k8s-deploy-elasticsearch.html[guide] and run:
+- Follow the Elasticsearch deployment <<{p}-deploy-elasticsearch,guide>> and run:
 +
 [source,sh]
 ----
