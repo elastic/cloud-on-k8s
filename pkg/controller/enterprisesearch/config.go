@@ -9,6 +9,11 @@ import (
 	"net"
 	"path/filepath"
 
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
@@ -17,14 +22,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -251,16 +253,32 @@ func associationConfig(c k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings
 		return settings.NewCanonicalConfig(), nil
 	}
 
+	// origin of authenticated ent users setting changed starting 8.x
+	cfg := settings.MustCanonicalConfig(map[string]string{
+		"ent_search.auth.source": "elasticsearch-native",
+	})
+	ver, err := version.Parse(ent.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	if ver.IsSameOrAfter(version.From(8, 0, 0)) {
+		cfg = settings.MustCanonicalConfig(map[string]string{
+			"ent_search.auth.native1.source": "elasticsearch-native",
+			"ent_search.auth.native1.order": "-100",
+		})
+	}
+
 	username, password, err := association.ElasticsearchAuthSettings(c, &ent)
 	if err != nil {
 		return nil, err
 	}
-	cfg := settings.MustCanonicalConfig(map[string]string{
-		"ent_search.auth.source": "elasticsearch-native",
+	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
 		"elasticsearch.host":     ent.AssociationConf().URL,
 		"elasticsearch.username": username,
 		"elasticsearch.password": password,
-	})
+	})); err != nil {
+		return nil, err
+	}
 
 	if ent.AssociationConf().CAIsConfigured() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
