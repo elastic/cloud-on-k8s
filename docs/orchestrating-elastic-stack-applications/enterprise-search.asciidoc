@@ -102,7 +102,7 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 [id="{p}-enterprise-search-upgrade-specification"]
 === Upgrade the Enterprise Search specification
 
-In the Enterprise Search YAML specification, you can change settings and version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Enterprise Search Pods.
+You can upgrade the Enterprise Search version or change settings by editing the YAML specification. ECK will apply the changes by performing a rolling restart of Enterprise Search pods.
 
 [id="{p}-enterprise-search-custom-configuration"]
 === Customize Enterprise Search configuration
