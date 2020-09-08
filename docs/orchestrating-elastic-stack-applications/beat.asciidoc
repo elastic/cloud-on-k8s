@@ -124,7 +124,7 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 [id="{p}-beat-upgrade-specification"]
 === Upgrade the Beat specification
 
-In the Beat YAML specification you can change settings and version upgrades. ECK detects those changes and ensures a smooth rolling upgrade of all Beat Pods. Depending on the specification settings that you used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up the Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
+You can upgrade the Beat version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of the Beat Pods. Depending on the specification settings that you used, ECK will set the <<{p}-beat-set-beat-output,output>> part of the config, perform Kibana dashboard <<{p}-beat-set-up-kibana-dashboards,setup>>, restart Beats on certificates rollover and set up the Beats <<{p}-beat-secrets-keystore-for-secure-settings,keystore>>.
 
 [id="{p}-beat-custom-configuration"]
 === Customize Beat configuration
