@@ -59,7 +59,7 @@ func TestTelemetry(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					if stats == nil || len(stats) == 0 {
+					if len(stats) == 0 {
 						return errors.New("cluster stats is empty")
 					}
 					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
