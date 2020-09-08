@@ -15,7 +15,7 @@ This section describes how to deploy, configure and access Enterprise Search wit
 [id="{p}-enterprise-search-quickstart"]
 == Quickstart
 
-Workplace Search requires an Enterprise license on ECK. You can start with a 30-day link:k8s-licensing.html[trial license].
+Workplace Search requires an Enterprise license on ECK. You can start with a 30-day <<{p}-licensing,trial license>>.
 
 . Apply the following specification to deploy Enterprise Search. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in link:k8s-quickstart.html[Elasticsearch quickstart].
 +
