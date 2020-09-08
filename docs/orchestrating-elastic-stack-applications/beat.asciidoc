@@ -416,7 +416,7 @@ Deploys Metricbeat as a DaemonSet that monitors the usage of the following resou
 kubectl apply -f {beats_url}/filebeat_autodiscover.yaml
 ----
 
-Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It collects logs from Pods in every namespace and load them to the connected Elasticsearch cluster.
+Deploys Filebeat as a DaemonSet with the autodiscover feature enabled. It collects logs from Pods in every namespace and loads them to the connected Elasticsearch cluster.
 
 === Filebeat with autodiscover for metadata
 
