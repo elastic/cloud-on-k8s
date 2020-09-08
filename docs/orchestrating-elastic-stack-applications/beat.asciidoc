@@ -243,7 +243,7 @@ ECK will create a new user in Elasticsearch with a minimal set of appropriate ro
 [id="{p}-beat-secrets-keystore-for-secure-settings"]
 === Secrets keystore for secure settings
 
-Beats offer a secrets keystore for sensitive settings, like passwords. This avoids storing them in the configuration directly.
+Beats offer a keystore for sensitive settings like passwords. This avoids storing them in plaintext in the configuration.
 
 ECK exposes that mechanism with the `secureSettings` element in the specification. <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes Secrets to provide the settings securely:
 
