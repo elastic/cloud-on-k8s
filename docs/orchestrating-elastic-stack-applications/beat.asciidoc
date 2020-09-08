@@ -116,7 +116,7 @@ You have two options:
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200/filebeat-*/_search"
 ----
 +
-- Follow the Kibana deployment link:k8s-deploy-kibana.html[guide], log in and go to *Kibana* > *Discover*.
+- Follow the Kibana deployment <<{p}-deploy-kibana,guide>>, log in and go to *Kibana* > *Discover*.
 
 [id="{p}-beat-configuration"]
 == Configuration
