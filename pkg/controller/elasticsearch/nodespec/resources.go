@@ -38,6 +38,7 @@ func BuildExpectedResources(
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
+	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
@@ -53,7 +54,7 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, *ver, es.Spec.HTTP, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, *ver, ipFamily, es.Spec.HTTP, userCfg)
 		if err != nil {
 			return nil, err
 		}

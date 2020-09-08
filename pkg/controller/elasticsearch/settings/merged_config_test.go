@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestNewMergedESConfig(t *testing.T) {
@@ -21,15 +22,17 @@ func TestNewMergedESConfig(t *testing.T) {
 	xPackSecurityAuthcRealmsAD1Order := "xpack.security.authc.realms.ad1.order"
 
 	tests := []struct {
-		name    string
-		version string
-		cfgData map[string]interface{}
-		assert  func(cfg CanonicalConfig)
+		name     string
+		version  string
+		ipFamily corev1.IPFamily
+		cfgData  map[string]interface{}
+		assert   func(cfg CanonicalConfig)
 	}{
 		{
-			name:    "in 6.x, empty config should have the default file and native realm settings configured",
-			version: "6.8.0",
-			cfgData: map[string]interface{}{},
+			name:     "in 6.x, empty config should have the default file and native realm settings configured",
+			version:  "6.8.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Type})))
@@ -41,8 +44,9 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "in 6.x, sample config should have the default file realm settings configured",
-			version: "6.8.0",
+			name:     "in 6.x, sample config should have the default file realm settings configured",
+			version:  "6.8.0",
+			ipFamily: corev1.IPv4Protocol,
 			cfgData: map[string]interface{}{
 				nodeML: true,
 			},
@@ -57,8 +61,9 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "in 6.x, active_directory realm settings should be merged with the default file and native realm settings",
-			version: "6.8.0",
+			name:     "in 6.x, active_directory realm settings should be merged with the default file and native realm settings",
+			version:  "6.8.0",
+			ipFamily: corev1.IPv4Protocol,
 			cfgData: map[string]interface{}{
 				nodeML:                           true,
 				xPackSecurityAuthcRealmsAD1Type:  "active_directory",
@@ -77,9 +82,10 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "in 7.x, empty config should have the default file and native realm settings configured",
-			version: "7.3.0",
-			cfgData: map[string]interface{}{},
+			name:     "in 7.x, empty config should have the default file and native realm settings configured",
+			version:  "7.3.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFileFile1Order})))
@@ -89,8 +95,9 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "in 7.x, sample config should have the default file and native realm settings configured",
-			version: "7.3.0",
+			name:     "in 7.x, sample config should have the default file and native realm settings configured",
+			version:  "7.3.0",
+			ipFamily: corev1.IPv4Protocol,
 			cfgData: map[string]interface{}{
 				nodeML: true,
 			},
@@ -101,8 +108,9 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "in 7.x, active_directory realm settings should be merged with the default file and native realm settings",
-			version: "7.3.0",
+			name:     "in 7.x, active_directory realm settings should be merged with the default file and native realm settings",
+			version:  "7.3.0",
+			ipFamily: corev1.IPv4Protocol,
 			cfgData: map[string]interface{}{
 				nodeML: true,
 				xPackSecurityAuthcRealmsActiveDirectoryAD1Order: 0,
@@ -115,42 +123,47 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "in 6.x, seed hosts setting should be discovery.zen.hosts_provider",
-			version: "6.8.0",
-			cfgData: map[string]interface{}{},
+			name:     "in 6.x, seed hosts setting should be discovery.zen.hosts_provider",
+			version:  "6.8.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.DiscoveryZenHostsProvider})))
 				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.DiscoverySeedProviders})))
 			},
 		},
 		{
-			name:    "starting 7.x, seed hosts settings should be discovery.seed_providers",
-			version: "7.0.0",
-			cfgData: map[string]interface{}{},
+			name:     "starting 7.x, seed hosts settings should be discovery.seed_providers",
+			version:  "7.0.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.DiscoveryZenHostsProvider})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.DiscoverySeedProviders})))
 			},
 		},
 		{
-			name:    "prior to 7.8.1, we should not set allowed license upload types",
-			version: "7.5.0",
-			cfgData: map[string]interface{}{},
+			name:     "prior to 7.8.1, we should not set allowed license upload types",
+			version:  "7.5.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.XPackLicenseUploadTypes})))
 			},
 		},
 		{
-			name:    "starting 7.8.1, we should set allowed license upload types",
-			version: "7.8.1",
-			cfgData: map[string]interface{}{},
+			name:     "starting 7.8.1, we should set allowed license upload types",
+			version:  "7.8.1",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackLicenseUploadTypes})))
 			},
 		},
 		{
-			name:    "user-provided Elasticsearch config overrides should have precedence over ECK config",
-			version: "7.6.0",
+			name:     "user-provided Elasticsearch config overrides should have precedence over ECK config",
+			version:  "7.6.0",
+			ipFamily: corev1.IPv4Protocol,
 			cfgData: map[string]interface{}{
 				esv1.DiscoverySeedProviders: "something-else",
 			},
@@ -158,10 +171,22 @@ func TestNewMergedESConfig(t *testing.T) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)
 				// default config is still there
-				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: ${POD_NAME}.${HEADLESS_SERVICE_NAME}")))
+				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: ${POD_IP}")))
 				// but has been overridden
 				require.True(t, bytes.Contains(cfgBytes, []byte("seed_providers: something-else")))
 				require.Equal(t, 1, bytes.Count(cfgBytes, []byte("seed_providers:")))
+			},
+		},
+		{
+			name:     "configuration is adjusted for IP family",
+			version:  "7.6.0",
+			ipFamily: corev1.IPv6Protocol,
+			cfgData:  map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				cfgBytes, err := cfg.Render()
+				require.NoError(t, err)
+				// publish host IP placeholder is bracketed for IPv6
+				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: '[${POD_IP}]'")))
 			},
 		},
 	}
@@ -172,6 +197,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			cfg, err := NewMergedESConfig(
 				"clusterName",
 				*ver,
+				tt.ipFamily,
 				commonv1.HTTPConfig{},
 				commonv1.Config{Data: tt.cfgData},
 			)
