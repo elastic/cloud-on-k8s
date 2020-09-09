@@ -61,7 +61,7 @@ func findSourceDir() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(path), "assets", "charts", "eck"), nil
+	return filepath.Clean(filepath.Join(filepath.Dir(path), "..", "..", "deploy", "eck")), nil
 }
 
 func generateCmd() *cobra.Command {
