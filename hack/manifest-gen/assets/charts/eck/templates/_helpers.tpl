@@ -40,10 +40,8 @@ Common labels
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
-{{- if not .Values.internal.manifestGen }}
 helm.sh/chart: {{ include "eck.chart" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
 {{- end }}
 
 {{/*
