@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -56,6 +58,9 @@ func TestTelemetry(t *testing.T) {
 					err = json.Unmarshal(body, &stats)
 					if err != nil {
 						return err
+					}
+					if len(stats) == 0 {
+						return errors.New("cluster stats is empty")
 					}
 					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
 					if !eck.IsDefined() {
