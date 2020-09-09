@@ -140,7 +140,7 @@ spec:
       name: {{ .Name }}
       version: {{ .Version }}
     {{- end }}
-  description: 'Elastic Cloud on Kubernetes (ECK) automates the deployment, provisioning,
+  description: 'Elastic Cloud on Kubernetes (ECK) is the official operator by Elastic for automating the deployment, provisioning,
     management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and 
     Enterprise Search on Kubernetes.
 
