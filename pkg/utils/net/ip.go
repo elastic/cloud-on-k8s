@@ -44,6 +44,11 @@ func InAddrAnyFor(ipFamily corev1.IPFamily) net.IP {
 
 // ToIPFamily tries to detect the IP family (IPv4 or IPv6) based on the given IP string.
 func ToIPFamily(ipStr string) corev1.IPFamily {
+	if len(ipStr) == 0 {
+		// default to IPv4 in case no IP was given
+		return corev1.IPv4Protocol
+	}
+
 	if ip := net.ParseIP(ipStr); ip.To4() != nil {
 		return corev1.IPv4Protocol
 	}
