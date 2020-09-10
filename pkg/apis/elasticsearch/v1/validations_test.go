@@ -88,12 +88,14 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 		x := es(version)
 		for _, nsc := range nodeSetRoles {
 			data := nsc
+			var cfg *commonv1.Config
+			if data != nil {
+				cfg = &commonv1.Config{Data: data}
+			}
 
 			x.Spec.NodeSets = append(x.Spec.NodeSets, NodeSet{
-				Count: count,
-				Config: &commonv1.Config{
-					Data: data,
-				},
+				Count:  count,
+				Config: cfg,
 			})
 		}
 
@@ -109,6 +111,11 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 			name:         "no topology",
 			es:           esWithRoles("6.8.0", 1),
 			expectErrors: true,
+		},
+		{
+			name:         "one nodeset with no config",
+			es:           esWithRoles("7.6.0", 1, nil),
+			expectErrors: false,
 		},
 		{
 			name:         "no master defined (node attributes)",

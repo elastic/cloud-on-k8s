@@ -119,7 +119,7 @@ func hasCorrectNodeRoles(es *Elasticsearch) field.ErrorList {
 		}
 
 		// check that node.roles is not used with an older Elasticsearch version
-		if cfg.Node.Roles != nil && !v.IsSameOrAfter(version.From(7, 9, 0)) {
+		if cfg.Node != nil && cfg.Node.Roles != nil && !v.IsSameOrAfter(version.From(7, 9, 0)) {
 			errs = append(errs, field.Invalid(confField(i), ns.Config, nodeRolesInOldVersionMsg))
 
 			continue
@@ -127,7 +127,7 @@ func hasCorrectNodeRoles(es *Elasticsearch) field.ErrorList {
 
 		// check that node.roles and node attributes are not mixed
 		nodeRoleAttrs := getNodeRoleAttrs(cfg)
-		if len(cfg.Node.Roles) > 0 && len(nodeRoleAttrs) > 0 {
+		if cfg.Node != nil && len(cfg.Node.Roles) > 0 && len(nodeRoleAttrs) > 0 {
 			errs = append(errs, field.Forbidden(confField(i), fmt.Sprintf(mixedRoleConfigMsg, strings.Join(nodeRoleAttrs, ","))))
 		}
 
