@@ -220,7 +220,7 @@ Now you should get this message:
 curl: (51) SSL: no alternative certificate subject name matches target host name '35.198.131.115'
 ----
 
-As the certificate subject by default is service name we can resolve this by using the service name and specify the resolve information through an additional argument.
+The request failed because the IP address used to access the service does not match the subject of the certificate, which is set to the service name. We can force curl to temporarily map the IP address to the expected service name by using the `--resolve` flag as follows:
 
 [source,sh]
 ----
