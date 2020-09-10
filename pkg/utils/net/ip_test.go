@@ -164,6 +164,13 @@ func TestToIPFamily(t *testing.T) {
 		want corev1.IPFamily
 	}{
 		{
+			name: "Default to IPv4",
+			args: args{
+				ipStr: "",
+			},
+			want: corev1.IPv4Protocol,
+		},
+		{
 			name: "IPv4",
 			args: args{
 				ipStr: "127.0.0.1",
