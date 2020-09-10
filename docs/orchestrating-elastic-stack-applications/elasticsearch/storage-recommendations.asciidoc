@@ -22,7 +22,7 @@ They provide a major operational benefit: if the host goes down, or needs to be 
 
 **Local PersistentVolumes** are bound to a particular host, and generally map a directory on the filesystem. Once bound to a Local PersistentVolume, a Pod can only be scheduled on the same host. If that host goes down, or needs to be replaced, the Pod cannot be scheduled on a different host. It remains in a `Pending` state until the host is available, or until the PersistentVolumeClaim is manually deleted. For that reason, Local PersistentVolumes bring more operational overhead.
 
-In both cases, **performance varies** depending on the underlying hardware and implementation. Generally speaking, local SSDs give the best performance. The fastest network-attached volumes from major Cloud providers still give decent performance that may match your Elasticsearch use cases. We recommend link:https://github.com/elastic/rally[benchmarking] your storage options against the expected Elasticsearch usage before drawing any conclusion.
+In both cases, **performance varies** depending on the underlying hardware and implementation. Generally speaking, local SSDs give the best performance. The fastest network-attached volumes from major Cloud providers can also provide acceptable performance depending on your Elasticsearch use cases. We recommend link:https://github.com/elastic/rally[benchmarking] your storage options against the expected Elasticsearch usage before drawing any conclusions.
 
 [float]
 == Local PersistentVolumes operations
@@ -37,7 +37,7 @@ Some hosted Kubernetes offerings only respect the PodDisruptionBudget for a cert
 [float]
 === Host removal
 
-If a host experiences a failure, or is permanently removed, its local data is likely lost. The corresponding Pod stays `Pending` because it cannot attach the PersistentVolume anymore. For the Pod to be scheduled on a different host with a new empty volume, it is necessary to manually remove both the PersistenteVolumeClaim and the Pod. A new Pod is automatically created with a new empty PersistentVolume. Elasticsearch shard replication will then ensure data recovery on the new instance.
+If a host experiences a failure, or is permanently removed, its local data is likely lost. The corresponding Pod stays `Pending` because it cannot attach the PersistentVolume anymore. For the Pod to be scheduled on a different host with a new empty volume, it is necessary to manually remove both the PersistenteVolumeClaim and the Pod. A new Pod is automatically created with a new PersistentVolumeClaim, which is then matched with a PersistentVolume. Elasticsearch shard replication will then ensure data recovery on the new instance.
 
 [float]
 == Local PersistentVolums provisioners
