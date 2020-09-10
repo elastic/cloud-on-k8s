@@ -11,54 +11,54 @@ endif::[]
 [id="{p}-{page_id}"]
 = Service meshes
 
-These sections contain information about connecting ECK and managed Elastic Stack applications to some of the most popular link:https://www.cncf.io/blog/2017/04/26/service-mesh-critical-component-cloud-native-stack/[service mesh] implementations in the Kubernetes ecosystem.
+You can connect ECK and managed Elastic Stack applications to some of the most popular link:https://www.cncf.io/blog/2017/04/26/service-mesh-critical-component-cloud-native-stack/[service mesh] implementations in the Kubernetes ecosystem:
 
+- <<{p}-service-mesh-istio>>
+- <<{p}-service-mesh-linkerd>>
 
 [id="{p}-service-mesh-istio"]
 == Istio
 
-The following sections describe how to connect the operator and managed resources to the Istio service mesh. It is assumed that Istio is already installed and configured on your Kubernetes cluster. If you are new to Istio, refer to the link:https://istio.io[product documentation] for more information and installation instructions.
+The instructions in this section describe how to connect the operator and managed resources to the Istio service mesh and assume that Istio is already installed and configured on your Kubernetes cluster. To know more about Istio and how to install it, see the link:https://istio.io[product documentation].
 
-NOTE: These instructions have been tested with Istio {istio_version}. Some details may differ on older or newer versions of Istio and might require additional configuration steps not documented here.
+These instructions have been tested with Istio {istio_version}. Older or newer versions of Istio might require additional configuration steps not documented here.
 
-CAUTION: Some Elastic Stack features such as link:https://www.elastic.co/guide/en/kibana/7.x/alerting-getting-started.html#alerting-getting-started[Kibana alerting and actions] rely on the Elasticsearch API keys feature which requires TLS to be enabled at the application level. If you intend to make use of these features, you should not disable the self-signed certificate on the Elasticsearch resource and enable `PERMISSIVE` mode for the Elasticsearch service through a `DestinationRule` or `PeerAuthentication` resource. Strict mTLS mode is currently not compatible with Elastic Stack features requiring TLS to be enabled for the Elasticsearch HTTP layer.
+CAUTION: Some Elastic Stack features such as link:https://www.elastic.co/guide/en/kibana/7.x/alerting-getting-started.html#alerting-getting-started[Kibana alerting and actions] rely on the Elasticsearch API keys feature which requires TLS to be enabled at the application level. If you want to use these features, you should not disable the self-signed certificate on the Elasticsearch resource and enable `PERMISSIVE` mode for the Elasticsearch service through a `DestinationRule` or `PeerAuthentication` resource. Strict mTLS mode is currently not compatible with Elastic Stack features requiring TLS to be enabled for the Elasticsearch HTTP layer.
 
-IMPORTANT: If you are using a Kubernetes distribution such as Minikube which does not have support for issuing third-party security tokens, you should explicitly set `automountServiceAccountToken` field to `true` in the pod templates to allow Istio to fallback to default service account tokens. Refer to link:https://istio.io/docs/ops/best-practices/security/#configure-third-party-service-account-tokens[Istio security best practices] for more information.
+IMPORTANT: If you use a Kubernetes distribution like Minikube, which does not have support for issuing third-party security tokens, you should explicitly set `automountServiceAccountToken` field to `true` in the Pod templates to allow Istio to fallback to default service account tokens. Refer to link:https://istio.io/docs/ops/best-practices/security/#configure-third-party-service-account-tokens[Istio security best practices] for more information.
 
 
 [id="{p}-service-mesh-istio-operator-connection"]
 === Connect the operator to the Istio service mesh
 
-The operator itself must be connected to the service mesh in order to deploy and manage Elastic Stack resources that you wish to connect to the service mesh. This is achieved by injecting an Istio sidecar to the ECK operator pods. The following instructions assume that link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] is enabled on your cluster via a mutating admissions webhook. Refer to link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#injection[Istio injection documentation] if you prefer a different method of injection.
+The operator itself must be connected to the service mesh to deploy and manage Elastic Stack resources that you wish to connect to the service mesh. This is achieved by injecting an Istio sidecar to the ECK operator Pods. The following instructions assume that link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] is enabled on your cluster through a mutating admissions webhook. Refer to link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#injection[Istio injection documentation] if you prefer a different method of injection.
 
-Create the `elastic-system` namespace and enable sidecar injection:
-
+. Create the `elastic-system` namespace and enable sidecar injection:
++
 [source,sh]
 ----
 kubectl create namespace elastic-system
 kubectl label namespace elastic-system istio-injection=enabled
 ----
 
-Install ECK:
-
+. Install ECK:
++
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
 
-Check the configuration to ensure that the installation has been successful:
-
+. Check the configuration and make sure the installation has been successful:
++
 [source,sh]
 ----
 kubectl get pod elastic-operator-0 -n elastic-system -o=jsonpath='{range .spec.containers[*]}{.name}{"\n"}'
 ----
 
-If the output of the above command contains both `manager` and `istio-proxy`, ECK has been successfully installed with the Istio sidecar injected.
+If the output of the above command contains both `manager` and `istio-proxy`, ECK was successfully installed with the Istio sidecar injected.
 
-[NOTE]
-====
-
-In order for the <<{p}-webhook,validating webhook>> to work under Istio, you need to exclude the inbound port 9443 from being proxied. This can be done by editing the template definition of the `elastic-operator` StatefulSet to add the following annotations to the operator pod:
+////
+To make the <<{p}-webhook,validating webhook>> work under Istio, you need to exclude the inbound port 9443 from being proxied. This can be done by editing the template definition of the `elastic-operator` StatefulSet to add the following annotations to the operator Pod:
 
 [source,yaml]
 ----
@@ -72,16 +72,13 @@ spec:
 [...]
 ----
 
-As the default `failurePolicy` of the webhook is `Ignore`, the operator will continue to function even if the above annotations are not present. The downside is that you will be able to submit an invalid manifest using `kubectl` without receiving any immediate feedback. ECK has a fallback validation mechanism that reports validation failures as events associated with the relevant resource ({eck_resources_list}) that must be manually discovered by running `kubectl describe ...`  
-
-====
-
+As the default `failurePolicy` of the webhook is `Ignore`, the operator continues to function even if the above annotations are not present. The downside is that you are still able to submit an invalid manifest using `kubectl` without receiving any immediate feedback. ECK has a fallback validation mechanism that reports validation failures as events associated with the relevant resource ({eck_resources_list}) that must be manually discovered by running `kubectl describe ...`.  
+////
 
 [id="{p}-service-mesh-istio-stack-connection"]
 === Connect Elastic Stack applications to the Istio service mesh
 
-
-NOTE: This section assumes that you are deploying Elasticsearch, Kibana, or APM Server resources to a namespace that has link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] enabled.
+This section assumes that you are deploying Elasticsearch, Kibana, or APM Server resources to a namespace that has link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] enabled.
 
 If you have configured Istio in link:https://istio.io/docs/concepts/security/#permissive-mode[permissive mode], examples defined elsewhere in the ECK documentation will continue to work without requiring any modifications. However, if you have enabled strict mutual TLS authentication between services either via global (`MeshPolicy`) or namespace-level (`Policy`) configuration, the following modifications to the resource manifests are necessary for correct operation.
 
@@ -113,9 +110,9 @@ spec:
         automountServiceAccountToken: true <3>
 ----
 
-<1> Disable the default self-signed certificate generated by the operator and allow TLS to be managed by Istio. Note that disabling the self-signed certificate might interfere with some features such as Kibana Alerting and Actions.
+<1> Disable the default self-signed certificate generated by the operator and allow TLS to be managed by Istio. Disabling the self-signed certificate might interfere with some features such as Kibana Alerting and Actions.
 
-<2> Exclude the transport port (port 9300) from being proxied. Currently ECK does not support switching off X-Pack security and TLS for the Elasticsearch transport port. If Istio is allowed to proxy the transport port, the traffic will be encrypted twice and communication between Elasticsearch nodes will be disrupted.
+<2> Exclude the transport port (port 9300) from being proxied. Currently ECK does not support switching off X-Pack security and TLS for the Elasticsearch transport port. If Istio is allowed to proxy the transport port, the traffic is encrypted twice and communication between Elasticsearch nodes is disrupted.
 
 <3> Optional. Only set `automountServiceAccountToken` to `true` if your Kubernetes cluster does not have support for issuing third-party security tokens.
 
@@ -149,7 +146,8 @@ Refer to the link:https://istio.io/docs/tasks/security/authentication/mtls-migra
 
 There are link:https://istio.io/docs/setup/additional-setup/cni/#compatibility-with-application-init-containers[known issues with init containers] when Istio CNI is configured. If you use init containers to <<{p}-init-containers-plugin-downloads,install Elasticsearch plugins>> or perform other initialization tasks that require network access, they may fail due to outbound traffic being blocked by the CNI plugin. To work around this issue, explicitly allow the external ports used by the init containers.
 
-.Installing plugins using an init container
+To install plugins using an init container, use the following code:
+
 [source,yaml,subs="attributes,callouts"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
