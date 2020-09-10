@@ -5,6 +5,7 @@
 package net
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 
@@ -47,4 +48,17 @@ func ToIPFamily(ipStr string) corev1.IPFamily {
 		return corev1.IPv4Protocol
 	}
 	return corev1.IPv6Protocol
+}
+
+// IPLiteralFor returns the given IP as a literal that can be used in a resource identifier.
+// For IPv6 that means returning a bracketed version of the IP.
+// The difference to net.JoinHostPort is that it also allows IP to be a placeholder that will be resolved
+// to the actual IP at a later time.
+func IPLiteralFor(ipOrPlaceholder string, ipFamily corev1.IPFamily) string {
+	if ipFamily == corev1.IPv6Protocol {
+		// IPv6: return a bracketed version of the IP
+		return fmt.Sprintf("[%s]", ipOrPlaceholder)
+	}
+	// IPv4: leave the placeholder as is
+	return ipOrPlaceholder
 }

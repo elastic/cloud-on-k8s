@@ -207,3 +207,47 @@ func TestToIPFamily(t *testing.T) {
 		})
 	}
 }
+
+func TestIPLiteralFor(t *testing.T) {
+	type args struct {
+		ipOrPlaceholder string
+		ipFamily        corev1.IPFamily
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "IPv4",
+			args: args{
+				ipOrPlaceholder: "127.0.0.1",
+				ipFamily:        corev1.IPv4Protocol,
+			},
+			want: "127.0.0.1",
+		},
+		{
+			name: "IPv6",
+			args: args{
+				ipOrPlaceholder: "::",
+				ipFamily:        corev1.IPv6Protocol,
+			},
+			want: "[::]",
+		},
+		{
+			name: "IPv6 Placeholder",
+			args: args{
+				ipOrPlaceholder: "${POD_IP}",
+				ipFamily:        corev1.IPv6Protocol,
+			},
+			want: "[${POD_IP}]",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IPLiteralFor(tt.args.ipOrPlaceholder, tt.args.ipFamily); got != tt.want {
+				t.Errorf("IPLiteralFor() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
