@@ -59,6 +59,6 @@ func IPLiteralFor(ipOrPlaceholder string, ipFamily corev1.IPFamily) string {
 		// IPv6: return a bracketed version of the IP
 		return fmt.Sprintf("[%s]", ipOrPlaceholder)
 	}
-	// IPv4: leave the place holder as is
+	// IPv4: leave the placeholder as is
 	return ipOrPlaceholder
 }
