@@ -52,7 +52,7 @@ func ToIPFamily(ipStr string) corev1.IPFamily {
 
 // IPLiteralFor returns the given IP as a literal that can be used in a resource identifier.
 // For IPv6 that means returning a bracketed version of the IP.
-// The difference to net.JoinHostPort is that it also allows IP be to be a placeholder that will be resolved
+// The difference to net.JoinHostPort is that it also allows IP to be a placeholder that will be resolved
 // to the actual IP at a later time.
 func IPLiteralFor(ipOrPlaceholder string, ipFamily corev1.IPFamily) string {
 	var prefix, suffix string
