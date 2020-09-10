@@ -68,7 +68,6 @@ func (j *Job) Stop() {
 		return
 	}
 	close(j.stopLogStream)
-	close(j.streamErrors)
 }
 
 func (j *Job) WithDependency(dependency *Job) *Job {
