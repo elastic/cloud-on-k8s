@@ -55,10 +55,10 @@ func ToIPFamily(ipStr string) corev1.IPFamily {
 // The difference to net.JoinHostPort is that it also allows IP to be a placeholder that will be resolved
 // to the actual IP at a later time.
 func IPLiteralFor(ipOrPlaceholder string, ipFamily corev1.IPFamily) string {
-	var prefix, suffix string
 	if ipFamily == corev1.IPv6Protocol {
-		prefix = "["
-		suffix = "]"
+		// IPv6: return a bracketed version of the IP
+		return fmt.Sprintf("[%s]", ipOrPlaceholder)
 	}
-	return fmt.Sprintf("%s%s%s", prefix, ipOrPlaceholder, suffix)
+	// IPv4: leave the place holder as is
+	return ipOrPlaceholder
 }
