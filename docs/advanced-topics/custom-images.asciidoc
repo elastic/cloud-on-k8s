@@ -61,7 +61,7 @@ For more information, check the following references:
 [id="{p}-container-registry-override"]
 == Override the default container registry
 
-When creating Elasticsearch, Kibana, or APM Server resources, the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you could configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. See <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
+When creating custom resources ({eck_resources_list}), the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you could configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. See <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
 
 The operator expects container images to be located at specific paths in the default container registry. Make sure that your container images are stored at the right path and are tagged correctly with the stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from stack version {version}, the following image paths should exist:
 
