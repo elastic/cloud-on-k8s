@@ -6,6 +6,7 @@ package beat
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"testing"
@@ -16,7 +17,9 @@ import (
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
@@ -101,6 +104,17 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 			currSecretName := builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name
 			newSecretName := strings.Replace(currSecretName, "elasticsearch", fmt.Sprintf("elasticsearch-%s", builder.Suffix), 1)
 			builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = newSecretName
+
+			if net.ToIPFamily(os.Getenv(essettings.EnvPodIP)) == corev1.IPv6Protocol {
+				json, err := builder.Beat.Spec.Config.MarshalJSON()
+				if err != nil {
+					require.NoError(t, err, "Failed to extract configuration")
+				}
+				config := strings.ReplaceAll(string(json), "${data.host}", "[${data.host}]")
+				if err := builder.Beat.Spec.Config.UnmarshalJSON([]byte(config)); err != nil {
+					require.NoError(t, err, "Failed to convert back to json configuration")
+				}
+			}
 		}
 
 		return builder.
