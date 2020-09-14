@@ -292,7 +292,7 @@ chcon -Rt svirt_sandbox_file_t /var/lib/elastic/heartbeat/heartbeat-data/
 
 Repeat this step on all the hosts where the heartbeat Pod can be deployed.
 
-Some Beats may require additional permissions. For example `Filebeat` needs additional privileges to read other containers logs on the host. In this case, you can use the `privileged` field in the security context of the container spec:
+Some Beats may require additional permissions. For example, `Filebeat` needs additional privileges to read other container logs on the host. In this case, you can use the `privileged` field in the security context of the container spec:
 
 [source,yaml,subs="attributes"]
 ----
