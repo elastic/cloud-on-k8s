@@ -11,7 +11,7 @@ spec:
     name: kibana
   config:
     filebeat.autodiscover.providers:
-    - node: ${HOSTNAME}
+    - node: ${NODE_NAME}
       type: kubernetes
       hints.default_config.enabled: "false"
       templates:
@@ -47,6 +47,11 @@ spec:
             mountPath: /var/log/pods
           - name: varlibdockercontainers
             mountPath: /var/lib/docker/containers
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
         volumes:
         - name: varlogcontainers
           hostPath:
