@@ -78,7 +78,7 @@ As the default `failurePolicy` of the webhook is `Ignore`, the operator continue
 [id="{p}-service-mesh-istio-stack-connection"]
 === Connect Elastic Stack applications to the Istio service mesh
 
-This section assumes that you are deploying Elasticsearch, Kibana, or APM Server resources to a namespace that has link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] enabled.
+This section assumes that you are deploying ECK custom resources to a namespace that has link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] enabled.
 
 If you have configured Istio in link:https://istio.io/docs/concepts/security/#permissive-mode[permissive mode], examples defined elsewhere in the ECK documentation will continue to work without requiring any modifications. However, if you have enabled strict mutual TLS authentication between services either via global (`MeshPolicy`) or namespace-level (`Policy`) configuration, the following modifications to the resource manifests are necessary for correct operation.
 
