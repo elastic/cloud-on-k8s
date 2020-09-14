@@ -146,7 +146,7 @@ Refer to the link:https://istio.io/docs/tasks/security/authentication/mtls-migra
 
 There are link:https://istio.io/docs/setup/additional-setup/cni/#compatibility-with-application-init-containers[known issues with init containers] when Istio CNI is configured. If you use init containers to <<{p}-init-containers-plugin-downloads,install Elasticsearch plugins>> or perform other initialization tasks that require network access, they may fail due to outbound traffic being blocked by the CNI plugin. To work around this issue, explicitly allow the external ports used by the init containers.
 
-To install plugins using an init container, use the following code:
+To install plugins using an init container, use a manifest similar to the following:
 
 [source,yaml,subs="attributes,callouts"]
 ----
