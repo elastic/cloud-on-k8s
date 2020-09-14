@@ -16,7 +16,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 * <<{p}-openshift-beats,Grant privileged permissions to Beats>>
 
-NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the Pod to run with the `anyuid` SCC as described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
+NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the Pod to run with the `anyuid` SCC as described in <<{p}-openshift-apm>>.
 
 [float]
 [id="{p}-openshift-before-you-begin"]
@@ -28,9 +28,9 @@ NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https:/
 +
 Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernetes nodes in your cluster have the correct `vm.max_map_count` sysctl setting applied. By default, Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) which restricts privileged access required to change this setting in the underlying Kubernetes nodes.
 +
-Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level, but note that this has performance implications and is not recommended for production workloads.
+Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level. This has performance implications and is not recommended for production workloads.
 +
-For more information, see: <<{p}-virtual-memory>>.
+For more information, see <<{p}-virtual-memory>>.
 
 [id="{p}-openshift-deploy-the-operator"]
 == Deploy the operator
@@ -106,7 +106,7 @@ EOF
 [id="{p}-openshift-es-plugins"]
 === Elasticsearch plugins
 
-Note that Elasticsearch plugins cannot be installed at runtime in most OpenShift environments. This is because the plugin installer must run as root, but Elasticsearch is restricted from running as root. To add plugins to Elasticsearch, you can use custom images as described in <<{p}-custom-images>>.
+Elasticsearch plugins cannot be installed at runtime in most OpenShift environments. This is because the plugin installer must run as root, but Elasticsearch is restricted from running as root. To add plugins to Elasticsearch, you can use custom images as described in <<{p}-custom-images>>.
 
 
 [id="{p}-openshift-deploy-kibana"]
@@ -162,13 +162,13 @@ oc get route -n elastic
 
 It is currently not possible to run the APM Server with the `restricted` SCC. A possible workaround is to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
 
-. Create a service account to run the APM Server
+. Create a service account to run the APM Server:
 +
 [source,shell]
 ----
 oc create serviceaccount apm-server -n elastic
 ----
-. Add the APM service account to the `anyuid` SCC
+. Add the APM service account to the `anyuid` SCC:
 +
 [source,shell]
 ----
@@ -179,7 +179,7 @@ oc adm policy add-scc-to-user anyuid -z apm-server -n elastic
 ----
 scc "anyuid" added to: ["system:serviceaccount:elastic:apm-server"]
 ----
-. Deploy an APM Server and a route with the following manifest
+. Deploy an APM Server and a `Route` with the following manifest:
 +
 [source,shell,subs="attributes,+macros"]
 ----
@@ -237,13 +237,13 @@ The following example assumes that Beats is deployed in the Namespace `elastic` 
 
 NOTE: If you used the examples from the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory], the ServiceAccount may already exist.
 
-. Create a dedicated ServiceAccount
+. Create a dedicated ServiceAccount:
 +
 [source,shell]
 ----
 oc create serviceaccount heartbeat -n elastic
 ----
-. Add the ServiceAccount to the required SCC
+. Add the ServiceAccount to the required SCC:
 +
 [source,shell]
 ----
@@ -279,7 +279,7 @@ spec:
           runAsUser: 0
 ----
 
-If SELinux is enabled the Beat Pod may fail with the following message:
+If SELinux is enabled, the Beat Pod might fail with the following message:
 
 [source,shell]
 ----
@@ -295,7 +295,7 @@ chcon -Rt svirt_sandbox_file_t /var/lib/elastic/heartbeat/heartbeat-data/
 
 Repeat this step on all the hosts where the heartbeat Pod can be deployed.
 
-Some Beats may require additional permissions. For example `Filebeat` needs additional privileges to read other containers logs on the host. This can be done using the `privileged` field in the security context of the container spec:
+Some Beats may require additional permissions. For example, `Filebeat` needs additional privileges to read other container logs on the host. In this case, you can use the `privileged` field in the security context of the container spec:
 
 [source,yaml,subs="attributes"]
 ----
@@ -326,4 +326,4 @@ spec:
             path: /var/lib/docker/containers
 ----
 
-See complete examples in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory]
+See the complete examples in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory].
