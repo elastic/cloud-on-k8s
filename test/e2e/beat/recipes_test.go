@@ -108,7 +108,7 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 			newSecretName := strings.Replace(currSecretName, "elasticsearch", fmt.Sprintf("elasticsearch-%s", builder.Suffix), 1)
 			builder.Beat.Spec.Deployment.PodTemplate.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = newSecretName
 
-			// We are using the pod's IP address exposed though the downward API to detect if the test is running in an IPv6 environment.
+			// We are using the pod's IP address exposed through the downward API to detect if the test is running in an IPv6 environment.
 			if net.ToIPFamily(os.Getenv(EnvPodIP)) == corev1.IPv6Protocol {
 				// In an IPv6 environment we need to patch the configuration to add some brackets around the data.host variable.
 				json, err := builder.Beat.Spec.Config.MarshalJSON()
