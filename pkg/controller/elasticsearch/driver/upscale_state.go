@@ -157,7 +157,7 @@ func (s *upscaleState) getMaxNodesToCreate(noMoreThan int32) int32 {
 
 // limitNodesCreation decreases replica count in specs as needed, assumes an upscale is requested
 func (s *upscaleState) limitNodesCreation(
-	actual appsv1.StatefulSet,
+	actualReplicas int32,
 	toApply appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
 	if err := buildOnce(s); err != nil {
@@ -165,10 +165,9 @@ func (s *upscaleState) limitNodesCreation(
 	}
 
 	if label.IsMasterNodeSet(toApply) {
-		return s.limitMasterNodesCreation(actual, toApply)
+		return s.limitMasterNodesCreation(actualReplicas, toApply)
 	}
 
-	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
 	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
@@ -195,10 +194,9 @@ func (s *upscaleState) limitNodesCreation(
 }
 
 func (s *upscaleState) limitMasterNodesCreation(
-	actual appsv1.StatefulSet,
+	actualReplicas int32,
 	toApply appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
-	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
 	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))

@@ -113,7 +113,7 @@ func adjustStatefulSetReplicas(
 	actualReplicas := sset.GetReplicas(actual)
 
 	if actualReplicas < expectedReplicas {
-		return upscaleState.limitNodesCreation(actual, expected)
+		return upscaleState.limitNodesCreation(actualReplicas, expected)
 	}
 
 	if alreadyExists && expectedReplicas < actualReplicas {
