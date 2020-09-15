@@ -112,7 +112,7 @@ func (d *GkeDriver) Execute() error {
 		if d.plan.Gke.Private {
 			log.Printf("a private cluster has been created, please retrieve credentials manually and create storage class and provider if needed")
 			log.Printf("to authorize a VM to access this cluster run the following command:\n"+
-				"$ cloud container clusters update %s"+
+				"$ gcloud container clusters update %s"+
 				" --region %s "+
 				"--enable-master-authorized-networks"+
 				" --master-authorized-networks  <VM IP>/32",
