@@ -57,6 +57,60 @@ func resizePVCs(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSse
 	return nil
 }
 
+// deleteSsetForClaimResize compares expected vs. actual StatefulSets, and deletes the actual one
+// if a volume expansion can be performed. Pods remain orphan until the StatefulSet is created again.
+func deleteSsetForClaimResize(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
+	shouldRecreate, err := needsRecreate(k8sClient, expectedSset, actualSset)
+	if err != nil {
+		return false, err
+	}
+	if !shouldRecreate {
+		return false, nil
+	}
+
+	log.Info("Deleting StatefulSet to account for resized PVCs, it will be recreated automatically",
+		"namespace", actualSset.Namespace, "statefulset_name", actualSset.Name)
+
+	opts := client.DeleteOptions{}
+	// ensure Pods are not also deleted
+	orphanPolicy := metav1.DeletePropagationOrphan
+	opts.PropagationPolicy = &orphanPolicy
+	// ensure we are not deleting based on out-of-date sset spec
+	opts.Preconditions = &metav1.Preconditions{
+		UID:             &actualSset.UID,
+		ResourceVersion: &actualSset.ResourceVersion,
+	}
+	return true, k8sClient.Delete(&actualSset, &opts)
+}
+
+// needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
+// An error is returned if volume expansion is required but claims are incompatible.
+func needsRecreate(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
+	recreate := false
+	// match each expected claim with an actual existing one: we want to return true
+	// if at least one claim has increased storage reqs
+	// however we want to error-out if any claim has an incompatible storage req
+	for _, expectedClaim := range expectedSset.Spec.VolumeClaimTemplates {
+		actualClaim := sset.GetClaim(actualSset.Spec.VolumeClaimTemplates, expectedClaim.Name)
+		if actualClaim == nil {
+			continue
+		}
+		isExpansion, err := isStorageExpansion(expectedClaim.Spec.Resources.Requests.Storage(), actualClaim.Spec.Resources.Requests.Storage())
+		if err != nil {
+			return false, err
+		}
+		if !isExpansion {
+			continue
+		}
+		if err := ensureClaimSupportsExpansion(k8sClient, *actualClaim); err != nil {
+			return false, err
+		}
+		recreate = true
+	}
+
+	return recreate, nil
+}
+
 // ensureClaimSupportsExpansion inspects whether the storage class referenced by the claim
 // allows volume expansion.
 func ensureClaimSupportsExpansion(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim) error {

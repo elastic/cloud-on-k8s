@@ -179,6 +179,89 @@ func Test_resizePVCs(t *testing.T) {
 	}
 }
 
+func Test_deleteSsetForClaimResize(t *testing.T) {
+	type args struct {
+		k8sClient    k8s.Client
+		expectedSset appsv1.StatefulSet
+		actualSset   appsv1.StatefulSet
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "requested storage increase in the 2nd claim: recreate",
+			args: args{
+				k8sClient:    k8s.WrappedFakeClient(&sampleSset, withVolumeExpansion(sampleStorageClass)),
+				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
+				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
+			},
+			want: true,
+		},
+		{
+			name: "requested storage increase in the 2nd claim, but storage class does not allow it: error out",
+			args: args{
+				k8sClient:    k8s.WrappedFakeClient(&sampleSset, &sampleStorageClass),
+				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
+				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "no claim in the StatefulSet",
+			args: args{
+				k8sClient:    k8s.WrappedFakeClient(&sampleSset),
+				expectedSset: sampleSset,
+				actualSset:   sampleSset,
+			},
+			want: false,
+		},
+		{
+			name: "no change in the claim",
+			args: args{
+				k8sClient:    k8s.WrappedFakeClient(&sampleSset),
+				expectedSset: withClaims(sampleSset, sampleClaim),
+				actualSset:   withClaims(sampleSset, sampleClaim),
+			},
+			want: false,
+		},
+		{
+			name: "requested storage decrease: error out",
+			args: args{
+				k8sClient:    k8s.WrappedFakeClient(&sampleSset, withVolumeExpansion(sampleStorageClass)),
+				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")),
+				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deleted, err := deleteSsetForClaimResize(tt.args.k8sClient, tt.args.expectedSset, tt.args.actualSset)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("deleteSsetForClaimResize() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if deleted != tt.want {
+				t.Errorf("deleteSsetForClaimResize() got = %v, want %v", deleted, tt.want)
+			}
+
+			// double-check if the sset is indeed deleted
+			var retrieved appsv1.StatefulSet
+			err = tt.args.k8sClient.Get(k8s.ExtractNamespacedName(&tt.args.actualSset), &retrieved)
+			if deleted {
+				require.True(t, apierrors.IsNotFound(err))
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_isStorageExpansion(t *testing.T) {
 	type args struct {
 		expectedSize *resource.Quantity
