@@ -28,6 +28,8 @@ plans:
     adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
+    # Uncomment option below to enable network policy enforcement in GKE.
+    # networkPolicy: true
     # Uncomment option below to create a private GKE cluster.
     # Note that when a cluster is private you must:
     #   1. Create a firewall rule so that the webhook can be accessed from the API server (see https://github.com/elastic/cloud-on-k8s/issues/1673#issuecomment-528449682)

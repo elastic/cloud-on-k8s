@@ -192,6 +192,10 @@ func (d *GkeDriver) create() error {
 		opts = append(opts, "--enable-pod-security-policy")
 	}
 
+	if d.plan.Gke.NetworkPolicy {
+		opts = append(opts, "--enable-network-policy")
+	}
+
 	if d.plan.Gke.Private {
 		opts = append(opts, "--create-subnetwork name={{.ClusterName}}-private-subnet", "--enable-master-authorized-networks", "--enable-ip-alias", "--enable-private-nodes", "--enable-private-endpoint", "--master-ipv4-cidr", "172.16.0.32/28")
 	} else {
