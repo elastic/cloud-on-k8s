@@ -117,6 +117,11 @@ func (d *GkeDriver) Execute() error {
 				"--enable-master-authorized-networks"+
 				" --master-authorized-networks  <VM IP>/32",
 				d.plan.ClusterName, d.plan.Gke.Region)
+			log.Printf("you can then retrieve the credentials with the following command:\n"+
+				"$ gcloud container clusters get-credentials %s"+
+				" --region %s "+
+				" --project %s",
+				d.plan.ClusterName, d.plan.Gke.Region, d.plan.Gke.GCloudProject)
 			return nil
 		}
 
