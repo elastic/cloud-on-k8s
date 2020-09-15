@@ -426,6 +426,27 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			want:             sset.TestSset{Name: "new-sset", Master: true, Replicas: 3}.Build(),
 			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(4)},
 		},
+		{
+			name: "new master-nodes StatefulSet to create, some Pods already exist (volume expansion case), but first ones are missing",
+			args: args{
+				// Pods 2 and 3 exist, but not 0 and 1 (which would normally just be recreated by the sset controller)
+				k8sClient: k8s.WrappedFakeClient(
+					// the match between sset and Pods is based on StatefulSetNameLabelName
+					&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "new-sset-2", Labels: map[string]string{
+						label.StatefulSetNameLabelName: "new-sset",
+					}}},
+					&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "new-sset-3", Labels: map[string]string{
+						label.StatefulSetNameLabelName: "new-sset",
+					}}},
+				),
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(4)},
+				actualStatefulSets: sset.StatefulSetList{},
+				expected:           sset.TestSset{Name: "new-sset", Master: true, Replicas: 4}.Build(),
+			},
+			// allow the 4 masters that should be there (out of 4)
+			want:             sset.TestSset{Name: "new-sset", Master: true, Replicas: 4}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(4)},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -137,12 +137,23 @@ func adjustStatefulSetReplicas(
 		// In most cases, if the StatefulSet does not exist we're creating it for the first time (actualReplicas = 0).
 		// However if some Pods matching that missing StatefulSet exist we are likely in a situation where the
 		// StatefulSet is being re-created for volume expansion. In which case we want to take into account
-		// the number of existing Pods as replica count.
+		// the existing Pods when setting the initial replicas value.
 		pods, err := sset.GetActualPodsForStatefulSet(k8sClient, k8s.ExtractNamespacedName(&expected))
 		if err != nil {
 			return appsv1.StatefulSet{}, err
 		}
-		actualReplicas = int32(len(pods))
+		// The new StatefulSet replicas count should match the highest ordinal of Pods ready to be adopted.
+		actualReplicas = int32(0)
+		for _, pod := range pods {
+			_, ordinal, err := sset.StatefulSetName(pod.Name)
+			if err != nil {
+				return appsv1.StatefulSet{}, err
+			}
+			ordinalBasedReplicas := ordinal + 1 // 3 replicas -> pod-0, pod-1, pod-2
+			if ordinalBasedReplicas > actualReplicas {
+				actualReplicas = ordinalBasedReplicas
+			}
+		}
 		if actualReplicas > 0 {
 			log.Info("Adjusting StatefulSet replicas based on orphan Pods from volume expansion",
 				"namespace", expected.Namespace, "statefulset_name", expected.Name, "replicas", actualReplicas)
