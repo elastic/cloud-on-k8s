@@ -30,12 +30,18 @@ type upscaleCtx struct {
 	expectations  *expectations.Expectations
 }
 
+type UpscaleResults struct {
+	ActualStatefulSets sset.StatefulSetList
+	Requeue            bool
+}
+
 // HandleUpscaleAndSpecChanges reconciles expected NodeSet resources.
 // It does:
 // - create any new StatefulSets
 // - update existing StatefulSets specification, to be used for future pods rotation
 // - upscale StatefulSet for which we expect more replicas
 // - limit master node creation to one at a time
+// - resize (inline) existing PVCs to match new StatefulSet storage reqs, & delete the StatefulSet for recreation
 // It does not:
 // - perform any StatefulSet downscale (left for downscale phase)
 // - perform any pod upgrade (left for rolling upgrade phase)
@@ -43,28 +49,42 @@ func HandleUpscaleAndSpecChanges(
 	ctx upscaleCtx,
 	actualStatefulSets sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
-) (sset.StatefulSetList, error) {
+) (UpscaleResults, error) {
+	results := UpscaleResults{}
 	// adjust expected replicas to control nodes creation and deletion
 	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
-		return nil, fmt.Errorf("adjust resources: %w", err)
+		return results, fmt.Errorf("adjust resources: %w", err)
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
 		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
-			return nil, fmt.Errorf("reconcile config: %w", err)
+			return results, fmt.Errorf("reconcile config: %w", err)
 		}
 		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {
-			return nil, fmt.Errorf("reconcile service: %w", err)
+			return results, fmt.Errorf("reconcile service: %w", err)
+		}
+		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
+			ssetDeleted, err := handleVolumeExpansion(ctx.k8sClient, res.StatefulSet, actualSset)
+			if err != nil {
+				return results, fmt.Errorf("handle volume expansion: %w", err)
+			}
+			if ssetDeleted {
+				// the StatefulSet was just deleted: it is safer to requeue at the end of this function
+				// and let it be re-created at the next reconciliation
+				results.Requeue = true
+				continue
+			}
 		}
 		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
-			return nil, fmt.Errorf("reconcile sset %w", err)
+			return results, fmt.Errorf("reconcile StatefulSet: %w", err)
 		}
 		// update actual with the reconciled ones for next steps to work with up-to-date information
 		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
 	}
-	return actualStatefulSets, nil
+	results.ActualStatefulSets = actualStatefulSets
+	return results, nil
 }
 
 func adjustResources(

@@ -14,6 +14,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// handleVolumeExpansion works around the immutability of VolumeClaimTemplates in StatefulSets by:
+// 1. updating storage requests in PVCs whose storage class supports volume expansion
+// 2. deleting the StatefulSet, to be recreated with the new storage spec
+// It returns a boolean indicating whether the StatefulSet was deleted.
+// Note that some storage drivers also require Pods to be deleted/recreated for the filesystem to be resized
+// (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
+// This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
+func handleVolumeExpansion(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
+	err := resizePVCs(k8sClient, expectedSset, actualSset)
+	if err != nil {
+		return false, err
+	}
+	return deleteSsetForClaimResize(k8sClient, expectedSset, actualSset)
+}
+
 // resizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
 // according to their storage class and what's specified in the expected claim.
 // It returns an error if the requested storage size is incompatible with the PVC.

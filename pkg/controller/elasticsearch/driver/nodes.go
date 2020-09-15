@@ -74,7 +74,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		esState:       esState,
 		expectations:  d.Expectations,
 	}
-	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
+	upscaleResults, err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
 		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, fmt.Sprintf("Failed to apply spec change: %v", err))
 		var podTemplateErr *sset.PodTemplateError
@@ -84,6 +84,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		}
 		return results.WithError(err)
 	}
+	if upscaleResults.Requeue {
+		return results.WithResult(defaultRequeue)
+	}
+	actualStatefulSets = upscaleResults.ActualStatefulSets
 
 	// Update PDB to account for new replicas.
 	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {

@@ -9,14 +9,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/go-test/deep"
-	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -28,6 +20,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var onceDone = &sync.Once{}
@@ -112,17 +114,17 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// when no StatefulSets already exists
 	actualStatefulSets := sset.StatefulSetList{}
-	updatedStatefulSets, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
 	require.Equal(t, pointer.Int32(3), sset1.Spec.Replicas)
-	comparison.RequireEqual(t, &updatedStatefulSets[0], &sset1)
+	comparison.RequireEqual(t, &res.ActualStatefulSets[0], &sset1)
 	var sset2 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, pointer.Int32(4), sset2.Spec.Replicas)
-	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
+	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// headless services should be created for both
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
@@ -137,35 +139,147 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	// update context with current version of Elasticsearch resource
 	ctx.es = es
-	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
-	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
+	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
 
 	// apply a spec change
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
-	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
-	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
+	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(2)
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
-	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
+	require.False(t, res.Requeue)
+	require.Len(t, res.ActualStatefulSets, 2)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	// spec should be updated
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
 	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
-	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
+	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
+}
+
+func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
+	// focus on the special case of handling PVC resize
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
+	}
+
+	truePtr := true
+	storageClass := storagev1.StorageClass{
+		ObjectMeta:           metav1.ObjectMeta{Name: "resizeable"},
+		AllowVolumeExpansion: &truePtr,
+	}
+
+	// 3 masters, 4 data x 1Gi storage
+	actualStatefulSets := []appsv1.StatefulSet{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns",
+				Name:      "sset1",
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: pointer.Int32(3),
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							string(label.NodeTypesMasterLabelName): "true",
+						},
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns",
+				Name:      "sset2",
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: pointer.Int32(4),
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+					{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: resource.MustParse("1Gi"),
+								},
+							},
+							StorageClassName: &storageClass.Name,
+						},
+					},
+				},
+			},
+		},
+	}
+	// expected: same 2 StatefulSets, but the 2nd one has its storage resized to 3Gi
+	dataResized := *actualStatefulSets[1].DeepCopy()
+	dataResized.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("3Gi")
+	expectedResources := nodespec.ResourcesList{
+		{
+			StatefulSet: actualStatefulSets[0],
+			HeadlessService: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sset1",
+				},
+			},
+			Config: settings.CanonicalConfig{},
+		},
+		{
+			StatefulSet: dataResized,
+			HeadlessService: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sset2",
+				},
+			},
+			Config: settings.CanonicalConfig{},
+		},
+	}
+
+	k8sClient := k8s.WrappedFakeClient(&es, &storageClass, &actualStatefulSets[0], &actualStatefulSets[1])
+	ctx := upscaleCtx{
+		k8sClient:    k8sClient,
+		es:           es,
+		esState:      nil,
+		expectations: expectations.NewExpectations(k8sClient),
+		parentCtx:    context.Background(),
+	}
+
+	// 2nd StatefulSet should be deleted, we should requeue
+	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	require.NoError(t, err)
+	require.True(t, res.Requeue)
+	var retrievedSset appsv1.StatefulSet
+	err = k8sClient.Get(k8s.ExtractNamespacedName(&dataResized), &retrievedSset)
+	require.True(t, apierrors.IsNotFound(err))
+
+	// re-fetch es to simulate actual reconciliation behaviour
+	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
+	ctx.es = es
+	// the 2nd sset does not exist anymore
+	actualStatefulSets = []appsv1.StatefulSet{actualStatefulSets[0]}
+
+	// next run: the missing StatefulSet should be recreated
+	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	require.NoError(t, err)
+	require.False(t, res.Requeue)
+	require.Len(t, res.ActualStatefulSets, 2)
+	require.Equal(t, resource.MustParse("3Gi"), *res.ActualStatefulSets[1].Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage())
 }
 
 func Test_isReplicaIncrease(t *testing.T) {
