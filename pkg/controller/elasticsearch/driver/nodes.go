@@ -59,10 +59,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
-		return results.WithError(err)
-	}
-
 	esState := NewMemoizingESState(ctx, esClient)
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
@@ -91,6 +87,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// Update PDB to account for new replicas.
 	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {
+		return results.WithError(err)
+	}
+
+	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
 		return results.WithError(err)
 	}
 
