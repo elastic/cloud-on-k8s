@@ -41,7 +41,7 @@ type UpscaleResults struct {
 // - update existing StatefulSets specification, to be used for future pods rotation
 // - upscale StatefulSet for which we expect more replicas
 // - limit master node creation to one at a time
-// - resize (inline) existing PVCs to match new StatefulSet storage reqs, & delete the StatefulSet for recreation
+// - resize (inline) existing PVCs to match new StatefulSet storage reqs and delete the StatefulSet for recreation
 // It does not:
 // - perform any StatefulSet downscale (left for downscale phase)
 // - perform any pod upgrade (left for rolling upgrade phase)
@@ -70,8 +70,10 @@ func HandleUpscaleAndSpecChanges(
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
 			if ssetDeleted {
-				// the StatefulSet was just deleted: it is safer to requeue at the end of this function
-				// and let it be re-created at the next reconciliation
+				// The StatefulSet was just deleted: it is safer to requeue at the end of this function
+				// and let it be re-created at the next reconciliation.
+				// Otherwise, downscales and rolling upgrades could be performed with wrong assumptions:
+				// the sset isn't reported in actualStatefulSets (was just deleted), but the Pods actually exist.
 				results.Requeue = true
 				continue
 			}

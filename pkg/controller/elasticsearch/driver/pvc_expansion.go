@@ -155,7 +155,8 @@ func isStorageExpansion(expectedSize *resource.Quantity, actualSize *resource.Qu
 	case 0: // same size
 		return false, nil
 	case -1: // decrease
-		return false, fmt.Errorf("storage size cannot be decreased from %s to %s", actualSize.String(), expectedSize.String())
+		return false, fmt.Errorf("decreasing storage size is not supported, "+
+			"but an attempt was made to resize from %s to %s", actualSize.String(), expectedSize.String())
 	default: // increase
 		return true, nil
 	}
