@@ -142,7 +142,7 @@ func setVolumeClaimsControllerReference(
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
 	for _, claim := range persistentVolumeClaims {
-		if existingClaim := getClaimMatchingName(existingClaims, claim.Name); existingClaim != nil {
+		if existingClaim := sset.GetClaim(existingClaims, claim.Name); existingClaim != nil {
 			// This claim already exists in the actual resource. Since the volumeClaimTemplates section of
 			// a StatefulSet is immutable, any modification to it will be rejected in the StatefulSet update.
 			// This is fine and we let it error-out. It is caught in a user-friendly way by the validating webhook.
@@ -177,16 +177,6 @@ func setVolumeClaimsControllerReference(
 		claims = append(claims, claim)
 	}
 	return claims, nil
-}
-
-// getClaimMatchingName returns a claim matching the given name.
-func getClaimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
-	for i, claim := range claims {
-		if claim.Name == name {
-			return &claims[i]
-		}
-	}
-	return nil
 }
 
 // UpdateReplicas updates the given StatefulSet with the given replicas,
