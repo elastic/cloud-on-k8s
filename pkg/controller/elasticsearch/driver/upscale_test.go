@@ -205,6 +205,7 @@ func Test_isReplicaIncrease(t *testing.T) {
 
 func Test_adjustStatefulSetReplicas(t *testing.T) {
 	type args struct {
+		k8sClient          k8s.Client
 		state              *upscaleState
 		actualStatefulSets sset.StatefulSetList
 		expected           appsv1.StatefulSet
@@ -218,6 +219,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
+				k8sClient:          k8s.WrappedFakeClient(),
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
@@ -228,6 +230,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "same StatefulSet already exists",
 			args: args{
+				k8sClient:          k8s.WrappedFakeClient(),
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
@@ -238,6 +241,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "downscale case",
 			args: args{
+				k8sClient:          k8s.WrappedFakeClient(),
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
@@ -248,6 +252,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: data nodes",
 			args: args{
+				k8sClient:          k8s.WrappedFakeClient(),
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
@@ -258,6 +263,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: master nodes - one by one",
 			args: args{
+				k8sClient:          k8s.WrappedFakeClient(),
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
@@ -268,6 +274,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
+				k8sClient:          k8s.WrappedFakeClient(),
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
@@ -275,10 +282,52 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			want:             sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
 			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
+		{
+			name: "new data-nodes StatefulSet to create, but some Pods already exist: volume expansion case",
+			args: args{
+				// 2 Pods exist out of the 4 replicas
+				k8sClient: k8s.WrappedFakeClient(
+					// the match between sset and Pods is based on StatefulSetNameLabelName
+					&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "new-sset-0", Labels: map[string]string{
+						label.StatefulSetNameLabelName: "new-sset",
+					}}},
+					&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "new-sset-1", Labels: map[string]string{
+						label.StatefulSetNameLabelName: "new-sset",
+					}}},
+				),
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(4)},
+				actualStatefulSets: sset.StatefulSetList{},
+				expected:           sset.TestSset{Name: "new-sset", Replicas: 4}.Build(),
+			},
+			// allow 2 (pre-existing) + 2 (new creation) replicas
+			want:             sset.TestSset{Name: "new-sset", Replicas: 4}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 2, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(4)},
+		},
+		{
+			name: "new master-nodes StatefulSet to create, but some Pods already exist: volume expansion case",
+			args: args{
+				// 2 Pods exist out of the 4 replicas
+				k8sClient: k8s.WrappedFakeClient(
+					// the match between sset and Pods is based on StatefulSetNameLabelName
+					&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "new-sset-0", Labels: map[string]string{
+						label.StatefulSetNameLabelName: "new-sset",
+					}}},
+					&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "new-sset-1", Labels: map[string]string{
+						label.StatefulSetNameLabelName: "new-sset",
+					}}},
+				),
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(4)},
+				actualStatefulSets: sset.StatefulSetList{},
+				expected:           sset.TestSset{Name: "new-sset", Master: true, Replicas: 4}.Build(),
+			},
+			// allow 2 (pre-existing) + 1 (new master, one by one), out of 4
+			want:             sset.TestSset{Name: "new-sset", Master: true, Replicas: 3}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(4)},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := adjustStatefulSetReplicas(tt.args.state, tt.args.actualStatefulSets, tt.args.expected)
+			got, err := adjustStatefulSetReplicas(tt.args.k8sClient, tt.args.state, tt.args.actualStatefulSets, tt.args.expected)
 			require.NoError(t, err)
 			require.Nil(t, deep.Equal(got, tt.want))
 			require.Equal(t, tt.wantUpscaleState, tt.args.state)
