@@ -60,12 +60,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 				},
 				Spec: appsv1.StatefulSetSpec{
 					Replicas: pointer.Int32(3),
-					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-						Type: appsv1.RollingUpdateStatefulSetStrategyType,
-						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-							Partition: pointer.Int32(3),
-						},
-					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -91,12 +85,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 				},
 				Spec: appsv1.StatefulSetSpec{
 					Replicas: pointer.Int32(4),
-					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-						Type: appsv1.RollingUpdateStatefulSetStrategyType,
-						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-							Partition: pointer.Int32(4),
-						},
-					},
 				},
 			},
 			HeadlessService: corev1.Service{
