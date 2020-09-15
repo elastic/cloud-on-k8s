@@ -1,172 +1,115 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: filebeat-config
-  namespace: {{ .E2ENamespace }}
-  labels:
-    k8s-app: filebeat
-data:
-  filebeat.yml: |-
-    max_backoff: 1s # reduces worst case delay between log being written and picked up by Filebeat to 1s
-    close_inactive: 1h # keep harvester open for 1h on inactive files as our test timeout is longer than default 5m
-    filebeat.autodiscover:
-      providers:
-        - type: kubernetes
-          host: ${NODE_NAME}
-          hints.enabled: true
-          hints.default_config:
-            type: container
-            paths:
-            - /var/log/containers/*${data.kubernetes.container.id}.log
-            fields_under_root: true
-            fields:
-              pipeline: {{ .Pipeline }}
-              build_number: {{ .BuildNumber }}
-              provider: {{ .Provider }}
-              clusterName: {{ .ClusterName }}
-              kubernetes_version: {{ .KubernetesVersion }}
-              stack_version: {{ .ElasticStackVersion }}
-              e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
-          appenders:
-          - type: config
-            condition:
-              equals:
-                kubernetes.pod.labels.control-plane: {{ .Operator.Name }}
-            config:
-              json.keys_under_root: true
-              processors:
-              - convert:
-                  mode: rename
-                  ignore_missing: true
-                  fields:
-                  - { from: error, to: _error}
-                  - { from: source, to: event.source }
-              - convert:
-                  mode: rename
-                  ignore_missing: true
-                  fields:
-                  - { from: _error, to: error.message }
-
-    processors:
-      - add_cloud_metadata:
-      - add_host_metadata:
-
-    setup.template.overwrite: true
-    setup.template.append_fields:
-    - name: kubernetes_version
-      type: keyword
-    - name: build_number
-      type: keyword
-
-    output.elasticsearch:
-      hosts: ['https://${MONITORING_IP}:${ELASTICSEARCH_PORT}']
-      username: ${MONITORING_USER}
-      password: ${MONITORING_PASS}
-      ssl.certificate_authorities:
-      - /mnt/elastic/monitoring-ca.crt
----
-apiVersion: apps/v1
-kind: DaemonSet
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
 metadata:
   name: filebeat
   namespace: {{ .E2ENamespace }}
   labels:
     k8s-app: filebeat
 spec:
-  selector:
-    matchLabels:
-      k8s-app: filebeat
-  template:
-    metadata:
-      labels:
-        k8s-app: filebeat
-    spec:
-      serviceAccountName: filebeat
-      terminationGracePeriodSeconds: 30
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-      containers:
+  type: filebeat
+  version: 7.9.1
+  config:
+    max_backoff: 1s # reduces worst case delay between log being written and picked up by Filebeat to 1s
+    close_inactive: 1h # keep harvester open for 1h on inactive files as our test timeout is longer than default 5m
+    filebeat.autodiscover:
+      providers:
+      - type: kubernetes
+        host: ${NODE_NAME}
+        hints.enabled: true
+        hints.default_config:
+          type: container
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+          fields_under_root: true
+          fields:
+            pipeline: {{ .Pipeline }}
+            build_number: {{ .BuildNumber }}
+            provider: {{ .Provider }}
+            clusterName: {{ .ClusterName }}
+            kubernetes_version: {{ .KubernetesVersion }}
+            stack_version: {{ .ElasticStackVersion }}
+            e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+        appenders:
+        - type: config
+          condition:
+            equals:
+              kubernetes.pod.labels.control-plane: {{ .Operator.Name }}
+          config:
+            json.keys_under_root: true
+            processors:
+            - convert:
+                mode: rename
+                ignore_missing: true
+                fields:
+                - { from: error, to: _error}
+                - { from: source, to: event.source }
+            - convert:
+                mode: rename
+                ignore_missing: true
+                fields:
+                - { from: _error, to: error.message }
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+    setup.template.overwrite: true
+    setup.template.append_fields:
+    - name: kubernetes_version
+      type: keyword
+    - name: build_number
+      type: keyword
+    output.elasticsearch:
+      hosts: ['https://${monitoring_ip}:9200']
+      username: ${monitoring_user}
+      password: ${monitoring_pass}
+      ssl.certificate_authorities:
+      - /mnt/elastic/monitoring-ca.crt
+  secureSettings:
+  - secretName: "eck-{{ .TestRun }}"
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: filebeat
+        automountServiceAccountToken: true
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        initContainers:
+        - name: elastic-internal-init-keystore
+          securityContext:
+            runAsUser: 0
+        containers:
         - name: filebeat
-          image: docker.elastic.co/beats/filebeat:7.8.1
-          args: [
-            "-c", "/etc/filebeat.yml",
-            "-e",
-          ]
-          env:
-            - name: ELASTICSEARCH_HOST
-              value: monitor-es-http
-            - name: ELASTICSEARCH_PORT
-              value: "9200"
-            - name: MONITORING_USER
-              valueFrom:
-                secretKeyRef:
-                  name: "eck-{{ .TestRun }}"
-                  key: monitoring_user
-            - name: MONITORING_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: "eck-{{ .TestRun }}"
-                  key: monitoring_pass
-            - name: MONITORING_IP
-              valueFrom:
-                secretKeyRef:
-                  name: "eck-{{ .TestRun }}"
-                  key: monitoring_ip
-            - name: NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
           securityContext:
             runAsUser: 0
             {{ if .OcpCluster }}
             privileged: true
             {{end}}
-          resources:
-            limits:
-              memory: 200Mi
-            requests:
-              cpu: 100m
-              memory: 100Mi
           volumeMounts:
-            - name: config
-              mountPath: /etc/filebeat.yml
-              readOnly: true
-              subPath: filebeat.yml
-            - name: data
-              mountPath: /usr/share/filebeat/data
-            - name: varlibdockercontainers
-              mountPath: /var/lib/docker/containers
-              readOnly: true
-            - name: varlogpods
-              mountPath: /var/log/pods
-              readOnly: true
-            - name: varlogcontainers
-              mountPath: /var/log/containers
-              readOnly: true
-            - name: monitoring-ca
-              mountPath: /mnt/elastic/monitoring-ca.crt
-              readOnly: true
-              subPath: monitoring_ca
-      volumes:
-        - name: config
-          configMap:
-            defaultMode: 0600
-            name: filebeat-config
-        - name: varlibdockercontainers
-          hostPath:
-            path: /var/lib/docker/containers
+          - name: varlogcontainers
+            mountPath: /var/log/containers
+          - name: varlogpods
+            mountPath: /var/log/pods
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+          - name: monitoring-ca
+            mountPath: /mnt/elastic/monitoring-ca.crt
+            readOnly: true
+            subPath: monitoring_ca
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        volumes:
         - name: varlogcontainers
           hostPath:
             path: /var/log/containers
         - name: varlogpods
           hostPath:
             path: /var/log/pods
-        # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
-        - name: data
+        - name: varlibdockercontainers
           hostPath:
-            path: /var/lib/filebeat-data
-            type: DirectoryOrCreate
+            path: /var/lib/docker/containers
         - name: monitoring-ca
           secret:
             secretName: "eck-{{ .TestRun }}"

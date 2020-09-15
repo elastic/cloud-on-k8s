@@ -230,7 +230,7 @@ spec:
         args:
         - "manager"
         - "--namespaces"
-        - "{{ .Operator.ManagedNamespaces | join "," }}"
+        - "{{ .Operator.ManagedNamespaces | join "," }},{{ .E2ENamespace }}"
         - "--enable-webhook"
         - "--log-verbosity=1"
         - "--metrics-port=9090"

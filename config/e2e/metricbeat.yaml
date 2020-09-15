@@ -1,45 +1,66 @@
----
-apiVersion: v1
-kind: ServiceAccount
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
 metadata:
   name: metricbeat
   namespace: {{ .E2ENamespace }}
   labels:
     k8s-app: metricbeat
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: metricbeat-daemonset-config
-  namespace: {{ .E2ENamespace }}
-  labels:
-    k8s-app: metricbeat
-data:
-  metricbeat.yml: |-
-    metricbeat.config.modules:
-      # Mounted `metricbeat-daemonset-modules` configmap:
-      path: ${path.config}/modules.d/*.yml
-      # Reload module configs as they change:
-      reload.enabled: false
-
+spec:
+  type: metricbeat
+  version: 7.9.1
+  config:
+    metricbeat.modules:
+    - module: kubernetes
+      metricsets:
+      - node
+      - system
+      - pod
+      - container
+      - volume
+      - event
+      period: 10s
+      host: ${NODE_NAME}
+      hosts: ["https://${NODE_NAME}:10250"]
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      ssl.verification_mode: "none"
+    - module: system
+      period: 30s
+      metricsets:
+      - cpu
+      - load
+      - memory
+      - network
+      - process
+      - process_summary
+      processes: ['.*']
+      process.include_top_n:
+        by_cpu: 5      # include top 5 processes by CPU
+        by_memory: 5   # include top 5 processes by memory
+    - module: system
+      period: 1m
+      metricsets:
+      - filesystem
+      - fsstat
+      processors:
+      - drop_event.when.regexp:
+          system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
     metricbeat.autodiscover:
       providers:
-        - type: kubernetes
-          node: ${NODE_NAME}
-          hints.enabled: true
+      - type: kubernetes
+        node: ${NODE_NAME}
+        hints.enabled: true
     processors:
-      - add_cloud_metadata:
-      - add_fields:
-          target: ''
-          fields:
-            pipeline: {{ .Pipeline }}
-            build_number: {{ .BuildNumber }}
-            provider: {{ .Provider }}
-            clusterName: {{ .ClusterName }}
-            kubernetes_version: {{ .KubernetesVersion }}
-            stack_version: {{ .ElasticStackVersion }}
-            e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
-
+    - add_cloud_metadata:
+    - add_fields:
+        target: ''
+        fields:
+          pipeline: {{ .Pipeline }}
+          build_number: {{ .BuildNumber }}
+          provider: {{ .Provider }}
+          clusterName: {{ .ClusterName }}
+          kubernetes_version: {{ .KubernetesVersion }}
+          stack_version: {{ .ElasticStackVersion }}
+          e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
     setup.template.overwrite: true
     setup.template.append_fields:
     - name: stack_version
@@ -56,163 +77,75 @@ data:
       type: keyword
     - name: clusterName
       type: keyword
-
     output.elasticsearch:
-      hosts: ['https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}']
-      username: ${ELASTICSEARCH_USERNAME}
-      password: ${ELASTICSEARCH_PASSWORD}
+      hosts: ['https://${monitoring_ip}:9200']
+      username: ${monitoring_user}
+      password: ${monitoring_pass}
       ssl.certificate_authorities:
       - /mnt/elastic/monitoring-ca.crt
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: metricbeat
+        automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+        initContainers:
+        - name: elastic-internal-init-keystore
+          securityContext:
+            runAsUser: 0
+        containers:
+        - args:
+          - -e
+          - -c
+          - /etc/beat.yml
+          - -system.hostfs=/hostfs
+          name: metricbeat
+          volumeMounts:
+          - mountPath: /hostfs/sys/fs/cgroup
+            name: cgroup
+          - mountPath: /var/run/docker.sock
+            name: dockersock
+          - mountPath: /hostfs/proc
+            name: proc
+          - name: monitoring-ca
+            mountPath: /mnt/elastic/monitoring-ca.crt
+            readOnly: true
+            subPath: monitoring_ca
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        securityContext:
+          runAsUser: 0
+          {{ if .OcpCluster }}
+          privileged: true
+          {{ end }}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - hostPath:
+            path: /sys/fs/cgroup
+          name: cgroup
+        - hostPath:
+            path: /var/run/docker.sock
+          name: dockersock
+        - hostPath:
+            path: /proc
+          name: proc
+        - name: monitoring-ca
+          secret:
+            secretName: "eck-{{ .TestRun }}"
+  secureSettings:
+  - secretName: "eck-{{ .TestRun }}"
 ---
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: metricbeat-daemonset-modules
-  namespace: {{ .E2ENamespace }}
-  labels:
-    k8s-app: metricbeat
-data:
-  kubernetes.yml: |-
-    - module: kubernetes
-      metricsets:
-        - node
-        - system
-        - pod
-        - container
-        - volume
-        - event
-      period: 10s
-      host: ${NODE_NAME}
-      hosts: ["https://${HOSTNAME}:10250"]
-      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-      ssl.verification_mode: "none"
-  system.yml: |-
-    - module: system
-      period: 30s
-      metricsets:
-        - cpu
-        - load
-        - memory
-        - network
-        - process
-        - process_summary
-      processes: ['.*']
-      process.include_top_n:
-        by_cpu: 5      # include top 5 processes by CPU
-        by_memory: 5   # include top 5 processes by memory
-    - module: system
-      period: 1m
-      metricsets:
-        - filesystem
-        - fsstat
-      processors:
-      - drop_event.when.regexp:
-          system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
----
-apiVersion: apps/v1
-kind: DaemonSet
+kind: ServiceAccount
 metadata:
   name: metricbeat
   namespace: {{ .E2ENamespace }}
   labels:
     k8s-app: metricbeat
-spec:
-  selector:
-    matchLabels:
-      k8s-app: metricbeat
-  template:
-    metadata:
-      labels:
-        k8s-app: metricbeat
-    spec:
-      serviceAccountName: metricbeat
-      terminationGracePeriodSeconds: 30
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-      containers:
-        - name: metricbeat
-          image: docker.elastic.co/beats/metricbeat:7.8.1
-          args: [
-            "-c", "/etc/metricbeat.yml",
-            "-e",
-            "-system.hostfs=/hostfs",
-            "-d", "autodiscover",
-            "-d", "kubernetes",
-          ]
-          env:
-            - name: ELASTICSEARCH_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: "eck-{{ .TestRun }}"
-                  key: monitoring_ip
-            - name: ELASTICSEARCH_PORT
-              value: "9200"
-            - name: ELASTICSEARCH_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: "eck-{{ .TestRun }}"
-                  key: monitoring_user
-            - name: ELASTICSEARCH_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: "eck-{{ .TestRun }}"
-                  key: monitoring_pass
-            - name: NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-          securityContext:
-            runAsUser: 0
-            {{ if .OcpCluster }}
-            privileged: true
-            {{ end }}
-          resources:
-            limits:
-              memory: 200Mi
-            requests:
-              cpu: 100m
-              memory: 100Mi
-          volumeMounts:
-            - name: config
-              mountPath: /etc/metricbeat.yml
-              readOnly: true
-              subPath: metricbeat.yml
-            - name: modules
-              mountPath: /usr/share/metricbeat/modules.d
-              readOnly: true
-            - name: dockersock
-              mountPath: /var/run/docker.sock
-            - name: proc
-              mountPath: /hostfs/proc
-              readOnly: true
-            - name: cgroup
-              mountPath: /hostfs/sys/fs/cgroup
-              readOnly: true
-            - name: monitoring-ca
-              mountPath: /mnt/elastic/monitoring-ca.crt
-              readOnly: true
-              subPath: monitoring_ca
-      volumes:
-        - name: proc
-          hostPath:
-            path: /proc
-        - name: cgroup
-          hostPath:
-            path: /sys/fs/cgroup
-        - name: dockersock
-          hostPath:
-            path: /var/run/docker.sock
-        - name: config
-          configMap:
-            defaultMode: 0600
-            name: metricbeat-daemonset-config
-        - name: modules
-          configMap:
-            defaultMode: 0600
-            name: metricbeat-daemonset-modules
-        - name: monitoring-ca
-          secret:
-            secretName: "eck-{{ .TestRun }}"
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
