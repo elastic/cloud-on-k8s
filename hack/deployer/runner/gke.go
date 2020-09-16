@@ -108,6 +108,22 @@ func (d *GkeDriver) Execute() error {
 			}
 		}
 
+		if d.plan.Gke.Private {
+			log.Printf("a private cluster has been created, please retrieve credentials manually and create storage class and provider if needed")
+			log.Printf("to authorize a VM to access this cluster run the following command:\n"+
+				"$ gcloud container clusters update %s"+
+				" --region %s "+
+				"--enable-master-authorized-networks"+
+				" --master-authorized-networks  <VM IP>/32",
+				d.plan.ClusterName, d.plan.Gke.Region)
+			log.Printf("you can then retrieve the credentials with the following command:\n"+
+				"$ gcloud container clusters get-credentials %s"+
+				" --region %s "+
+				" --project %s",
+				d.plan.ClusterName, d.plan.Gke.Region, d.plan.Gke.GCloudProject)
+			return nil
+		}
+
 		if err := d.GetCredentials(); err != nil {
 			return err
 		}
@@ -180,6 +196,16 @@ func (d *GkeDriver) create() error {
 		opts = append(opts, "--enable-pod-security-policy")
 	}
 
+	if d.plan.Gke.NetworkPolicy {
+		opts = append(opts, "--enable-network-policy")
+	}
+
+	if d.plan.Gke.Private {
+		opts = append(opts, "--create-subnetwork name={{.ClusterName}}-private-subnet", "--enable-master-authorized-networks", "--enable-ip-alias", "--enable-private-nodes", "--enable-private-endpoint", "--master-ipv4-cidr", "172.16.0.32/28")
+	} else {
+		opts = append(opts, "--create-subnetwork range={{.ClusterIPv4CIDR}}", "--cluster-ipv4-cidr={{.ClusterIPv4CIDR}}", "--services-ipv4-cidr={{.ServicesIPv4CIDR}}")
+	}
+
 	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--region {{.Region}} --username {{.AdminUsername}} --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
@@ -187,19 +213,22 @@ func (d *GkeDriver) create() error {
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
-		`--create-subnetwork range={{.ClusterIPv4CIDR}} --cluster-ipv4-cidr={{.ClusterIPv4CIDR}} --services-ipv4-cidr={{.ServicesIPv4CIDR}} ` +
 		strings.Join(opts, " ")).
 		AsTemplate(d.ctx).
 		Run()
 }
 
 func (d *GkeDriver) bindRoles() error {
-	log.Println("Binding roles...")
 	user, err := NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).Output()
 	if err != nil {
 		return err
 	}
 	cmd := "kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=" + user
+	if d.plan.Gke.Private {
+		log.Printf("this is a private cluster, please bind roles manually from an authorized VM with the following command:\n$ %s\n", cmd)
+		return nil
+	}
+	log.Println("Binding roles...")
 	return NewCommand(cmd).Run()
 }
 
