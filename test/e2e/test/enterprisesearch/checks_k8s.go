@@ -57,9 +57,13 @@ func CheckDeployment(b Builder, k *test.K8sClient) test.Step {
 // CheckPods checks expected Enterprise Search pods are eventually ready.
 // TODO: use a common function for all deployments (kb, apm, ent)
 func CheckPods(b Builder, k *test.K8sClient) test.Step {
+	// It is common for Enterprise Search Pods to take some time to be ready, especially
+	// during the initial bootstrap, or during version upgrades. Let's increase the timeout
+	// for this particular step.
+	timeout := test.Ctx().TestTimeout * 2
 	return test.Step{
 		Name: "Enterprise Search Pods should eventually be ready",
-		Test: test.Eventually(func() error {
+		Test: test.UntilSuccess(func() error {
 			var pods corev1.PodList
 			if err := k.Client.List(&pods, test.EnterpriseSearchPodListOptions(b.EnterpriseSearch.Namespace, b.EnterpriseSearch.Name)...); err != nil {
 				return err
@@ -93,7 +97,7 @@ func CheckPods(b Builder, k *test.K8sClient) test.Step {
 			}
 
 			return nil
-		}),
+		}, timeout),
 	}
 }
 
