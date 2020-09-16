@@ -70,7 +70,6 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 			"KubernetesVersion": plan.KubernetesVersion,
 			"MachineType":       plan.MachineType,
 			"LocalSsdCount":     plan.Gke.LocalSsdCount,
-			"Private":           plan.Gke.Private,
 			"GcpScopes":         plan.Gke.GcpScopes,
 			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
 			"ClusterIPv4CIDR":   clusterIPv4CIDR,
