@@ -33,8 +33,7 @@ spec:
                       - node_stats
                       - shard
                     period: 10s
-                    # TODO switch to using named ports in 7.9.0 when https://github.com/elastic/beats/pull/19398 is added
-                    hosts: "https://${data.host}:9200"
+                    hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
                     password: ${MONITORED_ES_PASSWORD}
                     # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
@@ -49,7 +48,7 @@ spec:
                     metricsets:
                       - stats
                     period: 10s
-                    hosts: "https://${data.host}:${data.port}"
+                    hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
                     password: ${MONITORED_ES_PASSWORD}
                     # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
