@@ -50,7 +50,7 @@ require (
 	k8s.io/client-go v0.18.6
 	k8s.io/klog/v2 v2.0.0
 	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
-	sigs.k8s.io/controller-runtime v0.6.2
+	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/controller-tools v0.4.0
 )
 
