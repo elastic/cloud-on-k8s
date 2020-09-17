@@ -157,7 +157,7 @@ oc get route -n elastic
 [id="{p}-openshift-apm"]
 == Deploy an APM Server instance with a route
 
-With Elastic Stack 7.9, it is possible to run the APM Server with the `restricted` SCC. For versions older than 7.9, you can use this workaround to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
+Starting with version 7.9, it is possible to run the APM Server with the `restricted` SCC. For versions older than 7.9, you can use this workaround to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
 
 . Create a service account to run the APM Server:
 +
