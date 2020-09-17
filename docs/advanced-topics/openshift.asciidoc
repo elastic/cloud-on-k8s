@@ -9,14 +9,15 @@ endif::[]
 
 This page shows how to run ECK on OpenShift.
 
-* <<{p}-openshift-before-you-begin,Before you begin>>
-* <<{p}-openshift-deploy-the-operator,Deploy the operator>>
-* <<{p}-openshift-deploy-elasticsearch,Deploy an Elasticsearch instance with a route>>
-* <<{p}-openshift-deploy-kibana,Deploy a Kibana instance with a route>>
-* <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
-* <<{p}-openshift-beats,Grant privileged permissions to Beats>>
+* <<{p}-openshift-before-you-begin>>
+* <<{p}-openshift-deploy-the-operator>>
+* <<{p}-openshift-deploy-elasticsearch>>
+* <<{p}-openshift-deploy-kibana>>
+* <<{p}-openshift-apm>>
+* <<{p}-openshift-beats>>
 
-WARNING: With Elastic Stack 7.9, note that APM Server is now compatible with OpenShift, see <<{p}-openshift-apm>>. Enterprise Search 7.9 is not yet compatible with Openshift.
+WARNING: For versions older than 7.9, APM Server and Enterprise Search are not compatible with `restricted` SCC. Use this <<{p}-openshift-apm,workaround>> to overcome this limitation.
+With version 7.9, the APM Server is compatible with `restricted` SCC, while for Enterprise Search the incompatibility remains and can be addressed with the same workaround.
 
 [float]
 [id="{p}-openshift-before-you-begin"]
@@ -155,9 +156,9 @@ oc get route -n elastic
 ----
 
 [id="{p}-openshift-apm"]
-== Deploy an APM Server instance with a route
+== Deploy Docker images with `anyuid` SCC
 
-Starting with version 7.9, it is possible to run the APM Server with the `restricted` SCC. For versions older than 7.9, you can use this workaround to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
+Starting with version 7.9, it is possible to run the APM Server with the `restricted` SCC. For APM versions older than 7.9 and Enterprise Search version 7.9, you can use this workaround which allows the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
 
 . Create a service account to run the APM Server:
 +
