@@ -9,13 +9,14 @@ import (
 	"net"
 	"strings"
 
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/util/validation/field"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 	nodeRolesInOldVersionMsg = "node.roles setting is not available in this version of Elasticsearch"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	pvcImmutableMsg          = "Volume claim templates cannot be modified"
+	pvcImmutableMsg          = "Volume claim templates cannot be modified. Only storage requests may be increased, if the storage class allows volume expansion."
 	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg    = "Unsupported version"
@@ -207,27 +208,42 @@ func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
+// pvcModification ensures the only part of volume claim templates that can be changed is storage requests.
+// VolumeClaimTemplates are immutable in StatefulSets, but we still manage to deal with volume expansion.
 func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	if current == nil || proposed == nil {
 		return errs
 	}
-	for i, node := range proposed.Spec.NodeSets {
-		currNode := getNode(node.Name, current)
-		if currNode == nil {
+	for i, proposedNodeSet := range proposed.Spec.NodeSets {
+		currNodeSet := getNode(proposedNodeSet.Name, current)
+		if currNodeSet == nil {
 			// this is a new sset, so there is nothing to check
 			continue
 		}
 
-		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
-		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims.
+		// Check that no modification was made to the volumeClaimTemplates, except on storage requests.
 		// Checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
-		if !apiequality.Semantic.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), node.VolumeClaimTemplates, pvcImmutableMsg))
+		// We could conceptually also disallow storage decrease here (unsupported), but it would make it hard for users
+		// to revert to the previous size if tried increasing but their storage class doesn't support expansion.
+		currentClaims := currNodeSet.VolumeClaimTemplates
+		proposedClaims := proposedNodeSet.VolumeClaimTemplates
+		if !apiequality.Semantic.DeepEqual(claimsWithoutStorageReq(currentClaims), claimsWithoutStorageReq(proposedClaims)) {
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), proposedClaims, pvcImmutableMsg))
 		}
 	}
 	return errs
+}
+
+// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
+func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
+	for _, claim := range claims {
+		patchedClaim := *claim.DeepCopy()
+		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
+		result = append(result, patchedClaim)
+	}
+	return result
 }
 
 func noDowngrades(current, proposed *Elasticsearch) field.ErrorList {
