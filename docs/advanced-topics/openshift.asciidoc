@@ -155,7 +155,7 @@ Use the following command to get the hosts of each `Route`:
 oc get route -n elastic
 ----
 
-[id="{p}-openshift-apm"]
+[id="{p}-openshift-anyuid-workaround"]
 == Deploy Docker images with `anyuid` SCC
 
 Starting with version 7.9, it is possible to run the APM Server with the `restricted` SCC. For APM versions older than 7.9 and Enterprise Search version 7.9, you can use this workaround which allows the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
