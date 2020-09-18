@@ -60,7 +60,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.operatorNamespace, "operator-namespace", "", "Namespace in which the operator Pods are deployed")
 	cmd.Flags().StringVar(&flags.operatorName, "operator-name", "", "Operator name as it appears in the control-plane label")
 
-	cmd.Flags().DurationVar(&flags.deleteOperatorPodDelay, "delete-operator-delay", defaultDeleteOperatorPodDelay, "Delay between two operator deletions")
+	cmd.Flags().DurationVar(&flags.deleteOperatorPodDelay, "delete-operator-delay", defaultDeleteOperatorPodDelay, "Delay between two operator Pod deletions")
 	cmd.Flags().DurationVar(&flags.changeOperatorReplicasDelay, "update-operator-replicas-delay", defaultChangeOperatorReplicasDelay, "Delay between two operator replicas updates")
 	logutil.BindFlags(cmd.PersistentFlags())
 

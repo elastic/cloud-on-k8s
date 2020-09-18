@@ -73,6 +73,7 @@ func doRun(flags runFlags) error {
 				return err
 			}
 			if len(operators.Items) == 0 {
+				log.Info("No operator Pod available for deletion")
 				continue
 			}
 			toDelete := rand.Intn(len(operators.Items))
