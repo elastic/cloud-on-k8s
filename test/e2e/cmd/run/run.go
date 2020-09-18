@@ -162,7 +162,7 @@ func (h *helper) initTestContext() error {
 		ClusterName:           h.clusterName,
 		KubernetesVersion:     h.kubernetesVersion,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
-		OcpCluster:            h.kubectl("get", "clusterversion") == nil,
+		OcpCluster:            isOcpCluster(h),
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -185,6 +185,16 @@ func (h *helper) initTestContext() error {
 	}
 
 	return nil
+}
+
+func isOcpCluster(h *helper) bool {
+	isOCP4 := h.kubectl("get", "clusterversion") == nil
+	isOCP3 := isOcp3Cluster(h)
+	return isOCP4 || isOCP3
+}
+
+func isOcp3Cluster(h *helper) bool {
+	return h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver") == nil
 }
 
 func (h *helper) initTestSecrets() error {
