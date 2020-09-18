@@ -20,13 +20,13 @@ const (
 
 // createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"
 func createStorageClass() error {
-	log.Println("Creating storage class...")
-
 	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("e2e-default"); err != nil {
 		return err
 	} else if exists {
 		return nil
 	}
+
+	log.Println("Creating storage class...")
 
 	defaultName, err := getDefaultStorageClassName()
 	if err != nil {
@@ -49,6 +49,13 @@ func createStorageClass() error {
 	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, sc)).Run()
+}
+
+func setupDisks(plan Plan) error {
+	if plan.DiskSetup == "" {
+		return nil
+	}
+	return NewCommand(plan.DiskSetup).Run()
 }
 
 func getDefaultStorageClassName() (string, error) {
