@@ -87,6 +87,22 @@ plans:
     nodeCount: 3
     overwriteDefaultKubeconfig: true
     useNonDefaultCloudSdkPath: true
+- id: ocp3-ci
+  operation: create
+  clusterName: ci
+  provider: ocp3
+  machineType: n1-standard-8
+  serviceAccount: true
+  ocp3:
+    workerCount: 3
+- id: ocp3-dev
+  operation: create
+  clusterName: dev
+  provider: ocp3
+  machineType: n1-standard-8
+  serviceAccount: false
+  ocp3:
+    workerCount: 3
 - id: eks-ci
   operation: create
   clusterName: ci
