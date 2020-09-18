@@ -30,13 +30,13 @@ func doRun(flags runFlags) error {
 	logconf.ChangeVerbosity(flags.logVerbosity)
 
 	if flags.operatorNamespace == "" {
-		err := fmt.Errorf("operator namespace must be specified using %s", "operator-namespace")
+		err := errors.New("operator namespace must be specified using --operator-namespace")
 		log.Error(err, "Required configuration missing")
 		return err
 	}
 
 	if flags.operatorName == "" {
-		err := fmt.Errorf("operator name must be specified using %s", "operator-name")
+		err := errors.New("operator name must be specified using --operator-name")
 		log.Error(err, "Required configuration missing")
 		return err
 	}
