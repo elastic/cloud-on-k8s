@@ -128,7 +128,7 @@ func (d *GkeDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(NoProvisioner); err != nil {
+		if err := createStorageClass(); err != nil {
 			return err
 		}
 		if err := d.createSsdProvider(); err != nil {

@@ -170,7 +170,7 @@ func (d *OcpDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(DefaultStorageClass); err != nil {
+		if err := createStorageClass(); err != nil {
 			return err
 		}
 
