@@ -16,6 +16,10 @@ import (
 var (
 	log = logf.Log.WithName("chaos")
 
+	// defaultDeleteOperatorPodDelay is the default delay between deletions. It is an arbitrary value which
+	// avoid to delete too often an operator and therefore inadvertently unlock some situations (e.g. election
+	// deadlocks) we may want to observe. In the meantime, assuming that e2e session lasts a couple of hours,
+	// it allows to observe quite a few times the behaviour of the operator when its Pods are deleted.
 	defaultDeleteOperatorPodDelay            = 9 * time.Minute
 	defaultChangeOperatorReplicasDelay       = 30 * time.Minute
 	minReplicas                        int32 = 1
