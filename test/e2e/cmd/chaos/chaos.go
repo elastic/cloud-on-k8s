@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/viper"
@@ -40,7 +41,7 @@ func doRun(flags runFlags) error {
 		return err
 	}
 
-	client, err := createClient()
+	client, err := createK8SClient()
 	if err != nil {
 		return err
 	}
@@ -62,7 +63,7 @@ func doRun(flags runFlags) error {
 			if err != nil {
 				return err
 			}
-			if err := checkElectedOperator(operators.Items); err != nil {
+			if err := checkElectedOperator(operators.Items, flags.autoPortForwarding); err != nil {
 				return nil
 			}
 
@@ -124,7 +125,7 @@ func listOperators(client *kubernetes.Clientset, operatorNamespace, operatorName
 func checkElectedOperator(pods []corev1.Pod) error {
 	var elected []string
 	for _, pod := range pods {
-		if isElected(pod) {
+		if isElected(pod, autoPortForwarding) {
 			elected = append(elected, pod.Name)
 		}
 	}
@@ -140,14 +141,13 @@ func checkElectedOperator(pods []corev1.Pod) error {
 // isElected checks if a Pod is elected.
 // It is best effort, we might have some false positive here if the check is done in a middle of a new election.
 // We are lenient on errors to not raise a false positive or stop the process too often.
-func isElected(pod corev1.Pod) bool {
+func isElected(pod corev1.Pod, autoPortForwarding bool) bool {
 	if len(pod.Status.PodIP) == 0 {
 		return false
 	}
 	url := fmt.Sprintf("http://%s:9090/metrics", pod.Status.PodIP)
-	client := http.Client{
-		Timeout: 1 * time.Second,
-	}
+
+	client := createHTTPClient(autoPortForwarding)
 	resp, err := client.Get(url)
 	if err != nil {
 		// Timeout or closed connections may happen since some Pods might be in the process of being started or stopped.
@@ -176,7 +176,21 @@ func isElected(pod corev1.Pod) bool {
 	return false
 }
 
-func createClient() (*kubernetes.Clientset, error) {
+// createHTTPClient creates an HTTP client to connect to the PODs.
+func createHTTPClient(autoPortForwarding bool) http.Client {
+	if autoPortForwarding {
+		transportConfig := http.Transport{}
+		// use the custom dialer if provided
+		dialer := portforward.NewForwardingDialer()
+		transportConfig.DialContext = dialer.DialContext
+		return http.Client{
+			Transport: &transportConfig,
+		}
+	}
+	return http.Client{Timeout: 1 * time.Second}
+}
+
+func createK8SClient() (*kubernetes.Clientset, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
