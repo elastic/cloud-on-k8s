@@ -17,7 +17,6 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-beats>>
 
 WARNING: For versions older than 7.9, APM Server and Enterprise Search are not compatible with `restricted` SCC. Use this <<{p}-openshift-apm,workaround>> to overcome this limitation.
-With version 7.9, the APM Server is compatible with `restricted` SCC, while for Enterprise Search the incompatibility remains and can be addressed with the same workaround.
 
 [float]
 [id="{p}-openshift-before-you-begin"]
