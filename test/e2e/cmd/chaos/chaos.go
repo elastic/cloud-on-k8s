@@ -119,22 +119,35 @@ func listOperators(client *kubernetes.Clientset, operatorNamespace, operatorName
 	)
 }
 
+var lastOperatorState operatorState
+
 // checkElectedOperator attempts to ensure that there is at most one operator which is the elected leader.
 // It is only done on a best effort basis as it is not possible to have a consistent view of the system at a given
 // point in time. We have to be lenient on errors since Pods are restarted frequently.
-func checkElectedOperator(pods []corev1.Pod) error {
-	var elected []string
+func checkElectedOperator(pods []corev1.Pod, autoPortForwarding bool) error {
+	elected := make([]string, 0, len(pods))
 	for _, pod := range pods {
 		if isElected(pod, autoPortForwarding) {
 			elected = append(elected, pod.Name)
 		}
 	}
-	log.Info("Elected operator", "elected", elected, "all", podsName(pods))
-	if len(elected) > 1 {
+
+	var currentOperatorState operatorState
+	switch numElected := len(elected); {
+	case numElected > 1:
 		err := errors.New("several operator instances are elected")
 		log.Error(err, "Error while checking which operator is running as elected", "elected", elected)
 		return err
+	case numElected == 1:
+		currentOperatorState = newOperatorState(pods, elected[0])
+	case numElected == 0:
+		currentOperatorState = newOperatorState(pods, "")
 	}
+
+	if !currentOperatorState.equal(lastOperatorState) {
+		log.Info("Elected operator", "elected", elected, "all", podsName(pods))
+	}
+	lastOperatorState = currentOperatorState
 	return nil
 }
 
