@@ -22,7 +22,9 @@ You can set compute resource constraints in the `podTemplate` of objects managed
 For Elasticsearch objects, make sure to consider the heap size when you set resource requirements.
 A good rule of thumb is to size it to half the size of RAM allocated to the Pod.
 
-To minimize disruption caused by Pod evictions due to resource contention, you should run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
+To minimize disruption caused by Pod evictions due to resource contention, you can run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
+
+The value set for cpu requests directly impacts Elasticsearch `node.processors` setting. For example, with `resources.requests.cpu: 1`, Elasticsearch effectively relies on a single core, which may significantly limit performance. Consider setting a higher value that matches the desired number of cores Elasticsearch can use. You can also set your own value for `node.processors` in the Elasticsearch config.
 
 Consider also that Kubernetes throttles containers exceeding the CPU limit defined in the `limits` section. Do not set this value too low or it would affect the performance of Elasticsearch, even if you have enough resources available in the Kubernetes cluster.
 
@@ -56,10 +58,9 @@ spec:
           resources:
             requests:
               memory: 4Gi
-              cpu: 0.5
+              cpu: 8
             limits:
               memory: 4Gi
-              cpu: 2
 ----
 
 [float]
