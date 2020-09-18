@@ -46,6 +46,11 @@ spec:
               mountPath: /var/run/secrets/e2e
           securityContext:
             allowPrivilegeEscalation: false
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
       volumes:
         - name: test-config
           configMap:

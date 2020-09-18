@@ -24,7 +24,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.11
 	github.com/influxdata/tdigest v0.0.1 // indirect
-	github.com/magiconair/properties v1.8.2
+	github.com/magiconair/properties v1.8.3
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -40,7 +40,7 @@ require (
 	go.elastic.co/apm v1.8.0
 	go.elastic.co/apm/module/apmelasticsearch v1.8.0
 	go.uber.org/automaxprocs v1.3.0
-	go.uber.org/zap v1.15.0
+	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
@@ -50,8 +50,8 @@ require (
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
 	k8s.io/klog/v2 v2.0.0
-	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
-	sigs.k8s.io/controller-runtime v0.6.2
+	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
+	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/controller-tools v0.4.0
 )
 

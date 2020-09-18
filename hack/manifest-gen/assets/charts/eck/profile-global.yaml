@@ -1,5 +1,6 @@
-config:
-  managedNamespaces: []
+managedNamespaces: []
 
-  webhook:
-    enabled: true
+createClusterScopedResources: true
+
+webhook:
+  enabled: true

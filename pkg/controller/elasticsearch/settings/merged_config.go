@@ -15,6 +15,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // the name of the ES attribute indicating the pod's current k8s node
@@ -27,6 +29,7 @@ var nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
 func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
+	ipFamily corev1.IPFamily,
 	httpConfig commonv1.HTTPConfig,
 	userConfig commonv1.Config,
 ) (CanonicalConfig, error) {
@@ -34,7 +37,7 @@ func NewMergedESConfig(
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
-	config := baseConfig(clusterName, ver).CanonicalConfig
+	config := baseConfig(clusterName, ver, ipFamily).CanonicalConfig
 	err = config.MergeWith(
 		xpackConfig(ver, httpConfig).CanonicalConfig,
 		userCfg,
@@ -46,15 +49,15 @@ func NewMergedESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
+func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamily) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		esv1.NodeName:    "${" + EnvPodName + "}",
 		esv1.ClusterName: clusterName,
 
-		// derive IP dynamically from the pod IP, injected as env var
-		esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
-		esv1.NetworkHost:        "0.0.0.0",
+		// use the DNS name as the publish host
+		esv1.NetworkPublishHost: netutil.IPLiteralFor("${"+EnvPodIP+"}", ipFamily),
+		esv1.NetworkHost:        "0",
 
 		// allow ES to be aware of k8s node the pod is running on when allocating shards
 		esv1.ShardAwarenessAttributes: nodeAttrK8sNodeName,

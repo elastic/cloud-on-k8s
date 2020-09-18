@@ -24,10 +24,6 @@ spec:
   nodeSets:
   - name: default
     count: 3
-    config:
-      node.master: true
-      node.data: true
-      node.ingest: true
     podTemplate:
       spec:
         initContainers:

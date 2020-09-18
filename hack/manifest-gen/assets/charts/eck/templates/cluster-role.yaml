@@ -1,20 +1,23 @@
-{{- if .Values.config.createClusterScopedResources -}}
+{{- if .Values.createClusterScopedResources -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.operator.name }}
+  name: {{ include "eck.fullname" . }}
+  labels:
+    {{- include "eck.labels" . | nindent 4 }}
 rules:
-{{ template "rbac.rules" . | toYaml | indent 2 }}
+{{ template "eck.rbacRules" . | toYaml | indent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: "{{ .Values.operator.name }}-view"
+  name: "{{ include "eck.name" . }}-view"
   labels:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    {{- include "eck.labels" . | nindent 4 }}
 rules:
   - apiGroups: ["elasticsearch.k8s.elastic.co"]
     resources: ["elasticsearches"]
@@ -33,14 +36,14 @@ rules:
     verbs: ["get", "list", "watch"]
 
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: "{{ .Values.operator.name }}-edit"
+  name: "{{ include "eck.name" . }}-edit"
   labels:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    {{- include "eck.labels" . | nindent 4 }}
 rules:
   - apiGroups: ["elasticsearch.k8s.elastic.co"]
     resources: ["elasticsearches"]

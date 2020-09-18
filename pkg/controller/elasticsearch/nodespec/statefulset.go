@@ -54,6 +54,8 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 					Port:     network.HTTPPort,
 				},
 			},
+			// allow nodes to discover themselves via DNS while they are booting up ie. are not ready yet
+			PublishNotReadyAddresses: true,
 		},
 	}
 }

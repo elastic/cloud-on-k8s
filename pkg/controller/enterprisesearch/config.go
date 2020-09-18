@@ -6,6 +6,7 @@ package enterprisesearch
 
 import (
 	"fmt"
+	"net"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
@@ -21,9 +22,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 const (
@@ -52,8 +55,8 @@ func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVo
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (corev1.Secret, error) {
-	cfg, err := newConfig(driver, ent)
+func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+	cfg, err := newConfig(driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -63,7 +66,7 @@ func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (
 		return corev1.Secret{}, err
 	}
 
-	readinessProbeBytes, err := readinessProbeScript(ent, cfg)
+	readinessProbeBytes, err := readinessProbeScript(ent, cfg, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -93,8 +96,8 @@ type partialConfigWithESAuth struct {
 }
 
 // readinessProbeScript returns a bash script that requests the health endpoint.
-func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig) ([]byte, error) {
-	url := fmt.Sprintf("%s://127.0.0.1:%d/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), HTTPPort)
+func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig, ipFamily corev1.IPFamily) ([]byte, error) {
+	url := fmt.Sprintf("%s://%s/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), netutil.LoopbackHostPort(ipFamily, HTTPPort))
 
 	// retrieve Elasticsearch user credentials from the aggregated config since it could be user-provided
 	var esAuth partialConfigWithESAuth
@@ -118,8 +121,8 @@ func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.Cano
 	# request timeout can be overridden from an environment variable
 	READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=` + fmt.Sprintf("%d", ReadinessProbeTimeoutSec) + `}
 
-	# request the health endpoint and expect http status code 200
-	status=$(curl -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
+	# request the health endpoint and expect http status code 200. Turning globbing off for unescaped IPv6 addresses
+	status=$(curl -g -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
 	curl_rc=$?
 
 	if [[ ${curl_rc} -ne 0 ]]; then
@@ -141,7 +144,7 @@ func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.Cano
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
@@ -163,7 +166,7 @@ func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*setti
 	if err != nil {
 		return nil, err
 	}
-	cfg := defaultConfig(ent)
+	cfg := defaultConfig(ent, ipFamily)
 
 	// merge with user settings last so they take precedence
 	err = cfg.MergeWith(reusedCfg, tlsCfg, associationCfg, userProvidedCfg, userProvidedSecretCfg)
@@ -227,10 +230,18 @@ func parseConfigRef(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*
 	return common.ParseConfigRef(driver, &ent, ent.Spec.ConfigRef, ConfigFilename)
 }
 
-func defaultConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
+func inAddrAnyFor(ipFamily corev1.IPFamily) string {
+	if ipFamily == corev1.IPv4Protocol {
+		return net.IPv4zero.String()
+	}
+	// Enterprise Search even in its most recent version 7.9.0 cannot properly handle contracted IPv6 addresses like "::"
+	return "0:0:0:0:0:0:0:0"
+}
+
+func defaultConfig(ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
-		"ent_search.listen_host":         "0.0.0.0",
+		"ent_search.listen_host":         inAddrAnyFor(ipFamily),
 		"filebeat_log_directory":         LogVolumeMountPath,
 		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,
@@ -242,16 +253,32 @@ func associationConfig(c k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings
 		return settings.NewCanonicalConfig(), nil
 	}
 
+	cfg := settings.MustCanonicalConfig(map[string]string{
+		"ent_search.auth.source": "elasticsearch-native",
+	})
+	ver, err := version.Parse(ent.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	// origin of authenticated ent users setting changed starting 8.x
+	if ver.IsSameOrAfter(version.From(8, 0, 0)) {
+		cfg = settings.MustCanonicalConfig(map[string]interface{}{
+			"ent_search.auth.native1.source": "elasticsearch-native",
+			"ent_search.auth.native1.order":  -100,
+		})
+	}
+
 	username, password, err := association.ElasticsearchAuthSettings(c, &ent)
 	if err != nil {
 		return nil, err
 	}
-	cfg := settings.MustCanonicalConfig(map[string]string{
-		"ent_search.auth.source": "elasticsearch-native",
+	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
 		"elasticsearch.host":     ent.AssociationConf().URL,
 		"elasticsearch.username": username,
 		"elasticsearch.password": password,
-	})
+	})); err != nil {
+		return nil, err
+	}
 
 	if ent.AssociationConf().CAIsConfigured() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{

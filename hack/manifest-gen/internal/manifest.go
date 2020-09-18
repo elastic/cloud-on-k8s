@@ -21,11 +21,12 @@ import (
 
 // GenerateFlags holds flag values for the generate operation.
 type GenerateFlags struct {
-	Source      string
-	Profile     string
-	Values      []string
-	ValueFiles  []string
-	ExcludeCRDs bool
+	Source            string
+	Profile           string
+	Values            []string
+	ValueFiles        []string
+	ExcludeCRDs       bool
+	OperatorNamespace string
 }
 
 // OptionsFlags holds flag values for the options operation.
@@ -43,15 +44,18 @@ func Generate(opts *GenerateFlags) error {
 	settings := cli.New()
 	actionConfig := new(action.Configuration)
 
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), opts.OperatorNamespace, os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
 		return err
 	}
 
 	valueFiles := []string{filepath.Join(chartPath, fmt.Sprintf("profile-%s.yaml", opts.Profile))}
 	valueFiles = append(valueFiles, opts.ValueFiles...)
 
+	// set manifestGen flag
+	valueFlags := append(opts.Values, "internal.manifestGen=true")
+
 	valueOpts := &values.Options{
-		Values:     opts.Values,
+		Values:     valueFlags,
 		ValueFiles: valueFiles,
 	}
 
@@ -62,7 +66,7 @@ func Generate(opts *GenerateFlags) error {
 	client.IncludeCRDs = !opts.ExcludeCRDs
 	client.Version = ">0.0.0-0"
 	client.ReleaseName = "eck"
-	client.Namespace = settings.Namespace()
+	client.Namespace = opts.OperatorNamespace
 
 	vals, err := valueOpts.MergeValues(getter.All(settings))
 	if err != nil {

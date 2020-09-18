@@ -1526,11 +1526,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/magiconair/properties
-Version : v1.8.2
-Time    : 2020-08-25T06:51:58Z
+Version : v1.8.3
+Time    : 2020-09-14T13:41:51Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.2/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.3/LICENSE.md:
 
 Copyright (c) 2013-2020, Frank Schroeder
 
@@ -2808,11 +2808,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.15.0
-Time    : 2020-04-23T21:40:26Z
+Version : v1.16.0
+Time    : 2020-09-01T21:18:33Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.15.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.16.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -3982,11 +3982,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/utils
-Version : v0.0.0-20200603063816-c1c6865ac451
-Time    : 2020-06-03T06:38:16Z
+Version : v0.0.0-20200821003339-5e75c0163111
+Time    : 2020-08-21T00:33:39Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20200603063816-c1c6865ac451/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20200821003339-5e75c0163111/LICENSE:
 
 
                                  Apache License
@@ -4194,11 +4194,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20200603063816
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.6.2
-Time    : 2020-08-04T17:04:21Z
+Version : v0.6.3
+Time    : 2020-09-15T22:05:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.6.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.6.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -12155,11 +12155,11 @@ Contents of probable licence file $GOMODCACHE/github.com/envoyproxy/protoc-gen-v
 
 --------------------------------------------------------------------------------
 Module  : github.com/evanphx/json-patch
-Version : v4.5.0+incompatible
-Time    : 2019-06-10T23:46:25Z
+Version : v4.9.0+incompatible
+Time    : 2020-08-12T03:49:14Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/evanphx/json-patch@v4.5.0+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/evanphx/json-patch@v4.9.0+incompatible/LICENSE:
 
 Copyright (c) 2014, Evan Phoenix
 All rights reserved.
@@ -12169,7 +12169,7 @@ modification, are permitted provided that the following conditions are met:
 
 * Redistributions of source code must retain the above copyright notice, this
   list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright notice
+* Redistributions in binary form must reproduce the above copyright notice,
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
 * Neither the name of the Evan Phoenix nor the names of its contributors 

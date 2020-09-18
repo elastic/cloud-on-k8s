@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -165,7 +164,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			es.Spec.Version = tt.version.String()
 			es.Spec.NodeSets[0].PodTemplate.Spec.SecurityContext = tt.userSecurityContext
 
-			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, es.Spec.HTTP, *es.Spec.NodeSets[0].Config)
+			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config)
 			require.NoError(t, err)
 
 			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
@@ -179,7 +178,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config)
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *nodeSet.Config)
 	require.NoError(t, err)
 
 	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
@@ -225,7 +224,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                    "elasticsearch",
 				"elasticsearch.k8s.elastic.co/cluster-name":     "name",
-				"elasticsearch.k8s.elastic.co/config-hash":      "2311754148",
+				"elasticsearch.k8s.elastic.co/config-hash":      "336245446",
 				"elasticsearch.k8s.elastic.co/http-scheme":      "https",
 				"elasticsearch.k8s.elastic.co/node-data":        "false",
 				"elasticsearch.k8s.elastic.co/node-ingest":      "true",
@@ -245,7 +244,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			InitContainers: append(initContainers, corev1.Container{
 				Name:         "additional-init-container",
 				Image:        "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-				Env:          defaults.PodDownwardEnvVars(),
+				Env:          defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}),
 				VolumeMounts: volumeMounts,
 			}),
 			Containers: []corev1.Container{

@@ -4,14 +4,14 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.8.1
+  version: 7.9.1
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
     name: kibana
   config:
     filebeat.autodiscover.providers:
-    - node: ${HOSTNAME}
+    - node: ${NODE_NAME}
       type: kubernetes
       hints.default_config.enabled: "false"
       templates:
@@ -47,6 +47,11 @@ spec:
             mountPath: /var/log/pods
           - name: varlibdockercontainers
             mountPath: /var/lib/docker/containers
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
         volumes:
         - name: varlogcontainers
           hostPath:
@@ -96,7 +101,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.8.1
+  version: 7.9.1
   nodeSets:
   - name: default
     count: 3
@@ -108,7 +113,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.8.1
+  version: 7.9.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

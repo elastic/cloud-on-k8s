@@ -1,0 +1,11 @@
+managedNamespaces: []
+
+createClusterScopedResources: true
+
+webhook:
+  enabled: true
+
+podAnnotations:
+  sidecar.istio.io/inject: "true"
+  traffic.sidecar.istio.io/includeInboundPorts: "*"
+  traffic.sidecar.istio.io/excludeInboundPorts: "9443"

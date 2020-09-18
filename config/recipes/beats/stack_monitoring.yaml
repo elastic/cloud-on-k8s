@@ -6,7 +6,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 7.8.1
+  version: 7.9.1
   elasticsearchRef:
     name: elasticsearch-monitoring
   config:
@@ -33,8 +33,7 @@ spec:
                       - node_stats
                       - shard
                     period: 10s
-                    # TODO switch to using named ports in 7.9.0 when https://github.com/elastic/beats/pull/19398 is added
-                    hosts: "https://${data.host}:9200"
+                    hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
                     password: ${MONITORED_ES_PASSWORD}
                     # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
@@ -49,7 +48,7 @@ spec:
                     metricsets:
                       - stats
                     period: 10s
-                    hosts: "https://${data.host}:${data.port}"
+                    hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
                     password: ${MONITORED_ES_PASSWORD}
                     # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
@@ -118,7 +117,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.8.1
+  version: 7.9.1
   elasticsearchRef:
     name: elasticsearch-monitoring
   kibanaRef:
@@ -128,7 +127,7 @@ spec:
       autodiscover:
         providers:
         - type: kubernetes
-          host: ${HOSTNAME}
+          node: ${NODE_NAME}
           hints:
             enabled: true
             default_config:
@@ -160,6 +159,11 @@ spec:
             mountPath: /var/log/pods
           - name: varlibdockercontainers
             mountPath: /var/lib/docker/containers
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
         volumes:
         - name: varlogcontainers
           hostPath:
@@ -210,7 +214,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.8.1
+  version: 7.9.1
   nodeSets:
   - name: default
     count: 3
@@ -229,7 +233,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.8.1
+  version: 7.9.1
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -247,7 +251,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-monitoring
 spec:
-  version: 7.8.1
+  version: 7.9.1
   nodeSets:
   - name: default
     count: 3
@@ -259,7 +263,7 @@ kind: Kibana
 metadata:
   name: kibana-monitoring
 spec:
-  version: 7.8.1
+  version: 7.9.1
   count: 1
   elasticsearchRef:
     name: elasticsearch-monitoring

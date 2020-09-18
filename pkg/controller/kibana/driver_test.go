@@ -188,7 +188,7 @@ func Test_getStrategyType(t *testing.T) {
 				client = &failingClient{}
 			}
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
+			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			assert.NoError(t, err)
 
 			strategy, err := d.getStrategyType(kb)
@@ -368,7 +368,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			client := k8s.WrappedFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
+			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			got, err := d.deploymentParams(kb)
@@ -414,7 +414,7 @@ func TestMinSupportedVersion(t *testing.T) {
 			client := k8s.WrappedFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
 
-			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
+			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			if tc.wantErr {
 				require.Error(t, err)
 			} else {

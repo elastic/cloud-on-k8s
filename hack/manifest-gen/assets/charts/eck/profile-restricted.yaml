@@ -1,7 +1,6 @@
-config:
-  createClusterScopedResources: false
+managedNamespaces: ["elastic-system"]
 
-  managedNamespaces: ["elastic-system"]
+createClusterScopedResources: false
 
-  webhook:
-    enabled: false
+webhook:
+  enabled: false

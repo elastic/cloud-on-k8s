@@ -122,7 +122,9 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+TEST_TIMEOUT = 10m
 KIND_NODE_IMAGE = ${kindNodeImage}
+IP_FAMILY=$4
 
 PIPELINE=e2e/kind-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER

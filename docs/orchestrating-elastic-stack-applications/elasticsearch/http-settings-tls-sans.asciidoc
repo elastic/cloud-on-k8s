@@ -60,17 +60,11 @@ spec:
   - name: master
     count: 1
     config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: ["master"]
   - name: data
     count: 5
     config:
-      node.master: false
-      node.data: true
-      node.ingest: false
-      node.ml: false
+      node.roles: ["data"]
 ----
 
 See <<{p}-traffic-splitting>> for information about more advanced traffic-splitting configurations.

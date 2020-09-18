@@ -1,13 +1,13 @@
-{{- if .Values.config.softMultiTenancy.enabled -}}
-  {{- if has .Values.operator.namespace .Values.config.managedNamespaces -}}
+{{- if .Values.softMultiTenancy.enabled -}}
+  {{- if has .Release.Namespace .Values.managedNamespaces -}}
   {{- fail "Operator namespace cannot be in managed namespaces when soft multi-tenancy is enabled" -}}
   {{- end -}}
 
-  {{- if empty .Values.config.managedNamespaces -}}
+  {{- if empty .Values.managedNamespaces -}}
   {{- fail "Managed namespaces must be defined when soft multi-tenancy is enabled" -}}
   {{- end -}}
 
-  {{- if empty .Values.config.kubeAPIServerIP -}}
+  {{- if empty .Values.kubeAPIServerIP -}}
   {{- fail "Soft multi-tenancy requires kubeAPIServerIP to be defined" -}}
   {{- end -}}
 {{- end -}}
