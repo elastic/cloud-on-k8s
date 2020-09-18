@@ -19,7 +19,7 @@ const (
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
 	vaultInfo VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
-	asServiceAccount bool, useNonDefaultCloudSDKPath bool, gCloudProject interface{},
+	asServiceAccount bool, useNonDefaultCloudSDKPath bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	if asServiceAccount {
 		log.Println("Authenticating as service account...")
@@ -50,7 +50,15 @@ func authToGCP(
 			return err
 		}
 
-		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
+		if err := NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run(); err != nil {
+			return err
+		}
+
+		if configureDocker {
+			return NewCommand("gcloud auth configure-docker").Run()
+		}
+
+		return nil
 	}
 
 	log.Println("Authenticating as user...")

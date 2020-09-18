@@ -131,7 +131,7 @@ func (d *OcpDriver) Execute() error {
 
 	if err := authToGCP(
 		*d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, d.plan.Ocp.UseNonDefaultCloudSDKPath, d.ctx["GCloudProject"],
+		d.plan.ServiceAccount, d.plan.Ocp.UseNonDefaultCloudSDKPath, false, d.ctx["GCloudProject"],
 	); err != nil {
 		return err
 	}
