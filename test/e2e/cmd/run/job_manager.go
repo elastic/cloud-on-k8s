@@ -57,12 +57,12 @@ func (jm *JobsManager) Schedule(jobs ...*Job) {
 			// Check if dependency is started
 			if j.dependency != nil {
 				log.Info("Waiting for dependency job to be started", "job_name", j.jobName, "dependency_name", j.dependency.jobName)
-				j.dependency.running.Wait()
+				j.dependency.runningWg.Wait()
 			}
 			// Check if context is still valid
 			if jm.Err() != nil {
 				log.Info("Skip job creation", "job_name", j.jobName)
-				j.running.Done()
+				j.runningWg.Done()
 				return
 			}
 			// Create the Job

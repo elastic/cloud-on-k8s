@@ -19,7 +19,7 @@ type Job struct {
 
 	// Job dependency
 	dependency *Job
-	running    *sync.WaitGroup // wait for the dependency to be started
+	runningWg  *sync.WaitGroup // wait for the dependency to be started
 
 	// Job context
 	jobStarted    bool // keep track of the first Pod running event
@@ -46,7 +46,7 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 		stopLogStream:      make(chan struct{}), // notify the log stream it can stop when EOF
 		streamErrors:       make(chan error, 1), // receive log stream errors
 		writer:             writer,
-		running:            runningWg,
+		runningWg:          runningWg,
 		logStreamWg:        logStreamWg,
 		timestampExtractor: timestampExtractor,
 	}
@@ -82,7 +82,7 @@ func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 	case corev1.PodRunning:
 		if !j.jobStarted {
 			j.jobStarted = true
-			j.running.Done() // notify dependent that this job has started
+			j.runningWg.Done() // notify dependent that this job has started
 			log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)
 			j.logStreamWg.Add(1)
 			go func() {
