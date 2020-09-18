@@ -13,7 +13,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-deploy-the-operator>>
 * <<{p}-openshift-deploy-elasticsearch>>
 * <<{p}-openshift-deploy-kibana>>
-* <<{p}-openshift-apm>>
+* <<{p}-openshift-anyuid-workaround>>
 * <<{p}-openshift-beats>>
 
 WARNING: For versions older than 7.9, APM Server and Enterprise Search are not compatible with `restricted` SCC. Use this <<{p}-openshift-apm,workaround>> to overcome this limitation.
