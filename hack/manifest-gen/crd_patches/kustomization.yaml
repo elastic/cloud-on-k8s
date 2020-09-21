@@ -3,8 +3,8 @@ kind: Kustomization
 resources:
   - all-crds.yaml
 commonLabels:
-  helm.sh/chart: '{{ include "eck-crds.chart" . }}'
+  helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
   app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-  app.kubernetes.io/name: '{{ include "eck-crds.name" . }}'
+  app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
   app.kubernetes.io/instance: '{{ .Release.Name }}'

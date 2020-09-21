@@ -4,18 +4,18 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: {{- if $.Values.createClusterScopedResources }} ClusterRoleBinding {{- else }} RoleBinding {{- end }}
 metadata:
-  name: {{ include "eck.fullname" . }}
+  name: {{ include "eck-operator.fullname" . }}
 {{- if not $.Values.createClusterScopedResources }}
   namespace: {{ .Release.Namespace }}
 {{- end }}
   labels:
-    {{- include "eck.labels" . | nindent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: {{- if $.Values.createClusterScopedResources }} ClusterRole {{- else }} Role {{- end }}
-  name: {{ include "eck.fullname" . }}
+  name: {{ include "eck-operator.fullname" . }}
 subjects:
 - kind: ServiceAccount
-  name: {{ include "eck.serviceAccountName" . }}
+  name: {{ include "eck-operator.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
 {{- end -}}

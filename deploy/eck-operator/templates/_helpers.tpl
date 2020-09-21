@@ -2,7 +2,7 @@
 Expand the name of the chart.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "eck.name" -}}
+{{- define "eck-operator.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -11,7 +11,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "eck.fullname" -}}
+{{- define "eck-operator.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -28,36 +28,36 @@ If release name contains chart name it will be used as a full name.
 Create chart name and version as used by the chart label.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "eck.chart" -}}
+{{- define "eck-operator.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "eck.labels" -}}
-{{ include "eck.selectorLabels" . }}
+{{- define "eck-operator.labels" -}}
+{{ include "eck-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
-helm.sh/chart: {{ include "eck.chart" . }}
+helm.sh/chart: {{ include "eck-operator.chart" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
 Selector labels
 */}}
-{{- define "eck.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "eck.name" . }}
+{{- define "eck-operator.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "eck-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "eck.serviceAccountName" -}}
+{{- define "eck-operator.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "eck.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "eck-operator.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -66,7 +66,7 @@ Create the name of the service account to use
 {{/*
 RBAC permissions
 */}}
-{{- define "eck.rbacRules" -}}
+{{- define "eck-operator.rbacRules" -}}
 - apiGroups:
   - "authorization.k8s.io"
   resources:

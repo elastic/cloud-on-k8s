@@ -2,15 +2,15 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "eck.fullname" . }}
+  name: {{ include "eck-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eck.labels" . | nindent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "eck.selectorLabels" . | nindent 6 }}
-  serviceName: {{ include "eck.fullname" . }}
+      {{- include "eck-operator.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "eck-operator.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   template:
     metadata:
@@ -23,10 +23,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "eck.selectorLabels" . | nindent 8 }}
+        {{- include "eck-operator.selectorLabels" . | nindent 8 }}
     spec:
       terminationGracePeriodSeconds: 10
-      serviceAccountName: {{ include "eck.serviceAccountName" . }}
+      serviceAccountName: {{ include "eck-operator.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -87,7 +87,7 @@ spec:
       volumes:
         - name: conf
           configMap:
-            name: {{ include "eck.fullname" . }}
+            name: {{ include "eck-operator.fullname" . }}
         {{- if .Values.webhook.enabled }}
         - name: cert
           secret:

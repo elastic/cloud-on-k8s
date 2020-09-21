@@ -7,9 +7,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-    app.kubernetes.io/name: '{{ include "eck-crds.name" . }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
-    helm.sh/chart: '{{ include "eck-crds.chart" . }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: apmservers.apm.k8s.elastic.co
 spec:
   additionalPrinterColumns:
@@ -485,9 +485,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-    app.kubernetes.io/name: '{{ include "eck-crds.name" . }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
-    helm.sh/chart: '{{ include "eck-crds.chart" . }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: beats.beat.k8s.elastic.co
 spec:
   additionalPrinterColumns:
@@ -758,9 +758,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-    app.kubernetes.io/name: '{{ include "eck-crds.name" . }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
-    helm.sh/chart: '{{ include "eck-crds.chart" . }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   additionalPrinterColumns:
@@ -1839,9 +1839,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-    app.kubernetes.io/name: '{{ include "eck-crds.name" . }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
-    helm.sh/chart: '{{ include "eck-crds.chart" . }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
   additionalPrinterColumns:
@@ -2262,9 +2262,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-    app.kubernetes.io/name: '{{ include "eck-crds.name" . }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
-    helm.sh/chart: '{{ include "eck-crds.chart" . }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: kibanas.kibana.k8s.elastic.co
 spec:
   additionalPrinterColumns:

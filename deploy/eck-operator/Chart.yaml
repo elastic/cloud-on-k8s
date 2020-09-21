@@ -1,9 +1,9 @@
 apiVersion: v2
 
-name: eck
+name: eck-operator
 
 description: |-
-  A Helm chart for deploying Elastic Cloud on Kubernetes (ECK): the official Kubernetes operator for orchestrating Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats.
+  A Helm chart for deploying the Elastic Cloud on Kubernetes (ECK) operator: the official Kubernetes operator for orchestrating Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats.
 
 home: https://github.com/elastic/cloud-on-k8s
 
@@ -29,5 +29,5 @@ maintainers:
     email: eck@elastic.co
 
 dependencies:
-  - name: eck-crds
+  - name: eck-operator-crds
     condition: installCRDs

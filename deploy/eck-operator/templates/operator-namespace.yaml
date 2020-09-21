@@ -6,5 +6,5 @@ metadata:
   name: {{ .Release.Namespace }}
   labels:
     name: {{ .Release.Namespace }}
-    {{- include "eck.labels" $ | nindent 4 }}
+    {{- include "eck-operator.labels" $ | nindent 4 }}
 {{- end -}}

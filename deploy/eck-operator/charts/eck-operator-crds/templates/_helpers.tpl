@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "eck-crds.name" -}}
+{{- define "eck-operator-crds.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "eck-crds.fullname" -}}
+{{- define "eck-operator-crds.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "eck-crds.chart" -}}
+{{- define "eck-operator-crds.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "eck-crds.labels" -}}
-helm.sh/chart: {{ include "eck-crds.chart" . }}
-{{ include "eck-crds.selectorLabels" . }}
+{{- define "eck-operator-crds.labels" -}}
+helm.sh/chart: {{ include "eck-operator-crds.chart" . }}
+{{ include "eck-operator-crds.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,8 +45,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "eck-crds.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "eck-crds.name" . }}
+{{- define "eck-operator-crds.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "eck-operator-crds.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

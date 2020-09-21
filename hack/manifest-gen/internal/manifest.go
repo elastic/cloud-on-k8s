@@ -66,7 +66,7 @@ func Generate(opts *GenerateFlags) error {
 	client.ClientOnly = true
 	client.IncludeCRDs = false
 	client.Version = ">0.0.0-0"
-	client.ReleaseName = "eck"
+	client.ReleaseName = "elastic-operator"
 	client.Namespace = opts.OperatorNamespace
 	client.PostRenderer = helmLabelRemover{}
 
@@ -122,7 +122,7 @@ func Options(opts *OptionsFlags) error {
 	return nil
 }
 
-// helmLabelRemover implements the PostRenderer interface
+// helmLabelRemover implements the PostRenderer interface. It is used to remove Helm-specific labels from the generated manifests.
 type helmLabelRemover struct{}
 
 func (hlr helmLabelRemover) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {

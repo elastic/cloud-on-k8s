@@ -1,7 +1,7 @@
 apiVersion: v2
-name: eck-crds
+name: eck-operator-crds
 description: |-
-  A Helm chart for installing the ECK Custom Resource Definitions (CRD). 
+  A Helm chart for installing the ECK operator Custom Resource Definitions (CRD). 
 
 type: application
 

@@ -1,6 +1,6 @@
 {{- if .Values.softMultiTenancy.enabled -}}
-{{- $fullName := include "eck.fullname" . -}}
-{{- $name := include "eck.name" . -}}
+{{- $fullName := include "eck-operator.fullname" . -}}
+{{- $name := include "eck-operator.name" . -}}
 {{- range .Values.managedNamespaces -}}
 {{- $namespace := . }}
 ---
@@ -10,7 +10,7 @@ metadata:
   name: "{{ $name }}-elasticsearch"
   namespace: {{ $namespace }}
   labels:
-    {{- include "eck.labels" $ | nindent 4 }}
+    {{- include "eck-operator.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -43,7 +43,7 @@ spec:
               name: "{{ $.Release.Namespace }}"
           podSelector:
             matchLabels:
-              {{- include "eck.selectorLabels" $ | nindent 14 }}
+              {{- include "eck-operator.selectorLabels" $ | nindent 14 }}
         # Within namespace
         - namespaceSelector:
             matchLabels:
@@ -66,7 +66,7 @@ metadata:
   name: "{{ $name }}-kibana"
   namespace: {{ $namespace }}
   labels:
-    {{- include "eck.labels" $ | nindent 4 }}
+    {{- include "eck-operator.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -104,7 +104,7 @@ metadata:
   name: "{{ $name }}-apm-server"
   namespace: {{ $namespace }}
   labels:
-    {{- include "eck.labels" $ | nindent 4 }}
+    {{- include "eck-operator.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -153,7 +153,7 @@ metadata:
   name: "{{ $name }}-enterprise-search"
   namespace: {{ $namespace }}
   labels:
-    {{- include "eck.labels" $ | nindent 4 }}
+    {{- include "eck-operator.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -191,7 +191,7 @@ metadata:
   name: "{{ $name }}-beats"
   namespace: {{ $namespace }}
   labels:
-    {{- include "eck.labels" $ | nindent 4 }}
+    {{- include "eck-operator.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
