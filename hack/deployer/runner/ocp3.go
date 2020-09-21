@@ -167,27 +167,6 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 		"AnsibleDockerImage":  AnsibleDockerImage,
 	}
 
-	/*cmd := `docker run --rm \
-	-v {{.HomeVolumeName}}:{{.HomeVolumeMountPath}} \
-	-e FORCED_GROUP_ID=1000 \
-	-e FORCED_USER_ID=1000 \
-	-e USER={{.ClusterName}} \
-	-e USER_HOME={{.HomeVolumeMountPath}} \
-	-e CLOUDSDK_CONFIG={{.GCloudSDKPath}} \
-	-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
-	-e VARS_FILE={{.AnsibleVarsPath}} \
-	-e OUTPUT_DIR={{.AnsibleOutputPath}} \
-	-e ACTION={{.AnsibleAction}} \
-	-e CLUSTER_TYPE=openshift \
-	{{.AnsibleDockerImage}}`
-	var b bytes.Buffer
-	if err := template.Must(template.New("").Parse(cmd)).Execute(&b, params); err != nil {
-		return err
-	}
-	log.Println(b.String())
-
-	return nil*/
-
 	return NewCommand(`docker run --rm \
 		-e FORCED_GROUP_ID=1000 \
 		-e FORCED_USER_ID=1000 \
