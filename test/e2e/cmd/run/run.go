@@ -163,6 +163,7 @@ func (h *helper) initTestContext() error {
 		KubernetesVersion:     h.kubernetesVersion,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
+		Ocp3Cluster:           isOcp3Cluster(h),
 	}
 
 	for i, ns := range h.managedNamespaces {

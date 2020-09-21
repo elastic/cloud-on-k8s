@@ -18,7 +18,9 @@ metadata:
   labels:
     test-run: {{ .Context.TestRun }}
 spec:
+{{ if not .Context.Ocp3Cluster }}
   ttlSecondsAfterFinished: 360
+{{ end }}
   template:
     metadata:
       annotations:
