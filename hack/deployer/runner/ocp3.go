@@ -92,10 +92,13 @@ func (d Ocp3Driver) Execute() error {
 			return err
 		}
 
-		// TODO: uncomment when local provisioner works
-		/*if err := createStorageClass(DefaultStorageClass); err != nil {
+		if err := setupDisks(d.plan); err != nil {
 			return err
-		}*/
+		}
+
+		if err := createStorageClass(); err != nil {
+			return err
+		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
