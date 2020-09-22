@@ -30,7 +30,7 @@ const (
 	nodeRolesInOldVersionMsg = "node.roles setting is not available in this version of Elasticsearch"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	pvcImmutableMsg          = "Volume claim templates cannot be modified. Only storage requests may be increased, if the storage class allows volume expansion."
+	pvcImmutableMsg          = "Volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden."
 	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg    = "Unsupported version"
