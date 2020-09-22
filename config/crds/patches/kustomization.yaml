@@ -21,12 +21,6 @@ patchesJson6902:
       kind: CustomResourceDefinition
       name: kibanas.kibana.k8s.elastic.co
     path: all-patches.yaml
-  # - target:
-  #     group: apiextensions.k8s.io
-  #     version: v1beta1
-  #     kind: CustomResourceDefinition
-  #     name: elasticsearchconfigs.elasticsearchconfig.k8s.elastic.co
-  #   path: all-patches.yaml
   # custom patches for apm
   - target:
       group: apiextensions.k8s.io
