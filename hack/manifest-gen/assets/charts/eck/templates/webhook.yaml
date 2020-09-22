@@ -124,6 +124,24 @@ webhooks:
     service:
       name: {{ .Values.webhook.serviceName }}
       namespace: {{ .Release.Namespace }}
+      path: /validate-elasticsearchconfig-k8s-elastic-co-v1alpha1-elasticsearchconfig
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+  name: elastic-esconfig-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - elasticsearchconfig.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearchconfigs
+- clientConfig:
+    caBundle: {{ .Values.webhook.caBundle }}
+    service:
+      name: {{ .Values.webhook.serviceName }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-kb-validation-v1.k8s.elastic.co

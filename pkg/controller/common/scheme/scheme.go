@@ -15,6 +15,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	escv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/esconfig/v1alpha1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -42,6 +43,10 @@ func SetupScheme() {
 			panic(err)
 		}
 		err = esv1.AddToScheme(clientgoscheme.Scheme)
+		if err != nil {
+			panic(err)
+		}
+		err = escv1alpha1.AddToScheme(clientgoscheme.Scheme)
 		if err != nil {
 			panic(err)
 		}
@@ -79,6 +84,10 @@ func SetupV1beta1Scheme() {
 			panic(err)
 		}
 		err = esv1beta1.AddToScheme(clientgoscheme.Scheme)
+		if err != nil {
+			panic(err)
+		}
+		err = escv1alpha1.AddToScheme(clientgoscheme.Scheme)
 		if err != nil {
 			panic(err)
 		}

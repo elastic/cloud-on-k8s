@@ -36,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/esconfig"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
@@ -556,10 +557,11 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		registerFunc func(manager.Manager, operator.Parameters) error
 	}{
 		{name: "APMServer", registerFunc: apmserver.Add},
-		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
-		{name: "Kibana", registerFunc: kibana.Add},
-		{name: "EnterpriseSearch", registerFunc: enterprisesearch.Add},
 		{name: "Beats", registerFunc: beat.Add},
+		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
+		{name: "ElasticsearchConfig", registerFunc: esconfig.Add},
+		{name: "EnterpriseSearch", registerFunc: enterprisesearch.Add},
+		{name: "Kibana", registerFunc: kibana.Add},
 		{name: "License", registerFunc: license.Add},
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
 	}

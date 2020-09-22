@@ -137,6 +137,20 @@ RBAC permissions
   - patch
   - delete
 - apiGroups:
+  - elasticsearchconfig.k8s.elastic.co
+  resources:
+  - elasticsearchconfigs
+  - elasticsearchconfigs/status
+  - elasticsearchconfigs/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - kibana.k8s.elastic.co
   resources:
   - kibanas
