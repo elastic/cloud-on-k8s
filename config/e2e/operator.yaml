@@ -191,7 +191,7 @@ metadata:
   labels:
     test-run: {{ .TestRun }}
 ---
-{{$coma:=","}} # using coma directly messes up ide yaml parsing
+{{$comma:=","}} # using coma directly messes up ide yaml parsing
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -326,7 +326,7 @@ webhooks:
       matchExpressions:
       - key: name
         operator: In
-        values: [{{ .Operator.ManagedNamespaces | join $coma }}]
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -350,7 +350,7 @@ webhooks:
       matchExpressions:
       - key: name
         operator: In
-        values: [{{ .Operator.ManagedNamespaces | join $coma }}]
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -374,7 +374,7 @@ webhooks:
       matchExpressions:
       - key: name
         operator: In
-        values: [{{ .Operator.ManagedNamespaces | join $coma }}]
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
 ---
 apiVersion: v1
 kind: Service
