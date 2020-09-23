@@ -34,6 +34,7 @@ const (
 	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
+	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
 	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
@@ -73,7 +74,6 @@ func doRun(flags runFlags) error {
 			helper.deployMonitoring,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
-			helper.deployTestJob,
 			helper.runTestJob,
 		}
 	}
