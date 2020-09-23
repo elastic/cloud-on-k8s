@@ -163,7 +163,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
 
 	observedState := d.Observers.ObservedStateResolver(
-		k8s.ExtractNamespacedName(&d.ES),
+		&d.ES,
 		d.newElasticsearchClient(
 			resourcesState,
 			controllerUser,

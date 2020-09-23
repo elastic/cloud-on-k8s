@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 var log = logf.Log.WithName("observer")
@@ -28,15 +29,9 @@ type Settings struct {
 // - best-case scenario (healthy cluster): a request is performed every 10 seconds
 // - worst-case scenario (unhealthy cluster): a request is performed every 70 (60+10) seconds
 const (
-	DefaultObservationInterval = 10 * time.Second
-	DefaultRequestTimeout      = 1 * time.Minute
+	defaultObservationInterval = 10 * time.Second
+	defaultRequestTimeout      = 1 * time.Minute
 )
-
-// DefaultSettings is an observer's Params with default values
-var DefaultSettings = Settings{
-	ObservationInterval: DefaultObservationInterval,
-	RequestTimeout:      DefaultRequestTimeout,
-}
 
 // OnObservation is a function that gets executed when a new state is observed
 type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
@@ -44,20 +39,15 @@ type OnObservation func(cluster types.NamespacedName, previousState State, newSt
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
-	cluster  types.NamespacedName
-	esClient client.Client
-
-	settings Settings
-
-	creationTime time.Time
-
-	stopChan chan struct{}
-	stopOnce sync.Once
-
+	cluster       types.NamespacedName
+	esClient      client.Client
+	settings      Settings
+	creationTime  time.Time
+	stopChan      chan struct{}
+	stopOnce      sync.Once
 	onObservation OnObservation
-
-	lastState State
-	mutex     sync.RWMutex
+	lastState     State
+	mutex         sync.RWMutex
 }
 
 // NewObserver creates and starts an Observer

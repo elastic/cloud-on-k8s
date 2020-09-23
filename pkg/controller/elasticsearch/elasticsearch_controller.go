@@ -64,13 +64,11 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
-	observerSettings := observer.DefaultSettings
-	observerSettings.Tracer = params.Tracer
 	return &ReconcileElasticsearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
-		esObservers:    observer.NewManager(observerSettings),
+		esObservers:    observer.NewManager(params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
