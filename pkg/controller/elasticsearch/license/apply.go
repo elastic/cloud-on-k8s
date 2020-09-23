@@ -9,15 +9,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var log = logf.Log.WithName("elasticsearch-controller")
@@ -39,8 +40,6 @@ func applyLinkedLicense(
 	updater esclient.LicenseClient,
 ) error {
 	// get the current license
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
 	current, err := updater.GetLicense(ctx)
 	if err != nil {
 		return fmt.Errorf("while getting current license level %w", err)
@@ -98,8 +97,6 @@ func applyLinkedLicense(
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
 	_, err := updater.StartBasic(ctx)
 	if err != nil && esclient.IsForbidden(err) {
 		// ES returns 403 + acknowledged: true (which we don't parse in case of error) if we are already in basic mode
@@ -124,8 +121,6 @@ func updateLicense(
 			desired,
 		},
 	}
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
 
 	if isTrial(desired) {
 		return pkgerrors.Wrap(startTrial(ctx, updater, esCluster), "failed to start trial")
@@ -144,10 +139,6 @@ func updateLicense(
 // startTrial starts the trial license after checking that the trial is not yet activated by directly hitting the
 // Elasticsearch API.
 func startTrial(ctx context.Context, c esclient.LicenseClient, esCluster types.NamespacedName) error {
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
-
-	// Let's start the trial
 	response, err := c.StartTrial(ctx)
 	if err != nil && esclient.IsForbidden(err) {
 		log.Info("failed to start trial most likely because trial was activated previously",

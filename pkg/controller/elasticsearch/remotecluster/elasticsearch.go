@@ -8,6 +8,11 @@ import (
 	"context"
 	"sort"
 
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
@@ -15,10 +20,6 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("remotecluster")
@@ -142,10 +143,8 @@ func updateSettingsInternal(
 
 // getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
 func getRemoteClustersInElasticsearch(esClient esclient.Client) (map[string]struct{}, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
 	remoteClustersInEs := make(map[string]struct{})
-	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(ctx)
+	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(context.Background())
 	if err != nil {
 		return remoteClustersInEs, err
 	}
@@ -171,9 +170,7 @@ func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluste
 
 // updateSettings makes a call to an Elasticsearch cluster to apply a persistent setting.
 func updateSettings(esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
-	return esClient.UpdateRemoteClusterSettings(ctx, esclient.RemoteClustersSettings{
+	return esClient.UpdateRemoteClusterSettings(context.Background(), esclient.RemoteClustersSettings{
 		PersistentSettings: &esclient.SettingsGroup{
 			Cluster: esclient.RemoteClusters{
 				RemoteClusters: remoteClusters,

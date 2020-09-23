@@ -265,7 +265,7 @@ func (d *defaultDriver) newElasticsearchClient(
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts)
+	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts, esclient.Timeout(&d.ES))
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported

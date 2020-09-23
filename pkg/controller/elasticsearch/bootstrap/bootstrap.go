@@ -5,11 +5,12 @@
 package bootstrap
 
 import (
+	"go.elastic.co/apm"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
 
 	"context"
 
@@ -44,7 +45,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// retry later
 		return true, nil
 	}
-	clusterUUID, err := getClusterUUID(ctx, esClient)
+	clusterUUID, err := getClusterUUID(ctx, esClient, cluster)
 	if err != nil {
 		// There was an error while retrieving the UUID of the Elasticsearch cluster.
 		// For example, it could be the case with ES 6.x if the cluster does not have a master yet, in this case an
@@ -68,9 +69,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 }
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
-func getClusterUUID(ctx context.Context, esClient client.Client) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
-	defer cancel()
+func getClusterUUID(ctx context.Context, esClient client.Client, cluster *esv1.Elasticsearch) (string, error) {
 	info, err := esClient.GetClusterInfo(ctx)
 	if err != nil {
 		return "", err

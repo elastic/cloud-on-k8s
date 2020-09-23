@@ -9,19 +9,31 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
+var logger = logf.Log.WithName("es-client")
+
 const (
-	// DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
-	DefaultVotingConfigExclusionsTimeout = "30s"
-	// DefaultReqTimeout is the default timeout used when performing HTTP calls against Elasticsearch
-	DefaultReqTimeout = 3 * time.Minute
+	// defaultClientTimeout is the default timeout for the Elasticsearch client.
+	defaultClientTimeout = 3 * time.Minute
+	// defaultVotingConfigExclusionTimeout is the default timeout for setting voting exclusions.
+	defaultVotingConfigExclusionTimeout = 30 * time.Second
+
+	// ESClientTimeoutAnnotation is the name of the annotation used to set the Elasticsearch client timeout.
+	ESClientTimeoutAnnotation = "eck.k8s.elastic.co/es-client-timeout"
+	// ESVotingConfigExclusionTimeoutAnnotation is the name of the annotation used to set the request timeout for Elasticsearch voting config exclusion.
+	ESVotingConfigExclusionTimeoutAnnotation = "eck.k8s.elastic.co/es-voting-config-exclusion-timeout"
 )
 
 // BasicAuth contains credentials for an Elasticsearch user.
@@ -105,6 +117,17 @@ type Client interface {
 	Request(ctx context.Context, r *http.Request) (*http.Response, error)
 }
 
+// Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
+func Timeout(es runtime.Object) time.Duration {
+	return annotation.ExtractTimeout(es, ESClientTimeoutAnnotation, defaultClientTimeout)
+}
+
+// VotingConfigExclusionTimeout returns the request timeout for setting voting config exclusions for the given Elasticsearch resource.
+func VotingConfigExclusionTimeout(es runtime.Object) string {
+	t := annotation.ExtractTimeout(es, ESVotingConfigExclusionTimeoutAnnotation, defaultVotingConfigExclusionTimeout)
+	return fmt.Sprintf("%fs", math.Round(t.Seconds()))
+}
+
 // NewElasticsearchClient creates a new client for the target cluster.
 //
 // If dialer is not nil, it will be used to create new TCP connections
@@ -114,12 +137,13 @@ func NewElasticsearchClient(
 	esUser BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
+	timeout time.Duration,
 ) Client {
 	base := &baseClient{
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP:     common.HTTPClient(dialer, caCerts),
+		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
 	}
 	return versioned(base, v)
 }
