@@ -5,14 +5,14 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "eck.fullname" . }}
+  name: {{ include "eck-operator.fullname" . }}
   namespace: {{ .Release.Namespace}}
   labels:
-    {{- include "eck.labels" . | nindent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "eck.selectorLabels" . | nindent 6 }}
+      {{- include "eck-operator.selectorLabels" . | nindent 6 }}
   egress:
     # DNS
     - ports:

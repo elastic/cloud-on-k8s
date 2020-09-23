@@ -219,6 +219,7 @@ else
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--profile=restricted \
 		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=installCRDs=true \
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \

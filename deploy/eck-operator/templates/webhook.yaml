@@ -5,7 +5,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ .Values.webhook.name }}
   labels:
-    {{- include "eck.labels" . | nindent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 {{- if .Values.webhook.certManagerCert }}
   annotations:
     cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ .Values.webhook.certManagerCert }}"
@@ -162,14 +162,14 @@ metadata:
   name: {{ .Values.webhook.serviceName }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eck.labels" . | nindent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
   ports:
     - name: https
       port: 443
       targetPort: 9443
   selector:
-    {{- include "eck.selectorLabels" . | nindent 4 }}
+    {{- include "eck-operator.selectorLabels" . | nindent 4 }}
 {{- if .Values.webhook.manageCerts }}
 ---
 apiVersion: v1
@@ -178,6 +178,6 @@ metadata:
   name: "{{ .Values.webhook.certsSecret }}"
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eck.labels" . | nindent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 {{- end }}
 {{- end -}}
