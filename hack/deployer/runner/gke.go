@@ -128,10 +128,10 @@ func (d *GkeDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(NoProvisioner); err != nil {
+		if err := setupDisks(d.plan); err != nil {
 			return err
 		}
-		if err := d.createSsdProvider(); err != nil {
+		if err := createStorageClass(); err != nil {
 			return err
 		}
 	default:
@@ -139,10 +139,6 @@ func (d *GkeDriver) Execute() error {
 	}
 
 	return err
-}
-
-func (d *GkeDriver) createSsdProvider() error {
-	return NewCommand(d.plan.Gke.DiskSetup).Run()
 }
 
 func (d *GkeDriver) auth() error {

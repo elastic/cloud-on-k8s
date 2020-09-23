@@ -2,5 +2,7 @@ managedNamespaces: ["elastic-system"]
 
 createClusterScopedResources: false
 
+installCRDs: false
+
 webhook:
   enabled: false
