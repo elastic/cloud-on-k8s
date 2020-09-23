@@ -191,6 +191,7 @@ metadata:
   labels:
     test-run: {{ .TestRun }}
 ---
+{{$coma:=","}} # using coma directly messes up ide yaml parsing
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -230,7 +231,7 @@ spec:
         args:
         - "manager"
         - "--namespaces"
-        - "{{ .Operator.ManagedNamespaces | join "," }},{{ .E2ENamespace }}"
+        - "{{ .Operator.ManagedNamespaces | join "," }}"
         - "--enable-webhook"
         - "--log-verbosity=1"
         - "--metrics-port=9090"
@@ -321,6 +322,11 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $coma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -340,6 +346,11 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $coma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -359,6 +370,11 @@ webhooks:
       - UPDATE
       resources:
       - beats
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $coma }}]
 ---
 apiVersion: v1
 kind: Service

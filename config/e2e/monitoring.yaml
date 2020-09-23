@@ -1,0 +1,711 @@
+# This file contains all the resources (including RBAC resources) for E2E test monitoring: Filebeat, Metricbeat and
+# a dedicated operator to drive them.
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: metricbeat
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: metricbeat
+spec:
+  type: metricbeat
+  version: 7.9.1
+  config:
+    metricbeat.modules:
+    - module: kubernetes
+      metricsets:
+      - node
+      - system
+      - pod
+      - container
+      - volume
+      - event
+      period: 10s
+      host: ${NODE_NAME}
+      hosts: ["https://${NODE_NAME}:10250"]
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      ssl.verification_mode: "none"
+    - module: system
+      period: 30s
+      metricsets:
+      - cpu
+      - load
+      - memory
+      - network
+      - process
+      - process_summary
+      processes: ['.*']
+      process.include_top_n:
+        by_cpu: 5      # include top 5 processes by CPU
+        by_memory: 5   # include top 5 processes by memory
+    - module: system
+      period: 1m
+      metricsets:
+      - filesystem
+      - fsstat
+      processors:
+      - drop_event.when.regexp:
+          system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
+    metricbeat.autodiscover:
+      providers:
+      - type: kubernetes
+        node: ${NODE_NAME}
+        hints.enabled: true
+    processors:
+    - add_cloud_metadata:
+    - add_fields:
+        target: ''
+        fields:
+          pipeline: {{ .Pipeline }}
+          build_number: {{ .BuildNumber }}
+          provider: {{ .Provider }}
+          clusterName: {{ .ClusterName }}
+          kubernetes_version: {{ .KubernetesVersion }}
+          stack_version: {{ .ElasticStackVersion }}
+          e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+    setup.template.overwrite: true
+    setup.template.append_fields:
+    - name: stack_version
+      type: keyword
+    - name: kubernetes_version
+      type: keyword
+    - name: build_number
+      type: keyword
+    - name: pipeline
+      type: keyword
+    - name: e2e_test_id
+      type: keyword
+    - name: provider
+      type: keyword
+    - name: clusterName
+      type: keyword
+    output.elasticsearch:
+      hosts: ['https://${monitoring_ip}:9200']
+      username: ${monitoring_user}
+      password: ${monitoring_pass}
+      ssl.certificate_authorities:
+      - /mnt/elastic/monitoring-ca.crt
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: metricbeat
+        automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+        initContainers:
+        - name: elastic-internal-init-keystore
+          securityContext:
+            runAsUser: 0
+        containers:
+        - args:
+          - -e
+          - -c
+          - /etc/beat.yml
+          - -system.hostfs=/hostfs
+          name: metricbeat
+          volumeMounts:
+          - mountPath: /hostfs/sys/fs/cgroup
+            name: cgroup
+          - mountPath: /var/run/docker.sock
+            name: dockersock
+          - mountPath: /hostfs/proc
+            name: proc
+          - name: monitoring-ca
+            mountPath: /mnt/elastic/monitoring-ca.crt
+            readOnly: true
+            subPath: monitoring_ca
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        securityContext:
+          runAsUser: 0
+          {{ if .OcpCluster }}
+          privileged: true
+          {{ end }}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - hostPath:
+            path: /sys/fs/cgroup
+          name: cgroup
+        - hostPath:
+            path: /var/run/docker.sock
+          name: dockersock
+        - hostPath:
+            path: /proc
+          name: proc
+        - name: monitoring-ca
+          secret:
+            secretName: "eck-{{ .TestRun }}"
+  secureSettings:
+  - secretName: "eck-{{ .TestRun }}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metricbeat
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: metricbeat
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: metricbeat
+  labels:
+    k8s-app: metricbeat
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - namespaces
+  - events
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions"]
+  resources:
+  - replicasets
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources:
+  - statefulsets
+  - deployments
+  - replicasets
+  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - nodes/stats
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metricbeat
+subjects:
+- kind: ServiceAccount
+  name: metricbeat
+  namespace: {{ .E2ENamespace }}
+roleRef:
+  kind: ClusterRole
+  name: metricbeat
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-metricbeat-restricted
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.beat.restricted
+  verbs:
+  - use
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-metricbeat-restricted-binding
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: elastic-metricbeat-restricted
+subjects:
+- kind: ServiceAccount
+  name: metricbeat
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: filebeat
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: filebeat
+spec:
+  type: filebeat
+  version: 7.9.1
+  config:
+    max_backoff: 1s # reduces worst case delay between log being written and picked up by Filebeat to 1s
+    close_inactive: 1h # keep harvester open for 1h on inactive files as our test timeout is longer than default 5m
+    filebeat.autodiscover:
+      providers:
+      - type: kubernetes
+        host: ${NODE_NAME}
+        hints.enabled: true
+        hints.default_config:
+          type: container
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+          fields_under_root: true
+          fields:
+            pipeline: {{ .Pipeline }}
+            build_number: {{ .BuildNumber }}
+            provider: {{ .Provider }}
+            clusterName: {{ .ClusterName }}
+            kubernetes_version: {{ .KubernetesVersion }}
+            stack_version: {{ .ElasticStackVersion }}
+            e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+        appenders:
+        - type: config
+          condition:
+            equals:
+              kubernetes.pod.labels.control-plane: {{ .Operator.Name }}
+          config:
+            json.keys_under_root: true
+            processors:
+            - convert:
+                mode: rename
+                ignore_missing: true
+                fields:
+                - { from: error, to: _error}
+                - { from: source, to: event.source }
+            - convert:
+                mode: rename
+                ignore_missing: true
+                fields:
+                - { from: _error, to: error.message }
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+    setup.template.overwrite: true
+    setup.template.append_fields:
+    - name: kubernetes_version
+      type: keyword
+    - name: build_number
+      type: keyword
+    output.elasticsearch:
+      hosts: ['https://${monitoring_ip}:9200']
+      username: ${monitoring_user}
+      password: ${monitoring_pass}
+      ssl.certificate_authorities:
+      - /mnt/elastic/monitoring-ca.crt
+  secureSettings:
+  - secretName: "eck-{{ .TestRun }}"
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: filebeat
+        automountServiceAccountToken: true
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        initContainers:
+        - name: elastic-internal-init-keystore
+          securityContext:
+            runAsUser: 0
+        containers:
+        - name: filebeat
+          securityContext:
+            runAsUser: 0
+            {{ if .OcpCluster }}
+            privileged: true
+            {{end}}
+          volumeMounts:
+          - name: varlogcontainers
+            mountPath: /var/log/containers
+          - name: varlogpods
+            mountPath: /var/log/pods
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+          - name: monitoring-ca
+            mountPath: /mnt/elastic/monitoring-ca.crt
+            readOnly: true
+            subPath: monitoring_ca
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        volumes:
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: monitoring-ca
+          secret:
+            secretName: "eck-{{ .TestRun }}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: {{ .E2ENamespace }}
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+  labels:
+    k8s-app: filebeat
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: filebeat
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-filebeat-restricted
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.beat.restricted
+  verbs:
+  - use
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-filebeat-restricted-binding
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: elastic-filebeat-restricted
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+---
+  {{ if .OcpCluster }}
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: beat
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: true
+allowHostPID: true # required for Auditbeat
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: true
+allowedCapabilities:
+- AUDIT_READ     # required for Auditbeat
+- AUDIT_WRITE
+- AUDIT_CONTROL
+- NET_ADMIN      # required for Packetbeat
+- KILL           # required for Journalbeat
+- CHOWN
+- FSETID
+- FOWNER
+- SETGID
+- SETUID
+- SETFCAP
+- SETPCAP
+- AUDIT_WRITE
+- NET_BIND_SERVICE
+defaultAddCapabilities: []
+fsGroup:
+  type: RunAsAny
+priority: 0
+readOnlyRootFilesystem: false
+requiredDropCapabilities: []
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+- '*'
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:{{ .E2ENamespace }}:filebeat
+- system:serviceaccount:{{ .E2ENamespace }}:metricbeat
+groups:
+  {{- range .Operator.ManagedNamespaces }}
+- system:serviceaccounts:{{ . }}
+  {{- end }}
+volumes:
+- '*'
+  {{end}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: monitoring-elastic-operator
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+---
+# The operator has cluster-wide permissions on all required resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-elastic-operator
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - endpoints
+  - events
+  - persistentvolumeclaims
+  - secrets
+  - services
+  - configmaps
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+# required to allow the operator to bind service accounts it manages
+# to role that holds permissions needed for Beat autodiscover feature
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  resourceNames:
+  - elastic-beat-autodiscover
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearches
+  - elasticsearches/status
+  - elasticsearches/finalizers
+  - enterpriselicenses
+  - enterpriselicenses/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
+  - kibanas/status
+  - kibanas/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers
+  - apmservers/status
+  - apmservers/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - enterprisesearch.k8s.elastic.co
+  resources:
+  - enterprisesearches
+  - enterprisesearches/status
+  - enterprisesearches/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - beat.k8s.elastic.co
+  resources:
+  - beats
+  - beats/status
+  - beats/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitoring-elastic-operator
+  labels:
+    test-run: {{ .TestRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: monitoring-elastic-operator
+subjects:
+- kind: ServiceAccount
+  name: monitoring-elastic-operator
+  namespace: {{ .E2ENamespace }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: monitoring
+  namespace: {{ .E2ENamespace }}
+  labels:
+    control-plane: monitoring
+    test-run: {{ .TestRun }}
+spec:
+  selector:
+    matchLabels:
+      control-plane: monitoring
+  serviceName: monitoring
+  template:
+    metadata:
+      annotations:
+        co.elastic.metrics/metricsets: collector
+        co.elastic.metrics/module: prometheus
+        co.elastic.metrics/hosts: '${data.host}:9090'
+        co.elastic.metrics/period: 10s
+        # if monitoring secrets are specified, filebeat is deployed and provides the below configuration
+        {{ if .MonitoringSecrets }}
+        # Rename the fields "error" to "error.message" and "source" to "event.source"
+        # This is to avoid a conflict with the ECS "error" and "source" documents.
+        co.elastic.logs/raw: "[{\"type\":\"container\",\"json.keys_under_root\":true,\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
+        {{end}}
+      labels:
+        control-plane: monitoring
+        test-run: {{ .TestRun }}
+    spec:
+      serviceAccountName: monitoring-elastic-operator
+      containers:
+      - image: docker.elastic.co/eck-snapshots/eck-operator:1.3.0-SNAPSHOT-2020-09-23-199f4aab
+        imagePullPolicy: IfNotPresent
+        name: manager
+        args:
+        - "manager"
+        - "--operator-namespace"
+        - "{{ .E2ENamespace }}"
+        - "--namespaces"
+        - "{{ .E2ENamespace }}"
+        - "--log-verbosity=1"
+        - "--metrics-port=9090"
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        resources:
+          limits:
+            cpu: 1
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 150Mi
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        - containerPort: 9090
+          name: prometheus
+          protocol: TCP
+      terminationGracePeriodSeconds: 10
