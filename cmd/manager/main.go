@@ -188,6 +188,11 @@ func Command() *cobra.Command {
 		"",
 		"Set the IP family to use. Possible values: IPv4, IPv6, \"\" (= auto-detect) ",
 	)
+	cmd.Flags().Duration(
+		operator.KubeClientTimeout,
+		60*time.Second,
+		"Timeout for requests made by the Kubernetes API client.",
+	)
 	cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
 		true,
@@ -388,6 +393,9 @@ func startOperator(stopChan <-chan struct{}) error {
 		log.Error(err, "Failed to obtain client configuration")
 		return err
 	}
+
+	// set the timeout for API client
+	cfg.Timeout = viper.GetDuration(operator.KubeClientTimeout)
 
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")

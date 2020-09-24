@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,9 +18,8 @@ import (
 type ctxKey struct{}
 
 var (
-	userProvidedContextKey        = ctxKey{}
-	errUsingUserProvidedContext   = errors.New("using user-provided context")
-	errUsingDefaultTimeoutContext = errors.New("using default timeout context")
+	userProvidedContextKey      = ctxKey{}
+	errUsingUserProvidedContext = errors.New("using user-provided context")
 )
 
 func TestClient(t *testing.T) {
@@ -62,17 +60,14 @@ func TestClient(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// setup the Client with a timeout
-			c := WrapClient(mockedClient{}).WithTimeout(1 * time.Millisecond)
-			err := tt.call(c)
-			// make sure the timeout context was correctly passed to the underlying client
-			require.Equal(t, errUsingDefaultTimeoutContext, err)
+			c := WrapClient(mockedClient{})
+
+			// default behaviour should just return a nil error
+			require.Nil(t, tt.call(c))
 
 			// pass a custom context with the call
 			ctx := context.WithValue(context.Background(), userProvidedContextKey, userProvidedContextKey)
-			err = tt.call(c.WithContext(ctx))
-			// make sure this custom context was used and not the timeout one
-			require.Equal(t, errUsingUserProvidedContext, err)
+			require.Equal(t, errUsingUserProvidedContext, tt.call(c.WithContext(ctx)))
 		})
 	}
 }
@@ -88,9 +83,8 @@ func (m mockedClient) checkCtx(ctx context.Context) error {
 	if ctx.Value(userProvidedContextKey) == userProvidedContextKey {
 		return errUsingUserProvidedContext
 	}
-	// should be the init timeout context
-	<-ctx.Done()
-	return errUsingDefaultTimeoutContext
+
+	return nil
 }
 
 func (m mockedClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {

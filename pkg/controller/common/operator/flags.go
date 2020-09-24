@@ -19,6 +19,7 @@ const (
 	EnableWebhookFlag             = "enable-webhook"
 	EnforceRBACOnRefsFlag         = "enforce-rbac-on-refs"
 	IPFamilyFlag                  = "ip-family"
+	KubeClientTimeout             = "kube-client-timeout"
 	ManageWebhookCertsFlag        = "manage-webhook-certs"
 	MaxConcurrentReconcilesFlag   = "max-concurrent-reconciles"
 	MetricsPortFlag               = "metrics-port"

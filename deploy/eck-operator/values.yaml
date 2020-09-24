@@ -140,6 +140,9 @@ config:
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
   setDefaultSecurityContext: true
 
+  # kubeClientTimeout sets the request timeout for Kubernetes API calls made by the operator.
+  kubeClientTimeout: 60s
+
 # Internal use only
 internal:
   manifestGen: false

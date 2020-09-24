@@ -17,6 +17,7 @@ data:
     cert-validity: {{ .Values.config.certificatesValidity }}
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
+    kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
     {{- end }}
