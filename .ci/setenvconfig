@@ -263,14 +263,14 @@ TEST_TIMEOUT = 10m
 PIPELINE=e2e/ocp3
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp3
-CLUSTER_NAME=$BUILD_TAG
+CLUSTER_NAME=eck-ocp3-$BUILD_NUMBER
 KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: ocp3-ci
 overrides:
-  clusterName: eck-ocp3-$BUILD_TAG
+  clusterName: eck-ocp3-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
@@ -533,7 +533,7 @@ write_deployer_config <<CFG
 id: ocp3-ci
 overrides:
   operation: delete
-  clusterName: eck-ocp3-$BUILD_TAG
+  clusterName: eck-ocp3-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
