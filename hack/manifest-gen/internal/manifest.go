@@ -17,6 +17,8 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
+	"sigs.k8s.io/kustomize/kyaml/kio"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 // GenerateFlags holds flag values for the generate operation.
@@ -25,7 +27,6 @@ type GenerateFlags struct {
 	Profile           string
 	Values            []string
 	ValueFiles        []string
-	ExcludeCRDs       bool
 	OperatorNamespace string
 }
 
@@ -63,10 +64,11 @@ func Generate(opts *GenerateFlags) error {
 	client.DryRun = true
 	client.Replace = true
 	client.ClientOnly = true
-	client.IncludeCRDs = !opts.ExcludeCRDs
+	client.IncludeCRDs = false
 	client.Version = ">0.0.0-0"
-	client.ReleaseName = "eck"
+	client.ReleaseName = "elastic-operator"
 	client.Namespace = opts.OperatorNamespace
+	client.PostRenderer = helmLabelRemover{}
 
 	vals, err := valueOpts.MergeValues(getter.All(settings))
 	if err != nil {
@@ -118,4 +120,36 @@ func Options(opts *OptionsFlags) error {
 	fmt.Println(out)
 
 	return nil
+}
+
+// helmLabelRemover implements the PostRenderer interface. It is used to remove Helm-specific labels from the generated manifests.
+type helmLabelRemover struct{}
+
+func (hlr helmLabelRemover) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+
+	pipeline := kio.Pipeline{
+		Inputs:  []kio.Reader{&kio.ByteReader{Reader: renderedManifests}},
+		Filters: []kio.Filter{kio.FilterFunc(hlr.removeHelmLabels)},
+		Outputs: []kio.Writer{kio.ByteWriter{Writer: buf}},
+	}
+
+	if err := pipeline.Execute(); err != nil {
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+func (hlr helmLabelRemover) removeHelmLabels(nodes []*yaml.RNode) ([]*yaml.RNode, error) {
+	for i := range nodes {
+		n := nodes[i]
+		for _, label := range []string{"helm.sh/chart", "app.kubernetes.io/managed-by"} {
+			if err := n.PipeE(yaml.Get("metadata"), yaml.Get("labels"), yaml.Clear(label)); err != nil {
+				return nil, fmt.Errorf("failed to remove label %s: %w", label, err)
+			}
+		}
+	}
+
+	return nodes, nil
 }

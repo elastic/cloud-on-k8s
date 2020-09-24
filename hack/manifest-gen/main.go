@@ -61,7 +61,7 @@ func findSourceDir() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(path), "assets", "charts", "eck"), nil
+	return filepath.Clean(filepath.Join(filepath.Dir(path), "..", "..", "deploy", "eck-operator")), nil
 }
 
 func generateCmd() *cobra.Command {
@@ -90,7 +90,7 @@ Global operator with resource memory limit increased to 300Mi and CPU limit incr
     $ manifest-gen generate --set=resources.limits.cpu=2,resources.limits.memory=300Mi
 
 Restricted operator without CRDs, managing the "elastic-system" namespace:
-    $ manifest-gen generate --profile=restricted --exclude-crds
+    $ manifest-gen generate --profile=restricted --set=installCRDs=false
 
 Restricted operator installed to and managing the single namespace named "namespacex":
     $ manifest-gen generate --profile=restricted --namespace=namespacex --set=managedNamespaces='{namespacex}'
@@ -116,7 +116,6 @@ Restricted operator with tracing configured:
 	}
 
 	cmd.Flags().StringVar(&generateFlags.Profile, "profile", "global", "Operator profile (global, restricted)")
-	cmd.Flags().BoolVar(&generateFlags.ExcludeCRDs, "exclude-crds", false, "Exclude CRDs from generated manifest")
 	cmd.Flags().StringArrayVar(&generateFlags.Values, "set", []string{}, "Set additional options")
 	cmd.Flags().StringArrayVar(&generateFlags.ValueFiles, "values", []string{}, "Set additional options from file(s)")
 	cmd.Flags().StringVarP(&generateFlags.OperatorNamespace, "namespace", "n", "elastic-system", "Operator namespace")

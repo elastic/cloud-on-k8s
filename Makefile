@@ -219,6 +219,7 @@ else
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--profile=restricted \
 		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=installCRDs=true \
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \
@@ -370,13 +371,14 @@ switch-registry-dev: # just use the default values of variables
 ##  --   End to end tests    --  ##
 ###################################
 
-E2E_REGISTRY_NAMESPACE ?= eck-dev
-E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
-TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-E2E_STACK_VERSION      ?= 7.9.0
-E2E_JSON               ?= false
-TEST_TIMEOUT           ?= 5m
-E2E_SKIP_CLEANUP       ?= false
+E2E_REGISTRY_NAMESPACE     ?= eck-dev
+E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
+TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
+E2E_STACK_VERSION          ?= 7.9.0
+E2E_JSON                   ?= false
+TEST_TIMEOUT               ?= 5m
+E2E_SKIP_CLEANUP           ?= false
+E2E_DEPLOY_CHAOS_JOB       ?= false
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
@@ -402,7 +404,8 @@ e2e-run:
 		--clusterName=$(CLUSTER_NAME) \
 		--kubernetes-version=$(KUBERNETES_VERSION) \
 		--monitoring-secrets=$(MONITORING_SECRETS) \
-		--skip-cleanup=$(E2E_SKIP_CLEANUP)
+		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
+		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json

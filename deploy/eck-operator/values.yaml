@@ -7,6 +7,13 @@ fullnameOverride: "elastic-operator"
 # managedNamespaces is the set of namespaces that the operator manages. Leave empty to manage all namespaces.
 managedNamespaces: []
 
+# installCRDs determines whether Custom Resource Definitions (CRD) are installed by the chart.
+# Note that CRDs are global resources and require cluster admin privileges to install. 
+# If you are sharing a cluster with other users who may want to install ECK on their own namespaces, setting this to true can have unintended consequences.
+# 1. Upgrades will overwrite the global CRDs and could disrupt the other users of ECK who may be running a different version.
+# 2. Uninstalling the chart will delete the CRDs and potentially cause Elastic resources deployed by other users to be removed as well.
+installCRDs: true
+
 # replicaCount is the number of operator pods to run.
 replicaCount: 1
 
@@ -133,6 +140,6 @@ config:
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
   setDefaultSecurityContext: true
 
-# for internal use only.
+# Internal use only
 internal:
   manifestGen: false
