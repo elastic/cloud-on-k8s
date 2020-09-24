@@ -13,7 +13,8 @@
           description: "ECK Docker image"
       - bool:
           name: SEND_NOTIFICATIONS
-          default: true
+          # TODO: enable notifications by default once the job is stable
+          default: false
           description: "Specified if job should send notifications to Slack. Enabled by default."
     pipeline-scm:
       scm:

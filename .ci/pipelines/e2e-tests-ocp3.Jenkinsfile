@@ -62,15 +62,14 @@ pipeline {
                     filter.addAll(failedTests)
                     def msg = lib.generateSlackMessage("E2E tests in OCP3 failed!", env.BUILD_URL, filter)
 
-                    // TODO: enable failure notifications once the job is stable
-                    /*slackSend(
+                    slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
                         botUser: true,
                         failOnError: true
-                    )*/
+                    )
                 }
             }
         }
