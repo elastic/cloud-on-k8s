@@ -9,14 +9,14 @@ endif::[]
 
 This page shows how to run ECK on OpenShift.
 
-* <<{p}-openshift-before-you-begin,Before you begin>>
-* <<{p}-openshift-deploy-the-operator,Deploy the operator>>
-* <<{p}-openshift-deploy-elasticsearch,Deploy an Elasticsearch instance with a route>>
-* <<{p}-openshift-deploy-kibana,Deploy a Kibana instance with a route>>
-* <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
-* <<{p}-openshift-beats,Grant privileged permissions to Beats>>
+* <<{p}-openshift-before-you-begin>>
+* <<{p}-openshift-deploy-the-operator>>
+* <<{p}-openshift-deploy-elasticsearch>>
+* <<{p}-openshift-deploy-kibana>>
+* <<{p}-openshift-anyuid-workaround>>
+* <<{p}-openshift-beats>>
 
-NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the Pod to run with the `anyuid` SCC as described in <<{p}-openshift-apm>>.
+WARNING: Some Docker images are incompatible with the `restricted` SCC. This is the case for the *APM Server before 7.9* and for the *Enterprise Search 7.9*. You can use this <<{p}-openshift-anyuid-workaround,workaround>> to run those images with the `anyuid` SCC.
 
 [float]
 [id="{p}-openshift-before-you-begin"]
@@ -154,10 +154,10 @@ Use the following command to get the hosts of each `Route`:
 oc get route -n elastic
 ----
 
-[id="{p}-openshift-apm"]
-== Deploy an APM Server instance with a route
+[id="{p}-openshift-anyuid-workaround"]
+== Deploy Docker images with `anyuid` SCC
 
-It is currently not possible to run the APM Server with the `restricted` SCC. A possible workaround is to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
+Starting with version 7.9, it is possible to run the APM Server with the `restricted` SCC. For APM versions older than 7.9 and Enterprise Search version 7.9, you can use this workaround which allows the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
 
 . Create a service account to run the APM Server:
 +
