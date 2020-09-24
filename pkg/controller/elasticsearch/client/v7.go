@@ -43,7 +43,7 @@ func (c *clientV7) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 
 func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
 	if timeout == "" {
-		timeout = fmt.Sprintf("%fs", defaultVotingConfigExclusionTimeout.Seconds())
+		timeout = formatAsSeconds(defaultVotingConfigExclusionTimeout)
 	}
 	path := fmt.Sprintf(
 		"/_cluster/voting_config_exclusions/%s?timeout=%s",

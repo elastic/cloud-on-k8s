@@ -14,15 +14,12 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
-
-var logger = logf.Log.WithName("es-client")
 
 const (
 	// defaultClientTimeout is the default timeout for the Elasticsearch client.
@@ -125,7 +122,11 @@ func Timeout(es runtime.Object) time.Duration {
 // VotingConfigExclusionTimeout returns the request timeout for setting voting config exclusions for the given Elasticsearch resource.
 func VotingConfigExclusionTimeout(es runtime.Object) string {
 	t := annotation.ExtractTimeout(es, ESVotingConfigExclusionTimeoutAnnotation, defaultVotingConfigExclusionTimeout)
-	return fmt.Sprintf("%fs", math.Round(t.Seconds()))
+	return formatAsSeconds(t)
+}
+
+func formatAsSeconds(d time.Duration) string {
+	return fmt.Sprintf("%.0fs", math.Round(d.Seconds()))
 }
 
 // NewElasticsearchClient creates a new client for the target cluster.

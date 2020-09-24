@@ -16,10 +16,13 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
@@ -652,4 +655,16 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 			require.Equal(t, tt.bootstrappedForZen2, bootstrappedForZen2)
 		})
 	}
+}
+
+func TestTimeout(t *testing.T) {
+	es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESClientTimeoutAnnotation: "1m"}}}
+	have := Timeout(es)
+	require.Equal(t, 1*time.Minute, have)
+}
+
+func TestVotingConfigExclusionTimeout(t *testing.T) {
+	es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESVotingConfigExclusionTimeoutAnnotation: "2.5m"}}}
+	have := VotingConfigExclusionTimeout(es)
+	require.Equal(t, "150s", have)
 }

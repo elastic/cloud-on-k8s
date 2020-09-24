@@ -45,7 +45,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// retry later
 		return true, nil
 	}
-	clusterUUID, err := getClusterUUID(ctx, esClient, cluster)
+	clusterUUID, err := getClusterUUID(ctx, esClient)
 	if err != nil {
 		// There was an error while retrieving the UUID of the Elasticsearch cluster.
 		// For example, it could be the case with ES 6.x if the cluster does not have a master yet, in this case an
@@ -69,7 +69,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 }
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
-func getClusterUUID(ctx context.Context, esClient client.Client, cluster *esv1.Elasticsearch) (string, error) {
+func getClusterUUID(ctx context.Context, esClient client.Client) (string, error) {
 	info, err := esClient.GetClusterInfo(ctx)
 	if err != nil {
 		return "", err
