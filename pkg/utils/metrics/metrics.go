@@ -13,12 +13,21 @@ import (
 
 const (
 	namespace          = "elastic"
+	LeaderKey          = "leader"
 	licensingSubsystem = "licensing"
 
-	LicenseLevelLabel = "license_level"
+	LicenseLevelLabel      = "license_level"
+	OperatorNamespaceLabel = "operator_namespace"
+	UUIDLabel              = "uuid"
 )
 
 var (
+	Leader = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Subsystem: namespace,
+		Name:      LeaderKey,
+		Help:      "Gauge used to evaluate if an instance is elected",
+	}, []string{UUIDLabel, OperatorNamespaceLabel}))
+
 	// LicensingMaxERUGauge reports the maximum allowed enterprise resource units for licensing purposes.
 	LicensingMaxERUGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,

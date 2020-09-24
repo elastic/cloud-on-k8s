@@ -92,6 +92,7 @@ type Context struct {
 	MonitoringSecrets     string            `json:"monitoring_secrets"`
 	TestTimeout           time.Duration     `json:"test_timeout"`
 	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
+	DeployChaosJob        bool              `json:"deploy_chaos_job"`
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
 	OcpCluster            bool              `json:"ocp_cluster"`
@@ -116,5 +117,6 @@ type ClusterResource struct {
 // NamespaceOperator is cluster resource with an associated namespace to manage.
 type NamespaceOperator struct {
 	ClusterResource
+	Replicas          int      `json:"operator_replicas"`
 	ManagedNamespaces []string `json:"managed_namespaces"`
 }

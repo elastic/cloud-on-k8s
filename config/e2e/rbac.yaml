@@ -141,6 +141,7 @@ rules:
       - get
       - list
       - watch
+      - update
       - delete
     # to create resources defined in recipes
   - apiGroups:
