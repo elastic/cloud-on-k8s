@@ -31,9 +31,8 @@ run_chaos() {
   go run test/e2e/cmd/main.go chaos "$@"
 }
 
-
 main() {
-  if [ "${chaos}" = true ] ; then
+  if [ "${chaos}" == true ] ; then
     run_chaos "$@"
   else
     run_e2e_tests "$@"
