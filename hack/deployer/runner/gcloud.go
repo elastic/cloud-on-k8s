@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,13 +20,17 @@ const (
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
-	vaultInfo VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
+	vaultInfo *VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, useNonDefaultCloudSDKPath bool, configureDocker bool, gCloudProject interface{},
 ) error {
+	if vaultInfo == nil {
+		return errors.New("vault info not present in the plan to authenticate to GCP")
+	}
+
 	if asServiceAccount {
 		log.Println("Authenticating as service account...")
 
-		client, err := NewClient(vaultInfo)
+		client, err := NewClient(*vaultInfo)
 		if err != nil {
 			return err
 		}

@@ -65,7 +65,7 @@ func (d Ocp3Driver) Execute() error {
 	var err error
 
 	if err := authToGCP(
-		*d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
+		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, true, true, d.plan.Ocp3.GCloudProject,
 	); err != nil {
 		return err
