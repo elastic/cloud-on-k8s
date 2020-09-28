@@ -46,6 +46,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"github.com/fsnotify/fsnotify"
@@ -507,7 +508,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace)
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, string(operatorInfo.OperatorUUID))
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -523,8 +524,11 @@ func startOperator(stopChan <-chan struct{}) error {
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace string) {
+func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace, operatorUUID string) {
 	<-mgr.Elected() // wait for this operator instance to be elected
+
+	// Report this instance as elected through Prometheus
+	metrics.Leader.WithLabelValues(operatorUUID, operatorNamespace).Set(1)
 
 	// Start the resource reporter
 	go func() {

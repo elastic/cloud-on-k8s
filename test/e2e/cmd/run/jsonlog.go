@@ -51,6 +51,9 @@ func (jl *jsonLog) Write(p []byte) (int, error) {
 			return i, err
 		}
 	}
+	if err := jl.flush(); err != nil {
+		return 0, err
+	}
 	return len(p), nil
 }
 
@@ -77,6 +80,14 @@ func (jl *jsonLog) Close() (err error) {
 		}
 	}()
 
+	if err = jl.flush(); err != nil {
+		return
+	}
+
+	return nil
+}
+
+func (jl *jsonLog) flush() (err error) {
 	// flush internal buffer
 	if err = jl.writeLine(); err != nil {
 		return
@@ -86,6 +97,5 @@ func (jl *jsonLog) Close() (err error) {
 	if err = jl.writer.Flush(); err != nil {
 		return
 	}
-
 	return nil
 }

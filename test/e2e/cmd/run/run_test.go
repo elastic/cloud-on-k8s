@@ -86,7 +86,7 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 
 	streamErrors := make(chan error, 4096)
 	writer := bytes.NewBuffer([]byte{})
-	streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
+	streamTestJobOutput(streamProvider, goLangTestTimestampParser, writer, streamErrors, stopLogStream)
 
 	got, err := ioutil.ReadAll(writer)
 	require.NoError(t, err)
@@ -110,7 +110,7 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 
 	streamErrors := make(chan error, 4096)
 	writer := bytes.NewBuffer([]byte{})
-	streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
+	streamTestJobOutput(streamProvider, goLangTestTimestampParser, writer, streamErrors, stopLogStream)
 
 	// Check that the data are the expected ones
 	got, err := ioutil.ReadAll(writer)
@@ -122,7 +122,7 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 	assert.Equal(t, sampleLogs, got)
 }
 
-func Test_parseLog(t *testing.T) {
+func Test_goLangTestTimestampParser(t *testing.T) {
 	type args struct {
 		line string
 	}
@@ -156,7 +156,53 @@ func Test_parseLog(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseLog([]byte(tt.args.line))
+			got, err := goLangTestTimestampParser([]byte(tt.args.line))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseLog() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseLog() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_stdTimestampParser(t *testing.T) {
+	type args struct {
+		line string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    time.Time
+		wantErr bool
+	}{
+		{
+			name: "happy path",
+			args: args{
+				line: `{"log.level":"info","@timestamp":"2020-09-02T13:38:38.064Z","log.logger":"chaos","message":"Leader collection","service.version":"0.0.0-SNAPSHOT+00000000","service.type":"eck","ecs.version":"1.4.0"}`,
+			},
+			want: time.Date(2020, time.September, 02, 13, 38, 38, 64000000, time.UTC),
+		},
+		{
+			name: "corrupted timestamp",
+			args: args{
+				line: `{"log.level":"info","@timestamp":"2020-09-02T1E3:38:38.064Z","log.logger":"chaos","message":"Leader collection","service.version":"0.0.0-SNAPSHOT+00000000","service.type":"eck","ecs.version":"1.4.0"}`,
+			},
+			wantErr: true,
+		},
+		{
+			name: "corrupted json",
+			args: args{
+				line: `{"log.level":"info","@timestamp":2020-09-02T13:38:38.064Z","log.logger":"chaos","message":"Leader collection","service.version":"0.0.0-SNAPSHOT+00000000","service.type":"eck","ecs.version":"1.4.0"}`,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := stdTimestampParser([]byte(tt.args.line))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseLog() error = %v, wantErr %v", err, tt.wantErr)
 				return

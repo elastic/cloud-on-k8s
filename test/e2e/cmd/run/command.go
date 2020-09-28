@@ -33,19 +33,21 @@ type runFlags struct {
 	testRegex             string
 	testRunName           string
 	monitoringSecrets     string
-	commandTimeout        time.Duration
-	autoPortForwarding    bool
-	skipCleanup           bool
-	local                 bool
-	logToFile             bool
-	ignoreWebhookFailures bool
-	logVerbosity          int
-	testTimeout           time.Duration
 	pipeline              string
 	buildNumber           string
 	provider              string
 	clusterName           string
 	kubernetesVersion     string
+	operatorReplicas      int
+	commandTimeout        time.Duration
+	logVerbosity          int
+	testTimeout           time.Duration
+	autoPortForwarding    bool
+	skipCleanup           bool
+	local                 bool
+	logToFile             bool
+	ignoreWebhookFailures bool
+	deployChaosJob        bool
 }
 
 var log logr.Logger
@@ -83,6 +85,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.local, "local", false, "Create the environment for running tests locally")
 	cmd.Flags().StringSliceVar(&flags.managedNamespaces, "managed-namespaces", []string{"mercury", "venus"}, "List of managed namespaces")
 	cmd.Flags().StringVar(&flags.operatorImage, "operator-image", "", "Operator image")
+	cmd.Flags().IntVar(&flags.operatorReplicas, "operator-replicas", 1, "Operator replicas")
 	cmd.Flags().BoolVar(&flags.skipCleanup, "skip-cleanup", false, "Do not run cleanup actions after test run")
 	cmd.Flags().StringVar(&flags.testContextOutPath, "test-context-out", "", "Write the test context to the given path")
 	cmd.Flags().StringVar(&flags.testLicense, "test-license", "", "Test license to apply")
@@ -99,6 +102,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.kubernetesVersion, "kubernetes-version", "", "Kubernetes version")
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
 	cmd.Flags().BoolVar(&flags.ignoreWebhookFailures, "ignore-webhook-failures", false, "Specifies if webhook errors should be ignored. Useful when running test locally. False by default")
+	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables
