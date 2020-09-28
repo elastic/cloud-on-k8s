@@ -19,7 +19,7 @@ CAUTION: Deleting CRDs will trigger deletion of all custom resources ({eck_resou
 [id="{p}-install-all-in-one"]
 == Install ECK using the `all-in-one.yaml` file
 
-The `all-in-one.yaml` method is the quickest way to get started with ECK if you have full administative access to the Kubernetes cluster. The <<{p}-quickstart>> document describes how to proceed with this method. When you run the `kubectl` command listed in <<{p}-deploy-eck>>, the following components are installed or updated:
+The `all-in-one.yaml` method is the quickest way to get started with ECK if you have full administrative access to the Kubernetes cluster. The <<{p}-quickstart>> document describes how to proceed with this method. When you run the `kubectl` command listed in <<{p}-deploy-eck>>, the following components are installed or updated:
 
 * `CustomResourceDefinition` objects for all supported resource types ({eck_resources_list}).
 * `Namespace` named `elastic-system` to hold all operator resources.
