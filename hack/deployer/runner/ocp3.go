@@ -23,6 +23,7 @@ const (
 
 	// Ansible Docker image to manage OCP3 environments
 	AnsibleDockerImage = "eu.gcr.io/elastic-cloud-dev/ansible:427a1fd"
+	AnsibleUser        = "jenkins"
 	// Ansible user home where some files (GCP credentials, Ansible vars and output) are mounted from the CI container
 	AnsibleHomePath           = "/home/ansible"
 	AnsibleVarsFilename       = "vars.yml"
@@ -132,12 +133,14 @@ func (d Ocp3Driver) writeAnsibleVarsFile() error {
 	log.Printf("Setting Ansible vars...")
 
 	vars := struct {
+		Suffix         string   `yaml:"suffix"`
 		MasterCount    int      `yaml:"master_count"`
 		MasterInstance string   `yaml:"master_instance"`
 		WorkerCount    int      `yaml:"worker_count"`
 		WorkerInstance string   `yaml:"worker_instance"`
 		AllowedSources []string `yaml:"allowed_sources"`
 	}{
+		Suffix:         d.plan.ClusterName,
 		MasterCount:    MasterCount,
 		MasterInstance: MasterInstance,
 		WorkerCount:    d.plan.Ocp3.WorkerCount,
@@ -159,7 +162,7 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 	log.Printf("Creating OCP3 cluster with Ansible in Docker...")
 
 	params := map[string]interface{}{
-		"ClusterName":         d.plan.ClusterName,
+		"User":                AnsibleUser,
 		"HomeVolumeName":      SharedVolumeName,
 		"HomeVolumeMountPath": AnsibleHomePath,
 		"GCloudCredsPath":     filepath.Join(AnsibleHomePath, GCPDir, ServiceAccountFilename),
@@ -173,7 +176,7 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 	return NewCommand(`docker run --rm \
 		-e FORCED_GROUP_ID=1000 \
 		-e FORCED_USER_ID=1000 \
-		-e USER={{.ClusterName}} \
+		-e USER={{.User}} \
 		-e USER_HOME={{.HomeVolumeMountPath}} \
 		-v {{.HomeVolumeName}}:{{.HomeVolumeMountPath}} \
 		-e CLOUDSDK_CONFIG={{.GCloudSDKPath}} \
