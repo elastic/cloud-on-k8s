@@ -99,7 +99,7 @@ If you are using the <<{p}-install-helm,Helm chart installation method>>, the ab
 
 [source, sh]
 ----
-helm install elastic-operator eck-operator -n elastic-system --create-namespace \
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
   --set=webhook.manageCerts=false \
   --set=webhook.certsSecret=elastic-webhook-server-custom-cert \
   --set=webhook.caBundle=$(base64 -w 0 ca.crt) 
@@ -158,7 +158,7 @@ If you are using the <<{p}-install-helm,Helm chart installation method>>, the ab
 
 [source, sh]
 ----
-helm install elastic-operator eck-operator -n elastic-system --create-namespace \
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
   --set=webhook.manageCerts=false \
   --set=webhook.certsSecret=elastic-webhook-server-cert \
   --set=webhook.certManagerCert=elastic-webhook-server-cert 

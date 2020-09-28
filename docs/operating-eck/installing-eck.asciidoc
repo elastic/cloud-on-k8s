@@ -48,7 +48,7 @@ This is the default mode of installation and is equivalent to <<{p}-install-all-
 
 [source,sh]
 ----
-helm install elastic-operator eck-operator -n elastic-system --create-namespace
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace
 ----
 
 [float]
@@ -61,14 +61,14 @@ Since CRDs are global resources, they still need to be installed by an administr
 
 [source,sh]
 ----
-helm install elastic-operator-crds eck-operator-crds 
+helm install elastic-operator-crds elastic/eck-operator-crds 
 ----
 
 The operator can be installed by any user who has full access to the set of namespaces they wish to manage. The following example installs the operator to `elastic-system` namespace and configures it to manage only `namespace-a` and `namespace-b`:
 
 [source,sh]
 ----
-helm install elastic-operator eck-operator -n elastic-system --create-namespace \
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
   --set=installCRDs=false \
   --set=managedNamespaces='{namespace-a, namespace-b}' \
   --set=createClusterScopedResources=false \
@@ -84,5 +84,5 @@ You can view all configurable values by running the following:
 
 [source,sh]
 ----
-helm show values eck-operator
+helm show values elastic/eck-operator
 ----
