@@ -49,6 +49,21 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
+	// recreate any StatefulSet that needs to account for PVC expansion
+	recreations, err := recreateStatefulSets(d.K8sClient(), d.ES)
+	if err != nil {
+		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
+	}
+	if recreations > 0 {
+		// Some StatefulSets are in the process of being recreated to handle PVC expansion:
+		// it is safer to requeue until the re-creation is done.
+		// Otherwise, some operation could be performed with wrong assumptions:
+		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
+		log.V(1).Info("StatefulSets recreation in progress, re-queueing.",
+			"namespace", d.ES.Namespace, "es_name", d.ES.Name, "recreations", recreations)
+		return results.WithResult(defaultRequeue)
+	}
+
 	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)

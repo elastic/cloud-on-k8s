@@ -5,30 +5,49 @@
 package driver
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	// RecreateStatefulSetAnnotationPrefix is used to annotate the Elasticsearch resource
+	// with StatefulSets to recreate. The StatefulSet name is appended to this name.
+	RecreateStatefulSetAnnotationPrefix = "elasticsearch.k8s.elastic.co/recreate-"
 )
 
 // handleVolumeExpansion works around the immutability of VolumeClaimTemplates in StatefulSets by:
 // 1. updating storage requests in PVCs whose storage class supports volume expansion
-// 2. deleting the StatefulSet, to be recreated with the new storage spec
-// It returns a boolean indicating whether the StatefulSet was deleted.
+// 2. scheduling the StatefulSet for recreation with the new storage spec
+// It returns a boolean indicating whether the StatefulSet needs to be recreated.
 // Note that some storage drivers also require Pods to be deleted/recreated for the filesystem to be resized
 // (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
 // This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
-func handleVolumeExpansion(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
+func handleVolumeExpansion(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
 	err := resizePVCs(k8sClient, expectedSset, actualSset)
 	if err != nil {
 		return false, err
 	}
-	return deleteSsetForClaimResize(k8sClient, expectedSset, actualSset)
+
+	recreate, err := needsRecreate(expectedSset, actualSset)
+	if err != nil {
+		return false, err
+	}
+	if !recreate {
+		return false, nil
+	}
+	return true, annotateForRecreation(k8sClient, es, actualSset, expectedSset.Spec.VolumeClaimTemplates)
 }
 
 // resizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
@@ -70,30 +89,28 @@ func resizePVCs(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSse
 	return nil
 }
 
-// deleteSsetForClaimResize compares expected vs. actual StatefulSets, and deletes the actual one
-// if a volume expansion can be performed. Pods remain orphan until the StatefulSet is created again.
-func deleteSsetForClaimResize(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
-	shouldRecreate, err := needsRecreate(expectedSset, actualSset)
+// annotateForRecreation stores the StatefulSet spec with updated storage requirements
+// in an annotation of the Elasticsearch resource, to be recreated at the next reconciliation.
+func annotateForRecreation(
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	actualSset appsv1.StatefulSet,
+	expectedClaims []corev1.PersistentVolumeClaim,
+) error {
+	log.Info("Preparing StatefulSet re-creation to account for PVC resize",
+		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", actualSset.Name)
+
+	actualSset.Spec.VolumeClaimTemplates = expectedClaims
+	asJSON, err := json.Marshal(actualSset)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if !shouldRecreate {
-		return false, nil
+	if es.Annotations == nil {
+		es.Annotations = make(map[string]string, 1)
 	}
+	es.Annotations[RecreateStatefulSetAnnotationPrefix+actualSset.Name] = string(asJSON)
 
-	log.Info("Deleting StatefulSet to account for resized PVCs, it will be recreated automatically",
-		"namespace", actualSset.Namespace, "statefulset_name", actualSset.Name)
-
-	opts := client.DeleteOptions{}
-	// ensure Pods are not also deleted
-	orphanPolicy := metav1.DeletePropagationOrphan
-	opts.PropagationPolicy = &orphanPolicy
-	// ensure we are not deleting based on out-of-date sset spec
-	opts.Preconditions = &metav1.Preconditions{
-		UID:             &actualSset.UID,
-		ResourceVersion: &actualSset.ResourceVersion,
-	}
-	return true, k8sClient.Delete(&actualSset, &opts)
+	return k8sClient.Update(&es)
 }
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
@@ -136,4 +153,99 @@ func isStorageExpansion(expectedSize *resource.Quantity, actualSize *resource.Qu
 	default: // increase
 		return true, nil
 	}
+}
+
+// recreateStatefulSets re-creates StatefulSets as specified in Elasticsearch annotations, to account for
+// resized volume claims.
+// This functions acts as a state machine that depends on the annotation and the UID of existing StatefulSets.
+// A standard flow may span over multiple reconciliations like this:
+// 1. No annotation set: nothing to do.
+// 2. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists: delete it.
+// 3. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet does not exist: create it.
+// 4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
+//    a different UID: the re-creation is over, remove the annotation.
+func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, error) {
+	toRecreate, err := ssetsToRecreate(es)
+	if err != nil {
+		return 0, err
+	}
+	recreations := len(toRecreate)
+
+	for annotation, toRecreate := range toRecreate {
+		var existing appsv1.StatefulSet
+		err := k8sClient.Get(k8s.ExtractNamespacedName(&toRecreate), &existing)
+		switch {
+		// error case
+		case err != nil && !apierrors.IsNotFound(err):
+			return recreations, err
+
+		// already exists with the same UID: deletion case
+		case existing.UID == toRecreate.UID:
+			log.Info("Deleting StatefulSet to account for resized PVCs, it will be recreated automatically",
+				"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", existing.Name)
+			if err := deleteStatefulSet(k8sClient, existing); err != nil {
+				return recreations, err
+			}
+
+		// already deleted: creation case
+		case err != nil && apierrors.IsNotFound(err):
+			log.Info("Re-creating StatefulSet to account for resized PVCs",
+				"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", toRecreate.Name)
+			if err := recreateStatefulSet(k8sClient, toRecreate); err != nil {
+				return recreations, err
+			}
+
+		// already recreated (existing.UID != toRecreate.UID): we're done
+		default:
+			// remove the annotation
+			delete(es.Annotations, annotation)
+			if err := k8sClient.Update(&es); err != nil {
+				return recreations, err
+			}
+		}
+	}
+
+	return recreations, nil
+}
+
+// ssetsToRecreateFromAnnotation returns the list of StatefulSet that should be recreated, based on annotations
+// in the Elasticsearch resource.
+func ssetsToRecreate(es esv1.Elasticsearch) (map[string]appsv1.StatefulSet, error) {
+	toRecreate := map[string]appsv1.StatefulSet{}
+	for key, value := range es.Annotations {
+		if !strings.HasPrefix(key, RecreateStatefulSetAnnotationPrefix) {
+			continue
+		}
+		var sset appsv1.StatefulSet
+		if err := json.Unmarshal([]byte(value), &sset); err != nil {
+			return nil, err
+		}
+		toRecreate[key] = sset
+	}
+	return toRecreate, nil
+}
+
+func deleteStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
+	opts := client.DeleteOptions{}
+	// ensure we are not deleting the StatefulSet that was already recreated with a different UID
+	opts.Preconditions = &metav1.Preconditions{UID: &sset.UID}
+	// ensure Pods are not also deleted
+	orphanPolicy := metav1.DeletePropagationOrphan
+	opts.PropagationPolicy = &orphanPolicy
+
+	return k8sClient.Delete(&sset, &opts)
+}
+
+func recreateStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
+	// don't keep metadata inherited from the old StatefulSet
+	newObjMeta := metav1.ObjectMeta{
+		Name:            sset.Name,
+		Namespace:       sset.Namespace,
+		Labels:          sset.Labels,
+		Annotations:     sset.Annotations,
+		OwnerReferences: sset.OwnerReferences,
+		Finalizers:      sset.Finalizers,
+	}
+	sset.ObjectMeta = newObjMeta
+	return k8sClient.Create(&sset)
 }

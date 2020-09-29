@@ -25,7 +25,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -163,8 +162,12 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	// focus on the special case of handling PVC resize
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", Annotations: map[string]string{
+			// simulate annotation already set otherwise we get a conflict when es is updated twice
+			// (first for initial master nodes, then for sset recreation)
+			"elasticsearch.k8s.elastic.co/initial-master-nodes": "sset1-0,sset1-1,sset1-2",
+		}},
+		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 
 	truePtr := true
@@ -240,6 +243,8 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	}
 
 	k8sClient := k8s.WrappedFakeClient(&es, &storageClass, &actualStatefulSets[0], &actualStatefulSets[1])
+	// retrieve the created es with its resource version set
+	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
@@ -248,26 +253,12 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 		parentCtx:    context.Background(),
 	}
 
-	// 2nd StatefulSet should be deleted, we should requeue
+	// 2nd StatefulSet should be marked for recreation, we should requeue
 	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.True(t, res.Requeue)
-	var retrievedSset appsv1.StatefulSet
-	err = k8sClient.Get(k8s.ExtractNamespacedName(&dataResized), &retrievedSset)
-	require.True(t, apierrors.IsNotFound(err))
-
-	// re-fetch es to simulate actual reconciliation behaviour
 	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
-	ctx.es = es
-	// the 2nd sset does not exist anymore
-	actualStatefulSets = []appsv1.StatefulSet{actualStatefulSets[0]}
-
-	// next run: the missing StatefulSet should be recreated
-	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
-	require.NoError(t, err)
-	require.False(t, res.Requeue)
-	require.Len(t, res.ActualStatefulSets, 2)
-	require.Equal(t, resource.MustParse("3Gi"), *res.ActualStatefulSets[1].Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage())
+	require.Len(t, es.Annotations, 2) // initial master nodes + sset to recreate
 }
 
 func Test_isReplicaIncrease(t *testing.T) {

@@ -41,7 +41,7 @@ type UpscaleResults struct {
 // - update existing StatefulSets specification, to be used for future pods rotation
 // - upscale StatefulSet for which we expect more replicas
 // - limit master node creation to one at a time
-// - resize (inline) existing PVCs to match new StatefulSet storage reqs and delete the StatefulSet for recreation
+// - resize (inline) existing PVCs to match new StatefulSet storage reqs and schedule the StatefulSet recreation
 // It does not:
 // - perform any StatefulSet downscale (left for downscale phase)
 // - perform any pod upgrade (left for rolling upgrade phase)
@@ -65,15 +65,12 @@ func HandleUpscaleAndSpecChanges(
 			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
-			ssetDeleted, err := handleVolumeExpansion(ctx.k8sClient, res.StatefulSet, actualSset)
+			recreateSset, err := handleVolumeExpansion(ctx.k8sClient, ctx.es, res.StatefulSet, actualSset)
 			if err != nil {
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
-			if ssetDeleted {
-				// The StatefulSet was just deleted: it is safer to requeue at the end of this function
-				// and let it be re-created at the next reconciliation.
-				// Otherwise, downscales and rolling upgrades could be performed with wrong assumptions:
-				// the sset isn't reported in actualStatefulSets (was just deleted), but the Pods actually exist.
+			if recreateSset {
+				// The StatefulSet is scheduled for recreation: let's requeue before attempting any further spec change.
 				results.Requeue = true
 				continue
 			}

@@ -5,16 +5,17 @@
 package driver
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -60,7 +61,8 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 	return *c
 }
 
-func Test_resizePVCs(t *testing.T) {
+func Test_handleVolumeExpansion(t *testing.T) {
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
@@ -98,6 +100,7 @@ func Test_resizePVCs(t *testing.T) {
 		runtimeObjs  []runtime.Object
 		expectedPVCs []corev1.PersistentVolumeClaim
 		wantErr      bool
+		wantRecreate bool
 	}{
 		{
 			name: "no pvc to resize",
@@ -107,6 +110,7 @@ func Test_resizePVCs(t *testing.T) {
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("1Gi", "1Gi", "1Gi"),
+			wantRecreate: false,
 		},
 		{
 			name: "all pvcs should be resized",
@@ -116,6 +120,7 @@ func Test_resizePVCs(t *testing.T) {
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),
+			wantRecreate: true,
 		},
 		{
 			name: "2 pvcs left to resize",
@@ -125,6 +130,7 @@ func Test_resizePVCs(t *testing.T) {
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),
+			wantRecreate: true,
 		},
 		{
 			name: "one pvc is missing: resize what's there, don't error out",
@@ -134,6 +140,7 @@ func Test_resizePVCs(t *testing.T) {
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi"),
+			wantRecreate: true,
 		},
 		{
 			name: "storage decrease is not supported: error out",
@@ -148,26 +155,48 @@ func Test_resizePVCs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(tt.runtimeObjs...)
-			if err := resizePVCs(k8sClient, tt.args.expectedSset, tt.args.actualSset); (err != nil) != tt.wantErr {
+			k8sClient := k8s.WrappedFakeClient(append(tt.runtimeObjs, &es)...)
+			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("resizePVCs() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			require.Equal(t, tt.wantRecreate, recreate)
 
 			// all expected PVCs should exist in the apiserver
 			var pvcs corev1.PersistentVolumeClaimList
-			err := k8sClient.List(&pvcs)
+			err = k8sClient.List(&pvcs)
 			require.NoError(t, err)
 			require.Len(t, pvcs.Items, len(tt.expectedPVCs))
 			for i, expectedPVC := range tt.expectedPVCs {
 				comparison.RequireEqual(t, &expectedPVC, &pvcs.Items[i])
 			}
+
+			// Elasticsearch should be annotated with the sset to recreate
+			var retrievedES esv1.Elasticsearch
+			err = k8sClient.Get(k8s.ExtractNamespacedName(&es), &retrievedES)
+			require.NoError(t, err)
+			if tt.wantRecreate {
+				require.Len(t, retrievedES.Annotations, 1)
+				wantUpdatedSset := tt.args.actualSset.DeepCopy()
+				// should have the expected claims
+				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
+
+				// test ssetsToRecreate along the way
+				toRecreate, err := ssetsToRecreate(retrievedES)
+				require.NoError(t, err)
+				require.Equal(t,
+					map[string]appsv1.StatefulSet{
+						"elasticsearch.k8s.elastic.co/recreate-" + tt.args.actualSset.Name: *wantUpdatedSset},
+					toRecreate)
+			} else {
+				require.Empty(t, retrievedES.Annotations)
+			}
 		})
 	}
 }
 
-func Test_deleteSsetForClaimResize(t *testing.T) {
+func Test_needsRecreate(t *testing.T) {
 	type args struct {
-		k8sClient    k8s.Client
 		expectedSset appsv1.StatefulSet
 		actualSset   appsv1.StatefulSet
 	}
@@ -180,7 +209,6 @@ func Test_deleteSsetForClaimResize(t *testing.T) {
 		{
 			name: "requested storage increase in the 2nd claim: recreate",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(&sampleSset, withVolumeExpansion(sampleStorageClass)),
 				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
 				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
 			},
@@ -189,7 +217,6 @@ func Test_deleteSsetForClaimResize(t *testing.T) {
 		{
 			name: "no claim in the StatefulSet",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(&sampleSset),
 				expectedSset: sampleSset,
 				actualSset:   sampleSset,
 			},
@@ -198,7 +225,6 @@ func Test_deleteSsetForClaimResize(t *testing.T) {
 		{
 			name: "no change in the claim",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(&sampleSset),
 				expectedSset: withClaims(sampleSset, sampleClaim),
 				actualSset:   withClaims(sampleSset, sampleClaim),
 			},
@@ -207,7 +233,6 @@ func Test_deleteSsetForClaimResize(t *testing.T) {
 		{
 			name: "requested storage decrease: error out",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(&sampleSset, withVolumeExpansion(sampleStorageClass)),
 				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")),
 				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
 			},
@@ -217,22 +242,13 @@ func Test_deleteSsetForClaimResize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			deleted, err := deleteSsetForClaimResize(tt.args.k8sClient, tt.args.expectedSset, tt.args.actualSset)
+			got, err := needsRecreate(tt.args.expectedSset, tt.args.actualSset)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("deleteSsetForClaimResize() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("needsRecreate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if deleted != tt.want {
-				t.Errorf("deleteSsetForClaimResize() got = %v, want %v", deleted, tt.want)
-			}
-
-			// double-check if the sset is indeed deleted
-			var retrieved appsv1.StatefulSet
-			err = tt.args.k8sClient.Get(k8s.ExtractNamespacedName(&tt.args.actualSset), &retrieved)
-			if deleted {
-				require.True(t, apierrors.IsNotFound(err))
-			} else {
-				require.NoError(t, err)
+			if got != tt.want {
+				t.Errorf("needsRecreate() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -308,6 +324,115 @@ func Test_isStorageExpansion(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("isStorageExpansion() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_recreateStatefulSets(t *testing.T) {
+	es := func() *esv1.Elasticsearch {
+		return &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	}
+	withAnnotation := func(es *esv1.Elasticsearch, key, value string) *esv1.Elasticsearch {
+		if es.Annotations == nil {
+			es.Annotations = map[string]string{}
+		}
+		es.Annotations[key] = value
+		return es
+	}
+
+	sset1 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}}
+	sset1Bytes, _ := json.Marshal(sset1)
+	sset1Json := string(sset1Bytes)
+	sset1DifferentUID := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-differentuid"}}
+
+	sset2 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2", UID: "sset2-uid"}}
+	sset2Bytes, _ := json.Marshal(sset2)
+	sset2Json := string(sset2Bytes)
+
+	type args struct {
+		existingSsets []runtime.Object
+		es            esv1.Elasticsearch
+	}
+	tests := []struct {
+		name string
+		args
+		wantES          esv1.Elasticsearch
+		wantSsets       []appsv1.StatefulSet
+		wantRecreations int
+	}{
+		{
+			name: "no annotation: nothing to do",
+			args: args{
+				existingSsets: []runtime.Object{sset1},
+				es:            *es(),
+			},
+			wantES:          *es(),
+			wantRecreations: 0,
+		},
+		{
+			name: "StatefulSet to delete",
+			args: args{
+				existingSsets: []runtime.Object{sset1}, // exists with the same UID
+				es:            *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+			},
+			wantES:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+			wantSsets:       nil, // deleted
+			wantRecreations: 1,
+		},
+		{
+			name: "StatefulSet to create",
+			args: args{
+				existingSsets: []runtime.Object{}, // doesn't exist
+				es:            *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+			},
+			wantES: *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+			// created, no UUID due to how the fake client creates objects
+			wantSsets:       []appsv1.StatefulSet{{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1"}}},
+			wantRecreations: 1,
+		},
+		{
+			name: "StatefulSet already recreated: remove the annotation",
+			args: args{
+				existingSsets: []runtime.Object{sset1DifferentUID}, // recreated
+				es:            *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+			},
+			wantES:          *es(),                                    // annotation removed
+			wantSsets:       []appsv1.StatefulSet{*sset1DifferentUID}, // same
+			wantRecreations: 1,                                        // not considered done yet
+		},
+		{
+			name: "multiple statefulsets to handle",
+			args: args{
+				existingSsets: []runtime.Object{sset1, sset2},
+				es: *withAnnotation(withAnnotation(es(),
+					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+					"elasticsearch.k8s.elastic.co/recreate-sset2", sset2Json),
+			},
+			wantES: *withAnnotation(withAnnotation(es(),
+				"elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+				"elasticsearch.k8s.elastic.co/recreate-sset2", sset2Json),
+			wantSsets:       nil,
+			wantRecreations: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.WrappedFakeClient(append(tt.args.existingSsets, &tt.args.es)...)
+			got, err := recreateStatefulSets(k8sClient, tt.args.es)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantRecreations, got)
+
+			var retrievedES esv1.Elasticsearch
+			err = k8sClient.Get(k8s.ExtractNamespacedName(&tt.args.es), &retrievedES)
+			require.NoError(t, err)
+			comparison.RequireEqual(t, &tt.wantES, &retrievedES)
+
+			var retrievedSsets appsv1.StatefulSetList
+			err = k8sClient.List(&retrievedSsets)
+			require.NoError(t, err)
+			for i := range tt.wantSsets {
+				comparison.RequireEqual(t, &tt.wantSsets[i], &retrievedSsets.Items[i])
 			}
 		})
 	}
