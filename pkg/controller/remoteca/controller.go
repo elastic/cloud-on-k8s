@@ -83,8 +83,8 @@ type ReconcileRemoteCa struct {
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "remoteca")
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	tx, ctx := tracing.NewTransaction(tracing.Tracer(), request.NamespacedName, "remoteca")
 	defer tracing.EndTransaction(tx)
 
 	// Fetch the local Elasticsearch spec

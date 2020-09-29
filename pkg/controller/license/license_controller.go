@@ -50,7 +50,7 @@ var log = logf.Log.WithName(name)
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
 // This happens independently from any watch triggered reconcile request.
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 	results := r.reconcileInternal(request)
 	current, err := results.Aggregate()
 	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)

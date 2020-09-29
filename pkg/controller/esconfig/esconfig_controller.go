@@ -26,12 +26,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -39,10 +39,6 @@ import (
 
 const (
 	controllerName = "esconfig-controller"
-)
-
-var (
-	log = logf.Log.WithName(controllerName)
 )
 
 // Add creates a new ESConfig Controller and adds it to the Manager with default RBAC.
@@ -104,47 +100,36 @@ var _ driver.Interface = &ReconcileElasticsearchConfig{}
 // Reconcile reads that state of the cluster for an ES Config object and makes changes based on the state read
 // and what is in the spec.
 func (r *ReconcileElasticsearchConfig) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "esc_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "esconfig")
-	defer tracing.EndTransaction(tx)
+	ctx := common.NewReconciliationContext(crlog.Log.WithName(controllerName), request.NamespacedName, "elasticsearch")
+	return tracing.TraceReconciliation(ctx, request, "elasticsearch", r.doReconcile)
+}
+
+func (r *ReconcileElasticsearchConfig) doReconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+
+	logger := tracing.LoggerFromContext(ctx)
+	defer common.LogReconciliationRun(logger, request, &r.iteration)()
 
 	var esc escv1alpha1.ElasticsearchConfig
-	// TODO does this make sense any more?
-	// if err := association.FetchWithAssociations(ctx, r.Client, request, &esc); err != nil {
-	// 	if apierrors.IsNotFound(err) {
-	// 		r.onDelete(types.NamespacedName{
-	// 			Namespace: request.Namespace,
-	// 			Name:      request.Name,
-	// 		})
-	// 		return reconcile.Result{}, nil
-	// 	}
-	// 	return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	// }
-
 	err := association.FetchWithAssociations(ctx, r.Client, request, &esc)
 	if err != nil {
-		// TODO should this requeue?
-		return reconcile.Result{Requeue: true}, tracing.CaptureError(ctx, err)
+		// ES config has since been deleted
+		if apierrors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		// TODO should this requeue? other controllers dont, im guessing just expecting to requeue based on the error
+		return reconcile.Result{}, err
 	}
 
 	if common.IsUnmanaged(&esc) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", esc.Namespace, "esc_name", esc.Name)
+		logger.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", esc.Namespace, "esc_name", esc.Name)
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &esc); err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	compatible, err := r.isCompatible(ctx, &esc)
+	if err != nil || !compatible {
+		return reconcile.Result{}, err
 	}
 
-	// TODO i dont think we need the association controller actually, but maybe im wrong
-	// if !association.IsConfiguredIfSet(&esc, r.recorder) {
-	// 	return reconcile.Result{}, nil
-	// }
-
-	return r.doReconcile(ctx, esc)
-}
-
-func (r *ReconcileElasticsearchConfig) doReconcile(ctx context.Context, esc escv1alpha1.ElasticsearchConfig) (reconcile.Result, error) {
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, &esc); err != nil {
 		return reconcile.Result{}, err
@@ -160,22 +145,23 @@ func (r *ReconcileElasticsearchConfig) doReconcile(ctx context.Context, esc escv
 		Name:      esc.Spec.ElasticsearchRef.Name,
 		Namespace: ns,
 	}
-	err := r.Client.Get(esNsn, &es)
+	// TODO switch this to use the regular crclient so we can pass contexts?
+	err = r.Client.Get(esNsn, &es)
 	if err != nil {
-		log.Error(err, "Associated object doesn't exist yet")
+		logger.Error(err, "Associated object doesn't exist yet")
 		k8s.EmitErrorEvent(r.recorder, err, &esc, events.EventAssociationError, err.Error())
-		return reconcile.Result{Requeue: true}, tracing.CaptureError(ctx, err)
+		return reconcile.Result{Requeue: true}, err
 	}
 
-	escl, err := NewESClient(r.Parameters.Dialer, r.Client, es)
+	escl, err := NewESClient(ctx, r.Parameters.Dialer, r.Client, es)
 	if err != nil {
-		return reconcile.Result{Requeue: true}, tracing.CaptureError(ctx, err)
+		return reconcile.Result{Requeue: true}, err
 	}
 
 	for _, op := range esc.Spec.Operations {
 		err = ReconcileOperation(ctx, escl, op)
 		if err != nil {
-			return reconcile.Result{Requeue: true}, tracing.CaptureError(ctx, err)
+			return reconcile.Result{Requeue: true}, err
 		}
 	}
 	return reconcile.Result{}, nil
@@ -192,15 +178,14 @@ func (r *ReconcileElasticsearchConfig) isCompatible(ctx context.Context, esc *es
 }
 
 func (r *ReconcileElasticsearchConfig) validate(ctx context.Context, esc *escv1alpha1.ElasticsearchConfig) error {
-	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
-	defer span.End()
-
-	if err := esc.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
-		k8s.EmitErrorEvent(r.recorder, err, esc, events.EventReasonValidation, err.Error())
-		return tracing.CaptureError(vctx, err)
-	}
-	return nil
+	return tracing.DoInSpan(ctx, "validate", func(ctx context.Context) error {
+		if err := esc.ValidateCreate(); err != nil {
+			tracing.LoggerFromContext(ctx).Error(err, "Validation failed")
+			k8s.EmitErrorEvent(r.recorder, err, esc, events.EventReasonValidation, err.Error())
+			return err
+		}
+		return nil
+	})
 }
 
 // ReconcileOperation reconciles an individual esconfig operation
@@ -214,7 +199,8 @@ func ReconcileOperation(ctx context.Context, client esclient.Client, operation e
 	if !needsUpdate {
 		return nil
 	}
-	log.V(1).Info("Content is different, need to send PUT", "url", opURL, "body", operation.Body)
+	logger := tracing.LoggerFromContext(ctx)
+	logger.V(1).Info("Content is different, need to send PUT", "url", opURL, "body", operation.Body)
 	put, err := http.NewRequest(http.MethodPut, opURL.String(), ioutil.NopCloser(bytes.NewBufferString(operation.Body)))
 	if err != nil {
 		return errors.WithStack(err)
@@ -228,14 +214,14 @@ func ReconcileOperation(ctx context.Context, client esclient.Client, operation e
 		Does provide useful debugging info so would likely be useful as an event
 		2020-09-21T18:57:35.940-0500	DEBUG	esconfig-controller	Response from PUT	{"service.version": "1.3.0-SNAPSHOT+c9f2cc7d", "url": "/_snapshot/my_repository", "status_code": 500, "body": "{\"error\":{\"root_cause\":[{\"type\":\"repository_exception\",\"reason\":\"[my_repository] location [my_backup_location] doesn't match any of the locations specified by path.repo because this setting is empty\"}],\"type\":\"repository_exception\",\"reason\":\"[my_repository] failed to create repository\",\"caused_by\":{\"type\":\"repository_exception\",\"reason\":\"[my_repository] location [my_backup_location] doesn't match any of the locations specified by path.repo because this setting is empty\"}},\"status\":500}"}
 	*/
-	if log.V(1).Enabled() {
+	if logger.V(1).Enabled() {
 		defer resp.Body.Close()
 		respBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			// todo wrap in span
 			return err
 		}
-		log.V(1).Info("Response from PUT", "url", opURL, "status_code", resp.StatusCode, "body", string(respBytes))
+		logger.V(1).Info("Response from PUT", "url", opURL, "status_code", resp.StatusCode, "body", string(respBytes))
 		return nil
 	}
 
@@ -249,7 +235,8 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL,
 	}
 	// The Elasticsearch endpoint will be added automatically to the request URL which should therefore just be the path
 	// with a leading /
-	log.V(1).Info("Requesting url", "url", opURL)
+	logger := tracing.LoggerFromContext(ctx)
+	logger.V(1).Info("Requesting url", "url", opURL)
 	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	// we handle errors by checking the status code
@@ -257,7 +244,7 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL,
 
 	// nothing exists at this url yet, time to create it
 	if getResp.StatusCode == http.StatusNotFound {
-		log.V(1).Info("resource does not exist yet", "url", opURL)
+		logger.V(1).Info("resource does not exist yet", "url", opURL)
 		return true, nil
 	}
 
@@ -265,7 +252,7 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL,
 	if getResp.StatusCode != http.StatusOK {
 		err = errors.New("status unacceptable")
 		// TODO consider logging body of error here
-		log.Error(err, "error getting current setting", "status_code", getResp.StatusCode, "url", opURL)
+		logger.Error(err, "error getting current setting", "status_code", getResp.StatusCode, "url", opURL)
 		return false, err
 	}
 
@@ -277,9 +264,9 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL,
 
 	diff, _ := jsondiff.Compare(respBytes, body, nil)
 	if diff == jsondiff.SupersetMatch || diff == jsondiff.FullMatch {
-		log.V(1).Info("Content returned is a match, no action required", "url", opURL, "actual", string(respBytes), "expected", string(body))
+		logger.V(1).Info("Content returned is a match, no action required", "url", opURL, "actual", string(respBytes), "expected", string(body))
 		return false, nil
 	}
-	log.V(1).Info("Content returned is a not a superset match, reconciliation required", "url", opURL, "actual", string(respBytes), "expected", string(body))
+	logger.V(1).Info("Content returned is a not a superset match, reconciliation required", "url", opURL, "actual", string(respBytes), "expected", string(body))
 	return true, nil
 }

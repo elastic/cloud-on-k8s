@@ -104,8 +104,8 @@ func (r *Reconciler) log(associated commonv1.Associated) logr.Logger {
 }
 
 func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(r.logger, request, fmt.Sprintf("%s_name", r.AssociatedShortName), &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, r.AssociationName)
+	defer common.LogReconciliationRun(r.logger, request, &r.iteration)()
+	tx, ctx := tracing.NewTransaction(tracing.Tracer(), request.NamespacedName, r.AssociationName)
 	defer tracing.EndTransaction(tx)
 
 	association := r.AssociationObjTemplate()

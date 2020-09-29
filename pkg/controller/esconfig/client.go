@@ -5,11 +5,13 @@
 package esconfig
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	version "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
@@ -21,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func NewESClient(dialer net.Dialer, k8sclient k8s.Client, es esv1.Elasticsearch) (esclient.Client, error) {
+func NewESClient(ctx context.Context, dialer net.Dialer, k8sclient k8s.Client, es esv1.Elasticsearch) (esclient.Client, error) {
 	var client esclient.Client
 	// TODO need to qualify this with namespace before adding port
 	// currently adds
@@ -37,7 +39,7 @@ func NewESClient(dialer net.Dialer, k8sclient k8s.Client, es esv1.Elasticsearch)
 		return client, err
 	}
 	// maybe look to see how we get this in the association?
-	caCerts, err := GetElasticsearchCA(k8sclient, es)
+	caCerts, err := GetElasticsearchCA(ctx, k8sclient, es)
 	if err != nil {
 		return client, err
 	}
@@ -71,7 +73,7 @@ func GetElasticsearchUser(k8sclient k8s.Client, es esv1.Elasticsearch) (esclient
 	}, nil
 }
 
-func GetElasticsearchCA(k8sclient k8s.Client, es esv1.Elasticsearch) ([]*x509.Certificate, error) {
+func GetElasticsearchCA(ctx context.Context, k8sclient k8s.Client, es esv1.Elasticsearch) ([]*x509.Certificate, error) {
 	var certs []*x509.Certificate
 	secretName := certificates.PublicCertsSecretName(esv1.ESNamer, es.Name)
 	var secret corev1.Secret
@@ -79,7 +81,8 @@ func GetElasticsearchCA(k8sclient k8s.Client, es esv1.Elasticsearch) ([]*x509.Ce
 		Name:      secretName,
 		Namespace: es.Namespace,
 	}
-	log.V(1).Info("Retrieving CA secret for Elasticsearch", "secret_name", secretName)
+	logger := tracing.LoggerFromContext(ctx)
+	logger.V(1).Info("Retrieving CA secret for Elasticsearch", "secret_name", secretName)
 	err := k8sclient.Get(nsn, &secret)
 	if err != nil {
 		return certs, errors.WithStack(err)
@@ -91,7 +94,7 @@ func GetElasticsearchCA(k8sclient k8s.Client, es esv1.Elasticsearch) ([]*x509.Ce
 
 	certs, err = certificates.ParsePEMCerts(certBytes)
 	if err != nil {
-		log.Error(err, "error parsing CA secret", "secret_name", secretName, "elasticsearch_name", es.Name)
+		logger.Error(err, "error parsing CA secret", "secret_name", secretName, "elasticsearch_name", es.Name)
 	}
 	return certs, err
 }

@@ -9,6 +9,7 @@ import (
 
 	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // NewTransaction starts a new transaction and sets up a new context with that transaction that also contains the related
@@ -27,4 +28,33 @@ func EndTransaction(tx *apm.Transaction) {
 	if tx != nil {
 		tx.End()
 	}
+}
+
+// ReconcilliationFn describes a reconciliation function.
+type ReconcilliationFn func(context.Context, reconcile.Request) (reconcile.Result, error)
+
+// TraceReconciliation instruments a reconciliation function for tracing
+func TraceReconciliation(ctx context.Context, request reconcile.Request, kind string, fn ReconcilliationFn) (reconcile.Result, error) {
+	t := Tracer()
+	if t == nil {
+		return fn(ctx, request)
+	}
+
+	n := request.NamespacedName.String()
+
+	tx := t.StartTransaction(n, kind)
+	defer tx.End()
+
+	newCtx := apm.ContextWithTransaction(ctx, tx)
+	result, err := fn(newCtx, request)
+
+	return result, apm.CaptureError(newCtx, err)
+}
+
+// DoInSpan wraps the given function within a tracing span.
+func DoInSpan(ctx context.Context, name string, fn func(context.Context) error) error {
+	span, ctx := apm.StartSpan(ctx, name, SpanTypeApp)
+	defer span.End()
+
+	return apm.CaptureError(ctx, fn(ctx))
 }

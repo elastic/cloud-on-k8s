@@ -5,7 +5,6 @@
 package operator
 
 import (
-	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
@@ -32,6 +31,4 @@ type Parameters struct {
 	// SetDefaultSecurityContext enables setting the default security context
 	// with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0
 	SetDefaultSecurityContext bool
-	// Tracer is a shared APM tracer instance or nil
-	Tracer *apm.Tracer
 }

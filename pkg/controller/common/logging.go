@@ -13,12 +13,14 @@ import (
 )
 
 // LogReconciliationRun is the common logging function used to record a reconciliation run.
-func LogReconciliationRun(log logr.Logger, request reconcile.Request, nameField string, iteration *uint64) func() {
+func LogReconciliationRun(log logr.Logger, request reconcile.Request, iteration *uint64) func() {
 	currentIteration := atomic.AddUint64(iteration, 1)
 	startTime := time.Now()
-	log.Info("Starting reconciliation run", "iteration", currentIteration, "namespace", request.Namespace, nameField, request.Name)
+
+	log.Info("Starting reconciliation run", "iteration", currentIteration)
+
 	return func() {
 		totalTime := time.Since(startTime)
-		log.Info("Ending reconciliation run", "iteration", currentIteration, "namespace", request.Namespace, nameField, request.Name, "took", totalTime)
+		log.Info("Ending reconciliation run", "iteration", currentIteration, "took", totalTime)
 	}
 }

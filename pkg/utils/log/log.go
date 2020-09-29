@@ -12,6 +12,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/spf13/pflag"
+	"go.elastic.co/apm"
+	"go.elastic.co/apm/module/apmzap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	klog "k8s.io/klog/v2"
@@ -32,12 +34,15 @@ func BindFlags(flags *pflag.FlagSet) {
 	flags.AddGoFlag(flag.Lookup("log-verbosity"))
 }
 
-// InitLogger initializes the global logger informed by the value of log-verbosity flag.
-func InitLogger() {
-	setLogger(verbosity)
+type logBuilder struct {
+	tracer    *apm.Tracer
+	verbosity *int
 }
 
-// ChangeVerbosity replaces the global logger with a new logger set to the specified verbosity level.
+// Option represents log configuration options.
+type Option func(*logBuilder)
+
+// WithVerbosity sets the log verbosity level.
 // Verbosity levels from 2 are custom levels that increase the verbosity as the value increases.
 // Standard levels are as follows:
 // level | Zap level | name
@@ -46,11 +51,33 @@ func InitLogger() {
 //  0    |  0        | Info
 // -1    |  1        | Warn
 // -2    |  2        | Error
-func ChangeVerbosity(v int) {
-	setLogger(&v)
+func WithVerbosity(verbosity int) Option {
+	return func(lb *logBuilder) {
+		lb.verbosity = &verbosity
+	}
 }
 
-func setLogger(v *int) {
+// WithTracer sets the tracer used by the logger to send logs to APM.
+func WithTracer(tracer *apm.Tracer) Option {
+	return func(lb *logBuilder) {
+		lb.tracer = tracer
+	}
+}
+
+// InitLogger initializes the global logger.
+func InitLogger(opts ...Option) {
+	lb := &logBuilder{
+		verbosity: verbosity,
+	}
+
+	for _, opt := range opts {
+		opt(lb)
+	}
+
+	setLogger(lb.verbosity, lb.tracer)
+}
+
+func setLogger(v *int, tracer *apm.Tracer) {
 	zapLevel := determineLogLevel(v)
 
 	// if the Zap custom level is less than debug (verbosity level 2 and above) set the klog level to the same level
@@ -60,9 +87,16 @@ func setLogger(v *int) {
 		_ = flagset.Set("v", strconv.Itoa(int(zapLevel.Level())*-1))
 	}
 
-	opts := []zap.Option{zap.Fields(
-		zap.String("service.version", getVersionString()),
-	)}
+	opts := []zap.Option{
+		zap.Fields(
+			zap.String("service.version", getVersionString()),
+		),
+	}
+
+	// use instrumented core if tracing is enabled
+	if tracer != nil {
+		opts = append(opts, zap.WrapCore((&apmzap.Core{Tracer: tracer}).WrapCore))
+	}
 
 	var encoder zapcore.Encoder
 	if dev.Enabled {

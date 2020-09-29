@@ -53,7 +53,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.elastic.co/apm"
 	"go.uber.org/automaxprocs/maxprocs"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -109,8 +108,17 @@ func Command() *cobra.Command {
 				}
 			}
 
-			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
+			// initialize the tracer first because the logger depends on it
+			var err error
+			if viper.GetBool(operator.EnableTracingFlag) {
+				err = tracing.InitTracer()
+			}
+
+			logconf.InitLogger(logconf.WithVerbosity(viper.GetInt(logconf.FlagName)), logconf.WithTracer(tracing.Tracer()))
 			log = logf.Log.WithName("manager")
+			if err != nil {
+				log.Info("Continuing without tracing due to initialization error", "error", err)
+			}
 
 			return nil
 		},
@@ -469,10 +477,6 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 
 	log.Info("Setting up controllers")
-	var tracer *apm.Tracer
-	if viper.GetBool(operator.EnableTracingFlag) {
-		tracer = tracing.NewTracer("elastic-operator")
-	}
 	params := operator.Parameters{
 		Dialer:            dialer,
 		IPFamily:          ipFamily,
@@ -488,7 +492,6 @@ func startOperator(stopChan <-chan struct{}) error {
 		},
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
-		Tracer:                    tracer,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {

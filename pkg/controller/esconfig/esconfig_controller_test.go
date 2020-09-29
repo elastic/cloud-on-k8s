@@ -5,11 +5,11 @@
 package esconfig
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func Test_updateRequired(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := version.From(7, 9, 1)
 			client := esclient.NewMockClient(v, tt.fn)
-			ctx := context.Background()
+			ctx := common.NewMockContext()
 			testURL, _ := url.Parse(tt.url)
 			actual, err := updateRequired(ctx, client, testURL, []byte(tt.body))
 

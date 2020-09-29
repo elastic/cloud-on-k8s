@@ -5,11 +5,13 @@
 package tracing
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
-	pkgerrors "github.com/pkg/errors"
+	errors "github.com/pkg/errors"
 	"go.elastic.co/apm"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // NewLogAdapter returns an implementation of the log interface expected by the APM agent.
@@ -24,7 +26,7 @@ type logAdapter struct {
 }
 
 func (l *logAdapter) Errorf(format string, args ...interface{}) {
-	l.log.Error(pkgerrors.Errorf(format, args...), "")
+	l.log.Error(errors.Errorf(format, args...), "")
 }
 
 func (l *logAdapter) Warningf(format string, args ...interface{}) {
@@ -35,5 +37,31 @@ func (l *logAdapter) Debugf(format string, args ...interface{}) {
 	l.log.V(1).Info(fmt.Sprintf(format, args...))
 }
 
-var _ apm.Logger = &logAdapter{}
-var _ apm.WarningLogger = &logAdapter{}
+var (
+	_ apm.Logger        = &logAdapter{}
+	_ apm.WarningLogger = &logAdapter{}
+)
+
+// LoggerFromContext returns a logger from the context with tracing information added.
+// TODO must init with SetLogger first?
+func LoggerFromContext(ctx context.Context) logr.Logger {
+	fields := TraceContextKV(ctx)
+	return crlog.FromContext(ctx).WithValues(fields...)
+}
+
+// TraceContextKV returns logger key-values for the current trace context.
+func TraceContextKV(ctx context.Context) []interface{} {
+	tx := apm.TransactionFromContext(ctx)
+	if tx == nil {
+		return nil
+	}
+
+	traceCtx := tx.TraceContext()
+	fields := []interface{}{"trace.id", traceCtx.Trace, "transaction.id", traceCtx.Span}
+
+	if span := apm.SpanFromContext(ctx); span != nil {
+		fields = append(fields, "span.id", span.TraceContext().Span)
+	}
+
+	return fields
+}

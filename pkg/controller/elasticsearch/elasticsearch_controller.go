@@ -65,7 +65,6 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
 	observerSettings := observer.DefaultSettings
-	observerSettings.Tracer = params.Tracer
 	return &ReconcileElasticsearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
@@ -155,8 +154,8 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "elasticsearch")
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	tx, ctx := tracing.NewTransaction(tracing.Tracer(), request.NamespacedName, "elasticsearch")
 	defer tracing.EndTransaction(tx)
 
 	// Fetch the Elasticsearch instance

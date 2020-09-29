@@ -55,7 +55,7 @@ func initializeContext() {
 		panic(fmt.Errorf("failed to decode test context: %v", err))
 	}
 
-	logutil.ChangeVerbosity(ctx.LogVerbosity)
+	logutil.InitLogger(logutil.WithVerbosity(ctx.LogVerbosity))
 	log.Info("Test context initialized", "context", ctx)
 }
 

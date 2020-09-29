@@ -27,7 +27,7 @@ import (
 // doRun runs the main chaos process. It randomly deletes operator Pods, scale up and down operator replicas and attempts
 // to ensure that only one Pod is running as the elected one.
 func doRun(flags runFlags) error {
-	logconf.ChangeVerbosity(flags.logVerbosity)
+	logconf.InitLogger(logconf.WithVerbosity(flags.logVerbosity))
 
 	if flags.operatorNamespace == "" {
 		err := errors.New("operator namespace must be specified using --operator-namespace")
