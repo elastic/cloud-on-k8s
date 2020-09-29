@@ -23,11 +23,11 @@ func authToGCP(
 	vaultInfo *VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, useNonDefaultCloudSDKPath bool, configureDocker bool, gCloudProject interface{},
 ) error {
-	if vaultInfo == nil {
-		return errors.New("vault info not present in the plan to authenticate to GCP")
-	}
-
 	if asServiceAccount {
+		if vaultInfo == nil {
+			return errors.New("vault info not present in the plan to authenticate to GCP")
+		}
+
 		log.Println("Authenticating as service account...")
 
 		client, err := NewClient(*vaultInfo)
