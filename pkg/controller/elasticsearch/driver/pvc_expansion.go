@@ -35,7 +35,7 @@ const (
 // (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
 // This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
 func handleVolumeExpansion(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
-	err := resizePVCs(k8sClient, expectedSset, actualSset)
+	err := resizePVCs(k8sClient, es, expectedSset, actualSset)
 	if err != nil {
 		return false, err
 	}
@@ -53,7 +53,7 @@ func handleVolumeExpansion(k8sClient k8s.Client, es esv1.Elasticsearch, expected
 // resizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
 // according to their storage class and what's specified in the expected claim.
 // It returns an error if the requested storage size is incompatible with the PVC.
-func resizePVCs(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) error {
+func resizePVCs(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) error {
 	// match each existing PVC with an expected claim, and decide whether the PVC should be resized
 	actualPVCs, err := sset.RetrieveActualPVCs(k8sClient, actualSset)
 	if err != nil {
@@ -78,7 +78,8 @@ func resizePVCs(k8sClient k8s.Client, expectedSset appsv1.StatefulSet, actualSse
 
 			log.Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
 				"Pods may need to be manually deleted for the filesystem to be resized.",
-				"namespace", pvc.Namespace, "pvc_name", pvc.Name,
+				"namespace", pvc.Namespace, "es_name", es.Name,
+				"pvc_name", pvc.Name,
 				"old_value", pvcSize.String(), "new_value", claimSize.String())
 			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *claimSize
 			if err := k8sClient.Update(&pvc); err != nil {
@@ -157,7 +158,7 @@ func isStorageExpansion(expectedSize *resource.Quantity, actualSize *resource.Qu
 
 // recreateStatefulSets re-creates StatefulSets as specified in Elasticsearch annotations, to account for
 // resized volume claims.
-// This functions acts as a state machine that depends on the annotation and the UID of existing StatefulSets.
+// This function acts as a state machine that depends on the annotation and the UID of existing StatefulSets.
 // A standard flow may span over multiple reconciliations like this:
 // 1. No annotation set: nothing to do.
 // 2. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists: delete it.
@@ -202,13 +203,15 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 			if err := k8sClient.Update(&es); err != nil {
 				return recreations, err
 			}
+			// one less recreation
+			recreations--
 		}
 	}
 
 	return recreations, nil
 }
 
-// ssetsToRecreateFromAnnotation returns the list of StatefulSet that should be recreated, based on annotations
+// ssetsToRecreate returns the list of StatefulSet that should be recreated, based on annotations
 // in the Elasticsearch resource.
 func ssetsToRecreate(es esv1.Elasticsearch) (map[string]appsv1.StatefulSet, error) {
 	toRecreate := map[string]appsv1.StatefulSet{}

@@ -399,7 +399,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 			},
 			wantES:          *es(),                                    // annotation removed
 			wantSsets:       []appsv1.StatefulSet{*sset1DifferentUID}, // same
-			wantRecreations: 1,                                        // not considered done yet
+			wantRecreations: 0,
 		},
 		{
 			name: "multiple statefulsets to handle",
