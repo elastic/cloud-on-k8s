@@ -94,7 +94,7 @@ func adjustResources(
 	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
-		adjusted, err := adjustStatefulSetReplicas(ctx.k8sClient, upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
+		adjusted, err := adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
 		if err != nil {
 			return nil, err
 		}
@@ -123,50 +123,22 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 // adjustStatefulSetReplicas updates the replicas count in expected according to
 // what is allowed by the upscaleState, that may be mutated as a result.
 func adjustStatefulSetReplicas(
-	k8sClient k8s.Client,
 	upscaleState *upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expected appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
-	expectedReplicas := sset.GetReplicas(expected)
-
 	actual, alreadyExists := actualStatefulSets.GetByName(expected.Name)
-	actualReplicas := sset.GetReplicas(actual) // 0 if actual is empty
-	if !alreadyExists {
-		// In most cases, if the StatefulSet does not exist we're creating it for the first time (actualReplicas = 0).
-		// However if some Pods matching that missing StatefulSet exist we are likely in a situation where the
-		// StatefulSet is being re-created for volume expansion. In which case we want to take into account
-		// the existing Pods when setting the initial replicas value.
-		pods, err := sset.GetActualPodsForStatefulSet(k8sClient, k8s.ExtractNamespacedName(&expected))
-		if err != nil {
-			return appsv1.StatefulSet{}, err
-		}
-		// The new StatefulSet replicas count should match the highest ordinal of Pods ready to be adopted.
-		actualReplicas = int32(0)
-		for _, pod := range pods {
-			_, ordinal, err := sset.StatefulSetName(pod.Name)
-			if err != nil {
-				return appsv1.StatefulSet{}, err
-			}
-			ordinalBasedReplicas := ordinal + 1 // 3 replicas -> pod-0, pod-1, pod-2
-			if ordinalBasedReplicas > actualReplicas {
-				actualReplicas = ordinalBasedReplicas
-			}
-		}
-		if actualReplicas > 0 {
-			log.Info("Adjusting StatefulSet replicas based on orphan Pods from volume expansion",
-				"namespace", expected.Namespace, "statefulset_name", expected.Name, "replicas", actualReplicas)
-		}
-	}
+	expectedReplicas := sset.GetReplicas(expected)
+	actualReplicas := sset.GetReplicas(actual)
 
 	if actualReplicas < expectedReplicas {
-		return upscaleState.limitNodesCreation(actualReplicas, expected)
+		return upscaleState.limitNodesCreation(actual, expected)
 	}
 
-	if expectedReplicas < actualReplicas {
+	if alreadyExists && expectedReplicas < actualReplicas {
 		// this is a downscale.
 		// We still want to update the sset spec to the newest one, but leave scaling down as it's done later.
-		nodespec.UpdateReplicas(&expected, &actualReplicas)
+		nodespec.UpdateReplicas(&expected, actual.Spec.Replicas)
 	}
 
 	return expected, nil
