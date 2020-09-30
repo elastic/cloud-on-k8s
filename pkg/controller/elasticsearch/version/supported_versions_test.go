@@ -5,6 +5,7 @@
 package version
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -110,6 +111,56 @@ func TestSupports(t *testing.T) {
 			actual := err != nil
 			if tt.expectError != actual {
 				t.Errorf("failed Supports(). Name: %v, actual: %v, wanted: %v, value: %v", tt.name, err, tt.expectError, tt.ver)
+			}
+		})
+	}
+}
+
+func Test_supportedVersionsWithMinimum(t *testing.T) {
+	type args struct {
+		v   version.Version
+		min version.Version
+	}
+	tests := []struct {
+		name string
+		args args
+		want *LowestHighestSupportedVersions
+	}{
+		{
+			name: "no minimum",
+			args: args{
+				v:   version.MustParse("7.10.0"),
+				min: version.Version{},
+			},
+			want: &LowestHighestSupportedVersions{
+				LowestSupportedVersion:  version.MustParse("6.8.0"),
+				HighestSupportedVersion: version.MustParse("7.99.99"),
+			},
+		},
+		{
+			name: "v >= minimum",
+			args: args{
+				v:   version.MustParse("7.10.0"),
+				min: version.MustParse("7.10.0"),
+			},
+			want: &LowestHighestSupportedVersions{
+				LowestSupportedVersion:  version.MustParse("6.8.0"),
+				HighestSupportedVersion: version.MustParse("7.99.99"),
+			},
+		},
+		{
+			name: "v < minimum",
+			args: args{
+				v:   version.MustParse("6.8.0"),
+				min: version.MustParse("7.10.0"),
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := supportedVersionsWithMinimum(tt.args.v, tt.args.min); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("supportedVersionsWithMinimum() = %v, want %v", got, tt.want)
 			}
 		})
 	}

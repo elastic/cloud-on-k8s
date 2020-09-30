@@ -67,7 +67,7 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 		return err
 	}
 
-	if err := supported.WithinRange(*v); err != nil {
+	if err := supported.WithMin(version.GlobalMinStackVersion).WithinRange(*v); err != nil {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), ver, fmt.Sprintf("Unsupported version: %v", err))}
 	}
 
