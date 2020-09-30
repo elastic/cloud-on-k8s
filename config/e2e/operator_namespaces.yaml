@@ -5,4 +5,5 @@ kind: Namespace
 metadata:
   name: {{ .Operator.Namespace }}
   labels:
+    name: {{ .Operator.Namespace }}
     test-run: {{ $testRun }}

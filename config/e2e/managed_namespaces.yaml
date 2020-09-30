@@ -6,5 +6,6 @@ kind: Namespace
 metadata:
   name: {{ . }}
   labels:
+    name: {{ . }}
     test-run: {{ $testRun }}
 {{- end }}
