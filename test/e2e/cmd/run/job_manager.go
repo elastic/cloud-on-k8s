@@ -35,7 +35,13 @@ func NewJobsManager(client *kubernetes.Clientset, h *helper) *JobsManager {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
 		informers.WithNamespace(h.testContext.E2ENamespace),
 		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
-			opt.LabelSelector = fmt.Sprintf("%s=%s", testRunLabel, h.testContext.TestRun)
+			opt.LabelSelector = fmt.Sprintf(
+				"%s=%s,%s=%v",
+				testRunLabel,
+				h.testContext.TestRun,
+				logStreamLabel,
+				true,
+			)
 		}))
 	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 	return &JobsManager{
