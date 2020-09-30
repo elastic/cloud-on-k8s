@@ -45,7 +45,7 @@ func (mmv MinMaxVersion) WithinRange(v Version) error {
 	return nil
 }
 
-func (mnv MinMaxVersion) WithMin(min Version) MinMaxVersion {
+func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
 	if min.IsAfter(mnv.Min) {
 		return MinMaxVersion{
 			Min: min,
