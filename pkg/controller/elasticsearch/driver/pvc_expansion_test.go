@@ -11,6 +11,8 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -19,7 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
@@ -330,8 +334,9 @@ func Test_isStorageExpansion(t *testing.T) {
 }
 
 func Test_recreateStatefulSets(t *testing.T) {
+	controllerscheme.SetupScheme()
 	es := func() *esv1.Elasticsearch {
-		return &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+		return &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: "Elasticsearch"}}
 	}
 	withAnnotation := func(es *esv1.Elasticsearch, key, value string) *esv1.Elasticsearch {
 		if es.Annotations == nil {
@@ -345,66 +350,76 @@ func Test_recreateStatefulSets(t *testing.T) {
 	sset1Bytes, _ := json.Marshal(sset1)
 	sset1Json := string(sset1Bytes)
 	sset1DifferentUID := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-differentuid"}}
+	pod1 := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
+		label.StatefulSetNameLabelName: sset1.Name,
+	}}}
+	pod1WithOwnerRef := pod1.DeepCopy()
+	require.NoError(t, controllerutil.SetOwnerReference(es(), pod1WithOwnerRef, scheme.Scheme))
 
 	sset2 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2", UID: "sset2-uid"}}
 	sset2Bytes, _ := json.Marshal(sset2)
 	sset2Json := string(sset2Bytes)
 
 	type args struct {
-		existingSsets []runtime.Object
-		es            esv1.Elasticsearch
+		runtimeObjs []runtime.Object
+		es          esv1.Elasticsearch
 	}
 	tests := []struct {
 		name string
 		args
 		wantES          esv1.Elasticsearch
 		wantSsets       []appsv1.StatefulSet
+		wantPods        []corev1.Pod
 		wantRecreations int
 	}{
 		{
 			name: "no annotation: nothing to do",
 			args: args{
-				existingSsets: []runtime.Object{sset1},
-				es:            *es(),
+				runtimeObjs: []runtime.Object{sset1, pod1},
+				es:          *es(),
 			},
 			wantES:          *es(),
+			wantPods:        []corev1.Pod{*pod1},
 			wantRecreations: 0,
 		},
 		{
 			name: "StatefulSet to delete",
 			args: args{
-				existingSsets: []runtime.Object{sset1}, // exists with the same UID
-				es:            *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+				runtimeObjs: []runtime.Object{sset1, pod1}, // sset exists with the same UID
+				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
 			},
 			wantES:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
-			wantSsets:       nil, // deleted
+			wantSsets:       nil,                             // deleted
+			wantPods:        []corev1.Pod{*pod1WithOwnerRef}, // owner ref set to the ES resource
 			wantRecreations: 1,
 		},
 		{
 			name: "StatefulSet to create",
 			args: args{
-				existingSsets: []runtime.Object{}, // doesn't exist
-				es:            *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+				runtimeObjs: []runtime.Object{pod1}, // sset doesn't exist
+				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
 			},
 			wantES: *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
 			// created, no UUID due to how the fake client creates objects
 			wantSsets:       []appsv1.StatefulSet{{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1"}}},
+			wantPods:        []corev1.Pod{*pod1}, // unmodified
 			wantRecreations: 1,
 		},
 		{
 			name: "StatefulSet already recreated: remove the annotation",
 			args: args{
-				existingSsets: []runtime.Object{sset1DifferentUID}, // recreated
-				es:            *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
+				runtimeObjs: []runtime.Object{sset1DifferentUID, pod1WithOwnerRef}, // sset recreated
+				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
 			},
 			wantES:          *es(),                                    // annotation removed
 			wantSsets:       []appsv1.StatefulSet{*sset1DifferentUID}, // same
+			wantPods:        []corev1.Pod{*pod1},                      // ownerRef removed
 			wantRecreations: 0,
 		},
 		{
 			name: "multiple statefulsets to handle",
 			args: args{
-				existingSsets: []runtime.Object{sset1, sset2},
+				runtimeObjs: []runtime.Object{sset1, sset2, pod1},
 				es: *withAnnotation(withAnnotation(es(),
 					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
 					"elasticsearch.k8s.elastic.co/recreate-sset2", sset2Json),
@@ -413,12 +428,13 @@ func Test_recreateStatefulSets(t *testing.T) {
 				"elasticsearch.k8s.elastic.co/recreate-sset1", sset1Json),
 				"elasticsearch.k8s.elastic.co/recreate-sset2", sset2Json),
 			wantSsets:       nil,
+			wantPods:        []corev1.Pod{*pod1WithOwnerRef}, // ownerRef removed
 			wantRecreations: 2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(append(tt.args.existingSsets, &tt.args.es)...)
+			k8sClient := k8s.WrappedFakeClient(append(tt.args.runtimeObjs, &tt.args.es)...)
 			got, err := recreateStatefulSets(k8sClient, tt.args.es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
@@ -434,6 +450,183 @@ func Test_recreateStatefulSets(t *testing.T) {
 			for i := range tt.wantSsets {
 				comparison.RequireEqual(t, &tt.wantSsets[i], &retrievedSsets.Items[i])
 			}
+
+			var retrievedPods corev1.PodList
+			err = k8sClient.List(&retrievedPods)
+			require.NoError(t, err)
+			for i := range tt.wantPods {
+				comparison.RequireEqual(t, &tt.wantPods[i], &retrievedPods.Items[i])
+			}
+		})
+	}
+}
+
+var (
+	sampleEs = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: "Elasticsearch"}}
+	sset1    = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}}
+	pod1     = corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
+		label.StatefulSetNameLabelName: sset1.Name,
+	}}}
+	pod2 = corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-1", Labels: map[string]string{
+		label.StatefulSetNameLabelName: sset1.Name,
+	}}}
+	pod1WithOwnerRef = *pod1.DeepCopy()
+	pod2WithOwnerRef = *pod2.DeepCopy()
+)
+
+func init() {
+	controllerscheme.SetupScheme()
+	if err := controllerutil.SetOwnerReference(&es, &pod1WithOwnerRef, scheme.Scheme); err != nil {
+		panic(err)
+	}
+	if err := controllerutil.SetOwnerReference(&es, &pod2WithOwnerRef, scheme.Scheme); err != nil {
+		panic(err)
+	}
+}
+
+func Test_updatePodOwners(t *testing.T) {
+	type args struct {
+		k8sClient   k8s.Client
+		es          esv1.Elasticsearch
+		statefulSet appsv1.StatefulSet
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantPods []corev1.Pod
+	}{
+		{
+			name: "happy path: set an owner ref to the ES resource on all Pods for that StatefulSet",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(&pod1, &pod2),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1WithOwnerRef, pod2WithOwnerRef},
+		},
+		{
+			name: "owner ref already set: the function is idempotent",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2WithOwnerRef),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1WithOwnerRef, pod2WithOwnerRef},
+		},
+		{
+			name: "one owner ref already set, one missing",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1WithOwnerRef, pod2WithOwnerRef},
+		},
+		{
+			name: "no Pods: nothing to do",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := updatePodOwners(tt.args.k8sClient, tt.args.es, tt.args.statefulSet)
+			require.NoError(t, err)
+
+			var retrievedPods corev1.PodList
+			err = tt.args.k8sClient.List(&retrievedPods)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func withOwnerRef(pod corev1.Pod, ownerRef metav1.OwnerReference) *corev1.Pod {
+	pod = *pod.DeepCopy()
+	pod.OwnerReferences = append(pod.OwnerReferences, metav1.OwnerReference{
+		Kind: "Unrelated",
+		Name: "unrelated-name",
+		UID:  "uid",
+	})
+	return &pod
+}
+
+func Test_removeESPodOwner(t *testing.T) {
+	type args struct {
+		k8sClient   k8s.Client
+		es          esv1.Elasticsearch
+		statefulSet appsv1.StatefulSet
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantPods []corev1.Pod
+	}{
+		{
+			name: "happy path: remove the owner ref from all Pods",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2WithOwnerRef),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1, pod2},
+		},
+		{
+			name: "owner refs already removed: function is idempotent",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(&pod1, &pod2),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1, pod2},
+		},
+		{
+			name: "one owner ref already removed, the other not yet removed",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1, pod2},
+		},
+		{
+			name: "no Pods: nothing to do",
+			args: args{
+				k8sClient:   k8s.WrappedFakeClient(),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{},
+		},
+		{
+			name: "preserve existing unrelated owner refs",
+			args: args{
+				k8sClient: k8s.WrappedFakeClient(&pod1WithOwnerRef, withOwnerRef(pod2WithOwnerRef, metav1.OwnerReference{
+					Kind: "kind",
+					Name: "name",
+					UID:  "uid",
+				})),
+				es:          sampleEs,
+				statefulSet: sset1,
+			},
+			wantPods: []corev1.Pod{pod1, *withOwnerRef(pod2, metav1.OwnerReference{
+				Kind: "kind",
+				Name: "name",
+				UID:  "uid",
+			})},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := removeESPodOwner(tt.args.k8sClient, tt.args.es, tt.args.statefulSet)
+			require.NoError(t, err)
+
+			var retrievedPods corev1.PodList
+			err = tt.args.k8sClient.List(&retrievedPods)
+			require.NoError(t, err)
 		})
 	}
 }

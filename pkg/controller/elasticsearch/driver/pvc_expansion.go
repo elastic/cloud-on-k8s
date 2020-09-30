@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -19,6 +17,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -184,6 +185,10 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 		case existing.UID == toRecreate.UID:
 			log.Info("Deleting StatefulSet to account for resized PVCs, it will be recreated automatically",
 				"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", existing.Name)
+			// mark the Pod as owned by the ES resource while the StatefulSet is removed
+			if err := updatePodOwners(k8sClient, es, existing); err != nil {
+				return recreations, err
+			}
 			if err := deleteStatefulSet(k8sClient, existing); err != nil {
 				return recreations, err
 			}
@@ -198,6 +203,10 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 
 		// already recreated (existing.UID != toRecreate.UID): we're done
 		default:
+			// remove the temporary pod owner set before the StatefulSet was deleted
+			if err := removeESPodOwner(k8sClient, es, existing); err != nil {
+				return recreations, err
+			}
 			// remove the annotation
 			delete(es.Annotations, annotation)
 			if err := k8sClient.Update(&es); err != nil {
@@ -251,4 +260,51 @@ func recreateStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	}
 	sset.ObjectMeta = newObjMeta
 	return k8sClient.Create(&sset)
+}
+
+// updatePodOwners marks all Pods managed by the given StatefulSet as owned by the Elasticsearch resource.
+// Pods are already owned by the StatefulSet resource, but when we'll (temporarily) delete that StatefulSet
+// they won't be owned anymore. At this point if the Elasticsearch resource is deleted (before the StatefulSet
+// is re-created), we also want the Pods to be deleted automatically.
+func updatePodOwners(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+	log.V(1).Info("Setting an owner ref to the Elasticsearch resource on the future orphan Pods",
+		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", statefulSet.Name)
+	return updatePods(k8sClient, statefulSet, func(p *corev1.Pod) error {
+		return controllerutil.SetOwnerReference(&es, p, scheme.Scheme)
+	})
+}
+
+// removeESPodOwner removes any reference to the ES resource from the Pods, that was set in updatePodOwners.
+func removeESPodOwner(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+	log.V(1).Info("Removing any Pod owner ref set to the Elasticsearch resource after StatefulSet re-creation",
+		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", statefulSet.Name)
+	updateFunc := func(p *corev1.Pod) error {
+		for i, ownerRef := range p.OwnerReferences {
+			if ownerRef.UID == es.UID && ownerRef.Name == es.Name && ownerRef.Kind == es.Kind {
+				// remove from the owner ref slice
+				p.OwnerReferences = append(p.OwnerReferences[:i], p.OwnerReferences[i+1:]...)
+				return nil
+			}
+		}
+		return nil
+	}
+	return updatePods(k8sClient, statefulSet, updateFunc)
+}
+
+// updatePods applies updateFunc on all existing Pods from the StatefulSet, then update those Pods.
+func updatePods(k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc func(p *corev1.Pod) error) error {
+	pods, err := sset.GetActualPodsForStatefulSet(k8sClient, k8s.ExtractNamespacedName(&statefulSet))
+	if err != nil {
+		return err
+	}
+	for i := range pods {
+		if err := updateFunc(&pods[i]); err != nil {
+			return err
+		}
+		if err := k8sClient.Update(&pods[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
