@@ -46,13 +46,13 @@ func (mmv MinMaxVersion) WithinRange(v Version) error {
 }
 
 func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
-	if min.IsAfter(mnv.Min) {
+	if min.IsAfter(mmv.Min) {
 		return MinMaxVersion{
 			Min: min,
-			Max: mnv.Max,
+			Max: mmv.Max,
 		}
 	}
-	return mnv
+	return mmv
 }
 
 // Version is a parsed version
