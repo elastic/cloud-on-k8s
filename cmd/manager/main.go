@@ -216,7 +216,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
-		"All Docker images run by the operator must be based on a UBI image (available as of 7.10.0)",
+		"Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.",
 	)
 	cmd.Flags().String(
 		operator.WebhookCertDirFlag,
@@ -379,7 +379,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	ubiOnly := viper.GetBool(operator.UBIOnlyFlag)
 	if ubiOnly {
 		container.SetContainerSuffix("-ubi8")
-		version.GlobalMinStackVersion = version.MustParse("7.10.0")
+		version.GlobalMinStackVersion = version.From(7,10,0)
 	}
 
 	// Get a config to talk to the apiserver
@@ -511,7 +511,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, string(operatorInfo.OperatorUUID))
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
-		"namespace", operatorNamespace, "esversion", operatorInfo.BuildInfo.Version,
+		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
