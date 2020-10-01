@@ -19,7 +19,6 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -36,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	esvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
@@ -498,7 +498,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, clientset)
+		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -634,7 +634,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
-func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
+func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, validateStorageClass bool, clientset kubernetes.Interface) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -667,7 +667,6 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},
 		&entv1beta1.EnterpriseSearch{},
-		&esv1.Elasticsearch{},
 		&esv1beta1.Elasticsearch{},
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
@@ -678,6 +677,9 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
 		}
 	}
+
+	// esv1 validating webhook is wired up differently, in  to access the k8s client
+	esvalidation.RegisterWebhook(mgr, validateStorageClass)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
