@@ -379,7 +379,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	ubiOnly := viper.GetBool(operator.UBIOnlyFlag)
 	if ubiOnly {
 		container.SetContainerSuffix("-ubi8")
-		version.GlobalMinStackVersion = version.From(7,10,0)
+		version.GlobalMinStackVersion = version.From(7, 10, 0)
 	}
 
 	// Get a config to talk to the apiserver
