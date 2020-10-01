@@ -140,6 +140,10 @@ config:
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
   setDefaultSecurityContext: true
 
+  # validateStorageClass specifies whether storage classes volume expansion support should be verified.
+  # Can be disabled if cluster-wide storage class RBAC access is not available.
+  validateStorageClass: true
+
 # Internal use only
 internal:
   manifestGen: false

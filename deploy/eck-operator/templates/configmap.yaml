@@ -17,6 +17,7 @@ data:
     cert-validity: {{ .Values.config.certificatesValidity }}
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
+    validate-storage-class: {{ .Values.config.validateStorageClass }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
     {{- end }}
