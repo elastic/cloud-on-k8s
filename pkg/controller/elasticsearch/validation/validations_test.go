@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
@@ -17,7 +19,6 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
 )
 
@@ -739,31 +740,21 @@ func TestValidateClaimsUpdate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "one claim removed: error",
+			name: "no claims: ok",
 			args: args{
 				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
-				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
-				updated:              []corev1.PersistentVolumeClaim{sampleClaim},
+				initial:              nil,
+				updated:              nil,
 				validateStorageClass: true,
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name: "one claim added: error",
+			name: "claim in updated does not exist in initial: error",
 			args: args{
 				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
-				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
-				updated:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2, sampleClaim2},
-				validateStorageClass: true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "one claim modified: error",
-			args: args{
-				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
-				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
-				updated:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim},
+				initial:              []corev1.PersistentVolumeClaim{sampleClaim},
+				updated:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
 				validateStorageClass: true,
 			},
 			wantErr: true,
@@ -811,8 +802,8 @@ func TestValidateClaimsUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ValidateClaimsUpdate(tt.args.k8sClient, tt.args.initial, tt.args.updated, tt.args.validateStorageClass); (err != nil) != tt.wantErr {
-				t.Errorf("ValidateClaimsUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			if err := ValidateClaimsStorageUpdate(tt.args.k8sClient, tt.args.initial, tt.args.updated, tt.args.validateStorageClass); (err != nil) != tt.wantErr {
+				t.Errorf("ValidateClaimsStorageUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -826,18 +817,22 @@ func Test_pvcModification(t *testing.T) {
 		}
 	}
 	type args struct {
+		current              esv1.Elasticsearch
 		proposed             esv1.Elasticsearch
 		k8sClient            k8s.Client
 		validateStorageClass bool
 	}
 	tests := []struct {
-		name string
-		args args
-		want field.ErrorList
+		name    string
+		args    args
+		wantErr bool
 	}{
 		{
 			name: "no changes in the claims: ok",
 			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
 				}),
@@ -850,33 +845,121 @@ func Test_pvcModification(t *testing.T) {
 					}),
 				validateStorageClass: true,
 			},
-			want: nil,
+			wantErr: false,
+		},
+		{
+			name: "new nodeSet: ok",
+			args: args{
+				current: es([]esv1.NodeSet{}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				k8sClient:            k8s.WrappedFakeClient(),
+				validateStorageClass: true,
+			},
+			wantErr: false,
 		},
 		{
 			name: "statefulSet does not exist: ok",
 			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
 				}),
 				k8sClient: k8s.WrappedFakeClient(),
 			},
-			want: nil,
+			wantErr: false,
 		},
 		{
-			name: "invalid claim update (one less claim): error", // other cases are checked in TestValidateClaimsUpdate
+			name: "modified claims (one less) in the proposed Elasticsearch: error",
 			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
 				}),
-				k8sClient: k8s.WrappedFakeClient(),
+				k8sClient: k8s.WrappedFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
 			},
-			want: nil,
+			wantErr: true,
+		},
+		{
+			name: "modified claims (new name) in the proposed Elasticsearch: error",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim}},
+				}),
+				k8sClient: k8s.WrappedFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "storage decrease in the proposed elasticsearch vs. existing statefulset: error",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")}}, // decrease
+				}),
+				k8sClient: k8s.WrappedFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "storage decrease in the proposed elasticsearch vs. current elasticsearch, but matches current sset: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")}}, // revert to previous size
+				}),
+				k8sClient: k8s.WrappedFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, withStorageReq(sampleClaim2, "0.5Gi"),
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := pvcModification(tt.args.proposed, tt.args.k8sClient, tt.args.validateStorageClass); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("pvcModification() = %v, want %v", got, tt.want)
+			errs := pvcModification(tt.args.current, tt.args.proposed, tt.args.k8sClient, tt.args.validateStorageClass)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
 			}
 		})
 	}

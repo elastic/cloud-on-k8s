@@ -56,6 +56,20 @@ var validations = []validation{
 	supportedVersion,
 	validSanIP,
 }
+
+type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
+
+// updateValidations are the validation funcs that only apply to updates
+func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
+	return []updateValidation{
+		noDowngrades,
+		validUpgradePath,
+		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
+			return pvcModification(current, proposed, k8sClient, validateStorageClass)
+		},
+	}
+}
+
 func check(es esv1.Elasticsearch, validations []validation) field.ErrorList {
 	var errs field.ErrorList
 	for _, val := range validations {
@@ -255,7 +269,72 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 	}
 	return errs
 }
-func ValidateClaimsUpdate(
+
+// pvcModification ensures the only part of volume claim templates that can be changed is storage requests.
+// Storage increase is allowed as long as the storage class supports volume expansion.
+// Storage decrease is not supported.
+func pvcModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
+	var errs field.ErrorList
+	for i, proposedNodeSet := range proposed.Spec.NodeSets {
+		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
+		if currentNodeSet == nil {
+			// initial creation
+			continue
+		}
+
+		// Check that no modification was made to the claims, except on storage requests.
+		if !apiequality.Semantic.DeepEqual(
+			claimsWithoutStorageReq(currentNodeSet.VolumeClaimTemplates),
+			claimsWithoutStorageReq(proposedNodeSet.VolumeClaimTemplates),
+		) {
+			errs = append(errs, field.Invalid(
+				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
+				proposedNodeSet.VolumeClaimTemplates,
+				pvcImmutableErrMsg,
+			))
+			continue
+		}
+
+		// Allow storage increase to go through if the storage class supports volume expansion.
+		// Reject storage decrease, unless the matching StatefulSet still has the "old" storage:
+		// we want to cover the case where the user upgrades storage from 1GB to 2GB, then realizes the reconciliation
+		// errors out for some reasons, then reverts the storage size to a correct 1GB. In that case the StatefulSet
+		// claim is still configured with 1GB even though the current Elasticsearch specifies 2GB.
+		// Hence here we compare proposed claims with **current StatefulSet** claims.
+		matchingSsetName := esv1.StatefulSet(proposed.Name, proposedNodeSet.Name)
+		var matchingSset appsv1.StatefulSet
+		err := k8sClient.Get(types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
+		if err != nil && apierrors.IsNotFound(err) {
+			// matching StatefulSet does not exist, this is likely the initial creation
+			continue
+		} else if err != nil {
+			// k8s client error - unlikely to happen since we used a cached client, but if it does happen
+			// we don't want to return an admission error here.
+			// In doubt, validate the request. Validation is performed again during the reconciliation.
+			log.Error(err, "error while validating pvc modification, skipping validation")
+			continue
+		}
+
+		if err := ValidateClaimsStorageUpdate(k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
+			errs = append(errs, field.Invalid(
+				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
+				proposedNodeSet.VolumeClaimTemplates,
+				err.Error(),
+			))
+		}
+	}
+	return errs
+}
+
+func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
+	for i := range es.Spec.NodeSets {
+		if es.Spec.NodeSets[i].Name == name {
+			return &es.Spec.NodeSets[i]
+		}
+	}
+	return nil
+}
+
 func ValidateClaimsStorageUpdate(
 	k8sClient k8s.Client,
 	initial []corev1.PersistentVolumeClaim,
