@@ -85,7 +85,7 @@ func TestVolumeExpansion(t *testing.T) {
 						}
 						reportedStorage := pvc.Status.Capacity.Storage()
 						if reportedStorage == nil {
-							return fmt.Errorf("no ostorage size reported in %s status", pvcName)
+							return fmt.Errorf("no storage size reported in %s status", pvcName)
 						}
 						if !reportedStorage.Equal(resizedStorage) {
 							return fmt.Errorf("expected resized capacity %s but got %s", resizedStorage.String(), reportedStorage.String())
@@ -103,7 +103,7 @@ func TestVolumeExpansion(t *testing.T) {
 							return err
 						}
 						if !sset.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage().Equal(resizedStorage) {
-							return fmt.Errorf("StatefulSet %s has not been recreatd with storage size %s", ssetName, resizedStorage.String())
+							return fmt.Errorf("StatefulSet %s has not been recreated with storage size %s", ssetName, resizedStorage.String())
 						}
 					}
 					return nil
