@@ -135,3 +135,26 @@ func indexOfCtrlRef(owners []metav1.OwnerReference) int {
 	}
 	return -1
 }
+
+type StorageComparison struct {
+	Increase bool
+	Decrease bool
+}
+
+// CompareStorageRequests compares storage requests in the given resource requirements.
+// It returns a zero-ed StorageComparison in case one of the requests is zero (value not set: comparison not possible).
+func CompareStorageRequests(initial corev1.ResourceRequirements, updated corev1.ResourceRequirements) StorageComparison {
+	initialSize := initial.Requests.Storage()
+	updatedSize := updated.Requests.Storage()
+	if initialSize.IsZero() || updatedSize.IsZero() {
+		return StorageComparison{}
+	}
+	switch updatedSize.Cmp(*initialSize) {
+	case -1: // decrease
+		return StorageComparison{Decrease: true}
+	case 1: // increase
+		return StorageComparison{Increase: true}
+	default: // same size
+		return StorageComparison{}
+	}
+}
