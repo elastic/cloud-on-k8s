@@ -6,6 +6,7 @@ package driver
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,9 +15,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -35,13 +38,19 @@ const (
 // Note that some storage drivers also require Pods to be deleted/recreated for the filesystem to be resized
 // (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
 // This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
-func handleVolumeExpansion(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
-	err := resizePVCs(k8sClient, es, expectedSset, actualSset)
+func handleVolumeExpansion(
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	expectedSset appsv1.StatefulSet,
+	actualSset appsv1.StatefulSet,
+	validateStorageClass bool,
+) (bool, error) {
+	err := resizePVCs(k8sClient, es, expectedSset, actualSset, validateStorageClass)
 	if err != nil {
 		return false, err
 	}
 
-	recreate, err := needsRecreate(expectedSset, actualSset)
+	recreate, err := needsRecreate(k8sClient, expectedSset, actualSset, validateStorageClass)
 	if err != nil {
 		return false, err
 	}
@@ -54,7 +63,13 @@ func handleVolumeExpansion(k8sClient k8s.Client, es esv1.Elasticsearch, expected
 // resizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
 // according to their storage class and what's specified in the expected claim.
 // It returns an error if the requested storage size is incompatible with the PVC.
-func resizePVCs(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) error {
+func resizePVCs(
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	expectedSset appsv1.StatefulSet,
+	actualSset appsv1.StatefulSet,
+	validateStorageClass bool,
+) error {
 	// match each existing PVC with an expected claim, and decide whether the PVC should be resized
 	actualPVCs, err := sset.RetrieveActualPVCs(k8sClient, actualSset)
 	if err != nil {
@@ -75,6 +90,10 @@ func resizePVCs(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1
 			}
 			if !isExpansion {
 				continue
+			}
+			// is volume expansion supported?
+			if err := ensureClaimSupportsExpansion(k8sClient, *expectedClaim, validateStorageClass); err != nil {
+				return err
 			}
 
 			log.Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
@@ -117,7 +136,12 @@ func annotateForRecreation(
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
 // An error is returned if volume expansion is required but claims are incompatible.
-func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
+func needsRecreate(
+	k8sClient k8s.Client,
+	expectedSset appsv1.StatefulSet,
+	actualSset appsv1.StatefulSet,
+	validateStorageClass bool,
+) (bool, error) {
 	recreate := false
 	// match each expected claim with an actual existing one: we want to return true
 	// if at least one claim has increased storage reqs
@@ -131,9 +155,13 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 		if err != nil {
 			return false, err
 		}
-		if isExpansion {
-			recreate = true
+		if !isExpansion {
+			continue
 		}
+		if err := ensureClaimSupportsExpansion(k8sClient, expectedClaim, validateStorageClass); err != nil {
+			return false, err
+		}
+		recreate = true
 	}
 
 	return recreate, nil
@@ -306,5 +334,66 @@ func updatePods(k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc
 		}
 	}
 	return nil
+}
 
+// ensureClaimSupportsExpansion inspects whether the storage class referenced by the claim
+// allows volume expansion, and returns an error if it doesn't.
+func ensureClaimSupportsExpansion(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
+	if !validateStorageClass {
+		log.V(1).Info("Skipping storage class validation")
+		return nil
+	}
+	sc, err := getStorageClass(k8sClient, claim)
+	if err != nil {
+		return err
+	}
+	if !allowsVolumeExpansion(sc) {
+		return fmt.Errorf("claim %s (storage class %s) does not support volume expansion", claim.Name, sc.Name)
+	}
+	return nil
+}
+
+// getStorageClass returns the storage class specified by the given claim,
+// or the default storage class if the claim does not specify any.
+func getStorageClass(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim) (storagev1.StorageClass, error) {
+	if claim.Spec.StorageClassName == nil || *claim.Spec.StorageClassName == "" {
+		return getDefaultStorageClass(k8sClient)
+	}
+	var sc storagev1.StorageClass
+	if err := k8sClient.Get(types.NamespacedName{Name: *claim.Spec.StorageClassName}, &sc); err != nil {
+		return storagev1.StorageClass{}, fmt.Errorf("cannot retrieve storage class: %w", err)
+	}
+	return sc, nil
+}
+
+// getDefaultStorageClass returns the default storage class in the current k8s cluster,
+// or an error if there is none.
+func getDefaultStorageClass(k8sClient k8s.Client) (storagev1.StorageClass, error) {
+	var scs storagev1.StorageClassList
+	if err := k8sClient.List(&scs); err != nil {
+		return storagev1.StorageClass{}, err
+	}
+	for _, sc := range scs.Items {
+		if isDefaultStorageClass(sc) {
+			return sc, nil
+		}
+	}
+	return storagev1.StorageClass{}, errors.New("no default storage class found")
+}
+
+// isDefaultStorageClass inspects the given storage class and returns true if it is annotated as the default one.
+func isDefaultStorageClass(sc storagev1.StorageClass) bool {
+	if len(sc.Annotations) == 0 {
+		return false
+	}
+	if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" ||
+		sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"] == "true" {
+		return true
+	}
+	return false
+}
+
+// allowsVolumeExpansion returns true if the given storage class allows volume expansion.
+func allowsVolumeExpansion(sc storagev1.StorageClass) bool {
+	return sc.AllowVolumeExpansion != nil && *sc.AllowVolumeExpansion
 }

@@ -7,6 +7,7 @@ package driver
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -44,6 +45,14 @@ var (
 			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
+
+	defaultStorageClass = storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "default-sc",
+			Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"}}}
+	defaultBetaStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
+		Name:        "default-beta-sc",
+		Annotations: map[string]string{"storageclass.beta.kubernetes.io/is-default-class": "true"}}}
 
 	sampleSset = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"}}
 )
@@ -95,8 +104,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	}
 
 	type args struct {
-		expectedSset appsv1.StatefulSet
-		actualSset   appsv1.StatefulSet
+		expectedSset         appsv1.StatefulSet
+		actualSset           appsv1.StatefulSet
+		validateStorageClass bool
 	}
 	tests := []struct {
 		name         string
@@ -109,8 +119,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "no pvc to resize",
 			args: args{
-				expectedSset: sset,
-				actualSset:   sset,
+				expectedSset:         sset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("1Gi", "1Gi", "1Gi"),
@@ -119,8 +130,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "all pvcs should be resized",
 			args: args{
-				expectedSset: resizedSset,
-				actualSset:   sset,
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),
@@ -129,8 +141,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "2 pvcs left to resize",
 			args: args{
-				expectedSset: resizedSset,
-				actualSset:   sset,
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),
@@ -139,8 +152,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "one pvc is missing: resize what's there, don't error out",
 			args: args{
-				expectedSset: resizedSset,
-				actualSset:   sset,
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi"),
@@ -149,20 +163,45 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "storage decrease is not supported: error out",
 			args: args{
-				expectedSset: sset,        // 1Gi
-				actualSset:   resizedSset, // 3Gi
+				expectedSset:         sset,        // 1Gi
+				actualSset:           resizedSset, // 3Gi
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "3Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi"),
 			wantErr:      true,
 		},
+		{
+			name: "volume expansion not supported: error out",
+			args: args{
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
+			},
+			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), &sampleStorageClass), // no expansion
+			expectedPVCs: pvcsWithSize("1Gi", "1Gi", "1Gi"),                                       // not resized
+			wantRecreate: false,
+			wantErr:      true,
+		},
+		{
+			name: "volume expansion not supported but no storage class validation: attempt to resize",
+			args: args{
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: false,
+			},
+			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), &sampleStorageClass), // no expansion
+			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),                                       // still resized
+			wantRecreate: true,
+			wantErr:      false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(append(tt.runtimeObjs, &es)...)
-			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset)
+			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("resizePVCs() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			require.Equal(t, tt.wantRecreate, recreate)
 
@@ -201,8 +240,10 @@ func Test_handleVolumeExpansion(t *testing.T) {
 
 func Test_needsRecreate(t *testing.T) {
 	type args struct {
-		expectedSset appsv1.StatefulSet
-		actualSset   appsv1.StatefulSet
+		k8sClient            k8s.Client
+		expectedSset         appsv1.StatefulSet
+		actualSset           appsv1.StatefulSet
+		validateStorageClass bool
 	}
 	tests := []struct {
 		name    string
@@ -213,32 +254,62 @@ func Test_needsRecreate(t *testing.T) {
 		{
 			name: "requested storage increase in the 2nd claim: recreate",
 			args: args{
-				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
-				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
+				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				expectedSset:         withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
+				actualSset:           withClaims(sampleSset, sampleClaim, sampleClaim2),
+				validateStorageClass: true,
 			},
 			want: true,
 		},
 		{
+			name: "volume expansion not supported: error out",
+			args: args{
+				k8sClient:            k8s.WrappedFakeClient(&sampleStorageClass),
+				expectedSset:         withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
+				actualSset:           withClaims(sampleSset, sampleClaim, sampleClaim2),
+				validateStorageClass: true,
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "volume expansion not supported but no storage class validation: recreate",
+			args: args{
+				k8sClient:            k8s.WrappedFakeClient(&sampleStorageClass),
+				expectedSset:         withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "3Gi")),
+				actualSset:           withClaims(sampleSset, sampleClaim, sampleClaim2),
+				validateStorageClass: false,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
 			name: "no claim in the StatefulSet",
 			args: args{
-				expectedSset: sampleSset,
-				actualSset:   sampleSset,
+				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				expectedSset:         sampleSset,
+				actualSset:           sampleSset,
+				validateStorageClass: true,
 			},
 			want: false,
 		},
 		{
 			name: "no change in the claim",
 			args: args{
-				expectedSset: withClaims(sampleSset, sampleClaim),
-				actualSset:   withClaims(sampleSset, sampleClaim),
+				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				expectedSset:         withClaims(sampleSset, sampleClaim),
+				actualSset:           withClaims(sampleSset, sampleClaim),
+				validateStorageClass: true,
 			},
 			want: false,
 		},
 		{
 			name: "requested storage decrease: error out",
 			args: args{
-				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")),
-				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
+				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				expectedSset:         withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")),
+				actualSset:           withClaims(sampleSset, sampleClaim, sampleClaim2),
+				validateStorageClass: true,
 			},
 			want:    false,
 			wantErr: true,
@@ -246,7 +317,7 @@ func Test_needsRecreate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := needsRecreate(tt.args.expectedSset, tt.args.actualSset)
+			got, err := needsRecreate(tt.args.k8sClient, tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("needsRecreate() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -642,6 +713,218 @@ func Test_removeESPodOwner(t *testing.T) {
 			require.NoError(t, err)
 			for i := range tt.wantPods {
 				comparison.RequireEqual(t, &tt.wantPods[i], &retrievedPods.Items[i])
+			}
+		})
+	}
+}
+
+func Test_ensureClaimSupportsExpansion(t *testing.T) {
+	tests := []struct {
+		name                string
+		k8sClient           k8s.Client
+		claim               corev1.PersistentVolumeClaim
+		validateStoragClass bool
+		wantErr             bool
+	}{
+		{
+			name:                "specified storage class supports volume expansion",
+			k8sClient:           k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+			claim:               sampleClaim,
+			validateStoragClass: true,
+			wantErr:             false,
+		},
+		{
+			name:                "specified storage class does not support volume expansion",
+			k8sClient:           k8s.WrappedFakeClient(&sampleStorageClass),
+			claim:               sampleClaim,
+			validateStoragClass: true,
+			wantErr:             true,
+		},
+		{
+			name:                "default storage class supports volume expansion",
+			k8sClient:           k8s.WrappedFakeClient(withVolumeExpansion(defaultStorageClass)),
+			claim:               corev1.PersistentVolumeClaim{},
+			validateStoragClass: true,
+			wantErr:             false,
+		},
+		{
+			name:                "default storage class does not support volume expansion",
+			k8sClient:           k8s.WrappedFakeClient(&defaultStorageClass),
+			claim:               corev1.PersistentVolumeClaim{},
+			validateStoragClass: true,
+			wantErr:             true,
+		},
+		{
+			name:                "storage class vlaidation disabled: no-op",
+			k8sClient:           k8s.WrappedFakeClient(&sampleStorageClass), // would otherwise be refused: no expansion
+			claim:               sampleClaim,
+			validateStoragClass: false,
+			wantErr:             false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ensureClaimSupportsExpansion(tt.k8sClient, tt.claim, tt.validateStoragClass); (err != nil) != tt.wantErr {
+				t.Errorf("ensureClaimSupportsExpansion() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_allowsVolumeExpansion(t *testing.T) {
+	tests := []struct {
+		name string
+		sc   storagev1.StorageClass
+		want bool
+	}{
+		{
+			name: "allow volume expansion: true",
+			sc:   storagev1.StorageClass{AllowVolumeExpansion: pointer.BoolPtr(true)},
+			want: true,
+		},
+		{
+			name: "allow volume expansion: false",
+			sc:   storagev1.StorageClass{AllowVolumeExpansion: pointer.BoolPtr(false)},
+			want: false,
+		},
+		{
+			name: "allow volume expansion: nil",
+			sc:   storagev1.StorageClass{AllowVolumeExpansion: nil},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := allowsVolumeExpansion(tt.sc); got != tt.want {
+				t.Errorf("allowsVolumeExpansion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_isDefaultStorageClass(t *testing.T) {
+	tests := []struct {
+		name string
+		sc   storagev1.StorageClass
+		want bool
+	}{
+		{
+			name: "annotated as default",
+			sc:   defaultStorageClass,
+			want: true,
+		},
+		{
+			name: "annotated as default (beta)",
+			sc:   defaultBetaStorageClass,
+			want: true,
+		},
+		{
+			name: "annotated as default (+ beta)",
+			sc: storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				"storageclass.kubernetes.io/is-default-class":      "true",
+				"storageclass.beta.kubernetes.io/is-default-class": "true",
+			}}},
+			want: true,
+		},
+		{
+			name: "no annotations",
+			sc:   storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Annotations: nil}},
+			want: false,
+		},
+		{
+			name: "not annotated as default",
+			sc:   sampleStorageClass,
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isDefaultStorageClass(tt.sc); got != tt.want {
+				t.Errorf("isDefaultStorageClass() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getDefaultStorageClass(t *testing.T) {
+	tests := []struct {
+		name      string
+		k8sClient k8s.Client
+		want      storagev1.StorageClass
+		wantErr   bool
+	}{
+		{
+			name:      "return the default storage class",
+			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass, &defaultStorageClass),
+			want:      defaultStorageClass,
+		},
+		{
+			name:      "default storage class not found",
+			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass),
+			want:      storagev1.StorageClass{},
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getDefaultStorageClass(tt.k8sClient)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getDefaultStorageClass() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getDefaultStorageClass() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getStorageClass(t *testing.T) {
+	tests := []struct {
+		name      string
+		k8sClient k8s.Client
+		claim     corev1.PersistentVolumeClaim
+		want      storagev1.StorageClass
+		wantErr   bool
+	}{
+		{
+			name:      "return the specified storage class",
+			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass, &defaultStorageClass),
+			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: pointer.StringPtr(sampleStorageClass.Name)}},
+			want:      sampleStorageClass,
+			wantErr:   false,
+		},
+		{
+			name:      "error out if not found",
+			k8sClient: k8s.WrappedFakeClient(&defaultStorageClass),
+			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: pointer.StringPtr(sampleStorageClass.Name)}},
+			want:      storagev1.StorageClass{},
+			wantErr:   true,
+		},
+		{
+			name:      "fallback to the default storage class if unspecified",
+			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass, &defaultStorageClass),
+			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{}},
+			want:      defaultStorageClass,
+			wantErr:   false,
+		},
+		{
+			name:      "error out if unspecified and default storage class not found",
+			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass),
+			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{}},
+			want:      storagev1.StorageClass{},
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getStorageClass(tt.k8sClient, tt.claim)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getStorageClass() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !comparison.Equal(&got, &tt.want) {
+				t.Errorf("getStorageClass() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
