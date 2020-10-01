@@ -26,9 +26,7 @@ func InitTracer() error {
 	initTracer.Do(func() {
 		build := about.GetBuildInfo()
 		t, err := apm.NewTracer(serviceName, build.VersionString())
-		if err != nil {
-			errors.Wrap(err, "failed to initialize tracer")
-		}
+		err = errors.Wrap(err, "failed to initialize tracer")
 		tracer = t
 	})
 	return err

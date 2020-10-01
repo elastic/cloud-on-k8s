@@ -191,6 +191,7 @@ func (r *ReconcileElasticsearchConfig) validate(ctx context.Context, esc *escv1a
 // ReconcileOperation reconciles an individual esconfig operation
 func ReconcileOperation(ctx context.Context, client esclient.Client, operation escv1alpha1.ElasticsearchConfigOperation) error {
 	// this is already checked for errors at the beginning of the loop
+	// TODO there is no need for this to be a url, we only use it as a string
 	opURL, _ := url.Parse(operation.URL)
 	needsUpdate, err := updateRequired(ctx, client, opURL, []byte(operation.Body))
 	if err != nil {
@@ -249,9 +250,10 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL,
 	}
 
 	// TODO checking for a 200 might be wrong, really any status code not 200 might mean we need to update. but a 200 indicates we can and should compare the bodies
+	// TODO should bodies always be required to be specified? I think probably? I don't know of any ES API that you can send an empty PUT. maybe we require at a minimum "{}"?
 	if getResp.StatusCode != http.StatusOK {
 		err = errors.New("status unacceptable")
-		// TODO consider logging body of error here
+		// TODO consider logging body of error here since it can have useful information
 		logger.Error(err, "error getting current setting", "status_code", getResp.StatusCode, "url", opURL)
 		return false, err
 	}
@@ -262,11 +264,30 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL,
 		return false, errors.WithStack(err)
 	}
 
-	diff, _ := jsondiff.Compare(respBytes, body, nil)
-	if diff == jsondiff.SupersetMatch || diff == jsondiff.FullMatch {
+	// TODO would emitting the text difference be helpful?
+	// Compare requires some "options" or will panic
+	opts := jsondiff.DefaultConsoleOptions()
+	diff, _ := jsondiff.Compare(respBytes, body, &opts)
+	switch diff {
+	case jsondiff.SupersetMatch, jsondiff.FullMatch:
 		logger.V(1).Info("Content returned is a match, no action required", "url", opURL, "actual", string(respBytes), "expected", string(body))
 		return false, nil
+	case jsondiff.BothArgsAreInvalidJson:
+		// should never happen since we parsed the expected body before
+		err := errors.New("neither the expected nor actual body can be parsed successfully")
+		logger.Error(err, "url", opURL, "actual", string(respBytes), "expected", string(body))
+		return false, err
+	case jsondiff.FirstArgIsInvalidJson:
+		err := errors.New("the response body from the server cannot be parsed successfully")
+		logger.Error(err, "url", opURL, "actual", string(respBytes), "expected", string(body))
+		return false, err
+	case jsondiff.SecondArgIsInvalidJson:
+		// should never happen since we parsed the expected body before
+		err := errors.New("the expected body in this operation cannot be parsed successfully")
+		logger.Error(err, "url", opURL, "actual", string(respBytes), "expected", string(body))
+		return false, err
+	default:
+		logger.V(1).Info("Content returned is a not a superset match, reconciliation required", "url", opURL, "actual", string(respBytes), "expected", string(body))
+		return true, nil
 	}
-	logger.V(1).Info("Content returned is a not a superset match, reconciliation required", "url", opURL, "actual", string(respBytes), "expected", string(body))
-	return true, nil
 }
