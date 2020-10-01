@@ -9,7 +9,6 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/nsf/jsondiff"
 	"github.com/pkg/errors"
@@ -63,6 +62,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	}
 }
 
+// TODO do we want to add watches for the referenced ES's also? it's possible that someone creates a config, then deletes ES and re-creates it but the config is not reapplied
 func addWatches(c controller.Controller, r *ReconcileElasticsearchConfig) error {
 	err := c.Watch(&source.Kind{Type: &escv1alpha1.ElasticsearchConfig{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
@@ -72,8 +72,9 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearchConfig) error 
 }
 
 var _ reconcile.Reconciler = &ReconcileElasticsearchConfig{}
+var _ driver.Interface = &ReconcileElasticsearchConfig{}
 
-// ReconcileElasticsearchConfig reconciles an ApmServer object
+// ReconcileElasticsearchConfig reconciles an ES config object
 type ReconcileElasticsearchConfig struct {
 	k8s.Client
 	recorder       record.EventRecorder
@@ -83,19 +84,20 @@ type ReconcileElasticsearchConfig struct {
 	iteration uint64
 }
 
+// K8sClient is necessary to satisfy the driver.Interface
 func (r *ReconcileElasticsearchConfig) K8sClient() k8s.Client {
 	return r.Client
 }
 
+// DynamicWatches is necessary to satisfy the driver.Interface. We do not currently create any dynamic watches
 func (r *ReconcileElasticsearchConfig) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
+// Recorder is necessary to satisfy the driver.Interface.
 func (r *ReconcileElasticsearchConfig) Recorder() record.EventRecorder {
 	return r.recorder
 }
-
-var _ driver.Interface = &ReconcileElasticsearchConfig{}
 
 // Reconcile reads that state of the cluster for an ES Config object and makes changes based on the state read
 // and what is in the spec.
@@ -191,9 +193,7 @@ func (r *ReconcileElasticsearchConfig) validate(ctx context.Context, esc *escv1a
 // ReconcileOperation reconciles an individual esconfig operation
 func ReconcileOperation(ctx context.Context, client esclient.Client, operation escv1alpha1.ElasticsearchConfigOperation) error {
 	// this is already checked for errors at the beginning of the loop
-	// TODO there is no need for this to be a url, we only use it as a string
-	opURL, _ := url.Parse(operation.URL)
-	needsUpdate, err := updateRequired(ctx, client, opURL, []byte(operation.Body))
+	needsUpdate, err := updateRequired(ctx, client, operation.URL, []byte(operation.Body))
 	if err != nil {
 		return err
 	}
@@ -201,8 +201,8 @@ func ReconcileOperation(ctx context.Context, client esclient.Client, operation e
 		return nil
 	}
 	logger := tracing.LoggerFromContext(ctx)
-	logger.V(1).Info("Content is different, need to send PUT", "url", opURL, "body", operation.Body)
-	put, err := http.NewRequest(http.MethodPut, opURL.String(), ioutil.NopCloser(bytes.NewBufferString(operation.Body)))
+	logger.V(1).Info("Content is different, need to send PUT", "url", operation.URL, "body", operation.Body)
+	put, err := http.NewRequest(http.MethodPut, operation.URL, ioutil.NopCloser(bytes.NewBufferString(operation.Body)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -222,15 +222,15 @@ func ReconcileOperation(ctx context.Context, client esclient.Client, operation e
 			// todo wrap in span
 			return err
 		}
-		logger.V(1).Info("Response from PUT", "url", opURL, "status_code", resp.StatusCode, "body", string(respBytes))
+		logger.V(1).Info("Response from PUT", "url", operation.URL, "status_code", resp.StatusCode, "body", string(respBytes))
 		return nil
 	}
 
 	return err
 }
 
-func updateRequired(ctx context.Context, client esclient.Client, opURL *url.URL, body []byte) (bool, error) {
-	get, err := http.NewRequest(http.MethodGet, opURL.String(), nil)
+func updateRequired(ctx context.Context, client esclient.Client, opURL string, body []byte) (bool, error) {
+	get, err := http.NewRequest(http.MethodGet, opURL, nil)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
