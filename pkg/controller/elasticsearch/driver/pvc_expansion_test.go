@@ -358,7 +358,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 
 	sset2 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2", UID: "sset2-uid"}}
 	sset2Bytes, _ := json.Marshal(sset2)
-	sset2Json := string(sset2Bytes)
+	sset2JSON := string(sset2Bytes)
 
 	type args struct {
 		runtimeObjs []runtime.Object
@@ -422,11 +422,11 @@ func Test_recreateStatefulSets(t *testing.T) {
 				runtimeObjs: []runtime.Object{sset1, sset2, pod1},
 				es: *withAnnotation(withAnnotation(es(),
 					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-					"elasticsearch.k8s.elastic.co/recreate-sset2", sset2Json),
+					"elasticsearch.k8s.elastic.co/recreate-sset2", sset2JSON),
 			},
 			wantES: *withAnnotation(withAnnotation(es(),
 				"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-				"elasticsearch.k8s.elastic.co/recreate-sset2", sset2Json),
+				"elasticsearch.k8s.elastic.co/recreate-sset2", sset2JSON),
 			wantSsets:       nil,
 			wantPods:        []corev1.Pod{*pod1WithOwnerRef}, // ownerRef removed
 			wantRecreations: 2,
@@ -437,10 +437,10 @@ func Test_recreateStatefulSets(t *testing.T) {
 				runtimeObjs: []runtime.Object{sset1DifferentUID, pod1}, // sset recreated
 				es: *withAnnotation(withAnnotation(es(),
 					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-					"another-annotation-key", sset2Json),
+					"another-annotation-key", sset2JSON),
 			},
 			// sset annotation removed, other annotation preserved
-			wantES:          *withAnnotation(es(), "another-annotation-key", sset2Json),
+			wantES:          *withAnnotation(es(), "another-annotation-key", sset2JSON),
 			wantSsets:       nil,
 			wantPods:        []corev1.Pod{*pod1},
 			wantRecreations: 0,
