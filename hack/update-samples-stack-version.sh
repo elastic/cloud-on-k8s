@@ -16,7 +16,7 @@ VERSION="$1"
 
 # Directories containing version references to replace
 # Note: hack/operatorhub/config.yaml will need to be updated manually
-dirs=(config/samples config/recipes config/e2e)
+dirs=(config/samples config/recipes config/e2e test/e2e)
 
 # For all yaml files in the directory trees, replace the existing version with sed.
 # We use the "-i.bak" trick to be compatible with both Linux and OSX.
