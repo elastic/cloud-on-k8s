@@ -56,40 +56,7 @@ type Reporter struct {
 func (r *Reporter) Start() {
 	ticker := time.NewTicker(updateInterval)
 	for range ticker.C {
-		stats, err := r.getResourceStats()
-		if err != nil {
-			log.Error(err, "failed to get resource stats")
-			continue
-		}
-
-		telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats)
-		if err != nil {
-			log.Error(err, "failed to marshal telemetry data")
-			continue
-		}
-
-		for _, ns := range r.managedNamespaces {
-			var kibanaList kbv1.KibanaList
-			if err := r.client.List(&kibanaList, client.InNamespace(ns)); err != nil {
-				log.Error(err, "failed to list Kibanas")
-				continue
-			}
-			for _, kb := range kibanaList.Items {
-				var secret corev1.Secret
-				nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
-				if err := r.client.Get(nsName, &secret); err != nil {
-					log.Error(err, "failed to get Kibana secret")
-					continue
-				}
-
-				secret.Data[kibana.TelemetryFilename] = telemetryBytes
-
-				if _, err := reconciler.ReconcileSecret(r.client, secret, nil); err != nil {
-					log.Error(err, "failed to reconcile Kibana secret")
-					continue
-				}
-			}
-		}
+		r.report()
 	}
 }
 
@@ -127,6 +94,48 @@ func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
 	}
 
 	return stats, nil
+}
+
+func (r *Reporter) report() {
+	stats, err := r.getResourceStats()
+	if err != nil {
+		log.Error(err, "failed to get resource stats")
+		return
+	}
+
+	telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats)
+	if err != nil {
+		log.Error(err, "failed to marshal telemetry data")
+		return
+	}
+
+	for _, ns := range r.managedNamespaces {
+		var kibanaList kbv1.KibanaList
+		if err := r.client.List(&kibanaList, client.InNamespace(ns)); err != nil {
+			log.Error(err, "failed to list Kibanas")
+			continue
+		}
+		for _, kb := range kibanaList.Items {
+			var secret corev1.Secret
+			nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
+			if err := r.client.Get(nsName, &secret); err != nil {
+				log.Error(err, "failed to get Kibana secret")
+				continue
+			}
+
+			if secret.Data == nil {
+				// should not happen, but just to be safe
+				secret.Data = make(map[string][]byte)
+			}
+
+			secret.Data[kibana.TelemetryFilename] = telemetryBytes
+
+			if _, err := reconciler.ReconcileSecret(r.client, secret, nil); err != nil {
+				log.Error(err, "failed to reconcile Kibana secret")
+				continue
+			}
+		}
+	}
 }
 
 func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
