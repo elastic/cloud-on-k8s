@@ -31,6 +31,7 @@ ECK can be configured using either command line flags or environment variables.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
+|ubi-only | false | Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.
 |webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
 |webhook-name |"elastic-webhook.k8s.elastic.co" |Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when `enable-webhook` is true.
 |webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
@@ -143,4 +144,3 @@ spec:
         mountPath: /conf
         readOnly: true
 ----
-
