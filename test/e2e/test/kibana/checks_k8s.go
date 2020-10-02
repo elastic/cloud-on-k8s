@@ -135,8 +135,9 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		// hardcode all secret names and keys to catch any breaking change
 		expected := []test.ExpectedSecret{
 			{
-				Name: kbName + "-kb-config",
-				Keys: []string{"kibana.yml", "telemetry.yml"},
+				Name:         kbName + "-kb-config",
+				Keys:         []string{"kibana.yml"},
+				OptionalKeys: []string{"telemetry.yml"},
 				Labels: map[string]string{
 					"eck.k8s.elastic.co/credentials": "true",
 					"kibana.k8s.elastic.co/name":     kbName,

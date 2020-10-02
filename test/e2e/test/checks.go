@@ -21,9 +21,10 @@ func CheckTestSteps(b Builder, k *K8sClient) StepList {
 
 // ExpectedSecret represents a Secret we expect to exist.
 type ExpectedSecret struct {
-	Name   string
-	Labels map[string]string
-	Keys   []string
+	Name         string
+	Labels       map[string]string
+	Keys         []string
+	OptionalKeys []string
 }
 
 // MatchesActualSecret fetches the corresponding secret from k and returns an error if it mismatches.
@@ -33,8 +34,11 @@ func (e ExpectedSecret) MatchesActualSecret(k *K8sClient, namespace string) erro
 	if err := k.Client.Get(types.NamespacedName{Namespace: namespace, Name: e.Name}, &s); err != nil {
 		return err
 	}
+
 	// have the expected keys
-	if len(s.Data) != len(e.Keys) {
+	min := len(e.Keys)
+	max := min + len(e.OptionalKeys)
+	if min <= len(s.Data) && len(s.Data) <= max {
 		return fmt.Errorf("expected %d keys in %s, got %d", len(e.Keys), e.Name, len(s.Data))
 	}
 	for _, k := range e.Keys {
