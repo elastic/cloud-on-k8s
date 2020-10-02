@@ -8,6 +8,9 @@ endif::[]
 [id="{p}-{page_id}"]
 = Volume claim templates
 
+[float]
+== Specifying the volume claim settings
+
 By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
 
 [source,yaml]
@@ -30,7 +33,17 @@ spec:
 
 ECK automatically deletes PersistentVolumeClaim resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
-IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. When you define volume claims, consider future storage requirements and make sure you have enough space to support the expected growth.
+[float]
+== Updating the volume claim settings
+
+If the storage class allows link:https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/[volume expansion], you can increase the storage requests size in the volumeClaimTemplates. ECK will update the existing PersistentVolumeClaims accordingly, and recreate the StatefulSet automatically. If the volume driver supports `ExpandInUsePersistentVolumes`, the filesystem will be resized online, and does not require restarting the Elasticsearch process nor re-creating the Pods. If the volume driver does not support `ExpandInUsePersistentVolumes`, it is necessary to manually delete the Pods after the resize, to be recreated automatically with the expanded filesystem.
+
+Any other changes in the volumeClaimTemplates, such as changing the storage class or decreasing the volume size, is forbidden. In order to achieve those, you can create a new nodeSet with different settings, and remove the existing nodeSet. In practice, that's equivalent to renaming the existing nodeSet while modifying its claim settings in a single update. ECK ensures data stored on Pods of the deleted nodeSet is migrated to other nodes before removing Pods of the deleted nodeSet.
+
+[float]
+== EmptyDir
+
+CAUTION: Don't use `emptyDir` as it might generate permanent data loss.
 
 If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data:
 
@@ -46,5 +59,3 @@ spec:
         - name: elasticsearch-data
           emptyDir: {}
 ----
-
-CAUTION: Don't use `emptyDir` as it might generate permanent data loss.
