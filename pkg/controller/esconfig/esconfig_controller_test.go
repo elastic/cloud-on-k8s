@@ -60,6 +60,22 @@ func Test_updateRequired(t *testing.T) {
 			},
 		},
 		{
+			name:    "update not required but response contains additional data",
+			url:     "/test",
+			want:    false,
+			wantErr: false,
+			body:    `{"a": "b"}`,
+			fn: func(req *http.Request) *http.Response {
+				require.Equal(t, "/test", req.URL.Path)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body:       ioutil.NopCloser(strings.NewReader(`{"a": "b", "1": "2"}`)),
+					Request:    req,
+				}
+			},
+		},
+		{
 			name:    "does not exist, must be created",
 			url:     "/test",
 			want:    true,

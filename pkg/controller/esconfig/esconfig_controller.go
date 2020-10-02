@@ -253,7 +253,7 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL string, b
 	// TODO should bodies always be required to be specified? I think probably? I don't know of any ES API that you can send an empty PUT. maybe we require at a minimum "{}"?
 	if getResp.StatusCode != http.StatusOK {
 		err = errors.New("status unacceptable")
-		// TODO consider logging body of error here since it can have useful information
+		// TODO consider logging body of error here since it might have useful information
 		logger.Error(err, "error getting current setting", "status_code", getResp.StatusCode, "url", opURL)
 		return false, err
 	}
@@ -265,7 +265,7 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL string, b
 	}
 
 	// TODO would emitting the text difference be helpful?
-	// Compare requires some "options" or will panic
+	// TODO: Compare requires some "options" or will panic. Remove this when https://github.com/nsf/jsondiff/issues/8 is resolved
 	opts := jsondiff.DefaultConsoleOptions()
 	diff, _ := jsondiff.Compare(respBytes, body, &opts)
 	switch diff {
