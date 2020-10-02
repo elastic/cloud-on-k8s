@@ -6,10 +6,12 @@ package esconfig
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	escv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/esconfig/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -18,7 +20,11 @@ import (
 type Builder struct {
 	ElasticsearchConfig escv1alpha1.ElasticsearchConfig
 	MutatedFrom         *Builder
+	Validations         []ValidationFunc
 }
+
+// ValidationFunc is a validation to run against an Elasticsearch cluster
+type ValidationFunc func(client.Client) error
 
 var _ test.Builder = Builder{}
 
@@ -81,7 +87,39 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
-// CheckK8sTestSteps exists to satisfy the buider interface. ESConfigs do not create any additional k8s objects to check
-func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{}
+// WithSLM includes a snapshot repo and SLM config
+// https://www.elastic.co/guide/en/elasticsearch/reference/current/getting-started-snapshot-lifecycle-management.html
+func (b Builder) WithSLM() Builder {
+	b.ElasticsearchConfig.Spec.Operations = []escv1alpha1.ElasticsearchConfigOperation{
+		{
+			URL: "/_snapshot/my_repository",
+			Body: `{
+					"type": "fs",
+					"settings": {
+						"location": "/tmp"
+						}
+					}`,
+		},
+		{
+			URL: "/_slm/policy/nightly-snapshots",
+			Body: `{
+					"schedule": "0 30 1 * * ?",
+					"name": "<nightly-snap-{now/d}>",
+					"repository": "my_repository",
+					"config": {
+						"indices": ["*"]
+					},
+					"retention": {
+						"expire_after": "30d",
+						"min_count": 5,
+						"max_count": 50
+						}
+					}`,
+		},
+	}
+	return b
+}
+
+func (b Builder) RuntimeObjects() []runtime.Object {
+	return []runtime.Object{&b.ElasticsearchConfig}
 }

@@ -9,20 +9,17 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/esconfig"
 )
 
-func TestEnterpriseSearchTLSDisabled(t *testing.T) {
-	name := "test-ent-tls-disabled"
-
+func TestSLM(t *testing.T) {
+	name := "test-slm"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
-	entBuilder := enterprisesearch.NewBuilder(name).
+	escBuilder := esconfig.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(1).
-		WithTLSDisabled(true).
-		WithRestrictedSecurityContext()
+		WithSLM()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, escBuilder).RunSequential(t)
 }
