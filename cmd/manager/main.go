@@ -530,17 +530,17 @@ func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []strin
 	// Report this instance as elected through Prometheus
 	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
 
+	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
+	mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
+
 	// Start the resource reporter
 	go func() {
-		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
 		r.Start(licensing.ResourceReporterFrequency)
 	}()
 
 	// Start the telemetry reporter
 	go func() {
-		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 		tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces)
 		tr.Start()
 	}()

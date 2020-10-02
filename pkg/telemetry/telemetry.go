@@ -14,6 +14,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/ghodss/yaml"
@@ -24,20 +25,14 @@ import (
 )
 
 const (
-	updateInterval = 10 * time.Second
+	updateInterval = 1 * time.Hour
 	resourceCount  = "resource_count"
 	podCount       = "pod_count"
 )
 
 var log = logf.Log.WithName("usage")
 
-type getUsageFn func(k8s.Client, []string) (string, interface{}, error)
-
-// ECK is a helper struct to marshal telemetry information.
-type ECK struct {
-	ECK   about.OperatorInfo     `json:"eck"`
-	Usage map[string]interface{} `json:"eck_usage"`
-}
+type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
 
 func NewReporter(info about.OperatorInfo, client client.Client, managedNamespaces []string) Reporter {
 	if len(managedNamespaces) == 0 {
@@ -61,34 +56,36 @@ type Reporter struct {
 func (r *Reporter) Start() {
 	ticker := time.NewTicker(updateInterval)
 	for range ticker.C {
-		usage, err := r.getResourceUsage()
+		stats, err := r.getResourceStats()
 		if err != nil {
-			log.Error(err, "failed to get resource usage")
+			log.Error(err, "failed to get resource stats")
 			continue
 		}
 
-		telemetryBytes, err := yaml.Marshal(ECK{ECK: r.operatorInfo, Usage: usage})
+		telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats)
 		if err != nil {
 			log.Error(err, "failed to marshal telemetry data")
+			continue
 		}
 
 		for _, ns := range r.managedNamespaces {
 			var kibanaList kbv1.KibanaList
 			if err := r.client.List(&kibanaList, client.InNamespace(ns)); err != nil {
-				log.Error(err, "failed to list kibanas")
+				log.Error(err, "failed to list Kibanas")
 				continue
 			}
 			for _, kb := range kibanaList.Items {
 				var secret corev1.Secret
 				nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
 				if err := r.client.Get(nsName, &secret); err != nil {
-					log.Error(err, "failed to get kibana secret")
+					log.Error(err, "failed to get Kibana secret")
 					continue
 				}
 
 				secret.Data[kibana.TelemetryFilename] = telemetryBytes
-				if err := r.client.Update(&secret); err != nil {
-					log.Error(err, "failed to update kibana secret")
+
+				if _, err := reconciler.ReconcileSecret(r.client, secret, nil); err != nil {
+					log.Error(err, "failed to reconcile Kibana secret")
 					continue
 				}
 			}
@@ -96,27 +93,44 @@ func (r *Reporter) Start() {
 	}
 }
 
-func (r *Reporter) getResourceUsage() (map[string]interface{}, error) {
-	usage := map[string]interface{}{}
-	for _, f := range []getUsageFn{
-		esUsage,
-		kbUsage,
-		apmUsage,
-		beatUsage,
-		entUsage,
+func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}) ([]byte, error) {
+	return yaml.Marshal(struct {
+		ECK struct {
+			about.OperatorInfo
+			Stats map[string]interface{} `json:"stats"`
+		} `json:"eck"`
+	}{
+		ECK: struct {
+			about.OperatorInfo
+			Stats map[string]interface{} `json:"stats"`
+		}{
+			OperatorInfo: info,
+			Stats:        stats,
+		},
+	})
+}
+
+func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
+	stats := map[string]interface{}{}
+	for _, f := range []getStatsFn{
+		esStats,
+		kbStats,
+		apmStats,
+		beatStats,
+		entStats,
 	} {
-		key, usagePart, err := f(r.client, r.managedNamespaces)
+		key, statsPart, err := f(r.client, r.managedNamespaces)
 		if err != nil {
 			return nil, err
 		}
-		usage[key] = usagePart
+		stats[key] = statsPart
 	}
 
-	return usage, nil
+	return stats, nil
 }
 
-func esUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	usage := map[string]int32{resourceCount: 0, podCount: 0}
+func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
 	var esList esv1.ElasticsearchList
 	for _, ns := range managedNamespaces {
@@ -125,15 +139,15 @@ func esUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		}
 
 		for _, es := range esList.Items {
-			usage[resourceCount]++
-			usage[podCount] += es.Status.AvailableNodes
+			stats[resourceCount]++
+			stats[podCount] += es.Status.AvailableNodes
 		}
 	}
-	return "elasticsearches", usage, nil
+	return "elasticsearches", stats, nil
 }
 
-func kbUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	usage := map[string]int32{resourceCount: 0, podCount: 0}
+func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
 	var kbList kbv1.KibanaList
 	for _, ns := range managedNamespaces {
@@ -142,15 +156,15 @@ func kbUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		}
 
 		for _, kb := range kbList.Items {
-			usage[resourceCount]++
-			usage[podCount] += kb.Status.AvailableNodes
+			stats[resourceCount]++
+			stats[podCount] += kb.Status.AvailableNodes
 		}
 	}
-	return "kibanas", usage, nil
+	return "kibanas", stats, nil
 }
 
-func apmUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	usage := map[string]int32{resourceCount: 0, podCount: 0}
+func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
 	var apmList apmv1.ApmServerList
 	for _, ns := range managedNamespaces {
@@ -159,19 +173,19 @@ func apmUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 		}
 
 		for _, apm := range apmList.Items {
-			usage[resourceCount]++
-			usage[podCount] += apm.Status.AvailableNodes
+			stats[resourceCount]++
+			stats[podCount] += apm.Status.AvailableNodes
 		}
 	}
-	return "apms", usage, nil
+	return "apms", stats, nil
 }
 
-func beatUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
 	typeToName := func(typ string) string { return fmt.Sprintf("%s_count", typ) }
 
-	usage := map[string]int32{resourceCount: 0, podCount: 0}
+	stats := map[string]int32{resourceCount: 0, podCount: 0}
 	for typ := range beatv1beta1.KnownTypes {
-		usage[typeToName(typ)] = 0
+		stats[typeToName(typ)] = 0
 	}
 
 	var beatList beatv1beta1.BeatList
@@ -181,17 +195,17 @@ func beatUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 		}
 
 		for _, beat := range beatList.Items {
-			usage[resourceCount]++
-			usage[typeToName(beat.Spec.Type)]++
-			usage[podCount] += beat.Status.AvailableNodes
+			stats[resourceCount]++
+			stats[typeToName(beat.Spec.Type)]++
+			stats[podCount] += beat.Status.AvailableNodes
 		}
 	}
 
-	return "beats", usage, nil
+	return "beats", stats, nil
 }
 
-func entUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	usage := map[string]int32{resourceCount: 0, podCount: 0}
+func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
 	var entList entv1beta1.EnterpriseSearchList
 	for _, ns := range managedNamespaces {
@@ -200,9 +214,9 @@ func entUsage(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 		}
 
 		for _, apm := range entList.Items {
-			usage[resourceCount]++
-			usage[podCount] += apm.Status.AvailableNodes
+			stats[resourceCount]++
+			stats[podCount] += apm.Status.AvailableNodes
 		}
 	}
-	return "enterprisesearches", usage, nil
+	return "enterprisesearches", stats, nil
 }
