@@ -229,14 +229,14 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 		// this should not happen, since this is the already persisted version
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
 	}
-	currVer, err := version.Parse(proposed.Spec.Version)
+	proposedVer, err := version.Parse(proposed.Spec.Version)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, parseVersionErrMsg))
 	}
 	if len(errs) != 0 {
 		return errs
 	}
-	if !currVer.IsSameOrAfter(*currentVer) {
+	if !proposedVer.IsSameOrAfter(*currentVer) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, noDowngradesMsg))
 	}
 	return errs
