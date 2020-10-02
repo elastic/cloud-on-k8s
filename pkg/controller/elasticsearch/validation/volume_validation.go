@@ -22,7 +22,7 @@ import (
 
 // pvcModification ensures the only part of volume claim templates that can be changed is storage requests.
 // Storage increase is allowed as long as the storage class supports volume expansion.
-// Storage decrease is not supported.
+// Storage decrease is not supported if the corresponding StatefulSet has been resized already.
 func pvcModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	var errs field.ErrorList
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
@@ -85,6 +85,10 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 	return nil
 }
 
+// ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
+// - a storage decrease is attempted
+// - a storage increase is attempted but the storage class does not support volume expansion
+// - a new claim was added in updated ones
 func ValidateClaimsStorageUpdate(
 	k8sClient k8s.Client,
 	initial []corev1.PersistentVolumeClaim,
