@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
@@ -45,6 +46,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"github.com/fsnotify/fsnotify"
@@ -153,11 +155,6 @@ func Command() *cobra.Command {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
-		operator.ContainerSuffixFlag,
-		"",
-		"Container image suffix to use when downloading Elastic Stack container images",
-	)
-	cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
@@ -215,6 +212,11 @@ func Command() *cobra.Command {
 		operator.OperatorNamespaceFlag,
 		"",
 		"Kubernetes namespace the operator runs in",
+	)
+	cmd.Flags().Bool(
+		operator.UBIOnlyFlag,
+		false,
+		"Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.",
 	)
 	cmd.Flags().String(
 		operator.WebhookCertDirFlag,
@@ -373,11 +375,11 @@ func startOperator(stopChan <-chan struct{}) error {
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
-	// set a custom container suffix if specified
-	containerSuffix := viper.GetString(operator.ContainerSuffixFlag)
-	if containerSuffix != "" {
-		log.Info("Setting default container suffix", "container_suffix", containerSuffix)
-		container.SetContainerSuffix(containerSuffix)
+	// enforce UBI stack images if requested
+	ubiOnly := viper.GetBool(operator.UBIOnlyFlag)
+	if ubiOnly {
+		container.SetContainerSuffix("-ubi8")
+		version.GlobalMinStackVersion = version.From(7, 10, 0)
 	}
 
 	// Get a config to talk to the apiserver
@@ -506,7 +508,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace)
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, string(operatorInfo.OperatorUUID))
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -522,8 +524,11 @@ func startOperator(stopChan <-chan struct{}) error {
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace string) {
+func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace, operatorUUID string) {
 	<-mgr.Elected() // wait for this operator instance to be elected
+
+	// Report this instance as elected through Prometheus
+	metrics.Leader.WithLabelValues(operatorUUID, operatorNamespace).Set(1)
 
 	// Start the resource reporter
 	go func() {

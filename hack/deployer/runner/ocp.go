@@ -170,10 +170,12 @@ func (d *OcpDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(DefaultStorageClass); err != nil {
+		if err := setupDisks(d.plan); err != nil {
 			return err
 		}
-
+		if err := createStorageClass(); err != nil {
+			return err
+		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}

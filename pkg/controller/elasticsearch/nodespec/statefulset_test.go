@@ -5,7 +5,6 @@
 package nodespec
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -181,43 +180,6 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 			got, err := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims, es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantClaims, got)
-		})
-	}
-}
-
-func Test_getClaimMatchingName(t *testing.T) {
-	tests := []struct {
-		name      string
-		claims    []corev1.PersistentVolumeClaim
-		claimName string
-		want      *corev1.PersistentVolumeClaim
-	}{
-		{
-			name: "return matching claim",
-			claims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim3"}},
-			},
-			claimName: "claim2",
-			want:      &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
-		},
-		{
-			name: "return nil if no match",
-			claims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim3"}},
-			},
-			claimName: "claim4",
-			want:      nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := getClaimMatchingName(tt.claims, tt.claimName); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getMatchingClaim() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

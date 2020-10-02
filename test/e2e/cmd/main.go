@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/chaos"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,7 +26,7 @@ func main() {
 
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("E2E")
-	rootCmd.AddCommand(run.Command())
+	rootCmd.AddCommand(run.Command(), chaos.Command())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

@@ -9,7 +9,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHART_DIR="${SCRIPT_DIR}/assets/charts/eck"
+CHART_DIR="${SCRIPT_DIR}/../../deploy/eck-operator"
+CRD_CHART_DIR="${CHART_DIR}/charts/eck-operator-crds"
 
 update_chart() {
     local ALL_CRDS="${SCRIPT_DIR}/../../config/crds/all-crds.yaml"
@@ -21,9 +22,17 @@ update_chart() {
         SED="sed_bsd"
     fi
 
-    cp -f "$ALL_CRDS" "${CHART_DIR}/crds/all-crds.yaml"
-    "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+.*#version: $VERSION#" "${CHART_DIR}/values.yaml"
+    # Patch the CRDs to add Helm labels
+    cp -f "$ALL_CRDS" "${SCRIPT_DIR}/crd_patches/all-crds.yaml"
+    kubectl kustomize "${SCRIPT_DIR}/crd_patches" > "${CRD_CHART_DIR}/templates/all-crds.yaml"
+
+    # Update the versions in the main chart
     "$SED" -E "s#appVersion: [0-9]+\.[0-9]+\.[0-9]+.*#appVersion: $VERSION#" "${CHART_DIR}/Chart.yaml"
+    "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+.*#version: $VERSION#" "${CHART_DIR}/Chart.yaml"
+
+    # Update the versions in the CRD chart
+    "$SED" -E "s#appVersion: [0-9]+\.[0-9]+\.[0-9]+.*#appVersion: $VERSION#" "${CRD_CHART_DIR}/Chart.yaml"
+    "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+.*#version: $VERSION#" "${CRD_CHART_DIR}/Chart.yaml"
 }
 
 sed_gnu() {

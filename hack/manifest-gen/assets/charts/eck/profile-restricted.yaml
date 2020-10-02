@@ -1,6 +1,0 @@
-managedNamespaces: ["elastic-system"]
-
-createClusterScopedResources: false
-
-webhook:
-  enabled: false

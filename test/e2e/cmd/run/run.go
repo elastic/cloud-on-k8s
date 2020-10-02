@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"text/template"
 	"time"
 
@@ -27,10 +26,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -38,6 +34,7 @@ const (
 	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
+	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
 	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
@@ -74,11 +71,9 @@ func doRun(flags runFlags) error {
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployTestSecrets,
+			helper.deployMonitoring,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
-			helper.deployFilebeat,
-			helper.deployMetricbeat,
-			helper.deployTestJob,
 			helper.runTestJob,
 		}
 	}
@@ -148,6 +143,7 @@ func (h *helper) initTestContext() error {
 				Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
 			},
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
+			Replicas:          h.operatorReplicas,
 		},
 		OperatorImage:         h.operatorImage,
 		TestLicense:           h.testLicense,
@@ -163,6 +159,7 @@ func (h *helper) initTestContext() error {
 		KubernetesVersion:     h.kubernetesVersion,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            h.kubectl("get", "clusterversion") == nil,
+		DeployChaosJob:        h.deployChaosJob,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -299,24 +296,14 @@ func (h *helper) waitForOperatorToBeReady() error {
 	}, operatorReadyTimeout, 10*time.Second)
 }
 
-func (h *helper) deployFilebeat() error {
+func (h *helper) deployMonitoring() error {
 	if h.monitoringSecrets == "" {
-		log.Info("No monitoring secrets provided, filebeat is not deployed")
+		log.Info("No monitoring secrets provided, monitoring is not deployed")
 		return nil
 	}
 
-	log.Info("Deploying filebeat")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/filebeat.yaml", h.testContext)
-}
-
-func (h *helper) deployMetricbeat() error {
-	if h.monitoringSecrets == "" {
-		log.Info("No monitoring secrets provided, metricbeat is not deployed")
-		return nil
-	}
-
-	log.Info("Deploying metricbeat")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/metricbeat.yaml", h.testContext)
+	log.Info("Deploying monitoring")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/monitoring.yaml", h.testContext)
 }
 
 func (h *helper) deployTestSecrets() error {
@@ -334,17 +321,6 @@ func (h *helper) deployTestSecrets() error {
 	)
 }
 
-func (h *helper) deployTestJob() error {
-	log.Info("Deploying e2e test job")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
-		struct {
-			Context test.Context
-		}{
-			Context: h.testContext,
-		},
-	)
-}
-
 func (h *helper) runTestJob() error {
 	client, err := h.createKubeClient()
 	if err != nil {
@@ -357,7 +333,7 @@ func (h *helper) runTestJob() error {
 	go eventLogger.Start(stopChan)
 
 	// stream the logs while waiting for the test job to finish
-	err = h.monitorTestJob(client)
+	err = h.startAndMonitorTestJobs(client)
 	close(stopChan)
 
 	if err != nil {
@@ -396,111 +372,34 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 }
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
-func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
-	log.Info("Waiting for test job to start")
-	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
-	defer func() {
-		cancelFunc()
-		if deadline, _ := ctx.Deadline(); deadline.Before(time.Now()) {
-			log.Info("Test job timeout exceeded", "timeout", jobTimeout)
+func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
+
+	testSession := NewJobsManager(client, h)
+
+	outputs := []io.Writer{os.Stdout}
+	if h.logToFile {
+		jl, err := newJSONLogToFile(testsLogFile)
+		if err != nil {
+			log.Error(err, "Failed to create log file for test output")
+			return err
 		}
-		runtime.HandleCrash()
-	}()
+		defer jl.Close()
+		outputs = append(outputs, jl)
+	}
+	writer := io.MultiWriter(outputs...)
+	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser)
 
-	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
-		informers.WithNamespace(h.testContext.E2ENamespace),
-		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
-			opt.LabelSelector = fmt.Sprintf("%s=%s", testRunLabel, h.testContext.TestRun)
-		}))
+	if h.deployChaosJob {
+		chaosJob := NewJob("chaos-"+h.testRunName, "config/e2e/chaos_job.yaml", os.Stdout, stdTimestampParser)
+		runJob.WithDependency(chaosJob)
+		testSession.Schedule(chaosJob)
+	}
 
-	informer := factory.Core().V1().Pods().Informer()
+	testSession.Schedule(runJob)
 
-	jobStarted := false   // keep track of the first Pod running event
-	podSucceeded := false // keep track of when we're done
+	testSession.Start() // block until log streamers are done
 
-	streamErrors := make(chan error, 1)  // receive log stream errors
-	stopLogStream := make(chan struct{}) // notify the log stream it can stop when EOF
-	logStreamWg := sync.WaitGroup{}      // wait for the log stream goroutine to be over
-
-	var err error
-
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			pod := obj.(*corev1.Pod)
-			log.Info("Pod added", "name", pod.Name)
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			newPod := newObj.(*corev1.Pod)
-			switch newPod.Status.Phase {
-			case corev1.PodRunning:
-				if !jobStarted {
-					jobStarted = true
-					log.Info("Pod started", "name", newPod.Name)
-
-					logStreamWg.Add(1)
-					go func() {
-						outputs := []io.Writer{os.Stdout}
-						if h.logToFile {
-							jl, err := newJSONLogToFile(testsLogFile)
-							if err != nil {
-								log.Error(err, "Failed to create log file for test output")
-								return
-							}
-							defer jl.Close()
-							outputs = append(outputs, jl)
-						}
-						writer := io.MultiWriter(outputs...)
-						streamProvider := &PodLogStreamProvider{
-							client:    client,
-							pod:       newPod.Name,
-							namespace: h.testContext.E2ENamespace,
-						}
-						streamTestJobOutput(streamProvider, writer, streamErrors, stopLogStream)
-						logStreamWg.Done()
-					}()
-				} else {
-					select {
-					case streamErr := <-streamErrors:
-						if streamErr != nil {
-							log.Error(streamErr, "Stream failure")
-							err = streamErr
-						}
-					default:
-					}
-				}
-			case corev1.PodSucceeded:
-				if podSucceeded {
-					// already done, but the informer is not stopped yet so this code is still running
-					return
-				}
-				log.Info("Test Job succeeded, waiting for log stream to be over", "name", newPod.Name)
-				podSucceeded = true
-				// notify the log stream goroutine that it can stop at the end of its stream buffer
-				close(stopLogStream)
-				// we're done, stop the informer
-				cancelFunc()
-			case corev1.PodFailed:
-				log.Info("Pod is in failed state", "name", newPod.Name)
-				err = errors.New("tests failed")
-				// notify the log stream goroutine that it can stop at the end of its stream buffer
-				close(stopLogStream)
-				// we're done, stop the informer
-				cancelFunc()
-			default:
-				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			pod := obj.(*corev1.Pod)
-			log.Info("Pod deleted", "name", pod.Name)
-			cancelFunc()
-		},
-	})
-
-	informer.Run(ctx.Done())
-	// wait for the log stream to be fully flushed
-	logStreamWg.Wait()
-	return err
+	return testSession.err
 }
 
 type LogStreamProvider interface {
@@ -530,8 +429,11 @@ func (p PodLogStreamProvider) String() string {
 	return p.pod
 }
 
+type timestampExtractor func(line []byte) (time.Time, error)
+
 func streamTestJobOutput(
 	streamProvider LogStreamProvider,
+	timestampExtractor timestampExtractor,
 	writer io.Writer,
 	streamErrors chan<- error,
 	stop <-chan struct{},
@@ -544,12 +446,13 @@ func streamTestJobOutput(
 	for {
 		select {
 		case <-stop:
-			log.Info("Log stream stopped")
+			log.Info("Log stream stopped", "pod_name", streamProvider)
 			return
 		default:
-			log.Info("Streaming pod logs", "name", streamProvider)
+			log.Info("Streaming pod logs", "pod_name", streamProvider)
 			stream, err := streamProvider.NewLogStream()
 			if err != nil {
+				log.Error(err, "Streaming pod logs failed", "pod_name", streamProvider)
 				streamErrors <- err
 				continue // retry
 			}
@@ -560,7 +463,7 @@ func streamTestJobOutput(
 			for scan.Scan() {
 				line := scan.Bytes()
 
-				timestamp, err := parseLog(line)
+				timestamp, err := timestampExtractor(line)
 				if err != nil {
 					streamErrors <- err
 					continue
@@ -580,22 +483,39 @@ func streamTestJobOutput(
 				}
 			}
 			if err := scan.Err(); err != nil {
-				log.Error(err, "Log stream ended")
+				log.Error(err, "Log stream ended", "pod_name", streamProvider)
 			} else {
-				log.Info("Log stream ended")
+				log.Info("Log stream ended", "pod_name", streamProvider)
 			}
 			// retry
 		}
 	}
 }
 
-type LogLine struct {
+type GoLangJSONLogLine struct {
 	Time string
 }
 
-// parseLog extract the timestamp from a log, it is expected that the line is well formatted jsonline
-func parseLog(line []byte) (time.Time, error) {
-	var logLine LogLine
+// goLangTestTimestampParser extract the timestamp from a log issued by "go test ...", it is expected that the line is well formatted jsonline
+func goLangTestTimestampParser(line []byte) (time.Time, error) {
+	var logLine GoLangJSONLogLine
+	if err := json.Unmarshal(line, &logLine); err != nil {
+		return time.Time{}, err
+	}
+	timestamp, err := time.Parse(time.RFC3339Nano, logLine.Time)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return timestamp, nil
+}
+
+type StdJSONLogLine struct {
+	Time string `json:"@timestamp"`
+}
+
+// stdTimestampParser extract the timestamp from a log issued by "go test ...", it is expected that the line is well formatted jsonline
+func stdTimestampParser(line []byte) (time.Time, error) {
+	var logLine StdJSONLogLine
 	if err := json.Unmarshal(line, &logLine); err != nil {
 		return time.Time{}, err
 	}

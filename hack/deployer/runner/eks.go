@@ -122,10 +122,11 @@ func (e *EKSDriver) Execute() error {
 		} else {
 			log.Printf("Not creating cluster as it already exists")
 		}
-		if err := createStorageClass(NoProvisioner); err != nil {
+
+		if err := setupDisks(e.plan); err != nil {
 			return err
 		}
-		return NewCommand(e.plan.EKS.DiskSetup).Run()
+		return createStorageClass()
 	}
 	return nil
 }

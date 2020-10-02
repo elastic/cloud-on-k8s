@@ -191,6 +191,7 @@ metadata:
   labels:
     test-run: {{ .TestRun }}
 ---
+{{$comma:=","}} # using coma directly messes up ide yaml parsing
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -204,6 +205,7 @@ spec:
     matchLabels:
       control-plane: {{ .Operator.Name }}
   serviceName: {{ .Operator.Name }}
+  replicas: {{ .Operator.Replicas }}
   template:
     metadata:
       annotations:
@@ -320,6 +322,11 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -339,6 +346,11 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -358,6 +370,11 @@ webhooks:
       - UPDATE
       resources:
       - beats
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
 ---
 apiVersion: v1
 kind: Service

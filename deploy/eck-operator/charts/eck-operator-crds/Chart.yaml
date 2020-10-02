@@ -1,0 +1,27 @@
+apiVersion: v2
+name: eck-operator-crds
+description: |-
+  A Helm chart for installing the ECK operator Custom Resource Definitions (CRD). 
+
+type: application
+
+version: 1.3.0-SNAPSHOT
+
+appVersion: 1.3.0-SNAPSHOT
+
+home: https://github.com/elastic/cloud-on-k8s
+
+kubeVersion: ">=1.12.0-0"
+
+keywords:
+  - Elasticsearch
+  - Kibana
+  - APM Server
+  - Beats
+  - Enterprise Search
+  - Elastic Stack
+  - Operator
+
+maintainers:
+  - name: Elastic
+    email: eck@elastic.co

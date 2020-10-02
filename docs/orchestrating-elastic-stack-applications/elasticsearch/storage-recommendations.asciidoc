@@ -1,0 +1,66 @@
+:parent_page_id: elasticsearch-specification
+:page_id: storage-recommendations
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Storage recommendations
+
+ECK does not come with its own storage mechanism for Elasticsearch data. It is compatible with any Kubernetes storage option. It is recommended to use PersistentVolumes, by configuring the <<{p}-volume-claim-templates,VolumeClaimTemplates>> section of the Elasticsearch resource.
+
+Multiple PersistentVolume storage classes are available, depending on your Kubernetes setup. Their specifications impact Elasticsearch performance and operations. Evaluate the trade-offs among the various options and choose the solution that best fits your needs.
+
+[float]
+== Network-attached or Local PersistentVolumes
+
+PersistentVolumes can be of two types: **Network-attached** or **Local**. ECK handles them in the same way, but they have different performance, price and operational characteristics.
+
+- **Network-attached PersistentVolumes** can generally be attached to a Pod regardless of the host they are scheduled on.
+They provide a major operational benefit: if the host goes down, or needs to be replaced, the Pod can simply be deleted. Kubernetes reschedules it automatically on a different host, generally in the same region, and reattaches the same volume. This can take only a few seconds, and does not require any human intervention.
+
+- **Local PersistentVolumes** are bound to a particular host, and map a directory on the filesystem. They provide a major operational overhead: once bound to a Local PersistentVolume, a Pod can only be scheduled on the same host. If that host goes down, or needs to be replaced, the Pod cannot be scheduled on a different host. It remains in a `Pending` state until the host is available, or until the PersistentVolumeClaim is manually deleted. For that reason, Local PersistentVolumes bring more operational overhead.
+
+In both cases, the performance depends on the underlying hardware and implementation. In general, local SSDs give the best performance. The fastest network-attached volumes from major Cloud providers can also provide acceptable performance, depending on your Elasticsearch use cases. To better evaluate your performance requirements, you can link:https://github.com/elastic/rally[benchmark] your storage options against the expected Elasticsearch usage.
+
+[float]
+== Local PersistentVolumes operations
+
+[float]
+=== Host maintenance
+
+To take a host out of the Kubernetes cluster temporarily, it is common to cordon, then drain it. Kubernetes deletes Elasticsearch Pods scheduled on that host automatically, as long as the <<{p}-pod-disruption-budget,PodDisruptionBudget>> allows it. By default, ECK manages a PodDisruptionBudget that allows one Pod to be taken down, as long as the cluster has a green health. Once deleted, that Pod cannot be scheduled again on the cordoned host: the Pod stays `Pending`, waiting for that host to come back online. The next Pod can be automatically deleted when the Elasticsearch cluster health becomes green again.
+
+Some hosted Kubernetes offerings only respect the PodDisruptionBudget for a certain amount of time, before killing all Pods on the node. For example, link:https://cloud.google.com/kubernetes-engine/docs/concepts/cluster-upgrades[GKE automated version upgrade] rotates all nodes without preserving local volumes, and respects the PodDisruptionBudget for a maximum of one hour. In such cases it is preferable to link:https://cloud.google.com/kubernetes-engine/docs/concepts/cluster-upgrades#upgrading_manually[manually handle the cluster version upgrade].
+
+[float]
+=== Host removal
+
+If a host has a failure, or is permanently removed, its local data is likely lost. The corresponding Pod stays `Pending` because it can no longer attach the PersistentVolume. To schedule the Pod on a different host with a new empty volume, you have to manually remove both the PersistenteVolumeClaim and the Pod. A new Pod is automatically created with a new PersistentVolumeClaim, which is then matched with a PersistentVolume. Then, Elasticsearch shard replication makes sure that data is recovered on the new instance.
+
+[float]
+== Local PersistentVolums provisioners
+
+You can provision Local PersistentVolumes in one of the following ways:
+
+- **Manual provisioning**: Manually link:https://kubernetes.io/blog/2018/04/13/local-persistent-volumes-beta/#creating-a-local-persistent-volume[create PersistentVolume resources], matching a local path to a specific host. Data must be manually removed once the PersistentVolumes are released.
+
+- **Static provisioning**: Run a program that automatically discovers the existing partitions on each host, and creates the corresponding PersistentVolume resources. The link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[Local PersistentVolume Static Provisioner] is a great way to get started.
+
+- **Dynamic provisioning**: Run a controller to dynamically create PersistentVolumes of the requested storage size to match  PersistentVolumeClaims. link:https://github.com/topolvm/topolvm[TopoLVM] is a great example. It dynamically provisions LVM volumes, formats their filesystem, and supports resizing. It requires installing an extra scheduler for capacity-awareness, which may not be permitted on hosted Kubernetes offerings.
+
+[float]
+== Storage class settings
+
+[float]
+=== volumeBindingMode: WaitForFirstConsumer
+
+In the PersistentVolume StorageClass, it is important to set link:https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode[`volumeBindingMode: WaitForFirstConsumer`], otherwise a Pod might be scheduled on a host that cannot access the existing PersistentVolume. This setting isn't always applied by default on Cloud providers StorageClasses, but in most cases it is possible to create (or patch) StorageClasses to add the setting.
+
+[float]
+=== Reclaim policy
+
+The reclaim policy of a StorageClass specifies whether a PersistentVolume should be automatically deleted once its corresponding PersistentVolumeClaim is deleted. It can be set to `Delete` or `Retain`.
+
+ECK automatically deletes PersistentVolumeClaims when they are no longer needed, following a cluster downscale or deletion. However, ECK does not delete PersistentVolumes. The system cannot reuse a PersistentVolume with existing data from a different cluster. In this case Elasticsearch does not start, as it detects data that belongs to a different cluster. For this reason, it is recommended to use the `Delete` reclaim policy.
