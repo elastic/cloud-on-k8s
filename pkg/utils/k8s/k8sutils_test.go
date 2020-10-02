@@ -135,7 +135,7 @@ func TestOverrideControllerReference(t *testing.T) {
 	}
 }
 
-func TestCompareStorage(t *testing.T) {
+func TestCompareStorageRequests(t *testing.T) {
 	type args struct {
 		initial corev1.ResourceRequirements
 		updated corev1.ResourceRequirements
