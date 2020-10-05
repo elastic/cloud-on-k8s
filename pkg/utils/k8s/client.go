@@ -49,8 +49,7 @@ type clientWrapper struct {
 	ctx      context.Context // nil if not provided
 }
 
-// WithContext returns a client configured to use the provided context on
-// subsequent requests, instead of one created from the preconfigured timeout.
+// WithContext returns a client configured to use the provided context for subsequent calls.
 func (w *clientWrapper) WithContext(ctx context.Context) Client {
 	return &clientWrapper{
 		crClient: w.crClient,

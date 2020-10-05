@@ -14,6 +14,7 @@ const (
 	ContainerRegistryFlag         = "container-registry"
 	DebugHTTPListenFlag           = "debug-http-listen"
 	DisableConfigWatch            = "disable-config-watch"
+	ElasticsearchClientTimeout    = "elasticsearch-client-timeout"
 	EnableLeaderElection          = "enable-leader-election"
 	EnableTracingFlag             = "enable-tracing"
 	EnableWebhookFlag             = "enable-webhook"

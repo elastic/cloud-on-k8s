@@ -62,7 +62,7 @@ type memoizingNodes struct {
 
 // initialize requests Elasticsearch for nodes information, only once.
 func (n *memoizingNodes) initialize() error {
-	nodes, err := n.esClient.GetNodes(context.Background())
+	nodes, err := n.esClient.GetNodes(n.ctx)
 	if err != nil {
 		return err
 	}

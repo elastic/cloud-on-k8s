@@ -41,15 +41,8 @@ func (c *clientV7) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 	return response, err
 }
 
-func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
-	if timeout == "" {
-		timeout = formatAsSeconds(defaultVotingConfigExclusionTimeout)
-	}
-	path := fmt.Sprintf(
-		"/_cluster/voting_config_exclusions/%s?timeout=%s",
-		strings.Join(nodeNames, ","),
-		timeout,
-	)
+func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
+	path := fmt.Sprintf("/_cluster/voting_config_exclusions/%s", strings.Join(nodeNames, ","))
 
 	if err := c.post(ctx, path, nil, nil); err != nil {
 		return errors.Wrap(err, "unable to add to voting_config_exclusions")

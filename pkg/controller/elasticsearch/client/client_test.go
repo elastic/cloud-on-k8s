@@ -470,7 +470,7 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 				Body:       ioutil.NopCloser(strings.NewReader("")),
 			}
 		})
-		err := client.AddVotingConfigExclusions(context.Background(), []string{"a", "b"}, "")
+		err := client.AddVotingConfigExclusions(context.Background(), []string{"a", "b"})
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.AddVotingConfigExlusions() error = %v, wantErr %v", err, tt.wantErr)
 		}
@@ -663,8 +663,7 @@ func TestTimeout(t *testing.T) {
 	require.Equal(t, 1*time.Minute, have)
 }
 
-func TestVotingConfigExclusionTimeout(t *testing.T) {
-	es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESVotingConfigExclusionTimeoutAnnotation: "2.5m"}}}
-	have := VotingConfigExclusionTimeout(es)
-	require.Equal(t, "150s", have)
+func TestFormateAsSeconds(t *testing.T) {
+	have := formatAsSeconds(2 * time.Minute)
+	require.Equal(t, "120s", have)
 }

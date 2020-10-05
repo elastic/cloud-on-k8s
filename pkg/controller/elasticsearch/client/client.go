@@ -22,16 +22,12 @@ import (
 )
 
 const (
-	// defaultClientTimeout is the default timeout for the Elasticsearch client.
-	defaultClientTimeout = 3 * time.Minute
-	// defaultVotingConfigExclusionTimeout is the default timeout for setting voting exclusions.
-	defaultVotingConfigExclusionTimeout = 30 * time.Second
-
 	// ESClientTimeoutAnnotation is the name of the annotation used to set the Elasticsearch client timeout.
 	ESClientTimeoutAnnotation = "eck.k8s.elastic.co/es-client-timeout"
-	// ESVotingConfigExclusionTimeoutAnnotation is the name of the annotation used to set the request timeout for Elasticsearch voting config exclusion.
-	ESVotingConfigExclusionTimeoutAnnotation = "eck.k8s.elastic.co/es-voting-config-exclusion-timeout"
 )
+
+// DefaultESClientTimeout is the default timeout value for Elasticsearch requests.
+var DefaultESClientTimeout = 3 * time.Minute
 
 // BasicAuth contains credentials for an Elasticsearch user.
 type BasicAuth struct {
@@ -99,11 +95,8 @@ type Client interface {
 	// GetRemoteClusterSettings retrieves the remote clusters of a cluster.
 	GetRemoteClusterSettings(ctx context.Context) (RemoteClustersSettings, error)
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
-	//
-	// If timeout is the empty string, the default is used.
-	//
 	// Introduced in: Elasticsearch 7.0.0
-	AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error
+	AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error
 	// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// Introduced in: Elasticsearch 7.0.0
@@ -116,13 +109,7 @@ type Client interface {
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
 func Timeout(es runtime.Object) time.Duration {
-	return annotation.ExtractTimeout(es, ESClientTimeoutAnnotation, defaultClientTimeout)
-}
-
-// VotingConfigExclusionTimeout returns the request timeout for setting voting config exclusions for the given Elasticsearch resource.
-func VotingConfigExclusionTimeout(es runtime.Object) string {
-	t := annotation.ExtractTimeout(es, ESVotingConfigExclusionTimeoutAnnotation, defaultVotingConfigExclusionTimeout)
-	return formatAsSeconds(t)
+	return annotation.ExtractTimeout(es, ESClientTimeoutAnnotation, DefaultESClientTimeout)
 }
 
 func formatAsSeconds(d time.Duration) string {

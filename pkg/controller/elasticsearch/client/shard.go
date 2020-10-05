@@ -21,8 +21,6 @@ type ShardLister interface {
 }
 
 func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	ctx, cancel := context.WithTimeout(ctx, defaultClientTimeout)
-	defer cancel()
 	allocationSettings := ClusterRoutingAllocation{
 		Transient: AllocationSettings{
 			Cluster: ClusterRoutingSettings{
@@ -40,8 +38,6 @@ func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string)
 }
 
 func (c *clientV6) GetShards(ctx context.Context) (Shards, error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultClientTimeout)
-	defer cancel()
 	var shards Shards
 	if err := c.get(ctx, "/_cat/shards?format=json", &shards); err != nil {
 		return shards, err

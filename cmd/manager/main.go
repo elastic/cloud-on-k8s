@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
@@ -163,6 +164,11 @@ func Command() *cobra.Command {
 		operator.DisableConfigWatch,
 		false,
 		"Disable watching the configuration file for changes",
+	)
+	cmd.Flags().Duration(
+		operator.ElasticsearchClientTimeout,
+		3*time.Minute,
+		"Default request timeout for the Elasticsearch client.",
 	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
@@ -396,6 +402,9 @@ func startOperator(stopChan <-chan struct{}) error {
 
 	// set the timeout for API client
 	cfg.Timeout = viper.GetDuration(operator.KubeClientTimeout)
+
+	// set the timeout for Elasticsearch requests
+	esclient.DefaultESClientTimeout = viper.GetDuration(operator.ElasticsearchClientTimeout)
 
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
