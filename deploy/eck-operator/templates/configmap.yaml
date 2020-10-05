@@ -18,6 +18,7 @@ data:
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
+    elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
     {{- end }}

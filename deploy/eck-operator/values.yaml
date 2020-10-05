@@ -143,6 +143,9 @@ config:
   # kubeClientTimeout sets the request timeout for Kubernetes API calls made by the operator.
   kubeClientTimeout: 60s
 
+  # elasticsearchClientTimeout sets the request timeout for Elasticsearch API calls made by the operator.
+  elasticsearchClientTimeout: 180s
+
 # Internal use only
 internal:
   manifestGen: false

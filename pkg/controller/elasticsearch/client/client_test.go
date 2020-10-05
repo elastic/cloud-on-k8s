@@ -663,7 +663,7 @@ func TestTimeout(t *testing.T) {
 	require.Equal(t, 1*time.Minute, have)
 }
 
-func TestFormateAsSeconds(t *testing.T) {
+func TestFormatAsSeconds(t *testing.T) {
 	have := formatAsSeconds(2 * time.Minute)
 	require.Equal(t, "120s", have)
 }

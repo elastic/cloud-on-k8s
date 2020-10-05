@@ -168,7 +168,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Duration(
 		operator.ElasticsearchClientTimeout,
 		3*time.Minute,
-		"Default request timeout for the Elasticsearch client.",
+		"Default timeout for requests made by the Elasticsearch client.",
 	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
