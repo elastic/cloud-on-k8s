@@ -9,10 +9,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/stretchr/testify/require"
 )
 
 func clusterUUID(es esv1.Elasticsearch, k *test.K8sClient) (string, error) {
