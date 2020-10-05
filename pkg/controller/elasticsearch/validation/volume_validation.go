@@ -20,10 +20,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// pvcModification ensures the only part of volume claim templates that can be changed is storage requests.
+// validPVCModification ensures the only part of volume claim templates that can be changed is storage requests.
 // Storage increase is allowed as long as the storage class supports volume expansion.
 // Storage decrease is not supported if the corresponding StatefulSet has been resized already.
-func pvcModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
+func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	var errs field.ErrorList
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)

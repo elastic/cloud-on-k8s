@@ -362,7 +362,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 	}
 }
 
-func Test_pvcModification(t *testing.T) {
+func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
@@ -508,7 +508,7 @@ func Test_pvcModification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := pvcModification(tt.args.current, tt.args.proposed, tt.args.k8sClient, tt.args.validateStorageClass)
+			errs := validPVCModification(tt.args.current, tt.args.proposed, tt.args.k8sClient, tt.args.validateStorageClass)
 			if tt.wantErr {
 				require.NotEmpty(t, errs)
 			} else {

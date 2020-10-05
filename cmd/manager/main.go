@@ -219,9 +219,9 @@ func Command() *cobra.Command {
 		"Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.",
 	)
 	cmd.Flags().Bool(
-		operator.ValidateStorageClass,
+		operator.ValidateStorageClassFlag,
 		true,
-		"Specifies whether storage classes volume expansion support should be verified. Can be disabled if cluster-wide storage class RBAC access is not available.",
+		"Specifies whether the operator should retrieve storage classes to verify volume expansion support. Can be disabled if cluster-wide storage class RBAC access is not available.",
 	)
 	cmd.Flags().String(
 		operator.WebhookCertDirFlag,
@@ -493,7 +493,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		},
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
-		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClass),
+		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
 	}
 
@@ -678,7 +678,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		}
 	}
 
-	// esv1 validating webhook is wired up differently, in  to access the k8s client
+	// esv1 validating webhook is wired up differently, in order to access the k8s client
 	esvalidation.RegisterWebhook(mgr, validateStorageClass)
 
 	// wait for the secret to be populated in the local filesystem before returning

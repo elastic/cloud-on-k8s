@@ -32,7 +32,7 @@ type Parameters struct {
 	// SetDefaultSecurityContext enables setting the default security context
 	// with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0
 	SetDefaultSecurityContext bool
-	// ValidateStorageClass specifies whether storage classes volume expansion support should be verified.
+	// Specifies whether the operator should retrieve storage classes to verify volume expansion support.
 	// Can be disabled if cluster-wide storage class RBAC access is not available.
 	ValidateStorageClass bool
 	// Tracer is a shared APM tracer instance or nil

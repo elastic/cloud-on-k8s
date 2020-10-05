@@ -57,7 +57,7 @@ func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []update
 		noDowngrades,
 		validUpgradePath,
 		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
-			return pvcModification(current, proposed, k8sClient, validateStorageClass)
+			return validPVCModification(current, proposed, k8sClient, validateStorageClass)
 		},
 	}
 }
