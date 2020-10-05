@@ -349,10 +349,11 @@ func createValidatedHTTPCertificateTemplate(
 		certCommonName, // eg. clusterName-es-http.default.es.local
 		shortName,      // eg. clusterName-es-http
 	}
-	var ipAddresses []net.IP
+	var ipAddresses []net.IP //nolint:prealloc
 
 	for _, svc := range svcs {
 		dnsNames = append(dnsNames, k8s.GetServiceDNSName(svc)...)
+		ipAddresses = append(ipAddresses, k8s.GetServiceIPAddresses(svc)...)
 	}
 
 	if selfSignedCerts := tls.SelfSignedCertificate; selfSignedCerts != nil {

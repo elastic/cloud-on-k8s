@@ -6,6 +6,7 @@ package k8s
 
 import (
 	"fmt"
+	"net"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -14,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 // ToObjectMeta returns an ObjectMeta based on the given NamespacedName.
@@ -61,12 +64,43 @@ func PodNames(pods []corev1.Pod) []string {
 	return names
 }
 
-// GetServiceDNSName returns the fully qualified DNS name for a service
+// GetServiceDNSName returns the fully qualified DNS name for a service along with any external names provided by ingresses.
 func GetServiceDNSName(svc corev1.Service) []string {
-	return []string{
+	names := []string{
 		fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace),
 		fmt.Sprintf("%s.%s", svc.Name, svc.Namespace),
 	}
+
+	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		for _, ingress := range svc.Status.LoadBalancer.Ingress {
+			if ingress.Hostname != "" {
+				names = append(names, ingress.Hostname)
+			}
+		}
+	}
+
+	return names
+}
+
+func GetServiceIPAddresses(svc corev1.Service) []net.IP {
+	var ipAddrs []net.IP
+
+	if len(svc.Spec.ExternalIPs) > 0 {
+		ipAddrs = make([]net.IP, len(svc.Spec.ExternalIPs))
+		for i, externalIP := range svc.Spec.ExternalIPs {
+			ipAddrs[i] = netutil.IPToRFCForm(net.ParseIP(externalIP))
+		}
+	}
+
+	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		for _, ingress := range svc.Status.LoadBalancer.Ingress {
+			if ingress.IP != "" {
+				ipAddrs = append(ipAddrs, netutil.IPToRFCForm(net.ParseIP(ingress.IP)))
+			}
+		}
+	}
+
+	return ipAddrs
 }
 
 // EmitErrorEvent emits an event if the error is report-worthy
