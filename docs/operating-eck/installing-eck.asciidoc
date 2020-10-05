@@ -1,0 +1,88 @@
+:page_id: installing-eck
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Install ECK 
+
+{n} (ECK) is a link:https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[Kubernetes operator] to orchestrate Elastic applications ({eck_resources_list}) on Kubernetes. It relies on a set of link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions[Custom Resource Definitions (CRD)] to declaratively define the way each application is deployed. CRDs are global resources shared by all users of the Kubernetes cluster, which requires an administrator to install them for initial use. The operator itself can be installed as a cluster-scoped application managing all namespaces or it can be restricted to a pre-defined set of namespaces. Multiple copies of the operator can be installed on a single Kubernetes cluster provided that the global CRDs are compatible with each instance and optional cluster-scoped extensions such as the <<{p}-webhook,validating webhook>> are disabled.
+
+CAUTION: Deleting CRDs will trigger deletion of all custom resources ({eck_resources_list}) in all namespaces of the cluster, regardless of whether they are managed by a single operator or multiple operators. 
+
+
+* <<{p}-install-all-in-one>>
+* <<{p}-install-helm>>
+
+
+[id="{p}-install-all-in-one"]
+== Install ECK using the `all-in-one.yaml` file
+
+The `all-in-one.yaml` method is the quickest way to get started with ECK if you have full administrative access to the Kubernetes cluster. The <<{p}-quickstart>> document describes how to proceed with this method. When you run the `kubectl` command listed in <<{p}-deploy-eck>>, the following components are installed or updated:
+
+* `CustomResourceDefinition` objects for all supported resource types ({eck_resources_list}).
+* `Namespace` named `elastic-system` to hold all operator resources.
+* `ServiceAccount`, `ClusterRole` and `ClusterRoleBinding` to allow the operator to manage resources throughout the cluster.
+* `ValidatingWebhookConfiguration` to validate Elastic custom resources on admission.
+* `StatefulSet`, `ConfigMap`, `Secret` and `Service` in `elastic-system` namespace to run the operator application.
+
+
+[id="{p}-install-helm"]
+== Install ECK using the Helm chart
+
+Starting from version 1.3.0, an official Helm chart is available to install ECK. Add the Elastic Helm repository to your Helm repository list by running the following command:
+
+[source, sh]
+----
+helm repo add elastic https://helm.elastic.co
+helm repo update
+----
+
+[float]
+[id="{p}-install-helm-global"]
+=== Cluster-wide (global) installation
+
+This is the default mode of installation and is equivalent to <<{p}-install-all-in-one,installing ECK using the `all-in-one.yaml` file>>.
+
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace
+----
+
+[float]
+[id="{p}-install-helm-restricted"]
+=== Restricted installation
+
+This mode avoids installing any cluster-scoped resources and restricts the operator to manage only a set of pre-defined namespaces.
+
+Since CRDs are global resources, they still need to be installed by an administrator. This can be achieved by:
+
+[source,sh]
+----
+helm install elastic-operator-crds elastic/eck-operator-crds 
+----
+
+The operator can be installed by any user who has full access to the set of namespaces they wish to manage. The following example installs the operator to `elastic-system` namespace and configures it to manage only `namespace-a` and `namespace-b`:
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
+  --set=installCRDs=false \
+  --set=managedNamespaces='{namespace-a, namespace-b}' \
+  --set=createClusterScopedResources=false \
+  --set=webhook.enabled=false
+----
+
+
+[float]
+[id="{p}-install-helm-show-values"]
+=== View available configuration options
+
+You can view all configurable values by running the following:
+
+[source,sh]
+----
+helm show values elastic/eck-operator
+----
