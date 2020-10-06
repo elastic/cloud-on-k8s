@@ -150,6 +150,10 @@ config:
   # elasticsearchClientTimeout sets the request timeout for Elasticsearch API calls made by the operator.
   elasticsearchClientTimeout: 180s
 
+  # validateStorageClass specifies whether storage classes volume expansion support should be verified.
+  # Can be disabled if cluster-wide storage class RBAC access is not available.
+  validateStorageClass: true
+
 # Internal use only
 internal:
   manifestGen: false

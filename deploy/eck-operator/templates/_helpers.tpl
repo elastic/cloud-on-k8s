@@ -205,3 +205,16 @@ RBAC permissions
   - delete
 {{- end -}}
 
+{{/*
+RBAC permissions on non-namespaced resources
+*/}}
+{{- define "eck-operator.clusterWideRbacRules" -}}
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+{{- end -}}

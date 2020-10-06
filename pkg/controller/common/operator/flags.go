@@ -29,6 +29,7 @@ const (
 	OperatorNamespaceFlag         = "operator-namespace"
 	SetDefaultSecurityContextFlag = "set-default-security-context"
 	UBIOnlyFlag                   = "ubi-only"
+	ValidateStorageClassFlag      = "validate-storage-class"
 	WebhookCertDirFlag            = "webhook-cert-dir"
 	WebhookNameFlag               = "webhook-name"
 	WebhookSecretFlag             = "webhook-secret"

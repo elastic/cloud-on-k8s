@@ -6,16 +6,17 @@ package k8s
 
 import (
 	"net"
+	"reflect"
 	"testing"
 
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 func TestToObjectMeta(t *testing.T) {
@@ -191,6 +192,90 @@ func TestOverrideControllerReference(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			OverrideControllerReference(tt.args.obj, tt.args.newOwner)
 			tt.assertion(tt.args.obj)
+		})
+	}
+}
+
+func TestCompareStorageRequests(t *testing.T) {
+	type args struct {
+		initial corev1.ResourceRequirements
+		updated corev1.ResourceRequirements
+	}
+	tests := []struct {
+		name string
+		args args
+		want StorageComparison
+	}{
+		{
+			name: "same size",
+			args: args{
+				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+			},
+			want: StorageComparison{},
+		},
+		{
+			name: "storage increase",
+			args: args{
+				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("2Gi"),
+				}},
+			},
+			want: StorageComparison{Increase: true},
+		},
+		{
+			name: "storage decrease",
+			args: args{
+				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("2Gi"),
+				}},
+				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+			},
+			want: StorageComparison{Decrease: true},
+		},
+		{
+			name: "no storage specified in both",
+			args: args{
+				initial: corev1.ResourceRequirements{},
+				updated: corev1.ResourceRequirements{},
+			},
+			want: StorageComparison{},
+		},
+		{
+			name: "no initial storage specified: not an increase",
+			args: args{
+				initial: corev1.ResourceRequirements{},
+				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+			},
+			want: StorageComparison{},
+		},
+		{
+			name: "no updated storage specified: not a decrease",
+			args: args{
+				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+				updated: corev1.ResourceRequirements{},
+			},
+			want: StorageComparison{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CompareStorageRequests(tt.args.initial, tt.args.updated); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CompareStorageRequests() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
