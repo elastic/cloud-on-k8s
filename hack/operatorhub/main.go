@@ -47,6 +47,7 @@ type cmdArgs struct {
 	allInOnePath string
 	templatesDir string
 	outDir       string
+	ubiOnly      bool
 }
 
 var args = cmdArgs{}
@@ -70,6 +71,7 @@ func main() {
 
 	cmd.Flags().StringVar(&args.allInOnePath, "all-in-one", "", "Path to all-in-one.yaml")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
+	cmd.Flags().BoolVar(&args.ubiOnly, "ubi-only", false, "Use only UBI container images")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -236,13 +238,14 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 }
 
 type RenderParams struct {
-	NewVersion   string
-	ShortVersion string
-	PrevVersion  string
-	StackVersion string
-	OperatorRepo string
-	OperatorRBAC string
-	CRDList      []*CRD
+	NewVersion     string
+	ShortVersion   string
+	PrevVersion    string
+	StackVersion   string
+	OperatorRepo   string
+	OperatorRBAC   string
+	AdditionalArgs []string
+	CRDList        []*CRD
 }
 
 func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, error) {
@@ -283,14 +286,20 @@ func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, err
 		return nil, fmt.Errorf("failed to marshal operator RBAC rules: %w", err)
 	}
 
+	var additionalArgs []string
+	if args.ubiOnly {
+		additionalArgs = append(additionalArgs, "--ubi-only")
+	}
+
 	return &RenderParams{
-		NewVersion:   conf.NewVersion,
-		ShortVersion: strings.Join(versionParts[:2], "."),
-		PrevVersion:  conf.PrevVersion,
-		StackVersion: conf.StackVersion,
-		OperatorRepo: conf.OperatorRepo,
-		CRDList:      crdList,
-		OperatorRBAC: string(rbac),
+		NewVersion:     conf.NewVersion,
+		ShortVersion:   strings.Join(versionParts[:2], "."),
+		PrevVersion:    conf.PrevVersion,
+		StackVersion:   conf.StackVersion,
+		OperatorRepo:   conf.OperatorRepo,
+		AdditionalArgs: additionalArgs,
+		CRDList:        crdList,
+		OperatorRBAC:   string(rbac),
 	}, nil
 }
 

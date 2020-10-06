@@ -19,6 +19,7 @@ data:
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
+    disable-telemetry: {{ .Values.telemetry.disabled }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
     {{- end }}
