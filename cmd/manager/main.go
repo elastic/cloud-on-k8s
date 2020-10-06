@@ -45,6 +45,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
+	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -163,6 +164,11 @@ func Command() *cobra.Command {
 		operator.DisableConfigWatch,
 		false,
 		"Disable watching the configuration file for changes",
+	)
+	cmd.Flags().Bool(
+		operator.DisableTelemetryFlag,
+		false,
+		"Disable periodically updating ECK telemetry data for Kibana to consume.",
 	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
@@ -508,7 +514,8 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, string(operatorInfo.OperatorUUID))
+	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -524,19 +531,34 @@ func startOperator(stopChan <-chan struct{}) error {
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace, operatorUUID string) {
+func asyncTasks(
+	mgr manager.Manager,
+	cfg *rest.Config,
+	managedNamespaces []string,
+	operatorNamespace string,
+	operatorInfo about.OperatorInfo,
+	disableTelemetry bool) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
 	// Report this instance as elected through Prometheus
-	metrics.Leader.WithLabelValues(operatorUUID, operatorNamespace).Set(1)
+	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
+
+	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
+	mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 
 	// Start the resource reporter
 	go func() {
-		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
 		r.Start(licensing.ResourceReporterFrequency)
 	}()
+
+	if !disableTelemetry {
+		// Start the telemetry reporter
+		go func() {
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces)
+			tr.Start()
+		}()
+	}
 
 	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
 	garbageCollectUsers(cfg, managedNamespaces)

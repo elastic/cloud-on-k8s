@@ -132,7 +132,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
+	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings)
 	if err != nil {
 		return results.WithError(err)
 	}
