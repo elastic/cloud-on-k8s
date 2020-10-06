@@ -95,14 +95,14 @@ kubectl create secret -n elastic-system generic elastic-webhook-server-custom-ce
 [NOTE]
 ====
 
-The last two steps above can be accomplished using the link:{eck_github}/tree/{eck_release_branch}/hack/manifest-gen[ECK manifest generator] as follows:
+If you are using the <<{p}-install-helm,Helm chart installation method>>, the above can be accomplished by the following command:
 
 [source, sh]
 ----
-./manifest-gen.sh -g \
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
   --set=webhook.manageCerts=false \
   --set=webhook.certsSecret=elastic-webhook-server-custom-cert \
-  --set=webhook.caBundle=$(base64 -w 0 ca.crt) | kubectl apply -f -
+  --set=webhook.caBundle=$(base64 -w 0 ca.crt) 
 ----
 
 ====
@@ -154,14 +154,14 @@ webhooks:
 [NOTE]
 ====
 
-The last two steps above can be accomplished using the link:{eck_github}/tree/{eck_release_branch}/hack/manifest-gen[ECK manifest generator] as follows:
+If you are using the <<{p}-install-helm,Helm chart installation method>>, the above can be accomplished by the following command:
 
 [source, sh]
 ----
-./manifest-gen.sh -g \
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
   --set=webhook.manageCerts=false \
   --set=webhook.certsSecret=elastic-webhook-server-cert \
-  --set=webhook.certManagerCert=elastic-webhook-server-cert | kubectl apply -f -
+  --set=webhook.certManagerCert=elastic-webhook-server-cert 
 ----
 
 ====

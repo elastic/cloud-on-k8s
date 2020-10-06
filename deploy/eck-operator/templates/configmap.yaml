@@ -16,6 +16,7 @@ data:
     ca-cert-rotate-before: {{ .Values.config.caRotateBefore }}
     cert-validity: {{ .Values.config.certificatesValidity }}
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
+    disable-telemetry: {{ .Values.telemetry.disabled }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
     validate-storage-class: {{ .Values.config.validateStorageClass }}
     {{- if .Values.tracing.enabled }}

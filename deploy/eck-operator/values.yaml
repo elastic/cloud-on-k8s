@@ -107,6 +107,10 @@ softMultiTenancy:
 # kubeAPIServerIP is required when softMultiTenancy is enabled.
 kubeAPIServerIP: null
 
+telemetry:
+  # disabled determines whether the operator periodically updates ECK telemetry data for Kibana to consume.
+  disabled: false
+
 # config values for the operator.
 config:
   # logVerbosity defines the logging level. Valid values are as follows:
@@ -147,3 +151,4 @@ config:
 # Internal use only
 internal:
   manifestGen: false
+

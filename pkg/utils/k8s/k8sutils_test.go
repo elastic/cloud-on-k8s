@@ -5,15 +5,16 @@
 package k8s
 
 import (
+	"net"
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -50,12 +51,72 @@ func TestGetServiceDNSName(t *testing.T) {
 			},
 			want: []string{"test-name.test-ns.svc", "test-name.test-ns"},
 		},
+		{
+			name: "load balancer service",
+			args: args{
+				svc: corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-name"},
+					Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+					Status:     corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "mysvc.lb"}}}},
+				},
+			},
+			want: []string{"test-name.test-ns.svc", "test-name.test-ns", "mysvc.lb"},
+		},
+		{
+			name: "load balancer service (no status)",
+			args: args{
+				svc: corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-name"},
+					Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				},
+			},
+			want: []string{"test-name.test-ns.svc", "test-name.test-ns"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(GetServiceDNSName(tt.args.svc), tt.want); diff != nil {
 				t.Error(diff)
 			}
+		})
+	}
+}
+
+func TestGetServiceIPAddresses(t *testing.T) {
+	testCases := []struct {
+		name string
+		svc  corev1.Service
+		want []net.IP
+	}{
+		{
+			name: "ClusterIP service",
+			svc:  corev1.Service{Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP}},
+			want: nil,
+		},
+		{
+			name: "NodePort service with external IP addresses",
+			svc:  corev1.Service{Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort, ExternalIPs: []string{"1.2.3.4", "2001:db8:a0b:12f0::1"}}},
+			want: []net.IP{netutil.IPToRFCForm(net.ParseIP("1.2.3.4")), netutil.IPToRFCForm(net.ParseIP("2001:db8:a0b:12f0::1"))},
+		},
+		{
+			name: "LoadBalancer service",
+			svc: corev1.Service{
+				Spec:   corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				Status: corev1.ServiceStatus{LoadBalancer: corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}}}},
+			},
+			want: []net.IP{netutil.IPToRFCForm(net.ParseIP("1.2.3.4"))},
+		},
+		{
+			name: "LoadBalancer service (no status)",
+			svc:  corev1.Service{Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer}},
+			want: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			have := GetServiceIPAddresses(tc.svc)
+			require.Equal(t, tc.want, have)
 		})
 	}
 }

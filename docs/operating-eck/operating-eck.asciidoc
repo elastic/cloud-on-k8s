@@ -14,6 +14,7 @@ endif::[]
 - <<{p}-restrict-cross-namespace-associations>>
 - <<{p}-licensing>>
 - <<{p}-troubleshooting>>
+- <<{p}-installing-eck>>
 - <<{p}-upgrading-eck>>
 - <<{p}-uninstalling-eck>>
 --
@@ -23,5 +24,6 @@ include::webhook.asciidoc[leveloffset=+1]
 include::restrict-cross-namespace-associations.asciidoc[leveloffset=+1]
 include::licensing.asciidoc[leveloffset=+1]
 include::troubleshooting.asciidoc[leveloffset=+1]
+include::installing-eck.asciidoc[leveloffset=+1]
 include::upgrading-eck.asciidoc[leveloffset=+1]
 include::uninstalling-eck.asciidoc[leveloffset=+1]
