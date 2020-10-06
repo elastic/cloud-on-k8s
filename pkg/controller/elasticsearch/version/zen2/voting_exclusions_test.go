@@ -28,7 +28,7 @@ func (f *fakeVotingConfigExclusionsESClient) DeleteVotingConfigExclusions(ctx co
 	return nil
 }
 
-func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
 	f.called = true
 	f.excludedNodes = nodeNames
 	return nil

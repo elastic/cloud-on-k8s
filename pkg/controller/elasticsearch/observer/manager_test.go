@@ -8,8 +8,11 @@ import (
 	"testing"
 	"time"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/stretchr/testify/require"
+	"go.elastic.co/apm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -35,7 +38,7 @@ func TestManager_List(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(DefaultSettings)
+			m := NewManager(nil)
 			m.observers = tt.observers
 			require.ElementsMatch(t, tt.want, m.List())
 		})
@@ -49,6 +52,10 @@ func cluster(name string) types.NamespacedName {
 func TestManager_Observe(t *testing.T) {
 	fakeClient := fakeEsClient200(client.BasicAuth{})
 	fakeClientWithDifferentUser := fakeEsClient200(client.BasicAuth{Name: "name", Password: "another-one"})
+	defaultSettings := Settings{
+		ObservationInterval: defaultObservationInterval,
+	}
+
 	tests := []struct {
 		name                   string
 		initiallyObserved      map[types.NamespacedName]*Observer
@@ -66,14 +73,14 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:                   "Observe a second cluster",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, defaultSettings, nil)},
 			clusterToObserve:       cluster("cluster2"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster"), cluster("cluster2")},
 		},
 		{
 			name:                   "Observe twice the same cluster (idempotent)",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, defaultSettings, nil)},
 			clusterToObserve:       cluster("cluster"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
@@ -81,7 +88,7 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:              "Observe twice the same cluster with a different client",
-			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
+			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, defaultSettings, nil)},
 			clusterToObserve:  cluster("cluster"),
 			// more client comparison tests in client_test.go
 			clusterToObserveClient: fakeClientWithDifferentUser,
@@ -92,13 +99,13 @@ func TestManager_Observe(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(DefaultSettings)
+			m := NewManager(nil)
 			m.observers = tt.initiallyObserved
 			var initialCreationTime time.Time
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(tt.clusterToObserve, tt.clusterToObserveClient)
+			observer := m.Observe(esObject(tt.clusterToObserve), tt.clusterToObserveClient)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -155,7 +162,7 @@ func TestManager_StopObserving(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(DefaultSettings)
+			m := NewManager(nil)
 			m.observers = tt.observed
 			for _, name := range tt.stopObserving {
 				m.StopObserving(name)
@@ -166,15 +173,18 @@ func TestManager_StopObserving(t *testing.T) {
 }
 
 func TestManager_AddObservationListener(t *testing.T) {
-	m := NewManager(Settings{
-		ObservationInterval: 1 * time.Microsecond,
-		RequestTimeout:      1 * time.Second,
-	})
+	m := NewManager(nil)
+
+	cluster1 := esObject(cluster("cluster1"))
+	cluster1.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
+
+	cluster2 := esObject(cluster("cluster2"))
+	cluster2.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
 
 	// observe 2 clusters
-	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.BasicAuth{}))
+	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
-	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.BasicAuth{}))
+	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
 	defer obs2.Stop()
 
 	// add a listener that is only interested in cluster1
@@ -198,4 +208,80 @@ func TestManager_AddObservationListener(t *testing.T) {
 	<-eventsCluster2
 	<-eventsCluster1
 	<-eventsCluster2
+}
+
+func esObject(n types.NamespacedName) esv1.Elasticsearch {
+	return esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: n.Namespace,
+			Name:      n.Name,
+		},
+	}
+}
+
+func TestExtractSettings(t *testing.T) {
+	testCases := []struct {
+		name        string
+		annotations map[string]string
+		want        Settings
+	}{
+		{
+			name: "no annotations",
+			want: Settings{ObservationInterval: defaultObservationInterval},
+		},
+		{
+			name:        "with annotations",
+			annotations: map[string]string{ObserverIntervalAnnotation: "42s"},
+			want:        Settings{ObservationInterval: 42 * time.Second},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: tc.annotations}}
+			m := NewManager(nil)
+			have := m.extractObserverSettings(es)
+			require.Equal(t, tc.want, have)
+		})
+	}
+}
+
+func TestSettingsComparison(t *testing.T) {
+	testCases := []struct {
+		name string
+		s1   Settings
+		s2   Settings
+		want bool
+	}{
+		{
+			name: "same settings (nil tracer)",
+			s1:   Settings{ObservationInterval: 1 * time.Second},
+			s2:   Settings{ObservationInterval: 1 * time.Second},
+			want: true,
+		},
+		{
+			name: "same settings (non nil tracer)",
+			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s2:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			want: true,
+		},
+		{
+			name: "different durations",
+			s1:   Settings{ObservationInterval: 1 * time.Second},
+			s2:   Settings{ObservationInterval: 2 * time.Second},
+			want: false,
+		},
+		{
+			name: "different tracers",
+			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s2:   Settings{ObservationInterval: 1 * time.Second},
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.s1 == tc.s2)
+		})
+	}
 }

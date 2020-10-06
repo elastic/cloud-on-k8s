@@ -53,7 +53,7 @@ func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, n int) error {
 	return nil
 }
 
-func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string, timeout string) error {
+func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string) error {
 	f.AddVotingConfigExclusionsCalled = true
 	f.AddVotingConfigExclusionsCalledWith = append(f.AddVotingConfigExclusionsCalledWith, nodeNames...)
 	return nil

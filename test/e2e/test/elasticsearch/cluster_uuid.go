@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 )
@@ -20,9 +19,8 @@ func clusterUUID(es esv1.Elasticsearch, k *test.K8sClient) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
-	info, err := client.GetClusterInfo(ctx)
+
+	info, err := client.GetClusterInfo(context.Background())
 	if err != nil {
 		return "", err
 	}

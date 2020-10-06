@@ -16,8 +16,10 @@ data:
     ca-cert-rotate-before: {{ .Values.config.caRotateBefore }}
     cert-validity: {{ .Values.config.certificatesValidity }}
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
-    disable-telemetry: {{ .Values.telemetry.disabled }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
+    kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
+    elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
+    disable-telemetry: {{ .Values.telemetry.disabled }}
     validate-storage-class: {{ .Values.config.validateStorageClass }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
