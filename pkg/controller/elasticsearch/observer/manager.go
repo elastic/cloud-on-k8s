@@ -18,8 +18,6 @@ import (
 const (
 	// ObserverIntervalAnnotation is the name of the annotation used to set the observation interval for a cluster.
 	ObserverIntervalAnnotation = "eck.k8s.elastic.co/es-observer-interval"
-	// ObserverRequestTimeoutAnnotation is the name of the annotation used to set the observe request timeout for a cluster.
-	ObserverRequestTimeoutAnnotation = "eck.k8s.elastic.co/es-observer-request-timeout"
 )
 
 // Manager for a set of observers
@@ -65,6 +63,14 @@ func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *O
 	default:
 		esClient.Close()
 		return observer
+	}
+}
+
+// extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
+func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
+	return Settings{
+		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
+		Tracer:              m.tracer,
 	}
 }
 
@@ -131,21 +137,4 @@ func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState St
 	m.lock.Unlock()
 	// wait for all listeners to be done
 	wg.Wait()
-}
-
-// extractObserverSettings extracts cluster-specific observer settings defined using annotations.
-func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
-	settings := Settings{
-		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
-		RequestTimeout:      annotation.ExtractTimeout(cluster.ObjectMeta, ObserverRequestTimeoutAnnotation, defaultRequestTimeout),
-		Tracer:              m.tracer,
-	}
-
-	clientTimeout := client.Timeout(cluster)
-	if settings.RequestTimeout > clientTimeout {
-		log.Info("Ignoring observer request timeout annotation because it is larger than the client request timeout", "namespace", cluster.Namespace, "es_name", cluster.Name)
-		settings.RequestTimeout = clientTimeout
-	}
-
-	return settings
 }

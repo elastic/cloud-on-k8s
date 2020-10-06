@@ -53,7 +53,6 @@ func TestManager_Observe(t *testing.T) {
 	fakeClient := fakeEsClient200(client.BasicAuth{})
 	fakeClientWithDifferentUser := fakeEsClient200(client.BasicAuth{Name: "name", Password: "another-one"})
 	defaultSettings := Settings{
-		RequestTimeout:      defaultRequestTimeout,
 		ObservationInterval: defaultObservationInterval,
 	}
 
@@ -177,10 +176,10 @@ func TestManager_AddObservationListener(t *testing.T) {
 	m := NewManager(nil)
 
 	cluster1 := esObject(cluster("cluster1"))
-	cluster1.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s", ObserverRequestTimeoutAnnotation: "1s"}
+	cluster1.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
 
 	cluster2 := esObject(cluster("cluster2"))
-	cluster2.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s", ObserverRequestTimeoutAnnotation: "1s"}
+	cluster2.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
 
 	// observe 2 clusters
 	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
@@ -228,17 +227,12 @@ func TestExtractSettings(t *testing.T) {
 	}{
 		{
 			name: "no annotations",
-			want: Settings{RequestTimeout: defaultRequestTimeout, ObservationInterval: defaultObservationInterval},
+			want: Settings{ObservationInterval: defaultObservationInterval},
 		},
 		{
 			name:        "with annotations",
-			annotations: map[string]string{ObserverIntervalAnnotation: "42s", ObserverRequestTimeoutAnnotation: "42s"},
-			want:        Settings{RequestTimeout: 42 * time.Second, ObservationInterval: 42 * time.Second},
-		},
-		{
-			name:        "client timeout less than request timeout",
-			annotations: map[string]string{ObserverIntervalAnnotation: "42s", ObserverRequestTimeoutAnnotation: "42s", client.ESClientTimeoutAnnotation: "30s"},
-			want:        Settings{RequestTimeout: 30 * time.Second, ObservationInterval: 42 * time.Second},
+			annotations: map[string]string{ObserverIntervalAnnotation: "42s"},
+			want:        Settings{ObservationInterval: 42 * time.Second},
 		},
 	}
 
@@ -261,26 +255,26 @@ func TestSettingsComparison(t *testing.T) {
 	}{
 		{
 			name: "same settings (nil tracer)",
-			s1:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second},
-			s2:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second},
+			s1:   Settings{ObservationInterval: 1 * time.Second},
+			s2:   Settings{ObservationInterval: 1 * time.Second},
 			want: true,
 		},
 		{
 			name: "same settings (non nil tracer)",
-			s1:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
-			s2:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s2:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
 			want: true,
 		},
 		{
 			name: "different durations",
-			s1:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second},
-			s2:   Settings{RequestTimeout: 2 * time.Second, ObservationInterval: 2 * time.Second},
+			s1:   Settings{ObservationInterval: 1 * time.Second},
+			s2:   Settings{ObservationInterval: 2 * time.Second},
 			want: false,
 		},
 		{
 			name: "different tracers",
-			s1:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
-			s2:   Settings{RequestTimeout: 1 * time.Second, ObservationInterval: 1 * time.Second},
+			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s2:   Settings{ObservationInterval: 1 * time.Second},
 			want: false,
 		},
 	}
