@@ -22,12 +22,13 @@ import (
 )
 
 type upscaleCtx struct {
-	parentCtx     context.Context
-	k8sClient     k8s.Client
-	es            esv1.Elasticsearch
-	observedState observer.State
-	esState       ESState
-	expectations  *expectations.Expectations
+	parentCtx            context.Context
+	k8sClient            k8s.Client
+	es                   esv1.Elasticsearch
+	observedState        observer.State
+	esState              ESState
+	expectations         *expectations.Expectations
+	validateStorageClass bool
 }
 
 type UpscaleResults struct {
@@ -65,7 +66,7 @@ func HandleUpscaleAndSpecChanges(
 			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(ctx.k8sClient, ctx.es, res.StatefulSet, actualSset)
+			recreateSset, err := handleVolumeExpansion(ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
 			if err != nil {
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
