@@ -42,6 +42,7 @@ spec:
           args:
             - "manager"
             - "--config=/conf/eck.yaml"
+            - "--distributionChannel={{ .Values.telemetry.distributionChannel }}"
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}

@@ -15,6 +15,7 @@ const (
 	DebugHTTPListenFlag           = "debug-http-listen"
 	DisableConfigWatch            = "disable-config-watch"
 	DisableTelemetryFlag          = "disable-telemetry"
+	DistributionChannelFlag       = "distribution-channel"
 	ElasticsearchClientTimeout    = "elasticsearch-client-timeout"
 	EnableLeaderElection          = "enable-leader-election"
 	EnableTracingFlag             = "enable-tracing"

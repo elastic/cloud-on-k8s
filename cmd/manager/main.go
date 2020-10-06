@@ -176,6 +176,11 @@ func Command() *cobra.Command {
 		false,
 		"Disable periodically updating ECK telemetry data for Kibana to consume.",
 	)
+	cmd.Flags().String(
+		operator.DistributionChannelFlag,
+		"",
+		"Set the distribution channel to report through the telemetry.",
+	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
@@ -270,6 +275,9 @@ func Command() *cobra.Command {
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
 	_ = cmd.Flags().MarkHidden(operator.DebugHTTPListenFlag)
+	
+	// hide flags set by the build process
+	_ = cmd.Flags().MarkHidden(operator.DistributionChannelFlag)
 
 	// hide the flag used for E2E test only
 	_ = cmd.Flags().MarkHidden(operator.TelemetryIntervalFlag)
@@ -498,7 +506,8 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
+	distributionChannel := viper.GetString(operator.DistributionChannelFlag)
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace, distributionChannel)
 	if err != nil {
 		log.Error(err, "Failed to get operator info")
 		return err

@@ -27,6 +27,7 @@ var testOperatorInfo = about.OperatorInfo{
 	OperatorUUID:            "15039433-f873-41bd-b6e7-10ee3665cafa",
 	CustomOperatorNamespace: true,
 	Distribution:            "v1.16.13-gke.1",
+	DistributionChannel:     "test-channel",
 	BuildInfo: about.BuildInfo{
 		Version:  "1.1.0",
 		Hash:     "b5316231",
@@ -54,6 +55,7 @@ func TestMarshalTelemetry(t *testing.T) {
     version: ""
   custom_operator_namespace: false
   distribution: ""
+  distributionChannel: ""
   operator_uuid: ""
   stats: null
 `,
@@ -75,6 +77,7 @@ func TestMarshalTelemetry(t *testing.T) {
     version: 1.1.0
   custom_operator_namespace: true
   distribution: v1.16.13-gke.1
+  distributionChannel: test-channel
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
     apms:
@@ -200,6 +203,7 @@ func TestNewReporter(t *testing.T) {
     version: 1.1.0
   custom_operator_namespace: true
   distribution: v1.16.13-gke.1
+  distributionChannel: test-channel
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
     apms:
