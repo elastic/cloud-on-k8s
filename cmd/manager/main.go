@@ -170,6 +170,11 @@ func Command() *cobra.Command {
 		"Disable watching the configuration file for changes",
 	)
 	cmd.Flags().Bool(
+		operator.DisableTelemetryFlag,
+		false,
+		"Disable periodically updating ECK telemetry data for Kibana to consume.",
+	)
+	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
@@ -508,7 +513,8 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo)
+	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -524,7 +530,13 @@ func startOperator(stopChan <-chan struct{}) error {
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace string, operatorInfo about.OperatorInfo) {
+func asyncTasks(
+	mgr manager.Manager,
+	cfg *rest.Config,
+	managedNamespaces []string,
+	operatorNamespace string,
+	operatorInfo about.OperatorInfo,
+	disableTelemetry bool) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
 	// Report this instance as elected through Prometheus
@@ -539,11 +551,13 @@ func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []strin
 		r.Start(licensing.ResourceReporterFrequency)
 	}()
 
-	// Start the telemetry reporter
-	go func() {
-		tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces)
-		tr.Start()
-	}()
+	if !disableTelemetry {
+		// Start the telemetry reporter
+		go func() {
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces)
+			tr.Start()
+		}()
+	}
 
 	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
 	garbageCollectUsers(cfg, managedNamespaces)
