@@ -7,29 +7,16 @@ package annotation
 import (
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ExtractTimeout extracts a timeout value specified as an annotation on a resource.
-func ExtractTimeout(obj runtime.Object, annotation string, defaultVal time.Duration) time.Duration {
-	if obj == nil {
+func ExtractTimeout(objMeta metav1.ObjectMeta, annotation string, defaultVal time.Duration) time.Duration {
+	if len(objMeta.Annotations) == 0 {
 		return defaultVal
 	}
 
-	metaAcc := meta.NewAccessor()
-
-	ann, err := metaAcc.Annotations(obj)
-	if err != nil {
-		log.V(1).Info("Failed to extract annotations from object", "error", err, "object", obj)
-		return defaultVal
-	}
-
-	if len(ann) == 0 {
-		return defaultVal
-	}
-
-	t, ok := ann[annotation]
+	t, ok := objMeta.Annotations[annotation]
 	if !ok {
 		return defaultVal
 	}

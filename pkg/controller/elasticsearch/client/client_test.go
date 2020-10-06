@@ -377,62 +377,62 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(nil)),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(nil)),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 	}
@@ -657,7 +657,7 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESClientTimeoutAnnotation: "1m"}}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESClientTimeoutAnnotation: "1m"}}}
 	have := Timeout(es)
 	require.Equal(t, 1*time.Minute, have)
 }

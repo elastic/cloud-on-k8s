@@ -13,11 +13,11 @@ import (
 	"net/http"
 	"time"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -107,8 +107,8 @@ type Client interface {
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
-func Timeout(es runtime.Object) time.Duration {
-	return annotation.ExtractTimeout(es, ESClientTimeoutAnnotation, DefaultESClientTimeout)
+func Timeout(es esv1.Elasticsearch) time.Duration {
+	return annotation.ExtractTimeout(es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
 }
 
 func formatAsSeconds(d time.Duration) string {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,14 +49,12 @@ func TestExtractTimeout(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			obj := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "test",
-					Annotations: tc.annotations,
-				},
+			objMeta := metav1.ObjectMeta{
+				Name:        "test",
+				Annotations: tc.annotations,
 			}
 
-			have := ExtractTimeout(obj, key, defaultValue)
+			have := ExtractTimeout(objMeta, key, defaultValue)
 			require.Equal(t, tc.want, have)
 		})
 	}

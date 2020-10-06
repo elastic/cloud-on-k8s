@@ -211,8 +211,8 @@ func TestManager_AddObservationListener(t *testing.T) {
 	<-eventsCluster2
 }
 
-func esObject(n types.NamespacedName) *esv1.Elasticsearch {
-	return &esv1.Elasticsearch{
+func esObject(n types.NamespacedName) esv1.Elasticsearch {
+	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: n.Namespace,
 			Name:      n.Name,
@@ -244,7 +244,7 @@ func TestExtractSettings(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: tc.annotations}}
+			es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: tc.annotations}}
 			m := NewManager(nil)
 			have := m.extractObserverSettings(es)
 			require.Equal(t, tc.want, have)

@@ -41,14 +41,14 @@ func NewManager(tracer *apm.Tracer) *Manager {
 
 // ObservedStateResolver returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster *esv1.Elasticsearch, esClient client.Client) State {
+func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) State {
 	return m.Observe(cluster, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster *esv1.Elasticsearch, esClient client.Client) *Observer {
-	nsName := k8s.ExtractNamespacedName(cluster)
+func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *Observer {
+	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(cluster)
 
 	m.lock.RLock()
@@ -134,10 +134,10 @@ func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState St
 }
 
 // extractObserverSettings extracts cluster-specific observer settings defined using annotations.
-func (m *Manager) extractObserverSettings(cluster *esv1.Elasticsearch) Settings {
+func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
 	settings := Settings{
-		ObservationInterval: annotation.ExtractTimeout(cluster, ObserverIntervalAnnotation, defaultObservationInterval),
-		RequestTimeout:      annotation.ExtractTimeout(cluster, ObserverRequestTimeoutAnnotation, defaultRequestTimeout),
+		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
+		RequestTimeout:      annotation.ExtractTimeout(cluster.ObjectMeta, ObserverRequestTimeoutAnnotation, defaultRequestTimeout),
 		Tracer:              m.tracer,
 	}
 
