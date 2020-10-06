@@ -179,7 +179,7 @@ func Command() *cobra.Command {
 	cmd.Flags().String(
 		operator.DistributionChannelFlag,
 		"",
-		"Set the distribution channel to report through the telemetry.",
+		"Set the distribution channel to report through telemetry.",
 	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
