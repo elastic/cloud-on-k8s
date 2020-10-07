@@ -60,15 +60,4 @@ rules:
   - apiGroups: ["beat.k8s.elastic.co"]
     resources: ["beats"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
-{{- else -}}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: {{ include "eck-operator.fullname" . }}
-  namespace: {{ .Release.namespace }}
-  labels:
-    {{- include "eck-operator.labels" . | nindent 4 }}
-rules:
-{{ template "eck-operator.rbacRules" . | toYaml | indent 2 }}
 {{- end -}}
