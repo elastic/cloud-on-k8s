@@ -38,9 +38,11 @@ func TestVolumeMultiDataPath(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-es-multi-data-path").
 		WithNodeSet(esv1.NodeSet{
 			Name: "default",
-			Config: &commonv1.Config{map[string]interface{}{
-				"path.data": "/mnt/data1,/mnt/data2",
-			}},
+			Config: &commonv1.Config{
+				Data: map[string]interface{}{
+					"path.data": "/mnt/data1,/mnt/data2",
+				},
+			},
 			Count: 1,
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
