@@ -37,7 +37,9 @@ func authToGCP(
 
 		gcpDir := filepath.Join(os.Getenv("HOME"), GCPDir)
 		keyFileName := filepath.Join(gcpDir, ServiceAccountFilename)
-		_ = os.MkdirAll(gcpDir, os.ModePerm)
+		if err = os.MkdirAll(gcpDir, os.ModePerm); err != nil {
+			return err
+		}
 
 		if err := client.ReadIntoFile(keyFileName, vaultPath, serviceAccountVaultFieldName); err != nil {
 			return err
