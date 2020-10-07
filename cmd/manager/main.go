@@ -455,11 +455,13 @@ func startOperator(stopChan <-chan struct{}) error {
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
 		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
+		// opts.Namespace implicitly allows watching cluster-scoped resources (e.g. storage classes)
 		opts.Namespace = managedNamespaces[0]
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// the manager cache should always include the operator namespace so that we can work with operator-internal resources
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace))
+		// the manager cache should always include the operator namespace so that we can work with operator-internal resources,
+		// and the empty namespace to watch cluster-scoped resources (e.g. storage classes).
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace, ""))
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
