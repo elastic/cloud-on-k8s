@@ -293,7 +293,7 @@ func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, err
 	}
 
 	if conf.DistributionChannel != "" {
-		additionalArgs = append(additionalArgs, "--distributionChannel=" + conf.DistributionChannel)
+		additionalArgs = append(additionalArgs, "--distribution-channel=" + conf.DistributionChannel)
 	}
 
 	return &RenderParams{
