@@ -31,6 +31,15 @@ const (
 
 var log = logf.Log.WithName("usage")
 
+type ECKTelemetry struct {
+	ECK ECK `json:"eck"`
+}
+
+type ECK struct {
+	about.OperatorInfo
+	Stats map[string]interface{} `json:"stats"`
+}
+
 type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
 
 func NewReporter(
@@ -67,16 +76,8 @@ func (r *Reporter) Start() {
 }
 
 func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}) ([]byte, error) {
-	return yaml.Marshal(struct {
-		ECK struct {
-			about.OperatorInfo
-			Stats map[string]interface{} `json:"stats"`
-		} `json:"eck"`
-	}{
-		ECK: struct {
-			about.OperatorInfo
-			Stats map[string]interface{} `json:"stats"`
-		}{
+	return yaml.Marshal(ECKTelemetry{
+		ECK: ECK{
 			OperatorInfo: info,
 			Stats:        stats,
 		},
