@@ -8,7 +8,7 @@
     parameters:
       - bool:
           name: SEND_NOTIFICATIONS
-          default: true
+          default: false
           description: "Specified if job should send notifications to Slack. Enabled by default."
     pipeline-scm:
       scm:
