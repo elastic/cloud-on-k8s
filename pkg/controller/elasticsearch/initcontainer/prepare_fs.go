@@ -100,6 +100,7 @@ var (
 func NewPrepareFSInitContainer(
 	transportCertificatesVolume volume.SecretVolume,
 	clusterName string,
+	volumes []corev1.Volume,
 ) (corev1.Container, error) {
 	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
@@ -126,11 +127,12 @@ func NewPrepareFSInitContainer(
 			PluginVolumes.InitContainerVolumeMounts(),
 			certificatesVolumeMount,
 			scriptsVolume.VolumeMount(),
-			esvolume.DefaultDataVolumeMount,
 			esvolume.DefaultLogsVolumeMount,
 		),
 		Resources: defaultResources,
 	}
+
+	container.VolumeMounts = esvolume.AppendDefaultDataVolumeMount(container.VolumeMounts, volumes)
 
 	return container, nil
 }

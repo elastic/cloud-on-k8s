@@ -38,6 +38,7 @@ func TestNewInitContainers(t *testing.T) {
 			containers, err := NewInitContainers(
 				volume.SecretVolume{},
 				"clustername",
+				nil,
 				tt.args.keystoreResources,
 			)
 			assert.NoError(t, err)

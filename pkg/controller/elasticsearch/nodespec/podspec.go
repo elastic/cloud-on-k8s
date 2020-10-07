@@ -56,6 +56,7 @@ func BuildPodTemplateSpec(
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(es.Name),
 		es.Name,
+		volumes,
 		keystoreResources,
 	)
 	if err != nil {
