@@ -110,6 +110,8 @@ kubeAPIServerIP: null
 telemetry:
   # disabled determines whether the operator periodically updates ECK telemetry data for Kibana to consume.
   disabled: false
+  # distibutionChannel denotes which distribution channel was used to install the operator.
+  distributionChannel: "helm"
 
 # config values for the operator.
 config:

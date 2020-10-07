@@ -2,6 +2,7 @@ newVersion: 1.3.0
 prevVersion: 1.2.1
 stackVersion: 7.9.1
 operatorRepo: docker.elastic.co/eck/eck-operator
+distributionChannel: upstream-community-operators
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster

@@ -106,11 +106,12 @@ func doRun(_ *cobra.Command, _ []string) error {
 }
 
 type config struct {
-	NewVersion   string `json:"newVersion"`
-	PrevVersion  string `json:"prevVersion"`
-	StackVersion string `json:"stackVersion"`
-	OperatorRepo string `json:"operatorRepo"`
-	CRDs         []struct {
+	NewVersion          string `json:"newVersion"`
+	PrevVersion         string `json:"prevVersion"`
+	StackVersion        string `json:"stackVersion"`
+	OperatorRepo        string `json:"operatorRepo"`
+	DistributionChannel string `json:"distributionChannel"`
+	CRDs                []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 		Description string `json:"description"`
@@ -289,6 +290,10 @@ func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, err
 	var additionalArgs []string
 	if args.ubiOnly {
 		additionalArgs = append(additionalArgs, "--ubi-only")
+	}
+
+	if conf.DistributionChannel != "" {
+		additionalArgs = append(additionalArgs, "--distribution-channel=" + conf.DistributionChannel)
 	}
 
 	return &RenderParams{

@@ -236,6 +236,7 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 generate-all-in-one:
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=telemetry.distributionChannel=all-in-one \
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \
