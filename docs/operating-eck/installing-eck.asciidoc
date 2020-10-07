@@ -72,7 +72,8 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
   --set=installCRDs=false \
   --set=managedNamespaces='{namespace-a, namespace-b}' \
   --set=createClusterScopedResources=false \
-  --set=webhook.enabled=false
+  --set=webhook.enabled=false \
+  --set=config.validateStorageClass=false
 ----
 
 
