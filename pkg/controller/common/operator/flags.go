@@ -28,6 +28,7 @@ const (
 	NamespacesFlag                = "namespaces"
 	OperatorNamespaceFlag         = "operator-namespace"
 	SetDefaultSecurityContextFlag = "set-default-security-context"
+	TelemetryIntervalFlag         = "telemetry-interval"
 	UBIOnlyFlag                   = "ubi-only"
 	ValidateStorageClassFlag      = "validate-storage-class"
 	WebhookCertDirFlag            = "webhook-cert-dir"

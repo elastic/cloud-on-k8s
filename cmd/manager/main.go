@@ -230,6 +230,11 @@ func Command() *cobra.Command {
 		"",
 		"Kubernetes namespace the operator runs in",
 	)
+	cmd.Flags().Duration(
+		operator.TelemetryIntervalFlag,
+		1*time.Hour,
+		"Interval between ECK telemetry data updates",
+	)
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
@@ -265,6 +270,9 @@ func Command() *cobra.Command {
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
 	_ = cmd.Flags().MarkHidden(operator.DebugHTTPListenFlag)
+
+	// hide the flag used for E2E test only
+	_ = cmd.Flags().MarkHidden(operator.TelemetryIntervalFlag)
 
 	// configure filename auto-completion for the config flag
 	_ = cmd.MarkFlagFilename(operator.ConfigFlag)
@@ -538,7 +546,8 @@ func startOperator(stopChan <-chan struct{}) error {
 	}
 
 	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry)
+	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -560,7 +569,9 @@ func asyncTasks(
 	managedNamespaces []string,
 	operatorNamespace string,
 	operatorInfo about.OperatorInfo,
-	disableTelemetry bool) {
+	disableTelemetry bool,
+	telemetryInterval time.Duration,
+) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
 	// Report this instance as elected through Prometheus
@@ -578,7 +589,7 @@ func asyncTasks(
 	if !disableTelemetry {
 		// Start the telemetry reporter
 		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces)
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces, telemetryInterval)
 			tr.Start()
 		}()
 	}

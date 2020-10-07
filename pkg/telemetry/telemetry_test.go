@@ -7,6 +7,7 @@ package telemetry
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -187,7 +188,7 @@ func TestNewReporter(t *testing.T) {
 		},
 	)
 
-	r := NewReporter(testOperatorInfo, client, []string{kb1.Namespace, kb2.Namespace})
+	r := NewReporter(testOperatorInfo, client, []string{kb1.Namespace, kb2.Namespace}, 1*time.Hour)
 	r.report()
 
 	wantData := map[string][]byte{
