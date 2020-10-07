@@ -100,7 +100,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 			},
 		})
 
-	// volume type will be checked in creation steps
+	// successful creation should suffice to demonstrate use of multiple volumes
 	test.Sequence(nil, test.EmptySteps, b).
 		RunSequential(t)
 }
