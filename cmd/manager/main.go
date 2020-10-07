@@ -275,7 +275,7 @@ func Command() *cobra.Command {
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
 	_ = cmd.Flags().MarkHidden(operator.DebugHTTPListenFlag)
-	
+
 	// hide flags set by the build process
 	_ = cmd.Flags().MarkHidden(operator.DistributionChannelFlag)
 
