@@ -72,8 +72,26 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
   --set=installCRDs=false \
   --set=managedNamespaces='{namespace-a, namespace-b}' \
   --set=createClusterScopedResources=false \
-  --set=webhook.enabled=false
+  --set=webhook.enabled=false \
+  --set=config.validateStorageClass=false
 ----
+
+[NOTE]
+====
+
+The `eck-operator` chart contains several pre-defined profiles to help you install the operator in different configurations. These profiles can be found in the root of the chart directory, prefixed with `profile-`. For example, the restricted configuration shown above is defined in the `profile-restricted.yaml` file, and can be used as follows:
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace \
+  --values="${CHART_DIR}/profile-restricted.yaml" \
+  --set=managedNamespaces='{namespace-a, namespace-b}'
+----
+
+You can find the profile files in the Helm cache directory or from the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator[ECK source repository].
+
+====
+
 
 
 [float]
