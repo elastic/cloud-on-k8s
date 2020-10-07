@@ -25,16 +25,20 @@ import (
 )
 
 const (
-	updateInterval = 1 * time.Hour
-	resourceCount  = "resource_count"
-	podCount       = "pod_count"
+	resourceCount = "resource_count"
+	podCount      = "pod_count"
 )
 
 var log = logf.Log.WithName("usage")
 
 type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
 
-func NewReporter(info about.OperatorInfo, client client.Client, managedNamespaces []string) Reporter {
+func NewReporter(
+	info about.OperatorInfo,
+	client client.Client,
+	managedNamespaces []string,
+	telemetryInterval time.Duration,
+) Reporter {
 	if len(managedNamespaces) == 0 {
 		// treat no managed namespaces as managing all namespaces, ie. set empty string for namespace filtering
 		managedNamespaces = append(managedNamespaces, "")
@@ -44,6 +48,7 @@ func NewReporter(info about.OperatorInfo, client client.Client, managedNamespace
 		operatorInfo:      info,
 		client:            k8s.WrapClient(client),
 		managedNamespaces: managedNamespaces,
+		telemetryInterval: telemetryInterval,
 	}
 }
 
@@ -51,10 +56,11 @@ type Reporter struct {
 	operatorInfo      about.OperatorInfo
 	client            k8s.Client
 	managedNamespaces []string
+	telemetryInterval time.Duration
 }
 
 func (r *Reporter) Start() {
-	ticker := time.NewTicker(updateInterval)
+	ticker := time.NewTicker(r.telemetryInterval)
 	for range ticker.C {
 		r.report()
 	}

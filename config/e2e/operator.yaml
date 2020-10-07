@@ -235,6 +235,7 @@ spec:
         - "--enable-webhook"
         - "--log-verbosity=1"
         - "--metrics-port=9090"
+        - "--telemetry-interval=15s"
         {{ if .MonitoringSecrets }}
         - "--enable-tracing"
         {{end}}
