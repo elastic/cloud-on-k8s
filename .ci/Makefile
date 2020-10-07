@@ -31,6 +31,7 @@ endif
 CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
 CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
 
+# volume used to share files between CI container and OCP3 Ansible container
 ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
 
 print-ci-image:
