@@ -69,17 +69,6 @@ pipeline {
                         }
                     }
                 }
-                stage("8.0.0-SNAPSHOT") {
-                     agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-8x-snapshot-${BUILD_NUMBER}-e2e", "8.0.0-SNAPSHOT")
-                        }
-                    }
-                }
             }
         }
     }
@@ -110,8 +99,7 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-7x-snapshot-${BUILD_NUMBER}-e2e",
-                    "eck-8x-snapshot-${BUILD_NUMBER}-e2e"
+                    "eck-7x-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
