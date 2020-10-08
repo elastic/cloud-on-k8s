@@ -245,6 +245,42 @@ CFG
 ;;
 
 ######################################
+  e2e/ocp3)
+######################################
+
+write_env <<ENV
+IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
+
+GO_TAGS = release
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+TEST_TIMEOUT = 10m
+
+PIPELINE=e2e/ocp3
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=ocp3
+CLUSTER_NAME=eck-ocp3-$BUILD_NUMBER
+KUBERNETES_VERSION=default
+TEST_OPTS=-race
+ENV
+write_deployer_config <<CFG
+id: ocp3-ci
+overrides:
+  clusterName: eck-ocp3-$BUILD_NUMBER
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  ocp3:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
   e2e/eks)
 ######################################
 
@@ -485,6 +521,24 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
   ocp:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
+  cleanup/ocp3)
+######################################
+
+write_deployer_config <<CFG
+id: ocp3-ci
+overrides:
+  operation: delete
+  clusterName: eck-ocp3-$BUILD_NUMBER
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  ocp3:
     gCloudProject: $GCLOUD_PROJECT
 CFG
 ;;
