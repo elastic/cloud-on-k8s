@@ -1,7 +1,7 @@
 ---
 - job:
     description: Run ECK E2E tests on GKE every night to verify ECK against Elastic Stack dev 8.x versions
-    name: cloud-on-k8s-e2e-tests-snapshot-versions
+    name: cloud-on-k8s-e2e-tests-snapshot-versions-8x
     project-type: pipeline
     triggers:
       - timed: '0 0 * * 1-5'
