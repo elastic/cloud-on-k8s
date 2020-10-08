@@ -35,7 +35,6 @@ rules:
   - apiGroups: ["beat.k8s.elastic.co"]
     resources: ["beats"]
     verbs: ["get", "list", "watch"]
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
