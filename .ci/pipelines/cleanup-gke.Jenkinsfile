@@ -33,6 +33,22 @@ pipeline {
     }
 
     post {
+        unsuccessful {
+            script {
+                if (params.SEND_NOTIFICATIONS) {
+                    def msg = lib.generateSlackMessage("Cleanup build failed, manual cleanup might be required!", env.BUILD_URL)
+
+                    slackSend(
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: true
+                    )
+                }
+            }
+        }
         cleanup {
             cleanWs()
         }
