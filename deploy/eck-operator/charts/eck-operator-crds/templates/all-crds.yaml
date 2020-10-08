@@ -10,6 +10,284 @@ metadata:
     app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
+  name: agents.agent.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  group: agent.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Agent
+    listKind: AgentList
+    plural: agents
+    shortNames:
+    - agent
+    singular: agent
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Agent is the Schema for the Agents API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AgentSpec defines the desired state of Agent
+          properties:
+            config:
+              description: Config holds the Agent configuration. At most one of [`Config`,
+                `ConfigRef`] can be specified.
+              type: object
+            configRef:
+              description: ConfigRef contains a reference to an existing Kubernetes
+                Secret holding the Agent configuration. Agent settings must be specified
+                as yaml, under a single "agent.yml" entry. At most one of [`Config`,
+                `ConfigRef`] can be specified.
+              properties:
+                secretName:
+                  description: SecretName is the name of the secret.
+                  type: string
+              type: object
+            daemonSet:
+              description: DaemonSet specifies the Agent should be deployed as a DaemonSet,
+                and allows providing its spec. Cannot be used along with `deployment`.
+                If both are absent a default for the Type is used.
+              properties:
+                strategy:
+                  description: DeploymentStrategy describes how to replace existing
+                    pods with new ones.
+                  properties:
+                    rollingUpdate:
+                      description: 'Rolling update config params. Present only if
+                        DeploymentStrategyType = RollingUpdate. --- TODO: Update this
+                        to follow our convention for oneOf, whatever we decide it
+                        to be.'
+                      properties:
+                        maxSurge:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of pods that can be scheduled
+                            above the desired number of pods. Value can be an absolute
+                            number (ex: 5) or a percentage of desired pods (ex: 10%).
+                            This can not be 0 if MaxUnavailable is 0. Absolute number
+                            is calculated from percentage by rounding up. Defaults
+                            to 25%. Example: when this is set to 30%, the new ReplicaSet
+                            can be scaled up immediately when the rolling update starts,
+                            such that the total number of old and new pods do not
+                            exceed 130% of desired pods. Once old pods have been killed,
+                            new ReplicaSet can be scaled up further, ensuring that
+                            total number of pods running at any time during the update
+                            is at most 130% of desired pods.'
+                        maxUnavailable:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of pods that can be unavailable
+                            during the update. Value can be an absolute number (ex:
+                            5) or a percentage of desired pods (ex: 10%). Absolute
+                            number is calculated from percentage by rounding down.
+                            This can not be 0 if MaxSurge is 0. Defaults to 25%. Example:
+                            when this is set to 30%, the old ReplicaSet can be scaled
+                            down to 70% of desired pods immediately when the rolling
+                            update starts. Once new pods are ready, old ReplicaSet
+                            can be scaled down further, followed by scaling up the
+                            new ReplicaSet, ensuring that the total number of pods
+                            available at all times during the update is at least 70%
+                            of desired pods.'
+                      type: object
+                    type:
+                      description: Type of deployment. Can be "Recreate" or "RollingUpdate".
+                        Default is RollingUpdate.
+                      type: string
+                  type: object
+              type: object
+            deployment:
+              description: Deployment specifies the Agent should be deployed as a
+                Deployment, and allows providing its spec. Cannot be used along with
+                `daemonSet`. If both are absent a default for the Type is used.
+              properties:
+                replicas:
+                  format: int32
+                  type: integer
+                strategy:
+                  description: DeploymentStrategy describes how to replace existing
+                    pods with new ones.
+                  properties:
+                    rollingUpdate:
+                      description: 'Rolling update config params. Present only if
+                        DeploymentStrategyType = RollingUpdate. --- TODO: Update this
+                        to follow our convention for oneOf, whatever we decide it
+                        to be.'
+                      properties:
+                        maxSurge:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of pods that can be scheduled
+                            above the desired number of pods. Value can be an absolute
+                            number (ex: 5) or a percentage of desired pods (ex: 10%).
+                            This can not be 0 if MaxUnavailable is 0. Absolute number
+                            is calculated from percentage by rounding up. Defaults
+                            to 25%. Example: when this is set to 30%, the new ReplicaSet
+                            can be scaled up immediately when the rolling update starts,
+                            such that the total number of old and new pods do not
+                            exceed 130% of desired pods. Once old pods have been killed,
+                            new ReplicaSet can be scaled up further, ensuring that
+                            total number of pods running at any time during the update
+                            is at most 130% of desired pods.'
+                        maxUnavailable:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of pods that can be unavailable
+                            during the update. Value can be an absolute number (ex:
+                            5) or a percentage of desired pods (ex: 10%). Absolute
+                            number is calculated from percentage by rounding down.
+                            This can not be 0 if MaxSurge is 0. Defaults to 25%. Example:
+                            when this is set to 30%, the old ReplicaSet can be scaled
+                            down to 70% of desired pods immediately when the rolling
+                            update starts. Once new pods are ready, old ReplicaSet
+                            can be scaled down further, followed by scaling up the
+                            new ReplicaSet, ensuring that the total number of pods
+                            available at all times during the update is at least 70%
+                            of desired pods.'
+                      type: object
+                    type:
+                      description: Type of deployment. Can be "Recreate" or "RollingUpdate".
+                        Default is RollingUpdate.
+                      type: string
+                  type: object
+              type: object
+            elasticsearchRefs:
+              description: ElasticsearchRef is a reference to an Elasticsearch cluster
+                running in the same Kubernetes cluster.
+              items:
+                properties:
+                  name:
+                    description: Name of the Kubernetes object.
+                    type: string
+                  namespace:
+                    description: Namespace of the Kubernetes object. If empty, defaults
+                      to the current namespace.
+                    type: string
+                  outputName:
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            image:
+              description: Image is the Agent Docker image to deploy. Version has
+                to match the Agent in the image.
+              type: string
+            secureSettings:
+              description: SecureSettings is a list of references to Kubernetes Secrets
+                containing sensitive configuration options for the Agent. Secrets
+                data can be then referenced in the Agent config using the Secret's
+                keys or as specified in `Entries` field of each SecureSetting.
+              items:
+                description: SecretSource defines a data source based on a Kubernetes
+                  Secret.
+                properties:
+                  entries:
+                    description: Entries define how to project each key-value pair
+                      in the secret to filesystem paths. If not defined, all keys
+                      will be projected to similarly named paths in the filesystem.
+                      If defined, only the specified keys will be projected to the
+                      corresponding paths.
+                    items:
+                      description: KeyToPath defines how to map a key in a Secret
+                        object to a filesystem path.
+                      properties:
+                        key:
+                          description: Key is the key contained in the secret.
+                          type: string
+                        path:
+                          description: Path is the relative file path to map the key
+                            to. Path must not be an absolute file path and must not
+                            contain any ".." components.
+                          type: string
+                      required:
+                      - key
+                      type: object
+                    type: array
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                required:
+                - secretName
+                type: object
+              type: array
+            serviceAccountName:
+              description: ServiceAccountName is used to check access from the current
+                resource to Elasticsearch resource in a different namespace. Can only
+                be used if ECK is enforcing RBAC on references.
+              type: string
+            version:
+              description: Version of the Agent.
+              type: string
+          required:
+          - version
+          type: object
+        status:
+          description: AgentStatus defines the observed state of Agent
+          properties:
+            availableNodes:
+              format: int32
+              type: integer
+            elasticsearchAssociationStatus:
+              description: AssociationStatus is the status of an association resource.
+              type: string
+            expectedNodes:
+              format: int32
+              type: integer
+            health:
+              type: string
+            version:
+              description: 'Version of the stack resource currently running. During
+                version upgrades, multiple versions may run in parallel: this value
+                specifies the lowest version currently running.'
+              type: string
+          type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.0
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/instance: '{{ .Release.Name }}'
+    app.kubernetes.io/managed-by: '{{ .Release.Service }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
+    app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: apmservers.apm.k8s.elastic.co
 spec:
   additionalPrinterColumns:
