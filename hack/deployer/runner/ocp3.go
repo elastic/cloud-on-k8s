@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	// Volume name shared by CI container and Ansible container
+	// SharedVolumeName name shared by CI container and Ansible container
 	SharedVolumeName = os.Getenv("SHARED_VOLUME_NAME")
 )
 
@@ -152,6 +152,7 @@ func (d Ocp3Driver) writeAnsibleVarsFile() error {
 		return err
 	}
 	varsFile := filepath.Join(os.Getenv("HOME"), AnsibleVarsFilename)
+	/* #nosec */
 	if err := ioutil.WriteFile(varsFile, varsBytes, 0644); err != nil {
 		return fmt.Errorf("while writing Ansible variables file %w", err)
 	}
