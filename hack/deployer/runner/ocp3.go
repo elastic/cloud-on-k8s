@@ -66,7 +66,7 @@ func (d Ocp3Driver) Execute() error {
 
 	if err := authToGCP(
 		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, true, true, d.plan.Ocp3.GCloudProject,
+		d.plan.ServiceAccount, true, d.plan.Ocp3.GCloudProject,
 	); err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 		-e USER={{.User}} \
 		-e USER_HOME={{.HomeVolumeMountPath}} \
 		-v {{.HomeVolumeName}}:{{.HomeVolumeMountPath}} \
-		-e CLOUDSDK_CONFIG={{.GCloudSDKPath}} \
+		-e CLOUDSDK_CONFIG \
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
 		-e VARS_FILE={{.AnsibleVarsPath}} \
 		-e OUTPUT_DIR={{.AnsibleOutputPath}} \
