@@ -1,0 +1,4 @@
+= Using Logstash with ECK
+
+This recipe demonstrates how to run the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] on Kubernetes with Elasticsearch, Kibana and Filebeat deployed via ECK.
+
