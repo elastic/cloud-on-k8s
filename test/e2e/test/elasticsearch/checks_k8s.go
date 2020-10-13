@@ -181,7 +181,11 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 				return err
 			}
 			for _, pod := range pods {
-				_, _, err := getTransportCert(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name, pod.Name)
+				statefulSet, exist := pod.Labels[label.StatefulSetNameLabelName]
+				if !exist {
+					return fmt.Errorf("label %s not found on pod %/s%s", label.StatefulSetNameLabelName, pod.Namespace, pod.Name)
+				}
+				_, _, err := getTransportCert(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name, statefulSet, pod.Name)
 				if err != nil {
 					return err
 				}
@@ -192,11 +196,11 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 }
 
 // getTransportCert retrieves the certificate of the CA and the transport certificate
-func getTransportCert(k *test.K8sClient, esNamespace, esName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
+func getTransportCert(k *test.K8sClient, esNamespace, esName, statefulSetName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: esNamespace,
-		Name:      esName + "-es-transport-certificates",
+		Name:      statefulSetName + "-es-transport-certs",
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err

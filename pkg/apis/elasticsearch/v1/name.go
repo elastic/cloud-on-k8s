@@ -15,17 +15,18 @@ import (
 )
 
 const (
-	configSecretSuffix                = "config"
-	secureSettingsSecretSuffix        = "secure-settings"
-	httpServiceSuffix                 = "http"
-	transportServiceSuffix            = "transport"
-	elasticUserSecretSuffix           = "elastic-user"
-	internalUsersSecretSuffix         = "internal-users"
-	unicastHostsConfigMapSuffix       = "unicast-hosts"
-	licenseSecretSuffix               = "license"
-	defaultPodDisruptionBudget        = "default"
-	scriptsConfigMapSuffix            = "scripts"
-	transportCertificatesSecretSuffix = "transport-certificates"
+	configSecretSuffix                           = "config"
+	secureSettingsSecretSuffix                   = "secure-settings"
+	httpServiceSuffix                            = "http"
+	transportServiceSuffix                       = "transport"
+	elasticUserSecretSuffix                      = "elastic-user"
+	internalUsersSecretSuffix                    = "internal-users"
+	unicastHostsConfigMapSuffix                  = "unicast-hosts"
+	licenseSecretSuffix                          = "license"
+	defaultPodDisruptionBudget                   = "default"
+	scriptsConfigMapSuffix                       = "scripts"
+	clusterTransportCertificatesSecretSuffix     = "transport-certificates"
+	statefulSetTransportCertificatesSecretSuffix = "transport-certs"
 
 	// calling this secret "xpack-file-realm" is conceptually wrong since it also holds the file-based roles which
 	// are not part of the file realm - let's still keep this legacy name for convenience
@@ -52,7 +53,7 @@ var (
 		licenseSecretSuffix,
 		defaultPodDisruptionBudget,
 		scriptsConfigMapSuffix,
-		transportCertificatesSecretSuffix,
+		statefulSetTransportCertificatesSecretSuffix,
 		remoteCaNameSuffix,
 	}
 )
@@ -112,8 +113,14 @@ func SecureSettingsSecret(esName string) string {
 	return ESNamer.Suffix(esName, secureSettingsSecretSuffix)
 }
 
-func TransportCertificatesSecret(esName string) string {
-	return ESNamer.Suffix(esName, transportCertificatesSecretSuffix)
+func StatefulSetTransportCertificatesSecret(ssetName string) string {
+	return ESNamer.Suffix(ssetName, statefulSetTransportCertificatesSecretSuffix)
+}
+
+// ClusterTransportCertificatesSecret returns the former name of the Secret which used to contain the transport certificates.
+// This function only exists to let the controller delete that Secret.
+func ClusterTransportCertificatesSecret(esName string) string {
+	return ESNamer.Suffix(esName, clusterTransportCertificatesSecretSuffix)
 }
 
 func TransportService(esName string) string {
