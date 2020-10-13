@@ -1,0 +1,26 @@
+---
+- job:
+    description: Build a PR version of ECK
+    name: cloud-on-k8s-pr-full
+    project-type: pipeline
+    triggers:
+    - github-pull-request:
+        org-list:
+        - elastic
+        allow-whitelist-orgs-as-admins: true
+        github-hooks: true
+        status-context: devops-ci
+        cancel-builds-on-update: false
+        white-list:
+        - renovate[bot]
+        trigger-phrase: 'run full pr build.*'
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - master
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+      # Jenkinsfile shared with the release build job
+      script-path: .ci/pipelines/build.Jenkinsfile
+      lightweight-checkout: true
