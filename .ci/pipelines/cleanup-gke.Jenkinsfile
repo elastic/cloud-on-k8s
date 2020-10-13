@@ -36,7 +36,7 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = lib.generateSlackMessage("Cleanup build failed, manual cleanup might be required!", env.BUILD_URL)
+                    def msg = lib.generateSlackMessage("k8s cluster cleanup failed, manual cleanup might be required!", env.BUILD_URL)
 
                     slackSend(
                         channel: '#cloud-k8s',
