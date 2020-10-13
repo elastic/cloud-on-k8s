@@ -58,7 +58,12 @@ There are 3 test suites:
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
       They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios. To run a specific e2e test, you can use something similar to `make TESTS_MATCH=TestMetricbeatStackMonitoringRecipe clean docker-build docker-push e2e-docker-build e2e-docker-push e2e-run`. This will run the e2e test with your latest commit and is very close to how it will run in CI.
 
-      A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
+  A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
+  
+#### Pull Request validation
+  After submitting a PR, a run of unit tests, integration tests and a single E2E test (`SamplesTest`) on a single provider (GKE) can be triggered by commenting the PR with `jenkins test this please`.
+  
+  For changes larger in scope and touching CI pipeline, e2e test runner and/or providers a full E2E test suite can be triggered by commenting the PR with `run full pr build`. This will trigger the same set of pipelines that are triggered during nightly testing.
 
 ### Logging
 
