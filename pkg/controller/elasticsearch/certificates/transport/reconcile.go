@@ -108,7 +108,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
 		cert := extractTransportCert(*secret, pod, certCommonName)
 		if cert == nil {
-			return errors.New("No certificate found for pod")
+			return errors.New("no certificate found for pod")
 		}
 		// handle cert expiry via requeue
 		results.WithResult(reconcile.Result{
