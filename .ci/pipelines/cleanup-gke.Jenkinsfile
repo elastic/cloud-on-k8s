@@ -2,6 +2,8 @@
 // Added to help overcome some recurring github connection issues
 @Library('apm@current') _
 
+def lib
+
 pipeline {
 
     agent {
@@ -26,6 +28,9 @@ pipeline {
                 retry(3)
             }
             steps {
+                script {
+                    lib = load ".ci/common/tests.groovy"
+                }
                 sh '.ci/setenvconfig cleanup/gke'
                 sh 'make -C .ci TARGET=run-deployer ci'
             }
