@@ -68,6 +68,17 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Add the webhook sideEffects field on supported Kubernetes versions
+*/}}
+{{- define "eck-operator.webhookSideEffects" -}}
+{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersionSupported := semverCompare ">=1.13.0-0" $kubeVersion -}}
+{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) }}
+sideEffects: "None"
+{{- end }}
+{{- end }}
+
+{{/*
 RBAC permissions
 */}}
 {{- define "eck-operator.rbacRules" -}}

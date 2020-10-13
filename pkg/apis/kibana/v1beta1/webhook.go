@@ -33,7 +33,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1beta1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1beta1,name=elastic-kb-validation-v1beta1.k8s.elastic.co
+// +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1beta1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1beta1,name=elastic-kb-validation-v1beta1.k8s.elastic.co,sideEffects=None
 
 var _ webhook.Validator = &Kibana{}
 

@@ -19,6 +19,7 @@ webhooks:
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-apm-validation-v1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - apm.k8s.elastic.co
@@ -37,6 +38,7 @@ webhooks:
       path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - apm.k8s.elastic.co
@@ -55,6 +57,7 @@ webhooks:
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-beat-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - beat.k8s.elastic.co
@@ -73,6 +76,7 @@ webhooks:
       path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-ent-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - enterprisesearch.k8s.elastic.co
@@ -91,6 +95,7 @@ webhooks:
       path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-es-validation-v1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - elasticsearch.k8s.elastic.co
@@ -109,6 +114,7 @@ webhooks:
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-es-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - elasticsearch.k8s.elastic.co
@@ -127,6 +133,7 @@ webhooks:
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-kb-validation-v1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - kibana.k8s.elastic.co
@@ -145,6 +152,7 @@ webhooks:
       path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
     - kibana.k8s.elastic.co

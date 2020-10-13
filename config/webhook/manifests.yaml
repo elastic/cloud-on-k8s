@@ -1,12 +1,15 @@
 
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   creationTimestamp: null
   name: validating-webhook-configuration
 webhooks:
-- clientConfig:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -24,7 +27,11 @@ webhooks:
     - UPDATE
     resources:
     - apmservers
-- clientConfig:
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -42,7 +49,11 @@ webhooks:
     - UPDATE
     resources:
     - apmservers
-- clientConfig:
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -60,25 +71,11 @@ webhooks:
     - UPDATE
     resources:
     - beats
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
-  failurePolicy: Ignore
-  name: elastic-es-validation-v1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - elasticsearch.k8s.elastic.co
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - elasticsearches
-- clientConfig:
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -96,7 +93,11 @@ webhooks:
     - UPDATE
     resources:
     - elasticsearches
-- clientConfig:
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -114,7 +115,11 @@ webhooks:
     - UPDATE
     resources:
     - enterprisesearches
-- clientConfig:
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -132,7 +137,11 @@ webhooks:
     - UPDATE
     resources:
     - kibanas
-- clientConfig:
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     caBundle: Cg==
     service:
       name: webhook-service
@@ -150,3 +159,4 @@ webhooks:
     - UPDATE
     resources:
     - kibanas
+  sideEffects: None
