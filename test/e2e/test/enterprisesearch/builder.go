@@ -18,9 +18,9 @@ import (
 
 var (
 	minVersion = version.MustParse("7.7.0")
-	// Enterprise Search 7.9.0 & 7.9.1 are incompatible with Openshift default SCC due to file permission errors.
+	// Starting from 7.9.0, Enterprise Search is incompatible with Openshift default SCC due to file permission errors.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3656.
-	ocpIncompatibleVersions = []version.Version{version.MustParse("7.9.0"), version.MustParse("7.9.1")}
+	ocpFirstIncompatibleVersion = version.MustParse("7.9.0")
 )
 
 // Builder to create Enterprise Search.
@@ -44,11 +44,10 @@ func isIncompatibleWithOcp(v version.Version) bool {
 	if !test.Ctx().OcpCluster {
 		return false
 	}
-	for _, incompatibleVersion := range ocpIncompatibleVersions {
-		if v.IsSame(incompatibleVersion) {
-			return true
-		}
+	if v.IsSameOrAfter(ocpFirstIncompatibleVersion) {
+		return true
 	}
+
 	return false
 }
 
