@@ -5,9 +5,7 @@ go 1.13
 require (
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/blang/semver/v4 v4.0.0
-	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dgryski/go-gk v0.0.0-20140819190930-201884a44051 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elastic/go-ucfg v0.8.3
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
@@ -34,9 +32,8 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
-	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/tsenart/vegeta v12.8.4+incompatible
+	github.com/tsenart/vegeta/v12 v12.8.4
 	go.elastic.co/apm v1.8.0
 	go.elastic.co/apm/module/apmelasticsearch v1.8.0
 	go.uber.org/automaxprocs v1.3.0
