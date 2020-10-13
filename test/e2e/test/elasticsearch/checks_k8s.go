@@ -183,7 +183,7 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 			for _, pod := range pods {
 				statefulSet, exist := pod.Labels[label.StatefulSetNameLabelName]
 				if !exist {
-					return fmt.Errorf("label %s not found on pod %/s%s", label.StatefulSetNameLabelName, pod.Namespace, pod.Name)
+					return fmt.Errorf("label %s not found on pod %s/%s", label.StatefulSetNameLabelName, pod.Namespace, pod.Name)
 				}
 				_, _, err := getTransportCert(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name, statefulSet, pod.Name)
 				if err != nil {
