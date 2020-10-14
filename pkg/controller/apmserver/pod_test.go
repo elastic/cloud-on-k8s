@@ -65,6 +65,9 @@ func TestNewPodSpec(t *testing.T) {
 						"apm.k8s.elastic.co/version": "7.0.1",
 						"common.k8s.elastic.co/type": "apm-server",
 					},
+					Annotations: map[string]string{
+						"co.elastic.logs/module": "apm-server",
+					},
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{

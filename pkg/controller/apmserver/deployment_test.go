@@ -98,6 +98,7 @@ func expectedDeploymentParams() testParams {
 						"apm.k8s.elastic.co/config-files-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
 						"apm.k8s.elastic.co/version":               "1.0",
 					},
+					Annotations: map[string]string{"co.elastic.logs/module": "apm-server"},
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{

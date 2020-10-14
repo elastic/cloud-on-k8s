@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -38,6 +39,11 @@ var (
 		Limits: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
+	}
+
+	// DefaultAnnotations are the default annotations for the apmserver pods
+	DefaultAnnotations = map[string]string{
+		annotation.FilebeatModuleAnnotation: "apm-server",
 	}
 )
 
@@ -122,6 +128,7 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 
 	builder := defaults.NewPodTemplateBuilder(p.PodTemplate, apmv1.ApmServerContainerName).
 		WithLabels(labels).
+		WithAnnotations(DefaultAnnotations).
 		WithResources(DefaultResources).
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
