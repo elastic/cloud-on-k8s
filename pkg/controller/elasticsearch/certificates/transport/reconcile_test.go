@@ -243,7 +243,7 @@ func TestDeleteStatefulSetTransportCertificate(t *testing.T) {
 	}
 }
 
-func TestDeleteClusterTransportCertificate(t *testing.T) {
+func TestDeleteLegacyTransportCertificate(t *testing.T) {
 	type args struct {
 		client k8s.Client
 		es     esv1.Elasticsearch
@@ -282,7 +282,7 @@ func TestDeleteClusterTransportCertificate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteClusterTransportCertificate(tt.args.client, tt.args.es)
+			err := DeleteLegacyTransportCertificate(tt.args.client, tt.args.es)
 			tt.assertErr(t, err)
 		})
 	}

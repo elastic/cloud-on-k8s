@@ -25,7 +25,7 @@ const (
 	licenseSecretSuffix                          = "license"
 	defaultPodDisruptionBudget                   = "default"
 	scriptsConfigMapSuffix                       = "scripts"
-	clusterTransportCertificatesSecretSuffix     = "transport-certificates"
+	legacyTransportCertsSecretSuffix             = "transport-certificates"
 	statefulSetTransportCertificatesSecretSuffix = "transport-certs"
 
 	// calling this secret "xpack-file-realm" is conceptually wrong since it also holds the file-based roles which
@@ -117,10 +117,10 @@ func StatefulSetTransportCertificatesSecret(ssetName string) string {
 	return ESNamer.Suffix(ssetName, statefulSetTransportCertificatesSecretSuffix)
 }
 
-// ClusterTransportCertificatesSecret returns the former name of the Secret which used to contain the transport certificates.
+// LegacyTransportCertsSecretSuffix returns the former name of the Secret which used to contain the transport certificates.
 // This function only exists to let the controller delete that Secret.
-func ClusterTransportCertificatesSecret(esName string) string {
-	return ESNamer.Suffix(esName, clusterTransportCertificatesSecretSuffix)
+func LegacyTransportCertsSecretSuffix(esName string) string {
+	return ESNamer.Suffix(esName, legacyTransportCertsSecretSuffix)
 }
 
 func TransportService(esName string) string {

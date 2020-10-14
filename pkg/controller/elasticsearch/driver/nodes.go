@@ -104,7 +104,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	actualStatefulSets = upscaleResults.ActualStatefulSets
 
 	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
-	if err := transport.DeleteClusterTransportCertificate(d.Client, d.ES); err != nil && !apierrors.IsNotFound(err) {
+	if err := transport.DeleteLegacyTransportCertificate(d.Client, d.ES); err != nil && !apierrors.IsNotFound(err) {
 		results.WithError(err)
 	}
 

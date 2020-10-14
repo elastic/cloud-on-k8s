@@ -58,12 +58,12 @@ func DeleteStatefulSetTransportCertificate(client k8s.Client, namespace string, 
 	return client.Delete(&secret)
 }
 
-// DeleteClusterTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
-func DeleteClusterTransportCertificate(client k8s.Client, es esv1.Elasticsearch) error {
+// DeleteLegacyTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
+func DeleteLegacyTransportCertificate(client k8s.Client, es esv1.Elasticsearch) error {
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      esv1.ClusterTransportCertificatesSecret(es.Name),
+			Name:      esv1.LegacyTransportCertsSecretSuffix(es.Name),
 		},
 	}
 	return client.Delete(&secret)
