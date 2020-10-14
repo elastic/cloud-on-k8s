@@ -505,6 +505,9 @@ func expectedDeploymentParams() deployment.Params {
 						{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
 							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
 						}},
+						{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
+						}},
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{

@@ -94,6 +94,10 @@ func TestNewPodSpec(t *testing.T) {
 										FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
 									},
 								},
+								{Name: settings.EnvNamespace,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
+									}},
 								{
 									Name: "SECRET_TOKEN",
 									ValueFrom: &corev1.EnvVarSource{
