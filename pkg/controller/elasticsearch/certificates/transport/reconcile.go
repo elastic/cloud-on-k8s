@@ -174,7 +174,7 @@ func ensureTransportCertificatesSecretExists(
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to
 				label.ClusterNameLabelName: es.Name,
-				// label to state to which StatefulSet these certificates belongs to.
+				// label indicating to which StatefulSet these certificates belong
 				label.StatefulSetNameLabelName: ssetName,
 			},
 		},
