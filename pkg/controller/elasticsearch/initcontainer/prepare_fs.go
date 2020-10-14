@@ -7,7 +7,6 @@ package initcontainer
 import (
 	"path"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -97,22 +96,12 @@ var (
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
-func NewPrepareFSInitContainer(
-	transportCertificatesVolume volume.SecretVolume,
-	clusterName string,
-	volumes []corev1.Volume,
-) (corev1.Container, error) {
+func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume) (corev1.Container, error) {
 	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
 	// be attempting to move files from this secret volume mount (any attempt to do so will be logged as errors).
 	certificatesVolumeMount := transportCertificatesVolume.VolumeMount()
 	certificatesVolumeMount.MountPath = initContainerTransportCertificatesVolumeMountPath
-
-	scriptsVolume := volume.NewConfigMapVolumeWithMode(
-		esv1.ScriptsConfigMap(clusterName),
-		esvolume.ScriptsVolumeName,
-		esvolume.ScriptsVolumeMountPath,
-		0755)
 
 	privileged := false
 	container := corev1.Container{
@@ -126,13 +115,9 @@ func NewPrepareFSInitContainer(
 		VolumeMounts: append(
 			PluginVolumes.InitContainerVolumeMounts(),
 			certificatesVolumeMount,
-			scriptsVolume.VolumeMount(),
-			esvolume.DefaultLogsVolumeMount,
 		),
 		Resources: defaultResources,
 	}
-
-	container.VolumeMounts = esvolume.AppendDefaultDataVolumeMount(container.VolumeMounts, volumes)
 
 	return container, nil
 }

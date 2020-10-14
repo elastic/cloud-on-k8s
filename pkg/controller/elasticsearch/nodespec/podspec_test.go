@@ -196,8 +196,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(sampleES.Name),
-		sampleES.Name,
-		volumes,
 		nil,
 	)
 	require.NoError(t, err)
