@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -24,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(
@@ -100,6 +102,11 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 	actualStatefulSets = upscaleResults.ActualStatefulSets
+
+	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
+	if err := transport.DeleteLegacyTransportCertificate(d.Client, d.ES); err != nil && !apierrors.IsNotFound(err) {
+		results.WithError(err)
+	}
 
 	// Update PDB to account for new replicas.
 	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {

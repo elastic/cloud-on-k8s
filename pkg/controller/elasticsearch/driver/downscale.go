@@ -10,6 +10,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
@@ -148,7 +149,7 @@ func attemptDownscale(
 }
 
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
-// headless service and configuration secret.
+// headless service, configuration and transport certificates secret.
 func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
 	err := k8sClient.Delete(&headlessSvc)
@@ -157,6 +158,11 @@ func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, sta
 	}
 
 	err = settings.DeleteConfig(k8sClient, es.Namespace, statefulSet.Name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	err = transport.DeleteStatefulSetTransportCertificate(k8sClient, es.Namespace, statefulSet.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
