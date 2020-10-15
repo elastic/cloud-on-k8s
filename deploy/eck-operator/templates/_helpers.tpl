@@ -48,8 +48,12 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "eck-operator.selectorLabels" -}}
+{{- if .Values.internal.manifestGen }}
+control-plane: elastic-operator
+{{- else }}
 app.kubernetes.io/name: {{ include "eck-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -177,19 +181,6 @@ RBAC permissions
   - patch
   - delete
 - apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
   - beat.k8s.elastic.co
   resources:
   - beats
@@ -205,3 +196,29 @@ RBAC permissions
   - delete
 {{- end -}}
 
+{{/*
+RBAC permissions on non-namespaced resources
+*/}}
+{{- define "eck-operator.clusterWideRbacRules" -}}
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+{{- end -}}

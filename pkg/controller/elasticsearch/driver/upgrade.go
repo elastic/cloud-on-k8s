@@ -7,6 +7,10 @@ package driver
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -15,9 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func (d *defaultDriver) handleRollingUpgrades(
@@ -208,16 +209,7 @@ func podsToUpgrade(
 	return toUpgrade, nil
 }
 
-func disableShardsAllocation(ctx context.Context, esClient esclient.Client) error {
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
-	return esClient.DisableReplicaShardsAllocation(ctx)
-}
-
 func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Client) error {
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
-
 	targetEsVersion, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return err
@@ -288,8 +280,6 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
 	if err := esClient.EnableShardAllocation(ctx); err != nil {
 		return results.WithError(err)
 	}
@@ -305,7 +295,7 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Cli
 	}
 	if shardsAllocationEnabled {
 		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
-		if err := disableShardsAllocation(ctx.parentCtx, esClient); err != nil {
+		if err := esClient.DisableReplicaShardsAllocation(ctx.parentCtx); err != nil {
 			return err
 		}
 	}

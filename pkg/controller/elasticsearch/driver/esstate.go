@@ -62,9 +62,7 @@ type memoizingNodes struct {
 
 // initialize requests Elasticsearch for nodes information, only once.
 func (n *memoizingNodes) initialize() error {
-	ctx, cancel := context.WithTimeout(n.ctx, esclient.DefaultReqTimeout)
-	defer cancel()
-	nodes, err := n.esClient.GetNodes(ctx)
+	nodes, err := n.esClient.GetNodes(n.ctx)
 	if err != nil {
 		return err
 	}
@@ -92,9 +90,7 @@ type memoizingShardsAllocationEnabled struct {
 
 // initialize requests Elasticsearch for shards allocation information, only once.
 func (s *memoizingShardsAllocationEnabled) initialize() error {
-	ctx, cancel := context.WithTimeout(s.ctx, esclient.DefaultReqTimeout)
-	defer cancel()
-	allocationSettings, err := s.esClient.GetClusterRoutingAllocation(ctx)
+	allocationSettings, err := s.esClient.GetClusterRoutingAllocation(context.Background())
 	if err != nil {
 		return err
 	}
@@ -122,12 +118,9 @@ type memoizingHealth struct {
 
 // initialize requests Elasticsearch for cluster health, only once.
 func (h *memoizingHealth) initialize() error {
-	ctx, cancel := context.WithTimeout(h.ctx, esclient.DefaultReqTimeout)
-	defer cancel()
-
 	// get cluster health but make sure we have no pending shard initializations
 	// by requiring the event queue to be empty
-	health, err := h.esClient.GetClusterHealthWaitForAllEvents(ctx)
+	health, err := h.esClient.GetClusterHealthWaitForAllEvents(context.Background())
 	if err != nil {
 		return err
 	}

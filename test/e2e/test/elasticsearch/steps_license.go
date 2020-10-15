@@ -50,10 +50,7 @@ func (ltctx *LicenseTestContext) Init() test.Step {
 }
 
 func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...client.ElasticsearchLicenseType) error {
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-	defer cancel()
-
-	l, err := ltctx.esClient.GetLicense(ctx)
+	l, err := ltctx.esClient.GetLicense(context.Background())
 	if err != nil {
 		return err
 	}

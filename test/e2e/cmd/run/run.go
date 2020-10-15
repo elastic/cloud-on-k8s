@@ -34,6 +34,7 @@ const (
 	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
+	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
 	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
@@ -70,10 +71,9 @@ func doRun(flags runFlags) error {
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployTestSecrets,
+			helper.deployMonitoring,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
-			helper.deployFilebeat,
-			helper.deployMetricbeat,
 			helper.runTestJob,
 		}
 	}
@@ -158,7 +158,8 @@ func (h *helper) initTestContext() error {
 		ClusterName:           h.clusterName,
 		KubernetesVersion:     h.kubernetesVersion,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
-		OcpCluster:            h.kubectl("get", "clusterversion") == nil,
+		OcpCluster:            isOcpCluster(h),
+		Ocp3Cluster:           isOcp3Cluster(h),
 		DeployChaosJob:        h.deployChaosJob,
 	}
 
@@ -182,6 +183,16 @@ func (h *helper) initTestContext() error {
 	}
 
 	return nil
+}
+
+func isOcpCluster(h *helper) bool {
+	isOCP4 := h.kubectl("get", "clusterversion") == nil
+	isOCP3 := isOcp3Cluster(h)
+	return isOCP4 || isOCP3
+}
+
+func isOcp3Cluster(h *helper) bool {
+	return h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver") == nil
 }
 
 func (h *helper) initTestSecrets() error {
@@ -296,24 +307,14 @@ func (h *helper) waitForOperatorToBeReady() error {
 	}, operatorReadyTimeout, 10*time.Second)
 }
 
-func (h *helper) deployFilebeat() error {
+func (h *helper) deployMonitoring() error {
 	if h.monitoringSecrets == "" {
-		log.Info("No monitoring secrets provided, filebeat is not deployed")
+		log.Info("No monitoring secrets provided, monitoring is not deployed")
 		return nil
 	}
 
-	log.Info("Deploying filebeat")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/filebeat.yaml", h.testContext)
-}
-
-func (h *helper) deployMetricbeat() error {
-	if h.monitoringSecrets == "" {
-		log.Info("No monitoring secrets provided, metricbeat is not deployed")
-		return nil
-	}
-
-	log.Info("Deploying metricbeat")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/metricbeat.yaml", h.testContext)
+	log.Info("Deploying monitoring")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/monitoring.yaml", h.testContext)
 }
 
 func (h *helper) deployTestSecrets() error {

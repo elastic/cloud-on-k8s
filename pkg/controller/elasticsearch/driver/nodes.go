@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -24,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(
@@ -49,6 +51,21 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
+	// recreate any StatefulSet that needs to account for PVC expansion
+	recreations, err := recreateStatefulSets(d.K8sClient(), d.ES)
+	if err != nil {
+		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
+	}
+	if recreations > 0 {
+		// Some StatefulSets are in the process of being recreated to handle PVC expansion:
+		// it is safer to requeue until the re-creation is done.
+		// Otherwise, some operation could be performed with wrong assumptions:
+		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
+		log.V(1).Info("StatefulSets recreation in progress, re-queueing.",
+			"namespace", d.ES.Namespace, "es_name", d.ES.Name, "recreations", recreations)
+		return results.WithResult(defaultRequeue)
+	}
+
 	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
@@ -59,22 +76,19 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
-		return results.WithError(err)
-	}
-
 	esState := NewMemoizingESState(ctx, esClient)
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
-		parentCtx:     ctx,
-		k8sClient:     d.K8sClient(),
-		es:            d.ES,
-		observedState: observedState,
-		esState:       esState,
-		expectations:  d.Expectations,
+		parentCtx:            ctx,
+		k8sClient:            d.K8sClient(),
+		es:                   d.ES,
+		observedState:        observedState,
+		esState:              esState,
+		expectations:         d.Expectations,
+		validateStorageClass: d.OperatorParameters.ValidateStorageClass,
 	}
-	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
+	upscaleResults, err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
 		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, fmt.Sprintf("Failed to apply spec change: %v", err))
 		var podTemplateErr *sset.PodTemplateError
@@ -84,9 +98,22 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		}
 		return results.WithError(err)
 	}
+	if upscaleResults.Requeue {
+		return results.WithResult(defaultRequeue)
+	}
+	actualStatefulSets = upscaleResults.ActualStatefulSets
+
+	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
+	if err := transport.DeleteLegacyTransportCertificate(d.Client, d.ES); err != nil && !apierrors.IsNotFound(err) {
+		results.WithError(err)
+	}
 
 	// Update PDB to account for new replicas.
 	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {
+		return results.WithError(err)
+	}
+
+	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
 		return results.WithError(err)
 	}
 

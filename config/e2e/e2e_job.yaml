@@ -18,13 +18,16 @@ metadata:
   labels:
     test-run: {{ .Context.TestRun }}
 spec:
+{{ if not .Context.Ocp3Cluster }}
   ttlSecondsAfterFinished: 360
+{{ end }}
   template:
     metadata:
       annotations:
         co.elastic.logs/json.keys_under_root: "true"
       labels:
         test-run: {{ .Context.TestRun }}
+        stream-logs: "true"
     spec:
       securityContext:
         runAsNonRoot: true

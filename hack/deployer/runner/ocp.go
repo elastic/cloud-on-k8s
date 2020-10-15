@@ -129,7 +129,10 @@ func (d *OcpDriver) Execute() error {
 		return err
 	}
 
-	if err := d.auth(); err != nil {
+	if err := authToGCP(
+		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
+		d.plan.ServiceAccount, d.plan.Ocp.UseNonDefaultCloudSDKPath, false, d.ctx["GCloudProject"],
+	); err != nil {
 		return err
 	}
 
@@ -181,53 +184,6 @@ func (d *OcpDriver) Execute() error {
 	}
 
 	return err
-}
-
-func (d *OcpDriver) auth() error {
-
-	if d.plan.ServiceAccount {
-		log.Println("Authenticating as service account...")
-
-		client, err := NewClient(*d.plan.VaultInfo)
-		if err != nil {
-			return err
-		}
-
-		gcpDir := filepath.Join(os.Getenv("HOME"), ".gcp")
-		keyFileName := filepath.Join(os.Getenv("HOME"), ".gcp", "osServiceAccount.json")
-		_ = os.MkdirAll(gcpDir, os.ModePerm)
-
-		if err := client.ReadIntoFile(keyFileName, OcpVaultPath, OcpServiceAccountVaultFieldName); err != nil {
-			return err
-		}
-
-		if d.plan.Ocp.UseNonDefaultCloudSDKPath {
-			// ensure gcloud & gsutil rely on credentials stored in gcpDir instead of using the default
-			// directory (~/.config/gcloud), to not tamper any default gcloud auth already set on the system
-			log.Printf("Setting $CLOUDSDK_CONFIG=%s", gcpDir)
-			if err := os.Setenv("CLOUDSDK_CONFIG", gcpDir); err != nil {
-				return err
-			}
-		}
-		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
-		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run(); err != nil {
-			return err
-		}
-		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
-	}
-
-	log.Println("Authenticating as user...")
-	accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
-	if err != nil {
-		return err
-	}
-
-	if len(accounts) > 0 {
-		return nil
-	}
-
-	_ = NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run()
-	return NewCommand("gcloud auth login").Run()
 }
 
 func (d *OcpDriver) clusterExists() (bool, error) {

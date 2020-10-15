@@ -167,6 +167,14 @@ rules:
   - update
   - patch
   - delete
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -191,6 +199,7 @@ metadata:
   labels:
     test-run: {{ .TestRun }}
 ---
+{{$comma:=","}} # using coma directly messes up ide yaml parsing
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -234,6 +243,7 @@ spec:
         - "--enable-webhook"
         - "--log-verbosity=1"
         - "--metrics-port=9090"
+        - "--telemetry-interval=15s"
         {{ if .MonitoringSecrets }}
         - "--enable-tracing"
         {{end}}
@@ -321,6 +331,11 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -340,6 +355,11 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
   - clientConfig:
       caBundle: Cg==
       service:
@@ -359,6 +379,11 @@ webhooks:
       - UPDATE
       resources:
       - beats
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
 ---
 apiVersion: v1
 kind: Service

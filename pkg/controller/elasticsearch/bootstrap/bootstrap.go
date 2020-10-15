@@ -5,11 +5,12 @@
 package bootstrap
 
 import (
+	"go.elastic.co/apm"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
 
 	"context"
 
@@ -69,8 +70,6 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
 func getClusterUUID(ctx context.Context, esClient client.Client) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
-	defer cancel()
 	info, err := esClient.GetClusterInfo(ctx)
 	if err != nil {
 		return "", err

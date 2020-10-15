@@ -90,8 +90,6 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 	}
 	// the cluster was annotated to indicate it is performing a zen2 bootstrap,
 	// let's check if that bootstrap is done so we can remove the annotation
-	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
-	defer cancel()
 	isBootstrapped, err := esClient.ClusterBootstrappedForZen2(ctx)
 	if err != nil {
 		return false, err

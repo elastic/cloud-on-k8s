@@ -7,8 +7,17 @@ package observer
 import (
 	"sync"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
+)
+
+const (
+	// ObserverIntervalAnnotation is the name of the annotation used to set the observation interval for a cluster.
+	ObserverIntervalAnnotation = "eck.k8s.elastic.co/es-observer-interval"
 )
 
 // Manager for a set of observers
@@ -16,48 +25,59 @@ type Manager struct {
 	observers map[types.NamespacedName]*Observer
 	listeners []OnObservation // invoked on each observation event
 	lock      sync.RWMutex
-	settings  Settings
+	tracer    *apm.Tracer
 }
 
 // NewManager returns a new manager
-func NewManager(settings Settings) *Manager {
+func NewManager(tracer *apm.Tracer) *Manager {
 	return &Manager{
 		observers: make(map[types.NamespacedName]*Observer),
 		lock:      sync.RWMutex{},
-		settings:  settings,
+		tracer:    tracer,
 	}
 }
 
 // ObservedStateResolver returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient client.Client) State {
+func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) State {
 	return m.Observe(cluster, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client) *Observer {
+func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *Observer {
+	nsName := k8s.ExtractNamespacedName(&cluster)
+	settings := m.extractObserverSettings(cluster)
+
 	m.lock.RLock()
-	observer, exists := m.observers[cluster]
+	observer, exists := m.observers[nsName]
 	m.lock.RUnlock()
 
 	switch {
 	case !exists:
-		return m.createObserver(cluster, esClient)
-	case exists && !observer.esClient.Equal(esClient):
+		return m.createObserver(nsName, settings, esClient)
+	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
 		log.Info("Replacing observer HTTP client", "namespace", cluster.Namespace, "es_name", cluster.Name)
-		m.StopObserving(cluster)
-		return m.createObserver(cluster, esClient)
+		m.StopObserving(nsName)
+		return m.createObserver(nsName, settings, esClient)
 	default:
 		esClient.Close()
 		return observer
 	}
 }
 
+// extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
+func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
+	return Settings{
+		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
+		Tracer:              m.tracer,
+	}
+}
+
 // createObserver creates a new observer according to the given arguments,
 // and create/replace its entry in the observers map
-func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.Client) *Observer {
-	observer := NewObserver(cluster, esClient, m.settings, m.notifyListeners)
+func (m *Manager) createObserver(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+	observer := NewObserver(cluster, esClient, settings, m.notifyListeners)
 	observer.Start()
 	m.lock.Lock()
 	m.observers[cluster] = observer

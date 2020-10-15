@@ -47,9 +47,8 @@ func (e *esClusterChecks) CheckESVersion(es esv1.Elasticsearch) test.Step {
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-			defer cancel()
-			info, err := esClient.GetClusterInfo(ctx)
+
+			info, err := esClient.GetClusterInfo(context.Background())
 			if err != nil {
 				return err
 			}
@@ -69,9 +68,8 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-			defer cancel()
-			health, err := esClient.GetClusterHealth(ctx)
+
+			health, err := esClient.GetClusterHealth(context.Background())
 			if err != nil {
 				return err
 			}
@@ -94,10 +92,8 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-			defer cancel()
 
-			nodes, err := esClient.GetNodes(ctx)
+			nodes, err := esClient.GetNodes(context.Background())
 			if err != nil {
 				return err
 			}
@@ -105,7 +101,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 				return fmt.Errorf("expected node count %d but was %d", es.Spec.NodeCount(), len(nodes.Nodes))
 			}
 
-			nodesStats, err := esClient.GetNodesStats(ctx)
+			nodesStats, err := esClient.GetNodesStats(context.Background())
 			if err != nil {
 				return err
 			}

@@ -15,6 +15,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// GlobalMinStackVersion to additional restrict the allowed min version beyond the technical requirements expressed below.
+var GlobalMinStackVersion Version
+
 // supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
 var (
 	SupportedAPMServerVersions        = MinMaxVersion{Min: From(6, 2, 0), Max: From(8, 99, 99)}
@@ -40,6 +43,16 @@ func (mmv MinMaxVersion) WithinRange(v Version) error {
 	}
 
 	return nil
+}
+
+func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
+	if min.IsAfter(mmv.Min) {
+		return MinMaxVersion{
+			Min: min,
+			Max: mmv.Max,
+		}
+	}
+	return mmv
 }
 
 // Version is a parsed version

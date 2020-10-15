@@ -57,7 +57,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			es := &Elasticsearch{
+			es := Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      tc.esName,
 					Namespace: "test",
@@ -69,7 +69,7 @@ func TestValidate(t *testing.T) {
 				es.Spec.NodeSets = append(es.Spec.NodeSets, NodeSet{Name: nodeSpecName, Count: 10})
 			}
 
-			err := validateNames(es)
+			err := ValidateNames(es)
 			if tc.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.wantErrMsg)

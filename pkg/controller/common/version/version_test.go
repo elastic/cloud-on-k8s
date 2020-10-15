@@ -619,3 +619,73 @@ func TestVersion_IsSameOrAfterIgnoringPatch(t *testing.T) {
 		})
 	}
 }
+
+func TestMinMaxVersion_WithMin(t *testing.T) {
+	type fields struct {
+		Min Version
+		Max Version
+	}
+	type args struct {
+		min Version
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   MinMaxVersion
+	}{
+		{
+			name: "No minimum",
+			fields: fields{
+				Min: MustParse("6.8.0"),
+				Max: MustParse("8.0.0"),
+			},
+			args: args{
+				min: Version{},
+			},
+			want: MinMaxVersion{
+				Min: MustParse("6.8.0"),
+				Max: MustParse("8.0.0"),
+			},
+		},
+		{
+			name: "min >= global min",
+			fields: fields{
+				Min: MustParse("7.10.0"),
+				Max: MustParse("8.0.0"),
+			},
+			args: args{
+				min: MustParse("7.10.0"),
+			},
+			want: MinMaxVersion{
+				Min: MustParse("7.10.0"),
+				Max: MustParse("8.0.0"),
+			},
+		},
+		{
+			name: "min < global min",
+			fields: fields{
+				Min: MustParse("6.8.0"),
+				Max: MustParse("8.0.0"),
+			},
+			args: args{
+				min: MustParse("7.10.0"),
+			},
+			want: MinMaxVersion{
+				Min: MustParse("7.10.0"),
+				Max: MustParse("8.0.0"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mnv := MinMaxVersion{
+				Min: tt.fields.Min,
+				Max: tt.fields.Max,
+			}
+			if got := mnv.WithMin(tt.args.min); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("WithMin() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

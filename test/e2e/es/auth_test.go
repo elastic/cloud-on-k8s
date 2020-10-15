@@ -202,14 +202,13 @@ func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.BasicA
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
+
 	doc := bytes.NewBufferString(`{"foo": "bar"}`)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/%s/_doc", index), doc)
 	if err != nil {
 		return err
 	}
-	resp, err := esClient.Request(ctx, req)
+	resp, err := esClient.Request(context.Background(), req)
 	if err != nil {
 		// the client wraps unexpected status codes in an APIError, but still returns the correct resp
 		// we want to ignore APIErrors here

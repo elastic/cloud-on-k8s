@@ -20,17 +20,22 @@ ECK can be configured using either command line flags or environment variables.
 |config |"" | Path to a file containing the operator configuration.
 |container-registry |docker.elastic.co | Container registry to use for pulling Elastic Stack container images.
 |disable-config-watch| false| Watch the configuration file for changes and restart to apply them. Only effective when the `--config` flag is used to set the configuration file.
+|disable-telemetry| false| Disable periodically updating ECK telemetry data for Kibana to consume.
+|elasticsearch-client-timeout| 180s| Default timeout for requests made by the Elasticsearch client.
 |enable-leader-election | true | Enable leader election. Must be set to true if using multiple replicas of the operator
 |enable-tracing | false | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. See link:https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html[Apm Go Agent reference] for details.
 |enable-webhook | false | Enables a validating webhook server in the operator process.
 |enforce-rbac-on-refs| false | Enables restrictions on cross-namespace resource association through RBAC.
 |ip-family|""| Set the IP family to use. Possible values: IPv4, IPv6, "" (= auto-detect)
+|kube-client-timeout|60s| Set the request timeout for Kubernetes API calls made by the operator.
 |log-verbosity |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug.
 |manage-webhook-certs |true |Enables automatic webhook certificate management.
 |max-concurrent-reconciles |3 | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
+|ubi-only | false | Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.
+|validate-storage-class | true | Specifies whether the operator should retrieve storage classes to verify volume expansion support. Can be disabled if cluster-wide storage class RBAC access is not available.
 |webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
 |webhook-name |"elastic-webhook.k8s.elastic.co" |Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when `enable-webhook` is true.
 |webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
@@ -143,4 +148,3 @@ spec:
         mountPath: /conf
         readOnly: true
 ----
-

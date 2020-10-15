@@ -54,7 +54,7 @@ func BuildPodTemplateSpec(
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
 	initContainers, err := initcontainer.NewInitContainers(
-		transportCertificatesVolume(es.Name),
+		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
 		es.Name,
 		keystoreResources,
 	)
@@ -101,9 +101,9 @@ func getDefaultContainerPorts(es esv1.Elasticsearch) []corev1.ContainerPort {
 	}
 }
 
-func transportCertificatesVolume(esName string) volume.SecretVolume {
+func transportCertificatesVolume(ssetName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		esv1.TransportCertificatesSecret(esName),
+		esv1.StatefulSetTransportCertificatesSecret(ssetName),
 		esvolume.TransportCertificatesSecretVolumeName,
 		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)

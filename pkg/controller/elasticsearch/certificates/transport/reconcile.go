@@ -31,6 +31,7 @@ var log = logf.Log.WithName("transport")
 
 // ReconcileTransportCertificatesSecrets reconciles the secret containing transport certificates for all nodes in the
 // cluster.
+// Secrets which are not used anymore are deleted as part of the downscale process.
 func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
 	ca *certificates.CA,
@@ -38,16 +39,58 @@ func ReconcileTransportCertificatesSecrets(
 	rotationParams certificates.RotationParams,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
+	for _, nodeSet := range es.Spec.NodeSets {
+		if err := reconcileNodeSetTransportCertificatesSecrets(c, ca, es, nodeSet.Name, rotationParams); err != nil {
+			results.WithError(err)
+		}
+	}
+	return results
+}
+
+// DeleteStatefulSetTransportCertificate removes the Secret which contains the transport certificates of a given Statefulset.
+func DeleteStatefulSetTransportCertificate(client k8s.Client, namespace string, ssetName string) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
+		},
+	}
+	return client.Delete(&secret)
+}
+
+// DeleteLegacyTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
+func DeleteLegacyTransportCertificate(client k8s.Client, es esv1.Elasticsearch) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      esv1.LegacyTransportCertsSecretSuffix(es.Name),
+		},
+	}
+	return client.Delete(&secret)
+}
+
+// reconcileNodeSetTransportCertificatesSecrets reconciles the secret which contains the transport certificates for
+// a given StatefulSet.
+func reconcileNodeSetTransportCertificatesSecrets(
+	c k8s.Client,
+	ca *certificates.CA,
+	es esv1.Elasticsearch,
+	nodeSet string,
+	rotationParams certificates.RotationParams,
+) error {
+	results := &reconciler.Results{}
+	ssetName := esv1.StatefulSet(es.Name, nodeSet)
+	// List all the existing Pods in the nodeSet
 	var pods corev1.PodList
-	matchLabels := label.NewLabelSelectorForElasticsearch(es)
+	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
 	ns := client.InNamespace(es.Namespace)
 	if err := c.List(&pods, matchLabels, ns); err != nil {
-		return results.WithError(errors.WithStack(err))
+		return errors.WithStack(err)
 	}
 
-	secret, err := ensureTransportCertificatesSecretExists(c, es)
+	secret, err := ensureTransportCertificatesSecretExists(c, es, ssetName)
 	if err != nil {
-		return results.WithError(err)
+		return err
 	}
 	// defensive copy of the current secret so we can check whether we need to update later on
 	currentTransportCertificatesSecret := secret.DeepCopy()
@@ -60,12 +103,12 @@ func ReconcileTransportCertificatesSecrets(
 		if err := ensureTransportCertificatesSecretContentsForPod(
 			es, secret, pod, ca, rotationParams,
 		); err != nil {
-			return results.WithError(err)
+			return err
 		}
 		certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
 		cert := extractTransportCert(*secret, pod, certCommonName)
 		if cert == nil {
-			return results.WithError(errors.New("No certificate found for pod"))
+			return errors.New("no certificate found for pod")
 		}
 		// handle cert expiry via requeue
 		results.WithResult(reconcile.Result{
@@ -107,29 +150,32 @@ func ReconcileTransportCertificatesSecrets(
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
 		if err := c.Update(secret); err != nil {
-			return results.WithError(err)
+			return err
 		}
 		for _, pod := range pods.Items {
 			annotation.MarkPodAsUpdated(c, pod)
 		}
 	}
 
-	return results
+	return nil
 }
 
 // ensureTransportCertificatesSecretExists ensures the existence and Labels of the Secret that at a later point
-// in time will contain the transport certificates.
+// in time will contain the transport certificates for a nodeSet.
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	ssetName string,
 ) (*corev1.Secret, error) {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      esv1.TransportCertificatesSecret(es.Name),
+			Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to
 				label.ClusterNameLabelName: es.Name,
+				// label indicating to which StatefulSet these certificates belong
+				label.StatefulSetNameLabelName: ssetName,
 			},
 		},
 	}
