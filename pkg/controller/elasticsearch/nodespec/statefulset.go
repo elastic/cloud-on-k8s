@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,9 +74,11 @@ func BuildStatefulSet(
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
 
 	// add default PVCs to the node spec only if no user defined PVCs exist
-	if len(nodeSet.VolumeClaimTemplates) == 0 {
-		nodeSet.VolumeClaimTemplates = esvolume.DefaultVolumeClaimTemplates
-	}
+	nodeSet.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+		nodeSet.VolumeClaimTemplates,
+		nodeSet.PodTemplate.Spec,
+		esvolume.DefaultVolumeClaimTemplates...,
+	)
 
 	// build pod template
 	podTemplate, err := BuildPodTemplateSpec(es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
