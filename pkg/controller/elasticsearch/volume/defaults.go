@@ -50,7 +50,7 @@ var (
 	}
 )
 
-//AppendDefaultDataVolumeMount appends a volume mount for the default data volume if the slice of volumes contains the default data volume.
+// AppendDefaultDataVolumeMount appends a volume mount for the default data volume if the slice of volumes contains the default data volume.
 func AppendDefaultDataVolumeMount(mounts []corev1.VolumeMount, volumes []corev1.Volume) []corev1.VolumeMount {
 	for _, v := range volumes {
 		if v.Name == ElasticsearchDataVolumeName {

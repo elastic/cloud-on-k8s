@@ -113,6 +113,7 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume) 
 		Env:     defaults.PodDownwardEnvVars(),
 		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
 		VolumeMounts: append(
+			// we will also inherit all volume mounts from the main container later on in the pod template builder
 			PluginVolumes.InitContainerVolumeMounts(),
 			certificatesVolumeMount,
 		),
