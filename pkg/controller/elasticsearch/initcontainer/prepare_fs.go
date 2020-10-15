@@ -7,7 +7,6 @@ package initcontainer
 import (
 	"path"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -97,21 +96,12 @@ var (
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
-func NewPrepareFSInitContainer(
-	transportCertificatesVolume volume.SecretVolume,
-	clusterName string,
-) (corev1.Container, error) {
+func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume) (corev1.Container, error) {
 	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
 	// be attempting to move files from this secret volume mount (any attempt to do so will be logged as errors).
 	certificatesVolumeMount := transportCertificatesVolume.VolumeMount()
 	certificatesVolumeMount.MountPath = initContainerTransportCertificatesVolumeMountPath
-
-	scriptsVolume := volume.NewConfigMapVolumeWithMode(
-		esv1.ScriptsConfigMap(clusterName),
-		esvolume.ScriptsVolumeName,
-		esvolume.ScriptsVolumeMountPath,
-		0755)
 
 	privileged := false
 	container := corev1.Container{
@@ -123,11 +113,9 @@ func NewPrepareFSInitContainer(
 		Env:     defaults.PodDownwardEnvVars(),
 		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
 		VolumeMounts: append(
+			// we will also inherit all volume mounts from the main container later on in the pod template builder
 			PluginVolumes.InitContainerVolumeMounts(),
 			certificatesVolumeMount,
-			scriptsVolume.VolumeMount(),
-			esvolume.DefaultDataVolumeMount,
-			esvolume.DefaultLogsVolumeMount,
 		),
 		Resources: defaultResources,
 	}

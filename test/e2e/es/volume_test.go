@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -17,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 )
@@ -28,6 +30,77 @@ func TestVolumeEmptyDir(t *testing.T) {
 		WithEmptyDirVolumes()
 
 	// volume type will be checked in creation steps
+	test.Sequence(nil, test.EmptySteps, b).
+		RunSequential(t)
+}
+
+func TestVolumeMultiDataPath(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-es-multi-data-path").
+		WithNodeSet(esv1.NodeSet{
+			Name: "default",
+			Config: &commonv1.Config{
+				Data: map[string]interface{}{
+					"path.data": "/mnt/data1,/mnt/data2",
+				},
+			},
+			Count: 1,
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					SecurityContext: test.DefaultSecurityContext(),
+					Containers: []corev1.Container{
+						{
+							Name:      esv1.ElasticsearchContainerName,
+							Resources: elasticsearch.DefaultResources,
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "data1",
+									MountPath: "/mnt/data1",
+								},
+								{
+									Name:      "data2",
+									MountPath: "/mnt/data2",
+								},
+							},
+						},
+					},
+				}},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "data1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: resource.MustParse("2Gi"),
+							},
+						},
+						StorageClassName: pointer.StringPtr(elasticsearch.DefaultStorageClass),
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "data2",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: resource.MustParse("2Gi"),
+							},
+						},
+						StorageClassName: pointer.StringPtr(elasticsearch.DefaultStorageClass),
+					},
+				},
+			},
+		})
+
+	// successful creation should suffice to demonstrate use of multiple volumes
 	test.Sequence(nil, test.EmptySteps, b).
 		RunSequential(t)
 }
