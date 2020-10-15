@@ -2,6 +2,8 @@
 // Added to help overcome some recurring github connection issues
 @Library('apm@current') _
 
+def lib
+
 pipeline {
 
     agent {
@@ -26,6 +28,9 @@ pipeline {
                 retry(3)
             }
             steps {
+                script {
+                    lib = load ".ci/common/tests.groovy"
+                }
                 sh '.ci/setenvconfig cleanup/gke'
                 sh 'make -C .ci TARGET=run-deployer ci'
             }
@@ -33,6 +38,22 @@ pipeline {
     }
 
     post {
+        unsuccessful {
+            script {
+                if (params.SEND_NOTIFICATIONS) {
+                    def msg = lib.generateSlackMessage("k8s cluster cleanup failed, manual cleanup might be required!", env.BUILD_URL, [])
+
+                    slackSend(
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: true
+                    )
+                }
+            }
+        }
         cleanup {
             cleanWs()
         }
