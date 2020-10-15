@@ -95,8 +95,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	}
 
 	type args struct {
-		expectedSset appsv1.StatefulSet
-		actualSset   appsv1.StatefulSet
+		expectedSset         appsv1.StatefulSet
+		actualSset           appsv1.StatefulSet
+		validateStorageClass bool
 	}
 	tests := []struct {
 		name         string
@@ -109,8 +110,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "no pvc to resize",
 			args: args{
-				expectedSset: sset,
-				actualSset:   sset,
+				expectedSset:         sset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("1Gi", "1Gi", "1Gi"),
@@ -119,8 +121,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "all pvcs should be resized",
 			args: args{
-				expectedSset: resizedSset,
-				actualSset:   sset,
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),
@@ -129,8 +132,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "2 pvcs left to resize",
 			args: args{
-				expectedSset: resizedSset,
-				actualSset:   sset,
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),
@@ -139,8 +143,9 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "one pvc is missing: resize what's there, don't error out",
 			args: args{
-				expectedSset: resizedSset,
-				actualSset:   sset,
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi"),
@@ -149,20 +154,45 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		{
 			name: "storage decrease is not supported: error out",
 			args: args{
-				expectedSset: sset,        // 1Gi
-				actualSset:   resizedSset, // 3Gi
+				expectedSset:         sset,        // 1Gi
+				actualSset:           resizedSset, // 3Gi
+				validateStorageClass: true,
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("3Gi", "3Gi")), withVolumeExpansion(sampleStorageClass)),
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi"),
 			wantErr:      true,
 		},
+		{
+			name: "volume expansion not supported: error out",
+			args: args{
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: true,
+			},
+			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), &sampleStorageClass), // no expansion
+			expectedPVCs: pvcsWithSize("1Gi", "1Gi", "1Gi"),                                       // not resized
+			wantRecreate: false,
+			wantErr:      true,
+		},
+		{
+			name: "volume expansion not supported but no storage class validation: attempt to resize",
+			args: args{
+				expectedSset:         resizedSset,
+				actualSset:           sset,
+				validateStorageClass: false,
+			},
+			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), &sampleStorageClass), // no expansion
+			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),                                       // still resized
+			wantRecreate: true,
+			wantErr:      false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(append(tt.runtimeObjs, &es)...)
-			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset)
+			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("resizePVCs() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			require.Equal(t, tt.wantRecreate, recreate)
 
@@ -205,10 +235,9 @@ func Test_needsRecreate(t *testing.T) {
 		actualSset   appsv1.StatefulSet
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
+		name string
+		args args
+		want bool
 	}{
 		{
 			name: "requested storage increase in the 2nd claim: recreate",
@@ -234,100 +263,12 @@ func Test_needsRecreate(t *testing.T) {
 			},
 			want: false,
 		},
-		{
-			name: "requested storage decrease: error out",
-			args: args{
-				expectedSset: withClaims(sampleSset, sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")),
-				actualSset:   withClaims(sampleSset, sampleClaim, sampleClaim2),
-			},
-			want:    false,
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := needsRecreate(tt.args.expectedSset, tt.args.actualSset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("needsRecreate() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := needsRecreate(tt.args.expectedSset, tt.args.actualSset)
 			if got != tt.want {
 				t.Errorf("needsRecreate() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_isStorageExpansion(t *testing.T) {
-	type args struct {
-		expectedSize *resource.Quantity
-		actualSize   *resource.Quantity
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "expected == actual: false",
-			args: args{
-				expectedSize: resource.NewQuantity(1, resource.DecimalSI),
-				actualSize:   resource.NewQuantity(1, resource.DecimalSI),
-			},
-			want: false,
-		},
-		{
-			name: "expected > actual: true",
-			args: args{
-				expectedSize: resource.NewQuantity(2, resource.DecimalSI),
-				actualSize:   resource.NewQuantity(1, resource.DecimalSI),
-			},
-			want: true,
-		},
-		{
-			name: "expected < actual: error out",
-			args: args{
-				expectedSize: resource.NewQuantity(1, resource.DecimalSI),
-				actualSize:   resource.NewQuantity(2, resource.DecimalSI),
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "expected is nil",
-			args: args{
-				expectedSize: nil,
-				actualSize:   resource.NewQuantity(1, resource.DecimalSI),
-			},
-			want: false,
-		},
-		{
-			name: "actual is nil",
-			args: args{
-				expectedSize: resource.NewQuantity(1, resource.DecimalSI),
-				actualSize:   nil,
-			},
-			want: false,
-		},
-		{
-			name: "expected and actual are nil",
-			args: args{
-				expectedSize: nil,
-				actualSize:   nil,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := isStorageExpansion(tt.args.expectedSize, tt.args.actualSize)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("isStorageExpansion() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("isStorageExpansion() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -2,30 +2,30 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1
+package validation
 
 import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_checkNodeSetNameUniqueness(t *testing.T) {
 	type args struct {
 		name         string
-		es           *Elasticsearch
+		es           esv1.Elasticsearch
 		expectErrors bool
 	}
 	tests := []args{
 		{
 			name: "several duplicate nodeSets",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
 					Version: "7.4.0",
-					NodeSets: []NodeSet{
+					NodeSets: []esv1.NodeSet{
 						{Name: "foo", Count: 1},
 						{Name: "foo", Count: 1},
 						{Name: "bar", Count: 1},
@@ -37,32 +37,32 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 		},
 		{
 			name: "good spec with 1 nodeSet",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
 					Version:  "7.4.0",
-					NodeSets: []NodeSet{{Name: "foo", Count: 1}},
+					NodeSets: []esv1.NodeSet{{Name: "foo", Count: 1}},
 				},
 			},
 			expectErrors: false,
 		},
 		{
 			name: "good spec with 2 nodeSets",
-			es: &Elasticsearch{
+			es: esv1.Elasticsearch{
 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1"},
-				Spec: ElasticsearchSpec{
+				Spec: esv1.ElasticsearchSpec{
 					Version:  "7.4.0",
-					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "bar", Count: 1}},
+					NodeSets: []esv1.NodeSet{{Name: "foo", Count: 1}, {Name: "bar", Count: 1}},
 				},
 			},
 			expectErrors: false,
 		},
 		{
 			name: "duplicate nodeSet",
-			es: &Elasticsearch{
+			es: esv1.Elasticsearch{
 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1"},
-				Spec: ElasticsearchSpec{
+				Spec: esv1.ElasticsearchSpec{
 					Version:  "7.4.0",
-					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "foo", Count: 1}},
+					NodeSets: []esv1.NodeSet{{Name: "foo", Count: 1}, {Name: "foo", Count: 1}},
 				},
 			},
 			expectErrors: true,
@@ -84,7 +84,7 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 func Test_hasCorrectNodeRoles(t *testing.T) {
 	type m map[string]interface{}
 
-	esWithRoles := func(version string, count int32, nodeSetRoles ...m) *Elasticsearch {
+	esWithRoles := func(version string, count int32, nodeSetRoles ...m) esv1.Elasticsearch {
 		x := es(version)
 		for _, nsc := range nodeSetRoles {
 			data := nsc
@@ -93,7 +93,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 				cfg = &commonv1.Config{Data: data}
 			}
 
-			x.Spec.NodeSets = append(x.Spec.NodeSets, NodeSet{
+			x.Spec.NodeSets = append(x.Spec.NodeSets, esv1.NodeSet{
 				Count:  count,
 				Config: cfg,
 			})
@@ -104,7 +104,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		es           *Elasticsearch
+		es           esv1.Elasticsearch
 		expectErrors bool
 	}{
 		{
@@ -119,41 +119,41 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 		},
 		{
 			name:         "no master defined (node attributes)",
-			es:           esWithRoles("7.6.0", 1, m{NodeMaster: "false", NodeData: "true"}, m{NodeMaster: "true", NodeVotingOnly: "true"}),
+			es:           esWithRoles("7.6.0", 1, m{esv1.NodeMaster: "false", esv1.NodeData: "true"}, m{esv1.NodeMaster: "true", esv1.NodeVotingOnly: "true"}),
 			expectErrors: true,
 		},
 		{
 			name:         "no master defined (node roles)",
-			es:           esWithRoles("7.9.0", 1, m{NodeRoles: []string{DataRole}}, m{NodeRoles: []string{MasterRole, VotingOnlyRole}}),
+			es:           esWithRoles("7.9.0", 1, m{esv1.NodeRoles: []string{esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.VotingOnlyRole}}),
 			expectErrors: true,
 		},
 		{
 			name:         "zero master nodes (node attributes)",
-			es:           esWithRoles("7.6.0", 0, m{NodeMaster: "true", NodeData: "true"}, m{NodeData: "true"}),
+			es:           esWithRoles("7.6.0", 0, m{esv1.NodeMaster: "true", esv1.NodeData: "true"}, m{esv1.NodeData: "true"}),
 			expectErrors: true,
 		},
 		{
 			name:         "zero master nodes (node roles)",
-			es:           esWithRoles("7.9.0", 0, m{NodeRoles: []string{MasterRole, DataRole}}, m{NodeRoles: []string{DataRole}}),
+			es:           esWithRoles("7.9.0", 0, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}),
 			expectErrors: true,
 		},
 		{
 			name:         "mixed node attributes and node roles",
-			es:           esWithRoles("7.9.0", 1, m{NodeMaster: "true", NodeRoles: []string{DataRole}}, m{NodeRoles: []string{DataRole, TransformRole}}),
+			es:           esWithRoles("7.9.0", 1, m{esv1.NodeMaster: "true", esv1.NodeRoles: []string{esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole, esv1.TransformRole}}),
 			expectErrors: true,
 		},
 		{
 			name:         "node roles on older version",
-			es:           esWithRoles("7.6.0", 1, m{NodeRoles: []string{MasterRole}}, m{NodeRoles: []string{DataRole}}),
+			es:           esWithRoles("7.6.0", 1, m{esv1.NodeRoles: []string{esv1.MasterRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}),
 			expectErrors: true,
 		},
 		{
 			name: "valid configuration (node attributes)",
-			es:   esWithRoles("7.6.0", 3, m{NodeMaster: "true", NodeData: "true"}, m{NodeData: "true"}),
+			es:   esWithRoles("7.6.0", 3, m{esv1.NodeMaster: "true", esv1.NodeData: "true"}, m{esv1.NodeData: "true"}),
 		},
 		{
 			name: "valid configuration (node roles)",
-			es:   esWithRoles("7.9.0", 3, m{NodeRoles: []string{MasterRole, DataRole}}, m{NodeRoles: []string{DataRole}}),
+			es:   esWithRoles("7.9.0", 3, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}),
 		},
 	}
 	for _, tt := range tests {
@@ -170,7 +170,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 func Test_supportedVersion(t *testing.T) {
 	tests := []struct {
 		name         string
-		es           *Elasticsearch
+		es           esv1.Elasticsearch
 		expectErrors bool
 	}{
 		{
@@ -204,12 +204,12 @@ func Test_supportedVersion(t *testing.T) {
 func Test_validName(t *testing.T) {
 	tests := []struct {
 		name         string
-		es           *Elasticsearch
+		es           esv1.Elasticsearch
 		expectErrors bool
 	}{
 		{
 			name: "name length too long",
-			es: &Elasticsearch{
+			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "that-is-a-very-long-name-with-37chars",
@@ -219,7 +219,7 @@ func Test_validName(t *testing.T) {
 		},
 		{
 			name: "name length OK",
-			es: &Elasticsearch{
+			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "that-is-a-very-long-name-with-36char",
@@ -247,20 +247,20 @@ func Test_validSanIP(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		es           *Elasticsearch
+		es           esv1.Elasticsearch
 		expectErrors bool
 	}{
 		{
 			name: "no SAN IP: OK",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{},
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{},
 			},
 			expectErrors: false,
 		},
 		{
 			name: "valid SAN IPs: OK",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
 					HTTP: commonv1.HTTPConfig{
 						TLS: commonv1.TLSOptions{
 							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
@@ -284,8 +284,8 @@ func Test_validSanIP(t *testing.T) {
 		},
 		{
 			name: "invalid SAN IPs: NOT OK",
-			es: &Elasticsearch{
-				Spec: ElasticsearchSpec{
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
 					HTTP: commonv1.HTTPConfig{
 						TLS: commonv1.TLSOptions{
 							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
@@ -316,223 +316,13 @@ func Test_validSanIP(t *testing.T) {
 	}
 }
 
-func Test_pvcModified(t *testing.T) {
-	current := getEsCluster()
-
-	tests := []struct {
-		name         string
-		current      *Elasticsearch
-		proposed     *Elasticsearch
-		expectErrors bool
-	}{
-		{
-			name:    "resize succeeds",
-			current: current,
-			proposed: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.2.0",
-					NodeSets: []NodeSet{
-						{
-							Name: "master",
-							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("10Gi"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expectErrors: false,
-		},
-		{
-			name:    "same size accepted",
-			current: current,
-			proposed: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.2.0",
-					NodeSets: []NodeSet{
-						{
-							Name: "master",
-							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("5Gi"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expectErrors: false,
-		},
-
-		{
-			name:    "additional PVC fails",
-			current: current,
-			proposed: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.2.0",
-					NodeSets: []NodeSet{
-						{
-							Name: "master",
-							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("5Gi"),
-											},
-										},
-									},
-								},
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data1",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("5Gi"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expectErrors: true,
-		},
-
-		{
-			name:    "name change rejected",
-			current: current,
-			proposed: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.2.0",
-					NodeSets: []NodeSet{
-						{
-							Name: "master",
-							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data1",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("5Gi"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expectErrors: true,
-		},
-
-		{
-			name:    "add new node set accepted",
-			current: current,
-			proposed: &Elasticsearch{
-				Spec: ElasticsearchSpec{
-					Version: "7.2.0",
-					NodeSets: []NodeSet{
-						{
-							Name: "master",
-							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("5Gi"),
-											},
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: "ingest",
-							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
-									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
-											Requests: corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("10Gi"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expectErrors: false,
-		},
-
-		{
-			name:         "new instance accepted",
-			current:      nil,
-			proposed:     current,
-			expectErrors: false,
-		},
-	}
-
-	for _, tt := range tests {
-		actual := pvcModification(tt.current, tt.proposed)
-		actualErrors := len(actual) > 0
-		if tt.expectErrors != actualErrors {
-			t.Errorf("failed pvcModification(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.proposed)
-		}
-	}
-}
-
 func TestValidation_noDowngrades(t *testing.T) {
 	tests := []struct {
 		name         string
-		current      *Elasticsearch
-		proposed     *Elasticsearch
+		current      esv1.Elasticsearch
+		proposed     esv1.Elasticsearch
 		expectErrors bool
 	}{
-		{
-			name:         "no validation on create",
-			current:      nil,
-			proposed:     es("6.8.0"),
-			expectErrors: false,
-		},
 		{
 			name:         "prevent downgrade",
 			current:      es("2.0.0"),
@@ -560,16 +350,10 @@ func TestValidation_noDowngrades(t *testing.T) {
 func Test_validUpgradePath(t *testing.T) {
 	tests := []struct {
 		name         string
-		current      *Elasticsearch
-		proposed     *Elasticsearch
+		current      esv1.Elasticsearch
+		proposed     esv1.Elasticsearch
 		expectErrors bool
 	}{
-		{
-			name:         "new cluster accepted",
-			current:      nil,
-			proposed:     es("1.0.0"),
-			expectErrors: false,
-		},
 		{
 			name:     "unsupported version rejected",
 			current:  es("1.0.0"),
@@ -608,8 +392,8 @@ func Test_validUpgradePath(t *testing.T) {
 }
 
 func Test_noUnknownFields(t *testing.T) {
-	GetEsWithLastApplied := func(lastApplied string) Elasticsearch {
-		return Elasticsearch{
+	GetEsWithLastApplied := func(lastApplied string) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
 					corev1.LastAppliedConfigAnnotation: lastApplied,
@@ -620,7 +404,7 @@ func Test_noUnknownFields(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		es           Elasticsearch
+		es           esv1.Elasticsearch
 		errorOnField string
 	}{
 		{
@@ -633,7 +417,7 @@ func Test_noUnknownFields(t *testing.T) {
 		},
 		{
 			name: "no annotation",
-			es:   Elasticsearch{},
+			es:   esv1.Elasticsearch{},
 		},
 		{
 			name: "bad annotation",
@@ -648,7 +432,7 @@ func Test_noUnknownFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := noUnknownFields(&tt.es)
+			actual := noUnknownFields(tt.es)
 			actualErrors := len(actual) > 0
 			expectErrors := tt.errorOnField != ""
 			if expectErrors != actualErrors || (actualErrors && actual[0].Field != tt.errorOnField) {
@@ -664,40 +448,12 @@ func Test_noUnknownFields(t *testing.T) {
 }
 
 // es returns an es fixture at a given version
-func es(v string) *Elasticsearch {
-	return &Elasticsearch{
+func es(v string) esv1.Elasticsearch {
+	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "foo",
 		},
-		Spec: ElasticsearchSpec{Version: v},
-	}
-}
-
-// // getEsCluster returns a ES cluster test fixture
-func getEsCluster() *Elasticsearch {
-	return &Elasticsearch{
-		Spec: ElasticsearchSpec{
-			Version: "7.2.0",
-			NodeSets: []NodeSet{
-				{
-					Name: "master",
-					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "elasticsearch-data",
-							},
-							Spec: corev1.PersistentVolumeClaimSpec{
-								Resources: corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										corev1.ResourceStorage: resource.MustParse("5Gi"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		Spec: esv1.ElasticsearchSpec{Version: v},
 	}
 }

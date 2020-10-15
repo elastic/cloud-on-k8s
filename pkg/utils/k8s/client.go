@@ -6,20 +6,15 @@ package k8s
 
 import (
 	"context"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// DefaultTimeout is a reasonable timeout to use with the Client.
-const DefaultTimeout = 1 * time.Minute
-
 // WrapClient returns a Client that performs requests within DefaultTimeout.
 func WrapClient(client client.Client) Client {
 	return &clientWrapper{
 		crClient: client,
-		timeout:  DefaultTimeout,
 	}
 }
 
@@ -29,9 +24,6 @@ type Client interface {
 	// WithContext returns a client configured to use the provided context on
 	// subsequent requests, instead of one created from the preconfigured timeout.
 	WithContext(ctx context.Context) Client
-	// WithTimeout returns a client with an overridden timeout value,
-	// to be used when no explicit context is passed.
-	WithTimeout(timeout time.Duration) Client
 
 	// Get wraps a controller-runtime client.Get call with a context.
 	Get(key client.ObjectKey, obj runtime.Object) error
@@ -54,12 +46,10 @@ type Client interface {
 
 type clientWrapper struct {
 	crClient client.Client
-	timeout  time.Duration
 	ctx      context.Context // nil if not provided
 }
 
-// WithContext returns a client configured to use the provided context on
-// subsequent requests, instead of one created from the preconfigured timeout.
+// WithContext returns a client configured to use the provided context for subsequent calls.
 func (w *clientWrapper) WithContext(ctx context.Context) Client {
 	return &clientWrapper{
 		crClient: w.crClient,
@@ -67,29 +57,14 @@ func (w *clientWrapper) WithContext(ctx context.Context) Client {
 	}
 }
 
-// WithTimeout returns a client with an overridden timeout value,
-// to be used when no explicit context is passed.
-func (w *clientWrapper) WithTimeout(timeout time.Duration) Client {
-	return &clientWrapper{
-		crClient: w.crClient,
-		timeout:  timeout,
-	}
-}
-
-// callWithContext calls f with the user-provided context. If no context was
-// provided, it uses the default one.
-func (w *clientWrapper) callWithContext(f func(ctx context.Context) error) error {
-	var ctx context.Context
+// callWithContext calls f with the user-provided context.
+// If no context is provided, defaults to the background context.
+func (w *clientWrapper) callWithContext(f func(context.Context) error) error {
 	if w.ctx != nil {
-		// use the provided context
-		ctx = w.ctx
-	} else {
-		// no context provided, use the default one
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), w.timeout)
-		defer cancel()
+		return f(w.ctx)
 	}
-	return f(ctx)
+
+	return f(context.Background())
 }
 
 // Get wraps a controller-runtime client.Get call with a context.

@@ -30,9 +30,7 @@ func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient cli
 	}
 
 	log.Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
-	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
-	defer cancel()
-	return esClient.AddVotingConfigExclusions(ctx, excludeNodes, "")
+	return esClient.AddVotingConfigExclusions(context.Background(), excludeNodes)
 }
 
 // canClearVotingConfigExclusions returns true if it is safe to clear voting config exclusions.
@@ -71,7 +69,5 @@ func ClearVotingConfigExclusions(ctx context.Context, es esv1.Elasticsearch, c k
 	}
 
 	log.Info("Ensuring no voting exclusions are set", "namespace", es.Namespace, "es_name", es.Name)
-	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
-	defer cancel()
 	return false, esClient.DeleteVotingConfigExclusions(ctx, false)
 }

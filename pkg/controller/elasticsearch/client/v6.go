@@ -140,7 +140,7 @@ func (c *clientV6) StartBasic(ctx context.Context) (StartBasicResponse, error) {
 	return response, err
 }
 
-func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
 	return errors.New("Not supported in Elasticsearch 6.x")
 }
 

@@ -125,6 +125,41 @@ metadata:
                       "name": "elasticsearch-sample"
                   }
               }
+          },
+          {
+            "apiVersion": "beat.k8s.elastic.co/v1beta1",
+            "kind": "Beat",
+            "metadata": {
+              "name": "heartbeat-sample"
+            },
+            "spec": {
+              "type": "heartbeat",
+              "version": "{{ .StackVersion }}",
+              "elasticsearchRef": {
+                "name": "elasticsearch-sample"
+              },
+              "config": {
+                "heartbeat.monitors": [
+                  {
+                    "type": "tcp",
+                    "schedule": "@every 5s",
+                    "hosts": [
+                      "elasticsearch-sample-es-http.default.svc:9200"
+                    ]
+                  }
+                ]
+              },
+              "deployment": {
+                "replicas": 1,
+                "podTemplate": {
+                  "spec": {
+                    "securityContext": {
+                      "runAsUser": 0
+                    }
+                  }
+                }
+              }
+            }
           }
       ]
   name: elastic-cloud-eck.v{{ .NewVersion }}

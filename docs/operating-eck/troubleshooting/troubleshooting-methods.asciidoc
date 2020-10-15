@@ -169,6 +169,22 @@ Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conven
 you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
 
 
+[id="{p}-resource-level-config"]
+== Configure Elasticsearch timeouts
+
+The operator needs to communicate with each Elasticsearch cluster in order to perform orchestration tasks. The default timeout for such requests can be configured by setting the `elasticsearch-client-timeout` value as described in <<{p}-operator-config>>. If you have a particularly overloaded Elasticsearch cluster that is taking longer to process API requests, you can temporarily change the timeout and frequency of API calls made by the operator to that single cluster by annotating the relevant `Elasticsearch` resource. The supported list of annotations are:
+
+- `eck.k8s.elastic.co/es-client-timeout`: Request timeout for the API requests made by the Elasticsearch client. Defaults to 3 minutes.
+- `eck.k8s.elastic.co/es-observer-interval`: How often Elasticsearch should be checked by the operator to obtain health information. Defaults to 10 seconds.
+
+To set the Elasticsearch client timeout to 60 seconds for a cluster named `quickstart`, you can run the following command:
+
+[source,sh]
+----
+kubectl annotate elasticsearch quickstart eck.k8s.elastic.co/es-client-timeout=60s
+----
+
+
 [id="{p}-exclude-resource"]
 == Exclude resources from reconciliation
 

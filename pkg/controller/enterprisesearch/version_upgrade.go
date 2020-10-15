@@ -164,7 +164,7 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 		if err != nil {
 			return err
 		}
-		httpClient = common.HTTPClient(r.dialer, tlsCerts)
+		httpClient = common.HTTPClient(r.dialer, tlsCerts, 0)
 		defer httpClient.CloseIdleConnections()
 	}
 

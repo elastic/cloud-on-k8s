@@ -31,7 +31,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
-	transportCertificatesVolume := transportCertificatesVolume(esName)
+	transportCertificatesVolume := transportCertificatesVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	remoteCertificateAuthoritiesVolume := volume.NewSecretVolumeWithMountPath(
 		esv1.RemoteCaSecretName(esName),
 		esvolume.RemoteCertificateAuthoritiesSecretVolumeName,

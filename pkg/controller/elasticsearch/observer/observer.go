@@ -20,23 +20,12 @@ var log = logf.Log.WithName("observer")
 // Settings for the Observer configuration
 type Settings struct {
 	ObservationInterval time.Duration
-	RequestTimeout      time.Duration
 	Tracer              *apm.Tracer
 }
 
-// Default values:
-// - best-case scenario (healthy cluster): a request is performed every 10 seconds
-// - worst-case scenario (unhealthy cluster): a request is performed every 70 (60+10) seconds
-const (
-	DefaultObservationInterval = 10 * time.Second
-	DefaultRequestTimeout      = 1 * time.Minute
-)
-
-// DefaultSettings is an observer's Params with default values
-var DefaultSettings = Settings{
-	ObservationInterval: DefaultObservationInterval,
-	RequestTimeout:      DefaultRequestTimeout,
-}
+// defaultObservationInterval is the default interval of observation.
+// if the Elasticsearch cluster is unavailable, the actual interval would be observationInterval + requestTimeout.
+const defaultObservationInterval = 10 * time.Second
 
 // OnObservation is a function that gets executed when a new state is observed
 type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
@@ -44,20 +33,15 @@ type OnObservation func(cluster types.NamespacedName, previousState State, newSt
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
-	cluster  types.NamespacedName
-	esClient client.Client
-
-	settings Settings
-
-	creationTime time.Time
-
-	stopChan chan struct{}
-	stopOnce sync.Once
-
+	cluster       types.NamespacedName
+	esClient      client.Client
+	settings      Settings
+	creationTime  time.Time
+	stopChan      chan struct{}
+	stopOnce      sync.Once
 	onObservation OnObservation
-
-	lastState State
-	mutex     sync.RWMutex
+	lastState     State
+	mutex         sync.RWMutex
 }
 
 // NewObserver creates and starts an Observer
@@ -130,16 +114,16 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 // and stores the new state
 func (o *Observer) retrieveState(ctx context.Context) {
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
-	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
-	defer cancel()
+
+	reqCtx := ctx
 
 	if o.settings.Tracer != nil {
 		tx := o.settings.Tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
 		defer tx.End()
-		timeoutCtx = apm.ContextWithTransaction(timeoutCtx, tx)
+		reqCtx = apm.ContextWithTransaction(ctx, tx)
 	}
 
-	newState := RetrieveState(timeoutCtx, o.cluster, o.esClient)
+	newState := RetrieveState(reqCtx, o.cluster, o.esClient)
 
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastState(), newState)

@@ -6,13 +6,14 @@ package kibana
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/ghodss/yaml"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -31,7 +32,7 @@ const (
 	InternalConfigVolumeName      = "elastic-internal-kibana-config"
 	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
 
-	telemetryFilename = "telemetry.yml"
+	TelemetryFilename = "telemetry.yml"
 )
 
 var (
@@ -46,11 +47,6 @@ var (
 		ContainerMountPath:     ConfigVolumeMountPath,
 	}
 )
-
-// ECK is a helper struct to marshal telemetry information.
-type ECK struct {
-	ECK about.OperatorInfo `json:"eck"`
-}
 
 // ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
 func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
@@ -73,7 +69,6 @@ func ReconcileConfigSecret(
 	client k8s.Client,
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
-	operatorInfo about.OperatorInfo,
 ) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
 	defer span.End()
@@ -82,10 +77,20 @@ func ReconcileConfigSecret(
 	if err != nil {
 		return err
 	}
-	telemetryYamlBytes, err := getTelemetryYamlBytes(operatorInfo)
+
+	telemetryYamlBytes, err := getTelemetryYamlBytes(client, kb)
 	if err != nil {
 		return err
 	}
+
+	data := map[string][]byte{
+		SettingsFilename: settingsYamlBytes,
+	}
+
+	if telemetryYamlBytes != nil {
+		data[TelemetryFilename] = telemetryYamlBytes
+	}
+
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
@@ -94,17 +99,31 @@ func ReconcileConfigSecret(
 				KibanaNameLabelName: kb.Name,
 			}),
 		},
-		Data: map[string][]byte{
-			SettingsFilename:  settingsYamlBytes,
-			telemetryFilename: telemetryYamlBytes,
-		},
+		Data: data,
 	}
 
 	_, err = reconciler.ReconcileSecret(client, expected, &kb)
 	return err
 }
 
-// getTelemetryYamlBytes returns the YAML bytes for the information on ECK.
-func getTelemetryYamlBytes(operatorInfo about.OperatorInfo) ([]byte, error) {
-	return yaml.Marshal(ECK{operatorInfo})
+// getUsage returns usage map object and its YAML bytes from this Kibana configuration Secret or nil
+// if the Secret or usage key doesn't exist yet.
+func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
+	var secret corev1.Secret
+	if err := client.Get(types.NamespacedName{Namespace: kb.Namespace, Name: SecretName(kb)}, &secret); err != nil {
+		if apierrors.IsNotFound(err) {
+			// this secret is just about to be created, we don't know usage yet
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("error %s while getting usage secret, this is not expected", err)
+	}
+
+	telemetryBytes, ok := secret.Data[TelemetryFilename]
+	if !ok || telemetryBytes == nil {
+		// secret is there, but telemetry not populated yet
+		return nil, nil
+	}
+
+	return telemetryBytes, nil
 }

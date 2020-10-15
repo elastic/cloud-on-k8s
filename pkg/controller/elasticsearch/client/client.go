@@ -9,20 +9,24 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 const (
-	// DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
-	DefaultVotingConfigExclusionsTimeout = "30s"
-	// DefaultReqTimeout is the default timeout used when performing HTTP calls against Elasticsearch
-	DefaultReqTimeout = 3 * time.Minute
+	// ESClientTimeoutAnnotation is the name of the annotation used to set the Elasticsearch client timeout.
+	ESClientTimeoutAnnotation = "eck.k8s.elastic.co/es-client-timeout"
 )
+
+// DefaultESClientTimeout is the default timeout value for Elasticsearch requests.
+var DefaultESClientTimeout = 3 * time.Minute
 
 // BasicAuth contains credentials for an Elasticsearch user.
 type BasicAuth struct {
@@ -90,11 +94,8 @@ type Client interface {
 	// GetRemoteClusterSettings retrieves the remote clusters of a cluster.
 	GetRemoteClusterSettings(ctx context.Context) (RemoteClustersSettings, error)
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
-	//
-	// If timeout is the empty string, the default is used.
-	//
 	// Introduced in: Elasticsearch 7.0.0
-	AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error
+	AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error
 	// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// Introduced in: Elasticsearch 7.0.0
@@ -103,6 +104,15 @@ type Client interface {
 	// The Elasticsearch endpoint will be added automatically to the request URL which should therefore just be the path
 	// with a leading /
 	Request(ctx context.Context, r *http.Request) (*http.Response, error)
+}
+
+// Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
+func Timeout(es esv1.Elasticsearch) time.Duration {
+	return annotation.ExtractTimeout(es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
+}
+
+func formatAsSeconds(d time.Duration) string {
+	return fmt.Sprintf("%.0fs", math.Round(d.Seconds()))
 }
 
 // NewElasticsearchClient creates a new client for the target cluster.
@@ -114,12 +124,13 @@ func NewElasticsearchClient(
 	esUser BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
+	timeout time.Duration,
 ) Client {
 	base := &baseClient{
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP:     common.HTTPClient(dialer, caCerts),
+		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
 	}
 	return versioned(base, v)
 }
