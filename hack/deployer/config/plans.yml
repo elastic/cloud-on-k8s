@@ -86,7 +86,6 @@ plans:
     region: europe-west1
     nodeCount: 3
     overwriteDefaultKubeconfig: true
-    useNonDefaultCloudSdkPath: true
 - id: ocp3-ci
   operation: create
   clusterName: ci
