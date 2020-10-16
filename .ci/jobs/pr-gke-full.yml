@@ -13,7 +13,7 @@
             refspec: '+refs/pull/${ghprbPullId}/*:refs/remotes/origin/pr/${ghprbPullId}/*'
       # Jenkinsfile shared with the release build job
       script-path: .ci/pipelines/build.Jenkinsfile
-      lightweight-checkout: true
+      lightweight-checkout: false
     triggers:
       - github-pull-request:
           org-list:
