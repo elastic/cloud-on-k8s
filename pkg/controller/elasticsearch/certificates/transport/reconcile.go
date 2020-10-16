@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 var log = logf.Log.WithName("transport")
@@ -48,12 +49,12 @@ func ReconcileTransportCertificatesSecrets(
 	if err != nil {
 		return results.WithError(err)
 	}
-	ssets := make(map[string]struct{})
+	ssets := set.Make()
 	for _, actualStatefulSet := range actualStatefulSets {
-		ssets[actualStatefulSet.Name] = struct{}{}
+		ssets.Add(actualStatefulSet.Name)
 	}
 	for _, nodeSet := range es.Spec.NodeSets {
-		ssets[esv1.StatefulSet(es.Name, nodeSet.Name)] = struct{}{}
+		ssets.Add(esv1.StatefulSet(es.Name, nodeSet.Name))
 	}
 
 	for ssetName := range ssets {
