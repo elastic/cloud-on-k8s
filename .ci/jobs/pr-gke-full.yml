@@ -25,6 +25,7 @@
           white-list:
             - renovate[bot]
           trigger-phrase: 'run full pr build.*'
+          only-trigger-phrase: true
     properties:
     - github:
         url: https://github.com/elastic/cloud-on-k8s/
