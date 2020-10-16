@@ -43,17 +43,16 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 	RunESMutationReversal(t, b, down)
 }
 
-// TODO: re-enable once https://github.com/elastic/cloud-on-k8s/issues/3844 is fixed.
-//func TestReversalStatefulSetRename(t *testing.T) {
-//	b := elasticsearch.NewBuilder("test-sset-rename-reversal").
-//		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
-//
-//	copy := b.Elasticsearch.Spec.NodeSets[0]
-//	copy.Name = "other"
-//	renamed := b.WithNoESTopology().WithNodeSet(copy)
-//
-//	RunESMutationReversal(t, b, renamed)
-//}
+func TestReversalStatefulSetRename(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-sset-rename-reversal").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	copy := b.Elasticsearch.Spec.NodeSets[0]
+	copy.Name = "other"
+	renamed := b.WithNoESTopology().WithNodeSet(copy)
+
+	RunESMutationReversal(t, b, renamed)
+}
 
 func TestRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
@@ -89,5 +88,4 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 
 func RunESMutationReversal(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
 	test.RunMutationReversal(t, []test.Builder{toCreate}, []test.Builder{mutateTo.WithMutatedFrom(&toCreate)})
-
 }
