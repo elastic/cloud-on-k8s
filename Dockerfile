@@ -1,6 +1,9 @@
 # Build the operator binary
-FROM golang:1.15.3 as builder
+FROM --platform=$BUILDPLATFORM golang:1.15.3 as builder
 
+ARG BUILDPLATFORM
+ARG TARGETARCH
+ARG TARGETOS
 ARG GO_LDFLAGS
 ARG GO_TAGS
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
@@ -15,7 +18,7 @@ COPY pkg/    pkg/
 COPY cmd/    cmd/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
 		go build \
             -mod readonly \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
