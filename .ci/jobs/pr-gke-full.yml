@@ -13,7 +13,7 @@
             refspec: '+refs/pull/${ghprbPullId}/*:refs/remotes/origin/pr/${ghprbPullId}/*'
       # Jenkinsfile shared with the release build job
       script-path: .ci/pipelines/build.Jenkinsfile
-      lightweight-checkout: true
+      lightweight-checkout: false
     triggers:
       - github-pull-request:
           org-list:
@@ -25,6 +25,7 @@
           white-list:
             - renovate[bot]
           trigger-phrase: 'run full pr build.*'
+          only-trigger-phrase: true
     properties:
     - github:
         url: https://github.com/elastic/cloud-on-k8s/
