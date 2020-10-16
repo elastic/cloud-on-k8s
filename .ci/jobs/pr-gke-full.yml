@@ -20,7 +20,7 @@
             - elastic
           allow-whitelist-orgs-as-admins: true
           github-hooks: true
-          status-context: devops-ci
+          status-context: devops-ci/full
           cancel-builds-on-update: false
           white-list:
             - renovate[bot]
