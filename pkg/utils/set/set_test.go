@@ -22,9 +22,9 @@ func TestMake(t *testing.T) {
 		want StringSet
 	}{
 		{
-			name: "nil makes nil",
+			name: "nil makes an empty set",
 			args: args{},
-			want: nil,
+			want: StringSet(map[string]struct{}{}),
 		},
 		{
 			name: "creates set from passed strings",

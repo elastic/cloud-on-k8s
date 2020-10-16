@@ -9,9 +9,6 @@ import "sort"
 type StringSet map[string]struct{}
 
 func Make(strings ...string) StringSet {
-	if len(strings) == 0 {
-		return nil
-	}
 	set := make(map[string]struct{}, len(strings))
 	for _, str := range strings {
 		set[str] = struct{}{}
