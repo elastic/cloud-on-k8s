@@ -23,8 +23,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 var log = logf.Log.WithName("transport")
@@ -39,8 +41,24 @@ func ReconcileTransportCertificatesSecrets(
 	rotationParams certificates.RotationParams,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
+
+	// We must create transport certificates for the following StatefulSets:
+	// - the ones that still exist, even if they have been removed from the Spec
+	// - the ones that do not exist yet, but will be created in a later step of the reconciliation
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(c, k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		return results.WithError(err)
+	}
+	ssets := set.Make()
+	for _, actualStatefulSet := range actualStatefulSets {
+		ssets.Add(actualStatefulSet.Name)
+	}
 	for _, nodeSet := range es.Spec.NodeSets {
-		if err := reconcileNodeSetTransportCertificatesSecrets(c, ca, es, nodeSet.Name, rotationParams); err != nil {
+		ssets.Add(esv1.StatefulSet(es.Name, nodeSet.Name))
+	}
+
+	for ssetName := range ssets {
+		if err := reconcileNodeSetTransportCertificatesSecrets(c, ca, es, ssetName, rotationParams); err != nil {
 			results.WithError(err)
 		}
 	}
@@ -75,11 +93,10 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	c k8s.Client,
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
-	nodeSet string,
+	ssetName string,
 	rotationParams certificates.RotationParams,
 ) error {
 	results := &reconciler.Results{}
-	ssetName := esv1.StatefulSet(es.Name, nodeSet)
 	// List all the existing Pods in the nodeSet
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)

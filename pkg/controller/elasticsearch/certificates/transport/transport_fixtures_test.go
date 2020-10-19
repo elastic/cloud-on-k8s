@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -232,4 +233,18 @@ func getSecret(list corev1.SecretList, name string) *corev1.Secret {
 		}
 	}
 	return nil
+}
+
+func newStatefulSet(esName, ssetName string) *v1.StatefulSet {
+	return &v1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      ssetName,
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/statefulset-name": ssetName,
+				"common.k8s.elastic.co/type":                    "elasticsearch",
+				"elasticsearch.k8s.elastic.co/cluster-name":     esName,
+			},
+		},
+	}
 }
