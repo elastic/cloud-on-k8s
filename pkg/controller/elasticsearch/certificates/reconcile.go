@@ -57,9 +57,9 @@ func Reconcile(
 	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	// Create some additional SANs, mostly to be used in the context of client autodiscovery (a.k.a. sniffing).
-	additionalSANs := make([]commonv1.SubjectAlternativeName, len(es.Spec.NodeSets))
+	extraHTTPSANs := make([]commonv1.SubjectAlternativeName, len(es.Spec.NodeSets))
 	for i, nodeSet := range es.Spec.NodeSets {
-		additionalSANs[i] =
+		extraHTTPSANs[i] =
 			v1.SubjectAlternativeName{DNS: "*." + nodespec.HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)) + "." + es.Namespace + ".svc"}
 	}
 
@@ -70,7 +70,7 @@ func Reconcile(
 		DynamicWatches: driver.DynamicWatches(),
 		Object:         &es,
 		TLSOptions:     es.Spec.HTTP.TLS,
-		ControllerSANs: additionalSANs,
+		ExtraHTTPSANs:  extraHTTPSANs,
 		Namer:          esv1.ESNamer,
 		Labels:         certsLabels,
 		Services:       services,

@@ -126,7 +126,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
-			&secret, ownerNSN, r.Namer, r.TLSOptions, r.ControllerSANs, r.Services, ca, r.CertRotation,
+			&secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
 		)
 		if err != nil {
 			return nil, err
