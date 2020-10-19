@@ -33,7 +33,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1beta1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1beta1,name=elastic-apm-validation-v1beta1.k8s.elastic.co
+// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1beta1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1beta1,name=elastic-apm-validation-v1beta1.k8s.elastic.co,sideEffects=None
 
 var _ webhook.Validator = &ApmServer{}
 

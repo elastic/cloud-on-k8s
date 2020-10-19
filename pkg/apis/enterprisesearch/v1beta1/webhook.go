@@ -33,7 +33,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch,mutating=false,failurePolicy=ignore,groups=enterprisesearch.k8s.elastic.co,resources=enterprisesearches,verbs=create;update,versions=v1beta1,name=elastic-ent-validation-v1beta1.k8s.elastic.co
+// +kubebuilder:webhook:path=/validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch,mutating=false,failurePolicy=ignore,groups=enterprisesearch.k8s.elastic.co,resources=enterprisesearches,verbs=create;update,versions=v1beta1,name=elastic-ent-validation-v1beta1.k8s.elastic.co,sideEffects=None
 
 var _ webhook.Validator = &EnterpriseSearch{}
 
