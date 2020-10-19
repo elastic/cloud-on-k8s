@@ -235,7 +235,7 @@ func getSecret(list corev1.SecretList, name string) *corev1.Secret {
 	return nil
 }
 
-func newStatfulSet(esName, ssetName string) *v1.StatefulSet {
+func newStatefulSet(esName, ssetName string) *v1.StatefulSet {
 	return &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,

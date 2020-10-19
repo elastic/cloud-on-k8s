@@ -106,7 +106,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 					newtransportCertsSecretBuilder(testEsName, "sset1").forPodIndices(0).build(),
 					newtransportCertsSecretBuilder(testEsName, "sset2").forPodIndices(0).build(),
 					// Add an existing statefulSet which is not part of the Spec
-					newStatfulSet(testEsName, "sset3"),
+					newStatefulSet(testEsName, "sset3"),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset3").withIndex(0).withIP("1.1.3.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset3").withIndex(1).withIP("1.1.3.3").build(),
 				},
