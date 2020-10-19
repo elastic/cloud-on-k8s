@@ -371,10 +371,10 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	sanIPv6 := "2001:db8:0:85a3:0:0:ac1f:8001"
 
 	type args struct {
-		es             esv1.Elasticsearch
-		svcs           []corev1.Service
-		controllerSANs []commonv1.SubjectAlternativeName
-		certValidity   time.Duration
+		es            esv1.Elasticsearch
+		svcs          []corev1.Service
+		extraHTTPSANs []commonv1.SubjectAlternativeName
+		certValidity  time.Duration
 	}
 	tests := []struct {
 		name string
@@ -420,7 +420,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 						},
 					},
 				},
-				controllerSANs: []commonv1.SubjectAlternativeName{
+				extraHTTPSANs: []commonv1.SubjectAlternativeName{
 					{
 						DNS: "controller-san-1",
 					},
@@ -449,7 +449,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
-				tt.args.controllerSANs,
+				tt.args.extraHTTPSANs,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
 				tt.args.certValidity,
