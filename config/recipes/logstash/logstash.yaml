@@ -12,6 +12,7 @@ spec:
     - name: default
       count: 3
       config:
+        # This setting has performance implications. See the README for more details.
         node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -180,6 +181,10 @@ spec:
             volumeMounts:
               - name: data
                 mountPath: /data
+              - name: beat-data
+                mountPath: /usr/share/filebeat/data
         volumes:
           - name: data
+            emptydir: {}
+          - name: beat-data
             emptydir: {}
