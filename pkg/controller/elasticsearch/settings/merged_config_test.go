@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -20,6 +21,19 @@ func TestNewMergedESConfig(t *testing.T) {
 	xPackSecurityAuthcRealmsActiveDirectoryAD1Order := "xpack.security.authc.realms.active_directory.ad1.order"
 	xPackSecurityAuthcRealmsAD1Type := "xpack.security.authc.realms.ad1.type"
 	xPackSecurityAuthcRealmsAD1Order := "xpack.security.authc.realms.ad1.order"
+
+	// elasticsearchCfg captures some of the fields we want to validate in these tests
+	type elasticsearchCfg struct {
+		Discovery struct {
+			SeedProviders string `yaml:"seed_providers"`
+		} `yaml:"discovery"`
+		HTTP struct {
+			PublishHost string `yaml:"publish_host"`
+		} `yaml:"http"`
+		Network struct {
+			PublishHost string `yaml:"publish_host"`
+		} `yaml:"network"`
+	}
 
 	tests := []struct {
 		name     string
@@ -170,10 +184,13 @@ func TestNewMergedESConfig(t *testing.T) {
 			assert: func(cfg CanonicalConfig) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)
+				esCfg := &elasticsearchCfg{}
+				require.NoError(t, yaml.Unmarshal(cfgBytes, &esCfg))
 				// default config is still there
-				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: ${POD_IP}")))
+				require.Equal(t, "${POD_IP}", esCfg.Network.PublishHost)
+				require.Equal(t, "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc", esCfg.HTTP.PublishHost)
 				// but has been overridden
-				require.True(t, bytes.Contains(cfgBytes, []byte("seed_providers: something-else")))
+				require.Equal(t, "something-else", esCfg.Discovery.SeedProviders)
 				require.Equal(t, 1, bytes.Count(cfgBytes, []byte("seed_providers:")))
 			},
 		},
@@ -185,8 +202,10 @@ func TestNewMergedESConfig(t *testing.T) {
 			assert: func(cfg CanonicalConfig) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)
+				esCfg := &elasticsearchCfg{}
+				require.NoError(t, yaml.Unmarshal(cfgBytes, &esCfg))
 				// publish host IP placeholder is bracketed for IPv6
-				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: '[${POD_IP}]'")))
+				require.Equal(t, "[${POD_IP}]", esCfg.Network.PublishHost)
 			},
 		},
 	}

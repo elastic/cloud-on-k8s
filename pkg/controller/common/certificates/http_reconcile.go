@@ -126,7 +126,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
-			&secret, ownerNSN, r.Namer, r.TLSOptions, r.Services, ca, r.CertRotation,
+			&secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
 		)
 		if err != nil {
 			return nil, err
@@ -166,6 +166,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	owner types.NamespacedName,
 	namer name.Namer,
 	tls commonv1.TLSOptions,
+	controllerSANs []commonv1.SubjectAlternativeName,
 	svcs []corev1.Service,
 	ca *CA,
 	rotationParam RotationParams,
@@ -198,7 +199,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	}
 
 	// check if the existing cert should be re-issued
-	if shouldIssueNewHTTPCertificate(owner, namer, tls, secret, svcs, ca, rotationParam.RotateBefore) {
+	if shouldIssueNewHTTPCertificate(owner, namer, tls, controllerSANs, secret, svcs, ca, rotationParam.RotateBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
 			"namespace", secret.Namespace,
@@ -220,7 +221,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		// validate the csr
 		validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
-			owner, namer, tls, svcs, parsedCSR, rotationParam.Validity,
+			owner, namer, tls, controllerSANs, svcs, parsedCSR, rotationParam.Validity,
 		)
 		// sign the certificate
 		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
@@ -249,13 +250,14 @@ func shouldIssueNewHTTPCertificate(
 	owner types.NamespacedName,
 	namer name.Namer,
 	tls commonv1.TLSOptions,
+	controllerSANs []commonv1.SubjectAlternativeName,
 	secret *corev1.Secret,
 	svcs []corev1.Service,
 	ca *CA,
 	certReconcileBefore time.Duration,
 ) bool {
 	validatedTemplate := createValidatedHTTPCertificateTemplate(
-		owner, namer, tls, svcs, &x509.CertificateRequest{}, certReconcileBefore,
+		owner, namer, tls, controllerSANs, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)
 
 	var certificate *x509.Certificate
@@ -328,6 +330,7 @@ func createValidatedHTTPCertificateTemplate(
 	owner types.NamespacedName,
 	namer name.Namer,
 	tls commonv1.TLSOptions,
+	controllerSANs []commonv1.SubjectAlternativeName,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
@@ -364,6 +367,15 @@ func createValidatedHTTPCertificateTemplate(
 			if san.IP != "" {
 				ipAddresses = append(ipAddresses, netutil.IPToRFCForm(net.ParseIP(san.IP)))
 			}
+		}
+	}
+
+	for _, san := range controllerSANs {
+		if san.DNS != "" {
+			dnsNames = append(dnsNames, san.DNS)
+		}
+		if san.IP != "" {
+			ipAddresses = append(ipAddresses, netutil.IPToRFCForm(net.ParseIP(san.IP)))
 		}
 	}
 

@@ -15,6 +15,7 @@ const (
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
+	HTTPPublishHost    = "http.publish_host"
 
 	NodeName = "node.name"
 
