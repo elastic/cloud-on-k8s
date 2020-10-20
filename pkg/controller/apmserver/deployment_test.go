@@ -444,6 +444,30 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				withInitContainer(),
 			wantErr: false,
 		},
+		{
+			name: "secret token influences checksum",
+			args: args{
+				as:            apmFixture,
+				podSpecParams: defaultPodSpecParams,
+				initialObjects: []runtime.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: certSecretName,
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: SecretToken(apmFixture.Name),
+						},
+						Data: map[string][]byte{
+							SecretTokenKey: []byte("s3cr3t"),
+						},
+					},
+				},
+			},
+			want:    expectedDeploymentParams().withConfigChecksum("d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f"),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
