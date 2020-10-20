@@ -10,6 +10,7 @@ import (
 	"time"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -59,7 +60,7 @@ func Reconcile(
 	extraHTTPSANs := make([]commonv1.SubjectAlternativeName, len(es.Spec.NodeSets))
 	for i, nodeSet := range es.Spec.NodeSets {
 		extraHTTPSANs[i] =
-			commonv1.SubjectAlternativeName{DNS: "*." + nodespec.HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)) + "." + es.Namespace + ".svc"}
+			v1.SubjectAlternativeName{DNS: "*." + nodespec.HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)) + "." + es.Namespace + ".svc"}
 	}
 
 	// reconcile HTTP CA and cert
