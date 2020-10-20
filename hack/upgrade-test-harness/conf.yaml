@@ -13,9 +13,13 @@ testParams:
     crdVersion: v1
   - name: v112
     operatorVersion: 1.1.2
-    stackVersion: 7.8.0
+    stackVersion: 7.8.1
     crdVersion: v1
-  - name: upcoming
-    operatorVersion: 1.2.0-bc1
-    stackVersion: 7.8.0
+  - name: v121
+    operatorVersion: 1.2.1
+    stackVersion: 7.9.0
+    crdVersion: v1
+  - name: v130
+    operatorVersion: 1.3.0-bc3
+    stackVersion: 7.9.2
     crdVersion: v1
