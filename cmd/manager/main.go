@@ -600,7 +600,7 @@ func asyncTasks(
 	if !disableTelemetry {
 		// Start the telemetry reporter
 		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces, telemetryInterval)
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval)
 			tr.Start()
 		}()
 	}

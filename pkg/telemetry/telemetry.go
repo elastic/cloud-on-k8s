@@ -16,6 +16,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +38,8 @@ type ECKTelemetry struct {
 
 type ECK struct {
 	about.OperatorInfo
-	Stats map[string]interface{} `json:"stats"`
+	Stats   map[string]interface{} `json:"stats"`
+	License map[string]string      `json:"license"`
 }
 
 type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
@@ -45,6 +47,7 @@ type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
 func NewReporter(
 	info about.OperatorInfo,
 	client client.Client,
+	operatorNamespace string,
 	managedNamespaces []string,
 	telemetryInterval time.Duration,
 ) Reporter {
@@ -56,6 +59,7 @@ func NewReporter(
 	return Reporter{
 		operatorInfo:      info,
 		client:            k8s.WrapClient(client),
+		operatorNamespace: operatorNamespace,
 		managedNamespaces: managedNamespaces,
 		telemetryInterval: telemetryInterval,
 	}
@@ -64,6 +68,7 @@ func NewReporter(
 type Reporter struct {
 	operatorInfo      about.OperatorInfo
 	client            k8s.Client
+	operatorNamespace string
 	managedNamespaces []string
 	telemetryInterval time.Duration
 }
@@ -75,11 +80,12 @@ func (r *Reporter) Start() {
 	}
 }
 
-func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}) ([]byte, error) {
+func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
 	return yaml.Marshal(ECKTelemetry{
 		ECK: ECK{
 			OperatorInfo: info,
 			Stats:        stats,
+			License:      license,
 		},
 	})
 }
@@ -110,7 +116,13 @@ func (r *Reporter) report() {
 		return
 	}
 
-	telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats)
+	licenseInfo, err := r.getLicenseInfo()
+	if err != nil {
+		log.Error(err, "failed to get operator license secret")
+		// it's ok to go on
+	}
+
+	telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats, licenseInfo)
 	if err != nil {
 		log.Error(err, "failed to marshal telemetry data")
 		return
@@ -143,6 +155,20 @@ func (r *Reporter) report() {
 			}
 		}
 	}
+}
+
+func (r *Reporter) getLicenseInfo() (map[string]string, error) {
+	nsn := types.NamespacedName{
+		Namespace: r.operatorNamespace,
+		Name:      license.LicensingCfgMapName,
+	}
+
+	var licenseConfigMap corev1.ConfigMap
+	if err := r.client.Get(nsn, &licenseConfigMap); err != nil {
+		return nil, err
+	}
+
+	return licenseConfigMap.Data, nil
 }
 
 func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
