@@ -161,7 +161,7 @@ func isElected(pod corev1.Pod, autoPortForwarding bool) bool {
 	url := fmt.Sprintf("http://%s:9090/metrics", pod.Status.PodIP)
 
 	client := createHTTPClient(autoPortForwarding)
-	req, err := http.NewRequest(http.MethodGet, url, nil) // nolint:noctx
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		log.Error(err, "Error forming request")
 		return false

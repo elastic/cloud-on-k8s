@@ -332,7 +332,8 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrappedFakeClient(&ent, &esUserSecret)
 			u := &VersionUpgrade{k8sClient: c, ent: ent}
-			req, err := u.readOnlyModeRequest(tt.enabled)
+			ctx := context.Background()
+			req, err := u.readOnlyModeRequest(ctx, tt.enabled)
 			require.NoError(t, err)
 
 			// check URL

@@ -167,14 +167,12 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 		defer httpClient.CloseIdleConnections()
 	}
 
-	request, err := r.readOnlyModeRequest(enabled)
+	timeoutCtx, cancel := context.WithTimeout(ctx, ReadOnlyModeReqTimeout)
+	defer cancel()
+	request, err := r.readOnlyModeRequest(timeoutCtx, enabled)
 	if err != nil {
 		return err
 	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, ReadOnlyModeReqTimeout)
-	defer cancel()
-	request = request.WithContext(timeoutCtx)
 
 	resp, err := httpClient.Do(request)
 	if err != nil {
@@ -200,7 +198,7 @@ func (r *VersionUpgrade) serviceURL() string {
 }
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
-func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error) {
+func (r *VersionUpgrade) readOnlyModeRequest(ctx context.Context, enabled bool) (*http.Request, error) {
 	username, password, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
 	if err != nil {
 		return nil, err
@@ -210,7 +208,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 
 	body := bytes.NewBuffer([]byte(fmt.Sprintf("{\"enabled\": %t}", enabled)))
 
-	req, err := http.NewRequest(http.MethodPut, url, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}

@@ -111,7 +111,7 @@ func (c *ApmClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, stringsutil.Concat(c.endpoint, pathWithQuery), body) // nolint:noctx
+	request, err := http.NewRequest(method, stringsutil.Concat(c.endpoint, pathWithQuery), body)
 	if err != nil {
 		return err
 	}
