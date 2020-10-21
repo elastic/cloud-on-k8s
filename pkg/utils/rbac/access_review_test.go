@@ -22,7 +22,6 @@ import (
 type fakeClientProvider func() kubernetes.Interface
 
 func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
-
 	es := &esv1.Elasticsearch{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Elasticsearch",

@@ -146,7 +146,7 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	}
 	if schemeChange {
 		// switch to sending requests directly to a random pod instead of going through the service
-		randomPod := pods[rand.Intn(len(pods))]
+		randomPod := pods[rand.Intn(len(pods))] // nolint:gosec
 		scheme, hasScheme := randomPod.Labels[label.HTTPSchemeLabelName]
 		sset, hasSset := randomPod.Labels[label.StatefulSetNameLabelName]
 		if hasScheme && hasSset {

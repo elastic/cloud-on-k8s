@@ -5,6 +5,7 @@
 package es
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -134,7 +135,8 @@ func requestESWithCA(ip string, caCert []byte) (int, error) {
 	}
 	if caCert != nil {
 		transport.TLSClientConfig = &tls.Config{
-			RootCAs: caCertPool,
+			RootCAs:    caCertPool,
+			MinVersion: tls.VersionTLS12, // ES 6.8 only supports 1.2
 		}
 	}
 

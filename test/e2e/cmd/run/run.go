@@ -593,7 +593,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 
 	// to avoid creating subdirectories, convert the file path to a flattened path
 	// Eg. path/to/config.yaml will become path_to_config.yaml
-	outFilePath := filepath.Join(h.scratchDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
+	outFilePath := filepath.Join(h.scratchDir, strings.ReplaceAll(templatePath, string(filepath.Separator), "_"))
 	f, err := os.Create(outFilePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)

@@ -30,10 +30,10 @@ const (
 
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
-	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"
-	XPackSecurityHttpSslCertificateAuthorities      = "xpack.security.http.ssl.certificate_authorities"
-	XPackSecurityHttpSslEnabled                     = "xpack.security.http.ssl.enabled"
-	XPackSecurityHttpSslKey                         = "xpack.security.http.ssl.key"
+	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"             // nolint:golint,stylecheck
+	XPackSecurityHttpSslCertificateAuthorities      = "xpack.security.http.ssl.certificate_authorities" // nolint:golint,stylecheck
+	XPackSecurityHttpSslEnabled                     = "xpack.security.http.ssl.enabled"                 // nolint:golint,stylecheck
+	XPackSecurityHttpSslKey                         = "xpack.security.http.ssl.key"                     // nolint:golint,stylecheck
 	XPackSecurityTransportSslCertificate            = "xpack.security.transport.ssl.certificate"
 	XPackSecurityTransportSslCertificateAuthorities = "xpack.security.transport.ssl.certificate_authorities"
 	XPackSecurityTransportSslEnabled                = "xpack.security.transport.ssl.enabled"

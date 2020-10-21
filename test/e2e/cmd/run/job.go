@@ -78,7 +78,7 @@ func (j *Job) WithDependency(dependency *Job) *Job {
 // onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
 // received from the informer.
 func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
-	switch pod.Status.Phase {
+	switch pod.Status.Phase { // nolint:exhaustive
 	case corev1.PodRunning:
 		if !j.jobStarted {
 			j.jobStarted = true

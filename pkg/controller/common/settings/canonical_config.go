@@ -205,7 +205,7 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 }
 
 func removeIgnored(diff, toIgnore []string) []string {
-	var result []string
+	var result []string // nolint:prealloc
 	for _, d := range diff {
 		if canIgnore(d, toIgnore) {
 			continue

@@ -121,7 +121,7 @@ func (jm *JobsManager) Start() {
 				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
-			switch newPod.Status.Phase {
+			switch newPod.Status.Phase { // nolint:exhaustive
 			case corev1.PodRunning:
 				job.onPodEvent(jm.Clientset, newPod)
 			case corev1.PodSucceeded:

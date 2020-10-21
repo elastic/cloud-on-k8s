@@ -105,8 +105,10 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 	return []commonv1.Association{k}
 }
 
-var _ commonv1.Associated = &Kibana{}
-var _ commonv1.Association = &Kibana{}
+var (
+	_ commonv1.Associated  = &Kibana{}
+	_ commonv1.Association = &Kibana{}
+)
 
 // +kubebuilder:object:root=true
 

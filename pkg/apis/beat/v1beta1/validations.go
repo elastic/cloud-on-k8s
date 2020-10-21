@@ -7,10 +7,9 @@ package v1beta1
 import (
 	"regexp"
 
-	"k8s.io/apimachinery/pkg/util/validation/field"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 var (

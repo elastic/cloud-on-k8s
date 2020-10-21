@@ -29,7 +29,8 @@ func NewHTTPClient(caCerts []*x509.Certificate) *http.Client {
 		certPool.AddCert(c)
 	}
 	transport.TLSClientConfig = &tls.Config{
-		RootCAs: certPool,
+		MinVersion: tls.VersionTLS12, // ES 6.8 only supports 1.2
+		RootCAs:    certPool,
 	}
 	client.Transport = &transport
 	return &client

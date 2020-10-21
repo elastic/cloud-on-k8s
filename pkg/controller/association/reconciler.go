@@ -358,7 +358,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, association commonv1.Asso
 }
 
 func resultFromStatus(status commonv1.AssociationStatus) reconcile.Result {
-	switch status {
+	switch status { // nolint:exhaustive
 	case commonv1.AssociationPending:
 		return defaultRequeue // retry
 	default:

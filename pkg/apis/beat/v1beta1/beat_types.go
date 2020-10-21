@@ -5,16 +5,13 @@
 package v1beta1
 
 import (
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-var (
-	KnownTypes = map[string]struct{}{"filebeat": {}, "metricbeat": {}, "heartbeat": {}, "auditbeat": {}, "journalbeat": {}, "packetbeat": {}}
-)
+var KnownTypes = map[string]struct{}{"filebeat": {}, "metricbeat": {}, "heartbeat": {}, "auditbeat": {}, "journalbeat": {}, "packetbeat": {}}
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
@@ -139,8 +136,8 @@ type Beat struct {
 
 	Spec        BeatSpec                  `json:"spec,omitempty"`
 	Status      BeatStatus                `json:"status,omitempty"`
-	esAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
-	kbAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
+	esAssocConf *commonv1.AssociationConf `json:"-"`
+	kbAssocConf *commonv1.AssociationConf `json:"-"`
 }
 
 var _ commonv1.Associated = &Beat{}

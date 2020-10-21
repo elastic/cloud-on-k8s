@@ -81,7 +81,7 @@ func getToken() (*CSRFToken, error) {
 	}
 	u.Path = path.Join(u.Path, "crumbIssuer/api/json")
 
-	req, err := http.NewRequest("GET", u.String(), http.NoBody)
+	req, err := http.NewRequest("GET", u.String(), http.NoBody) // nolint:noctx
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func validate(token *CSRFToken, pipeline string) (string, error) {
 	}
 	u.Path = path.Join(u.Path, "pipeline-model-converter/validate")
 
-	req, err := http.NewRequest("POST", u.String(), &b)
+	req, err := http.NewRequest("POST", u.String(), &b) // nolint:noctx
 	if err != nil {
 		return "", err
 	}

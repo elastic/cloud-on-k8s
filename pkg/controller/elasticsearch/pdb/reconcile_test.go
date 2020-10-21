@@ -196,7 +196,8 @@ func Test_expectedPDB(t *testing.T) {
 						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
 							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{"a": "b", "c": "d"},
-							}},
+							},
+						},
 					},
 				},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
@@ -225,7 +226,8 @@ func Test_expectedPDB(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec: esv1.ElasticsearchSpec{
 						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
-							Spec: v1beta1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
+							Spec: v1beta1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))},
+						},
 					},
 				},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},

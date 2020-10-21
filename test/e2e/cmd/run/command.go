@@ -136,7 +136,7 @@ func randomTestRunName() string {
 	var prefix strings.Builder
 	prefix.WriteString("e2e-")
 	for i := 0; i < 5; i++ {
-		prefix.WriteRune(letters[rand.Intn(len(letters))])
+		prefix.WriteRune(letters[rand.Intn(len(letters))]) // nolint:gosec
 	}
 
 	return prefix.String()

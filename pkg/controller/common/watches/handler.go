@@ -16,9 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
-var (
-	log = logf.Log.WithName("dynamic-enqueue-request")
-)
+var log = logf.Log.WithName("dynamic-enqueue-request")
 
 // HandlerRegistration is the event handler registration that can be added or removed
 // from DynamicEnqueueRequest.

@@ -74,7 +74,6 @@ func TestStringSet_Add(t *testing.T) {
 			assertion: func(s StringSet) {
 				require.True(t, s.Has("a"))
 				require.Equal(t, 1, s.Count())
-
 			},
 		},
 	}
@@ -139,7 +138,7 @@ func TestStringSet_Del(t *testing.T) {
 }
 
 func TestStringSet_Count(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name string
 		set  StringSet
 		want int

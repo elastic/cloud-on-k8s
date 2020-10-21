@@ -241,7 +241,7 @@ func assertCountIndexEqual(esClient client.Client, index string, expected int) e
 
 // countIndex counts the number of document in an index.
 func countIndex(esClient client.Client, indexName string) (int, error) {
-	r, err := http.NewRequest(
+	r, err := http.NewRequest( // nolint:noctx
 		http.MethodGet, fmt.Sprintf("/%s/_count", indexName),
 		nil,
 	)

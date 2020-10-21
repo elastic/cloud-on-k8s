@@ -18,11 +18,11 @@ func CreateCommand() *cobra.Command {
 	var filePath string
 	var provider string
 
-	var createCommand = &cobra.Command{
+	createCommand := &cobra.Command{
 		Use:   "create",
 		Short: "Creates run config file(s).",
 	}
-	var createDefaultConfigCommand = &cobra.Command{
+	createDefaultConfigCommand := &cobra.Command{
 		Use:   "defaultConfig",
 		Short: "Creates default dev config using env variables required for chosen provider.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -40,7 +40,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
 				fullPath := path.Join(filePath, runner.GkeConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0o600); err != nil {
 					return err
 				}
 			case runner.AksDriverID:
@@ -51,7 +51,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
 				fullPath := path.Join(filePath, runner.AksConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0o600); err != nil {
 					return err
 				}
 			case runner.OcpDriverID:
@@ -67,7 +67,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
 				fullPath := path.Join(filePath, runner.OcpConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0o600); err != nil {
 					return err
 				}
 			case runner.EKSDriverID:
@@ -81,7 +81,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 				fullPath := path.Join(filePath, runner.EKSConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0o600); err != nil {
 					return err
 				}
 			default:

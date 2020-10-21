@@ -67,7 +67,8 @@ func (ugc *UsersGarbageCollector) For(
 		registeredResource{
 			apiType:                   apiType,
 			associationNameLabel:      associationNameLabel,
-			associationNamespaceLabel: associationNamespaceLabel},
+			associationNamespaceLabel: associationNamespaceLabel,
+		},
 	)
 	return ugc
 }
@@ -95,7 +96,6 @@ func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, err
 
 // DoGarbageCollection runs the User garbage collector.
 func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
-
 	// Shortcut execution if there's no resources to garbage collect
 	if len(ugc.registeredResources) == 0 {
 		return nil

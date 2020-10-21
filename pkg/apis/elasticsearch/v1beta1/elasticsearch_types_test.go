@@ -12,14 +12,12 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestElasticsearchHealth_Less(t *testing.T) {
-
 	tests := []struct {
 		inputs []ElasticsearchHealth
 		sorted bool
@@ -127,6 +125,7 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 		})
 	}
 }
+
 func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	tests := []struct {
 		name     string
