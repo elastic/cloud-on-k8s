@@ -299,7 +299,7 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 				if !apmVersion.IsSameOrAfter(version.MustParse("7.7.0")) {
 					uri += "/new"
 				}
-				_, err = kibana.DoRequest(k, kb, password, "PUT", uri, []byte(sampleDefaultAgentConfiguration))
+				_, err = kibana.DoRequest(k, kb, password, http.MethodPut, uri, []byte(sampleDefaultAgentConfiguration))
 				return err
 			}),
 		},
