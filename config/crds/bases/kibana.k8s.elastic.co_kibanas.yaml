@@ -6299,7 +6299,7 @@ spec:
             - version
             type: object
           status:
-            description: KibanaStatus defines the observed state of Kibana
+            description: KibanaStatus defines the observed state of Kibana.
             properties:
               associationStatus:
                 description: AssociationStatus is the status of an association resource.
@@ -12590,7 +12590,7 @@ spec:
                 type: string
             type: object
           status:
-            description: KibanaStatus defines the observed state of Kibana
+            description: KibanaStatus defines the observed state of Kibana.
             properties:
               associationStatus:
                 description: AssociationStatus is the status of an association resource.

@@ -6142,7 +6142,7 @@ spec:
               type: string
           type: object
         status:
-          description: EnterpriseSearchStatus defines the observed state of EnterpriseSearch
+          description: EnterpriseSearchStatus defines the observed state of EnterpriseSearch.
           properties:
             associationStatus:
               description: Association is the status of any auto-linking to Elasticsearch

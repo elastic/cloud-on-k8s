@@ -7362,7 +7362,7 @@ spec:
             - version
             type: object
           status:
-            description: ElasticsearchStatus defines the observed state of Elasticsearch
+            description: ElasticsearchStatus defines the observed state of Elasticsearch.
             properties:
               availableNodes:
                 description: AvailableNodes is the number of available instances.
@@ -14412,7 +14412,7 @@ spec:
             - nodeSets
             type: object
           status:
-            description: ElasticsearchStatus defines the observed state of Elasticsearch
+            description: ElasticsearchStatus defines the observed state of Elasticsearch.
             properties:
               availableNodes:
                 format: int32

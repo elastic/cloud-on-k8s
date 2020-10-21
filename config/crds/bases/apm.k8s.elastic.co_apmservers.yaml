@@ -6316,7 +6316,7 @@ spec:
             - version
             type: object
           status:
-            description: ApmServerStatus defines the observed state of ApmServer
+            description: ApmServerStatus defines the observed state of ApmServer.
             properties:
               availableNodes:
                 description: AvailableNodes is the number of available replicas in
@@ -12622,7 +12622,7 @@ spec:
                 type: string
             type: object
           status:
-            description: ApmServerStatus defines the observed state of ApmServer
+            description: ApmServerStatus defines the observed state of ApmServer.
             properties:
               associationStatus:
                 description: Association is the status of any auto-linking to Elasticsearch

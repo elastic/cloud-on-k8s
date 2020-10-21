@@ -426,7 +426,7 @@ spec:
           - version
           type: object
         status:
-          description: ApmServerStatus defines the observed state of ApmServer
+          description: ApmServerStatus defines the observed state of ApmServer.
           properties:
             availableNodes:
               description: AvailableNodes is the number of available replicas in the
@@ -1792,7 +1792,7 @@ spec:
           - version
           type: object
         status:
-          description: ElasticsearchStatus defines the observed state of Elasticsearch
+          description: ElasticsearchStatus defines the observed state of Elasticsearch.
           properties:
             availableNodes:
               description: AvailableNodes is the number of available instances.
@@ -2217,7 +2217,7 @@ spec:
               type: string
           type: object
         status:
-          description: EnterpriseSearchStatus defines the observed state of EnterpriseSearch
+          description: EnterpriseSearchStatus defines the observed state of EnterpriseSearch.
           properties:
             associationStatus:
               description: Association is the status of any auto-linking to Elasticsearch
@@ -2665,7 +2665,7 @@ spec:
           - version
           type: object
         status:
-          description: KibanaStatus defines the observed state of Kibana
+          description: KibanaStatus defines the observed state of Kibana.
           properties:
             associationStatus:
               description: AssociationStatus is the status of an association resource.
