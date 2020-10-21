@@ -12,11 +12,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/pkg/errors"
-
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/pkg/errors"
 )
 
 func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {

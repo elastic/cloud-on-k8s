@@ -9,9 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
-
 	"github.com/elastic/cloud-on-k8s/hack/manifest-gen/internal"
+	"github.com/spf13/cobra"
 )
 
 var (

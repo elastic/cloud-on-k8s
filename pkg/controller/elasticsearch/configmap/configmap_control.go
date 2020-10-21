@@ -7,11 +7,10 @@ package configmap
 import (
 	"reflect"
 
-	corev1 "k8s.io/api/core/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // ReconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.

@@ -9,7 +9,6 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-
 	"gopkg.in/yaml.v2"
 )
 

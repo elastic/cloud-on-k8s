@@ -7,10 +7,9 @@ package expectations
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/uuid"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestExpectations_Satisfied(t *testing.T) {

@@ -7,10 +7,9 @@ package user
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_user_FileRealm(t *testing.T) {

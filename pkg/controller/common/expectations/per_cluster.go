@@ -7,9 +7,8 @@ package expectations
 import (
 	"sync"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // ClustersExpectation stores Expectations for several clusters.

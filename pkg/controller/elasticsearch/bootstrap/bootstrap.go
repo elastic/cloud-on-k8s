@@ -7,13 +7,11 @@ package bootstrap
 import (
 	"context"
 
-	"go.elastic.co/apm"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
+	"go.elastic.co/apm"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 

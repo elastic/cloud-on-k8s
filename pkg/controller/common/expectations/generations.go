@@ -5,11 +5,10 @@
 package expectations
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // ExpectedStatefulSetUpdates stores StatefulSets generations that are expected in the cache,

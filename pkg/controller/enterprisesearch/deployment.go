@@ -7,14 +7,13 @@ package enterprisesearch
 import (
 	"context"
 
-	"go.elastic.co/apm"
-	appsv1 "k8s.io/api/apps/v1"
-
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"go.elastic.co/apm"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(

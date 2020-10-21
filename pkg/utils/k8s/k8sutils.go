@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 // ToObjectMeta returns an ObjectMeta based on the given NamespacedName.

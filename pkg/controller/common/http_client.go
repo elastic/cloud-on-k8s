@@ -11,10 +11,9 @@ import (
 	"net/http"
 	"time"
 
-	"go.elastic.co/apm/module/apmelasticsearch"
-
 	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"go.elastic.co/apm/module/apmelasticsearch"
 )
 
 // HTTPClient returns an http.Client configured for targeting a service managed by ECK.

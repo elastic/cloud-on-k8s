@@ -8,8 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -24,6 +22,7 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,

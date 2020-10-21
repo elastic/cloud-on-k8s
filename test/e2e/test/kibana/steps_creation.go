@@ -11,7 +11,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
+
+	// auth on gke
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
