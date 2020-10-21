@@ -1,10 +1,5 @@
 run:
   deadline: 300s
-  skip-dirs:
-    - config
-    - hack/licence\-detector
-  skip-files:
-    - utils/chrono/millis\.test\.go
 linters:
   enable-all: true
   disable:
@@ -12,18 +7,17 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - gocognit # flags cognitive complexity, TODO review in future
-    # - godot # added in 1.25
-    - godox # calls out TODOs
-    - goerr113
-    - gomnd # added in 1.23
-    - interfacer
-    - lll
+    - godox # calls out TODOs, not very useful
+    - goerr113 # calls out dynamic errors, TODO review in future
+    - gomnd # detects magic numbers, TODO review in future
+    - interfacer # linter is archived
+    - lll # checks line length, not very useful
     - nestif # added in 1.25
     - nlreturn # just ensures there are newlines before returns, not very useful
-    - scopelint
-    - testpackage # added in 1.25
-    - whitespace # added in 1.19
-    - wsl # added in 1.20
+    - scopelint # linter is deprecated for exportloopref
+    - testpackage # makes you use a separate test pkg, not useful
+    - whitespace # detects leading/trailing whitespace, not very useful
+    - wsl # forces extra whitespace, not very useful
 linters-settings:
   maligned:
     suggest-new: true
@@ -34,17 +28,15 @@ issues:
       text: 'name .* stutters'
     - path: (^test/.*\.go|.*_test\.go)
       linters:
-        - goconst
-        - unparam
+        - dupl # do not care about duplicate code in tests
+        - goconst # do not care about potential constant refactoring in tests
+        - unparam # do not care about unused params in tests
     - linters:
         - gosec
       # this was added in https://github.com/securego/gosec/issues/438 but for our use case is more or less entirely false positives
       text: 'G601: Implicit memory aliasing in for loop.'
-    - path: pkg/controller/elasticsearch/client/client\.go # this is not a comment indicating the func is deprecated
+    - path: pkg/controller/elasticsearch/client/client\.go # this is not a comment indicating the func itself is deprecated
       text: 'deprecatedComment: the proper format is'
     - linters:
       - noctx
-      path: "test/e2e/.*.go" # currently do not care about passing contexts around for e2e test checks
-    - linters:
-        - dupl
-      path: (^test/.*\.go|.*_test\.go) # do not care about duplicate code in tests
+      path: "test/e2e/.*" # currently do not care about passing contexts around for e2e test checks
