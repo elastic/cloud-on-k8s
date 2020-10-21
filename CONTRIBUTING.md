@@ -63,7 +63,7 @@ There are 3 test suites:
 #### Pull Request validation
   After submitting a PR, a run of unit tests, integration tests and a single E2E test (`SamplesTest`) on a single provider (GKE) can be triggered by commenting the PR with `jenkins test this please`.
   
-  For changes larger in scope and touching CI pipeline, e2e test runner and/or providers a full E2E test suite can be triggered by commenting the PR with `run full pr build`. This will trigger the same set of pipelines that are triggered during nightly testing.
+  For changes larger in scope and touching CI pipeline, e2e test runner and/or providers a full E2E test suite can be triggered by commenting the PR with `run full pr build`. This will trigger the same set of pipelines that are triggered during nightly testing. Note that green checkmark next to this build result (`devops-ci/full`) in GitHub only means that scheduling runs was successful. Inspect all results by going to `Details` > `Open Blue Ocean`.
 
 ### Logging
 
