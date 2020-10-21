@@ -54,8 +54,8 @@ ci-internal: ci-build-image
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
 		$(CI_IMAGE) \
-		bash -c "$(DOCKER_CMD)" ; \
-	docker volume rm $(ECK_CI_VOLUME) > /dev/null
+		bash -c "$(DOCKER_CMD)" ; exit=$$?; \
+	docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
