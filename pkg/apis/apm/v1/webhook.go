@@ -23,7 +23,7 @@ var (
 	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "ApmServer"}
 	validationLog = logf.Log.WithName("apm-v1-validation")
 
-	// ApmAgentConfigurationMinVersion is the minimum required version to establish an association with Kibana
+	// ApmAgentConfigurationMinVersion is the minimum required version to establish an association with Kibana.
 	ApmAgentConfigurationMinVersion = version.MustParse("7.5.1")
 
 	defaultChecks = []func(*ApmServer) field.ErrorList{

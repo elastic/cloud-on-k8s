@@ -10,12 +10,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Plans encapsulates list of plans, expected to map to a file
+// Plans encapsulates list of plans, expected to map to a file.
 type Plans struct {
 	Plans []Plan
 }
 
-// Plan encapsulates information needed to provision a cluster
+// Plan encapsulates information needed to provision a cluster.
 type Plan struct {
 	Id                string        `yaml:"id"` // nolint
 	Operation         string        `yaml:"operation"`
@@ -42,7 +42,7 @@ type VaultInfo struct {
 	ClientToken string `yaml:"clientToken"`
 }
 
-// GkeSettings encapsulates settings specific to GKE
+// GkeSettings encapsulates settings specific to GKE.
 type GkeSettings struct {
 	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
@@ -56,7 +56,7 @@ type GkeSettings struct {
 	NetworkPolicy    bool   `yaml:"networkPolicy"`
 }
 
-// AksSettings encapsulates settings specific to AKS
+// AksSettings encapsulates settings specific to AKS.
 type AksSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
@@ -64,7 +64,7 @@ type AksSettings struct {
 	DiskSetup     string `yaml:"diskSetup"`
 }
 
-// OcpSettings encapsulates settings specific to OCP on GCloud
+// OcpSettings encapsulates settings specific to OCP on GCloud.
 type OcpSettings struct {
 	BaseDomain                 string `yaml:"baseDomain"`
 	GCloudProject              string `yaml:"gCloudProject"`
@@ -80,7 +80,7 @@ type OcpSettings struct {
 	UseNonDefaultCloudSDKPath bool `yaml:"useNonDefaultCloudSdkPath"`
 }
 
-// Ocp3Settings encapsulates settings specific to OCP3 on GCloud
+// Ocp3Settings encapsulates settings specific to OCP3 on GCloud.
 type Ocp3Settings struct {
 	GCloudProject string `yaml:"gCloudProject"`
 	WorkerCount   int    `yaml:"workerCount"`
@@ -95,7 +95,7 @@ type EKSSettings struct {
 	DiskSetup string `yaml:"diskSetup"`
 }
 
-// RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
+// RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file.
 type RunConfig struct {
 	Id        string                 `yaml:"id"` // nolint
 	Overrides map[string]interface{} `yaml:"overrides"`

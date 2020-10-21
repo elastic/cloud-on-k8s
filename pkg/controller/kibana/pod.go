@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// HTTPPort is the (default) port used by Kibana
+	// HTTPPort is the (default) port used by Kibana.
 	HTTPPort            = 5601
 	DataVolumeName      = "kibana-data"
 	DataVolumeMountPath = "/usr/share/kibana/data"
@@ -40,13 +40,13 @@ var (
 		},
 	}
 
-	// DefaultAnnotations are the default annotations for the Kibana pods
+	// DefaultAnnotations are the default annotations for the Kibana pods.
 	DefaultAnnotations = map[string]string{
 		annotation.FilebeatModuleAnnotation: "kibana",
 	}
 )
 
-// readinessProbe is the readiness probe for the Kibana container
+// readinessProbe is the readiness probe for the Kibana container.
 func readinessProbe(useTLS bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if useTLS {

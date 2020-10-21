@@ -175,7 +175,7 @@ func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response
 	return c.doRequest(ctx, r)
 }
 
-// Equal returns true if c2 can be considered the same as c
+// Equal returns true if c2 can be considered the same as c.
 func (c *clientV6) Equal(c2 Client) bool {
 	other, ok := c2.(*clientV6)
 	if !ok {

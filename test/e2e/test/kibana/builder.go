@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-// Builder to create Kibana instances
+// Builder to create Kibana instances.
 type Builder struct {
 	Kibana                   kbv1.Kibana
 	ExternalElasticsearchRef commonv1.ObjectSelector

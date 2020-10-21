@@ -13,7 +13,7 @@ func NewReadOnlyHostVolume(name, hostPath, mountPath string) HostVolume {
 	return NewHostVolume(name, hostPath, mountPath, false, corev1.HostPathUnset)
 }
 
-// NewHostVolume creates a new HostVolume struct with default mode
+// NewHostVolume creates a new HostVolume struct with default mode.
 func NewHostVolume(name, hostPath, mountPath string, readOnly bool, hostPathType corev1.HostPathType) HostVolume {
 	return HostVolume{
 		name:         name,
@@ -24,7 +24,7 @@ func NewHostVolume(name, hostPath, mountPath string, readOnly bool, hostPathType
 	}
 }
 
-// HostVolume defines a volume to expose a host path
+// HostVolume defines a volume to expose a host path.
 type HostVolume struct {
 	name         string
 	hostPath     string
@@ -55,7 +55,7 @@ func (hv HostVolume) Volume() corev1.Volume {
 	}
 }
 
-// Name returns the name of the volume
+// Name returns the name of the volume.
 func (hv HostVolume) Name() string {
 	return hv.name
 }

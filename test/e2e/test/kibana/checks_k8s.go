@@ -29,7 +29,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckKibanaPods checks Kibana pods for correct builder hash, pod count, whether pods are running and ready
+// CheckKibanaPods checks Kibana pods for correct builder hash, pod count, whether pods are running and ready.
 func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana deployment be rolled out",
@@ -83,7 +83,7 @@ func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckServices checks that all Kibana services are created
+// CheckServices checks that all Kibana services are created.
 func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana services should be created",
@@ -100,7 +100,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckServicesEndpoints checks that services have the expected number of endpoints
+// CheckServicesEndpoints checks that services have the expected number of endpoints.
 func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana services should have endpoints",

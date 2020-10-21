@@ -68,7 +68,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 	}
 }
 
-// addWatches adds watches for all resources this controller cares about
+// addWatches adds watches for all resources this controller cares about.
 func addWatches(c controller.Controller, r *ReconcileBeat) error {
 	// Watch for changes to Beat
 	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {

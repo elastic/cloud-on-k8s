@@ -78,7 +78,7 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 	return res
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface) *ReconcileWebhookResources {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileWebhookResources{
@@ -88,7 +88,7 @@ func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernet
 	}
 }
 
-// Add adds a new Controller to mgr with r as the reconcile.Reconciler
+// Add adds a new Controller to mgr with r as the reconcile.Reconciler.
 func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface) error {
 	r := newReconciler(mgr, webhookParams, clientset)
 	// Create a new controller

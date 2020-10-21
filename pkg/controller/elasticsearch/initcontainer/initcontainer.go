@@ -10,10 +10,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
+// PrepareFilesystemContainerName is the name of the container that prepares the filesystem.
 const PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 
-// NewInitContainers creates init containers according to the given parameters
+// NewInitContainers creates init containers according to the given parameters.
 func NewInitContainers(
 	transportCertificatesVolume volume.SecretVolume,
 	keystoreResources *keystore.Resources,

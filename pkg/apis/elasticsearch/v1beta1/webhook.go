@@ -33,7 +33,7 @@ func (es *Elasticsearch) ValidateCreate() error {
 	return es.validateElasticsearch()
 }
 
-// ValidateDelete is required to implement webhook.Validator, but we do not actually validate deletes
+// ValidateDelete is required to implement webhook.Validator, but we do not actually validate deletes.
 func (es *Elasticsearch) ValidateDelete() error {
 	return nil
 }

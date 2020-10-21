@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	// ManagedRemoteClustersAnnotationName holds the list of the remote clusters which have been created
+	// ManagedRemoteClustersAnnotationName holds the list of the remote clusters which have been created.
 	ManagedRemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/managed-remote-clusters"
 )
 

@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
+// Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration).
 type Params struct {
 	Name       string
 	Namespace  string

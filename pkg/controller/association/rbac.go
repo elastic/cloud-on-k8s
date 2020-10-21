@@ -22,7 +22,7 @@ type Unbinder interface {
 	Unbind(association commonv1.Association) error
 }
 
-// CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
+// CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case.
 func CheckAndUnbind(
 	ctx context.Context,
 	accessReviewer rbac.AccessReviewer,

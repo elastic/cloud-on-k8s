@@ -11,7 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// Step represents a single test
+// Step represents a single test.
 type Step struct {
 	Name      string
 	Test      func(t *testing.T)
@@ -19,15 +19,15 @@ type Step struct {
 	OnFailure func()      // additional step specific callback on failure
 }
 
-// StepList defines a list of Step
+// StepList defines a list of Step.
 type StepList []Step
 
-// WithSteps appends the given StepList to the StepList
+// WithSteps appends the given StepList to the StepList.
 func (l StepList) WithSteps(testSteps StepList) StepList {
 	return append(l, testSteps...)
 }
 
-// WithStep appends the given Step to the StepList
+// WithStep appends the given Step to the StepList.
 func (l StepList) WithStep(testStep Step) StepList {
 	return append(l, testStep)
 }

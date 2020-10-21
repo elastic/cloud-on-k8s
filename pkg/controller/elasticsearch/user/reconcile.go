@@ -37,7 +37,7 @@ var log = logf.Log.WithName("elasticsearch-user")
 // - user-provided users from file realms referenced in the Elasticsearch spec
 // Roles are aggregated from:
 // - predefined roles (for the probe user)
-// - user-provided roles referenced in the Elasticsearch spec
+// - user-provided roles referenced in the Elasticsearch spec.
 func ReconcileUsersAndRoles(
 	ctx context.Context,
 	c k8s.Client,

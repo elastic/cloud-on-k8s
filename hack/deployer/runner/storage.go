@@ -18,7 +18,7 @@ const (
 	getDefaultScDelay   = 30 * time.Second
 )
 
-// createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"
+// createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer".
 func createStorageClass() error {
 	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("e2e-default"); err != nil {
 		return err

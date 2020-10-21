@@ -64,7 +64,7 @@ func (r usersRoles) fileBytes() []byte {
 // ```
 // role1:user1,user2,user3
 // role2:user1
-// ```
+// ```.
 func parseUsersRoles(data []byte) (usersRoles, error) {
 	rolesMapping := make(usersRoles)
 	return rolesMapping, forEachRow(data, func(row []byte) error {

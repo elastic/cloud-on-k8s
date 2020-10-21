@@ -86,7 +86,7 @@ type DefaultDriverParameters struct {
 	Expectations *expectations.Expectations
 }
 
-// defaultDriver is the default Driver implementation
+// defaultDriver is the default Driver implementation.
 type defaultDriver struct {
 	DefaultDriverParameters
 }
@@ -254,7 +254,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	return results
 }
 
-// newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
+// newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user.
 func (d *defaultDriver) newElasticsearchClient(
 	state *reconcile.ResourcesState,
 	user esclient.BasicAuth,

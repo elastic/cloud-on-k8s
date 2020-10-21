@@ -40,7 +40,7 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 	return allowedDeletes, ""
 }
 
-// downscaleState tracks the state of a downscale to be checked against invariants
+// downscaleState tracks the state of a downscale to be checked against invariants.
 type downscaleState struct {
 	// runningMasters indicates how many masters are currently running in the cluster.
 	runningMasters int

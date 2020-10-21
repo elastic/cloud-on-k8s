@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
-// TemplateParams are the parameters manipulated in the scriptTemplate
+// TemplateParams are the parameters manipulated in the scriptTemplate.
 type TemplateParams struct {
 	// SharedVolumes are directories to persist in shared volumes
 	PluginVolumes volume.SharedVolumeArray
@@ -37,7 +37,7 @@ type TemplateParams struct {
 	TransportCertificatesSecretVolumeMountPath string
 }
 
-// RenderScriptTemplate renders scriptTemplate using the given TemplateParams
+// RenderScriptTemplate renders scriptTemplate using the given TemplateParams.
 func RenderScriptTemplate(params TemplateParams) (string, error) {
 	tplBuffer := bytes.Buffer{}
 	if err := scriptTemplate.Execute(&tplBuffer, params); err != nil {
@@ -52,7 +52,7 @@ const (
 )
 
 // scriptTemplate is the main script to be run
-// in the prepare-fs init container before ES starts
+// in the prepare-fs init container before ES starts.
 var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 

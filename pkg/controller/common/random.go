@@ -8,12 +8,12 @@ import (
 	"github.com/sethvargo/go-password/password"
 )
 
-// FixedLengthRandomPasswordBytes generates a random password
+// FixedLengthRandomPasswordBytes generates a random password.
 func FixedLengthRandomPasswordBytes() []byte {
 	return RandomBytes(24)
 }
 
-// RandomBytes generates some random bytes that can be used as a token or as a key
+// RandomBytes generates some random bytes that can be used as a token or as a key.
 func RandomBytes(length int) []byte {
 	return []byte(password.MustGenerate(
 		length,

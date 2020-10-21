@@ -142,14 +142,14 @@ func IsRollingUpgradeFromOneDataNode(b Builder) bool {
 	return false
 }
 
-// ContinuousHealthCheckFailure represents an health check failure
+// ContinuousHealthCheckFailure represents an health check failure.
 type ContinuousHealthCheckFailure struct {
 	err       error
 	timestamp time.Time
 }
 
 // ContinuousHealthCheck continuously runs health checks against Elasticsearch
-// during the whole mutation process
+// during the whole mutation process.
 type ContinuousHealthCheck struct {
 	b               Builder
 	SuccessCount    int
@@ -159,7 +159,7 @@ type ContinuousHealthCheck struct {
 	esClientFactory func() (esclient.Client, error)
 }
 
-// NewContinuousHealthCheck sets up a ContinuousHealthCheck struct
+// NewContinuousHealthCheck sets up a ContinuousHealthCheck struct.
 func NewContinuousHealthCheck(b Builder, k *test.K8sClient) (*ContinuousHealthCheck, error) {
 	return &ContinuousHealthCheck{
 		b:        b,
@@ -170,7 +170,7 @@ func NewContinuousHealthCheck(b Builder, k *test.K8sClient) (*ContinuousHealthCh
 	}, nil
 }
 
-// AppendErr sets the given error as a failure
+// AppendErr sets the given error as a failure.
 func (hc *ContinuousHealthCheck) AppendErr(err error) {
 	hc.Failures = append(hc.Failures, ContinuousHealthCheckFailure{
 		err:       err,
@@ -179,7 +179,7 @@ func (hc *ContinuousHealthCheck) AppendErr(err error) {
 	hc.FailureCount++
 }
 
-// Start runs health checks in a goroutine, until stopped
+// Start runs health checks in a goroutine, until stopped.
 func (hc *ContinuousHealthCheck) Start() {
 	clusterUnavailability := clusterUnavailability{threshold: clusterUnavailabilityThreshold(hc.b)}
 	go func() {
@@ -220,7 +220,7 @@ func (hc *ContinuousHealthCheck) Start() {
 	}()
 }
 
-// Stop the health checks goroutine
+// Stop the health checks goroutine.
 func (hc *ContinuousHealthCheck) Stop() {
 	hc.stopChan <- struct{}{}
 }

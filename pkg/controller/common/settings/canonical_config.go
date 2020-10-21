@@ -59,7 +59,7 @@ func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 }
 
 // MustNewSingleValue creates a new config holding a single string value.
-// It is NewSingleValue but panics rather than returning errors, largely used for convenience in tests
+// It is NewSingleValue but panics rather than returning errors, largely used for convenience in tests.
 func MustNewSingleValue(k string, v string) *CanonicalConfig {
 	cfg := NewCanonicalConfig()
 	err := cfg.asUCfg().SetString(k, -1, v, Options...)
@@ -141,7 +141,7 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	return nil
 }
 
-// HasKeys returns all keys in c that are also in keys
+// HasKeys returns all keys in c that are also in keys.
 func (c *CanonicalConfig) HasKeys(keys []string) []string {
 	var has []string
 	for _, s := range keys {
@@ -154,7 +154,7 @@ func (c *CanonicalConfig) HasKeys(keys []string) []string {
 }
 
 // Render returns the content of the configuration file,
-// with fields sorted alphabetically
+// with fields sorted alphabetically.
 func (c *CanonicalConfig) Render() ([]byte, error) {
 	if c == nil {
 		return []byte{}, nil

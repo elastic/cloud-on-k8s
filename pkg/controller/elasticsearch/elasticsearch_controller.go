@@ -51,7 +51,6 @@ var log = logf.Log.WithName(name)
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
-// this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
 	c, err := common.NewController(mgr, name, reconciler, params)
@@ -61,7 +60,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileElasticsearch{
@@ -131,7 +130,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 
-// ReconcileElasticsearch reconciles an Elasticsearch object
+// ReconcileElasticsearch reconciles an Elasticsearch object.
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
@@ -151,7 +150,7 @@ type ReconcileElasticsearch struct {
 }
 
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
-// what is in the Elasticsearch.Spec
+// what is in the Elasticsearch.Spec.
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "elasticsearch")
@@ -313,7 +312,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	return common.UpdateStatus(r.Client, cluster)
 }
 
-// onDelete garbage collect resources when a Elasticsearch cluster is deleted
+// onDelete garbage collect resources when a Elasticsearch cluster is deleted.
 func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)

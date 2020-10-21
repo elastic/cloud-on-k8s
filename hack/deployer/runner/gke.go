@@ -24,7 +24,7 @@ overrides:
 )
 
 var (
-	// GKE uses 18 chars to prefix the pvc created by a cluster
+	// GKE uses 18 chars to prefix the pvc created by a cluster.
 	pvcPrefixMaxLength      = 18
 	defaultClusterIPv4CIDR  = "/20"
 	defaultServicesIPv4CIDR = "/20"

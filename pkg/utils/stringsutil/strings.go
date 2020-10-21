@@ -20,7 +20,7 @@ func Concat(args ...string) string {
 	return result.String()
 }
 
-// StringInSlice returns true if the given string is found in the provided slice, else returns false
+// StringInSlice returns true if the given string is found in the provided slice, else returns false.
 func StringInSlice(str string, list []string) bool {
 	for _, s := range list {
 		if s == str {
@@ -30,7 +30,7 @@ func StringInSlice(str string, list []string) bool {
 	return false
 }
 
-// StringsInSlice returns true if the given strings are found in the provided slice, else returns false
+// StringsInSlice returns true if the given strings are found in the provided slice, else returns false.
 func StringsInSlice(strings []string, slice []string) bool {
 	asMap := make(map[string]struct{}, len(slice))
 	for _, s := range slice {
@@ -45,7 +45,7 @@ func StringsInSlice(strings []string, slice []string) bool {
 }
 
 // RemoveStringInSlice returns a new slice with all occurrences of s removed,
-// keeping the given slice unmodified
+// keeping the given slice unmodified.
 func RemoveStringInSlice(s string, slice []string) []string {
 	result := make([]string, 0, len(slice))
 	for _, item := range slice {

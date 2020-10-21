@@ -41,7 +41,7 @@ func ParsePEMCerts(pemData []byte) ([]*x509.Certificate, error) {
 	return certs, nil
 }
 
-// EncodePEMCert encodes the given certificate blocks as a PEM certificate
+// EncodePEMCert encodes the given certificate blocks as a PEM certificate.
 func EncodePEMCert(certBlocks ...[]byte) []byte {
 	var buf bytes.Buffer
 	for _, block := range certBlocks {
@@ -50,7 +50,7 @@ func EncodePEMCert(certBlocks ...[]byte) []byte {
 	return buf.Bytes()
 }
 
-// EncodePEMPrivateKey encodes the given private key in the PEM format
+// EncodePEMPrivateKey encodes the given private key in the PEM format.
 func EncodePEMPrivateKey(privateKey rsa.PrivateKey) []byte {
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
@@ -93,7 +93,7 @@ func parsePKCS8PrivateKey(block []byte) (*rsa.PrivateKey, error) {
 	return rsaKey, nil
 }
 
-// GetPrimaryCertificate returns the primary certificate (i.e. the actual subject, not a CA or intermediate) from a PEM certificate chain
+// GetPrimaryCertificate returns the primary certificate (i.e. the actual subject, not a CA or intermediate) from a PEM certificate chain.
 func GetPrimaryCertificate(pemBytes []byte) (*x509.Certificate, error) {
 	parsedCerts, err := ParsePEMCerts(pemBytes)
 	if err != nil {

@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// HTTPPort is the (default) port used by ApmServer
+	// HTTPPort is the (default) port used by ApmServer.
 	HTTPPort = DefaultHTTPPort
 
 	SecretTokenKey string = "secret-token"
@@ -40,7 +40,7 @@ var (
 	}
 )
 
-// readinessProbe is the readiness probe for the APM Server container
+// readinessProbe is the readiness probe for the APM Server container.
 func readinessProbe(tls bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if tls {

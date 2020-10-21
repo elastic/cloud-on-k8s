@@ -102,7 +102,7 @@ var (
 	}
 	kbNamespacedName = types.NamespacedName{Namespace: kibanaNamespace, Name: sampleKibanaWithESRef().Name}
 
-	// es public http certs containing the ca cert to be trusted
+	// es public http certs containing the ca cert to be trusted.
 	esHTTPPublicCertsSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: esNamespace,
@@ -113,7 +113,7 @@ var (
 			"tls.crt": []byte("tls cert content"),
 		},
 	}
-	// kibana user in the ES namespace created for the association
+	// kibana user in the ES namespace created for the association.
 	kibanaUserInESNamespace = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: esNamespace,
@@ -140,7 +140,7 @@ var (
 			"userRoles":    []byte("kibana_system"),
 		},
 	}
-	// es public certs we expect to be copied over into the Kibana namespace
+	// es public certs we expect to be copied over into the Kibana namespace.
 	esCertsInKibanaNamespace = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kibanaNamespace,
@@ -165,7 +165,7 @@ var (
 			"tls.crt": []byte("tls cert content"),
 		},
 	}
-	// kibana user credentials in the Kibana namespace
+	// kibana user credentials in the Kibana namespace.
 	kibanaUserInKibanaNamespace = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kibanaNamespace,

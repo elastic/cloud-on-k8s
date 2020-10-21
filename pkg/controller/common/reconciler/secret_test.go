@@ -26,7 +26,7 @@ var (
 
 	sampleAnnotations = map[string]string{"annotation1": "value1", "annotation2": "value2"}
 
-	// the owner could be any type, we randomly pick another Secret resource here
+	// the owner could be any type, we randomly pick another Secret resource here.
 	owner = createSecret("owner", nil, nil, nil)
 )
 

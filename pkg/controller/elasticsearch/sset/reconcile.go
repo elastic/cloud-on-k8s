@@ -51,7 +51,7 @@ func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.S
 	return reconciled, err
 }
 
-// newPodTemplateValidator returns a function which can be used to validate the PodTemplateSpec in a StatefulSet
+// newPodTemplateValidator returns a function which can be used to validate the PodTemplateSpec in a StatefulSet.
 func newPodTemplateValidator(c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet) func() error {
 	sset := expected.DeepCopy()
 	return func() error {

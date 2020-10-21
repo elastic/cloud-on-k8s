@@ -30,7 +30,7 @@ import (
 
 var log = logf.Log.WithName("test-webhook")
 
-// ValidationWebhookTestCase represents a test case for testing a validation webhook
+// ValidationWebhookTestCase represents a test case for testing a validation webhook.
 type ValidationWebhookTestCase struct {
 	Name      string                                                           // Name of the test
 	Operation admissionv1beta1.Operation                                       // Operation type (Create, Update, or Delete)
@@ -57,7 +57,7 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 	}
 }
 
-// RunValidationWebhookTests runs a series of ValidationWebhookTestCases
+// RunValidationWebhookTests runs a series of ValidationWebhookTestCases.
 func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
 	controllerscheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()

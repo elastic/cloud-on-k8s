@@ -48,7 +48,7 @@ type EnterpriseSearchSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-// EnterpriseSearchStatus defines the observed state of EnterpriseSearch
+// EnterpriseSearchStatus defines the observed state of EnterpriseSearch.
 type EnterpriseSearchStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
 	// ExternalService is the name of the service associated to the Enterprise Search Pods.
@@ -57,7 +57,7 @@ type EnterpriseSearchStatus struct {
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
-// IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
+// IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted.
 func (ent *EnterpriseSearch) IsMarkedForDeletion() bool {
 	return !ent.DeletionTimestamp.IsZero()
 }
@@ -135,7 +135,7 @@ type EnterpriseSearch struct {
 
 // +kubebuilder:object:root=true
 
-// EnterpriseSearchList contains a list of EnterpriseSearch
+// EnterpriseSearchList contains a list of EnterpriseSearch.
 type EnterpriseSearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -113,7 +113,7 @@ func fakePublicCa(namespace, name string) *corev1.Secret {
 	}
 }
 
-// remoteCa builds an expected remote Ca
+// remoteCa builds an expected remote Ca.
 func remoteCa(localNamespace, localName, remoteNamespace, remoteName string) *corev1.Secret {
 	remoteNamespacedName := types.NamespacedName{
 		Name:      remoteName,

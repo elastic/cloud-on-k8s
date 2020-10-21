@@ -60,7 +60,7 @@ func GetESConfigContent(client k8s.Client, namespace string, ssetName string) (C
 	return CanonicalConfig{cfg}, nil
 }
 
-// GetESConfigSecret returns the secret holding the ES configuration for the given pod
+// GetESConfigSecret returns the secret holding the ES configuration for the given pod.
 func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (corev1.Secret, error) {
 	var secret corev1.Secret
 	if err := client.Get(types.NamespacedName{

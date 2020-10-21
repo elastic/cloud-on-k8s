@@ -18,7 +18,7 @@ type State struct {
 	ClusterHealth *esclient.Health
 }
 
-// RetrieveState returns the current Elasticsearch cluster state
+// RetrieveState returns the current Elasticsearch cluster state.
 func RetrieveState(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) State {
 	health, err := esClient.GetClusterHealth(ctx)
 	if err != nil {

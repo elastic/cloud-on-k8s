@@ -11,8 +11,8 @@ linters:
     - funlen # checks function length, not very useful
     - gochecknoglobals
     - gochecknoinits
-    # - gocognit # added in 1.20
-    - godot # added in 1.25
+    - gocognit # flags cognitive complexity, TODO review in future
+    # - godot # added in 1.25
     - godox # calls out TODOs
     - goerr113
     - gomnd # added in 1.23

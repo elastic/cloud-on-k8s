@@ -49,7 +49,7 @@ func TestMutationHTTPSToHTTP(t *testing.T) {
 }
 
 // TestMdiToDedicatedMutation creates a 1 master + data cluster,
-// then mutates it to 1 dedicated master + 1 dedicated data cluster
+// then mutates it to 1 dedicated master + 1 dedicated data cluster.
 func TestMutationMdiToDedicated(t *testing.T) {
 	// create a 1 md node cluster
 	b := elasticsearch.NewBuilder("test-mutation-mdi-to-dedicated").
@@ -65,7 +65,7 @@ func TestMutationMdiToDedicated(t *testing.T) {
 }
 
 // TestMutationMoreNodes creates a 1 node cluster,
-// then mutates it to a 3 nodes cluster
+// then mutates it to a 3 nodes cluster.
 func TestMutationMoreNodes(t *testing.T) {
 	// create an ES cluster with 1 node
 	b := elasticsearch.NewBuilder("test-mutation-more-nodes").

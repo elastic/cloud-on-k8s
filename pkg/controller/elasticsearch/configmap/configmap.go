@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// NewConfigMapWithData constructs a new config map with the given data
+// NewConfigMapWithData constructs a new config map with the given data.
 func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

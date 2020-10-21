@@ -31,7 +31,7 @@ func Labels(esName string) client.MatchingLabels {
 	}
 }
 
-// Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret
+// Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret.
 func Reconcile(
 	c k8s.Client,
 	es esv1.Elasticsearch,

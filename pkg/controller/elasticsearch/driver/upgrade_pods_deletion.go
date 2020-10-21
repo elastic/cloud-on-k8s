@@ -100,7 +100,7 @@ func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
 // sortCandidates is the default sort function, masters have lower priority as
 // we want to update the data nodes first. After that pods are sorted by stateful set name
 // then reverse ordinal order
-// TODO: Add some priority to unhealthy (bootlooping) Pods
+// TODO: Add some priority to unhealthy (bootlooping) Pods.
 func sortCandidates(allPods []corev1.Pod) {
 	sort.Slice(allPods, func(i, j int) bool {
 		pod1 := allPods[i]

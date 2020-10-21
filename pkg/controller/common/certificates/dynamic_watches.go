@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates
+// CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates.
 func CertificateWatchKey(namer name.Namer, ownerName string) string {
 	return namer.Suffix(ownerName, "http-certificate")
 }

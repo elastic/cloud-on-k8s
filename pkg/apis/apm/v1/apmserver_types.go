@@ -51,7 +51,7 @@ type ApmServerSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-// ApmServerStatus defines the observed state of ApmServer
+// ApmServerStatus defines the observed state of ApmServer.
 type ApmServerStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
 	// ExternalService is the name of the service the agents should connect to.
@@ -86,7 +86,7 @@ type ApmServer struct {
 
 // +kubebuilder:object:root=true
 
-// ApmServerList contains a list of ApmServer
+// ApmServerList contains a list of ApmServer.
 type ApmServerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -97,7 +97,7 @@ func init() {
 	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
 }
 
-// IsMarkedForDeletion returns true if the APM is going to be deleted
+// IsMarkedForDeletion returns true if the APM is going to be deleted.
 func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
 }
@@ -122,7 +122,7 @@ func (as *ApmServer) GetAssociations() []commonv1.Association {
 	}
 }
 
-// ApmEsAssociation helps to manage the APMServer / Elasticsearch association
+// ApmEsAssociation helps to manage the APMServer / Elasticsearch association.
 type ApmEsAssociation struct {
 	*ApmServer
 }
@@ -173,7 +173,7 @@ func (aes *ApmEsAssociation) SetAssociationStatus(status commonv1.AssociationSta
 
 var _ commonv1.Association = &ApmKibanaAssociation{}
 
-// ApmServer / Kibana association helper
+// ApmServer / Kibana association helper.
 type ApmKibanaAssociation struct {
 	*ApmServer
 }

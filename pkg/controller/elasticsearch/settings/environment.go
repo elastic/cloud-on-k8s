@@ -4,7 +4,7 @@
 
 package settings
 
-// Environment variables applied to an Elasticsearch pod
+// Environment variables applied to an Elasticsearch pod.
 const (
 	EnvEsJavaOpts = "ES_JAVA_OPTS"
 
@@ -14,7 +14,7 @@ const (
 	HeadlessServiceName       = "HEADLESS_SERVICE_NAME"
 
 	// These are injected as env var into the ES pod at runtime,
-	// to be referenced in ES configuration file
+	// to be referenced in ES configuration file.
 	EnvPodName   = "POD_NAME"
 	EnvPodIP     = "POD_IP"
 	EnvNodeName  = "NODE_NAME"

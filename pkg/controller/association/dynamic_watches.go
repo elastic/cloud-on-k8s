@@ -32,7 +32,7 @@ func associatedCAWatchName(associated types.NamespacedName) string {
 // setUserAndCaWatches sets up dynamic watches related to:
 // * The referenced Elasticsearch resource
 // * The user created in the Elasticsearch namespace
-// * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM)
+// * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM).
 func (r *Reconciler) setUserAndCaWatches(
 	association commonv1.Association,
 	associationRef types.NamespacedName,

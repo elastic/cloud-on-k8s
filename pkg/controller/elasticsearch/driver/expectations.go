@@ -14,7 +14,7 @@ import (
 // Continuing with the reconciliation at this point may lead to:
 // - calling ES orchestration settings (zen1/zen2/allocation excludes) with wrong assumptions
 // (eg. incorrect number of nodes or master-eligible nodes topology)
-// - create or delete more than one master node at once
+// - create or delete more than one master node at once.
 func (d *defaultDriver) expectationsSatisfied() (bool, error) {
 	// make sure the cache is up-to-date
 	expectationsOK, err := d.Expectations.Satisfied()

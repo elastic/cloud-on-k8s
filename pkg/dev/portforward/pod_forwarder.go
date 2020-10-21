@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-// PodForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
+// PodForwarder enables redirecting tcp connections through "kubectl port-forward" tooling.
 type PodForwarder struct {
 	network, addr string
 	podNSN        types.NamespacedName
@@ -50,7 +50,7 @@ type PodForwarder struct {
 
 var _ Forwarder = &PodForwarder{}
 
-// PortForwarderFactory is a factory for port forwarders
+// PortForwarderFactory is a factory for port forwarders.
 type PortForwarderFactory func(
 	ctx context.Context,
 	namespace, podName string,
@@ -63,10 +63,10 @@ type PortForwarder interface {
 	ForwardPorts() error
 }
 
-// dialerFunc is a factory for connections
+// dialerFunc is a factory for connections.
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
-// NewPodForwarder returns a new initialized podForwarder
+// NewPodForwarder returns a new initialized podForwarder.
 func NewPodForwarder(ctx context.Context, network, addr string, clientset *kubernetes.Clientset) (*PodForwarder, error) {
 	podNSN, err := parsePodAddr(ctx, addr, clientset)
 	if err != nil {
@@ -88,7 +88,7 @@ func NewPodForwarder(ctx context.Context, network, addr string, clientset *kuber
 	}, nil
 }
 
-// newDefaultKubernetesClientset creates a new Clientset
+// newDefaultKubernetesClientset creates a new Clientset.
 func newDefaultKubernetesClientset() (*kubernetes.Clientset, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -97,7 +97,7 @@ func newDefaultKubernetesClientset() (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(cfg)
 }
 
-// podDNSRegex matches pods FQDN such as {name}.{namespace}.pod
+// podDNSRegex matches pods FQDN such as {name}.{namespace}.pod.
 var podDNSRegex = regexp.MustCompile(`^.+\..+$`)
 
 // podIPRegex matches any ipv4 address.
@@ -149,7 +149,7 @@ func getPodWithIP(ctx context.Context, ip string, clientSet *kubernetes.Clientse
 	return &nsn, nil
 }
 
-// defaultPortForwarderFactory is the default factory used for port forwarders outside of tests
+// defaultPortForwarderFactory is the default factory used for port forwarders outside of tests.
 var defaultPortForwarderFactory PortForwarderFactory = func(
 	ctx context.Context,
 	namespace, podName string,
@@ -159,7 +159,7 @@ var defaultPortForwarderFactory PortForwarderFactory = func(
 	return newKubectlPortForwarder(ctx, namespace, podName, ports, readyChan)
 }
 
-// defaultDialerFunc is the default dialer function we use outside of tests
+// defaultDialerFunc is the default dialer function we use outside of tests.
 var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address string) (net.Conn, error) {
 	var d net.Dialer
 	return d.DialContext(ctx, network, address)

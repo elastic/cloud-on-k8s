@@ -621,7 +621,7 @@ func Test_validUpgradePath(t *testing.T) {
 	}
 }
 
-// es returns an es fixture at a given version
+// es returns an es fixture at a given version.
 func es(v string) *Elasticsearch {
 	return &Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -632,7 +632,7 @@ func es(v string) *Elasticsearch {
 	}
 }
 
-// // getEsCluster returns a ES cluster test fixture
+// // getEsCluster returns a ES cluster test fixture.
 func getEsCluster() *Elasticsearch {
 	return &Elasticsearch{
 		Spec: ElasticsearchSpec{

@@ -29,7 +29,7 @@ func PodCertFileName(podName string) string {
 }
 
 // ensureTransportCertificatesSecretContentsForPod ensures that the transport certificates secret has the correct
-// content for a specific pod
+// content for a specific pod.
 func ensureTransportCertificatesSecretContentsForPod(
 	es esv1.Elasticsearch,
 	secret *corev1.Secret,
@@ -105,7 +105,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - certificate has the wrong format
 // - certificate is invalid or expired
 // - certificate has no SAN extra extension
-// - certificate SAN and IP does not match pod SAN and IP
+// - certificate SAN and IP does not match pod SAN and IP.
 func shouldIssueNewCertificate(
 	es esv1.Elasticsearch,
 	secret corev1.Secret,
@@ -195,7 +195,7 @@ func shouldIssueNewCertificate(
 	return false
 }
 
-// extractTransportCert extracts the transport certificate for the pod with the commonName from the Secret
+// extractTransportCert extracts the transport certificate for the pod with the commonName from the Secret.
 func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName string) *x509.Certificate {
 	certData, ok := secret.Data[PodCertFileName(pod.Name)]
 	if !ok {

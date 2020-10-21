@@ -58,7 +58,7 @@ func CheckKeystoreEntries(k *K8sClient, keystoreCmd []string, expectedKeys []str
 	}
 }
 
-// ExitOnErr exits with code 1 if the given error is not nil
+// ExitOnErr exits with code 1 if the given error is not nil.
 func ExitOnErr(err error) {
 	if err != nil {
 		fmt.Println(err)
@@ -85,12 +85,12 @@ func UntilSuccess(f func() error, timeout time.Duration) func(*testing.T) {
 	}
 }
 
-// BoolPtr returns a pointer to a bool/
+// BoolPtr returns a pointer to a bool/.
 func BoolPtr(b bool) *bool {
 	return &b
 }
 
-// AnnotatePodWithBuilderHash annotates pod with a hash to facilitate detection of newly created pods
+// AnnotatePodWithBuilderHash annotates pod with a hash to facilitate detection of newly created pods.
 func AnnotatePodWithBuilderHash(k *K8sClient, pod corev1.Pod, hash string) error {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
@@ -122,7 +122,7 @@ func ValidateBuilderHashAnnotation(pod corev1.Pod, hash string) error {
 
 // LabelTestPods labels:
 // - operator pod,
-// - e2e runner pod
+// - e2e runner pod.
 func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 	// label operator pod
 	if err := labelPod(

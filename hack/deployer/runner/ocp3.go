@@ -17,25 +17,25 @@ import (
 const (
 	Ocp3DriverID = "ocp3"
 
-	// Field names of the SSH keys for GCP stored in Vault
+	// Field names of the SSH keys for GCP stored in Vault.
 	Ocp3GCloudPrivateSSHKeyFieldName = "gcloud-ssh-private-key"
 	Ocp3GCloudPublicSSHKeyFieldName  = "gcloud-ssh-public-key"
 
-	// Ansible Docker image to manage OCP3 environments
+	// Ansible Docker image to manage OCP3 environments.
 	AnsibleDockerImage = "eu.gcr.io/elastic-cloud-dev/ansible:d36a9da"
 	AnsibleUser        = "jenkins"
-	// Ansible user home where some files (GCP credentials, Ansible vars and output) are mounted from the CI container
+	// Ansible user home where some files (GCP credentials, Ansible vars and output) are mounted from the CI container.
 	AnsibleHomePath           = "/home/ansible"
 	AnsibleVarsFilename       = "vars.yml"
 	AnsibleOutputDirname      = "output"
 	AnsibleKubeconfigFilename = "config.openshift"
 
-	// Default OCP3 configuration for the k8s master
+	// Default OCP3 configuration for the k8s master.
 	MasterCount    = 1
 	MasterInstance = "n1-standard-2"
 )
 
-// SharedVolumeName name shared by CI container and Ansible container
+// SharedVolumeName name shared by CI container and Ansible container.
 var SharedVolumeName = os.Getenv("SHARED_VOLUME_NAME")
 
 func init() {

@@ -27,7 +27,7 @@ const (
 	testEsName    = "test-es-name"
 )
 
-// fixtures
+// fixtures.
 var (
 	testCA                       *certificates.CA
 	testCABytes                  []byte
@@ -154,7 +154,7 @@ func newtransportCertsSecretBuilder(esName string, nodeSetName string) *transpor
 	return tcb
 }
 
-// forPodIndices adds a transport cert for the pod in the StatefulSet with the given index
+// forPodIndices adds a transport cert for the pod in the StatefulSet with the given index.
 func (tcb *transportCertsSecretBuilder) forPodIndices(indices ...int) *transportCertsSecretBuilder {
 	for _, index := range indices {
 		podName := sset.PodName(tcb.statefulset, int32(index))

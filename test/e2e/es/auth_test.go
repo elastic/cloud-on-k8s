@@ -56,7 +56,7 @@ test_role:
 // - modify the user password and role
 // - check the user can ingest documents into another index matching the updated role, using the updated password
 // - remove the file realm and role secret refs
-// - check the user cannot ingest documents anymore
+// - check the user cannot ingest documents anymore.
 func TestESUserProvidedAuth(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 	b := elasticsearch.NewBuilder("test-es-user-auth").

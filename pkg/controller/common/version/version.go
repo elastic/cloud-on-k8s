@@ -55,7 +55,7 @@ func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
 	return mmv
 }
 
-// Version is a parsed version
+// Version is a parsed version.
 type Version struct {
 	Major int
 	Minor int
@@ -63,7 +63,7 @@ type Version struct {
 	Label string
 }
 
-// String formats the version into a string
+// String formats the version into a string.
 func (v Version) String() string {
 	vString := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
 	if v.Label != "" {
@@ -73,13 +73,13 @@ func (v Version) String() string {
 }
 
 var (
-	// TooFewSegmentsErrorMessage is used as an error message when a version has too few dot-separated segments
+	// TooFewSegmentsErrorMessage is used as an error message when a version has too few dot-separated segments.
 	TooFewSegmentsErrorMessage = "version string has too few segments: %s"
-	// TooManySegmentsErrorMessage is used as an error message when a version has too many dot-separated segments
+	// TooManySegmentsErrorMessage is used as an error message when a version has too many dot-separated segments.
 	TooManySegmentsErrorMessage = "version string has too many segments: %s"
 )
 
-// Parse returns a parsed version of a string from the format {major}.{minor}.{patch}[-{label}]
+// Parse returns a parsed version of a string from the format {major}.{minor}.{patch}[-{label}].
 func Parse(version string) (*Version, error) {
 	segments := strings.SplitN(version, ".", 3)
 	if len(segments) < 3 {
@@ -119,7 +119,7 @@ func From(major, minor, patch int) Version {
 	return Version{Major: major, Minor: minor, Patch: patch}
 }
 
-// MustParse is a variant of Parse that panics if the version is not valid
+// MustParse is a variant of Parse that panics if the version is not valid.
 func MustParse(version string) Version {
 	v, err := Parse(version)
 	if err != nil {

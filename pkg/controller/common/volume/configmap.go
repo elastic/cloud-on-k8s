@@ -8,12 +8,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// NewConfigMapVolume creates a new ConfigMapVolume struct
+// NewConfigMapVolume creates a new ConfigMapVolume struct.
 func NewConfigMapVolume(configMapName, name, mountPath string) ConfigMapVolume {
 	return NewConfigMapVolumeWithMode(configMapName, name, mountPath, corev1.ConfigMapVolumeSourceDefaultMode)
 }
 
-// NewConfigMapVolumeWithMode creates a new ConfigMapVolume struct with default mode
+// NewConfigMapVolumeWithMode creates a new ConfigMapVolume struct with default mode.
 func NewConfigMapVolumeWithMode(configMapName, name, mountPath string, defaultMode int32) ConfigMapVolume {
 	return ConfigMapVolume{
 		configMapName: configMapName,
@@ -23,7 +23,7 @@ func NewConfigMapVolumeWithMode(configMapName, name, mountPath string, defaultMo
 	}
 }
 
-// ConfigMapVolume defines a volume to expose a configmap
+// ConfigMapVolume defines a volume to expose a configmap.
 type ConfigMapVolume struct {
 	configMapName string
 	name          string
@@ -58,7 +58,7 @@ func (cm ConfigMapVolume) Volume() corev1.Volume {
 	}
 }
 
-// Name returns the name of the volume
+// Name returns the name of the volume.
 func (cm ConfigMapVolume) Name() string {
 	return cm.name
 }

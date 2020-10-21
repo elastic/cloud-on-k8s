@@ -63,7 +63,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	// allow gcp authentication
+	// allow gcp authentication.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -575,7 +575,7 @@ func startOperator(stopChan <-chan struct{}) error {
 	return nil
 }
 
-// asyncTasks schedules some tasks to be started when this instance of the operator is elected
+// asyncTasks schedules some tasks to be started when this instance of the operator is elected.
 func asyncTasks(
 	mgr manager.Manager,
 	cfg *rest.Config,

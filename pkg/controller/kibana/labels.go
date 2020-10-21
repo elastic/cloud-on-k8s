@@ -7,17 +7,17 @@ package kibana
 import "github.com/elastic/cloud-on-k8s/pkg/controller/common"
 
 const (
-	// KibanaNameLabelName used to represent a Kibana in k8s resources
+	// KibanaNameLabelName used to represent a Kibana in k8s resources.
 	KibanaNameLabelName = "kibana.k8s.elastic.co/name"
 
-	// KibanaVersionLabelName used to propagate Kibana version from the spec to the pods
+	// KibanaVersionLabelName used to propagate Kibana version from the spec to the pods.
 	KibanaVersionLabelName = "kibana.k8s.elastic.co/version"
 
-	// Type represents the Kibana type
+	// Type represents the Kibana type.
 	Type = "kibana"
 )
 
-// NewLabels constructs a new set of labels for a Kibana pod
+// NewLabels constructs a new set of labels for a Kibana pod.
 func NewLabels(kibanaName string) map[string]string {
 	return map[string]string{
 		KibanaNameLabelName:  kibanaName,

@@ -15,10 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// SerialNumberLimit is the maximum number used as a certificate serial number
+// SerialNumberLimit is the maximum number used as a certificate serial number.
 var SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 
-// CA is a simple certificate authority
+// CA is a simple certificate authority.
 type CA struct {
 	// PrivateKey is the CA private key
 	PrivateKey *rsa.PrivateKey
@@ -30,7 +30,7 @@ type CA struct {
 // should be considered trusted.
 type ValidatedCertificateTemplate x509.Certificate
 
-// NewCA returns a ca with the given private key and cert
+// NewCA returns a ca with the given private key and cert.
 func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
 	return &CA{
 		PrivateKey: privateKey,
@@ -38,7 +38,7 @@ func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
 	}
 }
 
-// CABuilderOptions are options to build a self-signed CA
+// CABuilderOptions are options to build a self-signed CA.
 type CABuilderOptions struct {
 	// Subject of the CA to build.
 	Subject pkix.Name
@@ -48,7 +48,7 @@ type CABuilderOptions struct {
 	ExpireIn *time.Duration
 }
 
-// NewSelfSignedCA creates a self-signed CA according to the given options
+// NewSelfSignedCA creates a self-signed CA according to the given options.
 func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 	// generate a serial number
 	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)

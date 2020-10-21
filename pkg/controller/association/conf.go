@@ -85,7 +85,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 
 // ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
-// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
+// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana).
 func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (username, password string, err error) {
 	assocConf := association.AssociationConf()
 	if !assocConf.AuthIsConfigured() {

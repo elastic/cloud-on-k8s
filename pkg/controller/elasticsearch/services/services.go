@@ -23,7 +23,7 @@ const (
 	globalServiceSuffix = ".svc"
 )
 
-// TransportServiceName returns the name for the transport service associated to this cluster
+// TransportServiceName returns the name for the transport service associated to this cluster.
 func TransportServiceName(esName string) string {
 	return esv1.TransportService(esName)
 }
@@ -60,7 +60,7 @@ func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 }
 
 // ExternalServiceName returns the name for the external service
-// associated to this cluster
+// associated to this cluster.
 func ExternalServiceName(esName string) string {
 	return esv1.HTTPService(esName)
 }
@@ -70,7 +70,7 @@ func ExternalTransportServiceHost(es types.NamespacedName) string {
 	return stringsutil.Concat(TransportServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
 }
 
-// ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
+// ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint.
 func ExternalServiceURL(es esv1.Elasticsearch) string {
 	return stringsutil.Concat(es.Spec.HTTP.Protocol(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }

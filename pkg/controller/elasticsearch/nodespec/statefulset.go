@@ -30,7 +30,7 @@ func HeadlessServiceName(ssetName string) string {
 	return ssetName
 }
 
-// HeadlessService returns a headless service for the given StatefulSet
+// HeadlessService returns a headless service for the given StatefulSet.
 func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 	nsn := k8s.ExtractNamespacedName(es)
 

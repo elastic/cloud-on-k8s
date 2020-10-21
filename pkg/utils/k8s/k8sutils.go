@@ -45,7 +45,7 @@ func IsPodReady(pod corev1.Pod) bool {
 	return conditionsTrue == 2
 }
 
-// PodsByName returns a map of pod names to pods
+// PodsByName returns a map of pod names to pods.
 func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
 	podMap := make(map[string]corev1.Pod, len(pods))
 	for _, pod := range pods {
@@ -102,7 +102,7 @@ func GetServiceIPAddresses(svc corev1.Service) []net.IP {
 	return ipAddrs
 }
 
-// EmitErrorEvent emits an event if the error is report-worthy
+// EmitErrorEvent emits an event if the error is report-worthy.
 func EmitErrorEvent(r record.EventRecorder, err error, obj runtime.Object, reason, message string, args ...interface{}) {
 	// ignore nil errors and conflict issues
 	if err == nil || apierrors.IsConflict(err) {

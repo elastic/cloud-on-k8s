@@ -52,7 +52,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckCertificateAuthority checks that the CA is fully setup (CA cert + private key)
+// CheckCertificateAuthority checks that the CA is fully setup (CA cert + private key).
 func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES certificate authority should be set and deployed",
@@ -170,7 +170,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 	})
 }
 
-// CheckPodCertificates checks that all pods have a private key and signed certificate
+// CheckPodCertificates checks that all pods have a private key and signed certificate.
 func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually have a certificate",
@@ -194,7 +194,7 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// getTransportCert retrieves the certificate of the CA and the transport certificate
+// getTransportCert retrieves the certificate of the CA and the transport certificate.
 func getTransportCert(k *test.K8sClient, esNamespace, esName, statefulSetName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
@@ -223,7 +223,7 @@ func getTransportCert(k *test.K8sClient, esNamespace, esName, statefulSetName, p
 	return
 }
 
-// CheckESPodsRunning checks that all ES pods for the given ES are running
+// CheckESPodsRunning checks that all ES pods for the given ES are running.
 func CheckESPodsPending(b Builder, k *test.K8sClient) test.Step {
 	return checkESPodsPhase(b, k, corev1.PodPending)
 }
@@ -257,7 +257,7 @@ func CheckPodsCondition(b Builder, k *test.K8sClient, name string, condition fun
 	}
 }
 
-// CheckESVersion checks that the running ES version is the expected one
+// CheckESVersion checks that the running ES version is the expected one.
 func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
@@ -290,7 +290,7 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckClusterHealth checks that the given ES status reports a green ES health
+// CheckClusterHealth checks that the given ES status reports a green ES health.
 func CheckClusterHealth(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES cluster health should eventually be green",
@@ -312,7 +312,7 @@ func clusterHealthGreen(b Builder, k *test.K8sClient) error {
 	return nil
 }
 
-// CheckServices checks that all ES services are created and external IP is provisioned for all LB services
+// CheckServices checks that all ES services are created and external IP is provisioned for all LB services.
 func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES services should be created",
@@ -337,7 +337,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckServicesEndpoints checks that services have the expected number of endpoints
+// CheckServicesEndpoints checks that services have the expected number of endpoints.
 func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES services should have endpoints",
@@ -366,7 +366,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckESPassword checks that the user password to access ES is correctly set
+// CheckESPassword checks that the user password to access ES is correctly set.
 func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Elastic password should be available",

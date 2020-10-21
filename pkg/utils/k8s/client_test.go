@@ -73,7 +73,7 @@ func TestClient(t *testing.T) {
 }
 
 // mockedClient's only purpose is to perform checks against the context
-// passed in from the surrounding Client
+// passed in from the surrounding Client.
 type mockedClient struct{}
 
 func (m mockedClient) checkCtx(ctx context.Context) error {

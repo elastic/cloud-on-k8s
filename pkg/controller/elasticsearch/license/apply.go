@@ -22,12 +22,12 @@ import (
 
 var log = logf.Log.WithName("elasticsearch-controller")
 
-// isTrial returns true if an Elasticsearch license is of the trial type
+// isTrial returns true if an Elasticsearch license is of the trial type.
 func isTrial(l esclient.License) bool {
 	return l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
 }
 
-// isBasic returns true if an Elasticsearch license is of the basic type
+// isBasic returns true if an Elasticsearch license is of the basic type.
 func isBasic(l esclient.License) bool {
 	return l.Type == string(esclient.ElasticsearchLicenseTypeBasic)
 }

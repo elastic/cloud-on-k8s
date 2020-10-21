@@ -45,7 +45,7 @@ type UpscaleResults struct {
 // - resize (inline) existing PVCs to match new StatefulSet storage reqs and schedule the StatefulSet recreation
 // It does not:
 // - perform any StatefulSet downscale (left for downscale phase)
-// - perform any pod upgrade (left for rolling upgrade phase)
+// - perform any pod upgrade (left for rolling upgrade phase).
 func HandleUpscaleAndSpecChanges(
 	ctx upscaleCtx,
 	actualStatefulSets sset.StatefulSetList,

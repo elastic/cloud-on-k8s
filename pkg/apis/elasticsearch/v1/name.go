@@ -29,10 +29,10 @@ const (
 	statefulSetTransportCertificatesSecretSuffix = "transport-certs"
 
 	// calling this secret "xpack-file-realm" is conceptually wrong since it also holds the file-based roles which
-	// are not part of the file realm - let's still keep this legacy name for convenience
+	// are not part of the file realm - let's still keep this legacy name for convenience.
 	rolesAndFileRealmSecretSuffix = "xpack-file-realm" // nolint:gosec
 
-	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
+	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs.
 	remoteCaNameSuffix = "remote-ca"
 
 	controllerRevisionHashLen = 10

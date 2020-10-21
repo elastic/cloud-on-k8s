@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Info represents the response from /
+// Info represents the response from /.
 type Info struct {
 	ClusterName string `json:"cluster_name"`
 	ClusterUUID string `json:"cluster_uuid"`
@@ -25,7 +25,7 @@ type Info struct {
 	} `json:"version"`
 }
 
-// Health represents the response from _cluster/health
+// Health represents the response from _cluster/health.
 type Health struct {
 	ClusterName                 string                   `json:"cluster_name"`
 	Status                      esv1.ElasticsearchHealth `json:"status"`
@@ -46,7 +46,7 @@ type Health struct {
 
 type ShardState string
 
-// These are possible shard states
+// These are possible shard states.
 const (
 	STARTED      ShardState = "STARTED"
 	INITIALIZING ShardState = "INITIALIZING"
@@ -61,7 +61,7 @@ const (
 	Replica ShardType = "r"
 )
 
-// Nodes partially models the response from a request to /_nodes
+// Nodes partially models the response from a request to /_nodes.
 type Nodes struct {
 	Nodes map[string]Node `json:"nodes"`
 }
@@ -74,7 +74,7 @@ func (n Nodes) Names() []string {
 	return names
 }
 
-// Node partially models an Elasticsearch node retrieved from /_nodes
+// Node partially models an Elasticsearch node retrieved from /_nodes.
 type Node struct {
 	Name    string   `json:"name"`
 	Version string   `json:"version"`
@@ -95,12 +95,12 @@ func (n Node) isV7OrAbove() (bool, error) {
 	return v.Major >= 7, nil
 }
 
-// NodesStats partially models the response from a request to /_nodes/stats
+// NodesStats partially models the response from a request to /_nodes/stats.
 type NodesStats struct {
 	Nodes map[string]NodeStats `json:"nodes"`
 }
 
-// NodeStats partially models an Elasticsearch node retrieved from /_nodes/stats
+// NodeStats partially models an Elasticsearch node retrieved from /_nodes/stats.
 type NodeStats struct {
 	Name string `json:"name"`
 	OS   struct {
@@ -126,7 +126,7 @@ type ClusterStateNode struct {
 	} `json:"attributes"`
 }
 
-// Shards contains the shards in the Elasticsearch cluster
+// Shards contains the shards in the Elasticsearch cluster.
 type Shards []Shard
 
 // Shard partially models Elasticsearch cluster shard.

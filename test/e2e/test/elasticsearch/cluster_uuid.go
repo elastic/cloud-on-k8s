@@ -27,7 +27,7 @@ func clusterUUID(es esv1.Elasticsearch, k *test.K8sClient) (string, error) {
 	return info.ClusterUUID, nil
 }
 
-// RetrieveClusterUUIDStep stores the current clusterUUID into the given futureClusterUUID
+// RetrieveClusterUUIDStep stores the current clusterUUID into the given futureClusterUUID.
 func RetrieveClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, futureClusterUUID *string) test.Step {
 	return test.Step{
 		Name: "Retrieve Elasticsearch cluster UUID for comparison purpose",
@@ -47,7 +47,7 @@ func RetrieveClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, futureClu
 }
 
 // CompareClusterUUIDStep compares the current clusterUUID with previousClusterUUID,
-// and fails if they don't match
+// and fails if they don't match.
 func CompareClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
 	return test.Step{
 		Name: "Cluster UUID should have been preserved",

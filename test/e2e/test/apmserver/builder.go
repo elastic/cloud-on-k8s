@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-// Builder to create APM Servers
+// Builder to create APM Servers.
 type Builder struct {
 	ApmServer      apmv1.ApmServer
 	ServiceAccount corev1.ServiceAccount

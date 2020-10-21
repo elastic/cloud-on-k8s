@@ -17,7 +17,7 @@ import (
 
 var log = logf.Log.WithName("observer")
 
-// Settings for the Observer configuration
+// Settings for the Observer configuration.
 type Settings struct {
 	ObservationInterval time.Duration
 	Tracer              *apm.Tracer
@@ -27,11 +27,11 @@ type Settings struct {
 // if the Elasticsearch cluster is unavailable, the actual interval would be observationInterval + requestTimeout.
 const defaultObservationInterval = 10 * time.Second
 
-// OnObservation is a function that gets executed when a new state is observed
+// OnObservation is a function that gets executed when a new state is observed.
 type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
 
 // Observer regularly requests an ES endpoint for cluster state,
-// in a thread-safe way
+// in a thread-safe way.
 type Observer struct {
 	cluster       types.NamespacedName
 	esClient      client.Client
@@ -44,7 +44,7 @@ type Observer struct {
 	mutex         sync.RWMutex
 }
 
-// NewObserver creates and starts an Observer
+// NewObserver creates and starts an Observer.
 func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
 	observer := Observer{
 		cluster:       cluster,
@@ -61,12 +61,12 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 	return &observer
 }
 
-// Start the observer in a separate goroutine
+// Start the observer in a separate goroutine.
 func (o *Observer) Start() {
 	go o.runUntilStopped()
 }
 
-// Stop the observer loop
+// Stop the observer loop.
 func (o *Observer) Stop() {
 	// trigger an async stop, only once
 	o.stopOnce.Do(func() {
@@ -77,14 +77,14 @@ func (o *Observer) Stop() {
 	})
 }
 
-// LastState returns the last observed state
+// LastState returns the last observed state.
 func (o *Observer) LastState() State {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 	return o.lastState
 }
 
-// run the observer main loop, until stopped
+// run the observer main loop, until stopped.
 func (o *Observer) runUntilStopped() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -94,7 +94,7 @@ func (o *Observer) runUntilStopped() {
 }
 
 // runPeriodically triggers a state retrieval every tick,
-// until the given context is cancelled
+// until the given context is cancelled.
 func (o *Observer) runPeriodically(ctx context.Context) {
 	o.retrieveState(ctx)
 	ticker := time.NewTicker(o.settings.ObservationInterval)
@@ -111,7 +111,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 }
 
 // retrieveState retrieves the current ES state, executes onObservation,
-// and stores the new state
+// and stores the new state.
 func (o *Observer) retrieveState(ctx context.Context) {
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 

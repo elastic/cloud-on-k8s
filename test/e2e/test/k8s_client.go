@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	// auth on gke
+	// auth on gke.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/remotecommand"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -221,7 +221,7 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName str
 	return certificates.ParsePEMCerts(certData)
 }
 
-// GetCA returns the CA of the given owner name
+// GetCA returns the CA of the given owner name.
 func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.CAType) (*certificates.CA, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{

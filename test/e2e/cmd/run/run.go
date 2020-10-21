@@ -506,7 +506,7 @@ type GoLangJSONLogLine struct {
 	Time string
 }
 
-// goLangTestTimestampParser extract the timestamp from a log issued by "go test ...", it is expected that the line is well formatted jsonline
+// goLangTestTimestampParser extract the timestamp from a log issued by "go test ...", it is expected that the line is well formatted jsonline.
 func goLangTestTimestampParser(line []byte) (time.Time, error) {
 	var logLine GoLangJSONLogLine
 	if err := json.Unmarshal(line, &logLine); err != nil {
@@ -523,7 +523,7 @@ type StdJSONLogLine struct {
 	Time string `json:"@timestamp"`
 }
 
-// stdTimestampParser extract the timestamp from a log issued by "go test ...", it is expected that the line is well formatted jsonline
+// stdTimestampParser extract the timestamp from a log issued by "go test ...", it is expected that the line is well formatted jsonline.
 func stdTimestampParser(line []byte) (time.Time, error) {
 	var logLine StdJSONLogLine
 	if err := json.Unmarshal(line, &logLine); err != nil {

@@ -109,12 +109,12 @@ const (
 
 	// BeatYellowHealth means that:
 	// 1) at least one Pod is Ready, and
-	// 2) association is not configured, or configured and established
+	// 2) association is not configured, or configured and established.
 	BeatYellowHealth BeatHealth = "yellow"
 
 	// BeatGreenHealth means that:
 	// 1) all Pods are Ready, and
-	// 2) association is not configured, or configured and established
+	// 2) association is not configured, or configured and established.
 	BeatGreenHealth BeatHealth = "green"
 )
 
@@ -153,7 +153,7 @@ func (b *Beat) ServiceAccountName() string {
 	return b.Spec.ServiceAccountName
 }
 
-// IsMarkedForDeletion returns true if the Beat is going to be deleted
+// IsMarkedForDeletion returns true if the Beat is going to be deleted.
 func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
 }

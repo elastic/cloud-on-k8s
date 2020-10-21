@@ -33,7 +33,7 @@ var (
 		MountPath: ElasticsearchDataMountPath,
 	}
 
-	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods
+	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods.
 	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{DefaultDataVolumeClaim}
 
 	// DefaultLogsVolume is the default EmptyDir logs volume for Elasticsearch pods.

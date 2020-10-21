@@ -18,7 +18,7 @@ const (
 	VersionLabelName = "enterprisesearch.k8s.elastic.co/version"
 )
 
-// Labels returns labels that identify the given Enterprise Search resource
+// Labels returns labels that identify the given Enterprise Search resource.
 func Labels(entName string) map[string]string {
 	return map[string]string{
 		EnterpriseSearchNameLabelName: entName,

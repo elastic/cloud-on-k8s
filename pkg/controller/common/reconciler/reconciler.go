@@ -24,7 +24,7 @@ import (
 
 var log = logf.Log.WithName("generic-reconciler")
 
-// Params is a parameter object for the ReconcileResources function
+// Params is a parameter object for the ReconcileResources function.
 type Params struct {
 	Client k8s.Client
 	// Owner will be set as the controller reference

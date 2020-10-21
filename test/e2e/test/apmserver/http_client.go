@@ -75,7 +75,7 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 	}, nil
 }
 
-// doRequest performs an HTTP request using the internal client and automatically adds the required Auth headers
+// doRequest performs an HTTP request using the internal client and automatically adds the required Auth headers.
 func (c *ApmClient) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
 	withContext := request.WithContext(context)
 
@@ -146,7 +146,7 @@ type ApmServerInfo6 struct {
 	OK ApmServerInfo `json:"ok"`
 }
 
-// ServerInfo requests the Server Information API
+// ServerInfo requests the Server Information API.
 func (c *ApmClient) ServerInfo(ctx context.Context) (*ApmServerInfo, error) {
 	requester := func(responseObj interface{}) error {
 		if err := c.request(ctx, http.MethodGet, "", http.Header{
@@ -173,7 +173,7 @@ type EventsErrorResponse struct {
 	Accepted int `json:"accepted,omitempty"`
 }
 
-// EventsError describes a single error event
+// EventsError describes a single error event.
 type EventsError struct {
 	// Message is the error
 	Message string `json:"message,omitempty"`
@@ -225,7 +225,7 @@ func (c *ApmClient) IntakeV2Events(ctx context.Context, rum bool, payload []byte
 	return &eventsErrorResponse, err
 }
 
-// AgentConfig describes an agent configuration
+// AgentConfig describes an agent configuration.
 type AgentConfig struct {
 	CaptureBody           string `json:"capture_body,omitempty"`
 	TransactionMaxSpans   string `json:"transaction_max_spans,omitempty"`
@@ -233,7 +233,7 @@ type AgentConfig struct {
 	Error                 string `json:"error,omitempty"`
 }
 
-// AgentsDefaultConfig returns the default Agent configuration
+// AgentsDefaultConfig returns the default Agent configuration.
 func (c *ApmClient) AgentsDefaultConfig(ctx context.Context) (AgentConfig, error) {
 	var agentConfig AgentConfig
 	request, err := http.NewRequest(

@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	// SettingsFilename is the Kibana configuration settings file
+	// SettingsFilename is the Kibana configuration settings file.
 	SettingsFilename = "kibana.yml"
-	// EnvNodeOpts is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
+	// EnvNodeOpts is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit.
 	EnvNodeOpts = "NODE_OPTS"
 
 	// esCertsVolumeMountPath is the directory containing Elasticsearch certificates.
@@ -136,7 +136,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 }
 
 // Some previously-unsupported keys cause Kibana to error out even if the values are empty. ucfg cannot ignore fields easily so this is necessary to
-// support older versions
+// support older versions.
 func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) (*settings.CanonicalConfig, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
@@ -165,7 +165,7 @@ type reusableSettings struct {
 	SavedObjectsKey string `config:"xpack.encryptedSavedObjects.encryptionKey"`
 }
 
-// getExistingConfig retrieves the canonical config for a given Kibana, if one exists
+// getExistingConfig retrieves the canonical config for a given Kibana, if one exists.
 func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
 	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
@@ -191,7 +191,7 @@ func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalCo
 }
 
 // getOrCreateReusableSettings filters an existing config for only items we want to preserve between spec changes
-// because they cannot be generated deterministically, e.g. encryption keys
+// because they cannot be generated deterministically, e.g. encryption keys.
 func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(c, kb)
 	if err != nil {

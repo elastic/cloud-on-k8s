@@ -48,7 +48,7 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 `
 )
 
-// fixtures
+// fixtures.
 var (
 	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey

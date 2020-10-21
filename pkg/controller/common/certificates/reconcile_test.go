@@ -27,7 +27,7 @@ var (
 	labels = map[string]string{
 		"foo": "bar",
 	}
-	// tested on Elasticsearch but could be any resource
+	// tested on Elasticsearch but could be any resource.
 	obj = esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -37,7 +37,7 @@ var (
 )
 
 // this test just visits the main path of the certs reconciliation
-// inner functions are individually tested elsewhere
+// inner functions are individually tested elsewhere.
 func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	c := k8s.WrappedFakeClient()
 

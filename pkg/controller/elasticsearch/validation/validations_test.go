@@ -447,7 +447,7 @@ func Test_noUnknownFields(t *testing.T) {
 	}
 }
 
-// es returns an es fixture at a given version
+// es returns an es fixture at a given version.
 func es(v string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{

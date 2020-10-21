@@ -29,7 +29,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckApmServerDeployment checks that APM Server deployment exists
+// CheckApmServerDeployment checks that APM Server deployment exists.
 func CheckApmServerDeployment(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer deployment should be created",
@@ -53,7 +53,7 @@ func CheckApmServerDeployment(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckApmServerPodsCount checks that APM Server pods count matches the expected one
+// CheckApmServerPodsCount checks that APM Server pods count matches the expected one.
 func CheckApmServerPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods count should match the expected one",
@@ -63,7 +63,7 @@ func CheckApmServerPodsCount(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckApmServerPodsRunning checks that all APM Server pods for the given APM Server are running
+// CheckApmServerPodsRunning checks that all APM Server pods for the given APM Server are running.
 func CheckApmServerPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods should eventually be running",
@@ -82,7 +82,7 @@ func CheckApmServerPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckServices checks that all APM Server services are created
+// CheckServices checks that all APM Server services are created.
 func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer services should be created",
@@ -99,7 +99,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckServicesEndpoints checks that APM Server services have the expected number of endpoints
+// CheckServicesEndpoints checks that APM Server services have the expected number of endpoints.
 func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer services should have endpoints",

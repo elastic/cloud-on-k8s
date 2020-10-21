@@ -41,7 +41,7 @@ func remoteCAObjectMeta(
 	}
 }
 
-// RemoteCASecretName returns the name of the Secret that contains the transport CA of a remote cluster
+// RemoteCASecretName returns the name of the Secret that contains the transport CA of a remote cluster.
 func remoteCASecretName(
 	localClusterName string,
 	remoteCluster types.NamespacedName,

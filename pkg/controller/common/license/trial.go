@@ -106,7 +106,7 @@ func (tk *TrialState) CompleteTrialActivation() bool {
 	return true
 }
 
-// LicenseVerifier returns a verifier based on the current state/public key
+// LicenseVerifier returns a verifier based on the current state/public key.
 func (tk *TrialState) LicenseVerifier() *Verifier {
 	return &Verifier{PublicKey: tk.publicKey}
 }

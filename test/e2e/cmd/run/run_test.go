@@ -18,14 +18,14 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// FakeLogStreamProvider provides a new FakeLogStream
+// FakeLogStreamProvider provides a new FakeLogStream.
 type FakeLogStreamProvider struct {
 	withError, failed bool
 	data              []byte
 	stop              chan<- struct{}
 }
 
-// FakeLogStream can send an error in the middle of the stream
+// FakeLogStream can send an error in the middle of the stream.
 type FakeLogStream struct {
 	*FakeLogStreamProvider
 	pos    int
@@ -54,7 +54,7 @@ func (f *FakeLogStreamProvider) String() string {
 	return "test_pod"
 }
 
-// Read reads the underlying bytes or returns an error when half of the stream has been sent
+// Read reads the underlying bytes or returns an error when half of the stream has been sent.
 func (us *FakeLogStream) Read(p []byte) (int, error) {
 	n, err := us.reader.Read(p)
 	us.pos += n
@@ -74,7 +74,7 @@ func (us *FakeLogStream) Close() error {
 	return nil
 }
 
-// Test_helper_streamTestJobOutput_withError simulates an error while the stream is read using the FakeLogStreamProvider
+// Test_helper_streamTestJobOutput_withError simulates an error while the stream is read using the FakeLogStreamProvider.
 func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 	log = logf.Log.WithName("streamTestJobOutput_withError")
 

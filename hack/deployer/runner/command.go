@@ -14,7 +14,7 @@ import (
 	"text/template"
 )
 
-// Command allows building commands to execute using fluent-style api
+// Command allows building commands to execute using fluent-style api.
 type Command struct {
 	command   string
 	params    map[string]interface{}

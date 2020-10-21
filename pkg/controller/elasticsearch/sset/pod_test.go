@@ -73,7 +73,7 @@ func TestStatefulSetName(t *testing.T) {
 	}
 }
 
-// Test that we actually filter on the sset name and the namespace
+// Test that we actually filter on the sset name and the namespace.
 func TestGetActualPodsForStatefulSet(t *testing.T) {
 	objs := []runtime.Object{
 		getPodSample("pod0", "ns0", "sset0", "clus0", "0"),

@@ -53,7 +53,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
@@ -110,7 +110,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 
 var _ reconcile.Reconciler = &ReconcileKibana{}
 
-// ReconcileKibana reconciles a Kibana object
+// ReconcileKibana reconciles a Kibana object.
 type ReconcileKibana struct {
 	k8s.Client
 	recorder record.EventRecorder
@@ -124,7 +124,7 @@ type ReconcileKibana struct {
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
-// in the Kibana.Spec
+// in the Kibana.Spec.
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(r.params.Tracer, request.NamespacedName, "kibana")

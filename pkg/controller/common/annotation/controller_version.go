@@ -20,15 +20,15 @@ import (
 )
 
 const (
-	// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
+	// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource.
 	ControllerVersionAnnotation = "common.k8s.elastic.co/controller-version"
-	// UnknownControllerVersion is the version used when a resource has been created before we started adding the annotation
+	// UnknownControllerVersion is the version used when a resource has been created before we started adding the annotation.
 	UnknownControllerVersion = "0.0.0-UNKNOWN" // may match resources created with ECK-0.8.0
-	// MinCompatibleControllerVersion is the minimum version that indicates that a resource is compatible with this operator
+	// MinCompatibleControllerVersion is the minimum version that indicates that a resource is compatible with this operator.
 	MinCompatibleControllerVersion = "1.0.0-beta1"
 )
 
-// UpdateControllerVersion updates the controller version annotation to the current version if necessary
+// UpdateControllerVersion updates the controller version annotation to the current version if necessary.
 func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime.Object, version string) error {
 	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
@@ -71,7 +71,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 // ReconcileCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation
 // controller versions 0.9.0+ cannot reconcile resources created with earlier controllers, so this lets our controller skip those resources until they can be manually recreated
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
-// was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
+// was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so.
 func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
 	defer span.End()

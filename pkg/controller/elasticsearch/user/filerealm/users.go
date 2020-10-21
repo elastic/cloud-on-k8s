@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
-// usersPasswordHashes is a map {username -> user password hash}
+// usersPasswordHashes is a map {username -> user password hash}.
 type usersPasswordHashes map[string][]byte
 
 // mergeWith merges multiple usersPasswordHashes, giving priority to other.
@@ -47,7 +47,7 @@ func (u usersPasswordHashes) fileBytes() []byte {
 // ```
 // username1:passwordHash1
 // username2:passwordHash2
-// ```
+// ```.
 func parseUsersPasswordHashes(data []byte) (usersPasswordHashes, error) {
 	usersHashes := make(usersPasswordHashes)
 	return usersHashes, forEachRow(data, func(row []byte) error {

@@ -11,11 +11,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
-// Elastic Stack versions used in the E2E tests
+// Elastic Stack versions used in the E2E tests.
 const (
-	// Minimum version for 6.8.x tested with the operator
+	// Minimum version for 6.8.x tested with the operator.
 	MinVersion68x = "6.8.10"
-	// Current latest version for 7.x
+	// Current latest version for 7.x.
 	LatestVersion7x = "7.9.2" // version to synchronize with the latest release of the Elastic Stack
 )
 

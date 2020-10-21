@@ -20,7 +20,7 @@ import (
 // PVCs that are not supposed to exist given the actual and expected StatefulSets are removed.
 // This covers:
 // * leftover PVCs created for StatefulSets that do not exist anymore
-// * leftover PVCs created for StatefulSets replicas that don't exist anymore (eg. downscale from 5 to 3 nodes)
+// * leftover PVCs created for StatefulSets replicas that don't exist anymore (eg. downscale from 5 to 3 nodes).
 func GarbageCollectPVCs(
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,

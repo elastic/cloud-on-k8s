@@ -13,7 +13,7 @@ import (
 const (
 	InitConfigContainerName = "elastic-internal-init-config"
 
-	// InitConfigScript is a small bash script to prepare the Kibana configuration directory
+	// InitConfigScript is a small bash script to prepare the Kibana configuration directory.
 	InitConfigScript = `#!/usr/bin/env bash
 set -eux
 
@@ -35,7 +35,7 @@ echo "Kibana configuration successfully prepared."
 
 // initConfigContainer returns an init container that executes a bash script to prepare the Kibana config directory.
 // The script creates symbolic links from the generated configuration files in /mnt/elastic-internal/kibana-config/ to
-// an empty directory later mounted in /use/share/kibana/config
+// an empty directory later mounted in /use/share/kibana/config.
 func initConfigContainer(kb kbv1.Kibana) corev1.Container {
 	privileged := false
 

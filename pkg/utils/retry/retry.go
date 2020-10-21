@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// ErrTimeoutReached is an error returned when timeout is reached
+// ErrTimeoutReached is an error returned when timeout is reached.
 type ErrTimeoutReached struct {
 	Timeout time.Duration
 }

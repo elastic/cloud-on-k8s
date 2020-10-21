@@ -29,7 +29,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckDeployment checks the Deployment resource exists
+// CheckDeployment checks the Deployment resource exists.
 func CheckDeployment(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "EnterpriseSearch deployment should be created",
@@ -54,7 +54,7 @@ func CheckDeployment(b Builder, k *test.K8sClient) test.Step {
 }
 
 // CheckPods checks expected Enterprise Search pods are eventually ready.
-// TODO: use a common function for all deployments (kb, apm, ent)
+// TODO: use a common function for all deployments (kb, apm, ent).
 func CheckPods(b Builder, k *test.K8sClient) test.Step {
 	// It is common for Enterprise Search Pods to take some time to be ready, especially
 	// during the initial bootstrap, or during version upgrades. Let's increase the timeout
@@ -101,7 +101,7 @@ func CheckPods(b Builder, k *test.K8sClient) test.Step {
 }
 
 // CheckServices checks that all Enterprise Search services are created
-// TODO: refactor with other resources
+// TODO: refactor with other resources.
 func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Enterprise Search services should be created",
@@ -118,7 +118,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
-// CheckServicesEndpoints checks that services have the expected number of endpoints
+// CheckServicesEndpoints checks that services have the expected number of endpoints.
 func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "EnterpriseSearch services should have endpoints",

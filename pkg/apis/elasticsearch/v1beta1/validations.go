@@ -34,7 +34,7 @@ const (
 
 type validation func(*Elasticsearch) field.ErrorList
 
-// validations are the validation funcs that apply to creates or updates
+// validations are the validation funcs that apply to creates or updates.
 var validations = []validation{
 	noUnknownFields,
 	validName,
@@ -45,7 +45,7 @@ var validations = []validation{
 
 type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList
 
-// updateValidations are the validation funcs that only apply to updates
+// updateValidations are the validation funcs that only apply to updates.
 var updateValidations = []updateValidation{
 	noDowngrades,
 	validUpgradePath,
@@ -139,7 +139,7 @@ func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
+// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets.
 func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	if current == nil || proposed == nil {

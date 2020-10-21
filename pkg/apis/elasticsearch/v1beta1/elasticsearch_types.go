@@ -44,7 +44,7 @@ type ElasticsearchSpec struct {
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
-// NodeCount returns the total number of nodes of the Elasticsearch cluster
+// NodeCount returns the total number of nodes of the Elasticsearch cluster.
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
 	for _, topoElem := range es.NodeSets {
@@ -78,7 +78,7 @@ type NodeSet struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
-// GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate
+// GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate.
 func (n NodeSet) GetESContainerTemplate() *corev1.Container {
 	for _, c := range n.PodTemplate.Spec.Containers {
 		if c.Name == ElasticsearchContainerName {
@@ -163,7 +163,7 @@ var elasticsearchHealthOrder = map[ElasticsearchHealth]int{
 	ElasticsearchGreenHealth:  3,
 }
 
-// Less for ElasticsearchHealth means green > yellow > red
+// Less for ElasticsearchHealth means green > yellow > red.
 func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
 	l := elasticsearchHealthOrder[h]
 	r := elasticsearchHealthOrder[other]
@@ -185,7 +185,7 @@ const (
 	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
 )
 
-// ElasticsearchStatus defines the observed state of Elasticsearch
+// ElasticsearchStatus defines the observed state of Elasticsearch.
 type ElasticsearchStatus struct {
 	commonv1beta1.ReconcilerStatus `json:",inline"`
 	Health                         ElasticsearchHealth             `json:"health,omitempty"`
@@ -219,7 +219,7 @@ type Elasticsearch struct {
 	Status ElasticsearchStatus `json:"status,omitempty"`
 }
 
-// IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted
+// IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted.
 func (es Elasticsearch) IsMarkedForDeletion() bool {
 	return !es.DeletionTimestamp.IsZero()
 }
@@ -230,7 +230,7 @@ func (es Elasticsearch) SecureSettings() []commonv1beta1.SecretSource {
 
 // +kubebuilder:object:root=true
 
-// ElasticsearchList contains a list of Elasticsearch clusters
+// ElasticsearchList contains a list of Elasticsearch clusters.
 type ElasticsearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

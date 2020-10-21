@@ -17,7 +17,7 @@ type OperatorLicenseType string
 const (
 	LicenseTypeEnterprise      OperatorLicenseType = "enterprise"
 	LicenseTypeEnterpriseTrial OperatorLicenseType = "enterprise_trial"
-	// LicenseTypeLegacyTrial earlier versions of ECK used this as the trial identifier
+	// LicenseTypeLegacyTrial earlier versions of ECK used this as the trial identifier.
 	LicenseTypeLegacyTrial OperatorLicenseType = "enterprise-trial"
 )
 

@@ -365,7 +365,7 @@ func TestNewConfigSettings(t *testing.T) {
 	}
 }
 
-// TestNewConfigSettingsCreateEncryptionKeys checks that we generate new keys if none are specified
+// TestNewConfigSettingsCreateEncryptionKeys checks that we generate new keys if none are specified.
 func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	kb := mkKibana()
@@ -379,7 +379,7 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	}
 }
 
-// TestNewConfigSettingsExistingEncryptionKey tests that we do not override the existing key if one is already specified
+// TestNewConfigSettingsExistingEncryptionKey tests that we do not override the existing key if one is already specified.
 func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	kb := mkKibana()
 	securityKey := "securityKey"
@@ -415,7 +415,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 }
 
 // TestNewConfigSettingsExplicitEncryptionKey tests that we do not override the existing key if one is already specified in the Spec
-// this should not be done since it is a secure setting, but just in case it happens we do not want to ignore it
+// this should not be done since it is a secure setting, but just in case it happens we do not want to ignore it.
 func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb := mkKibana()
 	key := "thisismyencryptionkey"
@@ -432,7 +432,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	assert.Equal(t, key, val)
 }
 
-// Verifies that pre-7.6.0 keys are not present in the config
+// Verifies that pre-7.6.0 keys are not present in the config.
 func TestNewConfigSettingsPre760(t *testing.T) {
 	kb := mkKibana()
 	kb.Spec.Version = "7.5.0"

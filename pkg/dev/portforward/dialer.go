@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-// ForwardingDialer is a dialer that uses a podForwarder to redirect connections when dialing
+// ForwardingDialer is a dialer that uses a podForwarder to redirect connections when dialing.
 type ForwardingDialer struct {
 	store *ForwarderStore
 
@@ -25,10 +25,10 @@ type ForwardingDialer struct {
 	forwarderFactory ForwardingDialerForwarderFactory
 }
 
-// ForwardingDialerForwarderFactory is a function that can produce forwarders
+// ForwardingDialerForwarderFactory is a function that can produce forwarders.
 type ForwardingDialerForwarderFactory func(ctx context.Context, client client.Client, network, addr string) (Forwarder, error)
 
-// NewForwardingDialer creates a new, initialized ForwardingDialer
+// NewForwardingDialer creates a new, initialized ForwardingDialer.
 func NewForwardingDialer() *ForwardingDialer {
 	return &ForwardingDialer{
 		store:            NewForwarderStore(),
@@ -36,7 +36,7 @@ func NewForwardingDialer() *ForwardingDialer {
 	}
 }
 
-// defaultForwarderFactory is the default podForwarder factory used outside of tests
+// defaultForwarderFactory is the default podForwarder factory used outside of tests.
 var defaultForwarderFactory = ForwardingDialerForwarderFactory(
 	func(ctx context.Context, client client.Client, network, addr string) (Forwarder, error) {
 		if strings.Contains(addr, ".svc:") || strings.Contains(addr, ".svc.") {
@@ -51,7 +51,7 @@ var defaultForwarderFactory = ForwardingDialerForwarderFactory(
 	},
 )
 
-// Forwarder is something that can forward connections
+// Forwarder is something that can forward connections.
 type Forwarder interface {
 	// Run starts the podForwarder and is a blocking function
 	Run(ctx context.Context) error

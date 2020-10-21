@@ -15,7 +15,7 @@ import (
 // keystoreInConfigDirVersion is the version in which the keystore is no longer stored in the data directory but in the config one.
 var keystoreInConfigDirVersion = version.From(7, 9, 0)
 
-// newInitContainersParameters is used to generate the init container that will load the secure settings into a keystore
+// newInitContainersParameters is used to generate the init container that will load the secure settings into a keystore.
 func newInitContainersParameters(kb *kbv1.Kibana) (keystore.InitContainerParameters, error) {
 	parameters := keystore.InitContainerParameters{
 		KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",

@@ -28,7 +28,7 @@ const (
 	BeatAssociationLabelName = "beatassociation.k8s.elastic.co/name"
 	// BeatAssociationLabelNamespace marks resources created by this controller for easier retrieval.
 	BeatAssociationLabelNamespace = "beatassociation.k8s.elastic.co/namespace"
-	// BeatAssociationLabelType marks the type of association
+	// BeatAssociationLabelType marks the type of association.
 	BeatAssociationLabelType = "beatassociation.k8s.elastic.co/type"
 )
 

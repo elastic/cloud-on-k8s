@@ -4,7 +4,7 @@
 
 package volume
 
-// Default values for the volume name and paths
+// Default values for the volume name and paths.
 const (
 	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user" // nolint:gosec
 	ProbeUserVolumeName      = "elastic-internal-probe-user"

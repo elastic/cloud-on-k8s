@@ -32,7 +32,7 @@ const (
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
 	// - Kibana + Enterprise Search deployments upgrade
-	// - APMServer deployment upgrade + Beat daemonset upgrade
+	// - APMServer deployment upgrade + Beat daemonset upgrade.
 	stackVersionUpgradeTimeout = 30 * time.Minute
 )
 

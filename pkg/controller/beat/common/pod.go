@@ -52,7 +52,7 @@ func certificatesDir(association commonv1.Association) string {
 }
 
 // initContainerParameters generates parameters specific to Beats for an init container that will load the secure
-// settings into a keystore
+// settings into a keystore.
 func initContainerParameters(typ string) keystore.InitContainerParameters {
 	return keystore.InitContainerParameters{
 		KeystoreCreateCommand:         fmt.Sprintf("%s keystore create --force", typ),

@@ -50,7 +50,7 @@ const (
 	KibanaGreen KibanaHealth = "green"
 )
 
-// KibanaStatus defines the observed state of Kibana
+// KibanaStatus defines the observed state of Kibana.
 type KibanaStatus struct {
 	commonv1beta1.ReconcilerStatus `json:",inline"`
 	Health                         KibanaHealth                    `json:"health,omitempty"`
@@ -62,7 +62,7 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 	return prev.Health == KibanaGreen && ks.Health != KibanaGreen
 }
 
-// IsMarkedForDeletion returns true if the Kibana is going to be deleted
+// IsMarkedForDeletion returns true if the Kibana is going to be deleted.
 func (k Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
 }
@@ -108,7 +108,7 @@ type Kibana struct {
 
 // +kubebuilder:object:root=true
 
-// KibanaList contains a list of Kibana
+// KibanaList contains a list of Kibana.
 type KibanaList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

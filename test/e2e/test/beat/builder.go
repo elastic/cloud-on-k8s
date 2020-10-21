@@ -36,7 +36,7 @@ const (
 	MetricbeatClusterRoleName   = "elastic-beat-metricbeat"
 )
 
-// Builder to create a Beat
+// Builder to create a Beat.
 type Builder struct {
 	Beat              beatv1beta1.Beat
 	Validations       []ValidationFunc

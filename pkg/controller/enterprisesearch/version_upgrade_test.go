@@ -76,7 +76,7 @@ func deploymentWithVersion(version string) *appsv1.Deployment {
 	}
 }
 
-// fakeRoundTrip mocks HTTP calls to the Enterprise Search API
+// fakeRoundTrip mocks HTTP calls to the Enterprise Search API.
 type fakeRoundTrip struct {
 	checks *roundTripChecks
 }

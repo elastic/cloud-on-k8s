@@ -13,7 +13,7 @@ import (
 //
 // The default PVCs are not appended if:
 // - any PVC has been defined by the user
-// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
+// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume.
 func AppendDefaultPVCs(
 	existing []corev1.PersistentVolumeClaim,
 	podSpec corev1.PodSpec,

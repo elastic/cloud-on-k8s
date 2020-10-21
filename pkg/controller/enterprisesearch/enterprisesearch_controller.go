@@ -56,7 +56,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileEnterpriseSearch{
@@ -114,7 +114,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 
 var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
 
-// ReconcileEnterpriseSearch reconciles an ApmServer object
+// ReconcileEnterpriseSearch reconciles an ApmServer object.
 type ReconcileEnterpriseSearch struct {
 	k8s.Client
 	recorder       record.EventRecorder

@@ -78,7 +78,7 @@ func buildOnce(s *upscaleState) error {
 	return result
 }
 
-// calculateCreatesAllowed calculates how many replicas can we create according to desired state and maxSurge
+// calculateCreatesAllowed calculates how many replicas can we create according to desired state and maxSurge.
 func calculateCreatesAllowed(maxSurge *int32, actual, expected int32) *int32 {
 	if maxSurge == nil {
 		// unbounded
@@ -155,7 +155,7 @@ func (s *upscaleState) getMaxNodesToCreate(noMoreThan int32) int32 {
 	return noMoreThan
 }
 
-// limitNodesCreation decreases replica count in specs as needed, assumes an upscale is requested
+// limitNodesCreation decreases replica count in specs as needed, assumes an upscale is requested.
 func (s *upscaleState) limitNodesCreation(
 	actual appsv1.StatefulSet,
 	toApply appsv1.StatefulSet,

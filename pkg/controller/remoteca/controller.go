@@ -49,7 +49,7 @@ func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operato
 	return AddWatches(c, r)
 }
 
-// NewReconciler returns a new reconcile.Reconciler
+// NewReconciler returns a new reconcile.Reconciler.
 func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileRemoteCa{
@@ -102,7 +102,7 @@ func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Resu
 	return doReconcile(ctx, r, &es)
 }
 
-// deleteAllRemoteCa deletes all associated remote certificate authorities
+// deleteAllRemoteCa deletes all associated remote certificate authorities.
 func deleteAllRemoteCa(ctx context.Context, r *ReconcileRemoteCa, es types.NamespacedName) (reconcile.Result, error) {
 	span, _ := apm.StartSpan(ctx, "delete_all_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
@@ -197,7 +197,7 @@ func caCertMissingError(cluster types.NamespacedName) string {
 }
 
 // getExpectedRemoteClusters returns all the remote cluster keys for which a remote ca should created
-// The CA certificates must be copied from the remote cluster to the local one and vice versa
+// The CA certificates must be copied from the remote cluster to the local one and vice versa.
 func getExpectedRemoteClusters(
 	ctx context.Context,
 	c k8s.Client,

@@ -4,7 +4,7 @@
 
 package events
 
-// Event reasons for the Elastic stack controller
+// Event reasons for the Elastic stack controller.
 const (
 	// EventReasonCreated describes events where resources were created.
 	EventReasonCreated = "Created"
@@ -26,7 +26,7 @@ const (
 	EventReasonRestart = "Restart"
 )
 
-// Event reasons for Association controllers
+// Event reasons for Association controllers.
 const (
 	// EventAssociationError describes an event fired when an association fails.
 	EventAssociationError = "AssociationError"
@@ -34,7 +34,7 @@ const (
 	EventAssociationStatusChange = "AssociationStatusChange"
 )
 
-// Event reasons for common error conditions
+// Event reasons for common error conditions.
 const (
 	// EventReconciliationError describes an error detected during reconciliation of an object.
 	EventReconciliationError = "ReconciliationError"

@@ -48,7 +48,7 @@ func (t testPod) withVersion(v string) testPod          { t.version = v; return 
 func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t }
 
 // filter to simulate a Pod that has been removed while upgrading
-// unfortunately fake client does not support predicate
+// unfortunately fake client does not support predicate.
 type filter func(pod corev1.Pod) bool
 
 // -- Filters
@@ -122,7 +122,7 @@ func (u upgradeTestPods) toES(version string, maxUnavailable int) esv1.Elasticse
 	}
 }
 
-// Infer the list of statefulsets from the Pods used in the test
+// Infer the list of statefulsets from the Pods used in the test.
 func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	// Get all the statefulsets
 	statefulSets := make(map[string]int32)

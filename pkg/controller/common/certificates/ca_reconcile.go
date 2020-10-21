@@ -18,13 +18,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// CAType is a type of CA
+// CAType is a type of CA.
 type CAType string
 
 const (
-	// TransportCAType is the CA used for ES transport certificates
+	// TransportCAType is the CA used for ES transport certificates.
 	TransportCAType CAType = "transport"
-	// HTTPCAType is the CA used for HTTP certificates
+	// HTTPCAType is the CA used for HTTP certificates.
 	HTTPCAType CAType = "http"
 )
 
@@ -32,7 +32,7 @@ const (
 	caInternalSecretSuffix = "ca-internal"
 )
 
-// CAInternalSecretName returns the name of the internal secret containing the CA certs and keys
+// CAInternalSecretName returns the name of the internal secret containing the CA certs and keys.
 func CAInternalSecretName(namer name.Namer, ownerName string, caType CAType) string {
 	return namer.Suffix(ownerName, string(caType), caInternalSecretSuffix)
 }
@@ -83,7 +83,7 @@ func ReconcileCAForOwner(
 	return ca, nil
 }
 
-// renewCA creates and stores a new CA to replace one that might exist
+// renewCA creates and stores a new CA to replace one that might exist.
 func renewCA(
 	client k8s.Client,
 	namer name.Namer,
@@ -112,7 +112,7 @@ func renewCA(
 	return ca, nil
 }
 
-// CanReuseCA returns true if the given CA is valid for reuse
+// CanReuseCA returns true if the given CA is valid for reuse.
 func CanReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
 	return PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
 }

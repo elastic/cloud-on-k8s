@@ -52,7 +52,7 @@ type Role struct {
 	Applications []ApplicationRole `json:"applications,omitempty"`
 }
 
-// Client captures the information needed to interact with an Elasticsearch cluster via HTTP
+// Client captures the information needed to interact with an Elasticsearch cluster via HTTP.
 type Client interface {
 	AllocationSetter
 	ShardLister
@@ -117,7 +117,7 @@ func formatAsSeconds(d time.Duration) string {
 
 // NewElasticsearchClient creates a new client for the target cluster.
 //
-// If dialer is not nil, it will be used to create new TCP connections
+// If dialer is not nil, it will be used to create new TCP connections.
 func NewElasticsearchClient(
 	dialer net.Dialer,
 	esURL string,
@@ -135,7 +135,7 @@ func NewElasticsearchClient(
 	return versioned(base, v)
 }
 
-// APIError is a non 2xx response from the Elasticsearch API
+// APIError is a non 2xx response from the Elasticsearch API.
 type APIError struct {
 	response *http.Response
 }
@@ -173,7 +173,7 @@ func IsNotFound(err error) bool {
 	}
 }
 
-// IsTimeout checks whether the error was an HTTP 408 error
+// IsTimeout checks whether the error was an HTTP 408 error.
 func IsTimeout(err error) bool {
 	switch err := err.(type) {
 	case *APIError:

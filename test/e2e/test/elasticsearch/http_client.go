@@ -18,7 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-// NewElasticsearchClient returns an ES client for the given ES cluster
+// NewElasticsearchClient returns an ES client for the given ES cluster.
 func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Client, error) {
 	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
 	if err != nil {

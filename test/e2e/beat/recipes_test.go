@@ -258,7 +258,7 @@ func runBeatRecipe(
 	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
 }
 
-// isStackIncompatible returns true iff Beat version is higher than tested Stack version
+// isStackIncompatible returns true iff Beat version is higher than tested Stack version.
 func isStackIncompatible(beat beatv1beta1.Beat) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	beatVersion := version.MustParse(beat.Spec.Version)

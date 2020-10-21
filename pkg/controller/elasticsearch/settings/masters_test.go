@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// newPodWithIP creates a new Pod potentially labeled as master with a given podIP
+// newPodWithIP creates a new Pod potentially labeled as master with a given podIP.
 func newPodWithIP(name, ip string, master bool) corev1.Pod {
 	p := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

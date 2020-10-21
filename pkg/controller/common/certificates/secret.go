@@ -17,18 +17,18 @@ import (
 )
 
 const (
-	// CAFileName is used for the CA Certificates inside a secret
+	// CAFileName is used for the CA Certificates inside a secret.
 	CAFileName = "ca.crt"
-	// CertFileName is used for Certificates inside a secret
+	// CertFileName is used for Certificates inside a secret.
 	CertFileName = "tls.crt"
-	// KeyFileName is used for Private Keys inside a secret
+	// KeyFileName is used for Private Keys inside a secret.
 	KeyFileName = "tls.key"
 
-	// certificate secrets suffixes
+	// certificate secrets suffixes.
 	certsPublicSecretName   = "certs-public"
 	certsInternalSecretName = "certs-internal"
 
-	// http certs volume
+	// http certs volume.
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
 	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs" //nolint:gosec
 )
@@ -115,7 +115,7 @@ func (s CertificatesSecret) Validate() error {
 	return nil
 }
 
-// GetCustomCertificates returns the custom certificates to use or nil if there is none specified
+// GetCustomCertificates returns the custom certificates to use or nil if there is none specified.
 func GetCustomCertificates(
 	c k8s.Client,
 	owner types.NamespacedName,

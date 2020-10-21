@@ -7,10 +7,10 @@ package certificates
 import "time"
 
 const (
-	// DefaultCertValidity makes new certificates default to a 1 year expiration
+	// DefaultCertValidity makes new certificates default to a 1 year expiration.
 	DefaultCertValidity = 365 * 24 * time.Hour
 	// DefaultRotateBefore defines how long before expiration a certificate
-	// should be re-issued
+	// should be re-issued.
 	DefaultRotateBefore = 24 * time.Hour
 )
 

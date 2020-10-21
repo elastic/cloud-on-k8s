@@ -74,7 +74,7 @@ func createOrUpdateCertificateAuthorities(
 	return nil
 }
 
-// copyCertificateAuthority creates a copy of the CA from a source cluster to a target cluster
+// copyCertificateAuthority creates a copy of the CA from a source cluster to a target cluster.
 func copyCertificateAuthority(
 	ctx context.Context,
 	r *ReconcileRemoteCa,

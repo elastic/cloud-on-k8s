@@ -124,7 +124,7 @@ func TestTelemetry(t *testing.T) {
 	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
 }
 
-// telemetryRequest is the request body for v1/v2 Kibana telemetry requests
+// telemetryRequest is the request body for v1/v2 Kibana telemetry requests.
 type telemetryRequest struct {
 	TimeRange struct {
 		Min int `json:"min"`
@@ -133,7 +133,7 @@ type telemetryRequest struct {
 	Unencrypted bool `json:"unencrypted,omitempty"`
 }
 
-// clusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats
+// clusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats.
 type clusterStats []struct {
 	StackStats struct {
 		Kibana struct {

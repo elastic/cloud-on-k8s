@@ -22,7 +22,7 @@ import (
 // - use the provided ca certs for TLS verification (can be nil)
 // - verify TLS certs, but ignore the server name: users may provide their own TLS certificate that may not
 // match Kubernetes internal service name, but only the user-facing public endpoint
-// - set APM spans with each request
+// - set APM spans with each request.
 func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {

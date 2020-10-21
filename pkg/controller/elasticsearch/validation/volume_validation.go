@@ -88,7 +88,7 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
 // - a storage decrease is attempted
 // - a storage increase is attempted but the storage class does not support volume expansion
-// - a new claim was added in updated ones
+// - a new claim was added in updated ones.
 func ValidateClaimsStorageUpdate(
 	k8sClient k8s.Client,
 	initial []corev1.PersistentVolumeClaim,

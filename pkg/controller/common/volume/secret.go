@@ -19,7 +19,7 @@ type SecretVolume struct {
 	defaultMode *int32
 }
 
-// NewSecretVolumeWithMountPath creates a new SecretVolume
+// NewSecretVolumeWithMountPath creates a new SecretVolume.
 func NewSecretVolumeWithMountPath(secretName, name, mountPath string) SecretVolume {
 	return SecretVolume{
 		name:       name,
@@ -28,7 +28,7 @@ func NewSecretVolumeWithMountPath(secretName, name, mountPath string) SecretVolu
 	}
 }
 
-// NewSecretVolume creates a new SecretVolume
+// NewSecretVolume creates a new SecretVolume.
 func NewSecretVolume(secretName, name, mountPath, subPath string, defaultMode int32) SecretVolume {
 	return SecretVolume{
 		name:        name,
@@ -81,7 +81,7 @@ func (sv SecretVolume) Volume() corev1.Volume {
 	}
 }
 
-// Name returns the name of the volume
+// Name returns the name of the volume.
 func (sv SecretVolume) Name() string {
 	return sv.name
 }

@@ -22,7 +22,7 @@ func NewTransaction(t *apm.Tracer, name types.NamespacedName, txType string) (*a
 	return tx, ctx
 }
 
-// EndTransaction nil safe version of APM agents tx.End()
+// EndTransaction nil safe version of APM agents tx.End().
 func EndTransaction(tx *apm.Transaction) {
 	if tx != nil {
 		tx.End()

@@ -12,10 +12,10 @@ import (
 
 var (
 
-	// SubjectAlternativeNamesObjectIdentifier is the OID for the Subject Alternative Name x509 extension
+	// SubjectAlternativeNamesObjectIdentifier is the OID for the Subject Alternative Name x509 extension.
 	SubjectAlternativeNamesObjectIdentifier = asn1.ObjectIdentifier{2, 5, 29, 17}
 
-	// CommonNameObjectIdentifier is the OID for a CommonName field in x509
+	// CommonNameObjectIdentifier is the OID for a CommonName field in x509.
 	CommonNameObjectIdentifier = asn1.ObjectIdentifier{2, 5, 4, 3}
 )
 
@@ -48,7 +48,7 @@ The RFC defines the Subject Alternative Names value as follows:
 OtherName is used in Elasticsearch certificates as the node names, and is what is compared to the allowed subjects
 in the trust_restrictions file (if configured) when doing certificate validation between ES nodes.
 
-We only model OtherName, DNSName and IPAddress here because those are what we use for the Elasticsearch certs
+We only model OtherName, DNSName and IPAddress here because those are what we use for the Elasticsearch certs.
 */
 type GeneralName struct {
 	OtherName OtherName `asn1:"optional,tag:0"`
@@ -62,7 +62,7 @@ type OtherName struct {
 	Value asn1.RawValue
 }
 
-// ToUTF8StringValuedOtherName converts the OtherName instance into an UTF8StringValuedOtherName
+// ToUTF8StringValuedOtherName converts the OtherName instance into an UTF8StringValuedOtherName.
 func (n *OtherName) ToUTF8StringValuedOtherName() (*UTF8StringValuedOtherName, error) {
 	var utf8StringValuedOtherName UTF8StringValuedOtherName
 
@@ -79,7 +79,7 @@ type UTF8StringValuedOtherName struct {
 	Value string `asn1:"utf8,explicit"` // like openssl
 }
 
-// ToOtherName converts the UTF8StringValuedOtherName instance into an OtherName
+// ToOtherName converts the UTF8StringValuedOtherName instance into an OtherName.
 func (n *UTF8StringValuedOtherName) ToOtherName() (*OtherName, error) {
 	var otherName OtherName
 
@@ -90,7 +90,7 @@ func (n *UTF8StringValuedOtherName) ToOtherName() (*OtherName, error) {
 	return &otherName, nil
 }
 
-// convertASN1 converts a struct to another through asn1 marshalling and unmarshalling
+// convertASN1 converts a struct to another through asn1 marshalling and unmarshalling.
 func convertASN1(from, to interface{}) error {
 	data, err := asn1.Marshal(from)
 	if err != nil {
@@ -105,7 +105,7 @@ func convertASN1(from, to interface{}) error {
 	return nil
 }
 
-// MarshalToSubjectAlternativeNamesData marshals the provided General Names to a valid value for an X509 SAN extension
+// MarshalToSubjectAlternativeNamesData marshals the provided General Names to a valid value for an X509 SAN extension.
 func MarshalToSubjectAlternativeNamesData(generalNames []GeneralName) ([]byte, error) {
 	sanData, err := asn1.Marshal(generalNames)
 	if err != nil {
@@ -116,7 +116,7 @@ func MarshalToSubjectAlternativeNamesData(generalNames []GeneralName) ([]byte, e
 }
 
 // flattenNestedASN1Sequence flattens one level of nested sequences in asn1-encoded data:
-// e.g: [[1], [2], [3]] -> [1,2,3]
+// e.g: [[1], [2], [3]] -> [1,2,3].
 func flattenNestedASN1Sequence(b []byte) ([]byte, error) {
 	var value asn1.RawValue
 	rest, err := asn1.Unmarshal(b, &value)

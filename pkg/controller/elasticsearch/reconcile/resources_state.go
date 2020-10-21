@@ -32,7 +32,7 @@ type ResourcesState struct {
 	ExternalService corev1.Service
 }
 
-// NewResourcesStateFromAPI reflects the current ResourcesState from the API
+// NewResourcesStateFromAPI reflects the current ResourcesState from the API.
 func NewResourcesStateFromAPI(c k8s.Client, es esv1.Elasticsearch) (*ResourcesState, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 

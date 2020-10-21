@@ -16,10 +16,10 @@ type ForwarderStore struct {
 	sync.Mutex
 }
 
-// ForwarderFactory is a function that can produce forwarders
+// ForwarderFactory is a function that can produce forwarders.
 type ForwarderFactory func(ctx context.Context, network, addr string) (Forwarder, error)
 
-// NewForwarderStore creates a new initialized forwarderStore
+// NewForwarderStore creates a new initialized forwarderStore.
 func NewForwarderStore() *ForwarderStore {
 	return &ForwarderStore{
 		forwarders: make(map[string]Forwarder),
@@ -66,7 +66,7 @@ func (s *ForwarderStore) GetOrCreateForwarder(network, addr string, factory Forw
 	return fwd, nil
 }
 
-// netAddrToKey returns the map key to use for this network+address tuple
+// netAddrToKey returns the map key to use for this network+address tuple.
 func netAddrToKey(network, addr string) string {
 	return fmt.Sprintf("%s/%s", network, addr)
 }

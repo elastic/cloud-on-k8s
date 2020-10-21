@@ -65,7 +65,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	return addWatches(c, r.Client)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
@@ -95,7 +95,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 	}
 }
 
-// addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
+// addWatches adds a new Controller to mgr with r as the reconcile.Reconciler.
 func addWatches(c controller.Controller, client k8s.Client) error {
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(

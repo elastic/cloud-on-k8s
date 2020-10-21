@@ -17,7 +17,7 @@ import (
 )
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
-// are parsed and considered part of the certificate
+// are parsed and considered part of the certificate.
 func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.Certificate, error) {
 	certData, err := testCA.CreateCertificate(*cert)
 	if err != nil {

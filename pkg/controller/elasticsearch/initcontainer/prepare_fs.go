@@ -22,23 +22,23 @@ const (
 	initContainerTransportCertificatesVolumeMountPath = "/mnt/elastic-internal/transport-certificates"
 )
 
-// Volumes that are shared between the prepare-fs init container and the ES container
+// Volumes that are shared between the prepare-fs init container and the ES container.
 var (
-	// EsBinSharedVolume contains the ES bin/ directory
+	// EsBinSharedVolume contains the ES bin/ directory.
 	EsBinSharedVolume = volume.SharedVolume{
 		VolumeName:             "elastic-internal-elasticsearch-bin-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-bin-local",
 		ContainerMountPath:     "/usr/share/elasticsearch/bin",
 	}
 
-	// EsConfigSharedVolume contains the ES config/ directory
+	// EsConfigSharedVolume contains the ES config/ directory.
 	EsConfigSharedVolume = volume.SharedVolume{
 		VolumeName:             "elastic-internal-elasticsearch-config-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-config-local",
 		ContainerMountPath:     esvolume.ConfigVolumeMountPath,
 	}
 
-	// EsPluginsSharedVolume contains the ES plugins/ directory
+	// EsPluginsSharedVolume contains the ES plugins/ directory.
 	EsPluginsSharedVolume = volume.SharedVolume{
 		VolumeName:             "elastic-internal-elasticsearch-plugins-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-plugins-local",

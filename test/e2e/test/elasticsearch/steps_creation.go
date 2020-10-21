@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 
-	// auth on gke
+	// auth on gke.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 

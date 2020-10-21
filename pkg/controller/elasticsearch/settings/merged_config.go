@@ -19,7 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// the name of the ES attribute indicating the pod's current k8s node
+// the name of the ES attribute indicating the pod's current k8s node.
 const nodeAttrK8sNodeName = "k8s_node_name"
 
 var nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
@@ -48,7 +48,7 @@ func NewMergedESConfig(
 	return CanonicalConfig{config}, nil
 }
 
-// baseConfig returns the base ES configuration to apply for the given cluster
+// baseConfig returns the base ES configuration to apply for the given cluster.
 func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamily) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
@@ -79,7 +79,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
-// xpackConfig returns the configuration bit related to XPack settings
+// xpackConfig returns the configuration bit related to XPack settings.
 func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{

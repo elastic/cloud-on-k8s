@@ -23,14 +23,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-// Aggregator aggregates the total of resources of all Elastic managed components
+// Aggregator aggregates the total of resources of all Elastic managed components.
 type Aggregator struct {
 	client k8s.Client
 }
 
 type aggregate func() (resource.Quantity, error)
 
-// AggregateMemory aggregates the total memory of all Elastic managed components
+// AggregateMemory aggregates the total memory of all Elastic managed components.
 func (a Aggregator) AggregateMemory() (resource.Quantity, error) {
 	var totalMemory resource.Quantity
 
@@ -133,7 +133,7 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 }
 
 // containerMemLimits reads the container memory limits from the resource specification with fallback
-// on the environment variable and on the default limits
+// on the environment variable and on the default limits.
 func containerMemLimits(
 	containers []corev1.Container,
 	containerName string,
@@ -169,12 +169,12 @@ func containerMemLimits(
 	return mem, nil
 }
 
-// maxHeapSizeRe is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units)
+// maxHeapSizeRe is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units).
 var maxHeapSizeRe = regexp.MustCompile(`-Xmx([0-9]+)([gGmMkK]?)(?:\s.+|$)`)
 
 // memFromJavaOpts extracts the maximum Java heap size from a Java options string, multiplies the value by 2
 // (giving twice the JVM memory to the container is a common thing people do)
-// and converts it to a resource.Quantity
+// and converts it to a resource.Quantity.
 func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	match := maxHeapSizeRe.FindStringSubmatch(javaOpts)
 	if len(match) != 3 {
@@ -193,10 +193,10 @@ func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	return resource.ParseQuantity(fmt.Sprintf("%d%s", value*2, suffix))
 }
 
-// nodeHeapSizeRe is the pattern to extract the max heap size of the node memory (--max-old-space-size=<mb_size>)
+// nodeHeapSizeRe is the pattern to extract the max heap size of the node memory (--max-old-space-size=<mb_size>).
 var nodeHeapSizeRe = regexp.MustCompile("--max-old-space-size=([0-9]*)")
 
-// memFromNodeOptions extracts the Node heap size from a Node options string and converts it to a resource.Quantity
+// memFromNodeOptions extracts the Node heap size from a Node options string and converts it to a resource.Quantity.
 func memFromNodeOptions(nodeOpts string) (resource.Quantity, error) {
 	match := nodeHeapSizeRe.FindStringSubmatch(nodeOpts)
 	if len(match) != 2 {
@@ -206,7 +206,7 @@ func memFromNodeOptions(nodeOpts string) (resource.Quantity, error) {
 	return resource.ParseQuantity(match[1] + "M")
 }
 
-// multiply multiplies a resource.Quantity by a value
+// multiply multiplies a resource.Quantity by a value.
 func multiply(q resource.Quantity, v int32) resource.Quantity {
 	var result resource.Quantity
 	result.Set(q.Value() * int64(v))

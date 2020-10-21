@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// Test UpdateControllerVersion updates annotation if there is an older version
+// Test UpdateControllerVersion updates annotation if there is an older version.
 func TestAnnotationUpdated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -37,7 +37,7 @@ func TestAnnotationUpdated(t *testing.T) {
 	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "newversion")
 }
 
-// Test UpdateControllerVersion creates an annotation even if there are no current annotations
+// Test UpdateControllerVersion creates an annotation even if there are no current annotations.
 func TestAnnotationCreated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -61,7 +61,7 @@ func TestAnnotationCreated(t *testing.T) {
 }
 
 // TestMissingAnnotationOldVersion tests that we skip reconciling an object missing annotations that has already been reconciled by
-// a previous operator version, and add an annotation indicating an old controller version
+// a previous operator version, and add an annotation indicating an old controller version.
 func TestMissingAnnotationOldVersion(t *testing.T) {
 	trueVar := true
 	es := &esv1.Elasticsearch{
@@ -102,7 +102,7 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 	assert.Equal(t, UnknownControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
-// TestMissingAnnotationNewObject tests that we add an annotation for new objects
+// TestMissingAnnotationNewObject tests that we add an annotation for new objects.
 func TestMissingAnnotationNewObject(t *testing.T) {
 	es := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{

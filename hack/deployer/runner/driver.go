@@ -18,12 +18,12 @@ const (
 
 var drivers = make(map[string]DriverFactory)
 
-// DriverFactory allows creating a driver
+// DriverFactory allows creating a driver.
 type DriverFactory interface {
 	Create(Plan) (Driver, error)
 }
 
-// Driver allows executing a plan
+// Driver allows executing a plan.
 type Driver interface {
 	// Execute runs the plan configured during driver creation.
 	Execute() error
@@ -45,7 +45,7 @@ func GetPlan(plans []Plan, config RunConfig) (Plan, error) {
 	return plan, nil
 }
 
-// GetDriver picks plan based on the run config and returns the appropriate driver
+// GetDriver picks plan based on the run config and returns the appropriate driver.
 func GetDriver(plans []Plan, config RunConfig) (Driver, error) {
 	plan, err := GetPlan(plans, config)
 	if err != nil {

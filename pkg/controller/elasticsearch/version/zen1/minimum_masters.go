@@ -124,7 +124,7 @@ func UpdateMinimumMasterNodes(
 
 // UpdateMinimumMasterNodesTo calls the ES API to update the value of zen1 minimum_master_nodes
 // to the given value, if the cluster is using zen1.
-// Should only be called it there are some Zen1 compatible masters
+// Should only be called it there are some Zen1 compatible masters.
 func UpdateMinimumMasterNodesTo(
 	ctx context.Context,
 	es esv1.Elasticsearch,

@@ -67,7 +67,7 @@ func UpdateSettings(
 //   3.1 Schedule its deletion from the Elasticsearch settings
 //   3.2 Otherwise remove it from the annotation
 // 4. Update the annotation on the Elasticsearch object
-// 5. Apply the settings through the Elasticsearch API
+// 5. Apply the settings through the Elasticsearch API.
 func updateSettingsInternal(
 	remoteClustersInSpec map[string]esv1.RemoteCluster,
 	c k8s.Client,
@@ -140,7 +140,7 @@ func updateSettingsInternal(
 	return requeue, nil
 }
 
-// getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
+// getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch.
 func getRemoteClustersInElasticsearch(esClient esclient.Client) (map[string]struct{}, error) {
 	remoteClustersInEs := make(map[string]struct{})
 	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(context.Background())

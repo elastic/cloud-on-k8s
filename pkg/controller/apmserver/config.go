@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	// DefaultHTTPPort is the (default) port used by ApmServer
+	// DefaultHTTPPort is the (default) port used by ApmServer.
 	DefaultHTTPPort = 8200
 
 	APMServerHost        = "apm-server.host"

@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 )
 
-// TestApmStandalone runs a test suite on an APM server that is not outputting to Elasticsearch
+// TestApmStandalone runs a test suite on an APM server that is not outputting to Elasticsearch.
 func TestApmStandalone(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone").
 		WithConfig(map[string]interface{}{

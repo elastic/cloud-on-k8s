@@ -61,7 +61,7 @@ func (j *Job) WaitForLogs() {
 	close(j.streamErrors)
 }
 
-// Stop is only a best effort to stop the streaming process
+// Stop is only a best effort to stop the streaming process.
 func (j *Job) Stop() {
 	if j.stopRequested {
 		// Job already stopped

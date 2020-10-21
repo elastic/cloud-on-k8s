@@ -21,7 +21,7 @@ import (
 
 const syntheticDNSSegment = "pod"
 
-// ServiceForwarder forwards one port of a service
+// ServiceForwarder forwards one port of a service.
 type ServiceForwarder struct {
 	network, addr string
 	serviceNSN    types.NamespacedName
@@ -37,7 +37,7 @@ type ServiceForwarder struct {
 
 var _ Forwarder = &ServiceForwarder{}
 
-// defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
+// defaultPodForwarderFactory is the default pod forwarder factory used outside of tests.
 var defaultPodForwarderFactory = ForwarderFactory(func(ctx context.Context, network, addr string) (Forwarder, error) {
 	clientset, err := newDefaultKubernetesClientset()
 	if err != nil {
@@ -46,7 +46,7 @@ var defaultPodForwarderFactory = ForwarderFactory(func(ctx context.Context, netw
 	return NewPodForwarder(ctx, network, addr, clientset)
 })
 
-// NewServiceForwarder returns a new initialized service forwarder
+// NewServiceForwarder returns a new initialized service forwarder.
 func NewServiceForwarder(client client.Client, network, addr string) (*ServiceForwarder, error) {
 	serviceNSN, err := parseServiceAddr(addr)
 	if err != nil {
@@ -66,7 +66,7 @@ func NewServiceForwarder(client client.Client, network, addr string) (*ServiceFo
 	}, nil
 }
 
-// parseServiceAddr parses the service name and namespace from a connection address
+// parseServiceAddr parses the service name and namespace from a connection address.
 func parseServiceAddr(addr string) (*types.NamespacedName, error) {
 	// services generally look like this (as FQDN): {name}.{namespace}.svc
 	parts := strings.SplitN(addr, ".", 3)
@@ -78,7 +78,7 @@ func parseServiceAddr(addr string) (*types.NamespacedName, error) {
 	return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
 }
 
-// Run starts the service forwarder, blocking until it's done
+// Run starts the service forwarder, blocking until it's done.
 func (f *ServiceForwarder) Run(ctx context.Context) error {
 	// TODO: /could/ consider snipping connections here when pods turn unready, but that does not match the default
 	// Service behavior

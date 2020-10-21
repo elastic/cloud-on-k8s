@@ -19,7 +19,7 @@ import (
 )
 
 // InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
-// and cleanup from previous tests
+// and cleanup from previous tests.
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{

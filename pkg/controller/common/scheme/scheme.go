@@ -26,7 +26,7 @@ var (
 )
 
 // SetupScheme sets up a scheme with all of the relevant types. This is only needed once for the manager but is often used for tests
-// Afterwards you can use clientgoscheme.Scheme
+// Afterwards you can use clientgoscheme.Scheme.
 func SetupScheme() {
 	addToScheme.Do(func() {
 		err := clientgoscheme.AddToScheme(clientgoscheme.Scheme)

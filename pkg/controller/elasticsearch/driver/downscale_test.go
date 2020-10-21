@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Sample StatefulSets to use in tests
+// Sample StatefulSets to use in tests.
 var (
 	clusterName = "cluster-name"
 	es          = esv1.Elasticsearch{

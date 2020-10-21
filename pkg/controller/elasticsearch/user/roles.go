@@ -25,22 +25,22 @@ const (
 	ApmUserRoleV6 = "eck_apm_user_role_v6"
 	// ApmUserRoleV7 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.1 to 7.4 included.
 	ApmUserRoleV7 = "eck_apm_user_role_v7"
-	// ApmUserRoleV75 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.5
+	// ApmUserRoleV75 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.5.
 	ApmUserRoleV75 = "eck_apm_user_role_v75"
 
-	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
+	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana.
 	ApmAgentUserRole = "eck_apm_agent_user_role"
 
-	// V70 indicates version 7.0
+	// V70 indicates version 7.0.
 	V70 = "v70"
 
-	// V73 indicates version 7.3
+	// V73 indicates version 7.3.
 	V73 = "v73"
 
-	// V75 indicates version 7.5
+	// V75 indicates version 7.5.
 	V75 = "v75"
 
-	// V77 indicates version 7.7
+	// V77 indicates version 7.7.
 	V77 = "v77"
 )
 

@@ -24,16 +24,16 @@ import (
 )
 
 const (
-	// defaultOperatorLicenseLevel is the default license level when no operator license is installed
+	// defaultOperatorLicenseLevel is the default license level when no operator license is installed.
 	defaultOperatorLicenseLevel = "basic"
-	// licensingCfgMapName is the name of the config map used to store licensing information
+	// licensingCfgMapName is the name of the config map used to store licensing information.
 	licensingCfgMapName = "elastic-licensing"
-	// Type represents the Elastic usage type used to mark the config map that stores licensing information
+	// Type represents the Elastic usage type used to mark the config map that stores licensing information.
 	Type = "elastic-usage"
 )
 
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
-// components
+// components.
 type LicensingInfo struct {
 	Timestamp                  string
 	EckLicenseLevel            string
@@ -42,7 +42,7 @@ type LicensingInfo struct {
 	EnterpriseResourceUnits    int64
 }
 
-// toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
+// toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map.
 func (li LicensingInfo) toMap() map[string]string {
 	m := map[string]string{
 		"timestamp":                 li.Timestamp,
@@ -68,13 +68,13 @@ func (li LicensingInfo) ReportAsMetrics() {
 	}
 }
 
-// LicensingResolver resolves the licensing information of the operator
+// LicensingResolver resolves the licensing information of the operator.
 type LicensingResolver struct {
 	operatorNs string
 	client     k8s.Client
 }
 
-// ToInfo returns licensing information given the total memory of all Elastic managed components
+// ToInfo returns licensing information given the total memory of all Elastic managed components.
 func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
 	operatorLicense, err := r.getOperatorLicense()
 	if err != nil {
@@ -160,13 +160,13 @@ func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.Enterprise
 	return int64(maxERUs)
 }
 
-// inGB converts a resource.Quantity in gigabytes
+// inGB converts a resource.Quantity in gigabytes.
 func inGB(q resource.Quantity) float64 {
 	// divide the value (in bytes) per 1 billion (1GB)
 	return float64(q.Value()) / 1000000000
 }
 
-// inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
+// inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units.
 func inEnterpriseResourceUnits(q resource.Quantity) int64 {
 	// divide by the value (in bytes) per 64 billion (64 GB)
 	eru := float64(q.Value()) / 64000000000

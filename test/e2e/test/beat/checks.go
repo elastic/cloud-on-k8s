@@ -40,7 +40,7 @@ func NoEvent(query string) ValidationFunc {
 }
 
 // HasMonitoringEvent is the same as HasEvent, but checks the stack monitoring indices
-// Note that event.dataset is not indexed in these indices
+// Note that event.dataset is not indexed in these indices.
 func HasMonitoringEvent(query string) ValidationFunc {
 	return hasEvent(fmt.Sprintf("/.monitoring-*/_search?q=%s", query))
 }

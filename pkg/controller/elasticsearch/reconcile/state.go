@@ -27,7 +27,7 @@ type State struct {
 	status  esv1.ElasticsearchStatus
 }
 
-// NewState creates a new reconcile state based on the given cluster
+// NewState creates a new reconcile state based on the given cluster.
 func NewState(c esv1.Elasticsearch) *State {
 	return &State{Recorder: events.NewRecorder(), cluster: c, status: *c.Status.DeepCopy()}
 }

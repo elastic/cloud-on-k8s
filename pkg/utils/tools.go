@@ -6,7 +6,7 @@
 
 package utils
 
-// dummy import to maintain the version of controller-gen in go.mod
+// dummy import to maintain the version of controller-gen in go.mod.
 import (
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
 )

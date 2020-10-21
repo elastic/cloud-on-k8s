@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	// allow gcp authentication
+	// allow gcp authentication.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -263,7 +263,7 @@ func createElasticsearch(c k8s.Client, es esv1.Elasticsearch, dryRun bool) error
 	return c.Create(&es, &client.CreateOptions{})
 }
 
-// exitOnErr prints the given error then exits with status code 1
+// exitOnErr prints the given error then exits with status code 1.
 func exitOnErr(err error) {
 	if err != nil {
 		println("Fatal error:", err.Error())

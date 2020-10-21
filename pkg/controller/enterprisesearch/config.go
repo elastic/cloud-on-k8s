@@ -53,7 +53,7 @@ func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVo
 // stores it in a secret that is kept up to date.
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
-// - a bash script used as readiness probe
+// - a bash script used as readiness probe.
 func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
 	cfg, err := newConfig(driver, ent, ipFamily)
 	if err != nil {
@@ -200,7 +200,7 @@ func getOrCreateReusableSettings(c k8s.Client, ent entv1beta1.EnterpriseSearch) 
 	return settings.MustCanonicalConfig(e), nil
 }
 
-// getExistingConfig retrieves the canonical config, if one exists
+// getExistingConfig retrieves the canonical config, if one exists.
 func getExistingConfig(client k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{

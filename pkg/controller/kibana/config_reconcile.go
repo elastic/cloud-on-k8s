@@ -38,7 +38,7 @@ const (
 // is initialized by the elastic-internal-init-config init container. Its content is then shared by the init container
 // that creates the keystore and the main Kibana container.
 // This is needed in order to have in a same directory both the generated configuration and the keystore file  which
-// is created in /usr/share/kibana/config since Kibana 7.9
+// is created in /usr/share/kibana/config since Kibana 7.9.
 var ConfigSharedVolume = volume.SharedVolume{
 	VolumeName:             ConfigVolumeName,
 	InitContainerMountPath: InitContainerConfigVolumeMountPath,

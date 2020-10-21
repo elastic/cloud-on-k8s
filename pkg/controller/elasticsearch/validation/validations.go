@@ -40,7 +40,7 @@ const (
 
 type validation func(esv1.Elasticsearch) field.ErrorList
 
-// validations are the validation funcs that apply to creates or updates
+// validations are the validation funcs that apply to creates or updates.
 var validations = []validation{
 	noUnknownFields,
 	validName,
@@ -51,7 +51,7 @@ var validations = []validation{
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
 
-// updateValidations are the validation funcs that only apply to updates
+// updateValidations are the validation funcs that only apply to updates.
 func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
 	return []updateValidation{
 		noDowngrades,
@@ -102,7 +102,7 @@ func supportedVersion(es esv1.Elasticsearch) field.ErrorList {
 // hasCorrectNodeRoles checks whether Elasticsearch node roles are correctly configured.
 // The rules are:
 // There must be at least one master node.
-// node.roles are only supported on Elasticsearch 7.9.0 and above
+// node.roles are only supported on Elasticsearch 7.9.0 and above.
 func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-// newKubectlPortForwarder creates a new PortForwarder using kubectl tooling
+// newKubectlPortForwarder creates a new PortForwarder using kubectl tooling.
 func newKubectlPortForwarder(
 	ctx context.Context,
 	namespace, podName string,
@@ -62,7 +62,7 @@ func newKubectlPortForwarder(
 	return portforward.New(dialer, ports, ctx.Done(), readyChan, w, w)
 }
 
-// logWriter is a small utility that writes data from an io.Writer to a log
+// logWriter is a small utility that writes data from an io.Writer to a log.
 type logWriter struct {
 	keysAndValues []interface{}
 }

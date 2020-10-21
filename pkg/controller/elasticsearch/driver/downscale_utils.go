@@ -68,7 +68,7 @@ type ssetDownscale struct {
 }
 
 // leavingNodeNames returns names of the nodes that are supposed to leave the Elasticsearch cluster
-// for this StatefulSet. They are ordered by highest ordinal first;
+// for this StatefulSet. They are ordered by highest ordinal first;.
 func (d ssetDownscale) leavingNodeNames() []string {
 	if d.targetReplicas >= d.initialReplicas {
 		return nil

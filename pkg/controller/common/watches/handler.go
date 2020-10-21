@@ -27,7 +27,7 @@ type HandlerRegistration interface {
 	EventHandler() handler.EventHandler
 }
 
-// NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest
+// NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest.
 func NewDynamicEnqueueRequest() *DynamicEnqueueRequest {
 	return &DynamicEnqueueRequest{
 		registrations: make(map[string]HandlerRegistration),
@@ -96,7 +96,7 @@ func (d *DynamicEnqueueRequest) Registrations() []string {
 	return keys
 }
 
-// DynamicEnqueueRequest implements EventHandler
+// DynamicEnqueueRequest implements EventHandler.
 var _ handler.EventHandler = &DynamicEnqueueRequest{}
 
 // Create is called in response to a create event - e.g. Pod Creation.

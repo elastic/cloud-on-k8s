@@ -20,7 +20,7 @@ const (
 	ObserverIntervalAnnotation = "eck.k8s.elastic.co/es-observer-interval"
 )
 
-// Manager for a set of observers
+// Manager for a set of observers.
 type Manager struct {
 	observers map[types.NamespacedName]*Observer
 	listeners []OnObservation // invoked on each observation event
@@ -28,7 +28,7 @@ type Manager struct {
 	tracer    *apm.Tracer
 }
 
-// NewManager returns a new manager
+// NewManager returns a new manager.
 func NewManager(tracer *apm.Tracer) *Manager {
 	return &Manager{
 		observers: make(map[types.NamespacedName]*Observer),
@@ -38,13 +38,13 @@ func NewManager(tracer *apm.Tracer) *Manager {
 }
 
 // ObservedStateResolver returns the last known state of the given cluster,
-// as expected by the main reconciliation driver
+// as expected by the main reconciliation driver.
 func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) State {
 	return m.Observe(cluster, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
-// In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
+// In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly.
 func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *Observer {
 	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(cluster)
@@ -75,7 +75,7 @@ func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
 }
 
 // createObserver creates a new observer according to the given arguments,
-// and create/replace its entry in the observers map
+// and create/replace its entry in the observers map.
 func (m *Manager) createObserver(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
 	observer := NewObserver(cluster, esClient, settings, m.notifyListeners)
 	observer.Start()
@@ -100,7 +100,7 @@ func (m *Manager) StopObserving(cluster types.NamespacedName) {
 	m.lock.Unlock()
 }
 
-// List returns the names of clusters currently observed
+// List returns the names of clusters currently observed.
 func (m *Manager) List() []types.NamespacedName {
 	m.lock.RLock()
 	defer m.lock.RUnlock()

@@ -8,13 +8,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// EmptyDirVolume defines a volume to expose an EmptyDir
+// EmptyDirVolume defines a volume to expose an EmptyDir.
 type EmptyDirVolume struct {
 	name      string
 	mountPath string
 }
 
-// NewEmptyDirVolume creates an EmptyDirVolume with default values
+// NewEmptyDirVolume creates an EmptyDirVolume with default values.
 func NewEmptyDirVolume(name, mountPath string) EmptyDirVolume {
 	return EmptyDirVolume{
 		name:      name,
@@ -22,7 +22,7 @@ func NewEmptyDirVolume(name, mountPath string) EmptyDirVolume {
 	}
 }
 
-// Volume returns the associated k8s volume
+// Volume returns the associated k8s volume.
 func (v EmptyDirVolume) Volume() corev1.Volume {
 	return corev1.Volume{
 		Name: v.name,
@@ -32,7 +32,7 @@ func (v EmptyDirVolume) Volume() corev1.Volume {
 	}
 }
 
-// VolumeMount returns the associated k8s volume mount
+// VolumeMount returns the associated k8s volume mount.
 func (v EmptyDirVolume) VolumeMount() corev1.VolumeMount {
 	return corev1.VolumeMount{
 		MountPath: v.mountPath,
@@ -40,7 +40,7 @@ func (v EmptyDirVolume) VolumeMount() corev1.VolumeMount {
 	}
 }
 
-// Name returns the name of the volume
+// Name returns the name of the volume.
 func (v EmptyDirVolume) Name() string {
 	return v.name
 }

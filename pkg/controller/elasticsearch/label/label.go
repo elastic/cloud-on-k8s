@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	// ClusterNameLabelName used to represent a cluster in k8s resources
+	// ClusterNameLabelName used to represent a cluster in k8s resources.
 	ClusterNameLabelName = "elasticsearch.k8s.elastic.co/cluster-name"
-	// VersionLabelName used to store the Elasticsearch version of the resource
+	// VersionLabelName used to store the Elasticsearch version of the resource.
 	VersionLabelName = "elasticsearch.k8s.elastic.co/version"
-	// PodNameLabelName used to store the name of the pod on other objects
+	// PodNameLabelName used to store the name of the pod on other objects.
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
 	// StatefulSetNameLabelName used to store the name of the statefulset.
 	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset-name"
@@ -32,24 +32,24 @@ const (
 	// SecureSettingsHashLabelName is a label used to store a hash of the Elasticsearch secure settings secret.
 	SecureSettingsHashLabelName = "elasticsearch.k8s.elastic.co/secure-settings-hash"
 
-	// NodeTypesMasterLabelName is a label set to true on nodes with the master role
+	// NodeTypesMasterLabelName is a label set to true on nodes with the master role.
 	NodeTypesMasterLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
-	// NodeTypesDataLabelName is a label set to true on nodes with the data role
+	// NodeTypesDataLabelName is a label set to true on nodes with the data role.
 	NodeTypesDataLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data"
-	// NodeTypesIngestLabelName is a label set to true on nodes with the ingest role
+	// NodeTypesIngestLabelName is a label set to true on nodes with the ingest role.
 	NodeTypesIngestLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
-	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
+	// NodeTypesMLLabelName is a label set to true on nodes with the ml role.
 	NodeTypesMLLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
-	// NodeTypesTransformLabelName is a label set to true on nodes with the transform role
+	// NodeTypesTransformLabelName is a label set to true on nodes with the transform role.
 	NodeTypesTransformLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
-	// Type represents the Elasticsearch type
+	// Type represents the Elasticsearch type.
 	Type = "elasticsearch"
 )
 
-// IsMasterNode returns true if the pod has the master node label
+// IsMasterNode returns true if the pod has the master node label.
 func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
 }
@@ -79,7 +79,7 @@ func FilterMasterNodePods(pods []corev1.Pod) []corev1.Pod {
 	return masters
 }
 
-// IsDataNode returns true if the pod has the data node label
+// IsDataNode returns true if the pod has the data node label.
 func IsDataNode(pod corev1.Pod) bool {
 	return NodeTypesDataLabelName.HasValue(true, pod.Labels)
 }
@@ -145,7 +145,7 @@ func NewStatefulSetLabels(es types.NamespacedName, ssetName string) map[string]s
 	return lbls
 }
 
-// NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
+// NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels.
 func NewLabelSelectorForElasticsearch(es esv1.Elasticsearch) client.MatchingLabels {
 	return NewLabelSelectorForElasticsearchClusterName(es.Name)
 }

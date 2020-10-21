@@ -7,15 +7,15 @@ package apmserver
 import "github.com/elastic/cloud-on-k8s/pkg/controller/common"
 
 const (
-	// ApmServerNameLabelName used to represent an ApmServer in k8s resources
+	// ApmServerNameLabelName used to represent an ApmServer in k8s resources.
 	ApmServerNameLabelName = "apm.k8s.elastic.co/name"
-	// Type represents the apm server type
+	// Type represents the apm server type.
 	Type = "apm-server"
-	// APMVersionLabelName used to propagate APMServer version from the spec to the pods
+	// APMVersionLabelName used to propagate APMServer version from the spec to the pods.
 	APMVersionLabelName = "apm.k8s.elastic.co/version"
 )
 
-// NewLabels constructs a new set of labels for an ApmServer pod
+// NewLabels constructs a new set of labels for an ApmServer pod.
 func NewLabels(apmServerName string) map[string]string {
 	return map[string]string{
 		ApmServerNameLabelName: apmServerName,

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	// DefaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
+	// DefaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers.
 	DefaultTerminationGracePeriodSeconds int64 = 180
 )
 
@@ -40,7 +40,7 @@ var (
 		},
 	}
 
-	// DefaultAnnotations are the default annotations for the Elasticsearch pods
+	// DefaultAnnotations are the default annotations for the Elasticsearch pods.
 	DefaultAnnotations = map[string]string{
 		annotation.FilebeatModuleAnnotation: "elasticsearch",
 	}

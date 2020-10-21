@@ -413,7 +413,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	assertReconcileReq(nsn1)
 }
 
-// getRESTMapper returns a RESTMapper used to inject a mapper into a dynamic queue request
+// getRESTMapper returns a RESTMapper used to inject a mapper into a dynamic queue request.
 func getRESTMapper() meta.RESTMapper {
 	resources := []*restmapper.APIGroupResources{
 		{

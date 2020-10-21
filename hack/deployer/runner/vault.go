@@ -36,7 +36,7 @@ func NewClient(info VaultInfo) (*VaultClient, error) {
 	}, nil
 }
 
-// auth fetches the auth token using approle (with role id and secret id) or github (with token)
+// auth fetches the auth token using approle (with role id and secret id) or github (with token).
 func (v *VaultClient) auth() error {
 	if v.client.Token() != "" {
 		return nil
@@ -79,7 +79,7 @@ func (v *VaultClient) auth() error {
 	return nil
 }
 
-// ReadIntoFile is a helper function used to read from Vault into file
+// ReadIntoFile is a helper function used to read from Vault into file.
 func (v *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error {
 	if err := v.auth(); err != nil {
 		return err
@@ -103,7 +103,7 @@ func (v *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error
 	return ioutil.WriteFile(fileName, []byte(stringServiceAccount), 0o600)
 }
 
-// Get fetches contents of a single field at a specified path in Vault
+// Get fetches contents of a single field at a specified path in Vault.
 func (v *VaultClient) Get(secretPath string, fieldName string) (string, error) {
 	result, err := v.GetMany(secretPath, fieldName)
 	if err != nil {

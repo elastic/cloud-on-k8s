@@ -24,7 +24,7 @@ import (
 
 // TestEnterpriseSearchConfigUpdate updates an existing EnterpriseSearch deployment twice:
 // 1. with an additional config
-// 2. with an additional configRef
+// 2. with an additional configRef.
 func TestEnterpriseSearchConfigUpdate(t *testing.T) {
 	name := "test-ent-config-ref"
 	es := elasticsearch.NewBuilder(name).

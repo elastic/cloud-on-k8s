@@ -46,14 +46,14 @@ const (
 	controllerName          = "apmserver-controller"
 	configChecksumLabelName = "apm.k8s.elastic.co/config-files-checksum"
 
-	// ApmBaseDir is the base directory of the APM server
+	// ApmBaseDir is the base directory of the APM server.
 	ApmBaseDir = "/usr/share/apm-server"
 )
 
 var (
 	log = logf.Log.WithName(controllerName)
 
-	// ApmServerBin is the apm server binary file
+	// ApmServerBin is the apm server binary file.
 	ApmServerBin = filepath.Join(ApmBaseDir, "apm-server")
 
 	initContainerParameters = keystore.InitContainerParameters{
@@ -85,7 +85,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
@@ -143,7 +143,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}
 
-// ReconcileApmServer reconciles an ApmServer object
+// ReconcileApmServer reconciles an ApmServer object.
 type ReconcileApmServer struct {
 	k8s.Client
 	recorder       record.EventRecorder
@@ -168,7 +168,7 @@ func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 var _ driver.Interface = &ReconcileApmServer{}
 
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
-// and what is in the ApmServer.Spec
+// and what is in the ApmServer.Spec.
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "apmserver")

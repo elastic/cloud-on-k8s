@@ -50,7 +50,7 @@ const (
 	ApmServerGreen ApmServerHealth = "green"
 )
 
-// ApmServerStatus defines the observed state of ApmServer
+// ApmServerStatus defines the observed state of ApmServer.
 type ApmServerStatus struct {
 	commonv1beta1.ReconcilerStatus `json:",inline"`
 	Health                         ApmServerHealth `json:"health,omitempty"`
@@ -87,7 +87,7 @@ type ApmServer struct {
 
 // +kubebuilder:object:root=true
 
-// ApmServerList contains a list of ApmServer
+// ApmServerList contains a list of ApmServer.
 type ApmServerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -98,7 +98,7 @@ func init() {
 	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
 }
 
-// IsMarkedForDeletion returns true if the APM is going to be deleted
+// IsMarkedForDeletion returns true if the APM is going to be deleted.
 func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
 }

@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
+	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets.
 	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
 
 	// FilebeatModuleAnnotation is the name of the annotation applied to pods to give a hint to filebeat so that it
