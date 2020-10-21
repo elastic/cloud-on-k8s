@@ -226,7 +226,6 @@ func TestNewReporter(t *testing.T) {
   license:
     eck_license_level: basic
     enterprise_resource_units: "1"
-    timestamp: "2020-10-07T07:49:36+02:00"
     total_managed_memory: 3.22GB
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:

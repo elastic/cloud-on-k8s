@@ -28,6 +28,8 @@ import (
 const (
 	resourceCount = "resource_count"
 	podCount      = "pod_count"
+
+	timestampFieldName = "timestamp"
 )
 
 var log = logf.Log.WithName("usage")
@@ -167,6 +169,9 @@ func (r *Reporter) getLicenseInfo() (map[string]string, error) {
 	if err := r.client.Get(nsn, &licenseConfigMap); err != nil {
 		return nil, err
 	}
+
+	// remove timestamp field as it doesn't carry any significant information
+	delete(licenseConfigMap.Data, timestampFieldName)
 
 	return licenseConfigMap.Data, nil
 }
