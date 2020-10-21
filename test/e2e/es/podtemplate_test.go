@@ -28,7 +28,6 @@ import (
 // TestPodTemplateValidation simulates a cluster update with a temporary invalid pod template.
 // The invalid pod template should not prevent the update to be eventually applied.
 func TestPodTemplateValidation(t *testing.T) {
-
 	// Only execute this test on GKE > 1.15 because we know that latest versions of GKE have compatible admission webhooks.
 	if test.Ctx().Provider != "gke" {
 		t.SkipNow()

@@ -152,7 +152,7 @@ func setupUpcomingRelease(installYAML string) error {
 
 	outFile := "testdata/upcoming/install.yaml"
 
-	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to open %s for writing: %w", outFile, err)
 	}

@@ -30,12 +30,14 @@ func esv6() esv1.Elasticsearch {
 		Spec:       esv1.ElasticsearchSpec{Version: "6.8.5"},
 	}
 }
+
 func esv7() esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 }
+
 func withAnnotations(es esv1.Elasticsearch, annotations map[string]string) esv1.Elasticsearch {
 	esCopy := es.DeepCopy()
 	esCopy.Annotations = annotations

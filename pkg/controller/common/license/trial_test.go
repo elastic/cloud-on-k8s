@@ -152,7 +152,7 @@ func TestPopulateTrialLicense(t *testing.T) {
 }
 
 func TestStartTrial(t *testing.T) {
-	dateFixture := time.Date(2019, 01, 22, 0, 0, 0, 0, time.UTC)
+	dateFixture := time.Date(2019, 0o1, 22, 0, 0, 0, 0, time.UTC)
 	type args struct {
 		start time.Time
 		l     *EnterpriseLicense
@@ -169,7 +169,7 @@ func TestStartTrial(t *testing.T) {
 				l:     &EnterpriseLicense{},
 			},
 			assertions: func(license EnterpriseLicense) {
-				assert.Equal(t, license.ExpiryTime().UTC(), time.Date(2019, 02, 21, 0, 0, 0, 0, time.UTC))
+				assert.Equal(t, license.ExpiryTime().UTC(), time.Date(2019, 0o2, 21, 0, 0, 0, 0, time.UTC))
 				assert.Equal(t, license.StartTime().UTC(), dateFixture)
 			},
 		},

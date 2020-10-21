@@ -12,7 +12,7 @@ import (
 )
 
 func Execute() {
-	var rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:          "deployer",
 		Short:        "Tool for interfacing with managed k8s cluster providers.",
 		SilenceUsage: true,

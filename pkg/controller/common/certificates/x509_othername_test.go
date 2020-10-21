@@ -92,7 +92,6 @@ func BenchmarkOtherName_ToUTF8StringValuedOtherName(b *testing.B) {
 
 func ExampleMarshalToSubjectAlternativeNamesData() {
 	otherName, err := (&UTF8StringValuedOtherName{OID: CommonNameObjectIdentifier, Value: "foo"}).ToOtherName()
-
 	if err != nil {
 		panic(err)
 	}

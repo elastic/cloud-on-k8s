@@ -6,9 +6,7 @@ package volume
 
 import corev1 "k8s.io/api/core/v1"
 
-var (
-	defaultOptional = false
-)
+var defaultOptional = false
 
 type VolumeLike interface {
 	Name() string

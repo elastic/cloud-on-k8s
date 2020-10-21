@@ -127,7 +127,8 @@ func Test_needsUpdate(t *testing.T) {
 					},
 					Spec: corev1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
-					}},
+					},
+				},
 				reconciled: corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "kibana-service",
@@ -138,7 +139,8 @@ func Test_needsUpdate(t *testing.T) {
 						Type:      corev1.ServiceTypeClusterIP,
 						ClusterIP: "1.2.3.4",
 						IPFamily:  &ipv4Family,
-					}},
+					},
+				},
 			},
 			want: false,
 		},

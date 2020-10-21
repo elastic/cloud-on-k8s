@@ -15,10 +15,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	// SerialNumberLimit is the maximum number used as a certificate serial number
-	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
-)
+// SerialNumberLimit is the maximum number used as a certificate serial number
+var SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 
 // CA is a simple certificate authority
 type CA struct {
@@ -97,7 +95,6 @@ func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 		PrivateKey: privateKey,
 		Cert:       cert,
 	}, nil
-
 }
 
 // CreateCertificate signs and creates a new certificate for a validated template.

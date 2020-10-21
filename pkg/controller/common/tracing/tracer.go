@@ -10,9 +10,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	log = logf.Log.WithName("tracing")
-)
+var log = logf.Log.WithName("tracing")
 
 // NewTracer returns a new APM tracer with the logger in log configured.
 func NewTracer(serviceName string) *apm.Tracer {

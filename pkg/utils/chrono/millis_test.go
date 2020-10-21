@@ -21,7 +21,7 @@ func TestToMillis(t *testing.T) {
 		{
 			name: "turns time into unix milliseconds",
 			args: args{
-				t: time.Date(2019, 01, 22, 0, 0, 0, 0, time.UTC),
+				t: time.Date(2019, 0o1, 22, 0, 0, 0, 0, time.UTC),
 			},
 			want: 1548115200000,
 		},

@@ -53,7 +53,6 @@ type Builder struct {
 func (b Builder) SkipTest() bool {
 	ver := version.MustParse(b.Beat.Spec.Version)
 	return version.SupportedBeatVersions.WithinRange(ver) != nil
-
 }
 
 // NewBuilderFromBeat creates a Beat builder from an existing Beat config. Sets all additional Builder fields

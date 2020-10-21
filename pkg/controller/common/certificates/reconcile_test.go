@@ -93,7 +93,6 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.NotEmpty(t, publicCerts.Data[CAFileName])
 		require.NotEmpty(t, publicCerts.Data[CertFileName])
 		require.Equal(t, labels, publicCerts.Labels)
-
 	}
 	checkCertsSecrets()
 

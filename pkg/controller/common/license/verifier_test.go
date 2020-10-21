@@ -84,7 +84,6 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 }
 
 func TestNewLicenseVerifier(t *testing.T) {
-
 	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)
 

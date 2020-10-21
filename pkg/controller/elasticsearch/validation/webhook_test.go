@@ -44,14 +44,16 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "accept valid creation",
 			args: args{
-				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
-					Operation: v1beta1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
-						}),
-					}},
+				req: admission.Request{
+					AdmissionRequest: v1beta1.AdmissionRequest{
+						Operation: v1beta1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+								Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Allowed(""),
@@ -59,14 +61,16 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "reject invalid creation (no version provided)",
 			args: args{
-				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
-					Operation: v1beta1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-							Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
-						}),
-					}},
+				req: admission.Request{
+					AdmissionRequest: v1beta1.AdmissionRequest{
+						Operation: v1beta1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+								Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Denied(parseVersionErrMsg),

@@ -377,7 +377,6 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, val)
 	}
-
 }
 
 // TestNewConfigSettingsExistingEncryptionKey tests that we do not override the existing key if one is already specified
@@ -456,7 +455,6 @@ func mkKibana() kbv1.Kibana {
 }
 
 func Test_getExistingConfig(t *testing.T) {
-
 	testKb := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testkb",

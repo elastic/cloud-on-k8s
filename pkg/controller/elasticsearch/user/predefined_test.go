@@ -186,7 +186,6 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
 				require.NotEmpty(t, u[1].PasswordHash)
 				require.NotEqual(t, "does-not-match-password", u[1].PasswordHash)
-
 			},
 		},
 		{

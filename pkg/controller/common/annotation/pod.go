@@ -24,9 +24,7 @@ const (
 	FilebeatModuleAnnotation = "co.elastic.logs/module"
 )
 
-var (
-	log = logf.Log.WithName("annotation")
-)
+var log = logf.Log.WithName("annotation")
 
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
 func MarkPodsAsUpdated(

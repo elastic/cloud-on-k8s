@@ -203,7 +203,8 @@ func (pb PodBuilder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				pod.Spec = pb.Pod.Spec
 				require.NoError(t, k.Client.Update(&pod))
 			},
-		}}
+		},
+	}
 }
 
 func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {

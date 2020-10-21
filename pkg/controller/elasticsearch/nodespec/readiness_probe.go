@@ -27,8 +27,9 @@ func NewReadinessProbe() *corev1.Probe {
 	}
 }
 
-const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
-const ReadinessProbeScript = `#!/usr/bin/env bash
+const (
+	ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
+	ReadinessProbeScript          = `#!/usr/bin/env bash
 
 # fail should be called as a last resort to help the user to understand why the probe failed
 function fail {
@@ -88,3 +89,4 @@ else
   fail " \"status\": \"${status}\", \"version\":\"${version}\" "
 fi
 `
+)

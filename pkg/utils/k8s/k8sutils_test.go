@@ -122,7 +122,6 @@ func TestGetServiceIPAddresses(t *testing.T) {
 }
 
 func TestOverrideControllerReference(t *testing.T) {
-
 	ownerRefFixture := func(name string, controller bool) metav1.OwnerReference {
 		return metav1.OwnerReference{
 			APIVersion: "v1",
@@ -165,7 +164,8 @@ func TestOverrideControllerReference(t *testing.T) {
 			},
 			assertion: func(object metav1.Object) {
 				require.Equal(t, object.GetOwnerReferences(), []metav1.OwnerReference{
-					ownerRefFixture("obj2", true)})
+					ownerRefFixture("obj2", true),
+				})
 			},
 		},
 		{
@@ -184,7 +184,8 @@ func TestOverrideControllerReference(t *testing.T) {
 			assertion: func(object metav1.Object) {
 				require.Equal(t, object.GetOwnerReferences(), []metav1.OwnerReference{
 					ownerRefFixture("other", false),
-					ownerRefFixture("obj2", true)})
+					ownerRefFixture("obj2", true),
+				})
 			},
 		},
 	}

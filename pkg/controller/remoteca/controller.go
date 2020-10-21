@@ -38,9 +38,7 @@ const (
 	EventReasonClusterCaCertNotFound = "ClusterCaCertNotFound"
 )
 
-var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
-)
+var defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 
 // Add creates a new RemoteCa Controller and adds it to the manager with default RBAC.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {

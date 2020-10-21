@@ -20,7 +20,6 @@ import (
 var downwardAPIVolume = volume.DownwardAPI{}
 
 func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
-
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,
@@ -49,7 +48,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esv1.ScriptsConfigMap(esName),
 		esvolume.ScriptsVolumeName,
 		esvolume.ScriptsVolumeMountPath,
-		0755)
+		0o755)
 
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(nodeSpec.VolumeClaimTemplates))

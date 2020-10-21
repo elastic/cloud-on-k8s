@@ -266,7 +266,6 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-
 			// If candidate is not a master then we just check if it will become a master
 			// In this case we account for a master creation as we want to avoid creating more
 			// than one master at a time.

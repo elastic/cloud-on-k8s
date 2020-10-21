@@ -199,7 +199,6 @@ func TestMutationAndReversal(t *testing.T) {
 		}).
 		WithMutatedFrom(&b)
 	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
-
 }
 
 func TestMutationNodeSetReplacementWithChangeBudget(t *testing.T) {

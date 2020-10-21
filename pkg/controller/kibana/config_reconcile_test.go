@@ -67,7 +67,8 @@ func TestReconcileConfigSecret(t *testing.T) {
 							Labels:    map[string]string{KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{},
-					}},
+					},
+				},
 			},
 
 			assertions: func(secrets corev1.SecretList) error {
@@ -90,7 +91,8 @@ func TestReconcileConfigSecret(t *testing.T) {
 						Data: map[string][]byte{
 							SettingsFilename: []byte("eW8h"),
 						},
-					}},
+					},
+				},
 			},
 
 			assertions: func(secrets corev1.SecretList) error {

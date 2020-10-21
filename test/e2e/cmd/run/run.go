@@ -384,7 +384,6 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
 func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
-
 	testSession := NewJobsManager(client, h)
 
 	outputs := []io.Writer{os.Stdout}

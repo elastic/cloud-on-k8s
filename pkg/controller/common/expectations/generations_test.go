@@ -59,7 +59,8 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 				k8s.ExtractNamespacedName(&sset2HigherGen): {
 					UID:        sset2HigherGen.UID,
 					Generation: sset2HigherGen.Generation,
-				}},
+				},
+			},
 		},
 		{
 			name:                    "one generation expected, satisfied",
@@ -84,7 +85,8 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 				k8s.ExtractNamespacedName(&sset2HigherGen): {
 					UID:        sset2HigherGen.UID,
 					Generation: sset2HigherGen.Generation,
-				}},
+				},
+			},
 		},
 		{
 			name:                    "expecting a generation for a StatefulSet that does not exist anymore: satisfied",

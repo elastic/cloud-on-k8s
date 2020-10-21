@@ -12,7 +12,7 @@ import (
 func ExecuteCommand() *cobra.Command {
 	var plansFile, configFile *string
 	var operation string
-	var executeCmd = &cobra.Command{
+	executeCmd := &cobra.Command{
 		Use:   "execute",
 		Short: "Executes the plan according to plans file, run config file and overrides.",
 		RunE: func(cmd *cobra.Command, args []string) error {

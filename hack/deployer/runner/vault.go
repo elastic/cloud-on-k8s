@@ -100,7 +100,7 @@ func (v *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error
 		return fmt.Errorf("field %s at %s is not a string, that's unexpected", fieldName, secretPath)
 	}
 
-	return ioutil.WriteFile(fileName, []byte(stringServiceAccount), 0600)
+	return ioutil.WriteFile(fileName, []byte(stringServiceAccount), 0o600)
 }
 
 // Get fetches contents of a single field at a specified path in Vault

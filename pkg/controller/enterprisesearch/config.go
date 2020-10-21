@@ -42,12 +42,12 @@ const (
 )
 
 func ConfigSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
-	return volume.NewSecretVolume(name.Config(ent.Name), "config", ConfigMountPath, ConfigFilename, 0444)
+	return volume.NewSecretVolume(name.Config(ent.Name), "config", ConfigMountPath, ConfigFilename, 0o444)
 }
 
 func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
 	// reuse the config secret
-	return volume.NewSecretVolume(name.Config(ent.Name), "readiness-probe", ReadinessProbeMountPath, ReadinessProbeFilename, 0444)
+	return volume.NewSecretVolume(name.Config(ent.Name), "readiness-probe", ReadinessProbeMountPath, ReadinessProbeFilename, 0o444)
 }
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and

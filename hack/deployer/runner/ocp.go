@@ -190,7 +190,6 @@ func (d *OcpDriver) clusterExists() (bool, error) {
 	log.Println("Checking if cluster exists...")
 
 	err := d.GetCredentials()
-
 	if err != nil {
 		// No need to send this error back
 		// in this case. We're checking whether
@@ -221,8 +220,7 @@ func (d *OcpDriver) create() error {
 	}
 
 	installConfig := filepath.Join(d.ctx["ClusterStateDir"].(string), "install-config.yaml")
-	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0600)
-
+	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0o600)
 	if err != nil {
 		return err
 	}
@@ -310,7 +308,6 @@ func (d *OcpDriver) GetCredentials() error {
 	}
 
 	return fmt.Errorf("credentials not found")
-
 }
 
 func (d *OcpDriver) delete() error {
@@ -318,7 +315,6 @@ func (d *OcpDriver) delete() error {
 
 	cmd := NewCommand("openshift-install destroy cluster --dir {{.ClusterStateDir}}")
 	err := cmd.AsTemplate(d.ctx).Run()
-
 	if err != nil {
 		return err
 	}

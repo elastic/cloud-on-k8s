@@ -87,7 +87,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				Spec: kbv1.KibanaSpec{
 					ElasticsearchRef: commonv1.ObjectSelector{ // ElasticsearchRef without a namespace
 						Name: esFixture.Name,
-						//Namespace: esFixture.Namespace, No namespace on purpose
+						// Namespace: esFixture.Namespace, No namespace on purpose
 					},
 				},
 			},

@@ -46,7 +46,6 @@ func newUserSecret(
 }
 
 func TestUsersGarbageCollector_GC(t *testing.T) {
-
 	client := k8s.WrappedFakeClient(
 		// Create 5 secrets, 3 actually used and 2 orphaned
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),

@@ -202,7 +202,8 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				beat.Spec = b.Beat.Spec
 				require.NoError(t, k.Client.Update(&beat))
 			},
-		}}
+		},
+	}
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {

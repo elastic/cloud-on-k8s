@@ -63,7 +63,8 @@ func TestVolumeMultiDataPath(t *testing.T) {
 							},
 						},
 					},
-				}},
+				},
+			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{

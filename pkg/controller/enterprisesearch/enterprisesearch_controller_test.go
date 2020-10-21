@@ -135,11 +135,13 @@ func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.T) {
-	sample := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
+	sample := entv1beta1.EnterpriseSearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
 		Spec: entv1beta1.EnterpriseSearchSpec{
 			Version: "7.7.0",
 			Count:   3,
-		}}
+		},
+	}
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.WrappedFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
@@ -242,7 +244,8 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "some-es"}}
 	ent := entv1beta1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-		Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
+		Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}},
+	}
 	esTLSCertsSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
 		Data: map[string][]byte{
@@ -253,7 +256,8 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		Version:        "7.7.0",
 		AuthSecretName: "ent-user",
 		CASecretName:   "es-tls-certs",
-		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"})
+		URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+	})
 
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.WrappedFakeClient(&ent, &es, &esTLSCertsSecret),
@@ -353,8 +357,10 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "preserve existing association status",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Status: entv1beta1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished}},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status:     entv1beta1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished},
+			},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -401,7 +407,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "update existing status when replicas count changes",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Status: entv1beta1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
@@ -409,7 +416,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 						Health:         "green",
 					},
 					ExternalService: "http-service",
-				}},
+				},
+			},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 4,
 				Conditions: []appsv1.DeploymentCondition{
@@ -432,7 +440,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "don't do a status update if not necessary",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Status: entv1beta1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
@@ -440,7 +449,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 						Health:         "green",
 					},
 					ExternalService: "http-service",
-				}},
+				},
+			},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -463,7 +473,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "emit an event when health goes from green to red",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Status: entv1beta1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
@@ -471,7 +482,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 						Health:         "green",
 					},
 					ExternalService: "http-service",
-				}},
+				},
+			},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -529,7 +541,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 
 func Test_buildConfigHash(t *testing.T) {
 	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
-		Namespace: "ns", Name: "ent"}}
+		Namespace: "ns", Name: "ent",
+	}}
 
 	entWithAssociation := *ent.DeepCopy()
 	esTLSCertsSecret := corev1.Secret{
@@ -542,7 +555,8 @@ func Test_buildConfigHash(t *testing.T) {
 
 	entWithoutTLS := *ent.DeepCopy()
 	entWithoutTLS.Spec.HTTP.TLS = commonv1.TLSOptions{
-		SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
+		SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+	}
 
 	configSecret := corev1.Secret{
 		Data: map[string][]byte{

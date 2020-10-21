@@ -19,7 +19,6 @@ import (
 )
 
 func TestElasticsearchHealth_Less(t *testing.T) {
-
 	tests := []struct {
 		inputs []ElasticsearchHealth
 		sorted bool
@@ -127,6 +126,7 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 		})
 	}
 }
+
 func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	tests := []struct {
 		name     string

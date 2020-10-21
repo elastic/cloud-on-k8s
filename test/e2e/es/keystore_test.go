@@ -75,7 +75,8 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			// initial secure settings should be there in all nodes keystore
 			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
-				secureBarUserSettingKey}),
+				secureBarUserSettingKey,
+			}),
 
 			// modify the secure settings secret
 			test.Step{

@@ -75,7 +75,8 @@ func Test_listAffectedLicenses(t *testing.T) {
 						Namespace: "default",
 						Name:      "bar-cluster",
 					},
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{

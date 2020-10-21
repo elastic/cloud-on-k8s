@@ -23,9 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	f = false
-)
+var f = false
 
 // HeadlessServiceName returns the name of the headless service for the given StatefulSet.
 func HeadlessServiceName(ssetName string) string {

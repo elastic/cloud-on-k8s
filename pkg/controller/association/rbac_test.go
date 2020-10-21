@@ -38,16 +38,14 @@ func (f *fakeUnbinder) Unbind(_ commonv1.Association) error {
 	return nil
 }
 
-var (
-	fetchEvent = func(recorder *record.FakeRecorder) string {
-		select {
-		case event := <-recorder.Events:
-			return event
-		default:
-			return ""
-		}
+var fetchEvent = func(recorder *record.FakeRecorder) string {
+	select {
+	case event := <-recorder.Events:
+		return event
+	default:
+		return ""
 	}
-)
+}
 
 func TestCheckAndUnbind(t *testing.T) {
 	apmServer := &apmv1.ApmEsAssociation{
@@ -127,7 +125,6 @@ func TestCheckAndUnbind(t *testing.T) {
 			if len(event) > 0 != tt.wantEvent {
 				t.Errorf("emitted event = %v, want %v", len(event) > 0, tt.wantEvent)
 			}
-
 		})
 	}
 }

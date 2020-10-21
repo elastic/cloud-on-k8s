@@ -43,9 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	defaultRequeue = controller.Result{Requeue: true, RequeueAfter: 10 * time.Second}
-)
+var defaultRequeue = controller.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 
 // Driver orchestrates the reconciliation of an Elasticsearch resource.
 // Its lifecycle is bound to a single reconciliation attempt.

@@ -23,9 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	log = logf.Log.WithName("generic-reconciler")
-)
+var log = logf.Log.WithName("generic-reconciler")
 
 // Params is a parameter object for the ReconcileResources function
 type Params struct {
@@ -65,7 +63,6 @@ func (p Params) CheckNilValues() error {
 		return errors.New("Expected must not be nil")
 	}
 	return nil
-
 }
 
 // ReconcileResource is a generic reconciliation function for resources that need to
@@ -99,7 +96,6 @@ func ReconcileResource(params Params) error {
 			if err := params.PreCreate(); err != nil {
 				return err
 			}
-
 		}
 
 		// Copy the content of params.Expected into params.Reconciled.

@@ -28,7 +28,8 @@ import (
 
 var (
 	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name: "sample-sc"}}
+		Name: "sample-sc",
+	}}
 
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
@@ -36,14 +37,18 @@ var (
 			StorageClassName: pointer.StringPtr(sampleStorageClass.Name),
 			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
-			}}}}
+			}},
+		},
+	}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: pointer.StringPtr(sampleStorageClass.Name),
 			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
-			}}}}
+			}},
+		},
+	}
 
 	sampleSset = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"}}
 )
@@ -220,7 +225,8 @@ func Test_handleVolumeExpansion(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
-						"elasticsearch.k8s.elastic.co/recreate-" + tt.args.actualSset.Name: *wantUpdatedSset},
+						"elasticsearch.k8s.elastic.co/recreate-" + tt.args.actualSset.Name: *wantUpdatedSset,
+					},
 					toRecreate)
 			} else {
 				require.Empty(t, retrievedES.Annotations)

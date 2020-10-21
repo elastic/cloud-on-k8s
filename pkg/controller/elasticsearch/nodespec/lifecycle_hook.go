@@ -14,12 +14,14 @@ import (
 func NewPreStopHook() *v1.Handler {
 	return &v1.Handler{
 		Exec: &v1.ExecAction{
-			Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, PreStopHookScriptConfigKey)}},
+			Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, PreStopHookScriptConfigKey)},
+		},
 	}
 }
 
-const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
-const PreStopHookScript = `#!/usr/bin/env bash
+const (
+	PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
+	PreStopHookScript          = `#!/usr/bin/env bash
 
 set -eux
 
@@ -57,3 +59,4 @@ while true; do
    sleep 1
 done
 `
+)

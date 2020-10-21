@@ -87,7 +87,6 @@ func (r *ReconcileApmServer) deploymentParams(
 	as *apmv1.ApmServer,
 	params PodSpecParams,
 ) (deployment.Params, error) {
-
 	podSpec := newPodSpec(as, params)
 
 	// Build a checksum of the configuration, the keystore, and the cert files used by ES and Kibana.

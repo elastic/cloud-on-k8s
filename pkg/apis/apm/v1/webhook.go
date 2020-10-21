@@ -119,16 +119,16 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 		return err
 	}
 	if !apmVersion.IsSameOrAfter(ApmAgentConfigurationMinVersion) {
-		return field.ErrorList{field.Forbidden(
-			field.NewPath("spec").Child("kibanaRef"),
-			fmt.Sprintf(
-				"minimum required version for Kibana association is %s but desired version is %s",
-				ApmAgentConfigurationMinVersion,
-				apmVersion,
+		return field.ErrorList{
+			field.Forbidden(
+				field.NewPath("spec").Child("kibanaRef"),
+				fmt.Sprintf(
+					"minimum required version for Kibana association is %s but desired version is %s",
+					ApmAgentConfigurationMinVersion,
+					apmVersion,
+				),
 			),
-		),
 		}
-
 	}
 	return nil
 }

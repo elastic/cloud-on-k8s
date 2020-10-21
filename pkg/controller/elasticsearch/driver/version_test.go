@@ -14,9 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var (
-	testPodWithoutVersionLabel = corev1.Pod{}
-)
+var testPodWithoutVersionLabel = corev1.Pod{}
 
 func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T) {
 	newPodWithVersionLabel := func(v version.Version) corev1.Pod {

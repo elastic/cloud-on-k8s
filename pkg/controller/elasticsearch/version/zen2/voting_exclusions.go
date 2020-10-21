@@ -15,9 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	log = logf.Log.WithName("zen2")
-)
+var log = logf.Log.WithName("zen2")
 
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.
 func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient client.Client, es esv1.Elasticsearch, excludeNodes []string) error {

@@ -163,7 +163,6 @@ func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret
 	trialActivationInProgress := bytes.Equal(trialStatus.Data[licensing.TrialActivationKey], []byte("true"))
 	if trialActivationInProgress && allowNewState {
 		return licensing.NewTrialState()
-
 	}
 	// otherwise just recover the public key
 	return licensing.NewTrialStateFromStatus(trialStatus)
@@ -236,7 +235,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 }
 
 func addWatches(c controller.Controller) error {
-
 	// Watch the trial status secret and the enterprise trial licenses as well
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {

@@ -123,7 +123,6 @@ func TestTelemetry(t *testing.T) {
 	}
 
 	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
-
 }
 
 // telemetryRequest is the request body for v1/v2 Kibana telemetry requests

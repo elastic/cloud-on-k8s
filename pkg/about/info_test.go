@@ -16,8 +16,10 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
-const fakeOperatorNs = "elastic-system-test"
-const fakeDistributionChannel = "channel-1"
+const (
+	fakeOperatorNs          = "elastic-system-test"
+	fakeDistributionChannel = "channel-1"
+)
 
 func TestGetOperatorInfo(t *testing.T) {
 	tests := []struct {

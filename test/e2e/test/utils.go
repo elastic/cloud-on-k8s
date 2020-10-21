@@ -153,7 +153,6 @@ func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 	}
 
 	return errors.New("e2e runner pod not found")
-
 }
 
 func labelPod(client k8s.Client, name, namespace, key, value string) error {

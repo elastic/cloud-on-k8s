@@ -97,7 +97,6 @@ func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
 }
 
 func TestReconcileTrials_Reconcile(t *testing.T) {
-
 	requireValidationMsg := func(msg string) func(c k8s.Client) {
 		return func(c k8s.Client) {
 			var sec corev1.Secret
@@ -294,7 +293,6 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			r := &ReconcileTrials{
 				Client:            tt.fields.Client,
 				recorder:          record.NewFakeRecorder(10),

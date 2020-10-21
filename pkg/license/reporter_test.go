@@ -213,7 +213,8 @@ func Test_Start(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "es-test",
 		},
-		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 40}}}}
+		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 40}}},
+	}
 	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
 	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
 	k8sClient := k8s.FakeClient(&es, &kb, &apm)
@@ -277,7 +278,6 @@ func Test_Start(t *testing.T) {
 			cm.Data["enterprise_resource_units"] == "3" &&
 			cm.Data["total_managed_memory"] == "175.02GB"
 	}, waitFor, tick)
-
 }
 
 func startTrial(t *testing.T, k8sClient client.Client) {

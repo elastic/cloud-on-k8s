@@ -58,5 +58,6 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				kb.Spec = b.Kibana.Spec
 				require.NoError(t, k.Client.Update(&kb))
 			},
-		}}
+		},
+	}
 }

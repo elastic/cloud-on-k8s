@@ -14,13 +14,13 @@ import (
 
 func GetCommand() *cobra.Command {
 	var plansFile, configFile *string
-	var getCommand = &cobra.Command{
+	getCommand := &cobra.Command{
 		Use:   "get",
 		Short: "Gets cluster configuration, credentials.",
 	}
 	plansFile, configFile = registerFileFlags(getCommand)
 
-	var getClusterNameCommand = &cobra.Command{
+	getClusterNameCommand := &cobra.Command{
 		Use:   "clusterName",
 		Short: "Gets cluster name as per config.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -39,7 +39,7 @@ func GetCommand() *cobra.Command {
 		},
 	}
 
-	var getCredentialsCommand = &cobra.Command{
+	getCredentialsCommand := &cobra.Command{
 		Use:   "credentials",
 		Short: "Fetches credentials for the cluster as per config and sets kubectl context to this cluster.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +57,7 @@ func GetCommand() *cobra.Command {
 		},
 	}
 
-	var getConfigCommand = &cobra.Command{
+	getConfigCommand := &cobra.Command{
 		Use:   "config",
 		Short: "Gets entire configuration as per config. Be careful, secrets are included and in plain text.",
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -262,8 +262,10 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 				},
 			},
 			args: args{
-				resourcesState: ResourcesState{AllPods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: "7.8.0"}}}},
+				resourcesState: ResourcesState{
+					AllPods: []corev1.Pod{
+						{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: "7.8.0"}}},
+					},
 				},
 			},
 			stateAssertions: func(s *State) {
@@ -279,8 +281,10 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 				},
 			},
 			args: args{
-				resourcesState: ResourcesState{AllPods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: "invalid"}}}},
+				resourcesState: ResourcesState{
+					AllPods: []corev1.Pod{
+						{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: "invalid"}}},
+					},
 				},
 			},
 			stateAssertions: func(s *State) {
@@ -304,7 +308,6 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "green", s.status.Health)
-
 			},
 		},
 	}
@@ -358,7 +361,8 @@ func TestState_fetchMinRunningVersion(t *testing.T) {
 	v770 := version.MustParse("7.7.0")
 	ssetWithVersion := func(value string) appsv1.StatefulSet {
 		return appsv1.StatefulSet{Spec: appsv1.StatefulSetSpec{Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}}}
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}},
+		}}}
 	}
 	podWithVersion := func(value string) corev1.Pod {
 		return corev1.Pod{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}

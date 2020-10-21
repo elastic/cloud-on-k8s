@@ -47,6 +47,7 @@ var sampleEsWithAuth = esv1.Elasticsearch{
 		},
 	}},
 }
+
 var sampleUserProvidedFileRealmSecrets = []runtime.Object{
 	&corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "filerealm-secret-1"},

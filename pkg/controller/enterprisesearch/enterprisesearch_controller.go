@@ -44,9 +44,7 @@ const (
 	controllerName = "enterprisesearch-controller"
 )
 
-var (
-	log = logf.Log.WithName(controllerName)
-)
+var log = logf.Log.WithName(controllerName)
 
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller and Start it when the Manager is Started.

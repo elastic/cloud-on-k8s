@@ -76,7 +76,6 @@ func (us *FakeLogStream) Close() error {
 
 // Test_helper_streamTestJobOutput_withError simulates an error while the stream is read using the FakeLogStreamProvider
 func Test_helper_streamTestJobOutput_withError(t *testing.T) {
-
 	log = logf.Log.WithName("streamTestJobOutput_withError")
 
 	stopLogStream := make(chan struct{})
@@ -100,7 +99,6 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 }
 
 func Test_helper_streamTestJobOutput(t *testing.T) {
-
 	log = logf.Log.WithName("streamTestJobOutput")
 
 	stopLogStream := make(chan struct{})
@@ -137,7 +135,7 @@ func Test_goLangTestTimestampParser(t *testing.T) {
 			args: args{
 				line: `{"Time":"2020-08-19T07:55:30.02987855Z","Action":"output","Package":"github.com/elastic/cloud-on-k8s/test/e2e/beat","Test":"TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready","Output":"=== RUN   TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready\n"}`,
 			},
-			want: time.Date(2020, time.August, 19, 07, 55, 30, 29878550, time.UTC),
+			want: time.Date(2020, time.August, 19, 0o7, 55, 30, 29878550, time.UTC),
 		},
 		{
 			name: "corrupted timestamp",
@@ -183,7 +181,7 @@ func Test_stdTimestampParser(t *testing.T) {
 			args: args{
 				line: `{"log.level":"info","@timestamp":"2020-09-02T13:38:38.064Z","log.logger":"chaos","message":"Leader collection","service.version":"0.0.0-SNAPSHOT+00000000","service.type":"eck","ecs.version":"1.4.0"}`,
 			},
-			want: time.Date(2020, time.September, 02, 13, 38, 38, 64000000, time.UTC),
+			want: time.Date(2020, time.September, 0o2, 13, 38, 38, 64000000, time.UTC),
 		},
 		{
 			name: "corrupted timestamp",

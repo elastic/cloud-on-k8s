@@ -46,8 +46,10 @@ var (
 )
 
 func entWithVersion(version string, annotations map[string]string) entv1beta1.EnterpriseSearch {
-	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
-		Spec: entv1beta1.EnterpriseSearchSpec{Version: version}}
+	ent := entv1beta1.EnterpriseSearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
+		Spec:       entv1beta1.EnterpriseSearchSpec{Version: version},
+	}
 	ent.SetAssociationConf(&associationConf)
 	return ent
 }
@@ -70,7 +72,8 @@ func deploymentWithVersion(version string) *appsv1.Deployment {
 		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 				VersionLabelName: version,
-			}}}},
+			}},
+		}},
 	}
 }
 
@@ -184,8 +187,10 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		},
 		{
 			name: "version upgrade requested, but no association configured : do nothing",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"},
+			},
 			runtimeObjs: []runtime.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
@@ -194,8 +199,10 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			httpChecks: roundTripChecks{
 				called: false,
 			},
-			wantUpdatedEnt: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
+			wantUpdatedEnt: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -228,21 +235,24 @@ func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 	}{
 		{
 			name: "annotation set to true: true",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns", Name: "ent",
 				Annotations: map[string]string{ReadOnlyModeAnnotationName: "true"},
 			}},
 			want: true,
 		},
 		{
 			name: "no annotation set: false",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns", Name: "ent",
 				Annotations: nil,
 			}},
 			want: false,
 		},
 		{
 			name: "annotation set to anything else: false",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns", Name: "ent",
 				Annotations: map[string]string{ReadOnlyModeAnnotationName: "anything-else"},
 			}},
 			want: false,

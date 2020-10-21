@@ -20,9 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	log = logf.Log.WithName("zen1")
-)
+var log = logf.Log.WithName("zen1")
 
 // SetupMinimumMasterNodesConfig modifies the ES config of the given resources to setup
 // zen1 minimum master nodes.

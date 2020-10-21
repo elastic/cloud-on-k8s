@@ -123,7 +123,8 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	runtimeObjs = []runtime.Object{&es, &ssetMaster3Replicas, &ssetData4Replicas,
+	runtimeObjs = []runtime.Object{
+		&es, &ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
@@ -309,7 +310,8 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset1",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(3)},
+				Replicas: pointer.Int32(3),
+			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -317,11 +319,12 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset2",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(3)},
+				Replicas: pointer.Int32(3),
+			},
 		},
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name                 string
 		expectedStatefulSets sset.StatefulSetList
 		actualStatefulSets   sset.StatefulSetList
@@ -353,7 +356,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(5)},
+						Replicas: pointer.Int32(5),
+					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -361,7 +365,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(3)},
+						Replicas: pointer.Int32(3),
+					},
 				},
 			},
 			actualStatefulSets: ssets,
@@ -417,7 +422,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(2)},
+						Replicas: pointer.Int32(2),
+					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -425,7 +431,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(1)},
+						Replicas: pointer.Int32(1),
+					},
 				},
 			},
 			actualStatefulSets: ssets,
@@ -454,7 +461,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(1)},
+						Replicas: pointer.Int32(1),
+					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -462,7 +470,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset3",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(0)},
+						Replicas: pointer.Int32(0),
+					},
 				},
 			},
 			actualStatefulSets: sset.StatefulSetList{
@@ -473,7 +482,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(0)},
+						Replicas: pointer.Int32(0),
+					},
 				},
 				// statefulset with 0 replicas which has a corresponding expected statefulset with 1 replica: should be kept
 				{
@@ -482,7 +492,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(0)},
+						Replicas: pointer.Int32(0),
+					},
 				},
 				// statefulset with 1 replicas that should be downscaled to 0
 				{
@@ -491,7 +502,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset3",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(1)},
+						Replicas: pointer.Int32(1),
+					},
 				},
 			},
 			wantDownscales: []ssetDownscale{
@@ -502,7 +514,8 @@ func Test_calculateDownscales(t *testing.T) {
 							Name:      "sset3",
 						},
 						Spec: appsv1.StatefulSetSpec{
-							Replicas: pointer.Int32(1)},
+							Replicas: pointer.Int32(1),
+						},
 					},
 					initialReplicas: 1,
 					targetReplicas:  0,
@@ -516,7 +529,8 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(0)},
+						Replicas: pointer.Int32(0),
+					},
 				},
 			},
 		},

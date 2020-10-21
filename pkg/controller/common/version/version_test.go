@@ -163,7 +163,6 @@ func TestVersion_IsSameOrAfter(t *testing.T) {
 }
 
 func TestMin(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args []Version
@@ -469,7 +468,8 @@ func TestMinInPods(t *testing.T) {
 func TestMinInStatefulSets(t *testing.T) {
 	ssetWithPodLabel := func(labelName string, value string) appsv1.StatefulSet {
 		return appsv1.StatefulSet{Spec: appsv1.StatefulSetSpec{Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelName: value}}}}}
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelName: value}},
+		}}}
 	}
 
 	type args struct {

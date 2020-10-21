@@ -14,8 +14,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var varFalse = false
-var varTrue = true
+var (
+	varFalse = false
+	varTrue  = true
+)
 
 func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 	tests := []struct {
@@ -423,7 +425,8 @@ func TestPodTemplateBuilder_WithCommand(t *testing.T) {
 							Command: []string{"user", "provided"},
 						},
 					},
-				}},
+				},
+			},
 			command: []string{"my", "command"},
 			want:    []string{"user", "provided"},
 		},
@@ -516,7 +519,8 @@ func TestPodTemplateBuilder_WithVolumes(t *testing.T) {
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{SecretName: "secret3"},
 					},
-				}},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -1125,7 +1129,8 @@ func TestPodTemplateBuilder_WithPreStopHook(t *testing.T) {
 							},
 						},
 					},
-				}},
+				},
+			},
 			preStopHook:   *userHook,
 			wantPostStart: nil,
 		},

@@ -37,18 +37,16 @@ const (
 	VersionLabelName = "beat.k8s.elastic.co/version"
 )
 
-var (
-	defaultResources = corev1.ResourceRequirements{
-		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-		},
-		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-		},
-	}
-)
+var defaultResources = corev1.ResourceRequirements{
+	Limits: map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceMemory: resource.MustParse("200Mi"),
+		corev1.ResourceCPU:    resource.MustParse("100m"),
+	},
+	Requests: map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceMemory: resource.MustParse("200Mi"),
+		corev1.ResourceCPU:    resource.MustParse("100m"),
+	},
+}
 
 func certificatesDir(association commonv1.Association) string {
 	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
@@ -78,7 +76,8 @@ func buildPodTemplate(
 
 	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
 		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-		VersionLabelName:    spec.Version})
+		VersionLabelName:    spec.Version,
+	})
 
 	dataVolume := createDataVolume(params)
 	vols := []volume.VolumeLike{
@@ -87,7 +86,7 @@ func buildPodTemplate(
 			ConfigVolumeName,
 			ConfigMountPath,
 			ConfigFileName,
-			0600),
+			0o600),
 		dataVolume,
 	}
 

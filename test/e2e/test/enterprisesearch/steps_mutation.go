@@ -58,5 +58,6 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				ent.Spec = b.EnterpriseSearch.Spec
 				require.NoError(t, k.Client.Update(&ent))
 			},
-		}}
+		},
+	}
 }

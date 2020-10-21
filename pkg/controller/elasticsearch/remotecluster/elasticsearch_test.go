@@ -91,6 +91,7 @@ func (f *fakeESClient) UpdateRemoteClusterSettings(_ context.Context, settings e
 	f.called = true
 	return nil
 }
+
 func newEsWithRemoteClusters(
 	esNamespace, esName string,
 	annotations map[string]string,

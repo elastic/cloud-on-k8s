@@ -23,7 +23,7 @@ type testcase struct {
 }
 
 func TestUnmanagedCondition(t *testing.T) {
-	var tests = []testcase{
+	tests := []testcase{
 		{
 			name: "Simple unmanaged/managed simulation (a.k.a the Happy Path)",
 			annotationSequence: []map[string]string{

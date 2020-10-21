@@ -33,7 +33,6 @@ const (
 )
 
 func Test_reconcileEsUser(t *testing.T) {
-
 	esFixture := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-foo",
@@ -128,7 +127,8 @@ func Test_reconcileEsUser(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userSecretName,
 						Namespace: "other",
-					}}},
+					},
+				}},
 				kibana: kibanaFixture,
 				es:     esFixture,
 			},
@@ -202,7 +202,8 @@ func Test_reconcileEsUser(t *testing.T) {
 							esuser.PasswordHashField: []byte("$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e"),
 							esuser.UserRolesField:    []byte("kibana_system"),
 						},
-					}},
+					},
+				},
 				kibana: kibanaFixture,
 				es:     esFixture,
 			},

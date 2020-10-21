@@ -103,7 +103,6 @@ func testFetchAPMServer(t *testing.T) {
 					t.Fatalf("unknown association type: %s", assoc.AssociatedType())
 				}
 			}
-
 		})
 	}
 }
@@ -416,7 +415,8 @@ func TestRemoveAssociationConf(t *testing.T) {
 func TestAllowVersion(t *testing.T) {
 	apmNoAssoc := &apmv1.ApmServer{}
 	apmTwoAssoc := &apmv1.ApmServer{Spec: apmv1.ApmServerSpec{
-		ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}, KibanaRef: commonv1.ObjectSelector{Name: "some-kb"}}}
+		ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}, KibanaRef: commonv1.ObjectSelector{Name: "some-kb"},
+	}}
 	apmTwoAssocWithVersions := func(versions []string) *apmv1.ApmServer {
 		apm := apmTwoAssoc.DeepCopy()
 		for i, assoc := range apm.GetAssociations() {

@@ -27,7 +27,8 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				as.Spec = b.ApmServer.Spec
 				require.NoError(t, k.Client.Update(&as))
 			},
-		}}
+		},
+	}
 }
 
 func (b Builder) MutationReversalTestContext() test.ReversalTestContext {

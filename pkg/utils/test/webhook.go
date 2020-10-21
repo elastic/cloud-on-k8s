@@ -111,7 +111,6 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 
 			response := decodeResponse(t, decoder, resp.Body)
 			tc.Check(t, response)
-
 		})
 	}
 }

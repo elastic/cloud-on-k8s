@@ -20,8 +20,10 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-var addToScheme sync.Once
-var addToSchemeV1beta1 sync.Once
+var (
+	addToScheme        sync.Once
+	addToSchemeV1beta1 sync.Once
+)
 
 // SetupScheme sets up a scheme with all of the relevant types. This is only needed once for the manager but is often used for tests
 // Afterwards you can use clientgoscheme.Scheme

@@ -15,9 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-var (
-	defaultRevisionHistoryLimit int32
-)
+var defaultRevisionHistoryLimit int32
 
 // Params to specify a Deployment specification.
 type Params struct {

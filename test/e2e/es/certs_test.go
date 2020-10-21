@@ -109,7 +109,6 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 }
 
 func getPodIP(k *test.K8sClient, ns string, esName string) (string, error) {
-
 	pods, err := k.GetPods(test.ESPodListOptions(ns, esName)...)
 	if err != nil {
 		return "", err
@@ -144,8 +143,11 @@ func requestESWithCA(ip string, caCert []byte) (int, error) {
 		Timeout:   60 * time.Second,
 		Transport: &transport,
 	}
-
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err
 	}

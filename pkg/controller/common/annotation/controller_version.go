@@ -138,7 +138,6 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.
 // checkExistingResources returns a bool indicating if there are existing resources owned for a given resource.
 // The labels provided must exactly match.
 func checkExistingResources(client k8s.Client, owner runtime.Object, labels map[string]string) (bool, error) {
-
 	metaOwner, err := meta.Accessor(owner)
 	if err != nil {
 		return false, err

@@ -35,18 +35,16 @@ const (
 	TelemetryFilename = "telemetry.yml"
 )
 
-var (
-	// ConfigSharedVolume contains the Kibana config/ directory, it's an empty volume where the required configuration
-	// is initialized by the elastic-internal-init-config init container. Its content is then shared by the init container
-	// that creates the keystore and the main Kibana container.
-	// This is needed in order to have in a same directory both the generated configuration and the keystore file  which
-	// is created in /usr/share/kibana/config since Kibana 7.9
-	ConfigSharedVolume = volume.SharedVolume{
-		VolumeName:             ConfigVolumeName,
-		InitContainerMountPath: InitContainerConfigVolumeMountPath,
-		ContainerMountPath:     ConfigVolumeMountPath,
-	}
-)
+// ConfigSharedVolume contains the Kibana config/ directory, it's an empty volume where the required configuration
+// is initialized by the elastic-internal-init-config init container. Its content is then shared by the init container
+// that creates the keystore and the main Kibana container.
+// This is needed in order to have in a same directory both the generated configuration and the keystore file  which
+// is created in /usr/share/kibana/config since Kibana 7.9
+var ConfigSharedVolume = volume.SharedVolume{
+	VolumeName:             ConfigVolumeName,
+	InitContainerMountPath: InitContainerConfigVolumeMountPath,
+	ContainerMountPath:     ConfigVolumeMountPath,
+}
 
 // ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
 func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {

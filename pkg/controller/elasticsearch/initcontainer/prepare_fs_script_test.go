@@ -25,7 +25,10 @@ func TestRenderScriptTemplate(t *testing.T) {
 					Array: []LinkedFile{
 						{
 							Source: "/secrets/users",
-							Target: "/usr/share/elasticsearch/users"}}},
+							Target: "/usr/share/elasticsearch/users",
+						},
+					},
+				},
 			},
 			wantSubstr: []string{
 				"cp -av /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",

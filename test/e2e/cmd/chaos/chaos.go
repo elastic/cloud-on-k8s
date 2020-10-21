@@ -110,7 +110,6 @@ func doRun(flags runFlags) error {
 			}
 		}
 	}
-
 }
 
 // listOperators retrieves the list of running operator instances.

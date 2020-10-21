@@ -36,9 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
-var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
-)
+var defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
 type AssociationInfo struct {

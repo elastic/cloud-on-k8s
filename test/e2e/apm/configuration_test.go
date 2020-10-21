@@ -40,7 +40,6 @@ type PartialApmConfiguration struct {
 }
 
 func TestUpdateConfiguration(t *testing.T) {
-
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
 	secureSettings := corev1.Secret{
@@ -195,7 +194,6 @@ func TestUpdateConfiguration(t *testing.T) {
 	}
 
 	test.Sequence(initStepsFn, stepsFn, esBuilder, apmBuilder).RunSequential(t)
-
 }
 
 func partialAPMConfiguration(k *test.K8sClient, namespace, name string) (PartialApmConfiguration, error) {

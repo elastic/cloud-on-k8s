@@ -191,7 +191,6 @@ func Test_buildBeatConfig(t *testing.T) {
 }
 
 func TestBuildKibanaConfig(t *testing.T) {
-
 	secretFixture := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-secret",
@@ -220,7 +219,9 @@ func TestBuildKibanaConfig(t *testing.T) {
 				KibanaRef: commonv1.ObjectSelector{
 					Name:      "auth-secret",
 					Namespace: "test-ns",
-				}}}}
+				},
+			},
+		}}
 
 		assoc.SetAssociationConf(&conf)
 		return assoc

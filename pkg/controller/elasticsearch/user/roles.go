@@ -45,50 +45,48 @@ const (
 	V77 = "v77"
 )
 
-var (
-	// PredefinedRoles to create for internal needs.
-	PredefinedRoles = RolesFileContent{
-		ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
-		ApmUserRoleV6: esclient.Role{
-			Cluster: []string{"monitor", "manage_index_templates"},
-			Indices: []esclient.IndexRole{
-				{
-					Names:      []string{"apm-*"},
-					Privileges: []string{"write", "create_index"},
-				},
+// PredefinedRoles to create for internal needs.
+var PredefinedRoles = RolesFileContent{
+	ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
+	ApmUserRoleV6: esclient.Role{
+		Cluster: []string{"monitor", "manage_index_templates"},
+		Indices: []esclient.IndexRole{
+			{
+				Names:      []string{"apm-*"},
+				Privileges: []string{"write", "create_index"},
 			},
 		},
-		ApmUserRoleV7: esclient.Role{
-			Cluster: []string{"monitor", "manage_ilm", "manage_index_templates"},
-			Indices: []esclient.IndexRole{
-				{
-					Names:      []string{"apm-*"},
-					Privileges: []string{"manage", "write", "create_index"},
-				},
+	},
+	ApmUserRoleV7: esclient.Role{
+		Cluster: []string{"monitor", "manage_ilm", "manage_index_templates"},
+		Indices: []esclient.IndexRole{
+			{
+				Names:      []string{"apm-*"},
+				Privileges: []string{"manage", "write", "create_index"},
 			},
 		},
-		ApmUserRoleV75: esclient.Role{
-			Cluster: []string{"monitor", "manage_ilm", "manage_api_key"}, // manage_api_key has been introduced in 7.5
-			Indices: []esclient.IndexRole{
-				{
-					Names:      []string{"apm-*"},
-					Privileges: []string{"manage", "create_doc", "create_index"},
-				},
+	},
+	ApmUserRoleV75: esclient.Role{
+		Cluster: []string{"monitor", "manage_ilm", "manage_api_key"}, // manage_api_key has been introduced in 7.5
+		Indices: []esclient.IndexRole{
+			{
+				Names:      []string{"apm-*"},
+				Privileges: []string{"manage", "create_doc", "create_index"},
 			},
 		},
-		ApmAgentUserRole: esclient.Role{
-			Cluster: []string{},
-			Indices: []esclient.IndexRole{},
-			Applications: []esclient.ApplicationRole{
-				{
-					Application: "kibana-.kibana",
-					Resources:   []string{"space:default"},
-					Privileges:  []string{"feature_apm.read"},
-				},
+	},
+	ApmAgentUserRole: esclient.Role{
+		Cluster: []string{},
+		Indices: []esclient.IndexRole{},
+		Applications: []esclient.ApplicationRole{
+			{
+				Application: "kibana-.kibana",
+				Resources:   []string{"space:default"},
+				Privileges:  []string{"feature_apm.read"},
 			},
 		},
-	}
-)
+	},
+}
 
 func init() {
 	for beat := range beatv1beta1.KnownTypes {

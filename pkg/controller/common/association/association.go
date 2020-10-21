@@ -37,7 +37,8 @@ func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, 
 
 	authSecretNsName := types.NamespacedName{
 		Name:      assocConf.GetAuthSecretName(),
-		Namespace: assoc.GetNamespace()}
+		Namespace: assoc.GetNamespace(),
+	}
 	var authSecret corev1.Secret
 	if err := client.Get(authSecretNsName, &authSecret); err != nil {
 		return err
@@ -60,7 +61,8 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 
 	publicCASecretNsName := types.NamespacedName{
 		Namespace: assoc.GetNamespace(),
-		Name:      assocConf.GetCASecretName()}
+		Name:      assocConf.GetCASecretName(),
+	}
 	var publicCASecret corev1.Secret
 	if err := client.Get(publicCASecretNsName, &publicCASecret); err != nil {
 		return err

@@ -49,7 +49,6 @@ func TestReconcile(t *testing.T) {
 			return err
 		}
 		return addWatches(c, r.Client)
-
 	}, operator.Parameters{})
 	defer stop()
 
@@ -121,7 +120,6 @@ func TestReconcile(t *testing.T) {
 		}
 		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)
 	})
-
 }
 
 func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {
@@ -220,7 +218,6 @@ func TestDelayingQueueInvariants(t *testing.T) {
 						return
 					}
 				}
-
 			}
 			collect()
 			assert.Equal(t, tt.expectedObservations, seen)

@@ -16,9 +16,7 @@ const (
 	DeleteAction = "delete"
 )
 
-var (
-	drivers = make(map[string]DriverFactory)
-)
+var drivers = make(map[string]DriverFactory)
 
 // DriverFactory allows creating a driver
 type DriverFactory interface {

@@ -109,8 +109,10 @@ func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	return []commonv1.Association{ent}
 }
 
-var _ commonv1.Associated = &EnterpriseSearch{}
-var _ commonv1.Association = &EnterpriseSearch{}
+var (
+	_ commonv1.Associated  = &EnterpriseSearch{}
+	_ commonv1.Association = &EnterpriseSearch{}
+)
 
 // +kubebuilder:object:root=true
 

@@ -56,7 +56,8 @@ func (cb *clusterBuilder) build() *esv1.Elasticsearch {
 			ElasticsearchRef: commonv1.ObjectSelector{
 				Name:      remoteCluster.Name,
 				Namespace: remoteCluster.Namespace,
-			}}
+			},
+		}
 		i++
 	}
 
@@ -87,9 +88,11 @@ type fakeLicenseChecker struct {
 func (f fakeLicenseChecker) CurrentEnterpriseLicense() (*license.EnterpriseLicense, error) {
 	return nil, nil
 }
+
 func (f fakeLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
 	return f.enterpriseFeaturesEnabled, nil
 }
+
 func (f fakeLicenseChecker) Valid(l license.EnterpriseLicense) (bool, error) {
 	return f.enterpriseFeaturesEnabled, nil
 }

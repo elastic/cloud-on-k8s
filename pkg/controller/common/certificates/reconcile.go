@@ -24,9 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	log = logf.Log.WithName("certificates")
-)
+var log = logf.Log.WithName("certificates")
 
 type Reconciler struct {
 	K8sClient      k8s.Client

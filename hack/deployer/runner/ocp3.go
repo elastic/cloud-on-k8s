@@ -35,10 +35,8 @@ const (
 	MasterInstance = "n1-standard-2"
 )
 
-var (
-	// SharedVolumeName name shared by CI container and Ansible container
-	SharedVolumeName = os.Getenv("SHARED_VOLUME_NAME")
-)
+// SharedVolumeName name shared by CI container and Ansible container
+var SharedVolumeName = os.Getenv("SHARED_VOLUME_NAME")
 
 func init() {
 	drivers[Ocp3DriverID] = &Ocp3DriverFactory{}
@@ -153,7 +151,7 @@ func (d Ocp3Driver) writeAnsibleVarsFile() error {
 	}
 	varsFile := filepath.Join(os.Getenv("HOME"), AnsibleVarsFilename)
 	/* #nosec */
-	if err := ioutil.WriteFile(varsFile, varsBytes, 0644); err != nil {
+	if err := ioutil.WriteFile(varsFile, varsBytes, 0o644); err != nil {
 		return fmt.Errorf("while writing Ansible variables file %w", err)
 	}
 	return nil

@@ -67,9 +67,11 @@ func newToRequestsFuncFromSecret() handler.ToRequestsFunc {
 			return nil
 		}
 		return []reconcile.Request{
-			{NamespacedName: types.NamespacedName{
-				Namespace: labels[RemoteClusterNamespaceLabelName],
-				Name:      labels[RemoteClusterNameLabelName]},
+			{
+				NamespacedName: types.NamespacedName{
+					Namespace: labels[RemoteClusterNamespaceLabelName],
+					Name:      labels[RemoteClusterNameLabelName],
+				},
 			},
 		}
 	}

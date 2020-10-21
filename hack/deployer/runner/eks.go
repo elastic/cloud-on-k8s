@@ -113,7 +113,7 @@ func (e *EKSDriver) Execute() error {
 			}
 			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml")
 			e.ctx["CreateCfgFile"] = createCfgFile
-			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
+			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0o600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
 			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
@@ -213,7 +213,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	path := filepath.Join(dir, ".aws")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.Mkdir(path, 0600); err != nil {
+		if err = os.Mkdir(path, 0o600); err != nil {
 			return err
 		}
 	}
@@ -224,7 +224,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	log.Printf("Writing aws credentials")
 	fileContents := fmt.Sprintf(credentialsTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
-	return ioutil.WriteFile(file, []byte(fileContents), 0600)
+	return ioutil.WriteFile(file, []byte(fileContents), 0o600)
 }
 
 var _ Driver = &EKSDriver{}

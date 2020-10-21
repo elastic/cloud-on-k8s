@@ -26,8 +26,10 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 				Spec: ElasticsearchSpec{
 					Version: "7.4.0",
 					NodeSets: []NodeSet{
-						{Name: "foo", Count: 1}, {Name: "foo", Count: 1},
-						{Name: "bar", Count: 1}, {Name: "bar", Count: 1},
+						{Name: "foo", Count: 1},
+						{Name: "foo", Count: 1},
+						{Name: "bar", Count: 1},
+						{Name: "bar", Count: 1},
 					},
 				},
 			},
@@ -570,7 +572,6 @@ func TestValidation_noDowngrades(t *testing.T) {
 }
 
 func Test_validUpgradePath(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		current      *Elasticsearch
@@ -660,8 +661,7 @@ func getEsCluster() *Elasticsearch {
 }
 
 func Test_noUnknownFields(t *testing.T) {
-
-	var GetEsWithLastApplied = func(lastApplied string) Elasticsearch {
+	GetEsWithLastApplied := func(lastApplied string) Elasticsearch {
 		return Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{

@@ -179,7 +179,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 					{
 						Data: map[string][]byte{
 							"key1": []byte("value1"),
-						}},
+						},
+					},
 				},
 				namer: kbNamer,
 			},
@@ -187,7 +188,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				ObjectMeta: expectedMeta,
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{
@@ -213,7 +215,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				ObjectMeta: expectedMeta,
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{

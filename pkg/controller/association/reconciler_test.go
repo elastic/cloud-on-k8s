@@ -75,8 +75,10 @@ var (
 
 	kibanaNamespace = "kbns"
 	esNamespace     = "esns"
-	sampleES        = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
-		Status: esv1.ElasticsearchStatus{Version: "7.7.0"}}
+	sampleES        = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
+		Status:     esv1.ElasticsearchStatus{Version: "7.7.0"},
+	}
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
 			ObjectMeta: metav1.ObjectMeta{

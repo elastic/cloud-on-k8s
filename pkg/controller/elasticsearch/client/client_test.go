@@ -29,7 +29,6 @@ import (
 )
 
 func TestParseShards(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args string
@@ -88,11 +87,9 @@ func TestParseShards(t *testing.T) {
 		}
 
 	}
-
 }
 
 func TestShardsByNode(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args string
@@ -124,7 +121,6 @@ func TestShardsByNode(t *testing.T) {
 		}
 
 	}
-
 }
 
 func errorResponses(statusCodes []int) RoundTripFunc {
@@ -139,7 +135,6 @@ func errorResponses(statusCodes []int) RoundTripFunc {
 			Request:    req,
 		}
 	}
-
 }
 
 func requestAssertion(test func(req *http.Request)) RoundTripFunc {
@@ -174,7 +169,6 @@ func TestClientErrorHandling(t *testing.T) {
 			assert.Error(t, err, fmt.Sprintf("%s should return an error for anything not 2xx", name))
 		}
 	}
-
 }
 
 func TestClientUsesJsonContentType(t *testing.T) {
@@ -189,7 +183,6 @@ func TestClientUsesJsonContentType(t *testing.T) {
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
-
 	type expected struct {
 		user        BasicAuth
 		authPresent bool
@@ -233,7 +226,6 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 
 	}
-
 }
 
 func TestClient_request(t *testing.T) {

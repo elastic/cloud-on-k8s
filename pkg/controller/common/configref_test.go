@@ -67,7 +67,8 @@ func TestParseConfigRef(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
-					}},
+					},
+				},
 			},
 			want:        settings.MustCanonicalConfig(map[string]string{"foo": "bar", "bar": "baz"}),
 			wantWatches: []string{watchName},
@@ -81,7 +82,8 @@ func TestParseConfigRef(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
-					}},
+					},
+				},
 			},
 			want:            settings.MustCanonicalConfig(map[string]string{"foo": "bar", "bar": "baz"}),
 			existingWatches: []string{watchName},
@@ -96,7 +98,8 @@ func TestParseConfigRef(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
-					}},
+					},
+				},
 			},
 			want:        nil,
 			wantWatches: []string{},
@@ -110,7 +113,8 @@ func TestParseConfigRef(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
-					}},
+					},
+				},
 			},
 			want:            nil,
 			existingWatches: []string{watchName},
@@ -134,7 +138,8 @@ func TestParseConfigRef(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
 						"unexpected-key": []byte("foo: bar\nbar: baz\n"),
-					}},
+					},
+				},
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
@@ -149,7 +154,8 @@ func TestParseConfigRef(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
 						"configFile.yml": []byte("that's not yaml"),
-					}},
+					},
+				},
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
