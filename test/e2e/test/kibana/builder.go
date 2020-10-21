@@ -10,10 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -65,7 +65,8 @@ func newBuilder(name, randSuffix string) Builder {
 	}.
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
-		WithPodLabel(run.TestNameLabel, name)
+		WithPodLabel(run.TestNameLabel, name).
+		WithTelemetryDisabled(true)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -163,6 +164,29 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 		b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate = b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
 	}
 	b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
+func (b Builder) WithTelemetryDisabled(disabled bool) Builder {
+	if b.Kibana.Spec.Config == nil {
+		b.Kibana.Spec.Config = &commonv1.Config{
+			Data: map[string]interface{}{},
+		}
+	}
+
+	cfg := settings.MustCanonicalConfig(b.Kibana.Spec.Config.Data)
+	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+		"telemetry": map[string]interface{}{
+			"disabled": disabled,
+		},
+	})); err != nil {
+		panic(err)
+	}
+
+	if err := cfg.Unpack(&b.Kibana.Spec.Config.Data); err != nil {
+		panic(err)
+	}
+
 	return b
 }
 
