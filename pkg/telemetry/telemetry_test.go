@@ -38,10 +38,11 @@ var testOperatorInfo = about.OperatorInfo{
 
 func TestMarshalTelemetry(t *testing.T) {
 	for _, tt := range []struct {
-		name  string
-		info  about.OperatorInfo
-		stats map[string]interface{}
-		want  string
+		name    string
+		info    about.OperatorInfo
+		stats   map[string]interface{}
+		license map[string]string
+		want    string
 	}{
 		{
 			name:  "empty",
@@ -56,6 +57,7 @@ func TestMarshalTelemetry(t *testing.T) {
   custom_operator_namespace: false
   distribution: ""
   distributionChannel: ""
+  license: null
   operator_uuid: ""
   stats: null
 `,
@@ -69,6 +71,9 @@ func TestMarshalTelemetry(t *testing.T) {
 					"resource_count": 1,
 				},
 			},
+			license: map[string]string{
+				"eck_license_level": "basic",
+			},
 			want: `eck:
   build:
     date: "2019-09-20T07:00:00Z"
@@ -78,6 +83,8 @@ func TestMarshalTelemetry(t *testing.T) {
   custom_operator_namespace: true
   distribution: v1.16.13-gke.1
   distributionChannel: test-channel
+  license:
+    eck_license_level: basic
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
     apms:
@@ -87,7 +94,7 @@ func TestMarshalTelemetry(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBytes, gotErr := marshalTelemetry(tt.info, tt.stats)
+			gotBytes, gotErr := marshalTelemetry(tt.info, tt.stats, tt.license)
 			require.NoError(t, gotErr)
 			require.Equal(t, tt.want, string(gotBytes))
 		})
@@ -189,9 +196,21 @@ func TestNewReporter(t *testing.T) {
 				AvailableNodes: 7,
 			},
 		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "elastic-licensing",
+				Namespace: "elastic-system",
+			},
+			Data: map[string]string{
+				"eck_license_level":         "basic",
+				"enterprise_resource_units": "1",
+				"timestamp":                 "2020-10-07T07:49:36+02:00",
+				"total_managed_memory":      "3.22GB",
+			},
+		},
 	)
 
-	r := NewReporter(testOperatorInfo, client, []string{kb1.Namespace, kb2.Namespace}, 1*time.Hour)
+	r := NewReporter(testOperatorInfo, client, "elastic-system", []string{kb1.Namespace, kb2.Namespace}, 1*time.Hour)
 	r.report()
 
 	wantData := map[string][]byte{
@@ -204,6 +223,10 @@ func TestNewReporter(t *testing.T) {
   custom_operator_namespace: true
   distribution: v1.16.13-gke.1
   distributionChannel: test-channel
+  license:
+    eck_license_level: basic
+    enterprise_resource_units: "1"
+    total_managed_memory: 3.22GB
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
     apms:
