@@ -229,7 +229,7 @@ func Test_Start(t *testing.T) {
 		var cm corev1.ConfigMap
 		err := k8sClient.Get(context.Background(), types.NamespacedName{
 			Namespace: operatorNs,
-			Name:      licensingCfgMapName,
+			Name:      LicensingCfgMapName,
 		}, &cm)
 		if err != nil {
 			return false
@@ -250,7 +250,7 @@ func Test_Start(t *testing.T) {
 		var cm corev1.ConfigMap
 		err := k8sClient.Get(context.Background(), types.NamespacedName{
 			Namespace: operatorNs,
-			Name:      licensingCfgMapName,
+			Name:      LicensingCfgMapName,
 		}, &cm)
 		if err != nil {
 			return false
@@ -267,7 +267,7 @@ func Test_Start(t *testing.T) {
 		var cm corev1.ConfigMap
 		err := k8sClient.Get(context.Background(), types.NamespacedName{
 			Namespace: operatorNs,
-			Name:      licensingCfgMapName,
+			Name:      LicensingCfgMapName,
 		}, &cm)
 		if err != nil {
 			return false
