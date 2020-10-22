@@ -142,10 +142,8 @@ func updateSettingsInternal(
 
 // getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
 func getRemoteClustersInElasticsearch(esClient esclient.Client) (map[string]struct{}, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
 	remoteClustersInEs := make(map[string]struct{})
-	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(ctx)
+	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(context.Background())
 	if err != nil {
 		return remoteClustersInEs, err
 	}
@@ -171,9 +169,7 @@ func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluste
 
 // updateSettings makes a call to an Elasticsearch cluster to apply a persistent setting.
 func updateSettings(esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
-	return esClient.UpdateRemoteClusterSettings(ctx, esclient.RemoteClustersSettings{
+	return esClient.UpdateRemoteClusterSettings(context.Background(), esclient.RemoteClustersSettings{
 		PersistentSettings: &esclient.SettingsGroup{
 			Cluster: esclient.RemoteClusters{
 				RemoteClusters: remoteClusters,

@@ -4,40 +4,39 @@
 
 package defaults
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	corev1 "k8s.io/api/core/v1"
+)
 
 // AppendDefaultPVCs appends defaults PVCs to a set of existing ones.
 //
-// The default PVC is not appended if:
+// The default PVCs are not appended if:
+// - any PVC has been defined by the user
 // - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
-// - a PVC with the same .Metadata.Name is found in existing.
 func AppendDefaultPVCs(
 	existing []corev1.PersistentVolumeClaim,
 	podSpec corev1.PodSpec,
 	defaults ...corev1.PersistentVolumeClaim,
 ) []corev1.PersistentVolumeClaim {
-	// create a set of volume names that are not PVC-volumes for efficient testing
-	nonPVCvolumes := map[string]struct{}{}
+	// any user defined PVC shortcuts the defaulting attempt
+	if len(existing) > 0 {
+		return existing
+	}
+
+	// create a set of volume names that are not PVC-volumes
+	nonPVCvolumes := set.Make()
 
 	for _, volume := range podSpec.Volumes {
 		if volume.PersistentVolumeClaim == nil {
 			// this volume is not a PVC
-			nonPVCvolumes[volume.Name] = struct{}{}
+			nonPVCvolumes.Add(volume.Name)
 		}
 	}
 
-defaults:
 	for _, defaultPVC := range defaults {
-		for _, existingPVC := range existing {
-			if existingPVC.Name == defaultPVC.Name {
-				// a PVC with that name already exists, skip.
-				continue defaults
-			}
-
-		}
-		if _, isNonPVCVolume := nonPVCvolumes[defaultPVC.Name]; isNonPVCVolume {
-			// the corresponding volume is not a PVC
-			continue defaults
+		if nonPVCvolumes.Has(defaultPVC.Name) {
+			continue
 		}
 		existing = append(existing, defaultPVC)
 	}

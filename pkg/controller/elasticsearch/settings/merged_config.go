@@ -57,6 +57,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 
 		// use the DNS name as the publish host
 		esv1.NetworkPublishHost: netutil.IPLiteralFor("${"+EnvPodIP+"}", ipFamily),
+		esv1.HTTPPublishHost:    "${" + EnvPodName + "}.${" + HeadlessServiceName + "}.${" + EnvNamespace + "}.svc",
 		esv1.NetworkHost:        "0",
 
 		// allow ES to be aware of k8s node the pod is running on when allocating shards

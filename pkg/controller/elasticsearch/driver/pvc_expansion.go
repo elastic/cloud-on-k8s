@@ -6,16 +6,15 @@ package driver
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,26 +34,45 @@ const (
 // Note that some storage drivers also require Pods to be deleted/recreated for the filesystem to be resized
 // (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
 // This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
-func handleVolumeExpansion(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
+func handleVolumeExpansion(
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	expectedSset appsv1.StatefulSet,
+	actualSset appsv1.StatefulSet,
+	validateStorageClass bool,
+) (bool, error) {
+	// ensure there are no incompatible storage size modification
+	if err := validation.ValidateClaimsStorageUpdate(
+		k8sClient,
+		actualSset.Spec.VolumeClaimTemplates,
+		expectedSset.Spec.VolumeClaimTemplates,
+		validateStorageClass); err != nil {
+		return false, err
+	}
+
+	// resize all PVCs that can be resized
 	err := resizePVCs(k8sClient, es, expectedSset, actualSset)
 	if err != nil {
 		return false, err
 	}
 
-	recreate, err := needsRecreate(expectedSset, actualSset)
-	if err != nil {
-		return false, err
+	// schedule the StatefulSet for recreation if needed
+	if needsRecreate(expectedSset, actualSset) {
+		return true, annotateForRecreation(k8sClient, es, actualSset, expectedSset.Spec.VolumeClaimTemplates)
 	}
-	if !recreate {
-		return false, nil
-	}
-	return true, annotateForRecreation(k8sClient, es, actualSset, expectedSset.Spec.VolumeClaimTemplates)
+
+	return false, nil
 }
 
 // resizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
 // according to their storage class and what's specified in the expected claim.
 // It returns an error if the requested storage size is incompatible with the PVC.
-func resizePVCs(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) error {
+func resizePVCs(
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	expectedSset appsv1.StatefulSet,
+	actualSset appsv1.StatefulSet,
+) error {
 	// match each existing PVC with an expected claim, and decide whether the PVC should be resized
 	actualPVCs, err := sset.RetrieveActualPVCs(k8sClient, actualSset)
 	if err != nil {
@@ -66,23 +84,19 @@ func resizePVCs(k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1
 			continue
 		}
 		for _, pvc := range pvcs {
-			pvcSize := pvc.Spec.Resources.Requests.Storage()
-			claimSize := expectedClaim.Spec.Resources.Requests.Storage()
-			// is it a storage increase?
-			isExpansion, err := isStorageExpansion(claimSize, pvcSize)
-			if err != nil {
-				return err
-			}
-			if !isExpansion {
+			storageCmp := k8s.CompareStorageRequests(pvc.Spec.Resources, expectedClaim.Spec.Resources)
+			if !storageCmp.Increase {
+				// not an increase, nothing to do
 				continue
 			}
 
+			newSize := expectedClaim.Spec.Resources.Requests.Storage()
 			log.Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
 				"Pods may need to be manually deleted for the filesystem to be resized.",
-				"namespace", pvc.Namespace, "es_name", es.Name,
-				"pvc_name", pvc.Name,
-				"old_value", pvcSize.String(), "new_value", claimSize.String())
-			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *claimSize
+				"namespace", pvc.Namespace, "es_name", es.Name, "pvc_name", pvc.Name,
+				"old_value", pvc.Spec.Resources.Requests.Storage().String(), "new_value", newSize.String())
+
+			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
 			if err := k8sClient.Update(&pvc); err != nil {
 				return err
 			}
@@ -116,45 +130,18 @@ func annotateForRecreation(
 }
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
-// An error is returned if volume expansion is required but claims are incompatible.
-func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) (bool, error) {
-	recreate := false
-	// match each expected claim with an actual existing one: we want to return true
-	// if at least one claim has increased storage reqs
-	// however we want to error-out if any claim has an incompatible storage req
+func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) bool {
 	for _, expectedClaim := range expectedSset.Spec.VolumeClaimTemplates {
 		actualClaim := sset.GetClaim(actualSset.Spec.VolumeClaimTemplates, expectedClaim.Name)
 		if actualClaim == nil {
 			continue
 		}
-		isExpansion, err := isStorageExpansion(expectedClaim.Spec.Resources.Requests.Storage(), actualClaim.Spec.Resources.Requests.Storage())
-		if err != nil {
-			return false, err
-		}
-		if isExpansion {
-			recreate = true
+		storageCmp := k8s.CompareStorageRequests(actualClaim.Spec.Resources, expectedClaim.Spec.Resources)
+		if storageCmp.Increase {
+			return true
 		}
 	}
-
-	return recreate, nil
-}
-
-// isStorageExpansion returns true if actual is higher than expected.
-// Decreasing storage size is unsupported: an error is returned if expected < actual.
-func isStorageExpansion(expectedSize *resource.Quantity, actualSize *resource.Quantity) (bool, error) {
-	if expectedSize == nil || actualSize == nil {
-		// not much to compare if storage size is unspecified
-		return false, nil
-	}
-	switch expectedSize.Cmp(*actualSize) {
-	case 0: // same size
-		return false, nil
-	case -1: // decrease
-		return false, fmt.Errorf("decreasing storage size is not supported, "+
-			"but an attempt was made to resize from %s to %s", actualSize.String(), expectedSize.String())
-	default: // increase
-		return true, nil
-	}
+	return false
 }
 
 // recreateStatefulSets re-creates StatefulSets as specified in Elasticsearch annotations, to account for
@@ -306,5 +293,4 @@ func updatePods(k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc
 		}
 	}
 	return nil
-
 }

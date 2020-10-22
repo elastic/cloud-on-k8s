@@ -87,7 +87,13 @@ func init() {
 	testCSR, _ := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
-		k8s.ExtractNamespacedName(&testES), esv1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES),
+		esv1.ESNamer,
+		testES.Spec.HTTP.TLS,
+		[]commonv1.SubjectAlternativeName{},
+		[]corev1.Service{testSvc},
+		testCSR,
+		DefaultCertValidity,
 	)
 
 	certData, err := testCA.CreateCertificate(*validatedCertificateTemplate)
@@ -365,9 +371,10 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	sanIPv6 := "2001:db8:0:85a3:0:0:ac1f:8001"
 
 	type args struct {
-		es           esv1.Elasticsearch
-		svcs         []corev1.Service
-		certValidity time.Duration
+		es            esv1.Elasticsearch
+		svcs          []corev1.Service
+		extraHTTPSANs []commonv1.SubjectAlternativeName
+		certValidity  time.Duration
 	}
 	tests := []struct {
 		name string
@@ -413,6 +420,14 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 						},
 					},
 				},
+				extraHTTPSANs: []commonv1.SubjectAlternativeName{
+					{
+						DNS: "controller-san-1",
+					},
+					{
+						DNS: "controller-san-2",
+					},
+				},
 			},
 			want: func(t *testing.T, cert *ValidatedCertificateTemplate) {
 				expectedCommonName := "test-es-http.test.es.local"
@@ -421,6 +436,8 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				assert.Contains(t, cert.DNSNames, "svc-name.svc-namespace.svc")
 				assert.Contains(t, cert.DNSNames, sanDNS1)
 				assert.Contains(t, cert.DNSNames, sanDNS2)
+				assert.Contains(t, cert.DNSNames, "controller-san-1")
+				assert.Contains(t, cert.DNSNames, "controller-san-2")
 				assert.Contains(t, cert.IPAddresses, net.ParseIP(sanIP1).To4())
 				assert.Contains(t, cert.IPAddresses, net.ParseIP(sanIPv6))
 			},
@@ -432,6 +449,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
+				tt.args.extraHTTPSANs,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
 				tt.args.certValidity,
@@ -457,9 +475,10 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		},
 	}
 	type args struct {
-		es           esv1.Elasticsearch
-		secret       corev1.Secret
-		rotateBefore time.Duration
+		es             esv1.Elasticsearch
+		controllerSANs []commonv1.SubjectAlternativeName
+		secret         corev1.Secret
+		rotateBefore   time.Duration
 	}
 	tests := []struct {
 		name string
@@ -534,6 +553,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
+				tt.args.controllerSANs,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},
 				testCA,

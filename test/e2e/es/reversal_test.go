@@ -88,5 +88,4 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 
 func RunESMutationReversal(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
 	test.RunMutationReversal(t, []test.Builder{toCreate}, []test.Builder{mutateTo.WithMutatedFrom(&toCreate)})
-
 }

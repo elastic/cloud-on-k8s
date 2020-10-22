@@ -11,3 +11,13 @@
   {{- fail "Soft multi-tenancy requires kubeAPIServerIP to be defined" -}}
   {{- end -}}
 {{- end -}}
+
+{{- if (not .Values.createClusterScopedResources) -}}
+  {{- if .Values.webhook.enabled -}}
+  {{- fail "Webhook cannot be enabled when cluster-scoped resource creation is disabled" -}}
+  {{- end -}}
+
+  {{- if .Values.config.validateStorageClass -}}
+  {{- fail "Storage class validation cannot be enabled when cluster-scoped resource creation is disabled" -}}
+  {{- end -}}
+{{- end -}}

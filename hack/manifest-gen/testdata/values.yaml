@@ -86,7 +86,7 @@ refs:
 
 webhook:
   # enabled determines whether the webhook is installed.
-  enabled: true
+  enabled: false
   # caBundle is the PEM-encoded CA trust bundle for the webhook certificate. Only required if manageCerts is false and certManagerCert is null.
   caBundle: Cg==
   # certManagerCert is the name of the cert-manager certificate to use with the webhook. 
@@ -111,6 +111,12 @@ softMultiTenancy:
 
 # kubeAPIServerIP is required when softMultiTenancy is enabled.
 kubeAPIServerIP: 1.2.3.4
+
+telemetry:
+  # disabled determines whether the operator periodically updates ECK telemetry data for Kibana to consume.
+  disabled: false
+  # distibutionChannel denotes which distribution channel was used to install the operator.
+  distributionChannel: "helm"
 
 # config values for the operator.
 config:
@@ -144,6 +150,16 @@ config:
 
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
   setDefaultSecurityContext: true
+
+  # kubeClientTimeout sets the request timeout for Kubernetes API calls made by the operator.
+  kubeClientTimeout: 60s
+
+  # elasticsearchClientTimeout sets the request timeout for Elasticsearch API calls made by the operator.
+  elasticsearchClientTimeout: 180s
+
+  # validateStorageClass specifies whether storage classes volume expansion support should be verified.
+  # Can be disabled if cluster-wide storage class RBAC access is not available.
+  validateStorageClass: false
 
 # for internal use only.
 internal:

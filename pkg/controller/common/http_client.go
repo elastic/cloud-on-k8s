@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"net/http"
+	"time"
 
 	"go.elastic.co/apm/module/apmelasticsearch"
 
@@ -23,7 +24,7 @@ import (
 // - verify TLS certs, but ignore the server name: users may provide their own TLS certificate that may not
 // match Kubernetes internal service name, but only the user-facing public endpoint
 // - set APM spans with each request
-func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate) *http.Client {
+func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {
 		certPool.AddCert(c)
@@ -60,5 +61,8 @@ func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate) *http.Client {
 		transportConfig.DialContext = dialer.DialContext
 	}
 
-	return &http.Client{Transport: apmelasticsearch.WrapRoundTripper(&transportConfig)}
+	return &http.Client{
+		Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
+		Timeout:   timeout,
+	}
 }

@@ -1,0 +1,28 @@
+---
+- job:
+    description: Run ECK E2E tests on OpenShift 3
+    name: cloud-on-k8s-e2e-tests-ocp3
+    project-type: pipeline
+    parameters:
+      - string:
+          name: branch_specifier
+          default: master
+          description: "the Git branch specifier to build (&lt;branchName&gt;,&lt;tagName&gt;, &lt;commitId&gt;, etc.)"
+      - string:
+          name: JKS_PARAM_OPERATOR_IMAGE
+          description: "ECK Docker image"
+      - bool:
+          name: SEND_NOTIFICATIONS
+          # TODO: enable notifications by default once the job is stable
+          default: false
+          description: "Specified if job should send notifications to Slack. Enabled by default."
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - ${branch_specifier}
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+            refspec: ${branch_specifier}
+      script-path: .ci/pipelines/e2e-tests-ocp3.Jenkinsfile
+      lightweight-checkout: false

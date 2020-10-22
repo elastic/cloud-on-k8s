@@ -19,7 +19,6 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -35,7 +34,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	esvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/esconfig"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
@@ -46,6 +47,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
+	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -173,6 +175,21 @@ func Command() *cobra.Command {
 		false,
 		"Disable watching the configuration file for changes",
 	)
+	cmd.Flags().Duration(
+		operator.ElasticsearchClientTimeout,
+		3*time.Minute,
+		"Default timeout for requests made by the Elasticsearch client.",
+	)
+	cmd.Flags().Bool(
+		operator.DisableTelemetryFlag,
+		false,
+		"Disable periodically updating ECK telemetry data for Kibana to consume.",
+	)
+	cmd.Flags().String(
+		operator.DistributionChannelFlag,
+		"",
+		"Set the distribution channel to report through telemetry.",
+	)
 	cmd.Flags().Bool(
 		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
@@ -196,6 +213,11 @@ func Command() *cobra.Command {
 		operator.IPFamilyFlag,
 		"",
 		"Set the IP family to use. Possible values: IPv4, IPv6, \"\" (= auto-detect) ",
+	)
+	cmd.Flags().Duration(
+		operator.KubeClientTimeout,
+		60*time.Second,
+		"Timeout for requests made by the Kubernetes API client.",
 	)
 	cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
@@ -222,10 +244,20 @@ func Command() *cobra.Command {
 		"",
 		"Kubernetes namespace the operator runs in",
 	)
+	cmd.Flags().Duration(
+		operator.TelemetryIntervalFlag,
+		1*time.Hour,
+		"Interval between ECK telemetry data updates",
+	)
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
 		"Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.",
+	)
+	cmd.Flags().Bool(
+		operator.ValidateStorageClassFlag,
+		true,
+		"Specifies whether the operator should retrieve storage classes to verify volume expansion support. Can be disabled if cluster-wide storage class RBAC access is not available.",
 	)
 	cmd.Flags().String(
 		operator.WebhookCertDirFlag,
@@ -252,6 +284,12 @@ func Command() *cobra.Command {
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
 	_ = cmd.Flags().MarkHidden(operator.DebugHTTPListenFlag)
+
+	// hide flags set by the build process
+	_ = cmd.Flags().MarkHidden(operator.DistributionChannelFlag)
+
+	// hide the flag used for E2E test only
+	_ = cmd.Flags().MarkHidden(operator.TelemetryIntervalFlag)
 
 	// configure filename auto-completion for the config flag
 	_ = cmd.MarkFlagFilename(operator.ConfigFlag)
@@ -398,6 +436,12 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
+	// set the timeout for API client
+	cfg.Timeout = viper.GetDuration(operator.KubeClientTimeout)
+
+	// set the timeout for Elasticsearch requests
+	esclient.DefaultESClientTimeout = viper.GetDuration(operator.ElasticsearchClientTimeout)
+
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
 	controllerscheme.SetupScheme()
@@ -420,11 +464,19 @@ func startOperator(stopChan <-chan struct{}) error {
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
 		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
+		// opts.Namespace implicitly allows watching cluster-scoped resources (e.g. storage classes)
 		opts.Namespace = managedNamespaces[0]
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// the manager cache should always include the operator namespace so that we can work with operator-internal resources
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace))
+		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
+		managedNamespaces = append(managedNamespaces, operatorNamespace)
+
+		// Add the empty namespace to allow watching cluster-scoped resources if storage class validation is enabled.
+		if viper.GetBool(operator.ValidateStorageClassFlag) {
+			managedNamespaces = append(managedNamespaces, "")
+		}
+
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -471,7 +523,8 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
+	distributionChannel := viper.GetString(operator.DistributionChannelFlag)
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace, distributionChannel)
 	if err != nil {
 		log.Error(err, "Failed to get operator info")
 		return err
@@ -493,10 +546,11 @@ func startOperator(stopChan <-chan struct{}) error {
 		},
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
+		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, clientset)
+		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -512,7 +566,9 @@ func startOperator(stopChan <-chan struct{}) error {
 		return err
 	}
 
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, string(operatorInfo.OperatorUUID))
+	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
+	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
+	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -528,19 +584,36 @@ func startOperator(stopChan <-chan struct{}) error {
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(mgr manager.Manager, cfg *rest.Config, managedNamespaces []string, operatorNamespace, operatorUUID string) {
+func asyncTasks(
+	mgr manager.Manager,
+	cfg *rest.Config,
+	managedNamespaces []string,
+	operatorNamespace string,
+	operatorInfo about.OperatorInfo,
+	disableTelemetry bool,
+	telemetryInterval time.Duration,
+) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
 	// Report this instance as elected through Prometheus
-	metrics.Leader.WithLabelValues(operatorUUID, operatorNamespace).Set(1)
+	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
+
+	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
+	mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 
 	// Start the resource reporter
 	go func() {
-		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
 		r.Start(licensing.ResourceReporterFrequency)
 	}()
+
+	if !disableTelemetry {
+		// Start the telemetry reporter
+		go func() {
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval)
+			tr.Start()
+		}()
+	}
 
 	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
 	garbageCollectUsers(cfg, managedNamespaces)
@@ -633,7 +706,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
-func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
+func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, validateStorageClass bool, clientset kubernetes.Interface) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -666,7 +739,6 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},
 		&entv1beta1.EnterpriseSearch{},
-		&esv1.Elasticsearch{},
 		&esv1beta1.Elasticsearch{},
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
@@ -677,6 +749,9 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
 		}
 	}
+
+	// esv1 validating webhook is wired up differently, in order to access the k8s client
+	esvalidation.RegisterWebhook(mgr, validateStorageClass)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

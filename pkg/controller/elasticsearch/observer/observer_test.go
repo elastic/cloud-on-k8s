@@ -37,10 +37,7 @@ func fakeEsClient200(user client.BasicAuth) client.Client {
 
 func createAndRunTestObserver(onObs OnObservation) *Observer {
 	fakeEsClient := fakeEsClient200(client.BasicAuth{})
-	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{
-		ObservationInterval: 1 * time.Microsecond,
-		RequestTimeout:      1 * time.Second,
-	}, onObs)
+	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{ObservationInterval: 1 * time.Microsecond}, onObs)
 	obs.Start()
 	return obs
 }

@@ -15,7 +15,8 @@ const (
 
 	// These are injected as env var into the ES pod at runtime,
 	// to be referenced in ES configuration file
-	EnvPodName  = "POD_NAME"
-	EnvPodIP    = "POD_IP"
-	EnvNodeName = "NODE_NAME"
+	EnvPodName   = "POD_NAME"
+	EnvPodIP     = "POD_IP"
+	EnvNodeName  = "NODE_NAME"
+	EnvNamespace = "NAMESPACE"
 )

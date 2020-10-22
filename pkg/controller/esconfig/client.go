@@ -25,9 +25,6 @@ import (
 
 func NewESClient(ctx context.Context, dialer net.Dialer, k8sclient k8s.Client, es esv1.Elasticsearch) (esclient.Client, error) {
 	var client esclient.Client
-	// TODO need to qualify this with namespace before adding port
-	// currently adds
-	// 2020-09-08T18:26:26.096-0500	ERROR	controller	Reconciler error	{"service.version": "1.3.0-SNAPSHOT+5d743c5c", "controller": "esconfig-controller", "name": "quickstart-config", "namespace": "default", "error": "parse \"https://quickstart-es-http.default.svc:9200.default/_snapshot/my_repository\": invalid port \":9200.default\" after host"}
 	url := services.ExternalServiceURL(es)
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -43,7 +40,7 @@ func NewESClient(ctx context.Context, dialer net.Dialer, k8sclient k8s.Client, e
 	if err != nil {
 		return client, err
 	}
-	client = esclient.NewElasticsearchClient(dialer, url, creds, *ver, caCerts)
+	client = esclient.NewElasticsearchClient(dialer, url, creds, *ver, caCerts, esclient.Timeout(es))
 	return client, err
 }
 

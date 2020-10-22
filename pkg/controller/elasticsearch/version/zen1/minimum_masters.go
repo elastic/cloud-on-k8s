@@ -140,7 +140,5 @@ func UpdateMinimumMasterNodesTo(
 		"es_name", es.Name,
 		"minimum_master_nodes", minimumMasterNodes,
 	)
-	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
-	defer cancel()
 	return esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
 }

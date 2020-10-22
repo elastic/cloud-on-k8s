@@ -24,10 +24,6 @@ func TestAppendDefaultPVCs(t *testing.T) {
 		},
 	}
 
-	strRef := func(s string) *string {
-		return &s
-	}
-
 	type args struct {
 		existing []v1.PersistentVolumeClaim
 		podSpec  v1.PodSpec
@@ -39,32 +35,15 @@ func TestAppendDefaultPVCs(t *testing.T) {
 		want []v1.PersistentVolumeClaim
 	}{
 		{
-			name: "append new pvcs",
+			name: "append new pvcs only if no other pvcs",
 			args: args{
 				existing: []v1.PersistentVolumeClaim{foo},
 				defaults: []v1.PersistentVolumeClaim{bar},
 			},
-			want: []v1.PersistentVolumeClaim{foo, bar},
-		},
-		{
-			name: "do not overwrite or duplicate existing",
-			args: args{
-				existing: []v1.PersistentVolumeClaim{foo},
-				defaults: []v1.PersistentVolumeClaim{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: v1.PersistentVolumeClaimSpec{
-							StorageClassName: strRef("custom"),
-						},
-					},
-				},
-			},
 			want: []v1.PersistentVolumeClaim{foo},
 		},
 		{
-			name: "not add a default pvc if a non-pvc volume with the same name exists",
+			name: "do not add a default pvc if a non-pvc volume with the same name exists",
 			args: args{
 				existing: nil,
 				podSpec: v1.PodSpec{
@@ -82,7 +61,7 @@ func TestAppendDefaultPVCs(t *testing.T) {
 		{
 			name: "add a default pvc if a pvcvolume with the same name exists",
 			args: args{
-				existing: []v1.PersistentVolumeClaim{foo},
+				existing: nil,
 				podSpec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{
@@ -95,23 +74,7 @@ func TestAppendDefaultPVCs(t *testing.T) {
 				},
 				defaults: []v1.PersistentVolumeClaim{bar},
 			},
-			want: []v1.PersistentVolumeClaim{foo, bar},
-		},
-		{
-			name: "add a default pvc if a non-pvc volume with a different name exists",
-			args: args{
-				existing: []v1.PersistentVolumeClaim{foo},
-				podSpec: v1.PodSpec{
-					Volumes: []v1.Volume{
-						{
-							Name:         "not" + bar.Name,
-							VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
-						},
-					},
-				},
-				defaults: []v1.PersistentVolumeClaim{bar},
-			},
-			want: []v1.PersistentVolumeClaim{foo, bar},
+			want: []v1.PersistentVolumeClaim{bar},
 		},
 	}
 	for _, tt := range tests {

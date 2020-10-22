@@ -73,10 +73,13 @@ func BuildStatefulSet(
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
 
-	// add default PVCs to the node spec
+	// add default PVCs to the node spec only if no user defined PVCs exist
 	nodeSet.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-		nodeSet.VolumeClaimTemplates, nodeSet.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
+		nodeSet.VolumeClaimTemplates,
+		nodeSet.PodTemplate.Spec,
+		esvolume.DefaultVolumeClaimTemplates...,
 	)
+
 	// build pod template
 	podTemplate, err := BuildPodTemplateSpec(es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
 	if err != nil {

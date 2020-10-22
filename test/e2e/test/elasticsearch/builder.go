@@ -24,7 +24,7 @@ import (
 const (
 	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
 	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
-	defaultStorageClass = "e2e-default"
+	DefaultStorageClass = "e2e-default"
 )
 
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
@@ -247,7 +247,7 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 }
 
 func (b Builder) WithDefaultPersistentVolumes() Builder {
-	storageClass := defaultStorageClass
+	storageClass := DefaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		for _, existing := range b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates {
 			if existing.Name == volume.ElasticsearchDataVolumeName {

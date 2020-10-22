@@ -31,6 +31,9 @@ endif
 CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
 CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
 
+# volume used to share files between CI container and OCP3 Ansible container
+ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
+
 print-ci-image:
 	@ echo $(CI_IMAGE)
 
@@ -42,13 +45,17 @@ ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
 ci-internal: ci-build-image
-	@ docker run --rm -t $(DOCKER_OPTS) \
+	docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
+	docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) \
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
 		$(CI_IMAGE) \
-		bash -c "$(DOCKER_CMD)"
+		bash -c "$(DOCKER_CMD)" ; exit=$$?; \
+	docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)

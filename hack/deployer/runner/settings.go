@@ -17,20 +17,21 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string       `yaml:"id"` // nolint
-	Operation         string       `yaml:"operation"`
-	ClusterName       string       `yaml:"clusterName"`
-	Provider          string       `yaml:"provider"`
-	KubernetesVersion string       `yaml:"kubernetesVersion"`
-	MachineType       string       `yaml:"machineType"`
-	Gke               *GkeSettings `yaml:"gke,omitempty"`
-	Aks               *AksSettings `yaml:"aks,omitempty"`
-	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
-	EKS               *EKSSettings `yaml:"eks,omitempty"`
-	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
-	ServiceAccount    bool         `yaml:"serviceAccount"`
-	Psp               bool         `yaml:"psp"`
-	DiskSetup         string       `yaml:"diskSetup"`
+	Id                string        `yaml:"id"` // nolint
+	Operation         string        `yaml:"operation"`
+	ClusterName       string        `yaml:"clusterName"`
+	Provider          string        `yaml:"provider"`
+	KubernetesVersion string        `yaml:"kubernetesVersion"`
+	MachineType       string        `yaml:"machineType"`
+	Gke               *GkeSettings  `yaml:"gke,omitempty"`
+	Aks               *AksSettings  `yaml:"aks,omitempty"`
+	Ocp               *OcpSettings  `yaml:"ocp,omitempty"`
+	Ocp3              *Ocp3Settings `yaml:"ocp3,omitempty"`
+	EKS               *EKSSettings  `yaml:"eks,omitempty"`
+	VaultInfo         *VaultInfo    `yaml:"vaultInfo,omitempty"`
+	ServiceAccount    bool          `yaml:"serviceAccount"`
+	Psp               bool          `yaml:"psp"`
+	DiskSetup         string        `yaml:"diskSetup"`
 }
 
 type VaultInfo struct {
@@ -77,6 +78,12 @@ type OcpSettings struct {
 	// UseNonDefaultCloudSDKPath, if true, sets $CLOUDSDK_CONFIG to a non-default value in order
 	// to not tamper existing gcloud credentials.
 	UseNonDefaultCloudSDKPath bool `yaml:"useNonDefaultCloudSdkPath"`
+}
+
+// Ocp3Settings encapsulates settings specific to OCP3 on GCloud
+type Ocp3Settings struct {
+	GCloudProject string `yaml:"gCloudProject"`
+	WorkerCount   int    `yaml:"workerCount"`
 }
 
 // EKSSettings are specific to Amazon EKS.

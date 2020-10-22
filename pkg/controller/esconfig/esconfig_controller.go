@@ -238,8 +238,7 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL string, b
 	// with a leading /
 	logger := tracing.LoggerFromContext(ctx)
 	logger.V(1).Info("Requesting url", "url", opURL)
-	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
-	defer cancel()
+
 	// we handle errors by checking the status code
 	getResp, _ := client.Request(ctx, get)
 

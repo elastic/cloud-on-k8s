@@ -2,9 +2,10 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1
+package validation
 
 import (
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -13,7 +14,7 @@ var warnings = []validation{
 	noUnsupportedSettings,
 }
 
-func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
+func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
@@ -24,7 +25,7 @@ func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
 		}
-		unsupported := config.HasKeys(UnsupportedSettings)
+		unsupported := config.HasKeys(esv1.UnsupportedSettings)
 		for _, setting := range unsupported {
 			errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(i).Child("config").Child(setting), unsupportedConfigErrMsg))
 		}
@@ -32,8 +33,8 @@ func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func (es *Elasticsearch) CheckForWarnings() error {
-	warnings := es.check(warnings)
+func CheckForWarnings(es esv1.Elasticsearch) error {
+	warnings := check(es, warnings)
 	if len(warnings) > 0 {
 		return warnings.ToAggregate()
 	}

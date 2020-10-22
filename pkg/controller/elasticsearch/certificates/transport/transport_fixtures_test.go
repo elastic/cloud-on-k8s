@@ -10,17 +10,27 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
+)
+
+const (
+	testNamespace = "test-namespace"
+	testEsName    = "test-es-name"
 )
 
 // fixtures
 var (
 	testCA                       *certificates.CA
+	testCABytes                  []byte
 	testRSAPrivateKey            *rsa.PrivateKey
 	testCSRBytes                 []byte
 	testCSR                      *x509.CertificateRequest
@@ -29,7 +39,7 @@ var (
 	pemCert                      []byte
 	testIP                       = "1.2.3.4"
 	testES                       = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: testEsName, Namespace: testNamespace},
 	}
 	testPod = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -78,6 +88,8 @@ func init() {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 
+	testCABytes = certificates.EncodePEMCert(testCA.Cert.Raw)
+
 	testCSRBytes, err = x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
 	if err != nil {
 		panic("Failed to create CSR:" + err.Error())
@@ -99,4 +111,140 @@ func init() {
 	}
 
 	pemCert = certificates.EncodePEMCert(certData, testCA.Cert.Raw)
+}
+
+// -- Elasticsearch builder
+
+type esBuilder struct {
+	nodeSets []esv1.NodeSet
+}
+
+func newEsBuilder() *esBuilder {
+	return &esBuilder{}
+}
+
+func (eb *esBuilder) addNodeSet(name string, count int) *esBuilder {
+	eb.nodeSets = append(eb.nodeSets, esv1.NodeSet{
+		Name:  name,
+		Count: int32(count),
+	})
+	return eb
+}
+
+func (eb *esBuilder) build() *esv1.Elasticsearch {
+	es := testES.DeepCopy()
+	es.Spec.NodeSets = eb.nodeSets
+	return es
+}
+
+// -- Transport Certs Secret builder
+
+type transportCertsSecretBuilder struct {
+	statefulset string
+	data        map[string][]byte
+}
+
+// newtransportCertsSecretBuilder helps to create an existing Secret which contains some transport certs.
+func newtransportCertsSecretBuilder(esName string, nodeSetName string) *transportCertsSecretBuilder {
+	tcb := &transportCertsSecretBuilder{}
+	tcb.statefulset = esv1.StatefulSet(esName, nodeSetName)
+	tcb.data = make(map[string][]byte)
+	caBytes := certificates.EncodePEMCert(testCA.Cert.Raw)
+	tcb.data[certificates.CAFileName] = caBytes
+	return tcb
+}
+
+// forPodIndices adds a transport cert for the pod in the StatefulSet with the given index
+func (tcb *transportCertsSecretBuilder) forPodIndices(indices ...int) *transportCertsSecretBuilder {
+	for _, index := range indices {
+		podName := sset.PodName(tcb.statefulset, int32(index))
+		tcb.data[PodKeyFileName(podName)] = certificates.EncodePEMPrivateKey(*testRSAPrivateKey)
+		tcb.data[PodCertFileName(podName)] = pemCert
+	}
+	return tcb
+}
+
+func (tcb *transportCertsSecretBuilder) build() *corev1.Secret {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      esv1.StatefulSetTransportCertificatesSecret(tcb.statefulset),
+		},
+	}
+	secret.Data = tcb.data
+	return secret
+}
+
+// -- Pod builder
+
+type podBuilder struct {
+	es      string
+	ip      string
+	nodeSet string
+	index   int
+}
+
+func newPodBuilder() *podBuilder {
+	return &podBuilder{}
+}
+
+func (pb *podBuilder) forEs(es string) *podBuilder {
+	pb.es = es
+	return pb
+}
+
+func (pb *podBuilder) inNodeSet(nodeSet string) *podBuilder {
+	pb.nodeSet = nodeSet
+	return pb
+}
+
+func (pb *podBuilder) withIndex(index int) *podBuilder {
+	pb.index = index
+	return pb
+}
+
+func (pb *podBuilder) withIP(ip string) *podBuilder {
+	pb.ip = ip
+	return pb
+}
+
+func (pb *podBuilder) build() *corev1.Pod {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      fmt.Sprintf("%s-%d", esv1.StatefulSet(pb.es, pb.nodeSet), pb.index),
+			Labels: map[string]string{
+				label.StatefulSetNameLabelName: esv1.StatefulSet(pb.es, pb.nodeSet),
+				label.ClusterNameLabelName:     pb.es,
+			},
+			UID: uuid.NewUUID(),
+		},
+	}
+	if len(pb.ip) > 0 {
+		pod.Status.PodIP = pb.ip
+	}
+	return pod
+}
+
+func getSecret(list corev1.SecretList, name string) *corev1.Secret {
+	for _, s := range list.Items {
+		if s.Name == name {
+			return &s
+		}
+	}
+	return nil
+}
+
+func newStatefulSet(esName, ssetName string) *v1.StatefulSet {
+	return &v1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      ssetName,
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/statefulset-name": ssetName,
+				"common.k8s.elastic.co/type":                    "elasticsearch",
+				"elasticsearch.k8s.elastic.co/cluster-name":     esName,
+			},
+		},
+	}
 }

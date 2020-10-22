@@ -156,6 +156,15 @@ func NewLabelSelectorForElasticsearchClusterName(clusterName string) client.Matc
 	return client.MatchingLabels(map[string]string{ClusterNameLabelName: clusterName})
 }
 
+// NewLabelSelectorForStatefulSetName returns a labels.Selector that matches the labels set on resources managed for
+// a given StatefulSet in a cluster.
+func NewLabelSelectorForStatefulSetName(clusterName, ssetName string) client.MatchingLabels {
+	return client.MatchingLabels(map[string]string{
+		ClusterNameLabelName:     clusterName,
+		StatefulSetNameLabelName: ssetName,
+	})
+}
+
 // ClusterFromResourceLabels returns the NamespacedName of the Elasticsearch associated
 // to the given resource, by retrieving its name from the resource labels.
 // It does implicitly consider the cluster and the resource to be in the same namespace.

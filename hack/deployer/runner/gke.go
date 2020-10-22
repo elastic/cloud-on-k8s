@@ -7,7 +7,6 @@ package runner
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -79,7 +78,10 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 }
 
 func (d *GkeDriver) Execute() error {
-	if err := d.auth(); err != nil {
+	if err := authToGCP(
+		d.plan.VaultInfo, GkeVaultPath, GkeServiceAccountVaultFieldName,
+		d.plan.ServiceAccount, false, false, d.ctx["GCloudProject"],
+	); err != nil {
 		return err
 	}
 
@@ -139,37 +141,6 @@ func (d *GkeDriver) Execute() error {
 	}
 
 	return err
-}
-
-func (d *GkeDriver) auth() error {
-	if d.plan.ServiceAccount {
-		log.Println("Authenticating as service account...")
-
-		client, err := NewClient(*d.plan.VaultInfo)
-		if err != nil {
-			return err
-		}
-
-		keyFileName := "gke_service_account_key.json"
-		defer os.Remove(keyFileName)
-		if err := client.ReadIntoFile(keyFileName, GkeVaultPath, GkeServiceAccountVaultFieldName); err != nil {
-			return err
-		}
-
-		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
-	}
-
-	log.Println("Authenticating as user...")
-	accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
-	if err != nil {
-		return err
-	}
-
-	if len(accounts) > 0 {
-		return nil
-	}
-
-	return NewCommand("gcloud auth login").Run()
 }
 
 func (d *GkeDriver) clusterExists() (bool, error) {

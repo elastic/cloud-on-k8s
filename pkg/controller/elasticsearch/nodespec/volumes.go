@@ -31,7 +31,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
-	transportCertificatesVolume := transportCertificatesVolume(esName)
+	transportCertificatesVolume := transportCertificatesVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	remoteCertificateAuthoritiesVolume := volume.NewSecretVolumeWithMountPath(
 		esv1.RemoteCaSecretName(esName),
 		esvolume.RemoteCertificateAuthoritiesSecretVolumeName,
@@ -86,7 +86,6 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 
 	volumeMounts := append(
 		initcontainer.PluginVolumes.ContainerVolumeMounts(),
-		esvolume.DefaultDataVolumeMount,
 		esvolume.DefaultLogsVolumeMount,
 		usersSecretVolume.VolumeMount(),
 		unicastHostsVolume.VolumeMount(),
@@ -98,6 +97,8 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		configVolume.VolumeMount(),
 		downwardAPIVolume.VolumeMount(),
 	)
+
+	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, volumes)
 
 	return volumes, volumeMounts
 }

@@ -16,11 +16,10 @@ const PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
 	transportCertificatesVolume volume.SecretVolume,
-	clusterName string,
 	keystoreResources *keystore.Resources,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
-	prepareFsContainer, err := NewPrepareFSInitContainer(transportCertificatesVolume, clusterName)
+	prepareFsContainer, err := NewPrepareFSInitContainer(transportCertificatesVolume)
 	if err != nil {
 		return nil, err
 	}

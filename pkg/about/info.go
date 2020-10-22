@@ -31,6 +31,7 @@ type OperatorInfo struct {
 	OperatorUUID            types.UID `json:"operator_uuid"`
 	CustomOperatorNamespace bool      `json:"custom_operator_namespace"`
 	Distribution            string    `json:"distribution"`
+	DistributionChannel     string    `json:"distributionChannel"`
 	BuildInfo               BuildInfo `json:"build"`
 }
 
@@ -68,7 +69,7 @@ func (i OperatorInfo) IsDefined() bool {
 }
 
 // GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config, an operator namespace.
-func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
+func GetOperatorInfo(clientset kubernetes.Interface, operatorNs, distributionChannel string) (OperatorInfo, error) {
 	operatorUUID, err := getOperatorUUID(context.Background(), clientset, operatorNs)
 	if err != nil {
 		return OperatorInfo{}, err
@@ -90,6 +91,7 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 		OperatorUUID:            operatorUUID,
 		CustomOperatorNamespace: customOperatorNs,
 		Distribution:            distribution,
+		DistributionChannel:     distributionChannel,
 		BuildInfo:               GetBuildInfo(),
 	}, nil
 }
