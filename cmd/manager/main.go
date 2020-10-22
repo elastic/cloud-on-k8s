@@ -461,9 +461,15 @@ func startOperator(stopChan <-chan struct{}) error {
 		opts.Namespace = managedNamespaces[0]
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// the manager cache should always include the operator namespace so that we can work with operator-internal resources,
-		// and the empty namespace to watch cluster-scoped resources (e.g. storage classes).
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace, ""))
+		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
+		managedNamespaces = append(managedNamespaces, operatorNamespace)
+
+		// Add the empty namespace to allow watching cluster-scoped resources if storage class validation is enabled.
+		if viper.GetBool(operator.ValidateStorageClassFlag) {
+			managedNamespaces = append(managedNamespaces, "")
+		}
+
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -602,7 +608,7 @@ func asyncTasks(
 	if !disableTelemetry {
 		// Start the telemetry reporter
 		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), managedNamespaces, telemetryInterval)
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval)
 			tr.Start()
 		}()
 	}
