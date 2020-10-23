@@ -38,7 +38,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.7.1 | Apache-2.0
 | link:https://github.com/prometheus/common[$$github.com/prometheus/common$$] | v0.10.0 | Apache-2.0
 | link:https://github.com/sethvargo/go-password[$$github.com/sethvargo/go-password$$] | v0.2.0 | MIT
-| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.1.1 | Apache-2.0
 | link:https://github.com/spf13/pflag[$$github.com/spf13/pflag$$] | v1.0.5 | BSD-3-Clause
 | link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.7.1 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.6.1 | MIT
