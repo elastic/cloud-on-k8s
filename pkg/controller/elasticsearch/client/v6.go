@@ -94,7 +94,7 @@ func (c *clientV6) ReloadSecureSettings(ctx context.Context) error {
 
 func (c *clientV6) GetNodes(ctx context.Context) (Nodes, error) {
 	var nodes Nodes
-	// restrict call to minimal node information with a non-existing metric filter
+	// restrict call to minimal node information with a non-existent metric filter
 	err := c.get(ctx, "/_nodes/_all/no-metrics", &nodes)
 	return nodes, err
 }
