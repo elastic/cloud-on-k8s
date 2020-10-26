@@ -110,7 +110,7 @@ helm show values elastic/eck-operator
 [id="{p}-migrate-to-helm"]
 === Migrate an existing installation to Helm
 
-If you have an operator installed using the `all-in-one.yaml` method, you can migrate to Helm by running the following script, which is also available for download from the link:{eck_github}/tree/{eck_release_branch}/deploy[ECK source repository]. It should preserve your existing Elastic applications deployed using the old operator. 
+If you have an operator installed using the `all-in-one.yaml` method, you can migrate to Helm by running the following script, that you can also download from the link:{eck_github}/tree/{eck_release_branch}/deploy[ECK source repository]. It should preserve your existing Elastic applications deployed using the old operator. 
 
 CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Read the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
 
@@ -157,4 +157,3 @@ helm repo add "${CHART_REPO}" "${CHART_REPO_URL}"
 helm repo update
 helm install "${RELEASE_NAME}" "${CHART_REPO}/eck-operator" --create-namespace -n "${RELEASE_NAMESPACE}"
 ----
-
