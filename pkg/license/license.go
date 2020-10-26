@@ -26,8 +26,8 @@ import (
 const (
 	// defaultOperatorLicenseLevel is the default license level when no operator license is installed
 	defaultOperatorLicenseLevel = "basic"
-	// licensingCfgMapName is the name of the config map used to store licensing information
-	licensingCfgMapName = "elastic-licensing"
+	// LicensingCfgMapName is the name of the config map used to store licensing information
+	LicensingCfgMapName = "elastic-licensing"
 	// Type represents the Elastic usage type used to mark the config map that stores licensing information
 	Type = "elastic-usage"
 )
@@ -99,10 +99,10 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 // Save updates or creates licensing information in a config map
 // This relies on UnconditionalUpdates being supported configmaps and may change in k8s v2: https://github.com/kubernetes/kubernetes/issues/21330
 func (r LicensingResolver) Save(info LicensingInfo) error {
-	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", licensingCfgMapName, "license_info", info)
+	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNs,
-		Name:      licensingCfgMapName,
+		Name:      LicensingCfgMapName,
 	}
 	expected := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
