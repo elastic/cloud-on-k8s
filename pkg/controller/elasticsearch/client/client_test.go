@@ -303,7 +303,7 @@ func TestAPIError_Error(t *testing.T) {
 }
 
 func TestClientGetNodes(t *testing.T) {
-	expectedPath := "/_nodes/_all/jvm,settings"
+	expectedPath := "/_nodes/_all/no-metrics"
 	testClient := NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
@@ -318,7 +318,6 @@ func TestClientGetNodes(t *testing.T) {
 	require.Equal(t, 3, len(resp.Nodes))
 	require.Contains(t, resp.Nodes, "iXqjbgPYThO-6S7reL5_HA")
 	require.ElementsMatch(t, []string{"master", "data", "ingest"}, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Roles)
-	require.Equal(t, 2130051072, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].JVM.Mem.HeapMaxInBytes)
 }
 
 func TestClientGetNodesStats(t *testing.T) {
