@@ -79,12 +79,6 @@ type Node struct {
 	Name    string   `json:"name"`
 	Version string   `json:"version"`
 	Roles   []string `json:"roles"`
-	JVM     struct {
-		StartTimeInMillis int64 `json:"start_time_in_millis"`
-		Mem               struct {
-			HeapMaxInBytes int `json:"heap_max_in_bytes"`
-		} `json:"mem"`
-	} `json:"jvm"`
 }
 
 func (n Node) isV7OrAbove() (bool, error) {
