@@ -1,0 +1,44 @@
+[[release-highlights-1.3.0]]
+== 1.3.0 release highlights
+
+[float]
+[id="{p}-130-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.3.0 of {n}. See <<release-notes-1.3.0>> for the full list of changes.
+
+[float]
+[id="{p}-130-official-helm-chart"]
+==== Official Helm chart
+
+Addressing one of the most common asks, ECK 1.3.0 introduces <<{p}-install-helm,an official Helm chart>> which allows to configure and deploy ECK. Apart from enabling new deployments, a migration path that enables moving from previous deployment method to a Helm chart is documented.
+
+[float]
+[id="{p}-130-volume-expansion-support"]
+==== Volume expansion support
+
+Elasticsearch Pods volumes can be now dynamically expanded. A single edit to the resource YAML manifest is all that's needed to grow the volumes. In addition to that, in many cases (including GCE-PD, AWS-EBS, Azure, and TopoLVM), it is a hot filesystem resize that doesn't require Pod restart, and it's active seconds after the change was made.
+
+[float]
+[id="{p}-130-shard-allocation-is-node-aware-by-default"]
+==== Shard allocation is node aware by default
+
+ECK-managed Elasticsearch can be configured to be node aware - Elasticsearch will recognize that shard replicas can't be allocated to the same Kubernetes node and instead, spread them over multiple nodes. This prevents a single node issue affecting the entire shard. Until now, achieving this behavior required a proper configuration from the user. With ECK 1.3.0, the configuration enabling this is the default.
+
+[float]
+[id="{p}-130-ipv6-compatibility"]
+==== IPv6 compatibility
+
+With changes around how IP addresses are handled, ECK is now compatible with IPv6 enabled environments.
+
+[float]
+[id="{p}-130-ubi-base-image"]
+==== UBI base image
+
+To enable ECK becoming link:https://connect.redhat.com/en/partner-with-us/red-hat-openshift-operator-certification[Red Hat OpenShift Certified Operator], ECK image is now based on Universal Base Image - `ubi-minimal`.
+
+[float]
+[id="{p}-130-init-containers-modifications"]
+==== Init containers modifications
+
+All supported resources can now have their init containers modified.
