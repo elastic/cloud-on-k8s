@@ -556,6 +556,51 @@ func Test_updateRequired(t *testing.T) {
 				}
 			},
 		},
+		{
+			// https://www.elastic.co/guide/en/elasticsearch/reference/7.9/index-templates.html
+			// this fails because it wraps the response in an object with the object name
+			name:    "component template does not require update",
+			url:     "/_component_template/component_template1",
+			want:    false,
+			wantErr: false,
+			body: `{
+				"template": {
+				  "mappings": {
+					"properties": {
+					  "@timestamp": {
+						"type": "date"
+					  }
+					}
+				  }
+				}
+			  }`,
+			fn: func(req *http.Request) *http.Response {
+				require.Equal(t, "/_component_template/component_template1", req.URL.Path)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body: ioutil.NopCloser(strings.NewReader(`{
+						"component_templates": [
+						  {
+							"name": "component_template1",
+							"component_template": {
+							  "template": {
+								"mappings": {
+								  "properties": {
+									"@timestamp": {
+									  "type": "date"
+									}
+								  }
+								}
+							  }
+							}
+						  }
+						]
+					  }`)),
+					Request: req,
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
