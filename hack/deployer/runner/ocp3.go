@@ -174,6 +174,7 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 		"AnsibleDockerImage":  AnsibleDockerImage,
 	}
 
+	// CLOUDSDK_CONFIG env var is passed as-is to make gcloud sdk directory consistent between the host and the container
 	return NewCommand(`docker run --rm \
 		-e FORCED_GROUP_ID=1000 \
 		-e FORCED_USER_ID=1000 \
