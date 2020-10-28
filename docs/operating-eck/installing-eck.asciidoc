@@ -110,36 +110,26 @@ helm show values elastic/eck-operator
 [id="{p}-migrate-to-helm"]
 === Migrate an existing installation to Helm
 
-If you have an operator installed using the `all-in-one.yaml` method, you can migrate to Helm by running the following script, that you can also download from the link:{eck_github}/tree/{eck_release_branch}/deploy[ECK source repository]. It should preserve your existing Elastic applications deployed using the old operator. 
-
 CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Read the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
 
+You can migrate an existing operator installation to Helm by doing the following:
+
+. Annotate and label all the ECK CRDs with the appropriate Helm annotations and labels. CRDs need to be preserved to retain any existing Elastic applications deployed using the operator.
++
 [source,sh]
 ----
-#!/usr/bin/env bash
-
-# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-# or more contributor license agreements. Licensed under the Elastic License;
-# you may not use this file except in compliance with the Elastic License.
-
-# Script to migrate an existing ECK installation to Helm.
-
-set -euo pipefail
-
-CHART_REPO=${CHART_REPO:-"elastic"}
-CHART_REPO_URL=${CHART_REPO_URL:-"https://helm.elastic.co"}
-RELEASE_NAME=${RELEASE_NAME:-"elastic-operator"}
-RELEASE_NAMESPACE=${RELEASE_NAMESPACE:-"elastic-system"}
-
-echo "Adding labels and annotations to CRDs"
 for CRD in $(kubectl get crds --no-headers -o custom-columns=NAME:.metadata.name | grep k8s.elastic.co); do
     kubectl annotate crd "$CRD" meta.helm.sh/release-name="$RELEASE_NAME"
     kubectl annotate crd "$CRD" meta.helm.sh/release-namespace="$RELEASE_NAMESPACE"
     kubectl label crd "$CRD" app.kubernetes.io/managed-by=Helm
 done
+----
 
-echo "Uninstalling ECK"
-kubectl delete -n "${RELEASE_NAMESPACE}" \
+. Uninstall the current ECK operator. You can do this by taking the `all-in-one.yaml` file you used to install the operator, deleting the CRD definitions from it and then running `kubectl delete -f all-in-one-without-crds.yaml`. Alternatively, you could delete each resource individually. For example, to uninstall version 1.2.1 of the operator, you can run the following command:
++
+[source,sh]
+----
+kubectl delete -n elastic-system \
     serviceaccount/elastic-operator \
     secret/elastic-webhook-server-cert \
     clusterrole.rbac.authorization.k8s.io/elastic-operator \
@@ -150,10 +140,9 @@ kubectl delete -n "${RELEASE_NAMESPACE}" \
     service/elastic-webhook-server \
     statefulset.apps/elastic-operator \
     validatingwebhookconfiguration.admissionregistration.k8s.io/elastic-webhook.k8s.elastic.co
-
-
-echo "Installing ECK with Helm"
-helm repo add "${CHART_REPO}" "${CHART_REPO_URL}"
-helm repo update
-helm install "${RELEASE_NAME}" "${CHART_REPO}/eck-operator" --create-namespace -n "${RELEASE_NAMESPACE}"
 ----
+
+. Install the ECK operator using the Helm chart as described in <<{p}-install-helm>>.
+
+NOTE: A shell script is available in the link:{eck_github}/blob/{eck_release_branch}/deploy/helm-migrate.sh[ECK source repository] to demonstrate how to migrate from version 1.2.1 to Helm. You can modify it to suit your own environment. 
+

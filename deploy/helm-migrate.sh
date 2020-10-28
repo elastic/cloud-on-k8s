@@ -4,7 +4,7 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-# Script to migrate an existing ECK installation to Helm. 
+# Script to migrate an existing ECK 1.2.1 installation to Helm. 
 
 set -euo pipefail
 
