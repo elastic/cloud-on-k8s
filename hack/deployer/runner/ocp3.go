@@ -66,7 +66,7 @@ func (d Ocp3Driver) Execute() error {
 
 	if err := authToGCP(
 		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, true, true, d.plan.Ocp3.GCloudProject,
+		d.plan.ServiceAccount, true, d.plan.Ocp3.GCloudProject,
 	); err != nil {
 		return err
 	}
@@ -174,13 +174,14 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 		"AnsibleDockerImage":  AnsibleDockerImage,
 	}
 
+	// CLOUDSDK_CONFIG env var is passed as-is to make gcloud sdk directory consistent between the host and the container
 	return NewCommand(`docker run --rm \
 		-e FORCED_GROUP_ID=1000 \
 		-e FORCED_USER_ID=1000 \
 		-e USER={{.User}} \
 		-e USER_HOME={{.HomeVolumeMountPath}} \
 		-v {{.HomeVolumeName}}:{{.HomeVolumeMountPath}} \
-		-e CLOUDSDK_CONFIG={{.GCloudSDKPath}} \
+		-e CLOUDSDK_CONFIG \
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
 		-e VARS_FILE={{.AnsibleVarsPath}} \
 		-e OUTPUT_DIR={{.AnsibleOutputPath}} \

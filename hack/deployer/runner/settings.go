@@ -75,9 +75,6 @@ type OcpSettings struct {
 	LocalSsdCount              int    `yaml:"localSsdCount"`
 	NodeCount                  int    `yaml:"nodeCount"`
 	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
-	// UseNonDefaultCloudSDKPath, if true, sets $CLOUDSDK_CONFIG to a non-default value in order
-	// to not tamper existing gcloud credentials.
-	UseNonDefaultCloudSDKPath bool `yaml:"useNonDefaultCloudSdkPath"`
 }
 
 // Ocp3Settings encapsulates settings specific to OCP3 on GCloud

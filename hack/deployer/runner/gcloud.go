@@ -21,7 +21,7 @@ const (
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
 	vaultInfo *VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
-	asServiceAccount bool, useNonDefaultCloudSDKPath bool, configureDocker bool, gCloudProject interface{},
+	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	if asServiceAccount {
 		if vaultInfo == nil {
@@ -45,14 +45,6 @@ func authToGCP(
 			return err
 		}
 
-		if useNonDefaultCloudSDKPath {
-			// ensure gcloud & gsutil rely on credentials stored in gcpDir instead of using the default
-			// directory (~/.config/gcloud), to not tamper any default gcloud auth already set on the system
-			log.Printf("Setting CLOUDSDK_CONFIG=%s", gcpDir)
-			if err := os.Setenv("CLOUDSDK_CONFIG", gcpDir); err != nil {
-				return err
-			}
-		}
 		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
 		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", gCloudProject)).Run(); err != nil {
 			return err
