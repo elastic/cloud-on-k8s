@@ -263,10 +263,15 @@ func updateRequired(ctx context.Context, client esclient.Client, opURL string, b
 		return false, errors.WithStack(err)
 	}
 
+	transformedResp, err := applyTransforms(opURL, respBytes)
+	if err != nil {
+		return false, err
+	}
+
 	// TODO would emitting the text difference be helpful?
 	// TODO: Compare requires some "options" or will panic. Remove this when https://github.com/nsf/jsondiff/issues/8 is resolved
 	opts := jsondiff.DefaultConsoleOptions()
-	diff, _ := jsondiff.Compare(respBytes, body, &opts)
+	diff, _ := jsondiff.Compare(transformedResp, body, &opts)
 	switch diff {
 	case jsondiff.SupersetMatch, jsondiff.FullMatch:
 		logger.V(1).Info("Content returned is a match, no action required", "url", opURL, "actual", string(respBytes), "expected", string(body))

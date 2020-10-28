@@ -12,14 +12,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type transformFn func(url string, body string) (string, error)
+type transformFn func(url string, body []byte) ([]byte, error)
 
 // TODO refactor out the key parsing
-func removeNameWrapper(url string, body string) (string, error) {
+func removeNameWrapper(url string, body []byte) ([]byte, error) {
+	var transformedBody []byte
 	var wrapper map[string]interface{}
-	err := json.Unmarshal([]byte(body), &wrapper)
+	err := json.Unmarshal(body, &wrapper)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return transformedBody, errors.WithStack(err)
 	}
 
 	// get the object name
@@ -27,28 +28,28 @@ func removeNameWrapper(url string, body string) (string, error) {
 	key := s[len(s)-1]
 	val, ok := wrapper[key]
 	if !ok {
-		return "", errors.New(fmt.Sprintf("body does not contain key %s", key))
+		return transformedBody, errors.New(fmt.Sprintf("body does not contain key %s", key))
 	}
-	// TODO leave this as a byte array?
-	rejson, err := json.Marshal(val)
-	return string(rejson), nil
+	transformedBody, err = json.Marshal(val)
+	return transformedBody, err
 }
 
-func removeArrayWrapper(url string, body string) (string, error) {
+func removeArrayWrapper(url string, body []byte) ([]byte, error) {
+	var transformedBody []byte
 	var wrapper map[string][]map[string]interface{}
-	err := json.Unmarshal([]byte(body), &wrapper)
+	err := json.Unmarshal(body, &wrapper)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return transformedBody, errors.WithStack(err)
 	}
 
 	typeSingular := parseType(url)
 	if typeSingular == "" {
-		return "", errors.New(fmt.Sprintf("cannot parse type from url: %s", url))
+		return transformedBody, errors.New(fmt.Sprintf("cannot parse type from url: %s", url))
 	}
 	plural := pluralizeResourceType(typeSingular)
 	list, ok := wrapper[plural]
 	if !ok {
-		return "", errors.New(fmt.Sprintf("body does not contain key %s", plural))
+		return transformedBody, errors.New(fmt.Sprintf("body does not contain key %s", plural))
 	}
 	// get the object name
 	s := strings.Split(url, "/")
@@ -80,23 +81,23 @@ func removeArrayWrapper(url string, body string) (string, error) {
 		if itemName, ok := item["name"]; ok {
 			if itemName == name {
 				if val, ok2 := item[typeSingular]; ok2 {
-					rejson, err := json.Marshal(val)
+					transformedBody, err := json.Marshal(val)
 					if err != nil {
-						return "", errors.WithStack(err)
+						return transformedBody, errors.WithStack(err)
 					}
-					return string(rejson), nil
+					return transformedBody, nil
 				}
 			}
 		}
 	}
-	return "", errors.New(fmt.Sprintf("could not find object %s", name))
+	return transformedBody, errors.New(fmt.Sprintf("could not find object %s", name))
 
 }
 
 // returns the singular type
 func parseType(url string) string {
 	s := strings.Split(url, "/")
-	if len(s) > 0 {
+	if len(s) > 1 {
 		return strings.TrimPrefix(s[1], "_")
 	}
 	return ""
@@ -105,4 +106,26 @@ func parseType(url string) string {
 // TODO can all APIs be pluralized like this?
 func pluralizeResourceType(resourceType string) string {
 	return fmt.Sprintf("%ss", resourceType)
+}
+
+// TODO is it safe to assume all APIs under a given prefix use the same convention?
+// TODO how do we handle indexes that are not prefixed with underscores? need to be smarter
+var transformMap = map[string]transformFn{
+	"component_template": removeArrayWrapper,
+	"snapshot":           removeNameWrapper,
+	"slm":                removeNameWrapper,
+	"ilm":                removeNameWrapper,
+	"data_stream":        removeArrayWrapper,
+	"index_template":     removeArrayWrapper,
+	"ingest":             removeNameWrapper,
+}
+
+func applyTransforms(url string, body []byte) ([]byte, error) {
+	resourceType := parseType(url)
+	if fn, ok := transformMap[resourceType]; ok {
+		return fn(url, body)
+	}
+	// no transforms defined for this type
+	// TODO should we pick a default or not?
+	return body, nil
 }

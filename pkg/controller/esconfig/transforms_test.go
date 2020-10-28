@@ -30,7 +30,7 @@ func Test_removeNameWrapper(t *testing.T) {
 	  }`
 	url := "/_snapshot/my_repository"
 
-	got, err := removeNameWrapper(url, body)
+	got, err := removeNameWrapper(url, []byte(body))
 	require.NoError(t, err)
 	opts := jsondiff.DefaultConsoleOptions()
 	diff, s := jsondiff.Compare([]byte(want), []byte(got), &opts)
@@ -71,7 +71,7 @@ func Test_removeArrayWrapper(t *testing.T) {
 
 	url := "/_component_template/component_template1"
 
-	got, err := removeArrayWrapper(url, body)
+	got, err := removeArrayWrapper(url, []byte(body))
 	require.NoError(t, err)
 	opts := jsondiff.DefaultConsoleOptions()
 	diff, s := jsondiff.Compare([]byte(want), []byte(got), &opts)
