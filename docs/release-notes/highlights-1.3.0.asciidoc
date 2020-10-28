@@ -11,7 +11,7 @@ New and notable changes in version 1.3.0 of {n}. See <<release-notes-1.3.0>> for
 [id="{p}-130-official-helm-chart"]
 ==== Official Helm chart
 
-Addressing one of the most common asks, ECK 1.3.0 introduces <<{p}-install-helm,an official Helm chart>> which allows to configure and deploy ECK. Apart from enabling new deployments, a migration path that enables moving from previous deployment method to a Helm chart is documented.
+ECK 1.3.0 introduces <<{p}-install-helm,an official Helm chart>> for deploying the operator. This provides a more flexible way of installing the operator customized to the environment and the desired use case. Existing installations can be easily migrated to Helm as well.
 
 [float]
 [id="{p}-130-volume-expansion-support"]
@@ -41,4 +41,4 @@ To enable ECK becoming link:https://connect.redhat.com/en/partner-with-us/red-ha
 [id="{p}-130-init-containers-modifications"]
 ==== Init containers modifications
 
-All supported resources can now have their init containers modified.
+All supported resources can have their init containers modified. Starting with ECK 1.3.0, modifications to built-in init containers will be merged with the defaults.
