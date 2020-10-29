@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNodeHasShard(t *testing.T) {
+func TestNodeMayHaveShard(t *testing.T) {
 	type args struct {
 		shardLister client.ShardLister
 		podName     string
@@ -61,16 +61,27 @@ func TestNodeHasShard(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "Some shards have no node assigned",
+			args: args{
+				podName: "A",
+				shardLister: NewFakeShardLister([]client.Shard{
+					{Index: "index-1", Shard: "0", NodeName: ""},
+					{Index: "index-1", Shard: "0", NodeName: "C"},
+				}),
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NodeHasShard(context.Background(), tt.args.shardLister, tt.args.podName)
+			got, err := NodeMayHaveShard(context.Background(), esv1.Elasticsearch{}, tt.args.shardLister, tt.args.podName)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeHasShard() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NodeMayHaveShard() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("NodeHasShard() = %v, want %v", got, tt.want)
+				t.Errorf("NodeMayHaveShard() = %v, want %v", got, tt.want)
 			}
 		})
 	}
