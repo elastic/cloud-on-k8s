@@ -17,7 +17,7 @@ var log = logf.Log.WithName("migrate-data")
 
 // NodeMayHaveShard returns true if one of those condition is met:
 // - the given ES Pod is holding at least one shard (primary or replica)
-// - some shards in the cluster don't have a node assigned, in which case we can't make sure about the 1st condition
+// - some shards in the cluster don't have a node assigned, in which case we can't be sure about the 1st condition
 //   this may happen if the node was just restarted: the shards it is holding appear unassigned
 func NodeMayHaveShard(ctx context.Context, es esv1.Elasticsearch, shardLister esclient.ShardLister, podName string) (bool, error) {
 	shards, err := shardLister.GetShards(ctx)
