@@ -108,12 +108,77 @@ func pluralizeResourceType(resourceType string) string {
 	return fmt.Sprintf("%ss", resourceType)
 }
 
+// removeResourceWrapper is useful when the object is wrapped both in an object with the name and the resource type
+// for instance, an SLM policy at /_slm/policy/nightly-snapshots would return
+/*
+	{
+		"nightly-snapshots": {
+			"version": 1,
+			"modified_date_millis": 1603409192704,
+			"policy": {
+			"name": "<nightly-snap-{now/d}>",
+			"schedule": "0 30 1 * * ?",
+			"repository": "my_repository",
+			"config": {
+				"indices": [
+				"*"
+				]
+			},
+			"retention": {
+				"expire_after": "30d",
+				"min_count": 5,
+				"max_count": 50
+			}
+			},
+			"next_execution_millis": 1603416600000,
+			"stats": {
+			"policy": "nightly-snapshots",
+			"snapshots_taken": 0,
+			"snapshots_failed": 0,
+			"snapshots_deleted": 0,
+			"snapshot_deletion_failures": 0
+			}
+		}
+	}
+*/
+// when what we want is the contents of the `policy` object
+
+func removeResourceWrapper(url string, body []byte) ([]byte, error) {
+	transformedBody, err := removeNameWrapper(url, body)
+	if err != nil {
+		return transformedBody, err
+	}
+	var wrapper map[string]interface{}
+	err = json.Unmarshal(transformedBody, &wrapper)
+	if err != nil {
+		return transformedBody, errors.WithStack(err)
+	}
+	// get subresource name
+	s := strings.Split(url, "/")
+	var key string
+	if len(s) > 1 {
+		key = s[2]
+	} else {
+		return transformedBody, errors.New(fmt.Sprintf("cannot parse resource name from url: %s", url))
+	}
+	val, ok := wrapper[key]
+	if !ok {
+		var keys []string
+		for key := range wrapper {
+			keys = append(keys, key)
+		}
+		return transformedBody, errors.New(fmt.Sprintf("body does not contain key: %s, keys: %s", key, keys))
+	}
+	transformedBody, err = json.Marshal(val)
+	return transformedBody, err
+}
+
 // TODO is it safe to assume all APIs under a given prefix use the same convention?
 // TODO how do we handle indexes that are not prefixed with underscores? need to be smarter
 var transformMap = map[string]transformFn{
 	"component_template": removeArrayWrapper,
 	"snapshot":           removeNameWrapper,
-	"slm":                removeNameWrapper,
+	"slm":                removeResourceWrapper,
 	"ilm":                removeNameWrapper,
 	"data_stream":        removeArrayWrapper,
 	"index_template":     removeArrayWrapper,
