@@ -14,7 +14,7 @@ require (
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.2.0
 	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
@@ -49,7 +49,7 @@ require (
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
-	k8s.io/klog/v2 v2.0.0
+	k8s.io/klog/v2 v2.4.0
 	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
 	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/controller-tools v0.4.0
