@@ -171,6 +171,7 @@ go-run:
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development \
+				--enable-leader-election=false \
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
