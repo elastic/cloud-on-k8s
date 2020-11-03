@@ -192,6 +192,63 @@ func Test_ILM(t *testing.T) {
 	assert.Equal(t, jsondiff.SupersetMatch, diff, "want:\n%s\ngot:\n%s\ndifferences:\n%s", want, got, s)
 }
 
+func Test_removeArrayWrapper2(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		request  string
+		response string
+	}{
+		{
+			name: "index template",
+			url:  "/_index_template/my-data-stream-template",
+			request: `{
+				"index_patterns": [ "my-data-stream*" ],
+				"data_stream": { },
+				"priority": 200,
+				"template": {
+				  "settings": {
+					"index.lifecycle.name": "my-data-stream-policy"
+				  }
+				}
+			  }`,
+			response: `{
+				"index_templates": [
+				  {
+					"name": "my-data-stream-template",
+					"index_template": {
+					  "index_patterns": [
+						"my-data-stream*"
+					  ],
+					  "template": {
+						"settings": {
+						  "index": {
+							"lifecycle": {
+							  "name": "my-data-stream-policy"
+							}
+						  }
+						}
+					  },
+					  "composed_of": [],
+					  "priority": 200,
+					  "data_stream": {}
+					}
+				  }
+				]
+			  }`,
+		},
+	}
+	opts := jsondiff.DefaultJSONOptions()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformedResp, err := removeArrayWrapper(tt.url, []byte(tt.response))
+			require.NoError(t, err)
+			actual, diff := jsondiff.Compare(transformedResp, []byte(tt.request), &opts)
+			assert.Equal(t, jsondiff.SupersetMatch, actual, "response:\n%s\nrequest:\n%s\ndifferences:\n%s", transformedResp, tt.request, diff)
+		})
+	}
+}
+
 func Test_jsondiffCompare3(t *testing.T) {
 
 	tests := []struct {

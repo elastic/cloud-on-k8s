@@ -173,6 +173,10 @@ func removeResourceWrapper(url string, body []byte) ([]byte, error) {
 	return transformedBody, err
 }
 
+func noopTransform(url string, body []byte) ([]byte, error) {
+	return body, nil
+}
+
 // TODO is it safe to assume all APIs under a given prefix use the same convention?
 // TODO how do we handle indexes that are not prefixed with underscores? need to be smarter
 var transformMap = map[string]transformFn{
@@ -180,7 +184,7 @@ var transformMap = map[string]transformFn{
 	"snapshot":           removeNameWrapper,
 	"slm":                removeResourceWrapper,
 	"ilm":                removeNameWrapper,
-	"data_stream":        removeArrayWrapper,
+	"data_stream":        noopTransform,
 	"index_template":     removeArrayWrapper,
 	"ingest":             removeNameWrapper,
 }
