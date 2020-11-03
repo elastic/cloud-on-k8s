@@ -31,7 +31,9 @@ The `all-in-one.yaml` method is the quickest way to get started with ECK if you 
 [id="{p}-install-helm"]
 == Install ECK using the Helm chart
 
-Starting from version 1.3.0, an official Helm chart is available to install ECK. Add the Elastic Helm repository to your Helm repository list by running the following command:
+CAUTION: The Helm chart is experimental and should be considered as a beta-level feature.  
+
+Starting from version 1.3.0, an experimental Helm chart is available to install ECK. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
 
 [source, sh]
 ----
