@@ -134,7 +134,8 @@ func requestESWithCA(ip string, caCert []byte) (int, error) {
 	}
 	if caCert != nil {
 		transport.TLSClientConfig = &tls.Config{
-			RootCAs: caCertPool,
+			MinVersion: tls.VersionTLS12,
+			RootCAs:    caCertPool,
 		}
 	}
 

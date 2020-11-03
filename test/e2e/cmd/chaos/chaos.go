@@ -76,7 +76,7 @@ func doRun(flags runFlags) error {
 				log.Info("No operator Pod available for deletion")
 				continue
 			}
-			toDelete := rand.Intn(len(operators.Items))
+			toDelete := rand.Intn(len(operators.Items)) // nolint:gosec
 			podToDelete := operators.Items[toDelete]
 			log.Info("Deleting operator", "pod_name", podToDelete.Name)
 			if err := client.CoreV1().Pods(flags.operatorNamespace).Delete(context.Background(), podToDelete.Name, metav1.DeleteOptions{}); err != nil {

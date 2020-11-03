@@ -116,3 +116,5 @@ issues:
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/elasticsearch/driver/version\.go
       text: 'Consider preallocating `vs`'
+    - path: pkg/controller/elasticsearch/client/client\.go # this is not a comment indicating the func itself is deprecated
+      text: 'deprecatedComment: the proper format is'

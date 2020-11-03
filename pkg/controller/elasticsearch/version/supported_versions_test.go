@@ -42,7 +42,7 @@ func TestSupportedVersions(t *testing.T) {
 				v: version.MustParse("7.1.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("6.8.0"), //wire compat
+				version.MustParse("6.8.0"), // wire compat
 				version.MustParse("7.2.0"),
 				version.MustParse("7.99.99"),
 			},
