@@ -9,20 +9,28 @@ linters:
   enable-all: true
   disable:
     - dupl
+    - exhaustive # added in 1.28
+    - exhaustivestruct # added in 1.32
+    - errorlint # added in 1.32
     - funlen
+    - gci # added in 1.30
     - gochecknoglobals
     - gochecknoinits
     - gocognit # added in 1.20
     - godot # added in 1.25
     - godox # added in 1.19
     - goerr113
+    - gofumpt # added in 1.28
     - gomnd # added in 1.23
     - interfacer
     - lll
     - nestif # added in 1.25
+    - nlreturn # added in 1.30
+    - noctx # added in 1.28
     - scopelint
     - testpackage # added in 1.25
     - whitespace # added in 1.19
+    - wrapcheck # added in 1.32
     - wsl # added in 1.20
 linters-settings:
   maligned:
