@@ -85,7 +85,7 @@ spec:
               memory: 4Gi
 ----
 
-For more information, see the Elasticsearch documentation on link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+For more information, see the entry for `heap size` in the link:{ref}/important-settings.html[Important Elasticsearch configuration] documentation.
 
 [id="{p}-node-configuration"]
 === Node configuration
