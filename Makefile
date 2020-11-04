@@ -344,10 +344,12 @@ switch-eks:
 #################################
 
 docker-build: go-generate generate-config-file
-	docker build . \
+	docker buildx build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		--push \
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
