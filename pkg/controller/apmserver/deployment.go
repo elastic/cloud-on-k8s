@@ -148,8 +148,10 @@ func (r *ReconcileApmServer) deploymentParams(
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
 	}
 
+	// add secret token to hash to force pod rotation on change
+	_, _ = configChecksum.Write(params.TokenSecret.Data[SecretTokenKey])
+
 	podSpec.Labels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
-	// TODO: also need to hash secret token?
 
 	return deployment.Params{
 		Name:            Deployment(as.Name),
