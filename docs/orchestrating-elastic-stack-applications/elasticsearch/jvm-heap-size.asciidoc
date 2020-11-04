@@ -12,4 +12,4 @@ To change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment var
 
 If `ES_JAVA_OPTS` is not defined, the Elasticsearch default heap size of 1Gi will be in effect.
 
-See also: link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Elasticsearch documentation on setting the heap size]
+For more information, see the entry for `heap size` in the link:{ref}/important-settings.html[Important Elasticsearch configuration] documentation.
