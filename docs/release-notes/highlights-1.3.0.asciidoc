@@ -35,7 +35,7 @@ With changes around how IP addresses are handled, ECK is now compatible with IPv
 [id="{p}-130-ubi-base-image"]
 ==== UBI base image
 
-To enable ECK becoming link:https://connect.redhat.com/en/partner-with-us/red-hat-openshift-operator-certification[Red Hat OpenShift Certified Operator], ECK image is now based on Universal Base Image - `ubi-minimal`.
+To enable ECK becoming link:https://connect.redhat.com/en/partner-with-us/red-hat-openshift-operator-certification[Red Hat OpenShift Certified Operator], ECK image is now based on Universal Base Image - `ubi-minimal`. For customers using ECK on Openshift, we now have a certified operator on OperatorHub.
 
 [float]
 [id="{p}-130-init-containers-modifications"]
