@@ -6,7 +6,8 @@ ENV SHELLCHECK_VERSION=0.7.1
 ENV KUBEBUILDER_VERSION=2.3.1
 ENV GCLOUD_VERSION=297.0.1
 ENV KUBECTL_VERSION=1.14.7
-ENV DOCKER_VERSION=19.03.9
+ENV DOCKER_VERSION=19.03.13
+ENV DOCKER_BUILDX_VERSION=0.4.2
 ENV GOTESTSUM_VERSION=0.5.0
 ENV KIND_VERSION=0.8.1
 ENV OPENSHIFT_TOOLS_VERSION=4.3.19
@@ -43,9 +44,14 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
     tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker-${DOCKER_VERSION}.tgz
 
-# xz-utils to decompress shellcheck and unzip for aws-cli
+# Docker buildx extension for building multi-arch images
+RUN mkdir -p ~/.docker/cli-plugins && \ 
+    curl -fsSLo ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-amd64 && \
+    chmod a+x ~/.docker/cli-plugins/docker-buildx
+
+# xz-utils to decompress shellcheck, unzip for aws-cli, qemu-system-arm and qemu-user-static for multi-arch
 RUN apt-get update && apt-get --no-install-recommends -y install \
-    unzip xz-utils && \
+    unzip xz-utils qemu-system-arm qemu-user-static && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
