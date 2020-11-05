@@ -29,7 +29,7 @@ Elasticsearch can be configured to be aware of the underlying Kubernetes node it
 [id="{p}-130-ipv6-compatibility"]
 ==== IPv6 compatibility
 
-With changes around how IP addresses are handled, ECK is now compatible with IPv6 enabled environments.
+With changes around how IP addresses are handled, ECK is now compatible with IPv6-only Kubernetes environments.
 
 [float]
 [id="{p}-130-ubi-base-image"]
