@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -293,7 +294,35 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		}
 	}
 
+	sortBuilders(builders)
+
 	return builders, otherObjects
+}
+
+// sortBuilders mutates the given builder slice to sort them by test priority:
+// Elasticsearch > Kibana >  APMServer > Enterprise Search > Beats
+// The underlying goal is, for example, to ensure Elasticsearch is available before we start testing Beats.
+func sortBuilders(builders []test.Builder) {
+	sort.Slice(builders, func(i, j int) bool {
+		return builderPriority(builders[i]) < builderPriority(builders[j])
+	})
+}
+
+func builderPriority(builder test.Builder) int {
+	switch builder.(type) {
+	case elasticsearch.Builder:
+		return 1
+	case kibana.Builder:
+		return 2
+	case apmserver.Builder:
+		return 3
+	case enterprisesearch.Builder:
+		return 4
+	case beat.Builder:
+		return 5
+	default:
+		return 100
+	}
 }
 
 func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.ObjectSelector {
