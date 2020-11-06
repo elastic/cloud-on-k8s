@@ -106,6 +106,7 @@ main() {
     get_resources "$ns" statefulsets
     get_resources "$ns" replicasets
     get_resources "$ns" deployments
+    get_resources "$ns" daemonsets
     get_resources "$ns" pods
     get_resources "$ns" persistentvolumes
     get_resources "$ns" persistentvolumeclaims
