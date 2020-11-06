@@ -112,7 +112,9 @@ helm show values elastic/eck-operator
 
 CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Read the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
 
-You can migrate an existing operator installation to Helm by doing the following:
+You can migrate an existing operator installation to Helm by adding the `meta.helm.sh/release-name`, `meta.helm.sh/release-namespace` annotations and the `app.kubernetes.io/managed-by` label to all the resources you want to be adopted by Helm. You _must_ do this for the Elastic Custom Resource Definitions (CRD) because deleting them would trigger the deletion of all deployed Elastic applications as well. All other resources are optional and can be deleted. 
+
+For example, an ECK 1.2.1 installation deployed using the link:https://www.elastic.co/guide/en/cloud-on-k8s/1.2/k8s-quickstart.html[quickstart guide] can be migrated to Helm as follows:
 
 . Annotate and label all the ECK CRDs with the appropriate Helm annotations and labels. CRDs need to be preserved to retain any existing Elastic applications deployed using the operator.
 +
@@ -125,7 +127,7 @@ for CRD in $(kubectl get crds --no-headers -o custom-columns=NAME:.metadata.name
 done
 ----
 
-. Uninstall the current ECK operator. You can do this by taking the `all-in-one.yaml` file you used to install the operator, deleting the CRD definitions from it and then running `kubectl delete -f all-in-one-without-crds.yaml`. Alternatively, you could delete each resource individually. For example, to uninstall version 1.2.1 of the operator, you can run the following command:
+. Uninstall the current ECK operator. You can do this by taking the `all-in-one.yaml` file you used to install the operator, deleting the CRD definitions from it and then running `kubectl delete -f all-in-one-without-crds.yaml`. Alternatively, you could delete each resource individually. 
 +
 [source,sh]
 ----
