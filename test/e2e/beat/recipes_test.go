@@ -80,25 +80,23 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 	runBeatRecipe(t, "filebeat_autodiscover_by_metadata.yaml", customize, podLabel, podBad)
 }
 
-// TODO: flaky test, investigate then re-enable
-//  see https://github.com/elastic/cloud-on-k8s/issues/3884
-//func TestMetricbeatHostsRecipe(t *testing.T) {
-//	customize := func(builder beat.Builder) beat.Builder {
-//		return builder.
-//			WithRoles(beat.PSPClusterRoleName).
-//			WithESValidations(
-//				beat.HasEvent("event.dataset:system.cpu"),
-//				beat.HasEvent("event.dataset:system.load"),
-//				beat.HasEvent("event.dataset:system.memory"),
-//				beat.HasEvent("event.dataset:system.network"),
-//				beat.HasEvent("event.dataset:system.process"),
-//				beat.HasEvent("event.dataset:system.process.summary"),
-//				beat.HasEvent("event.dataset:system.fsstat"),
-//			)
-//	}
-//
-//	runBeatRecipe(t, "metricbeat_hosts.yaml", customize)
-//}
+func TestMetricbeatHostsRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(
+				beat.HasEvent("event.dataset:system.cpu"),
+				beat.HasEvent("event.dataset:system.load"),
+				beat.HasEvent("event.dataset:system.memory"),
+				beat.HasEvent("event.dataset:system.network"),
+				beat.HasEvent("event.dataset:system.process"),
+				beat.HasEvent("event.dataset:system.process.summary"),
+				beat.HasEvent("event.dataset:system.fsstat"),
+			)
+	}
+
+	runBeatRecipe(t, "metricbeat_hosts.yaml", customize)
+}
 
 func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 	name := "fb-autodiscover"
