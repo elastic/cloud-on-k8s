@@ -1,0 +1,44 @@
+[[release-highlights-1.3.0]]
+== 1.3.0 release highlights
+
+[float]
+[id="{p}-130-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.3.0 of {n}. See <<release-notes-1.3.0>> for the full list of changes.
+
+[float]
+[id="{p}-130-official-helm-chart"]
+==== Official Helm chart
+
+ECK 1.3.0 introduces <<{p}-install-helm,an official Helm chart>> for deploying the operator. This provides a more flexible way of installing the operator customized to the environment and the desired use case. Existing installations can be easily migrated to Helm as well.
+
+[float]
+[id="{p}-130-volume-expansion-support"]
+==== Volume expansion support
+
+Elasticsearch volumes can be now dynamically expanded. A single edit to the resource YAML manifest is enough to grow the volumes. In many cases (dependent on the underlying storage provider), this can be done without even restarting the pod and so expansions complete in seconds.
+
+[float]
+[id="{p}-130-shard-allocation-is-node-aware-by-default"]
+==== Shard allocation is node aware by default
+
+Elasticsearch can be configured to be aware of the underlying Kubernetes node it is running on, and use this knowledge when deciding where to place replica shards. This prevents an issue with a single Kubernetes node from affecting both primary and replica shards. In previous ECK releases, this behavior required additional configuration by the user. With ECK 1.3.0, this configuration is the default.
+
+[float]
+[id="{p}-130-ipv6-compatibility"]
+==== IPv6 compatibility
+
+With changes around how IP addresses are handled, ECK is now compatible with IPv6-only Kubernetes environments.
+
+[float]
+[id="{p}-130-ubi-base-image"]
+==== UBI base image
+
+To enable ECK becoming link:https://connect.redhat.com/en/partner-with-us/red-hat-openshift-operator-certification[Red Hat OpenShift Certified Operator], ECK image is now based on Universal Base Image - `ubi-minimal`. For customers using ECK on Openshift, we now have a certified operator on OperatorHub.
+
+[float]
+[id="{p}-130-init-containers-modifications"]
+==== Init containers modifications
+
+All supported resources can have their init containers modified. Starting with ECK 1.3.0, modifications to built-in init containers will be merged with the defaults.
