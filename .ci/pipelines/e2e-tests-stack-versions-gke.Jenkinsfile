@@ -33,7 +33,7 @@ pipeline {
                 }
             }
         }
-        stage('Run tests for different ELK stack versions in GKE') {
+        stage('Run tests for different Elastic Stack versions in GKE') {
             parallel {
                 stage("6.8.x") {
                     agent {
