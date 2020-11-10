@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Node configuration
 
-Any setting defined in the `elasticsearch.yml` configuration file can also be defined for set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
+Any setting defined in the `elasticsearch.yml` configuration file can also be defined for a set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
 
 [source,yaml]
 ----
