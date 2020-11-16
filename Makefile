@@ -378,7 +378,7 @@ E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-test
 TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 E2E_STACK_VERSION          ?= 7.9.2
 E2E_JSON                   ?= false
-TEST_TIMEOUT               ?= 5m
+TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
 
