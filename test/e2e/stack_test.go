@@ -34,7 +34,7 @@ const (
 	// - Elasticsearch rolling upgrade
 	// - Kibana + Enterprise Search deployments upgrade
 	// - APMServer deployment upgrade + Beat daemonset upgrade
-	stackVersionUpgradeTimeout = 30 * time.Minute
+	stackVersionUpgradeTimeout = 40 * time.Minute
 )
 
 // TestVersionUpgradeOrdering deploys the entire stack, with resources associated together.
