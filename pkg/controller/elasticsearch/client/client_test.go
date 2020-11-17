@@ -444,9 +444,10 @@ func TestClient_Equal(t *testing.T) {
 
 func TestClient_AddVotingConfigExclusions(t *testing.T) {
 	tests := []struct {
-		expectedPath string
-		version      version.Version
-		wantErr      bool
+		expectedPath  string
+		expectedQuery string
+		version       version.Version
+		wantErr       bool
 	}{
 		{
 			expectedPath: "",
@@ -458,11 +459,24 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 			version:      version.MustParse("7.0.0"),
 			wantErr:      false,
 		},
+		{
+			expectedPath:  "/_cluster/voting_config_exclusions",
+			expectedQuery: "node_names=a,b",
+			version:       version.MustParse("7.8.0"),
+			wantErr:       false,
+		},
+		{
+			expectedPath:  "/_cluster/voting_config_exclusions",
+			expectedQuery: "node_names=a,b",
+			version:       version.MustParse("8.0.0"),
+			wantErr:       false,
+		},
 	}
 
 	for _, tt := range tests {
 		client := NewMockClient(tt.version, func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
+			require.Equal(t, tt.expectedPath, req.URL.Path, tt.version)
+			require.Equal(t, tt.expectedQuery, req.URL.RawQuery, tt.version)
 			return &http.Response{
 				StatusCode: 200,
 				Body:       ioutil.NopCloser(strings.NewReader("")),
