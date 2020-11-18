@@ -21,6 +21,7 @@ type baseClient struct {
 	HTTP     *http.Client
 	Endpoint string
 	caCerts  []*x509.Certificate
+	version  version.Version
 }
 
 // Close idle connections in the underlying http client.
@@ -129,6 +130,7 @@ func (c *baseClient) request(
 }
 
 func versioned(b *baseClient, v version.Version) Client {
+	b.version = v
 	v6 := clientV6{
 		baseClient: *b,
 	}
