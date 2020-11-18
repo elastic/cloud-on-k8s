@@ -47,6 +47,7 @@ func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []st
 	if c.version.IsSameOrAfter(version.From(7, 8, 0)) {
 		path = fmt.Sprintf("/_cluster/voting_config_exclusions?node_names=%s", strings.Join(nodeNames, ","))
 	} else {
+		// versions < 7.8.0 or unversioned clients which is OK as this deprecated API will be supported until 8.0
 		path = fmt.Sprintf("/_cluster/voting_config_exclusions/%s", strings.Join(nodeNames, ","))
 	}
 
