@@ -11,7 +11,7 @@ import (
 	"crypto/x509/pkix"
 	"time"
 
-	"k8s.io/api/admissionregistration/v1beta1"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -29,7 +29,7 @@ type WebhookCertificates struct {
 	serverCert []byte
 }
 
-func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhookConfiguration *v1beta1.ValidatingWebhookConfiguration) bool {
+func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhookConfiguration *admissionv1.ValidatingWebhookConfiguration) bool {
 	// Read the current certificate used by the server
 	serverCA := certificates.BuildCAFromSecret(*serverCertificates)
 	if serverCA == nil {

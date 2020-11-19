@@ -34,7 +34,7 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 	}
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	if err != nil {
 		// 404 is also considered as an error, webhook configuration is expected to be created before the operator is started
 		return err
@@ -56,7 +56,7 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		for i := range webhookConfiguration.Webhooks {
 			webhookConfiguration.Webhooks[i].ClientConfig.CABundle = newCertificates.caCert
 		}
-		if _, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Update(ctx, webhookConfiguration, metav1.UpdateOptions{}); err != nil {
+		if _, err := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Update(ctx, webhookConfiguration, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 

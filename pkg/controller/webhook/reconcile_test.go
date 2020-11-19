@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/admissionregistration/v1beta1"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -38,14 +38,14 @@ func TestParams_ReconcileResources(t *testing.T) {
 					Name:      "elastic-webhook-server-cert",
 				},
 			},
-			&v1beta1.ValidatingWebhookConfiguration{
+			&admissionv1.ValidatingWebhookConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "elastic-webhook.k8s.elastic.co",
 				},
-				Webhooks: []v1beta1.ValidatingWebhook{
+				Webhooks: []admissionv1.ValidatingWebhook{
 					{
 						Name:         "elastic-es-validation-v1.k8s.elastic.co",
-						ClientConfig: v1beta1.WebhookClientConfig{},
+						ClientConfig: admissionv1.WebhookClientConfig{},
 					},
 				},
 			},
@@ -63,7 +63,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle := webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	assert.True(t, len(caBundle) > 0)
@@ -88,7 +88,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the new ca
-	webhookConfiguration, err = clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
+	webhookConfiguration, err = clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle = webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	// Check again that the cert in the secret has been signed by the caBundle

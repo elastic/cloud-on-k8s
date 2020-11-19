@@ -79,6 +79,33 @@ sideEffects: "None"
 {{- end }}
 
 {{/*
+Use v1 of ValidatingWebhookConfiguration on supported Kubernetes versions
+*/}}
+{{- define "eck-operator.webhookAPIVersion" -}}
+{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) -}}
+admissionregistration.k8s.io/v1
+{{- else -}}
+admissionregistration.k8s.io/v1beta1
+{{- end -}}
+{{- end }}
+
+
+{{/*
+Define admissionReviewVersions based on Kubernetes version
+*/}}
+{{- define "eck-operator.webhookAdmissionReviewVersions" -}}
+{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) }}
+admissionReviewVersions: [v1, v1beta1]
+{{- else }}
+admissionReviewVersions: [v1beta1]
+{{- end }}
+{{- end }}
+
+{{/*
 RBAC permissions
 */}}
 {{- define "eck-operator.rbacRules" -}}
