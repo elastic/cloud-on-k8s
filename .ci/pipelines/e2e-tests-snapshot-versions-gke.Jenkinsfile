@@ -58,14 +58,14 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.10.0-SNAPSHOT") {
+                stage("7.11.0-SNAPSHOT") {
                      agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.10.0-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.11.0-SNAPSHOT")
                         }
                     }
                 }
