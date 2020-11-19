@@ -9,7 +9,7 @@ import (
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
-	admissionv1 "k8s.io/api/admissionregistration/v1"
+	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -115,7 +115,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name: webhookParams.Name,
 	}
 
-	if err := c.Watch(&source.Kind{Type: &admissionv1.ValidatingWebhookConfiguration{}}, &watches.NamedWatch{
+	if err := c.Watch(&source.Kind{Type: &v1beta1.ValidatingWebhookConfiguration{}}, &watches.NamedWatch{
 		Name:    "validatingwebhookconfiguration",
 		Watched: []types.NamespacedName{webhookConfiguration},
 		Watcher: webhookConfiguration,
