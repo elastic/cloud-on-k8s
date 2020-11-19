@@ -20,8 +20,6 @@ This section describes how to deploy, configure and access an APM Server with EC
 ** <<{p}-apm-service,APM Server service>>
 ** <<{p}-apm-secret-token,APM Server secret token>>
 
-NOTE: The current Docker image of the APM Server must run as `root` or with the user ID 1000. This prevents the APM Server from running in environments like OpenShift, or on any Kubernetes cluster that would set a different user in the security context.
-
 [id="{p}-apm-eck-managed-es"]
 == Use an Elasticsearch cluster managed by ECK
 
