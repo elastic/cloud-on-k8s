@@ -48,10 +48,13 @@ $MG --profile=istio > "${TEMP_DIR}/istio.yaml"
 check istio
 
 # testdata file setting all possible values
-$MG --values="${SCRIPT_DIR}/testdata/values.yaml" > "${TEMP_DIR}/testdata.yaml"
+$MG --values="${SCRIPT_DIR}/testdata/rand_values.yaml" > "${TEMP_DIR}/testdata.yaml"
 check testdata
 
+# manifest-gen with Kubernetes 1.13
+$MG --values="${SCRIPT_DIR}/testdata/kube113.yaml" > "${TEMP_DIR}/kube113.yaml"
+check kube113
 
-
-
-
+# manifest-gen with Kubernetes 1.16
+$MG --values="${SCRIPT_DIR}/testdata/kube116.yaml" > "${TEMP_DIR}/kube116.yaml"
+check kube116 

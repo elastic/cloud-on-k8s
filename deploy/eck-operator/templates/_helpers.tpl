@@ -68,12 +68,23 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Determine effective Kubernetes version
+*/}}
+{{- define "eck-operator.effectiveKubeVersion" -}}
+{{- if .Values.internal.manifestGen -}}
+{{- semver .Values.internal.kubeVersion -}}
+{{- else -}}
+{{- .Capabilities.KubeVersion.Version -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Add the webhook sideEffects field on supported Kubernetes versions
 */}}
 {{- define "eck-operator.webhookSideEffects" -}}
-{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
 {{- $kubeVersionSupported := semverCompare ">=1.13.0-0" $kubeVersion -}}
-{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) }}
+{{- if $kubeVersionSupported }}
 sideEffects: "None"
 {{- end }}
 {{- end }}
@@ -82,9 +93,9 @@ sideEffects: "None"
 Use v1 of ValidatingWebhookConfiguration on supported Kubernetes versions
 */}}
 {{- define "eck-operator.webhookAPIVersion" -}}
-{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
 {{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
-{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) -}}
+{{- if $kubeVersionSupported -}}
 admissionregistration.k8s.io/v1
 {{- else -}}
 admissionregistration.k8s.io/v1beta1
@@ -96,12 +107,10 @@ admissionregistration.k8s.io/v1beta1
 Define admissionReviewVersions based on Kubernetes version
 */}}
 {{- define "eck-operator.webhookAdmissionReviewVersions" -}}
-{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
 {{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
-{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) }}
+{{- if $kubeVersionSupported  }}
 admissionReviewVersions: [v1beta1, v1]
-{{- else }}
-admissionReviewVersions: [v1beta1]
 {{- end }}
 {{- end }}
 
