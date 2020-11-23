@@ -164,3 +164,4 @@ config:
 # for internal use only.
 internal:
   manifestGen: false
+  kubeVersion: 1.13.0

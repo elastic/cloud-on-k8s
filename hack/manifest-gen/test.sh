@@ -47,9 +47,9 @@ check soft-multi-tenancy
 $MG --profile=istio > "${TEMP_DIR}/istio.yaml"
 check istio
 
-# testdata file setting all possible values
-$MG --values="${SCRIPT_DIR}/testdata/rand_values.yaml" > "${TEMP_DIR}/testdata.yaml"
-check testdata
+# no defaults file that overrides all default values
+$MG --values="${SCRIPT_DIR}/testdata/no_defaults.yaml" > "${TEMP_DIR}/no_defaults.yaml"
+check no_defaults
 
 # manifest-gen with Kubernetes 1.13
 $MG --values="${SCRIPT_DIR}/testdata/kube113.yaml" > "${TEMP_DIR}/kube113.yaml"
