@@ -397,18 +397,3 @@ spec:
       name: https-webhook
   selector:
     control-plane: {{ .Operator.Name }}
----
-# permissions needed for Beat cluster-wide autodiscover feature
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: elastic-beat-autodiscover
-rules:
-- apiGroups: [""] # "" indicates the core API group
-  resources:
-  - namespaces
-  - pods
-  verbs:
-  - get
-  - watch
-  - list
