@@ -205,7 +205,7 @@ func (hc *ContinuousHealthCheck) Start() {
 						hc.AppendErr(err)
 					default:
 						// likely a network error, log and ignore
-						fmt.Printf("error while creating the Elasticsearch client: %s", err.Error())
+						fmt.Printf("error while creating the Elasticsearch client: %s", err)
 					}
 					continue
 				}
