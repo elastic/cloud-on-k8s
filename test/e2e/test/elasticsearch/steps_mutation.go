@@ -196,6 +196,9 @@ func (hc *ContinuousHealthCheck) Start() {
 				if err != nil {
 					// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
 					// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
+					// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
+					// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
+					// so here we do the opposite: catch expected apiserver errors, and consider the rest are network errors.
 					switch err.(type) {
 					case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
 						// explicit apiserver error, consider as healthcheck failure
