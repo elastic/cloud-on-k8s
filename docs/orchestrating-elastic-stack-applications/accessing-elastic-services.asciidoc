@@ -29,7 +29,7 @@ To access Elastic resources, the operator manages a default user named `elastic`
 42xyz42citsale42xyz42
 ----
 
-NOTE: Beware of copying this Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
+WARNING: Beware of copying this Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
 
 [id="{p}-services"]
 == Services
