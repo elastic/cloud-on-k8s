@@ -86,11 +86,11 @@ type: Opaque
 Failure to do so can cause data loss.
 
 [id="{p}-{page_id}-pod-updates"]
-== Pods are not replaced after configuration update
+== Pods are not replaced after a configuration update
 
-When updating an existing Elasticsearch cluster configuration, the update can fail while being be applied.  This happens when the operator is unable to apply the changes required by replacing the pods of a given the Elasticsearch cluster.
+The update of an existing Elasticsearch cluster configuration can fail because the operator is unable to apply the changes required while replacing the pods of a given Elasticsearch cluster.
 
-This can be identified by the `AGE` of the pod being older than the configuration update or the `STATUS` of the pods
+This can be identified by the `AGE` of the pod being older than the configuration update, or the `STATUS` of the pods:
 
 [source,sh]
 ----
@@ -102,9 +102,9 @@ quickstart-es-default-1   1/1     Running   0          15m
 quickstart-es-default-2   1/1     Running   0          15m
 ----
 
-The causes include
+The causes include:
 
-- Elasticsearch cluster is not healthy
+- The Elasticsearch cluster is not healthy.
 
 The health of the cluster may look like
 
@@ -119,12 +119,12 @@ TODO: Finish example
 TODO:
 Action: Check and fix your shard allocations.
 (more API details can be added here)
-For more information, see https://www.elastic.co/guide/en/elasticsearch/reference/7.10/cluster-health.html
-and https://www.elastic.co/guide/en/cloud-on-k8s/1.3/k8s-deploy-elasticsearch.html#k8s_monitor_cluster_health_and_creation_progress.
+For more information, see link:https://www.elastic.co/guide/en/elasticsearch/reference/7.10/cluster-health.html[Cluster health API]
+and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.3/k8s-deploy-elasticsearch.html#k8s_monitor_cluster_health_and_creation_progress[Monitor cluster health and creation progress].
 
 - Not enough resources in the Kubernetes cluster
 
-The scheduling may fail with a message such as
+The scheduling might fail with the following message:
 
 [source,sh]
 ----
