@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -192,8 +194,19 @@ func (hc *ContinuousHealthCheck) Start() {
 				// recreate the Elasticsearch client at each iteration, since we may have switched protocol from http to https during the mutation
 				client, err := hc.esClientFactory()
 				if err != nil {
-					// treat client creation failure same as unavailable cluster
-					hc.AppendErr(err)
+					// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
+					// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
+					// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
+					// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
+					// so here we do the opposite: catch expected apiserver errors, and consider the rest are network errors.
+					switch err.(type) {
+					case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
+						// explicit apiserver error, consider as healthcheck failure
+						hc.AppendErr(err)
+					default:
+						// likely a network error, log and ignore
+						fmt.Printf("error while creating the Elasticsearch client: %s", err)
+					}
 					continue
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
