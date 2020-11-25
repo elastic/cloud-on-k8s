@@ -2,16 +2,14 @@ apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
   name: filebeat
-  namespace: openshift-monitoring
+  namespace: monitoring
 spec:
   type: filebeat
   version: 7.10.0
   elasticsearchRef:
-    name: monitoring
-    namespace: elastic
+    name: elasticsearch
   kibanaRef:
     name: kibana
-    namespace: elastic
   config:
     filebeat:
       autodiscover:
@@ -39,7 +37,7 @@ spec:
         - name: filebeat
           securityContext:
             runAsUser: 0
-            privileged: true
+            privileged: true # This is required to access other containers logs
           volumeMounts:
           - name: varlogcontainers
             mountPath: /var/log/containers
@@ -62,7 +60,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: filebeat
-  namespace: openshift-monitoring
+  namespace: monitoring
 rules:
 - apiGroups: [""] # "" indicates the core API group
   resources:
@@ -77,7 +75,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: filebeat
-  namespace: openshift-monitoring
+  namespace: monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -86,9 +84,33 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: filebeat
-  namespace: openshift-monitoring
+  namespace: monitoring
 roleRef:
   kind: ClusterRole
   name: filebeat
   apiGroup: rbac.authorization.k8s.io
 ---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: monitoring
+spec:
+  version: 7.10.0
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: monitoring
+spec:
+  version: 7.10.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+...
