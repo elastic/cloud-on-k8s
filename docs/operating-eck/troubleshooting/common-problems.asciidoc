@@ -133,7 +133,16 @@ LAST SEEN   TYPE      REASON             OBJECT                        MESSAGE
 10s         Warning   FailedScheduling   pod/quickstart-es-default-2   0/3 nodes are available: 3 Insufficient memory.
 ----
 
-Or a pod is stuck in `STATUS` of `Pending` with an operator log of unable to `restart some nodes`
+The operator may log it is unable to `restart some nodes`:
+
+[source,sh]
+----
+kubectl -n elastic-system logs statefulset.apps/elastic-operator | tail
+
+{"log.level":"info","@timestamp":"2020-11-19T17:34:48.769Z","log.logger":"driver","message":"Cannot restart some nodes for upgrade at this time","service.version":"1.3.0+6db1914b","service.type":"eck","ecs.version":"1.4.0","namespace":"default","es_name":"quickstart","failed_predicates":{"do_not_restart_healthy_node_if_MaxUnavailable_reached":["quickstart-es-default-1","quickstart-es-default-0"]}}
+----
+
+while a pod is stuck in a `Pending` status:
 
 [source,sh]
 ----
@@ -143,11 +152,6 @@ NAME                      READY   STATUS    RESTARTS   AGE
 quickstart-es-default-0   1/1     Running   0          146m
 quickstart-es-default-1   1/1     Running   0          146m
 quickstart-es-default-2   0/1     Pending   0          134m
-
-
-kubectl -n elastic-system logs statefulset.apps/elastic-operator | tail
-
-{"log.level":"info","@timestamp":"2020-11-19T17:34:48.769Z","log.logger":"driver","message":"Cannot restart some nodes for upgrade at this time","service.version":"1.3.0+6db1914b","service.type":"eck","ecs.version":"1.4.0","namespace":"default","es_name":"quickstart","failed_predicates":{"do_not_restart_healthy_node_if_MaxUnavailable_reached":["quickstart-es-default-1","quickstart-es-default-0"]}}
 ----
 
 TODO: Actions
