@@ -106,7 +106,6 @@ The causes include:
 
 - The Elasticsearch cluster is not healthy.
 
-The health of the cluster may look like
 
 [source,sh]
 ----
