@@ -9,6 +9,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
+	"io/ioutil"
 	"reflect"
 	"testing"
 	"time"
@@ -143,6 +145,19 @@ func TestNewLicenseVerifier(t *testing.T) {
 				bytes, err := signer.Sign(licenseFixtureV3)
 				require.NoError(t, err)
 				require.NoError(t, v.ValidSignature(withSignature(licenseFixtureV3, bytes)))
+			},
+		},
+		{
+			name: "Can verify license signed by external tooling",
+			want: func(v *Verifier) {
+				// license attributes contain <> and & which json.Marshal escapes by default leading to a signature
+				// mismatch unless handled explicitly
+				bytes, err := ioutil.ReadFile("testdata/externally-generated-lic.json")
+				require.NoError(t, err)
+				var lic EnterpriseLicense
+				err = json.Unmarshal(bytes, &lic)
+				require.NoError(t, err)
+				require.NoError(t, v.ValidSignature(lic))
 			},
 		},
 	}
