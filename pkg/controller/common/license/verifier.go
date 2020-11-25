@@ -241,8 +241,8 @@ func unescapedJSONMarshal(t interface{}) ([]byte, error) {
 	}
 	marshaledBytes := buffer.Bytes()
 	// json.Encoder adds an additional newline between objects which we do not want here
-	//as it is not part of the signature, so we are removing the last byte
-	return marshaledBytes[:len(marshaledBytes)-1], err
+	// as it is not part of the signature, so we are removing the last byte
+	return bytes.TrimRight(marshaledBytes, "\n"), err
 }
 
 func (l EnterpriseLicense) Version() int {
