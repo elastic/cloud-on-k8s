@@ -194,12 +194,14 @@ func (pb PodBuilder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Applying pod mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var pod corev1.Pod
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&pb.Pod), &pod))
+				if err := k.Client.Get(k8s.ExtractNamespacedName(&pb.Pod), &pod); err != nil {
+					return err
+				}
 				pod.Spec = pb.Pod.Spec
-				require.NoError(t, k.Client.Update(&pod))
-			},
+				return k.Client.Update(&pod)
+			}),
 		}}
 }
 

@@ -73,14 +73,13 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// remove some keys, add new ones
 					secureSettings2.Data = map[string][]byte{
 						secureBazUserSettingKey: []byte("baz"), // the actual value update cannot be checked :(
 					}
-					err := k.Client.Update(&secureSettings2)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(&secureSettings2)
+				}),
 			},
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b, []string{
@@ -101,16 +100,16 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// retrieve current Elasticsearch resource
 					var currentEs esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
-					require.NoError(t, err)
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs); err != nil {
+						return err
+					}
 					// set its secure settings to nil
 					currentEs.Spec.SecureSettings = nil
-					err = k.Client.Update(&currentEs)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(&currentEs)
+				}),
 			},
 
 			// keystore should be updated accordingly

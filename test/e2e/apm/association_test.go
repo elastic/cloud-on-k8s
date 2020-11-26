@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -126,12 +125,14 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 		return test.StepList{
 			test.Step{
 				Name: "Updating to invalid Elasticsearch reference should succeed",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm); err != nil {
+						return err
+					}
 					apm.Spec.ElasticsearchRef.Namespace = "xxxx"
-					require.NoError(t, k.Client.Update(&apm))
-				},
+					return k.Client.Update(&apm)
+				}),
 			},
 			test.Step{
 				Name: "Lost Elasticsearch association should generate events",

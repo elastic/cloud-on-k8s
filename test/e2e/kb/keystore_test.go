@@ -65,15 +65,14 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					secureSettings.Data = map[string][]byte{
 						// this needs to be a valid configuration item, otherwise Kibana refuses to start
 						"logging.json":    []byte("true"),
 						"logging.verbose": []byte("true"),
 					}
-					err := k.Client.Update(&secureSettings)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(&secureSettings)
+				}),
 			},
 
 			// keystore should be updated accordingly
@@ -82,16 +81,16 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// retrieve current Kibana resource
 					var currentKb kbv1.Kibana
-					err := k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb)
-					require.NoError(t, err)
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb); err != nil {
+						return err
+					}
 					// set its secure settings to nil
 					currentKb.Spec.SecureSettings = nil
-					err = k.Client.Update(&currentKb)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(&currentKb)
+				}),
 			},
 
 			// keystore should be updated accordingly

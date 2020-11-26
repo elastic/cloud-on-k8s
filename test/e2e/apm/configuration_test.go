@@ -99,20 +99,26 @@ func TestUpdateConfiguration(t *testing.T) {
 			},
 			test.Step{
 				Name: "Add a Keystore to the APM server",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// get current pod id
 					pods, err := k.GetPods(apmPodListOpts...)
-					require.NoError(t, err)
-					require.True(t, len(pods) == 1)
+					if err != nil {
+						return err
+					}
+					if len(pods) != 1 {
+						return errors.New("expected 1 APM Pod")
+					}
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
+					if err := k.Client.Get(apmNamespacedName, &apm); err != nil {
+						return err
+					}
 					apm.Spec.SecureSettings = []commonv1.SecretSource{
 						{SecretName: secureSettingsSecretName},
 					}
-					require.NoError(t, k.Client.Update(&apm))
-				},
+					return k.Client.Update(&apm)
+				}),
 			},
 			test.Step{
 				Name: "APM Pod should be recreated",
@@ -136,21 +142,28 @@ func TestUpdateConfiguration(t *testing.T) {
 
 			test.Step{
 				Name: "Customize configuration of the APM server",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// get current pod id
 					pods, err := k.GetPods(apmPodListOpts...)
+					if err != nil {
+						return err
+					}
 					require.NoError(t, err)
-					require.True(t, len(pods) == 1)
+					if len(pods) != 1 {
+						return fmt.Errorf("expected 1 APM Pod, got %d", len(pods))
+					}
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
+					if err := k.Client.Get(apmNamespacedName, &apm); err != nil {
+						return err
+					}
 					customConfig := commonv1.Config{
 						Data: map[string]interface{}{"output.elasticsearch.compression_level": 1},
 					}
 					apm.Spec.Config = &customConfig
-					require.NoError(t, k.Client.Update(&apm))
-				},
+					return k.Client.Update(&apm)
+				}),
 			},
 			test.Step{
 				Name: "APM Pod should be recreated",

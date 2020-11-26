@@ -5,12 +5,9 @@
 package apmserver
 
 import (
-	"testing"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 )
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
@@ -21,12 +18,14 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Applying the ApmServer mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var as apmv1.ApmServer
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &as))
+				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &as); err != nil {
+					return err
+				}
 				as.Spec = b.ApmServer.Spec
-				require.NoError(t, k.Client.Update(&as))
-			},
+				return k.Client.Update(&as)
+			}),
 		}}
 }
 

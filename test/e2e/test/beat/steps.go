@@ -193,12 +193,14 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Applying the Beat mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var beat beatv1beta1.Beat
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &beat))
+				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &beat); err != nil {
+					return err
+				}
 				beat.Spec = b.Beat.Spec
-				require.NoError(t, k.Client.Update(&beat))
-			},
+				return k.Client.Update(&beat)
+			}),
 		}}
 }
 

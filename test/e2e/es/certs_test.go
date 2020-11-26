@@ -60,15 +60,16 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 			},
 			{
 				Name: "Add load balancer IP to the SAN",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var currentEs esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
-					require.NoError(t, err)
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs); err != nil {
+						return err
+					}
 
 					b.Elasticsearch = currentEs
 					b = b.WithHTTPSAN(podIP)
-					require.NoError(t, k.Client.Update(&b.Elasticsearch))
-				},
+					return k.Client.Update(&b.Elasticsearch)
+				}),
 			},
 			{
 				Name: "Check ES is reachable with cert verification",

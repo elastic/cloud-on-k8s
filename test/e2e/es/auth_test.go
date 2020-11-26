@@ -23,6 +23,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -128,28 +132,30 @@ func TestESUserProvidedAuth(t *testing.T) {
 			},
 			test.Step{
 				Name: "Update password in the file realm secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var existingSecret corev1.Secret
-					err := k.Client.Get(k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret)
-					require.NoError(t, err)
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret); err != nil {
+						return err
+					}
 					existingSecret.StringData = map[string]string{
 						filerealm.UsersFile:      sampleUsersFileUpdated,
 						filerealm.UsersRolesFile: sampleUsersRolesFile,
 					}
-					require.NoError(t, k.Client.Update(&existingSecret))
-				},
+					return k.Client.Update(&existingSecret)
+				}),
 			},
 			test.Step{
 				Name: "Update role in the roles secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var existingSecret corev1.Secret
-					err := k.Client.Get(k8s.ExtractNamespacedName(&rolesSecret), &existingSecret)
-					require.NoError(t, err)
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&rolesSecret), &existingSecret); err != nil {
+						return err
+					}
 					existingSecret.StringData = map[string]string{
 						user.RolesFile: sampleRolesFile(writeIndexUpdated),
 					}
-					require.NoError(t, k.Client.Update(&existingSecret))
-				},
+					return k.Client.Update(&existingSecret)
+				}),
 			},
 			test.Step{
 				Name: "ES API should eventually be accessible using the updated password and the updated role",
@@ -161,14 +167,14 @@ func TestESUserProvidedAuth(t *testing.T) {
 			},
 			test.Step{
 				Name: "Remove secrets ref in the ES spec",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
-					require.NoError(t, err)
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+						return err
+					}
 					es.Spec.Auth = esv1.Auth{}
-					err = k.Client.Update(&es)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(&es)
+				}),
 			},
 			test.Step{
 				Name: "ES API should eventually not be accessible anymore since user has been removed",
