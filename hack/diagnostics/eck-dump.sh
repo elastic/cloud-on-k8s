@@ -116,7 +116,7 @@ main() {
     get_resources "$ns" events
     get_resources "$ns" networkpolicies
     get_resources "$ns" controllerrevisions
-    list_resources "$ns" secrets
+    get_metadata "$ns" secrets
 
     # get all managed resources and their logs
     get_resources "$ns" kibana
@@ -147,11 +147,10 @@ get_resources() {
   kubectl get -n "$ns" "$resources" -o json | to_stdin_or_file "$ns"/"$resources".json
 }
 
-# list_resources lists resources in a specified namespace in human readable plain-text
-# Useful to list secrets without their content.
-list_resources() {
+# get_metadata lists resources metadata in a specified namespace in JSON output format
+get_metadata() {
   local ns=$1 resources=$2
-  kubectl get -n "$ns" "$resources" | to_stdin_or_file "$ns"/"$resources".txt
+  kubectl get -n "$ns" "$resources" -o=jsonpath='{range .items[*]}{.metadata}{"\n"}{end}' | to_stdin_or_file "$ns"/"$resources".json
 }
 
 # get_logs retrieves logs for all pods in a specified namespace
