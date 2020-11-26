@@ -102,11 +102,10 @@ quickstart-es-default-1   1/1     Running   0          15m
 quickstart-es-default-2   1/1     Running   0          15m
 ----
 
-The causes include:
+Possible causes include:
 
-- The Elasticsearch cluster is not healthy.
-
-
+* The Elasticsearch cluster is not healthy.
++
 [source,sh]
 ----
 kubectl get elasticsearch
@@ -114,17 +113,15 @@ kubectl get elasticsearch
 NAME         HEALTH   NODES   VERSION   PHASE   AGE
 TODO: Finish example
 ----
-
-TODO:
-Action: Check and fix your shard allocations.
-(more API details can be added here)
++
+In this case, you have to check and fix your shard allocations.
 For more information, see link:https://www.elastic.co/guide/en/elasticsearch/reference/7.10/cluster-health.html[Cluster health API]
 and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.3/k8s-deploy-elasticsearch.html#k8s_monitor_cluster_health_and_creation_progress[Monitor cluster health and creation progress].
 
-- Not enough resources in the Kubernetes cluster
-
-The scheduling might fail with the following message:
-
+* There are not enough resources in the Kubernetes cluster.
++
+The scheduling fails with the following message:
++
 [source,sh]
 ----
 kubectl get events --sort-by='{.lastTimestamp}' | tail
@@ -132,18 +129,18 @@ kubectl get events --sort-by='{.lastTimestamp}' | tail
 LAST SEEN   TYPE      REASON             OBJECT                        MESSAGE
 10s         Warning   FailedScheduling   pod/quickstart-es-default-2   0/3 nodes are available: 3 Insufficient memory.
 ----
-
-The operator may log it is unable to `restart some nodes`:
-
++
+The operator is not able to restart some nodes:
++
 [source,sh]
 ----
 kubectl -n elastic-system logs statefulset.apps/elastic-operator | tail
 
 {"log.level":"info","@timestamp":"2020-11-19T17:34:48.769Z","log.logger":"driver","message":"Cannot restart some nodes for upgrade at this time","service.version":"1.3.0+6db1914b","service.type":"eck","ecs.version":"1.4.0","namespace":"default","es_name":"quickstart","failed_predicates":{"do_not_restart_healthy_node_if_MaxUnavailable_reached":["quickstart-es-default-1","quickstart-es-default-0"]}}
 ----
-
-while a pod is stuck in a `Pending` status:
-
++
+A pod is stuck in a `Pending` status:
++
 [source,sh]
 ----
 kubectl get pods
@@ -153,9 +150,7 @@ quickstart-es-default-0   1/1     Running   0          146m
 quickstart-es-default-1   1/1     Running   0          146m
 quickstart-es-default-2   0/1     Pending   0          134m
 ----
++
+In this case, you have to add more K8s nodes, or free up resources. In the worst case, delete the pod and ECK operator will recreate it.
 
-TODO: Actions
-Add more K8s nodes / free up resources
-in the worst case delete the pod and ECK operator should recreate it.
-
-TOOD:  Link to "Troubleshooting methods" page??
+For more information, see <<{p}-troubleshooting-methods>>.
