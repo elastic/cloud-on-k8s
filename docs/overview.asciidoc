@@ -15,7 +15,6 @@ With Elastic Cloud on Kubernetes you can streamline critical operations, such as
 
 . Managing and monitoring multiple clusters
 . Scaling cluster capacity and storage
-. Configure backups using snapshots
 . Securing clusters with TLS certificates
 . Setting up hot-warm-cold architectures with availability zone awareness
 --
