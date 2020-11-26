@@ -5,12 +5,9 @@
 package enterprisesearch
 
 import (
-	"testing"
-
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,13 +17,15 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Deleting EnterpriseSearch should return no error",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
-					require.NoError(t, err)
-
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "EnterpriseSearch should not be there anymore",

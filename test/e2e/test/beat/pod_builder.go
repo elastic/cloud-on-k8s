@@ -209,12 +209,15 @@ func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 	return []test.Step{
 		{
 			Name: "Deleting the resources should return no error",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range pb.RuntimeObjects() {
 					err := k.Client.Delete(obj)
-					require.NoError(t, err)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "The resources should not be there anymore",

@@ -7,7 +7,8 @@ package kb
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,16 +47,22 @@ func TestKillKibanaDeployment(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Delete Kibana deployment",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
 						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      kibana2.Deployment(kbBuilder.Kibana.Name),
 					}, &dep)
-					require.NoError(t, err)
+					if apierrors.IsNotFound(err) {
+						// already deleted
+						return nil
+					}
 					err = k.Client.Delete(&dep)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}, esBuilder, kbBuilder)

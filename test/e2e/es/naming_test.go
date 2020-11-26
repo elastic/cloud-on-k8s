@@ -128,27 +128,27 @@ func testRejectionOfLongName(t *testing.T) {
 		},
 		test.Step{
 			Name: "Deleting an invalid Elasticsearch object should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				// if the validating webhook rejected the request, we have nothing to delete
 				if !objectCreated {
-					return
+					return nil
 				}
 
 				for _, obj := range esBuilder.RuntimeObjects() {
 					err := k.Client.Delete(obj)
-					require.NoError(t, err)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
 
-				test.Eventually(func() error {
-					var createdES esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES)
-					if apierrors.IsNotFound(err) {
-						return nil
-					}
+				var createdES esv1.Elasticsearch
+				err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES)
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
 
-					return errors.Wrapf(err, "object should not exist")
-				})
-			},
+				return errors.Wrapf(err, "object should not exist")
+			}),
 		},
 	}
 

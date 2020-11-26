@@ -31,7 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta2 "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -198,12 +198,13 @@ func makeObjectSteps(
 				require.NoError(t, err)
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Delete %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
-					Test: func(t *testing.T) {
+					Test: test.Eventually(func() error {
 						err := k.Client.Delete(objects[ii])
-						if !k8serrors.IsNotFound(err) {
-							require.NoError(t, err)
+						if err != nil && !apierrors.IsNotFound(err) {
+							return err
 						}
-					},
+						return nil
+					}),
 				})
 			}
 			return steps

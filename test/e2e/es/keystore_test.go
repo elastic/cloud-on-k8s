@@ -11,8 +11,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -89,9 +89,13 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			// remove one secret
 			test.Step{
 				Name: "Remove one of the source secrets",
-				Test: func(t *testing.T) {
-					require.NoError(t, k.Client.Delete(&secureSettings2))
-				},
+				Test: test.Eventually(func() error {
+					err := k.Client.Delete(&secureSettings2)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b, []string{
@@ -118,10 +122,13 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			// cleanup extra resources
 			test.Step{
 				Name: "Delete secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					err := k.Client.Delete(&secureSettings1) // we deleted the other one above already
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}).
 		WithSteps(b.DeletionTestSteps(k)).

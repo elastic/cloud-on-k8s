@@ -6,10 +6,8 @@ package elasticsearch
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -24,13 +22,15 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Deleting Elasticsearch should return no error",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
-					require.NoError(t, err)
-
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "Elasticsearch should not be there anymore",

@@ -7,12 +7,13 @@ package kb
 import (
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -99,10 +100,13 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			// cleanup extra resources
 			test.Step{
 				Name: "Delete secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					err := k.Client.Delete(&secureSettings)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}

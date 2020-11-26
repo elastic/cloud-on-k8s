@@ -11,10 +11,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -186,11 +182,15 @@ func TestESUserProvidedAuth(t *testing.T) {
 			},
 			test.Step{
 				Name: "Delete auth secrets",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					for _, s := range authSecrets {
-						require.NoError(t, k.Client.Delete(&s))
+						err := k.Client.Delete(&s)
+						if err != nil && !apierrors.IsNotFound(err) {
+							return err
+						}
 					}
-				},
+					return nil
+				}),
 			},
 		}).
 		WithSteps(b.DeletionTestSteps(k)).

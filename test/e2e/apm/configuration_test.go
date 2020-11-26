@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -195,10 +196,13 @@ func TestUpdateConfiguration(t *testing.T) {
 			// cleanup extra resources
 			test.Step{
 				Name: "Delete secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					err := k.Client.Delete(&secureSettings)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}
