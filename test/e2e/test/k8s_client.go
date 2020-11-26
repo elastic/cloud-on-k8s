@@ -313,7 +313,7 @@ func (k K8sClient) CreateOrUpdate(objs ...runtime.Object) error {
 		// optimistic creation
 		err := k.Client.Create(obj)
 		if err != nil {
-			if !apierrors.IsNotFound(err) {
+			if !apierrors.IsAlreadyExists(err) {
 				return err
 			}
 			// already exists: update instead
