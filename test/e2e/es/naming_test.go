@@ -122,7 +122,7 @@ func testRejectionOfLongName(t *testing.T) {
 							return fmt.Errorf("expected phase=[%s], actual phase=[%s]", esv1.ElasticsearchResourceInvalid, createdES.Status.Phase)
 						}
 						return nil
-					})
+					})(t)
 				}
 			},
 		},
