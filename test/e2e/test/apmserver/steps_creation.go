@@ -63,13 +63,17 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		},
 		{
 			Name: "APM Server should be created",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var createdApmServer apmv1.ApmServer
 				err := k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &createdApmServer)
-				require.NoError(t, err)
-				require.Equal(t, b.ApmServer.Spec.Version, createdApmServer.Spec.Version)
-				// TODO this is incomplete
-			},
+				if err != nil {
+					return err
+				}
+				if b.ApmServer.Spec.Version != createdApmServer.Spec.Version {
+					return fmt.Errorf("expected version %s but got %s", b.ApmServer.Spec.Version, createdApmServer.Spec.Version)
+				}
+				return nil
+			}),
 		},
 	}
 }

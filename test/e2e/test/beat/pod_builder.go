@@ -6,10 +6,8 @@ package beat
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -151,11 +149,10 @@ func (pb PodBuilder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Pod should be created",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var createdPod corev1.Pod
-					err := k.Client.Get(k8s.ExtractNamespacedName(&pb.Pod), &createdPod)
-					require.NoError(t, err)
-				},
+					return k.Client.Get(k8s.ExtractNamespacedName(&pb.Pod), &createdPod)
+				}),
 			},
 		})
 }

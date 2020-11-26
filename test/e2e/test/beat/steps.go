@@ -6,10 +6,8 @@ package beat
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -100,12 +98,16 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Beat should be created",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var createdBeat beatv1beta1.Beat
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &createdBeat)
-					require.NoError(t, err)
-					require.Equal(t, b.Beat.Spec.Version, createdBeat.Spec.Version)
-				},
+					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &createdBeat); err != nil {
+						return err
+					}
+					if b.Beat.Spec.Version != createdBeat.Spec.Version {
+						return fmt.Errorf("expected version %s but got %s", b.Beat.Spec.Version, createdBeat.Spec.Version)
+					}
+					return nil
+				}),
 			},
 		})
 }
