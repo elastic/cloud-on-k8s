@@ -678,11 +678,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.5.2
-Time    : 2020-08-18T19:37:11Z
+Version : v0.5.4
+Time    : 2020-11-24T18:26:02Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.4/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
