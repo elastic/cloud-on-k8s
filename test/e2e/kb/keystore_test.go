@@ -52,12 +52,9 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Create secure settings secret",
-				Test: func(t *testing.T) {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&secureSettings)
-					// and create a fresh one
-					require.NoError(t, k.Client.Create(&secureSettings))
-				},
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdateSecrets(secureSettings)
+				}),
 			},
 		}
 	}

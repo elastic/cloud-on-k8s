@@ -145,12 +145,9 @@ func (pb PodBuilder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(test.StepList{
 			test.Step{
 				Name: "Creating a Pod should succeed",
-				Test: func(t *testing.T) {
-					for _, obj := range pb.RuntimeObjects() {
-						err := k.Client.Create(obj)
-						require.NoError(t, err)
-					}
-				},
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(pb.RuntimeObjects()...)
+				}),
 			},
 			test.Step{
 				Name: "Pod should be created",

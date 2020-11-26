@@ -74,13 +74,9 @@ func TestUpdateConfiguration(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Create secure settings secret",
-				Test: func(t *testing.T) {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&secureSettings)
-					// and create a fresh one
-					err := k.Client.Create(&secureSettings)
-					require.NoError(t, err)
-				},
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdateSecrets(secureSettings)
+				}),
 			},
 			// Keystore should be empty
 			test.CheckKeystoreEntries(k, APMKeystoreCmd, nil, apmPodListOpts...),

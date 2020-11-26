@@ -18,12 +18,9 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Creating Enterprise Search should succeed",
-			Test: func(t *testing.T) {
-				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(obj)
-					require.NoError(t, err)
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(b.RuntimeObjects()...)
+			}),
 		},
 		{
 			Name: "Enterprise Search should be created",

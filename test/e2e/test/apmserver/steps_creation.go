@@ -23,12 +23,9 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Creating APM Server should succeed",
-			Test: func(t *testing.T) {
-				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(obj)
-					require.NoError(t, err)
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(b.RuntimeObjects()...)
+			}),
 		},
 		{
 			// The APM Server docker image can't run with a random user id, this step adds the SA to the anyuid SCC

@@ -76,7 +76,7 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...clie
 func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string, licenseBytes []byte) test.Step {
 	return test.Step{
 		Name: "Creating enterprise license secret",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
@@ -90,8 +90,8 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 					license.FileName: licenseBytes,
 				},
 			}
-			require.NoError(t, ltctx.k.Client.Create(&sec))
-		},
+			return ltctx.k.CreateOrUpdate(&sec)
+		}),
 	}
 }
 
@@ -133,7 +133,7 @@ func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, private
 func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName string) test.Step {
 	return test.Step{
 		Name: "Creating enterprise trial license secret",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
@@ -147,8 +147,8 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 					},
 				},
 			}
-			require.NoError(t, ltctx.k.Client.Create(&sec))
-		},
+			return ltctx.k.CreateOrUpdate(&sec)
+		}),
 	}
 }
 

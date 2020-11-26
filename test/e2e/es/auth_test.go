@@ -96,15 +96,9 @@ func TestESUserProvidedAuth(t *testing.T) {
 		// create secure settings secret
 		WithStep(test.Step{
 			Name: "Create file realm and role secrets",
-			Test: func(t *testing.T) {
-				for _, s := range authSecrets {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&s)
-					// and create a fresh one
-					err := k.Client.Create(&s)
-					require.NoError(t, err)
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdateSecrets(authSecrets...)
+			}),
 		}).
 		// create the cluster
 		WithSteps(b.InitTestSteps(k)).

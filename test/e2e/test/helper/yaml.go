@@ -184,12 +184,9 @@ func makeObjectSteps(
 				require.NoError(t, err)
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Create %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
-					Test: func(t *testing.T) {
-						err := k.Client.Create(objects[ii])
-						if !k8serrors.IsAlreadyExists(err) {
-							require.NoError(t, err)
-						}
-					},
+					Test: test.Eventually(func() error {
+						return k.CreateOrUpdate(objects[ii])
+					}),
 				})
 			}
 			return steps

@@ -55,16 +55,9 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		// create secure settings secret
 		WithStep(test.Step{
 			Name: "Create secure settings secret",
-			Test: func(t *testing.T) {
-				for _, s := range secureSettings {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&s)
-					// and create a fresh one
-					err := k.Client.Create(&s)
-					require.NoError(t, err)
-
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdateSecrets(secureSettings...)
+			}),
 		}).
 
 		// create the cluster
