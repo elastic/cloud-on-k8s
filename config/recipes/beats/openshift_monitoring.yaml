@@ -121,14 +121,14 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 2
+              memory: 2Gi
         dnsPolicy: ClusterFirstWithHostNet
         hostNetwork: true # Allows to provide richer host metadata
-        resources:
-          limits:
-            memory: 2Gi
-          requests:
-            cpu: 2
-            memory: 2Gi
         securityContext:
           runAsUser: 0
           privileged: true # This is required to access kubelet API
@@ -200,6 +200,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: metricbeat
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -208,6 +209,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: metricbeat
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: metricbeat
@@ -288,6 +290,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: filebeat
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -296,6 +299,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: filebeat
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: filebeat
