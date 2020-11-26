@@ -26,10 +26,10 @@ docker-login() {
     local image=$1
     local registry=${image%%"/"*}
 
-#    if grep -q "$registry" ~/.docker/config.json; then
-#        # already logged in
-#        return 0
-#    fi
+    if grep -q "$registry" ~/.docker/config.json; then
+        echo "Skipping Docker login"
+        return 0
+    fi
 
     case "$image" in
 
