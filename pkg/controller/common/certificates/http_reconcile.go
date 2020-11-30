@@ -45,7 +45,9 @@ func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) 
 		expected.Data[CAFileName] = caPem
 	}
 
-	_, err := reconciler.ReconcileSecret(r.K8sClient, expected, r.Object)
+	// Don't set an ownerRef for public http certs secrets, likely to be copied into different namespaces.
+	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
+	_, err := reconciler.ReconcileSecretNoOwnerRef(r.K8sClient, expected, r.Object)
 	return err
 }
 

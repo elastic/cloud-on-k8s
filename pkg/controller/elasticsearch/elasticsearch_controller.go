@@ -321,4 +321,10 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
+	if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es); err != nil {
+		// this is best-effort only, some secrets may remain orphan in case of error here,
+		// or if the operator was down during the owner deletion
+		log.Error(err, "namespace", es.Namespace, "es_name", es.Name,
+			"Failed to garbage collect secrets, they should be removed manually")
+	}
 }

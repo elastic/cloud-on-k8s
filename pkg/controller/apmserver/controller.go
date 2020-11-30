@@ -308,6 +308,12 @@ func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+	if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj); err != nil {
+		// this is best-effort only, some secrets may remain orphan in case of error here,
+		// or if the operator was down during the owner deletion
+		log.Error(err, "namespace", obj.Namespace, "apm_name", obj.Name,
+			"Failed to garbage collect secrets, they should be removed manually")
+	}
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
@@ -333,7 +339,9 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(24)
 	}
 
-	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)
+	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.
+	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
+	return reconciler.ReconcileSecretNoOwnerRef(c, expectedApmServerSecret, as)
 }
 
 func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {

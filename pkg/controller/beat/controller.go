@@ -152,6 +152,12 @@ func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, 
 	}
 
 	if beat.IsMarkedForDeletion() {
+		if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, request.NamespacedName); err != nil {
+			// this is best-effort only, some secrets may remain orphan in case of error here,
+			// or if the operator was down during the owner deletion
+			log.Error(err, "namespace", beat.Namespace, "beat_name", beat.Name,
+				"Failed to garbage collect secrets, they should be removed manually")
+		}
 		return reconcile.Result{}, nil
 	}
 
