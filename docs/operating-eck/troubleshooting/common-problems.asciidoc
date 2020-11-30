@@ -114,9 +114,7 @@ NAME         HEALTH   NODES   VERSION   PHASE   AGE
 TODO: Finish example
 ----
 +
-In this case, you have to check and fix your shard allocations.
-For more information, see link:https://www.elastic.co/guide/en/elasticsearch/reference/7.10/cluster-health.html[Cluster health API]
-and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.3/k8s-deploy-elasticsearch.html#k8s_monitor_cluster_health_and_creation_progress[Monitor cluster health and creation progress].
+In this case, you have to link:{ref}/cluster-allocation-explain.html[check] and fix your shard allocations.  The link:{ref}/cluster-health.html[cluster health], link:{ref}/cat-shards.html[cat shards], and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.3/k8s-deploy-elasticsearch.html#k8s_monitor_cluster_health_and_creation_progress[get Elasticsearch] APIs can assist in tracking the shard recover process.
 
 * There are not enough resources in the Kubernetes cluster.
 +
