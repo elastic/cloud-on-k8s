@@ -213,11 +213,11 @@ func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// Additional cleanup is done by the onDelete function.
-			r.onDelete(types.NamespacedName{
+			err := r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return true, nil
+			return true, err
 		}
 		// Error reading the object - requeue the request.
 		return true, err
@@ -314,17 +314,12 @@ func (r *ReconcileElasticsearch) updateStatus(
 }
 
 // onDelete garbage collect resources when a Elasticsearch cluster is deleted
-func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
+func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
-	if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es); err != nil {
-		// this is best-effort only, some secrets may remain orphan in case of error here,
-		// or if the operator was down during the owner deletion
-		log.Error(err, "namespace", es.Namespace, "es_name", es.Name,
-			"Failed to garbage collect secrets, they should be removed manually")
-	}
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es)
 }

@@ -162,8 +162,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// Kibana will be deleted nothing to do other than remove the watches
 	if kb.IsMarkedForDeletion() {
-		r.onDelete(k8s.ExtractNamespacedName(&kb))
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&kb))
 	}
 
 	// update controller version annotation if necessary
@@ -244,17 +243,12 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	return common.UpdateStatus(r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
+func (r *ReconcileKibana) onDelete(obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
-	if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj); err != nil {
-		// this is best-effort only, some secrets may remain orphan in case of error here,
-		// or if the operator was down during the owner deletion
-		log.Error(err, "namespace", obj.Namespace, "kb_name", obj.Name,
-			"Failed to garbage collect secrets, they should be removed manually")
-	}
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
 }
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana

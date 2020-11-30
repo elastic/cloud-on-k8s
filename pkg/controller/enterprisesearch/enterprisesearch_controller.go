@@ -151,11 +151,10 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	var ent entv1beta1.EnterpriseSearch
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &ent); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -180,18 +179,12 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	return r.doReconcile(ctx, ent)
 }
 
-func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
+func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entName.EntNamer, obj.Name))
-
-	if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj); err != nil {
-		// this is best-effort only, some secrets may remain orphan in case of error here,
-		// or if the operator was down during the owner deletion
-		log.Error(err, "namespace", obj.Namespace, "ent_name", obj.Name,
-			"Failed to garbage collect secrets, they should be removed manually")
-	}
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1beta1.EnterpriseSearch) (bool, error) {

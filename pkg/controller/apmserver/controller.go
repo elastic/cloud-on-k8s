@@ -179,11 +179,10 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	var as apmv1.ApmServer
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &as); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -303,17 +302,12 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	return nil
 }
 
-func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
+func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
-	if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj); err != nil {
-		// this is best-effort only, some secrets may remain orphan in case of error here,
-		// or if the operator was down during the owner deletion
-		log.Error(err, "namespace", obj.Namespace, "apm_name", obj.Name,
-			"Failed to garbage collect secrets, they should be removed manually")
-	}
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.

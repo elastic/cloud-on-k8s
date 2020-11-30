@@ -136,8 +136,7 @@ func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, 
 	var beat beatv1beta1.Beat
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &beat); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(request.NamespacedName)
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, r.onDelete(request.NamespacedName)
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -152,12 +151,6 @@ func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, 
 	}
 
 	if beat.IsMarkedForDeletion() {
-		if err := reconciler.GarbageCollectSoftOwnedSecrets(r.Client, request.NamespacedName); err != nil {
-			// this is best-effort only, some secrets may remain orphan in case of error here,
-			// or if the operator was down during the owner deletion
-			log.Error(err, "namespace", beat.Namespace, "beat_name", beat.Name,
-				"Failed to garbage collect secrets, they should be removed manually")
-		}
 		return reconcile.Result{}, nil
 	}
 
@@ -210,9 +203,10 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 	return compat, err
 }
 
-func (r *ReconcileBeat) onDelete(obj types.NamespacedName) {
+func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
 }
 
 func newDriver(
