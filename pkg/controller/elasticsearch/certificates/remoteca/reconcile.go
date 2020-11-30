@@ -36,6 +36,7 @@ func Labels(esName string) client.MatchingLabels {
 func Reconcile(
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	ca *certificates.CA,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
@@ -46,15 +47,21 @@ func Reconcile(
 	); err != nil {
 		return err
 	}
-	// We sort the remote certificate authorities to have a stable comparison with the reconciled data
-	sort.SliceStable(remoteCAList.Items, func(i, j int) bool {
-		// We don't need to compare the namespace because they are all in the same one
-		return remoteCAList.Items[i].Name < remoteCAList.Items[j].Name
-	})
 
-	remoteCertificateAuthorities := make([][]byte, len(remoteCAList.Items))
-	for i, remoteCA := range remoteCAList.Items {
-		remoteCertificateAuthorities[i] = remoteCA.Data[certificates.CAFileName]
+	var remoteCertificateAuthorities [][]byte
+	if len(remoteCAList.Items) > 0 {
+		// We sort the remote certificate authorities to have a stable comparison with the reconciled data
+		sort.SliceStable(remoteCAList.Items, func(i, j int) bool {
+			// We don't need to compare the namespace because they are all in the same one
+			return remoteCAList.Items[i].Name < remoteCAList.Items[j].Name
+		})
+		remoteCertificateAuthorities = make([][]byte, len(remoteCAList.Items))
+		for i, remoteCA := range remoteCAList.Items {
+			remoteCertificateAuthorities[i] = remoteCA.Data[certificates.CAFileName]
+		}
+	} else {
+		// if remoteCAList is empty we use the provided transport CA so that we don't end up having an empty cert file mounted on the ES container
+		remoteCertificateAuthorities = [][]byte{certificates.EncodePEMCert(ca.Cert.Raw)}
 	}
 
 	expected := v1.Secret{
