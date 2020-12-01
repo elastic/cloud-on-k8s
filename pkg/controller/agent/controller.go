@@ -9,7 +9,6 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -28,15 +27,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 const (
 	controllerName = "agent-controller"
 )
-
-var log = logf.Log.WithName(controllerName)
 
 // Add creates a new Agent Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -120,9 +118,19 @@ type ReconcileAgent struct {
 // Reconcile reads that state of the cluster for a Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "agent_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "agent")
-	defer tracing.EndTransaction(tx)
+	ctx := tracing.NewContextTransaction(r.Tracer, controllerName, request.String(), map[string]string{"iteration": string(r.iteration)})
+	ctx = logconf.InitInContext(ctx, controllerName, r.iteration, request.Namespace, "agent_name", request.Name)
+
+	defer common.LogReconciliationRun(logconf.FromContext(ctx), request, "agent_name", &r.iteration)()
+	defer tracing.EndContextTransaction(ctx)
+
+	// name -> name requested for
+	// type -> controllerName
+	// label-> iteration
+
+	// transaction per request, passed with ctx
+	// span per function?
+	// logger params populated from ctx
 
 	var agent agentv1alpha1.Agent
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &agent); err != nil {
@@ -134,7 +142,7 @@ func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	if common.IsUnmanaged(&agent) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", agent.Namespace, "agent_name", agent.Name)
+		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", agent.Namespace, "agent_name", agent.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -167,12 +175,14 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		return results.WithError(err)
 	}
 
-	//driverResults := newDriver(ctx, r.recorder, r.Client, r.dynamicWatches, agent).Reconcile()
-	//results.WithResults(driverResults)
-
-	// config
-	// keystore
-	// podtemplate
+	driverResults := internalReconcile(NewParams(
+		ctx,
+		r.Client,
+		r.recorder,
+		r.dynamicWatches,
+		agent,
+	))
+	results.WithResults(driverResults)
 
 	return results
 }
@@ -191,7 +201,8 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent *agentv1alpha1.Agen
 }
 
 func (r *ReconcileAgent) isCompatible(ctx context.Context, agent *agentv1alpha1.Agent) (bool, error) {
-	selector := map[string]string{beatcommon.NameLabelName: agent.Name}
+	defer tracing.Span(ctx)()
+	selector := map[string]string{NameLabelName: agent.Name}
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, agent, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, agent, events.EventCompatCheckError, "Error during compatibility check: %v", err)

@@ -4,6 +4,21 @@
 
 package agent
 
-const (
-	NameLabelName = "beat.k8s.elastic.co/name"
+import (
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
+
+const (
+	// Type represents the Agent type.
+	TypeLabelValue = "agent"
+
+	NameLabelName = "agent.k8s.elastic.co/name"
+)
+
+func NewLabels(agent agentv1alpha1.Agent) map[string]string {
+	return map[string]string{
+		common.TypeLabelName: TypeLabelValue,
+		NameLabelName:        agent.Name,
+	}
+}

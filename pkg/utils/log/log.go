@@ -5,24 +5,32 @@
 package log
 
 import (
+	"context"
 	"flag"
 	"os"
 	"strconv"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
+	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
+	"go.elastic.co/apm"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	klog "k8s.io/klog/v2"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
 	EcsVersion     = "1.4.0"
 	EcsServiceType = "eck"
 	FlagName       = "log-verbosity"
+
+	SpanIDField        = "span.id"
+	TraceIDField       = "trace.id"
+	TransactionIDField = "transaction.id"
 )
 
 var verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
@@ -110,4 +118,48 @@ func determineLogLevel(v *int) zap.AtomicLevel {
 func getVersionString() string {
 	buildInfo := about.GetBuildInfo()
 	return buildInfo.VersionString()
+}
+
+func NewFromContext(ctx context.Context) logr.Logger {
+	traceContextFields := TraceContextKV(ctx)
+	return logf.Log.WithValues(traceContextFields...)
+}
+
+// TraceContextKV returns logger key-values for the current trace context.
+func TraceContextKV(ctx context.Context) []interface{} {
+	tx := apm.TransactionFromContext(ctx)
+	if tx == nil {
+		return nil
+	}
+
+	traceCtx := tx.TraceContext()
+	fields := []interface{}{TraceIDField, traceCtx.Trace, TransactionIDField, traceCtx.Span}
+
+	if span := apm.SpanFromContext(ctx); span != nil {
+		fields = append(fields, SpanIDField, span.TraceContext().Span)
+	}
+
+	return fields
+}
+
+type ctxKey struct{}
+
+var loggerCtxKey = ctxKey{}
+
+func InitInContext(ctx context.Context, loggerName string, iteration uint64, namespace, nameField, name string) context.Context {
+	logger := NewFromContext(ctx).WithName(loggerName).WithValues(
+		"iteration", iteration,
+		"namespace", namespace,
+		nameField, name,
+	)
+	return context.WithValue(ctx, loggerCtxKey, logger)
+}
+
+func FromContext(ctx context.Context) logr.Logger {
+	logger := ctx.Value(loggerCtxKey)
+	if logger == nil {
+		logger = logf.Log
+	}
+
+	return logger.(logr.Logger)
 }
