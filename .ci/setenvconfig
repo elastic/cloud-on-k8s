@@ -310,6 +310,40 @@ CFG
 ;;
 
 ######################################
+  e2e/eks-arm)
+######################################
+
+write_env <<ENV
+IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
+
+GO_TAGS = release
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+
+PIPELINE=e2e/eks
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=eks
+CLUSTER_NAME=${BUILD_TAG}-arm
+KUBERNETES_VERSION=default
+TEST_OPTS=-race
+ENV
+write_deployer_config <<CFG
+id: eks-arm-ci
+overrides:
+  clusterName: ${BUILD_TAG}-arm
+  machineType: a1.2xlarge
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+CFG
+;;
+
+######################################
   e2e/stack-versions)
 ######################################
 
@@ -495,6 +529,22 @@ id: eks-ci
 overrides:
   operation: delete
   clusterName: $BUILD_TAG
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+CFG
+;;
+
+######################################
+  cleanup/eks-arm)
+######################################
+
+write_deployer_config <<CFG
+id: eks-arm-ci
+overrides:
+  operation: delete
+  clusterName: ${BUILD_TAG}-arm
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
