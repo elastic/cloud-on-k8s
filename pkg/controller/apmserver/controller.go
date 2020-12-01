@@ -203,8 +203,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 
 	if as.IsMarkedForDeletion() {
 		// APM server will be deleted, clean up resources
-		r.onDelete(k8s.ExtractNamespacedName(&as))
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {

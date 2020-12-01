@@ -233,8 +233,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
-		r.onDelete(k8s.ExtractNamespacedName(&es))
-		return results
+		return results.WithError(r.onDelete(k8s.ExtractNamespacedName(&es)))
 	}
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)

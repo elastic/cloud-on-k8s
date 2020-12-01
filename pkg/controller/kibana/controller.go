@@ -135,11 +135,10 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	var kb kbv1.Kibana
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &kb); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
