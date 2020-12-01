@@ -211,13 +211,12 @@ func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request
 	err := r.Get(request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// Additional cleanup is done by the onDelete function.
-			err := r.onDelete(types.NamespacedName{
+			// Object not found, cleanup in-memory state. Children resources are garbage-collected either by
+			// the operator (see `onDelete`), either by k8s through the ownerReference mechanism.
+			return true, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return true, err
 		}
 		// Error reading the object - requeue the request.
 		return true, err

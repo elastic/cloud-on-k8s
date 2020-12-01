@@ -53,24 +53,24 @@ func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) 
 }
 
 // ReconcileSecretNoOwnerRef should be called to reconcile a Secret for which we explicitly don't want
-// an owner reference to be set, and want existing ownerRefs from previous operator versions to be removed,
+// an owner reference to be set, and want existing ownerReferences from previous operator versions to be removed,
 // because of this k8s bug: https://github.com/kubernetes/kubernetes/issues/65200 (fixed in k8s 1.20).
 //
 // It makes sense to use this function for secrets which are likely to be manually
 // copied into other namespaces by the end user.
-// Because of the k8s bug mentioned above, the ownerRef could trigger a racy garbage collection
+// Because of the k8s bug mentioned above, the ownerReference could trigger a racy garbage collection
 // that deletes all children resources, potentially resulting in data loss.
 // See https://github.com/elastic/cloud-on-k8s/issues/3986 for more details.
 //
-// Since they won't have an ownerRef specified, reconciled secrets will not be deleted automatically on parent deletion.
+// Since they won't have an ownerReference specified, reconciled secrets will not be deleted automatically on parent deletion.
 // To account for that, we add a label for best-effort garbage collection by the operator on parent resource deletion.
-func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, theoreticalOwner metav1.Object) (corev1.Secret, error) {
+func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner metav1.Object) (corev1.Secret, error) {
 	// this function is similar to "ReconcileSecret", but:
 	// - we don't pass an owner
 	// - we remove the existing owner
 	// - we set additional labels to perform garbage collection on owner deletion (best-effort)
-	expected.Labels[SoftOwnerNamespaceLabel] = theoreticalOwner.GetNamespace()
-	expected.Labels[SoftOwnerNameLabel] = theoreticalOwner.GetName()
+	expected.Labels[SoftOwnerNamespaceLabel] = softOwner.GetNamespace()
+	expected.Labels[SoftOwnerNameLabel] = softOwner.GetName()
 
 	var reconciled corev1.Secret
 	if err := ReconcileResource(Params{
@@ -85,7 +85,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, theoretical
 				// or if secret data is not strictly equal
 				!reflect.DeepEqual(expected.Data, reconciled.Data) ||
 				// or if an existing owner should be removed
-				hasOwner(&reconciled, theoreticalOwner)
+				hasOwner(&reconciled, softOwner)
 		},
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones
@@ -94,7 +94,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, theoretical
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 			// remove existing owner
-			removeOwner(&reconciled, theoreticalOwner)
+			removeOwner(&reconciled, softOwner)
 		},
 	}); err != nil {
 		return corev1.Secret{}, err
