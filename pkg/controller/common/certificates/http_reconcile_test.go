@@ -14,19 +14,17 @@ import (
 	"testing"
 	"time"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -111,6 +109,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 
 	owner := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
 	}
 
 	certificate := &CertificatesSecret{
@@ -128,7 +127,12 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		return k8s.WrappedFakeClient(objs...)
 	}
 
-	labels := map[string]string{"expected": "default-labels"}
+	labels := map[string]string{
+		"expected":                         "default-labels",
+		reconciler.SoftOwnerKindLabel:      owner.Kind,
+		reconciler.SoftOwnerNamespaceLabel: owner.Namespace,
+		reconciler.SoftOwnerNameLabel:      owner.Name,
+	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
@@ -142,10 +146,6 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 				CertFileName: tls,
 				CAFileName:   ca,
 			},
-		}
-
-		if err := controllerutil.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
-			t.Fatal(err)
 		}
 
 		return wantSecret
@@ -346,7 +346,6 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				K8sClient:      tt.args.c,
 				DynamicWatches: w,
 				Owner:          &tt.args.es,
-				ObjectMeta:     &tt.args.es,
 				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
 				Namer:          esv1.ESNamer,
 				Labels:         map[string]string{},
