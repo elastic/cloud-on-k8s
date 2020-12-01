@@ -19,6 +19,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -30,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -47,6 +49,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -611,8 +614,20 @@ func asyncTasks(
 		}()
 	}
 
-	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+	// Garbage collect orphan secrets leftover from deleted resources while the operator was not running
+	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
+	// - soft-owned secrets
+	if err := reconciler.GarbageCollectAllOrphanSecrets(k8s.WrapClient(mgr.GetClient()), map[string]runtime.Object{
+		esv1.Kind:        &esv1.Elasticsearch{},
+		apmv1.Kind:       &apmv1.ApmServer{},
+		kbv1.Kind:        &kbv1.Kibana{},
+		entv1beta1.Kind:  &entv1beta1.EnterpriseSearch{},
+		beatv1beta1.Kind: &beatv1beta1.Beat{},
+	}); err != nil {
+		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
+	}
+	log.Info("Orphan secrets garbage collection complete")
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {

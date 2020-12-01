@@ -11,7 +11,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -75,6 +77,8 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner r
 		return corev1.Secret{}, err
 	}
 
+	// don't mutate expected (no side effects), make a copy
+	expected = *expected.DeepCopy()
 	expected.Labels[SoftOwnerNamespaceLabel] = ownerMeta.GetNamespace()
 	expected.Labels[SoftOwnerNameLabel] = ownerMeta.GetName()
 	expected.Labels[SoftOwnerKindLabel] = softOwner.GetObjectKind().GroupVersionKind().Kind
@@ -140,6 +144,56 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// GarbageCollectAllOrphanSecrets iterates over all Secrets that reference a soft owner. If the owner
+// doesn't exist anymore, it deletes the secrets.
+// Should be called on operator startup, after cache warm-up, to cover cases where
+// the operator is down when the owner is deleted.
+// If the operator is up, garbage collection is already handled by GarbageCollectSoftOwnedSecrets on owner deletion.
+func GarbageCollectAllOrphanSecrets(c k8s.Client, ownerKinds map[string]runtime.Object) error {
+	// retrieve all secrets that reference a soft owner
+	var secrets corev1.SecretList
+	if err := c.List(
+		&secrets,
+		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
+	); err != nil {
+		return err
+	}
+	// remove any secret whose owner in the same namespace doesn't exist
+	for i := range secrets.Items {
+		secret := secrets.Items[i]
+		ownerNamespace, hasNamespace := secret.Labels[SoftOwnerNamespaceLabel]
+		ownerName, hasName := secret.Labels[SoftOwnerNameLabel]
+		ownerKind, hasKind := secret.Labels[SoftOwnerKindLabel]
+		if !hasNamespace || !hasName || !hasKind {
+			continue
+		}
+		if ownerNamespace != secret.Namespace {
+			// Secret references an owner in a different namespace: this likely results
+			// from a "manual" copy of the secret in another namespace, not handled by the operator.
+			// We don't want to touch that secret.
+			continue
+		}
+		owner := ownerKinds[ownerKind].DeepCopyObject()
+		err := c.Get(types.NamespacedName{Namespace: ownerNamespace, Name: ownerName}, owner)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// owner doesn't exit anymore
+				log.Info("Deleting secret as part of garbage collection",
+					"namespace", secret.Namespace, "secret_name", secret.Name,
+					"owner_kind", ownerKind, "owner_namespace", ownerNamespace, "owner_name", ownerName,
+				)
+				if err := c.Delete(&secret); err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				continue
+			}
+			return err
+		}
+		// owner still exists, keep the secret
 	}
 	return nil
 }
