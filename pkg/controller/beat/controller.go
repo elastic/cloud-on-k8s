@@ -206,7 +206,7 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, beatv1beta1.Kind)
 }
 
 func newDriver(

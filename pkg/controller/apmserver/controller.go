@@ -242,7 +242,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	_, results := certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
-		Object:                as,
+		Owner:                 as,
 		TLSOptions:            as.Spec.HTTP.TLS,
 		Namer:                 Namer,
 		Labels:                NewLabels(as.Name),
@@ -307,7 +307,7 @@ func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, apmv1.Kind)
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.

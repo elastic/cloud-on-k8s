@@ -21,6 +21,7 @@ import (
 const (
 	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/soft-owner-namespace"
 	SoftOwnerNameLabel      = "eck.k8s.elastic.co/soft-owner-name"
+	SoftOwnerKindLabel      = "eck.k8s.elastic.co/soft-owner-kind"
 )
 
 // ReconcileSecret creates or updates the actual secret to match the expected one.
@@ -64,13 +65,19 @@ func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) 
 //
 // Since they won't have an ownerReference specified, reconciled secrets will not be deleted automatically on parent deletion.
 // To account for that, we add a label for best-effort garbage collection by the operator on parent resource deletion.
-func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner metav1.Object) (corev1.Secret, error) {
+func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner runtime.Object) (corev1.Secret, error) {
 	// this function is similar to "ReconcileSecret", but:
 	// - we don't pass an owner
 	// - we remove the existing owner
 	// - we set additional labels to perform garbage collection on owner deletion (best-effort)
-	expected.Labels[SoftOwnerNamespaceLabel] = softOwner.GetNamespace()
-	expected.Labels[SoftOwnerNameLabel] = softOwner.GetName()
+	ownerMeta, err := meta.Accessor(softOwner)
+	if err != nil {
+		return corev1.Secret{}, err
+	}
+
+	expected.Labels[SoftOwnerNamespaceLabel] = ownerMeta.GetNamespace()
+	expected.Labels[SoftOwnerNameLabel] = ownerMeta.GetName()
+	expected.Labels[SoftOwnerKindLabel] = softOwner.GetObjectKind().GroupVersionKind().Kind
 
 	var reconciled corev1.Secret
 	if err := ReconcileResource(Params{
@@ -85,7 +92,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner m
 				// or if secret data is not strictly equal
 				!reflect.DeepEqual(expected.Data, reconciled.Data) ||
 				// or if an existing owner should be removed
-				hasOwner(&reconciled, softOwner)
+				hasOwner(&reconciled, ownerMeta)
 		},
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones
@@ -94,7 +101,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner m
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 			// remove existing owner
-			removeOwner(&reconciled, softOwner)
+			removeOwner(&reconciled, ownerMeta)
 		},
 	}); err != nil {
 		return corev1.Secret{}, err
@@ -104,24 +111,27 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner m
 
 // GarbageCollectSoftOwnedSecrets deletes all secrets whose labels reference a soft owner.
 // To be called once that owner gets deleted.
-func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedParent types.NamespacedName) error {
+func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedName, ownerKind string) error {
 	var secrets corev1.SecretList
 	if err := c.List(
 		&secrets,
 		// restrict to secrets in the parent namespace, we don't want to delete
 		// secrets users may have manually copied into other namespaces
-		client.InNamespace(deletedParent.Namespace),
-		// restrict to secrets on which we set the soft owner label
+		client.InNamespace(deletedOwner.Namespace),
+		// restrict to secrets on which we set the soft owner labels
 		client.MatchingLabels{
-			SoftOwnerNamespaceLabel: deletedParent.Namespace,
-			SoftOwnerNameLabel:      deletedParent.Name,
+			SoftOwnerNamespaceLabel: deletedOwner.Namespace,
+			SoftOwnerNameLabel:      deletedOwner.Name,
+			SoftOwnerKindLabel:      ownerKind,
 		},
 	); err != nil {
 		return err
 	}
 	for i := range secrets.Items {
 		s := secrets.Items[i]
-		log.Info("Garbage collecting secret", "namespace", deletedParent.Namespace, "secret_name", s.Name)
+		log.Info("Garbage collecting secret",
+			"namespace", deletedOwner.Namespace, "secret_name", s.Name,
+			"owner_name", deletedOwner.Name, "owner_kind", ownerKind)
 		err := c.Delete(&s)
 		if apierrors.IsNotFound(err) {
 			// already deleted, all good

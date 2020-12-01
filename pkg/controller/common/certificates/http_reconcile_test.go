@@ -213,7 +213,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 			client := tt.client(t)
 			err := Reconciler{
 				K8sClient: client,
-				Object:    owner,
+				Owner:     owner,
 				Namer:     esv1.ESNamer,
 				Labels:    labels,
 			}.ReconcilePublicHTTPCerts(certificate)
@@ -345,7 +345,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 			got, err := Reconciler{
 				K8sClient:      tt.args.c,
 				DynamicWatches: w,
-				Object:         &tt.args.es,
+				Owner:          &tt.args.es,
+				ObjectMeta:     &tt.args.es,
 				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
 				Namer:          esv1.ESNamer,
 				Labels:         map[string]string{},

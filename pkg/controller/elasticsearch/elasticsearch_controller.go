@@ -320,5 +320,5 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es)
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es, esv1.Kind)
 }

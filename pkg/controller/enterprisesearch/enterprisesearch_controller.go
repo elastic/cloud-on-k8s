@@ -184,7 +184,7 @@ func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entName.EntNamer, obj.Name))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1beta1.Kind)
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1beta1.EnterpriseSearch) (bool, error) {
@@ -210,7 +210,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 	_, results := certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
-		Object:                &ent,
+		Owner:                 &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
 		Namer:                 entName.EntNamer,
 		Labels:                Labels(ent.Name),

@@ -248,7 +248,7 @@ func (r *ReconcileKibana) onDelete(obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj)
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, kbv1.Kind)
 }
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana

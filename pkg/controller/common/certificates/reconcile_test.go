@@ -45,7 +45,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	r := Reconciler{
 		K8sClient:             c,
 		DynamicWatches:        watches.NewDynamicWatches(),
-		Object:                &obj,
+		Owner:                 &obj,
 		TLSOptions:            commonv1.TLSOptions{},
 		Namer:                 esv1.ESNamer,
 		Labels:                labels,
