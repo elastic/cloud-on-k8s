@@ -66,7 +66,7 @@ func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) 
 // See https://github.com/elastic/cloud-on-k8s/issues/3986 for more details.
 //
 // Since they won't have an ownerReference specified, reconciled secrets will not be deleted automatically on parent deletion.
-// To account for that, we add a label for best-effort garbage collection by the operator on parent resource deletion.
+// To account for that, we add labels to reference the "soft owner", for garbage collection by the operator on parent resource deletion.
 func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner runtime.Object) (corev1.Secret, error) {
 	// this function is similar to "ReconcileSecret", but:
 	// - we don't pass an owner
@@ -148,12 +148,12 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 	return nil
 }
 
-// GarbageCollectAllOrphanSecrets iterates over all Secrets that reference a soft owner. If the owner
+// GarbageCollectAllSoftOwnedOrphanSecrets iterates over all Secrets that reference a soft owner. If the owner
 // doesn't exist anymore, it deletes the secrets.
 // Should be called on operator startup, after cache warm-up, to cover cases where
 // the operator is down when the owner is deleted.
 // If the operator is up, garbage collection is already handled by GarbageCollectSoftOwnedSecrets on owner deletion.
-func GarbageCollectAllOrphanSecrets(c k8s.Client, ownerKinds map[string]runtime.Object) error {
+func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]runtime.Object) error {
 	// retrieve all secrets that reference a soft owner
 	var secrets corev1.SecretList
 	if err := c.List(
@@ -177,7 +177,11 @@ func GarbageCollectAllOrphanSecrets(c k8s.Client, ownerKinds map[string]runtime.
 			// We don't want to touch that secret.
 			continue
 		}
-		owner := ownerKinds[ownerKind].DeepCopyObject()
+		owner, managed := ownerKinds[ownerKind]
+		if !managed {
+			continue
+		}
+		owner = owner.DeepCopyObject()
 		err := c.Get(types.NamespacedName{Namespace: ownerNamespace, Name: ownerName}, owner)
 		if err != nil {
 			if apierrors.IsNotFound(err) {

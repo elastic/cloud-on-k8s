@@ -618,16 +618,7 @@ func asyncTasks(
 	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
 	// - soft-owned secrets
-	if err := reconciler.GarbageCollectAllOrphanSecrets(k8s.WrapClient(mgr.GetClient()), map[string]runtime.Object{
-		esv1.Kind:        &esv1.Elasticsearch{},
-		apmv1.Kind:       &apmv1.ApmServer{},
-		kbv1.Kind:        &kbv1.Kibana{},
-		entv1beta1.Kind:  &entv1beta1.EnterpriseSearch{},
-		beatv1beta1.Kind: &beatv1beta1.Beat{},
-	}); err != nil {
-		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
-	}
-	log.Info("Orphan secrets garbage collection complete")
+	garbageCollectSoftOwnedSecrets(k8s.WrapClient(mgr.GetClient()))
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -714,6 +705,20 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		log.Error(err, "user garbage collector failed")
 		os.Exit(1)
 	}
+}
+
+func garbageCollectSoftOwnedSecrets(client k8s.Client) {
+	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(client, map[string]runtime.Object{
+		esv1.Kind:        &esv1.Elasticsearch{},
+		apmv1.Kind:       &apmv1.ApmServer{},
+		kbv1.Kind:        &kbv1.Kibana{},
+		entv1beta1.Kind:  &entv1beta1.EnterpriseSearch{},
+		beatv1beta1.Kind: &beatv1beta1.Beat{},
+	}); err != nil {
+		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
+		return
+	}
+	log.Info("Orphan secrets garbage collection complete")
 }
 
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, validateStorageClass bool, clientset kubernetes.Interface) {
