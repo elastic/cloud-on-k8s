@@ -36,7 +36,7 @@ func Labels(esName string) client.MatchingLabels {
 func Reconcile(
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	ca *certificates.CA,
+	ca certificates.CA,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
