@@ -402,7 +402,7 @@ func Test_findOwner(t *testing.T) {
 			wantIndex: 1,
 		},
 		{
-			name: "owner listed twice in the list (shouldn't happen): return the first occurence (index 0)",
+			name: "owner listed twice in the list (shouldn't happen): return the first occurrence (index 0)",
 			args: args{
 				resource: addOwner(addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID), sampleOwner().Name, sampleOwner().UID),
 				owner:    sampleOwner(),
