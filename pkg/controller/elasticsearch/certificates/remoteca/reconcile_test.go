@@ -111,7 +111,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Use provided transport CA if remote CA list is empty",
 			args: args{
-				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
+				es:          esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
 				transportCA: *testTransportCA,
 			},
 			want: certificates.EncodePEMCert(testTransportCA.Cert.Raw),
