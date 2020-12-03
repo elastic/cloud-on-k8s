@@ -249,3 +249,49 @@
       - min: 1
         max: 65535
     readOnlyRootFilesystem: false
+---
+  # PSP needed for Elastic Agent.
+  apiVersion: policy/v1beta1
+  kind: PodSecurityPolicy
+  metadata:
+    name: elastic.agent.restricted
+    annotations:
+      seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default,runtime/default'
+      apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+      seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
+      apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
+  spec:
+    privileged: false
+    allowPrivilegeEscalation: false
+    # Allow core volume types.
+    volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    # Assume that persistentVolumes set up by the cluster admin are safe to use.
+    - 'persistentVolumeClaim'
+    - 'hostPath'
+    hostNetwork: true
+    hostIPC: false
+    hostPID: false
+    runAsUser:
+      # Allow the container to run as root.
+      rule: 'RunAsAny'
+    seLinux:
+      # This policy assumes the nodes are using AppArmor rather than SELinux.
+      rule: 'RunAsAny'
+    supplementalGroups:
+      rule: 'MustRunAs'
+      ranges:
+      # Forbid adding the root group.
+      - min: 1
+        max: 65535
+    fsGroup:
+      rule: 'MustRunAs'
+      ranges:
+      # Forbid adding the root group.
+      - min: 1
+        max: 65535
+    readOnlyRootFilesystem: false
