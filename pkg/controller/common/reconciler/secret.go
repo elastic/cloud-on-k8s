@@ -21,9 +21,9 @@ import (
 // Labels set on secrets which cannot rely on owner references due to https://github.com/kubernetes/kubernetes/issues/65200,
 // but should still be garbage-collected (best-effort) by the operator upon owner deletion.
 const (
-	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/soft-owner-namespace"
-	SoftOwnerNameLabel      = "eck.k8s.elastic.co/soft-owner-name"
-	SoftOwnerKindLabel      = "eck.k8s.elastic.co/soft-owner-kind"
+	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/owner-namespace"
+	SoftOwnerNameLabel      = "eck.k8s.elastic.co/owner-name"
+	SoftOwnerKindLabel      = "eck.k8s.elastic.co/owner-kind"
 )
 
 // ReconcileSecret creates or updates the actual secret to match the expected one.
@@ -62,7 +62,7 @@ func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) 
 // It makes sense to use this function for secrets which are likely to be manually
 // copied into other namespaces by the end user.
 // Because of the k8s bug mentioned above, the ownerReference could trigger a racy garbage collection
-// that deletes all children resources, potentially resulting in data loss.
+// that deletes all child resources, potentially resulting in data loss.
 // See https://github.com/elastic/cloud-on-k8s/issues/3986 for more details.
 //
 // Since they won't have an ownerReference specified, reconciled secrets will not be deleted automatically on parent deletion.

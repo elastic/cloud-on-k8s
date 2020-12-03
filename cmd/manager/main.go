@@ -614,7 +614,7 @@ func asyncTasks(
 		}()
 	}
 
-	// Garbage collect orphan secrets leftover from deleted resources while the operator was not running
+	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
 	// - soft-owned secrets
