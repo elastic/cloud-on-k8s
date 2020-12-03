@@ -45,12 +45,7 @@ func Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
-	results := &reconciler.Results{}
-
-	// reconcile remote clusters certificate authorities
-	if err := remoteca.Reconcile(driver.K8sClient(), es); err != nil {
-		results.WithError(err)
-	}
+	var results *reconciler.Results
 
 	// label certificates secrets with the cluster name
 	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
@@ -112,6 +107,11 @@ func Reconcile(
 		es,
 		certRotation,
 	)
+
+	// reconcile remote clusters certificate authorities
+	if err := remoteca.Reconcile(driver.K8sClient(), es, *transportCA); err != nil {
+		results.WithError(err)
+	}
 
 	if results.WithResults(transportResults).HasError() {
 		return nil, results
