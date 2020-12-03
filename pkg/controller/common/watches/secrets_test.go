@@ -1,22 +1,21 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package watches
 
 import (
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 )
 
 func Test_reconcileReqForSoftOwner(t *testing.T) {
@@ -81,11 +80,4 @@ func Test_reconcileReqForSoftOwner(t *testing.T) {
 			require.Equal(t, tt.wantReconcileRequests, requests)
 		})
 	}
-}
-
-func Test_reconcileReqForSoftOwner1(t *testing.T) {
-	type args struct {
-		kind string
-	}
-
 }
