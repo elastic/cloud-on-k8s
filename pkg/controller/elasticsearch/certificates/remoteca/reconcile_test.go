@@ -22,11 +22,11 @@ import (
 
 func TestReconcile(t *testing.T) {
 	type args struct {
-		es      esv1.Elasticsearch
-		secrets []runtime.Object
-		ca      *certificates.CA
+		es          esv1.Elasticsearch
+		secrets     []runtime.Object
+		transportCA certificates.CA
 	}
-	testCA, _ := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
+	testTransportCA, _ := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	tests := []struct {
 		name    string
 		args    args
@@ -61,7 +61,7 @@ func TestReconcile(t *testing.T) {
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
 					},
 				},
-				ca: testCA,
+				transportCA: *testTransportCA,
 			},
 			want: []byte("cert2\ncert1\n"),
 		},
@@ -104,7 +104,7 @@ func TestReconcile(t *testing.T) {
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
 					},
 				},
-				ca: testCA,
+				transportCA: *testTransportCA,
 			},
 			want: []byte("cert2\ncert1\n"),
 		},
@@ -112,16 +112,16 @@ func TestReconcile(t *testing.T) {
 			name: "Use provided transport CA if remote CA list is empty",
 			args: args{
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
-				ca: testCA,
+				transportCA: *testTransportCA,
 			},
-			want: certificates.EncodePEMCert(testCA.Cert.Raw),
+			want: certificates.EncodePEMCert(testTransportCA.Cert.Raw),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(tt.args.secrets...)
-			if err := Reconcile(k8sClient, tt.args.es, *tt.args.ca); (err != nil) != tt.wantErr {
+			if err := Reconcile(k8sClient, tt.args.es, tt.args.transportCA); (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			remoteCaList := v1.Secret{}

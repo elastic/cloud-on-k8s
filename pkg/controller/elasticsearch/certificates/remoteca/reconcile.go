@@ -36,7 +36,7 @@ func Labels(esName string) client.MatchingLabels {
 func Reconcile(
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	ca certificates.CA,
+	transportCA certificates.CA,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
@@ -61,7 +61,7 @@ func Reconcile(
 		}
 	} else {
 		// if remoteCAList is empty we use the provided transport CA so that we don't end up having an empty cert file mounted on the ES container
-		remoteCertificateAuthorities = [][]byte{certificates.EncodePEMCert(ca.Cert.Raw)}
+		remoteCertificateAuthorities = [][]byte{certificates.EncodePEMCert(transportCA.Cert.Raw)}
 	}
 
 	expected := v1.Secret{
