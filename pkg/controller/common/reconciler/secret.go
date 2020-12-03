@@ -55,6 +55,27 @@ func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) 
 	return reconciled, nil
 }
 
+type SoftOwnerRef struct {
+	Namespace string
+	Name      string
+	Kind      string
+}
+
+// SoftOwnerRefFromLabels parses the given labels to return a SoftOwnerRef.
+// It also returns a boolean indicating whether a soft owner was referenced.
+func SoftOwnerRefFromLabels(labels map[string]string) (SoftOwnerRef, bool) {
+	if len(labels) == 0 {
+		return SoftOwnerRef{}, false
+	}
+	namespace := labels[SoftOwnerNamespaceLabel]
+	name := labels[SoftOwnerNameLabel]
+	kind := labels[SoftOwnerKindLabel]
+	if namespace == "" || name == "" || kind == "" {
+		return SoftOwnerRef{}, false
+	}
+	return SoftOwnerRef{Namespace: namespace, Name: name, Kind: kind}, true
+}
+
 // ReconcileSecretNoOwnerRef should be called to reconcile a Secret for which we explicitly don't want
 // an owner reference to be set, and want existing ownerReferences from previous operator versions to be removed,
 // because of this k8s bug: https://github.com/kubernetes/kubernetes/issues/65200 (fixed in k8s 1.20).
@@ -165,30 +186,28 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 	// remove any secret whose owner in the same namespace doesn't exist
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
-		ownerNamespace, hasNamespace := secret.Labels[SoftOwnerNamespaceLabel]
-		ownerName, hasName := secret.Labels[SoftOwnerNameLabel]
-		ownerKind, hasKind := secret.Labels[SoftOwnerKindLabel]
-		if !hasNamespace || !hasName || !hasKind {
+		softOwner, referenced := SoftOwnerRefFromLabels(secret.Labels)
+		if !referenced {
 			continue
 		}
-		if ownerNamespace != secret.Namespace {
+		if softOwner.Namespace != secret.Namespace {
 			// Secret references an owner in a different namespace: this likely results
 			// from a "manual" copy of the secret in another namespace, not handled by the operator.
 			// We don't want to touch that secret.
 			continue
 		}
-		owner, managed := ownerKinds[ownerKind]
+		owner, managed := ownerKinds[softOwner.Kind]
 		if !managed {
 			continue
 		}
 		owner = owner.DeepCopyObject()
-		err := c.Get(types.NamespacedName{Namespace: ownerNamespace, Name: ownerName}, owner)
+		err := c.Get(types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// owner doesn't exit anymore
 				log.Info("Deleting secret as part of garbage collection",
 					"namespace", secret.Namespace, "secret_name", secret.Name,
-					"owner_kind", ownerKind, "owner_namespace", ownerNamespace, "owner_name", ownerName,
+					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
 				)
 				if err := c.Delete(&secret); err != nil && !apierrors.IsNotFound(err) {
 					return err

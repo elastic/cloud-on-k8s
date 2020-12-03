@@ -108,7 +108,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
@@ -118,6 +118,9 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 			OwnerType:    &esv1.Elasticsearch{},
 		},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind); err != nil {
 		return err
 	}
 

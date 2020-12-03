@@ -98,11 +98,14 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 		return err
 	}
 
-	// Watch Secrets
+	// Watch owned and soft-owned Secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, beatv1beta1.Kind); err != nil {
 		return err
 	}
 

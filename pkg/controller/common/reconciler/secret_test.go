@@ -5,6 +5,7 @@
 package reconciler
 
 import (
+	"reflect"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -599,6 +600,100 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 			}
 			if tt.assert != nil {
 				tt.assert(c, t)
+			}
+		})
+	}
+}
+
+func TestSoftOwnerRefFromLabels(t *testing.T) {
+	tests := []struct {
+		name           string
+		labels         map[string]string
+		wantSoftOwner  SoftOwnerRef
+		wantReferenced bool
+	}{
+		{
+			name: "return soft owner reference",
+			labels: map[string]string{
+				SoftOwnerNamespaceLabel: "ns",
+				SoftOwnerNameLabel:      "name",
+				SoftOwnerKindLabel:      "kind",
+			},
+			wantSoftOwner:  SoftOwnerRef{Namespace: "ns", Name: "name", Kind: "kind"},
+			wantReferenced: true,
+		},
+		{
+			name:           "no soft owner labels",
+			labels:         nil,
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+		{
+			name: "namespace empty: no soft owner",
+			labels: map[string]string{
+				SoftOwnerNamespaceLabel: "",
+				SoftOwnerNameLabel:      "name",
+				SoftOwnerKindLabel:      "kind",
+			},
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+		{
+			name: "namespace missing: no soft owner",
+			labels: map[string]string{
+				SoftOwnerNameLabel: "name",
+				SoftOwnerKindLabel: "kind",
+			},
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+		{
+			name: "name empty: no soft owner",
+			labels: map[string]string{
+				SoftOwnerNamespaceLabel: "ns",
+				SoftOwnerNameLabel:      "",
+				SoftOwnerKindLabel:      "kind",
+			},
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+		{
+			name: "name missing: no soft owner",
+			labels: map[string]string{
+				SoftOwnerNamespaceLabel: "namespace",
+				SoftOwnerKindLabel:      "kind",
+			},
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+		{
+			name: "kind empty: no soft owner",
+			labels: map[string]string{
+				SoftOwnerNamespaceLabel: "ns",
+				SoftOwnerNameLabel:      "name",
+				SoftOwnerKindLabel:      "",
+			},
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+		{
+			name: "kind missing: no soft owner",
+			labels: map[string]string{
+				SoftOwnerNamespaceLabel: "ns",
+				SoftOwnerNameLabel:      "name",
+			},
+			wantSoftOwner:  SoftOwnerRef{},
+			wantReferenced: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := SoftOwnerRefFromLabels(tt.labels)
+			if !reflect.DeepEqual(got, tt.wantSoftOwner) {
+				t.Errorf("SoftOwnerRefFromLabels() got = %v, want %v", got, tt.wantSoftOwner)
+			}
+			if got1 != tt.wantReferenced {
+				t.Errorf("SoftOwnerRefFromLabels() got1 = %v, want %v", got1, tt.wantReferenced)
 			}
 		})
 	}

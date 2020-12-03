@@ -93,11 +93,14 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, kbv1.Kind); err != nil {
 		return err
 	}
 

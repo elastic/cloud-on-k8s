@@ -127,11 +127,14 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, apmv1.Kind); err != nil {
 		return err
 	}
 
