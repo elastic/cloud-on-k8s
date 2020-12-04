@@ -128,7 +128,7 @@ AgentSpec defines the desired state of Agent
 |===
 | Field | Description
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
-| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
+| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
 |===
 
 

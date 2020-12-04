@@ -65,12 +65,14 @@ type Output struct {
 type DaemonSetSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
+	// +kubebuilder:validation:Optional
+	Strategy appsv1.DaemonSetUpdateStrategy `json:"strategy,omitempty"`
 }
 
 type DeploymentSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	Replicas    *int32                 `json:"replicas,omitempty"`
+
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }
@@ -117,6 +119,10 @@ const (
 // +kubebuilder:resource:categories=elastic,shortName=agent
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
+// +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
+// +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Agent version"
+// +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:storageversion
 type Agent struct {
 	metav1.TypeMeta   `json:",inline"`

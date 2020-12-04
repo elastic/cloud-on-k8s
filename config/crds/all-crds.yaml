@@ -10,6 +10,21 @@ spec:
   - JSONPath: .status.health
     name: health
     type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: available
+    type: integer
+  - JSONPath: .status.expectedNodes
+    description: Expected nodes
+    name: expected
+    type: integer
+  - JSONPath: .status.version
+    description: Agent version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
   group: agent.k8s.elastic.co
   names:
     categories:
@@ -62,51 +77,38 @@ spec:
                 If both are absent a default for the Type is used.
               properties:
                 strategy:
-                  description: DeploymentStrategy describes how to replace existing
-                    pods with new ones.
+                  description: DaemonSetUpdateStrategy is a struct used to control
+                    the update strategy for a DaemonSet.
                   properties:
                     rollingUpdate:
                       description: 'Rolling update config params. Present only if
-                        DeploymentStrategyType = RollingUpdate. --- TODO: Update this
-                        to follow our convention for oneOf, whatever we decide it
-                        to be.'
+                        type = "RollingUpdate". --- TODO: Update this to follow our
+                        convention for oneOf, whatever we decide it to be. Same as
+                        Deployment `strategy.rollingUpdate`. See https://github.com/kubernetes/kubernetes/issues/35345'
                       properties:
-                        maxSurge:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          description: 'The maximum number of pods that can be scheduled
-                            above the desired number of pods. Value can be an absolute
-                            number (ex: 5) or a percentage of desired pods (ex: 10%).
-                            This can not be 0 if MaxUnavailable is 0. Absolute number
-                            is calculated from percentage by rounding up. Defaults
-                            to 25%. Example: when this is set to 30%, the new ReplicaSet
-                            can be scaled up immediately when the rolling update starts,
-                            such that the total number of old and new pods do not
-                            exceed 130% of desired pods. Once old pods have been killed,
-                            new ReplicaSet can be scaled up further, ensuring that
-                            total number of pods running at any time during the update
-                            is at most 130% of desired pods.'
                         maxUnavailable:
                           anyOf:
                           - type: integer
                           - type: string
-                          description: 'The maximum number of pods that can be unavailable
-                            during the update. Value can be an absolute number (ex:
-                            5) or a percentage of desired pods (ex: 10%). Absolute
-                            number is calculated from percentage by rounding down.
-                            This can not be 0 if MaxSurge is 0. Defaults to 25%. Example:
-                            when this is set to 30%, the old ReplicaSet can be scaled
-                            down to 70% of desired pods immediately when the rolling
-                            update starts. Once new pods are ready, old ReplicaSet
-                            can be scaled down further, followed by scaling up the
-                            new ReplicaSet, ensuring that the total number of pods
-                            available at all times during the update is at least 70%
-                            of desired pods.'
+                          description: 'The maximum number of DaemonSet pods that
+                            can be unavailable during the update. Value can be an
+                            absolute number (ex: 5) or a percentage of total number
+                            of DaemonSet pods at the start of the update (ex: 10%).
+                            Absolute number is calculated from percentage by rounding
+                            up. This cannot be 0. Default value is 1. Example: when
+                            this is set to 30%, at most 30% of the total number of
+                            nodes that should be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their pods stopped for an update at any given
+                            time. The update starts by stopping at most 30% of those
+                            DaemonSet pods and then brings up new DaemonSet pods in
+                            their place. Once the new pods are available, it then
+                            proceeds onto other DaemonSet pods, thus ensuring that
+                            at least 70% of original number of DaemonSet pods are
+                            available at all times during the update.'
                       type: object
                     type:
-                      description: Type of deployment. Can be "Recreate" or "RollingUpdate".
-                        Default is RollingUpdate.
+                      description: Type of daemon set update. Can be "RollingUpdate"
+                        or "OnDelete". Default is RollingUpdate.
                       type: string
                   type: object
               type: object
