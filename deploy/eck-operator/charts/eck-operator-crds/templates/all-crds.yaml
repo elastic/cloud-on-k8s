@@ -80,7 +80,6 @@ spec:
             daemonSet:
               description: DaemonSet specifies the Agent should be deployed as a DaemonSet,
                 and allows providing its spec. Cannot be used along with `deployment`.
-                If both are absent a default for the Type is used.
               properties:
                 strategy:
                   description: DaemonSetUpdateStrategy is a struct used to control
@@ -121,7 +120,7 @@ spec:
             deployment:
               description: Deployment specifies the Agent should be deployed as a
                 Deployment, and allows providing its spec. Cannot be used along with
-                `daemonSet`. If both are absent a default for the Type is used.
+                `daemonSet`.
               properties:
                 replicas:
                   format: int32
@@ -176,8 +175,9 @@ spec:
                   type: object
               type: object
             elasticsearchRefs:
-              description: ElasticsearchRef is a reference to an Elasticsearch cluster
-                running in the same Kubernetes cluster.
+              description: ElasticsearchRefs is a reference to a list of Elasticsearch
+                clusters running in the same Kubernetes cluster. Due to existing limitations,
+                only a single ES cluster is currently supported.
               items:
                 properties:
                   name:
