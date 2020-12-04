@@ -109,7 +109,7 @@ func (d *driver) Reconcile(
 	_, results = certificates.Reconciler{
 		K8sClient:             d.K8sClient(),
 		DynamicWatches:        d.DynamicWatches(),
-		Object:                kb,
+		Owner:                 kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
 		Namer:                 Namer,
 		Labels:                NewLabels(kb.Name),

@@ -8,16 +8,16 @@ import (
 	"context"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var (
@@ -34,6 +34,9 @@ var (
 			Namespace: "ns",
 			Name:      "es",
 		},
+		TypeMeta: metav1.TypeMeta{
+			Kind: esv1.Kind,
+		},
 	}
 )
 
@@ -45,7 +48,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	r := Reconciler{
 		K8sClient:             c,
 		DynamicWatches:        watches.NewDynamicWatches(),
-		Object:                &obj,
+		Owner:                 &obj,
 		TLSOptions:            commonv1.TLSOptions{},
 		Namer:                 esv1.ESNamer,
 		Labels:                labels,
@@ -65,6 +68,13 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.NotEmpty(t, httpCerts.Data)
 	}
 	checkResults()
+
+	labelsWithSoftOwner := map[string]string{
+		"foo":                              "bar",
+		reconciler.SoftOwnerKindLabel:      obj.Kind,
+		reconciler.SoftOwnerNamespaceLabel: obj.Namespace,
+		reconciler.SoftOwnerNameLabel:      obj.Name,
+	}
 
 	// the 3 secrets should have been created in the apiserver,
 	// and have the expected labels and content generated
@@ -92,8 +102,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Len(t, publicCerts.Data, 2)
 		require.NotEmpty(t, publicCerts.Data[CAFileName])
 		require.NotEmpty(t, publicCerts.Data[CertFileName])
-		require.Equal(t, labels, publicCerts.Labels)
-
+		require.Equal(t, labelsWithSoftOwner, publicCerts.Labels)
 	}
 	checkCertsSecrets()
 

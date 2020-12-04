@@ -10,7 +10,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const KibanaContainerName = "kibana"
+const (
+	KibanaContainerName = "kibana"
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "Kibana"
+)
 
 // KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
