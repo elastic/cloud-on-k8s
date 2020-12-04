@@ -6,6 +6,19 @@ package agent
 
 import (
 	"context"
+	"strconv"
+	"sync/atomic"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
@@ -18,17 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
@@ -105,7 +107,7 @@ func addWatches(c controller.Controller, r *ReconcileAgent) error {
 
 var _ reconcile.Reconciler = &ReconcileAgent{}
 
-// ReconcileAgent reconciles a Agent object
+// ReconcileAgent reconciles an Agent object
 type ReconcileAgent struct {
 	k8s.Client
 	recorder       record.EventRecorder
@@ -115,22 +117,12 @@ type ReconcileAgent struct {
 	iteration uint64
 }
 
-// Reconcile reads that state of the cluster for a Agent object and makes changes based on the state read
+// Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx := tracing.NewContextTransaction(r.Tracer, controllerName, request.String(), map[string]string{"iteration": string(r.iteration)})
-	ctx = logconf.InitInContext(ctx, controllerName, r.iteration, request.Namespace, "agent_name", request.Name)
-
-	defer common.LogReconciliationRun(logconf.FromContext(ctx), request, "agent_name", &r.iteration)()
+	ctx := r.preReconcile(request)
+	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
-
-	// name -> name requested for
-	// type -> controllerName
-	// label-> iteration
-
-	// transaction per request, passed with ctx
-	// span per function?
-	// logger params populated from ctx
 
 	var agent agentv1alpha1.Agent
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &agent); err != nil {
@@ -142,7 +134,7 @@ func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	if common.IsUnmanaged(&agent) {
-		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", agent.Namespace, "agent_name", agent.Name)
+		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -164,40 +156,34 @@ func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result,
 	return res, err
 }
 
+// preReconcile increments iteration, creates an apm transaction and initiates logger. Returns context with apm
+// transaction metadata and configured logger.
+func (r *ReconcileAgent) preReconcile(request reconcile.Request) context.Context {
+	iteration := atomic.AddUint64(&r.iteration, 1)
+	ctx := tracing.NewContextTransaction(
+		r.Tracer,
+		controllerName,
+		request.String(),
+		map[string]string{"iteration": strconv.FormatUint(iteration, 10)})
+	return logconf.InitInContext(ctx, controllerName, iteration, request.Namespace, "agent_name", request.Name)
+}
+
 func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) *reconciler.Results {
+	defer tracing.Span(ctx)()
 	results := reconciler.NewResult(ctx)
 	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
 		return results
 	}
 
-	// Run validation in case the webhook is disabled
-	if err := r.validate(ctx, &agent); err != nil {
-		return results.WithError(err)
-	}
+	driverResults := internalReconcile(Params{
+		Context:       ctx,
+		Client:        r.Client,
+		EventRecorder: r.recorder,
+		Watches:       r.dynamicWatches,
+		Agent:         agent,
+	})
 
-	driverResults := internalReconcile(NewParams(
-		ctx,
-		r.Client,
-		r.recorder,
-		r.dynamicWatches,
-		agent,
-	))
-	results.WithResults(driverResults)
-
-	return results
-}
-
-func (r *ReconcileAgent) validate(ctx context.Context, agent *agentv1alpha1.Agent) error {
-	// todo
-	//span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
-	//defer span.End()
-
-	//if err := agent.ValidateCreate(); err != nil {//log.Error(err, "Validation failed")
-	//k8s.EmitErrorEvent(r.recorder, err, agent, events.EventReasonValidation, err.Error())
-	//return tracing.CaptureError(vctx, err)
-	//}
-
-	return nil
+	return results.WithResults(driverResults)
 }
 
 func (r *ReconcileAgent) isCompatible(ctx context.Context, agent *agentv1alpha1.Agent) (bool, error) {

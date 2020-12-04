@@ -9,18 +9,23 @@ import (
 	"hash"
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 )
 
-func reconcileConfig(params Params, configHash hash.Hash) error {
+func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
+	defer tracing.Span(params.Context)()
+	results := reconciler.NewResult(params.Context)
+
 	cfgBytes, err := buildConfig(params)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	expected := corev1.Secret{
@@ -35,12 +40,12 @@ func reconcileConfig(params Params, configHash hash.Hash) error {
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Client, expected, &params.Agent); err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	_, _ = configHash.Write(cfgBytes)
 
-	return nil
+	return results
 }
 
 func buildConfig(params Params) ([]byte, error) {

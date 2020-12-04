@@ -6,7 +6,7 @@ package agent
 
 import common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 
-// namer is a Namer that is configured with the defaults for resources related to a Agent resource.
+// namer is a Namer that is configured with the defaults for resources related to an Agent resource.
 var namer = common_name.NewNamer("agent")
 
 func ConfigSecretName(name string) string {

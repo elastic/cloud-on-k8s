@@ -17,10 +17,9 @@ import (
 	"go.elastic.co/apm"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	klog "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -122,7 +121,7 @@ func getVersionString() string {
 
 func NewFromContext(ctx context.Context) logr.Logger {
 	traceContextFields := TraceContextKV(ctx)
-	return logf.Log.WithValues(traceContextFields...)
+	return crlog.Log.WithValues(traceContextFields...)
 }
 
 // TraceContextKV returns logger key-values for the current trace context.
@@ -158,7 +157,7 @@ func InitInContext(ctx context.Context, loggerName string, iteration uint64, nam
 func FromContext(ctx context.Context) logr.Logger {
 	logger := ctx.Value(loggerCtxKey)
 	if logger == nil {
-		logger = logf.Log
+		logger = crlog.Log
 	}
 
 	return logger.(logr.Logger)

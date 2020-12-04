@@ -5,13 +5,6 @@
 package agent
 
 import (
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,10 +14,21 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *reconciler.Results {
+	defer tracing.Span(params.Context)()
 	results := reconciler.NewResult(params.Context)
+
 	spec := params.Agent.Spec
 	name := Name(params.Agent.Name)
 
@@ -54,6 +58,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *rec
 		agent:       params.Agent,
 		podTemplate: podTemplate,
 	})
+
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -70,10 +75,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *rec
 
 	err = updateStatus(params, ready, desired)
 	if err != nil && apierrors.IsConflict(err) {
-		params.Logger.V(1).Info(
-			"Conflict while updating status",
-			"namespace", params.Agent.Namespace,
-			"agent_name", params.Agent.Name)
+		params.Logger().V(1).Info("Conflict while updating status")
 		return results.WithResult(reconcile.Result{Requeue: true})
 	}
 

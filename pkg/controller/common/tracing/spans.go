@@ -22,7 +22,7 @@ func Span(ctx context.Context) func() {
 	name := "unknown_function"
 	if ok {
 		f := runtime.FuncForPC(pc)
-		name := f.Name()
+		name = f.Name()
 		// cut module and package name, leave only func name
 
 		lastDot := strings.LastIndex(name, ".")
@@ -34,6 +34,6 @@ func Span(ctx context.Context) func() {
 
 	span, _ := apm.StartSpan(ctx, name, SpanTypeApp)
 	return func() {
-		defer span.End()
+		span.End()
 	}
 }

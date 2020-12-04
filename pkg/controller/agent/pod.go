@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"hash"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -52,7 +52,9 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, configHash hash.Hash) v1.PodTemplateSpec {
+func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpec {
+	defer tracing.Span(params.Context)()
+
 	podTemplate := params.GetPodTemplate()
 
 	spec := &params.Agent.Spec
