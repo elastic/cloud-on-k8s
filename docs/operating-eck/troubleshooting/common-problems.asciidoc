@@ -110,8 +110,8 @@ Possible causes include:
 ----
 kubectl get elasticsearch
 
-NAME         HEALTH   NODES   VERSION   PHASE   AGE
-TODO: Finish example
+NAME                                                              HEALTH   NODES   VERSION   PHASE   AGE
+elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample   yellow   1       7.9.2     Ready   3m50s
 ----
 +
 In this case, you have to link:{ref}/cluster-allocation-explain.html[check] and fix your shard allocations.  The link:{ref}/cluster-health.html[cluster health], link:{ref}/cat-shards.html[cat shards], and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.3/k8s-deploy-elasticsearch.html#k8s_monitor_cluster_health_and_creation_progress[get Elasticsearch] APIs can assist in tracking the shard recover process.
