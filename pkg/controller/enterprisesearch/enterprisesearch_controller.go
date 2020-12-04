@@ -11,6 +11,21 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,21 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -99,11 +99,14 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &entv1beta1.EnterpriseSearch{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, entv1beta1.Kind); err != nil {
 		return err
 	}
 
@@ -151,11 +154,10 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	var ent entv1beta1.EnterpriseSearch
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &ent); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -180,11 +182,12 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	return r.doReconcile(ctx, ent)
 }
 
-func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
+func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entName.EntNamer, obj.Name))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1beta1.Kind)
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1beta1.EnterpriseSearch) (bool, error) {
@@ -210,7 +213,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 	_, results := certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
-		Object:                &ent,
+		Owner:                 &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
 		Namer:                 entName.EntNamer,
 		Labels:                Labels(ent.Name),

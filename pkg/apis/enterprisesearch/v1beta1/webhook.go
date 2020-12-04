@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "EnterpriseSearch"}
+	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 	validationLog = logf.Log.WithName("enterprisesearch-v1beta1-validation")
 
 	defaultChecks = []func(*EnterpriseSearch) field.ErrorList{

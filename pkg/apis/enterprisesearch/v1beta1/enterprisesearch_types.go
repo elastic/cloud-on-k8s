@@ -10,7 +10,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const EnterpriseSearchContainerName = "enterprise-search"
+const (
+	EnterpriseSearchContainerName = "enterprise-search"
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "EnterpriseSearch"
+)
 
 // EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 type EnterpriseSearchSpec struct {

@@ -7,13 +7,15 @@ package kibana
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/meta"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
@@ -52,6 +54,15 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana pods should eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
+			}),
+		},
+		{
+			Name: "Soft-owned secrets should eventually be removed",
+			Test: test.Eventually(func() error {
+				namespace := b.Kibana.Namespace
+				return k.CheckSecretsRemoved([]types.NamespacedName{
+					{Namespace: namespace, Name: certificates.PublicCertsSecretName(name.EntNamer, b.Kibana.Name)},
+				})
 			}),
 		},
 	}

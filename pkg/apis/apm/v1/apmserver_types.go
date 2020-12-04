@@ -13,7 +13,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-const ApmServerContainerName = "apm-server"
+const (
+	ApmServerContainerName = "apm-server"
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "ApmServer"
+)
 
 // ApmServerSpec holds the specification of an APM Server.
 type ApmServerSpec struct {

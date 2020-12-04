@@ -7,12 +7,15 @@ package apmserver
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
@@ -51,6 +54,16 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "APM Server pods should eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name)...)
+			}),
+		},
+		{
+			Name: "Soft-owned secrets should eventually be removed",
+			Test: test.Eventually(func() error {
+				namespace := b.ApmServer.Namespace
+				return k.CheckSecretsRemoved([]types.NamespacedName{
+					{Namespace: namespace, Name: apmserver.SecretToken(b.ApmServer.Name)},
+					{Namespace: namespace, Name: certificates.PublicCertsSecretName(apmserver.Namer, b.ApmServer.Name)},
+				})
 			}),
 		},
 	}
