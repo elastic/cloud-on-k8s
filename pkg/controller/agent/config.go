@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -81,7 +82,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 	}
 
 	outputs := map[string]interface{}{}
-	for _, assoc := range associations {
+	for i, assoc := range associations {
 		username, password, err := association.ElasticsearchAuthSettings(params.Client, assoc)
 		if err != nil {
 			return settings.NewCanonicalConfig(), err
@@ -97,9 +98,8 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
 		}
 
-		//a := (assoc).(*v1alpha1.AgentESAssociation)
-		outputName := "" // todo agent a.Output.OutputName
-
+		agentAssoc := (assoc).(*v1alpha1.AgentESAssociation)
+		outputName := agentAssoc.Agent.Spec.ElasticsearchRefs[i].OutputName
 		if outputName == "" {
 			if len(associations) > 1 {
 				return settings.NewCanonicalConfig(), errors.New("output is not named and there is more than one specified")
@@ -107,6 +107,9 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			outputName = "default"
 		}
 		outputs[outputName] = output
+
+		// only one association is currently supported, hence breaking
+		break //nolint:staticcheck
 	}
 
 	return settings.NewCanonicalConfigFrom(map[string]interface{}{

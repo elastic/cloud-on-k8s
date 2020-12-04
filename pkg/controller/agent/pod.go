@@ -32,10 +32,10 @@ const (
 	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
 	DataMountPath             = "/usr/share/data"
 
-	// ConfigChecksumLabel is a label used to store a Beat config checksum.
+	// ConfigChecksumLabel is a label used to store Agent config checksum.
 	ConfigChecksumLabel = "agent.k8s.elastic.co/config-checksum"
 
-	// VersionLabelName is a label used to track the version of a Beat Pod.
+	// VersionLabelName is a label used to track the version of a Agent Pod.
 	VersionLabelName = "agent.k8s.elastic.co/version"
 )
 
@@ -95,13 +95,6 @@ func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpe
 		volumes = append(volumes, v.Volume())
 		volumeMounts = append(volumeMounts, v.VolumeMount())
 	}
-
-	// todo agent
-	//if keystoreResources != nil {
-	//	_, _ = configHash.Write([]byte(keystoreResources.Version))
-	//	volumes = append(volumes, keystoreResources.Volume)
-	//	initContainers = append(initContainers, keystoreResources.InitContainer)
-	//}
 
 	builder := defaults.NewPodTemplateBuilder(podTemplate, ContainerName).
 		WithLabels(labels).

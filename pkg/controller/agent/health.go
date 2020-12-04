@@ -9,7 +9,7 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-// CalculateHealth returns health of the Beat based on association status, desired count and ready count.
+// CalculateHealth returns health of the Agent based on association status, desired count and ready count.
 func CalculateHealth(associations []v1.Association, ready, desired int32) agentv1alpha1.AgentHealth {
 	for _, assoc := range associations {
 		if assoc.AssociationConf().IsConfigured() && assoc.AssociationStatus() != v1.AssociationEstablished {

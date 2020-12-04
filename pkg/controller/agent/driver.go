@@ -79,23 +79,6 @@ func internalReconcile(params Params) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	// todo agent
-	//keystoreResources, err := keystore.NewResources(
-	//	params,
-	//	&params.Beat,
-	//	namer,
-	//	NewLabels(params.Beat),
-	//	initContainerParameters(params.Beat.Spec.Type),
-	//)
-	//if err != nil {
-	//	return results.WithError(err)
-	//}
-
 	podTemplate := buildPodTemplate(params /*keystoreResources,*/, configHash)
 	return results.WithResults(reconcilePodVehicle(params, podTemplate))
 }
-
-// secure settings
-// configref
-// status
-// validate

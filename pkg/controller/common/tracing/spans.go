@@ -16,6 +16,8 @@ const (
 	SpanTypeApp string = "app"
 )
 
+// Span starts an apm span named after callers function name. Returns a function that, when run, closes the span.
+// To create a span for the entire func use `defer tracing.Span(ctx)()` as the first call.
 func Span(ctx context.Context) func() {
 	pc, _, _, ok := runtime.Caller(1)
 

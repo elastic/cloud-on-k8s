@@ -17,7 +17,8 @@ type AgentSpec struct {
 	// Version of the Agent.
 	Version string `json:"version"`
 
-	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+	// ElasticsearchRefs is a reference to a list of Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single ES cluster is currently supported.
 	// +kubebuilder:validation:Optional
 	ElasticsearchRefs []Output `json:"elasticsearchRefs,omitempty"`
 
@@ -47,12 +48,12 @@ type AgentSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.
-	// Cannot be used along with `deployment`. If both are absent a default for the Type is used.
+	// Cannot be used along with `deployment`.
 	// +kubebuilder:validation:Optional
 	DaemonSet *DaemonSetSpec `json:"daemonSet,omitempty"`
 
 	// Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec.
-	// Cannot be used along with `daemonSet`. If both are absent a default for the Type is used.
+	// Cannot be used along with `daemonSet`.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 }
@@ -175,6 +176,7 @@ func (a *AgentESAssociation) AssociatedType() string {
 func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	selector := commonv1.ObjectSelector{}
 	if len(a.Spec.ElasticsearchRefs) > 0 {
+		// only first one is used as association controller doesn't support more right now
 		selector = a.Spec.ElasticsearchRefs[0].ObjectSelector
 	}
 

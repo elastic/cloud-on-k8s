@@ -40,13 +40,6 @@ func TestSystemIntegrationConfig(t *testing.T) {
 		WithDefaultESValidation(agent.HasDataStream("metrics-system.socket_summary-default")).
 		WithDefaultESValidation(agent.HasDataStream("metrics-system.uptime-default"))
 
-	/* Missing:
-	   logfile-system.auth-default
-	   logfile-system.syslog-default
-	   system/metrics-system.filesystem-default
-	   system/metrics-system.fsstat-default
-	*/
-
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, agentBuilder, testPodBuilder).RunSequential(t)
