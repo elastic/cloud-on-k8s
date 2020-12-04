@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
@@ -296,6 +297,21 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		Tty:    false,
 	})
 	return stdout.String(), stderr.String(), err
+}
+
+func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error {
+	for _, ref := range secretRefs {
+		err := k.Client.Get(ref, &corev1.Secret{})
+		if apierrors.IsNotFound(err) {
+			// secret removed, all good
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("expected secret %s to be garbage-collected", ref.Name)
+	}
+	return nil
 }
 
 func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {

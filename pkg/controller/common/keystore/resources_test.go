@@ -61,7 +61,7 @@ var (
 	}
 	testKibanaWithSecureSettings = kbv1.Kibana{
 		TypeMeta: metav1.TypeMeta{
-			Kind: "kibana",
+			Kind: kbv1.Kind,
 		},
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: kbv1.KibanaSpec{

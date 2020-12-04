@@ -54,7 +54,7 @@ func Reconcile(
 	httpCerts, results = certificates.Reconciler{
 		K8sClient:      driver.K8sClient(),
 		DynamicWatches: driver.DynamicWatches(),
-		Object:         &es,
+		Owner:          &es,
 		TLSOptions:     es.Spec.HTTP.TLS,
 		Namer:          esv1.ESNamer,
 		Labels:         certsLabels,

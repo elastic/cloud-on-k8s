@@ -37,7 +37,7 @@ func TestNewPodSpec(t *testing.T) {
 			name: "create default pod spec",
 			as: apmv1.ApmServer{
 				TypeMeta: metav1.TypeMeta{
-					Kind: "ApmServer",
+					Kind: apmv1.Kind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "fake-apm",
