@@ -11,9 +11,9 @@ This is a patch release to address some issues found after the 1.3.0 release. Se
 
 [float]
 [id="{p}-131-workaround-kubernetes-bug"]
-==== Workaround rare Kubernetes bug that could result in dataloss
+==== Work around rare Kubernetes bug that could result in data loss
 
-ECK manages several Secrets that users may want to copy across namespaces, for being mounted into other applications:
+ECK manages several Secrets that users may want to copy across namespaces in order to be mounted into other application Pods:
 
 * the Secret containing the `elastic` user password
 * the Secret containing the public HTTP certificates to access Elasticsearch, Kibana, Enterprise Search
@@ -21,13 +21,13 @@ ECK manages several Secrets that users may want to copy across namespaces, for b
 
 Those Secrets include a reference to their owner resource (for example, the Elasticsearch resource). When a Secret is copied into a different namespace, that owner reference becomes invalid. A Kubernetes link:https://github.com/kubernetes/kubernetes/issues/65200[bug] causes the garbage collection of all resources owned in the original namespace, including PersistentVolumes.
 
-This bug is link:https://github.com/kubernetes/kubernetes/pull/92743[fixed] in Kubernetes `1.20`: resources with an invalid owner references will be automatically deleted, preventing any accidental garbage collection.
+This bug is link:https://github.com/kubernetes/kubernetes/pull/92743[fixed] in Kubernetes 1.20: resources with an invalid owner references will be automatically deleted, preventing any accidental garbage collection.
 
 However since some ECK users might not be able to upgrade to Kubernetes 1.20 anytime soon, we are providing a fix in ECK directly. All aforementioned Secrets will not have an owner reference set anymore. The ECK operator itself handles garbage collection of those Secrets when appropriate.
 
 
 [float]
 [id="{p}-131-use-new-nodenames"]
-==== Use new node_names query param for voting exclusions as of 7.8.0
+==== Use new node_names query parameter for voting exclusions as of 7.8.0
 
 When an Elasticsearch master node was created but, for any reason, didn't join the cluster, the operator was not able to remove it anymore. A new parameter introduced in Elasticsearch `7.8.0` allows the operator to make progress in those circumstances: a master node that never joined the cluster can correctly be removed. Prior Elasticsearch versions do not benefit from that improvement.
