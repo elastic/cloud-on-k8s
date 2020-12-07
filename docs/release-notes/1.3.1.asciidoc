@@ -1,0 +1,21 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.3.1]]
+== {n} version 1.3.1
+
+
+
+
+
+[[bug-1.3.1]]
+[float]
+=== Bug fixes
+
+* [Helm] Honour serviceAccount.create value {pull}4003[#4003] (issue: {issue}4002[#4002])
+* Use the public transport CA as remote CA if the remote CA list is empty {pull}3993[#3993]
+* Don't set an ownerRef on secrets users are susceptible to copy around {pull}3992[#3992] (issue: {issue}3986[#3986])
+* Use a custom version of JSON marshalling for license verification {pull}3977[#3977]
+* Use new node_names query param for voting exclusions as of 7.8.0 {pull}3950[#3950] (issue: {issue}2951[#2951])
+
+
