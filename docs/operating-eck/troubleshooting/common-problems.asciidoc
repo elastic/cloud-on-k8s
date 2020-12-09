@@ -89,22 +89,19 @@ Failure to do so can cause data loss.
 == Pods are not replaced after a configuration update
 
 The update of an existing Elasticsearch cluster configuration can fail because the operator is unable to apply the changes required while replacing the pods of a given Elasticsearch cluster.
-
-This can be identified by the `AGE` of the pod being older than the configuration update, or the `STATUS` of the pods:
+A key indicator is when the Phase of the Elasticsearch resource is in `ApplyingChanges` state for too long:
 
 [source,sh]
 ----
-kubectl get pods
+kubectl get es
 
-NAME                      READY   STATUS    RESTARTS   AGE
-quickstart-es-default-0   1/1     Running   0          15m
-quickstart-es-default-1   1/1     Running   0          15m
-quickstart-es-default-2   1/1     Running   0          15m
+NAME                  HEALTH   NODES    VERSION   PHASE            AGE          
+elasticsearch-sample  yellow   2        7.9.2     ApplyingChanges  36m
 ----
 
 Possible causes include:
 
-* The Elasticsearch cluster is not healthy.
+* The Elasticsearch cluster is not healthy
 +
 [source,sh]
 ----
@@ -128,7 +125,16 @@ LAST SEEN   TYPE      REASON             OBJECT                        MESSAGE
 10s         Warning   FailedScheduling   pod/quickstart-es-default-2   0/3 nodes are available: 3 Insufficient memory.
 ----
 +
-The operator is not able to restart some nodes:
+As an alternative, to get more specific information about a given pod, you can use the following command: 
++
+[source,sh]
+----
+$ kubectl get pod elasticsearch-sample-es-default-2  -o go-template="{{.status}}"
+map[conditions:[map[lastProbeTime:<nil> lastTransitionTime:2020-12-07T09:31:06Z message:0/3 nodes are available: 3 Insufficient cpu. reason:Unschedulable status:False type:PodScheduled]] phase:Pending qosClass:Guaranteed]
+----
+
+
+* The operator is not able to restart some nodes
 +
 [source,sh]
 ----
@@ -149,6 +155,6 @@ quickstart-es-default-1   1/1     Running   0          146m
 quickstart-es-default-2   0/1     Pending   0          134m
 ----
 +
-In this case, you have to add more K8s nodes, or free up resources. In the worst case, delete the pod and ECK operator will recreate it.
+In this case, you have to add more K8s nodes, or free up resources.
 
 For more information, see <<{p}-troubleshooting-methods>>.
