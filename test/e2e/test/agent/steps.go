@@ -173,7 +173,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					expectedOutputName := b.ValidationsOutputs[i]
 					var esNsName types.NamespacedName
 					for _, output := range b.Agent.Spec.ElasticsearchRefs {
-						if output.OutputName == expectedOutputName {
+						if output.OutputName == expectedOutputName ||
+							output.OutputName == "" && len(b.Agent.Spec.ElasticsearchRefs) == 1 {
 							esNsName = output.WithDefaultNamespace(b.Agent.Namespace).NamespacedName()
 							break
 						}

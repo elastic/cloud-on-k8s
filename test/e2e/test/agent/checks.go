@@ -7,25 +7,18 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
-func HasEventFromAgent() ValidationFunc {
-	return HasEvent("event.dataset:elastic_agent AND elastic_agent:*")
-}
-
-func HasEvent(query string) ValidationFunc {
-	return hasEvent(fmt.Sprintf("/*agent*/_search?q=%s", url.QueryEscape(query))) //todo agent
-}
-
-func NoEvent(query string) ValidationFunc {
-	return noEvent(fmt.Sprintf("/*agent*/_search?q=%s", query))
-}
+const (
+	MetricsType = "metrics"
+	LogsType    = "logs"
+)
 
 type DataStreamResult struct {
 	DataStreams []DataStream `json:"data_streams"`
@@ -37,22 +30,64 @@ type DataStream struct {
 	Status string `json:"status"`
 }
 
-func HasDataStream(name string) ValidationFunc {
+func HasEvent(query string) ValidationFunc {
+	return checkEvent(query, func(hitsCount int) error {
+		if hitsCount == 0 {
+			return fmt.Errorf("hit count should be more than 0 for %s", query)
+		}
+		return nil
+	})
+}
+
+func NoEvent(query string) ValidationFunc {
+	return checkEvent(query, func(hitsCount int) error {
+		if hitsCount != 0 {
+			return fmt.Errorf("hit count should be 0 for %s", query)
+		}
+		return nil
+	})
+}
+
+func HasWorkingDataStream(typ, dataset, namespace string) ValidationFunc {
+	dsName := fmt.Sprintf("%s-%s-%s", typ, dataset, namespace)
+	return and(
+		HasDataStream(dsName),
+		HasEvent(fmt.Sprintf("/%s/_search?q=!error.message:*", dsName)),
+	)
+}
+
+func HasAnyDataStream() ValidationFunc {
 	return func(esClient client.Client) error {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/_data_stream/%s", name), nil)
+		resultBytes, err := request(esClient, "/_data_stream")
 		if err != nil {
 			return err
 		}
 
-		res, err := esClient.Request(context.Background(), req)
+		var results DataStreamResult
+		err = json.Unmarshal(resultBytes, &results)
 		if err != nil {
 			return err
 		}
-		defer res.Body.Close()
-		resultBytes, err := ioutil.ReadAll(res.Body)
+
+		if results.Error != nil {
+			return fmt.Errorf("error %v while checking for data streams", results.Error)
+		}
+
+		if len(results.DataStreams) == 0 {
+			return errors.New("no data streams found")
+		}
+
+		return nil
+	}
+}
+
+func HasDataStream(name string) ValidationFunc {
+	return func(esClient client.Client) error {
+		resultBytes, err := request(esClient, fmt.Sprintf("/_data_stream/%s", name))
 		if err != nil {
 			return err
 		}
+
 		var results DataStreamResult
 		err = json.Unmarshal(resultBytes, &results)
 		if err != nil {
@@ -84,40 +119,13 @@ func HasDataStream(name string) ValidationFunc {
 	}
 }
 
-func hasEvent(url string) ValidationFunc {
-	return checkEvent(url, func(hitsCount int) error {
-		if hitsCount == 0 {
-			return fmt.Errorf("hit count should be more than 0 for %s", url)
-		}
-		return nil
-	})
-}
-
-func noEvent(url string) ValidationFunc {
-	return checkEvent(url, func(hitsCount int) error {
-		if hitsCount != 0 {
-			return fmt.Errorf("hit count should be 0 for %s", url)
-		}
-		return nil
-	})
-}
-
 func checkEvent(url string, check func(int) error) ValidationFunc {
 	return func(esClient client.Client) error {
-		req, err := http.NewRequest(http.MethodGet, url, nil)
+		resultBytes, err := request(esClient, url)
 		if err != nil {
 			return err
 		}
 
-		res, err := esClient.Request(context.Background(), req)
-		if err != nil {
-			return err
-		}
-		defer res.Body.Close()
-		resultBytes, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return err
-		}
 		var results client.SearchResults
 		err = json.Unmarshal(resultBytes, &results)
 		if err != nil {
@@ -127,6 +135,36 @@ func checkEvent(url string, check func(int) error) ValidationFunc {
 			return err
 		}
 
+		return nil
+	}
+}
+
+func request(esClient client.Client, url string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := esClient.Request(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	resultBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return resultBytes, nil
+}
+
+func and(validationFuncs ...ValidationFunc) ValidationFunc {
+	return func(esClient client.Client) error {
+		for _, vf := range validationFuncs {
+			if err := vf(esClient); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
