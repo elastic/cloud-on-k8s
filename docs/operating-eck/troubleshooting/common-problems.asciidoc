@@ -89,6 +89,7 @@ Failure to do so can cause data loss.
 == Pods are not replaced after a configuration update
 
 The update of an existing Elasticsearch cluster configuration can fail because the operator is unable to apply the changes required while replacing the pods of a given Elasticsearch cluster.
+
 A key indicator is when the Phase of the Elasticsearch resource is in `ApplyingChanges` state for too long:
 
 [source,sh]
