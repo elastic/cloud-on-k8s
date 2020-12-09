@@ -85,6 +85,7 @@ The operator automatically creates and manages Kubernetes resources to achieve t
 CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
 
 [float]
+[id="{p}-elasticsearch-monitor-cluster-health"]
 === Monitor cluster health and creation progress
 
 Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
