@@ -19,8 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-const WebhookServiceName = "elastic-webhook-server"
-
 // WebhookCertificates holds the artifacts used by the webhook server and the webhook configuration.
 type WebhookCertificates struct {
 	caCert []byte
@@ -67,7 +65,7 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 // certificate of the webhook server.
 // The private key is not retained or persisted, all the artifacts are regenerated and updated if needed when the
 // certificate is about to expire or is missing.
-func (w *Params) newCertificates() (WebhookCertificates, error) {
+func (w *Params) newCertificates(webhookConf *v1beta1.ValidatingWebhookConfiguration) (WebhookCertificates, error) {
 	webhookCertificates := WebhookCertificates{}
 
 	// Create a new CA
@@ -104,25 +102,15 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 			CommonName:         "elastic-webhook",
 			OrganizationalUnit: []string{"elastic-webhook"},
 		},
-
-		DNSNames: k8s.GetServiceDNSName(corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: w.Namespace,
-				Name:      WebhookServiceName,
-			},
-		}),
-
-		NotBefore: time.Now().Add(-10 * time.Minute),
-		NotAfter:  time.Now().Add(w.Rotation.Validity),
-
+		DNSNames:           extractDNSNames(webhookConf),
+		NotBefore:          time.Now().Add(-10 * time.Minute),
+		NotAfter:           time.Now().Add(w.Rotation.Validity),
 		PublicKeyAlgorithm: parsedCSR.PublicKeyAlgorithm,
 		PublicKey:          parsedCSR.PublicKey,
-
 		Signature:          parsedCSR.Signature,
 		SignatureAlgorithm: parsedCSR.SignatureAlgorithm,
-
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	})
 
 	cert, err := ca.CreateCertificate(certificateTemplate)
@@ -131,4 +119,30 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 	}
 	webhookCertificates.serverCert = certificates.EncodePEMCert(cert)
 	return webhookCertificates, nil
+}
+
+func extractDNSNames(webhookConf *v1beta1.ValidatingWebhookConfiguration) []string {
+	svcNames := make(map[string]struct{}, len(webhookConf.Webhooks))
+
+	for _, wh := range webhookConf.Webhooks {
+		svcRef := wh.ClientConfig.Service
+		if svcRef == nil {
+			continue
+		}
+
+		names := k8s.GetServiceDNSName(corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: svcRef.Namespace, Name: svcRef.Name}})
+		for _, n := range names {
+			svcNames[n] = struct{}{}
+		}
+	}
+
+	dnsNames := make([]string, len(svcNames))
+	i := 0
+
+	for n := range svcNames {
+		dnsNames[i] = n
+		i++
+	}
+
+	return dnsNames
 }

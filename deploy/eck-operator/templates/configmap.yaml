@@ -29,7 +29,7 @@ data:
     {{- end }}
     enable-webhook: {{ .Values.webhook.enabled }}
     {{- if .Values.webhook.enabled }}
-    webhook-name: {{ .Values.webhook.name }}
+    webhook-name: {{ include "eck-operator.webhookName" . }}
       {{- if not .Values.webhook.manageCerts }}
     manage-webhook-certs: false
     webhook-cert-dir: {{ .Values.webhook.certsDir }}

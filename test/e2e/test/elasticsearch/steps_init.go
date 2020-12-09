@@ -13,11 +13,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
+
+const webhookServiceName = "elastic-webhook-server"
 
 // InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
 // and cleanup from previous tests
@@ -66,7 +67,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				webhookEndpoints := &corev1.Endpoints{}
 				if err := k.Client.Get(types.NamespacedName{
 					Namespace: test.Ctx().Operator.Namespace,
-					Name:      webhook.WebhookServiceName,
+					Name:      webhookServiceName,
 				}, webhookEndpoints); err != nil {
 					return err
 				}
