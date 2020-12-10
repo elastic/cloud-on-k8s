@@ -13,7 +13,9 @@ import (
 // CaptureError wraps APM agent func of the same name and auto-sends, returning the original error.
 func CaptureError(ctx context.Context, err error) error {
 	if ctx != nil {
-		apm.CaptureError(ctx, err).Send()
+		if capturedErr := apm.CaptureError(ctx, err); capturedErr != nil {
+			capturedErr.Send()
+		}
 	}
 	return err // dropping the apm wrapper here
 }

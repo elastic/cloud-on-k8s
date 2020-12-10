@@ -12,6 +12,7 @@ endif::[]
 = API Reference
 
 .Packages
+- xref:{anchor_prefix}-agent-k8s-elastic-co-v1alpha1[$$agent.k8s.elastic.co/v1alpha1$$]
 - xref:{anchor_prefix}-apm-k8s-elastic-co-v1[$$apm.k8s.elastic.co/v1$$]
 - xref:{anchor_prefix}-apm-k8s-elastic-co-v1beta1[$$apm.k8s.elastic.co/v1beta1$$]
 - xref:{anchor_prefix}-beat-k8s-elastic-co-v1beta1[$$beat.k8s.elastic.co/v1beta1$$]
@@ -22,6 +23,115 @@ endif::[]
 - xref:{anchor_prefix}-enterprisesearch-k8s-elastic-co-v1beta1[$$enterprisesearch.k8s.elastic.co/v1beta1$$]
 - xref:{anchor_prefix}-kibana-k8s-elastic-co-v1[$$kibana.k8s.elastic.co/v1$$]
 - xref:{anchor_prefix}-kibana-k8s-elastic-co-v1beta1[$$kibana.k8s.elastic.co/v1beta1$$]
+
+
+[id="{anchor_prefix}-agent-k8s-elastic-co-v1alpha1"]
+== agent.k8s.elastic.co/v1alpha1
+
+Package v1alpha1 contains API Schema definitions for the agent v1alpha1 API group
+
+.Resource Types
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agent[$$Agent$$]
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agent"]
+=== Agent 
+
+Agent is the Schema for the Agents API.
+
+
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`apiVersion`* __string__ | `agent.k8s.elastic.co/v1alpha1`
+| *`kind`* __string__ | `Agent`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec"]
+=== AgentSpec 
+
+AgentSpec defines the desired state of the Agent
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agent[$$Agent$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`version`* __string__ | Version of the Agent.
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-output[$$Output$$] array__ | ElasticsearchRefs is a reference to a list of Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single ES cluster is currently supported.
+| *`image`* __string__ | Image is the Agent Docker image to deploy. Version has to match the Agent in the image.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Agent configuration. At most one of [`Config`, `ConfigRef`] can be specified.
+| *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Agent configuration. Agent settings must be specified as yaml, under a single "agent.yml" entry. At most one of [`Config`, `ConfigRef`] can be specified.
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Agent. Secrets data can be then referenced in the Agent config using the Secret's keys or as specified in `Entries` field of each SecureSetting.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`daemonSet`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-daemonsetspec[$$DaemonSetSpec$$]__ | DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec. Cannot be used along with `deployment`.
+| *`deployment`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-deploymentspec[$$DeploymentSpec$$]__ | Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec. Cannot be used along with `daemonSet`.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-daemonsetspec"]
+=== DaemonSetSpec 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-deploymentspec"]
+=== DeploymentSpec 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`replicas`* __integer__ | 
+| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-output"]
+=== Output 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`ObjectSelector`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | 
+| *`outputName`* __string__ | 
+|===
+
 
 
 [id="{anchor_prefix}-apm-k8s-elastic-co-v1"]
@@ -238,6 +348,7 @@ Config represents untyped YAML configuration.
 
 .Appears In:
 ****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
@@ -254,6 +365,7 @@ ConfigSource references configuration settings.
 
 .Appears In:
 ****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 ****
@@ -318,6 +430,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-output[$$Output$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-remotecluster[$$RemoteCluster$$]
 ****
 
@@ -375,6 +488,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 
 .Appears In:
 ****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]

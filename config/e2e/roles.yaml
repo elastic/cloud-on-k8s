@@ -120,3 +120,18 @@ rules:
   - elastic.journalbeat.restricted
   verbs:
   - use
+---
+# ClusterRole allowing use of Elastic Agent-specific PSP
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-agent-restricted
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.agent.restricted
+  verbs:
+  - use

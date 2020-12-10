@@ -25,11 +25,13 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -82,6 +84,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := entv1beta1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := agentv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
@@ -345,6 +350,15 @@ func EnterpriseSearchPodListOptions(entNamespace, entName string) []k8sclient.Li
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		common.TypeLabelName:                           enterprisesearch.Type,
 		enterprisesearch.EnterpriseSearchNameLabelName: entName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(agentNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		common.TypeLabelName: agent.TypeLabelValue,
+		agent.NameLabelName:  agent.Name(agentName),
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

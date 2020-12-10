@@ -56,7 +56,7 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
-			helper.createBeatRoles,
+			helper.createRoles,
 			helper.createManagedNamespaces,
 		}
 	} else {
@@ -66,7 +66,7 @@ func doRun(flags runFlags) error {
 			helper.initTestContext,
 			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
-			helper.createBeatRoles,
+			helper.createRoles,
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
@@ -254,9 +254,9 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/rbac.yaml", h.testContext)
 }
 
-func (h *helper) createBeatRoles() error {
-	log.Info("Creating Beat roles")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/beat-roles.yaml", h.testContext)
+func (h *helper) createRoles() error {
+	log.Info("Creating Beat/Agent roles")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
 }
 
 func (h *helper) installCRDs() error {
