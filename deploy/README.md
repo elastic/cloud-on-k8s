@@ -1,6 +1,6 @@
 # ECK Operator Helm Chart
 
-This directory contains the experimental Helm chart for deploying the ECK operator.
+This directory contains the experimental Helm chart for deploying the ECK operator. It should be considered beta quality at this point in time.
 
 ## Usage
 

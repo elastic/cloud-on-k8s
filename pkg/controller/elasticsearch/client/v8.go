@@ -6,11 +6,23 @@ package client
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type clientV8 struct {
 	clientV7
+}
+
+func (c *clientV8) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
+	path := fmt.Sprintf("/_cluster/voting_config_exclusions?node_names=%s", strings.Join(nodeNames, ","))
+
+	if err := c.post(ctx, path, nil, nil); err != nil {
+		return errors.Wrap(err, "unable to add to voting_config_exclusions")
+	}
+	return nil
 }
 
 func (c *clientV8) SyncedFlush(ctx context.Context) error {

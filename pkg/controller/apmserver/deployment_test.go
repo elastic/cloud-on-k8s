@@ -203,7 +203,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			Name: "test-apm-server",
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind: "apmserver",
+			Kind: apmv1.Kind,
 		},
 	}
 	defaultPodSpecParams := PodSpecParams{
@@ -442,6 +442,33 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 					MountPath: DataVolumePath,
 				}).
 				withInitContainer(),
+			wantErr: false,
+		},
+		{
+			name: "secret token influences checksum",
+			args: args{
+				as: apmFixture,
+				podSpecParams: func() PodSpecParams {
+					params := defaultPodSpecParams
+					params.TokenSecret = corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: SecretToken(apmFixture.Name),
+						},
+						Data: map[string][]byte{
+							SecretTokenKey: []byte("s3cr3t"),
+						},
+					}
+					return params
+				}(),
+				initialObjects: []runtime.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: certSecretName,
+						},
+					},
+				},
+			},
+			want:    expectedDeploymentParams().withConfigChecksum("8773d0fc52aef47027d83968cb1b776c1b06951bad2cab20a4527687"),
 			wantErr: false,
 		},
 	}

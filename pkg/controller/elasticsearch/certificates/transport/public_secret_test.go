@@ -13,23 +13,22 @@ import (
 	"testing"
 	"time"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 	owner := &esv1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+		TypeMeta:   v1.TypeMeta{Kind: esv1.Kind},
 	}
 
 	ca := genCA(t)
@@ -44,7 +43,12 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
 		meta := k8s.ToObjectMeta(namespacedSecretName)
-		meta.SetLabels(label.NewLabels(k8s.ExtractNamespacedName(owner)))
+		labels := label.NewLabels(k8s.ExtractNamespacedName(owner))
+		labels[reconciler.SoftOwnerKindLabel] = owner.Kind
+		labels[reconciler.SoftOwnerNameLabel] = owner.Name
+		labels[reconciler.SoftOwnerNamespaceLabel] = owner.Namespace
+
+		meta.SetLabels(labels)
 
 		wantSecret := &corev1.Secret{
 			ObjectMeta: meta,
@@ -52,11 +56,6 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 				certificates.CAFileName: certificates.EncodePEMCert(ca.Cert.Raw),
 			},
 		}
-
-		if err := controllerutil.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
-			t.Fatal(err)
-		}
-
 		return wantSecret
 	}
 

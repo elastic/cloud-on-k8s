@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +43,13 @@ func (c *clientV7) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 }
 
 func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
-	path := fmt.Sprintf("/_cluster/voting_config_exclusions/%s", strings.Join(nodeNames, ","))
+	var path string
+	if c.version.IsSameOrAfter(version.From(7, 8, 0)) {
+		path = fmt.Sprintf("/_cluster/voting_config_exclusions?node_names=%s", strings.Join(nodeNames, ","))
+	} else {
+		// versions < 7.8.0 or unversioned clients which is OK as this deprecated API will be supported until 8.0
+		path = fmt.Sprintf("/_cluster/voting_config_exclusions/%s", strings.Join(nodeNames, ","))
+	}
 
 	if err := c.post(ctx, path, nil, nil); err != nil {
 		return errors.Wrap(err, "unable to add to voting_config_exclusions")

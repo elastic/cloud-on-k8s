@@ -147,32 +147,38 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 					return fmt.Errorf("%s was not in %+v", nodeID, nodesStats.Nodes)
 				}
 
+				// match the actual Elasticsearch node to an expected one in expectedTopology
+				foundInExpectedTopology := false
 				nodeStats := nodesStats.Nodes[nodeID]
+				// ES returns a string, parse it as an int64, base10
+				cgroupMemoryLimitsInBytes, err := strconv.ParseInt(
+					nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
+				)
+				if err != nil {
+					return err
+				}
 				for i, topoElem := range expectedTopology {
 					cfg := esv1.DefaultCfg(*v)
 					if err := esv1.UnpackConfig(topoElem.Config, *v, &cfg); err != nil {
 						return err
 					}
-
-					// ES returns a string, parse it as an int64, base10:
-					cgroupMemoryLimitsInBytes, err := strconv.ParseInt(
-						nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
-					)
-					if err != nil {
-						return err
-					}
-
 					if compareRoles(cfg.Node, node.Roles) &&
 						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) {
-						// no need to match this topology anymore
+						// found it! no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
+						foundInExpectedTopology = true
 						break
 					}
+				}
+				if !foundInExpectedTopology {
+					// node reported from ES API does not match any expected node in the spec
+					// (could be normal and transient on downscales)
+					return fmt.Errorf("actual node in the cluster (name: %s, roles: %+v, memory limit: %d) does not match any expected node", node.Name, node.Roles, cgroupMemoryLimitsInBytes)
 				}
 			}
 			// expected topology should have matched all nodes
 			if len(expectedTopology) > 0 {
-				return fmt.Errorf("expected elements missing from cluster %+v", expectedTopology)
+				return fmt.Errorf("%d expected elements missing from cluster %+v", len(expectedTopology), expectedTopology)
 			}
 			return nil
 		}),

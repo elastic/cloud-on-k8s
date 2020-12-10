@@ -54,6 +54,10 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 
 // WaitForLogs waits for logs to be fully read before leaving.
 func (j *Job) WaitForLogs() {
+	if j.stopRequested {
+		// already done in the past
+		return
+	}
 	j.stopRequested = true
 	close(j.stopLogStream)
 	log.Info("Waiting for log stream to be over", "name", j.jobName)

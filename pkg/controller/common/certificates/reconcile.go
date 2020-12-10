@@ -8,20 +8,21 @@ import (
 	"context"
 	"time"
 
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	commonname "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -32,7 +33,8 @@ type Reconciler struct {
 	K8sClient      k8s.Client
 	DynamicWatches watches.DynamicWatches
 
-	Object        metav1.Object                     // owner for the TLS certificates (eg. Elasticsearch, Kibana)
+	Owner runtime.Object // owner for the TLS certificates (eg. Elasticsearch, Kibana)
+
 	TLSOptions    commonv1.TLSOptions               // TLS options of the object
 	ExtraHTTPSANs []commonv1.SubjectAlternativeName // SANs dynamically set by a controller, only used in the self signed cert
 
@@ -44,6 +46,10 @@ type Reconciler struct {
 	CertRotation   RotationParams // to requeue a reconciliation before cert expiration
 
 	GarbageCollectSecrets bool // if true, delete secrets if TLS is disabled
+}
+
+func (r Reconciler) OwnerMeta() (metav1.Object, error) {
+	return meta.Accessor(r.Owner)
 }
 
 // ReconcileCAAndHTTPCerts reconciles 3 TLS-related secrets for the given object:
@@ -61,11 +67,16 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 		return nil, results.WithError(r.removeCAAndHTTPCertsSecrets())
 	}
 
+	ownerMeta, err := r.OwnerMeta()
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
 	// reconcile CA certs first
 	httpCa, err := ReconcileCAForOwner(
 		r.K8sClient,
 		r.Namer,
-		r.Object,
+		ownerMeta,
 		r.Labels,
 		HTTPCAType,
 		r.CACertRotation,
@@ -97,27 +108,32 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 }
 
 func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
+	ownerMeta, err := r.OwnerMeta()
+	if err != nil {
+		return err
+	}
+	owner := k8s.ExtractNamespacedName(ownerMeta)
 	// remove public certs secret
 	if err := deleteIfExists(r.K8sClient,
-		types.NamespacedName{Namespace: r.Object.GetNamespace(), Name: PublicCertsSecretName(r.Namer, r.Object.GetName())},
+		types.NamespacedName{Namespace: owner.Namespace, Name: PublicCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove internal certs secret
 	if err := deleteIfExists(r.K8sClient,
-		types.NamespacedName{Namespace: r.Object.GetNamespace(), Name: InternalCertsSecretName(r.Namer, r.Object.GetName())},
+		types.NamespacedName{Namespace: owner.Namespace, Name: InternalCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove CA secret
 	if err := deleteIfExists(r.K8sClient,
-		types.NamespacedName{Namespace: r.Object.GetNamespace(), Name: CAInternalSecretName(r.Namer, r.Object.GetName(), HTTPCAType)},
+		types.NamespacedName{Namespace: owner.Namespace, Name: CAInternalSecretName(r.Namer, owner.Name, HTTPCAType)},
 	); err != nil {
 		return err
 	}
 
 	// remove watches on user-provided certs secret
-	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, r.Object.GetName()))
+	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, ownerMeta.GetName()))
 
 	return nil
 }

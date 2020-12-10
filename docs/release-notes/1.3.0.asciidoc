@@ -1,0 +1,60 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.3.0]]
+== {n} version 1.3.0
+
+[[breaking-1.3.0]]
+[float]
+=== Breaking changes
+
+* Make ECK IPv6 compatible {pull}3654[#3654] (issues: {issue}2830[#2830], {issue}3649[#3649]) - in an accompanying change `network.publish_host` setting value was switched to DNS name. This might result in non-ready Pods being included in the headless service for Elasticsearch StatefulSets.
+* Enforce a strict upgrade order between stack components {pull}3537[#3537] (issues: {issue}2600[#2600], {issue}3535[#3535]) - ECK will prevent updates that would violate link:https://www.elastic.co/guide/en/elastic-stack/current/upgrading-elastic-stack.html#upgrade-order-elastic-stack[Elastic Stack upgrade process] version constraints. ECK 1.3.0 won't apply any updates to resources that are in violation of those constraints until versions are updated to (at least) the same minors.
+* Add set-default-security-context flag to handle runAs user in ES 8.0+ {pull}3342[#3342] (issue: {issue}2791[#2791]) - a default security context is added to Elasticsearch 8.0+ Pods in order to deal with volume filesystem permissions. Can be disabled through operator configuration on environments with restricted security settings (Openshift, for example).
+* Allow init containers modifications {pull}3336[#3336] (issue: {issue}2306[#2306]) - modifications to built-in init containers will be merged with the defaults instead of completely replacing them.
+
+[[feature-1.3.0]]
+[float]
+=== New features
+
+* Make timeouts configurable {pull}3782[#3782] (issue: {issue}684[#684])
+* Support Elasticsearch volumes expansion {pull}3752[#3752] (issues: {issue}325[#325], {issue}3757[#3757], {issue}3767[#3767])
+* Refactor Helm chart for public usage {pull}3711[#3711]
+* Add DeploymentStrategy to Beats CRDs {pull}3633[#3633] (issue: {issue}3485[#3485])
+* Add operator election support {pull}3632[#3632] (issue: {issue}709[#709])
+
+[[enhancement-1.3.0]]
+[float]
+=== Enhancements
+
+* Add license info to telemetry {pull}3859[#3859]
+* Validate whether the storage class allows volume expansion before resizing volumes {pull}3795[#3795] (issue: {issue}3767[#3767])
+* Add external IP addresses to certificate {pull}3791[#3791] (issue: {issue}910[#910])
+* Support a UBI-only mode in the operator {pull}3789[#3789]
+* Add CRD usage reporting {pull}3784[#3784]
+* Refactor node configuration and add role validation {pull}3694[#3694] (issue: {issue}3409[#3409])
+* Add support for configuration changes under OLM  {pull}3639[#3639] (issue: {issue}3591[#3591])
+* Remove unnecessary memory leak mitigation patch {pull}3585[#3585]
+* Add a container suffix flag to the operator {pull}3582[#3582] (issue: {issue}3552[#3552])
+* Allow the operator to be configured from a file {pull}3570[#3570] (issue: {issue}3401[#3401])
+* Reflect currently running version from status.version in additionalPrinterColumns {pull}3549[#3549]
+* Report the lowest running version in the status of each resource {pull}3489[#3489] (issue: {issue}2600[#2600])
+* Add WebhookConfigurationName Flag (#3424) {pull}3425[#3425]
+* Add metadata for transform node role  {pull}3411[#3411]
+* Add support for the node.roles setting {pull}3387[#3387] (issue: {issue}3324[#3324])
+* Add node shard allocation awareness by default {pull}3380[#3380] (issue: {issue}2827[#2827])
+* Add metadata for transform node role {pull}3361[#3361]
+
+[[bug-1.3.0]]
+[float]
+=== Bug fixes
+
+* Don't allow downscales if some shards are unassigned {pull}3883[#3883] (issue: {issue}3867[#3867])
+* Support new authentication configuration format starting EnterpriseSearch 8.x {pull}3728[#3728] (issue: {issue}3725[#3725])
+* Do not reset trial state once a license has been issued. {pull}3662[#3662] (issue: {issue}3659[#3659])
+* Support user provided encrypted keys {pull}3651[#3651] (issue: {issue}3650[#3650])
+* Garbage collect orphaned Beat users {pull}3589[#3589]
+* Update owner references in reconcile resource util function {pull}3574[#3574] (issue: {issue}3470[#3470])
+* Fix volume slice initialization in beat pod builder {pull}3555[#3555] (issue: {issue}3554[#3554])
+* Ensure status.version is reconciled by watching Pods {pull}3534[#3534] (issue: {issue}3533[#3533])
+* Init containers image defaulting {pull}3525[#3525] (issue: {issue}3453[#3453])

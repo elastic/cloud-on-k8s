@@ -44,7 +44,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-TEST_TIMEOUT = 10m
 
 PIPELINE=e2e/aks
 BUILD_NUMBER=$BUILD_NUMBER
@@ -122,7 +121,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-TEST_TIMEOUT = 10m
 KIND_NODE_IMAGE = ${kindNodeImage}
 IP_FAMILY=$4
 
@@ -222,7 +220,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-TEST_TIMEOUT = 10m
 
 PIPELINE=e2e/ocp
 BUILD_NUMBER=$BUILD_NUMBER
@@ -258,7 +255,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-TEST_TIMEOUT = 10m
 
 PIPELINE=e2e/ocp3
 BUILD_NUMBER=$BUILD_NUMBER
@@ -294,7 +290,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-TEST_TIMEOUT = 10m
 
 PIPELINE=e2e/eks
 BUILD_NUMBER=$BUILD_NUMBER

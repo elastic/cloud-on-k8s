@@ -9,6 +9,19 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,19 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -93,11 +93,14 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, kbv1.Kind); err != nil {
 		return err
 	}
 
@@ -135,11 +138,10 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	var kb kbv1.Kibana
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &kb); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -162,8 +164,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// Kibana will be deleted nothing to do other than remove the watches
 	if kb.IsMarkedForDeletion() {
-		r.onDelete(k8s.ExtractNamespacedName(&kb))
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&kb))
 	}
 
 	// update controller version annotation if necessary
@@ -244,11 +245,12 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	return common.UpdateStatus(r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
+func (r *ReconcileKibana) onDelete(obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, kbv1.Kind)
 }
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana

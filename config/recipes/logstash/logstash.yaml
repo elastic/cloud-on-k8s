@@ -1,0 +1,190 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: elasticsearch
+spec:
+  version: 7.9.2
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        # This setting has performance implications. See the README for more details.
+        node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: kibana
+spec:
+  version: 7.9.2
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: logstash
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    path.config: /usr/share/logstash/pipeline
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: logstash
+data:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    filter {
+      grok {
+        match => { "message" => "%{COMBINEDAPACHELOG}"}
+      }
+      geoip {
+        source => "clientip"
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => [ "${ES_HOSTS}" ]
+        user => "${ES_USER}"
+        password => "${ES_PASSWORD}"
+        cacert => '/etc/logstash/certificates/ca.crt'
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: eck-logstash
+      app.kubernets.io/component: logstash
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: eck-logstash
+        app.kubernets.io/component: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:7.9.2
+          ports:
+            - name: "tcp-beats"
+              containerPort: 5044
+          env:
+            - name: ES_HOSTS
+              value: "https://elasticsearch-es-http.default.svc:9200"
+            - name: ES_USER
+              value: "elastic"
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-es-elastic-user
+                  key: elastic
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/share/logstash/config
+            - name: pipeline-volume
+              mountPath: /usr/share/logstash/pipeline
+            - name: ca-certs
+              mountPath: /etc/logstash/certificates
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: logstash-config
+        - name: pipeline-volume
+          configMap:
+            name: logstash-pipeline
+        - name: ca-certs
+          secret:
+            secretName: elasticsearch-es-http-certs-public
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: logstash
+spec:
+  ports:
+    - name: "tcp-beats"
+      port: 5044
+      targetPort: 5044
+  selector:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: logstash
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: filebeat
+  labels:
+    app.kubernetes.io/name: eck-logstash
+    app.kubernets.io/component: filebeat
+spec:
+  type: filebeat
+  version: 7.9.2
+  config:
+    filebeat.inputs:
+      - type: log
+        paths:
+          - /data/logstash-tutorial.log
+    output.logstash:
+      hosts: ["logstash.default.svc:5044"]
+  deployment:
+    podTemplate:
+      metadata:
+        labels:
+          app.kubernetes.io/name: eck-logstash
+          app.kubernets.io/component: filebeat
+      spec:
+        automountServiceAccountToken: true
+        initContainers:
+          - name: download-tutorial
+            image: curlimages/curl
+            command: ["/bin/sh"]
+            args: ["-c", "curl -L https://download.elastic.co/demos/logstash/gettingstarted/logstash-tutorial.log.gz | gunzip -c > /data/logstash-tutorial.log"]
+            volumeMounts:
+              - name: data
+                mountPath: /data
+        containers:
+          - name: filebeat
+            securityContext:
+              runAsUser: 0
+            volumeMounts:
+              - name: data
+                mountPath: /data
+              - name: beat-data
+                mountPath: /usr/share/filebeat/data
+        volumes:
+          - name: data
+            emptydir: {}
+          - name: beat-data
+            emptydir: {}

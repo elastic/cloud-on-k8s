@@ -188,7 +188,7 @@ stringData:
       hosts: ["quickstart-es-http.default.svc:9200"]
 ----
 
-For more details, see the link:https://https://www.elastic.co/guide/en/beats/libbeat/current/config-file-format.html[Beats configuration] section.
+For more details, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/config-file-format.html[Beats configuration] section.
 
 [id="{p}-beat-deploy-elastic-beat"]
 === Deploy a Beat

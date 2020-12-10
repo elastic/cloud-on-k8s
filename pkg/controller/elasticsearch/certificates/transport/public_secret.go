@@ -32,7 +32,10 @@ func ReconcileTransportCertsPublicSecret(
 			certificates.CAFileName: certificates.EncodePEMCert(ca.Cert.Raw),
 		},
 	}
-	_, err := reconciler.ReconcileSecret(c, expected, &es)
+
+	// Don't set an ownerRef for public transport certs secrets, likely to be copied into different namespaces.
+	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
+	_, err := reconciler.ReconcileSecretNoOwnerRef(c, expected, &es)
 	return err
 }
 

@@ -197,6 +197,11 @@ build-operator-image:
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-build docker-push
 
+build-operator-multiarch-image:
+	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-multiarch-build
+
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
@@ -342,16 +347,27 @@ switch-eks:
 #################################
 ##  --    Docker images    --  ##
 #################################
+docker-multiarch-build: go-generate generate-config-file 
+	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		--push \
+		-t $(OPERATOR_IMAGE)
 
-docker-build: go-generate generate-config-file
-	docker build . \
+docker-build: go-generate generate-config-file 
+	DOCKER_BUILDKIT=1 docker build . \
+		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-	@ hack/docker-push.sh $(OPERATOR_IMAGE)
+	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -378,16 +394,26 @@ E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-test
 TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 E2E_STACK_VERSION          ?= 7.9.2
 E2E_JSON                   ?= false
-TEST_TIMEOUT               ?= 5m
+TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
-	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
-	@ hack/docker-push.sh $(E2E_IMG)
+	@ hack/docker.sh -l -p $(E2E_IMG)
+
+e2e-docker-multiarch-build: clean
+	@ hack/docker.sh -l -m $(E2E_IMG)
+	docker buildx build \
+		--progress=plain \
+		--file test/e2e/Dockerfile \
+		--build-arg E2E_JSON=$(E2E_JSON) \
+		--platform linux/amd64,linux/arm64 \
+		--push \
+		-t $(E2E_IMG) .
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
@@ -452,7 +478,7 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean ci-check build-operator-image
+ci-release: clean ci-check build-operator-multiarch-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
