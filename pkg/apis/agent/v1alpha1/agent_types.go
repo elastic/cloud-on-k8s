@@ -12,7 +12,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-// AgentSpec defines the desired state of Agent
+// AgentSpec defines the desired state of the Agent
 type AgentSpec struct {
 	// Version of the Agent.
 	Version string `json:"version"`
@@ -42,7 +42,7 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a Elasticsearch resource in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -78,7 +78,7 @@ type DeploymentSpec struct {
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }
 
-// AgentStatus defines the observed state of Agent
+// AgentStatus defines the observed state of the Agent
 type AgentStatus struct {
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run
 	// in parallel: this value specifies the lowest version currently running.
