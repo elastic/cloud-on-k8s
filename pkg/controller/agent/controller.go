@@ -6,8 +6,6 @@ package agent
 
 import (
 	"context"
-	"strconv"
-	"sync/atomic"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +118,7 @@ type ReconcileAgent struct {
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx := r.preReconcile(request)
+	ctx := common.NewReconciliationContext(&r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
@@ -154,24 +152,6 @@ func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result,
 	k8s.EmitErrorEvent(r.recorder, err, &agent, events.EventReconciliationError, "Reconciliation error: %v", err)
 
 	return res, err
-}
-
-// preReconcile increments iteration, creates an apm transaction and initiates logger. Returns context with apm
-// transaction metadata and configured logger.
-func (r *ReconcileAgent) preReconcile(request reconcile.Request) context.Context {
-	it := atomic.AddUint64(&r.iteration, 1)
-	itString := strconv.FormatUint(it, 10)
-	ctx := tracing.NewContextTransaction(
-		r.Tracer,
-		controllerName,
-		request.String(),
-		map[string]string{"iteration": itString})
-	return logconf.InitInContext(
-		ctx,
-		controllerName,
-		"iteration", itString,
-		"namespace", request.Namespace,
-		"agent_name", request.Name)
 }
 
 func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) *reconciler.Results {
