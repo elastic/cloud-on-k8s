@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -98,8 +97,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
 		}
 
-		agentAssoc := (assoc).(*v1alpha1.AgentESAssociation)
-		outputName := agentAssoc.Agent.Spec.ElasticsearchRefs[i].OutputName
+		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
 		if outputName == "" {
 			if len(associations) > 1 {
 				return settings.NewCanonicalConfig(), errors.New("output is not named and there is more than one specified")
