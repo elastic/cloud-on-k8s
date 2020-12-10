@@ -210,7 +210,6 @@ RBAC permissions
   resources:
   - agents
   - agents/status
-  - agents/finalizers
   verbs:
   - get
   - list

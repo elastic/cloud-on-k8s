@@ -612,7 +612,6 @@ rules:
   resources:
   - agents
   - agents/status
-  - agents/finalizers
   verbs:
   - get
   - list
