@@ -45,8 +45,8 @@ ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
 ci-internal: ci-build-image
-	docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
-	docker run --rm -t $(DOCKER_OPTS) \
+	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
+	  docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -55,7 +55,7 @@ ci-internal: ci-build-image
 		--network="host" \
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)" ; exit=$$?; \
-	docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
+	  docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
