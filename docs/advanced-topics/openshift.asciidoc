@@ -16,7 +16,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-anyuid-workaround>>
 * <<{p}-openshift-beats>>
 
-WARNING: Some Docker images are incompatible with the `restricted` SCC. This is the case for the *APM Server before 7.9* and for the *Enterprise Search 7.9*. You can use this <<{p}-openshift-anyuid-workaround,workaround>> to run those images with the `anyuid` SCC.
+WARNING: Some Docker images are incompatible with the `restricted` SCC. This is the case for the *APM Server before 7.9* and for *Enterprise Search 7.9 and 7.10*. You can use this <<{p}-openshift-anyuid-workaround,workaround>> to run those images with the `anyuid` SCC.
 
 [float]
 [id="{p}-openshift-before-you-begin"]

@@ -277,7 +277,7 @@ func Test_needsRecreate(t *testing.T) {
 func Test_recreateStatefulSets(t *testing.T) {
 	controllerscheme.SetupScheme()
 	es := func() *esv1.Elasticsearch {
-		return &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: "Elasticsearch"}}
+		return &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: esv1.Kind}}
 	}
 	withAnnotation := func(es *esv1.Elasticsearch, key, value string) *esv1.Elasticsearch {
 		if es.Annotations == nil {
@@ -417,7 +417,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 }
 
 var (
-	sampleEs = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: "Elasticsearch"}}
+	sampleEs = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: esv1.Kind}}
 	sset1    = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}}
 	pod1     = corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
 		label.StatefulSetNameLabelName: sset1.Name,

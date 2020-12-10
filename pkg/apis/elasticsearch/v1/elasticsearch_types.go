@@ -13,7 +13,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-const ElasticsearchContainerName = "elasticsearch"
+const (
+	ElasticsearchContainerName = "elasticsearch"
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "Elasticsearch"
+)
 
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 type ElasticsearchSpec struct {

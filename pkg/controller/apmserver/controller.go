@@ -127,11 +127,14 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, apmv1.Kind); err != nil {
 		return err
 	}
 
@@ -179,11 +182,10 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	var as apmv1.ApmServer
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &as); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -204,8 +206,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 
 	if as.IsMarkedForDeletion() {
 		// APM server will be deleted, clean up resources
-		r.onDelete(k8s.ExtractNamespacedName(&as))
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {
@@ -243,7 +244,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	_, results := certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
-		Object:                as,
+		Owner:                 as,
 		TLSOptions:            as.Spec.HTTP.TLS,
 		Namer:                 Namer,
 		Labels:                NewLabels(as.Name),
@@ -303,11 +304,12 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	return nil
 }
 
-func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
+func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, apmv1.Kind)
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
@@ -333,7 +335,9 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(24)
 	}
 
-	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)
+	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.
+	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
+	return reconciler.ReconcileSecretNoOwnerRef(c, expectedApmServerSecret, as)
 }
 
 func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {

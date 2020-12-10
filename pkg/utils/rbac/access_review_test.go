@@ -25,7 +25,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 
 	es := &esv1.Elasticsearch{
 		TypeMeta: metav1.TypeMeta{
-			Kind: "Elasticsearch",
+			Kind: esv1.Kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es",
@@ -80,7 +80,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 				sourceNamespace: "kibana-ns",
 				object: &esv1.Elasticsearch{
 					TypeMeta: metav1.TypeMeta{
-						Kind: "Elasticsearch",
+						Kind: esv1.Kind,
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "es",

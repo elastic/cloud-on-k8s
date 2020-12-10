@@ -10,6 +10,7 @@ set -eu
 
 MIN_GO_VERSION=13
 MIN_KUBECTL_VERSION=14
+MIN_DOCKER_VERSION=19
 
 green="\e[32m"
 red="\e[31m"
@@ -81,6 +82,23 @@ check_kubectl_version() {
     printf "\n"
 }
 
+check_docker_version() {
+    local major 
+    major=$(docker version -f '{{.Client.Version}}' | sed -E 's|([0-9]+)\.[0-9]+\.[0-9]+.*|\1|')
+    local docker_version
+    docker_version=$(docker version -f '{{.Client.Version}}')
+
+    printf "Checking for Docker >= %s.0.0... " "$MIN_DOCKER_VERSION"
+    if [[ "$major" -gt $MIN_DOCKER_VERSION ]]; then
+        printf "%bok%b (%s)" "${green}" "${reset}" "$docker_version"
+    else
+        printf "%bko$%b (%s)" "${red}" "${reset}" "$docker_version" 
+        all_found=false
+    fi
+    printf "\n"
+}
+
+
 check go
 check golangci-lint
 check kubectl
@@ -88,6 +106,7 @@ check kubebuilder
 check_oneof gcloud minikube kind
 check_go_version
 check_kubectl_version
+check_docker_version
 
 echo
 if [[ "$all_found" != "true" ]]; then

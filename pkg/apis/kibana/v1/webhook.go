@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "Kibana"}
+	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 	validationLog = logf.Log.WithName("kibana-v1-validation")
 
 	defaultChecks = []func(*Kibana) field.ErrorList{

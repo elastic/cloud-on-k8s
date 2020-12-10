@@ -523,16 +523,6 @@ rules:
   - update
   - patch
   - delete
-# required to allow the operator to bind service accounts it manages
-# to role that holds permissions needed for Beat autodiscover feature
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterroles
-  verbs:
-  - bind
-  resourceNames:
-  - elastic-beat-autodiscover
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:

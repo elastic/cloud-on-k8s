@@ -79,6 +79,42 @@ Determine effective Kubernetes version
 {{- end -}}
 
 {{/*
+Determine the name for the webhook 
+*/}}
+{{- define "eck-operator.webhookName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook.k8s.elastic.co
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s.%s.k8s.elastic.co" $name .Release.Namespace }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook secret 
+*/}}
+{{- define "eck-operator.webhookSecretName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook-server-cert
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s-webhook-cert" $name | trunc 63 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook service 
+*/}}
+{{- define "eck-operator.webhookServiceName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook-server
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s-webhook" $name | trunc 63 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Add the webhook sideEffects field on supported Kubernetes versions
 */}}
 {{- define "eck-operator.webhookSideEffects" -}}
@@ -110,7 +146,7 @@ Define admissionReviewVersions based on Kubernetes version
 {{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
 {{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
 {{- if $kubeVersionSupported  }}
-admissionReviewVersions: [v1beta1, v1]
+admissionReviewVersions: [v1beta1]
 {{- end }}
 {{- end }}
 

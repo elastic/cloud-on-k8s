@@ -216,7 +216,7 @@ type licenseSpec struct {
 }
 
 func (l EnterpriseLicense) SignableContentBytes() ([]byte, error) {
-	return json.Marshal(licenseSpec{
+	return unescapedJSONMarshal(licenseSpec{
 		UID:                l.License.UID,
 		LicenseType:        string(l.License.Type),
 		IssueDateInMillis:  l.License.IssueDateInMillis,
@@ -227,6 +227,22 @@ func (l EnterpriseLicense) SignableContentBytes() ([]byte, error) {
 		IssuedTo:           l.License.IssuedTo,
 		Issuer:             l.License.Issuer,
 	})
+}
+
+// unescapedJSONMarshal is a custom JSON encoder that turns off Go json's default behaviour of escaping > < and &
+// which is problematic and would lead to failed signature checks as our license signing does not escape those characters.
+func unescapedJSONMarshal(t interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(t)
+	if err != nil {
+		return nil, err
+	}
+	marshaledBytes := buffer.Bytes()
+	// json.Encoder adds an additional newline between objects which we do not want here
+	// as it is not part of the signature. That's we we are trimming it here.
+	return bytes.TrimRight(marshaledBytes, "\n"), err
 }
 
 func (l EnterpriseLicense) Version() int {
