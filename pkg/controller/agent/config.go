@@ -20,7 +20,7 @@ import (
 )
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
-	defer tracing.Span(params.Context)()
+	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
 	cfgBytes, err := buildConfig(params)

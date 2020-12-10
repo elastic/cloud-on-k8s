@@ -26,7 +26,7 @@ import (
 )
 
 func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *reconciler.Results {
-	defer tracing.Span(params.Context)()
+	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
 	spec := params.Agent.Spec

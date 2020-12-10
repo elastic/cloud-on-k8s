@@ -58,7 +58,7 @@ func (p *Params) Logger() logr.Logger {
 }
 
 func internalReconcile(params Params) *reconciler.Results {
-	defer tracing.Span(params.Context)()
+	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
 	agentVersion, err := version.Parse(params.Agent.Spec.Version)

@@ -134,10 +134,6 @@ func TraceContextKV(ctx context.Context) []interface{} {
 	traceCtx := tx.TraceContext()
 	fields := []interface{}{TraceIDField, traceCtx.Trace, TransactionIDField, traceCtx.Span}
 
-	if span := apm.SpanFromContext(ctx); span != nil {
-		fields = append(fields, SpanIDField, span.TraceContext().Span)
-	}
-
 	return fields
 }
 
@@ -158,5 +154,11 @@ func FromContext(ctx context.Context) logr.Logger {
 		logger = crlog.Log
 	}
 
-	return logger.(logr.Logger)
+	result := logger.(logr.Logger)
+
+	if span := apm.SpanFromContext(ctx); span != nil {
+		result = result.WithValues(SpanIDField, span.TraceContext().Span)
+	}
+
+	return result
 }

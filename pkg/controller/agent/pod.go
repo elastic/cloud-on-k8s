@@ -53,7 +53,7 @@ var (
 )
 
 func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpec {
-	defer tracing.Span(params.Context)()
+	defer tracing.Span(&params.Context)()
 
 	podTemplate := params.GetPodTemplate()
 
