@@ -56,7 +56,7 @@ Agent is the Schema for the Agents API.
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec"]
 === AgentSpec 
 
-AgentSpec defines the desired state of Agent
+AgentSpec defines the desired state of the Agent
 
 .Appears In:
 ****
@@ -72,7 +72,7 @@ AgentSpec defines the desired state of Agent
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Agent configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Agent configuration. Agent settings must be specified as yaml, under a single "agent.yml" entry. At most one of [`Config`, `ConfigRef`] can be specified.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Agent. Secrets data can be then referenced in the Agent config using the Secret's keys or as specified in `Entries` field of each SecureSetting.
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`daemonSet`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-daemonsetspec[$$DaemonSetSpec$$]__ | DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec. Cannot be used along with `deployment`.
 | *`deployment`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-deploymentspec[$$DeploymentSpec$$]__ | Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec. Cannot be used along with `daemonSet`.
 |===

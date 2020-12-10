@@ -57,7 +57,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: AgentSpec defines the desired state of Agent
+          description: AgentSpec defines the desired state of the Agent
           properties:
             config:
               description: Config holds the Agent configuration. At most one of [`Config`,
@@ -12262,8 +12262,8 @@ spec:
               type: array
             serviceAccountName:
               description: ServiceAccountName is used to check access from the current
-                resource to Elasticsearch resource in a different namespace. Can only
-                be used if ECK is enforcing RBAC on references.
+                resource to a Elasticsearch resource in a different namespace. Can
+                only be used if ECK is enforcing RBAC on references.
               type: string
             version:
               description: Version of the Agent.
@@ -12272,7 +12272,7 @@ spec:
           - version
           type: object
         status:
-          description: AgentStatus defines the observed state of Agent
+          description: AgentStatus defines the observed state of the Agent
           properties:
             availableNodes:
               format: int32
