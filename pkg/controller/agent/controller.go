@@ -159,13 +159,19 @@ func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result,
 // preReconcile increments iteration, creates an apm transaction and initiates logger. Returns context with apm
 // transaction metadata and configured logger.
 func (r *ReconcileAgent) preReconcile(request reconcile.Request) context.Context {
-	iteration := atomic.AddUint64(&r.iteration, 1)
+	it := atomic.AddUint64(&r.iteration, 1)
+	itString := strconv.FormatUint(it, 10)
 	ctx := tracing.NewContextTransaction(
 		r.Tracer,
 		controllerName,
 		request.String(),
-		map[string]string{"iteration": strconv.FormatUint(iteration, 10)})
-	return logconf.InitInContext(ctx, controllerName, iteration, request.Namespace, "agent_name", request.Name)
+		map[string]string{"iteration": itString})
+	return logconf.InitInContext(
+		ctx,
+		controllerName,
+		"iteration", itString,
+		"namespace", request.Namespace,
+		"agent_name", request.Name)
 }
 
 func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) *reconciler.Results {

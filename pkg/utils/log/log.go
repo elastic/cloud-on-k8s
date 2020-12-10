@@ -145,12 +145,10 @@ type ctxKey struct{}
 
 var loggerCtxKey = ctxKey{}
 
-func InitInContext(ctx context.Context, loggerName string, iteration uint64, namespace, nameField, name string) context.Context {
-	logger := NewFromContext(ctx).WithName(loggerName).WithValues(
-		"iteration", iteration,
-		"namespace", namespace,
-		nameField, name,
-	)
+// InitInContext initializes a logger named `loggerName` with `keysAndValues` and transaction metadata values.
+// Returns a context containing the newly created logger.
+func InitInContext(ctx context.Context, loggerName string, keysAndValues ...interface{}) context.Context {
+	logger := NewFromContext(ctx).WithName(loggerName).WithValues(keysAndValues...)
 	return context.WithValue(ctx, loggerCtxKey, logger)
 }
 
