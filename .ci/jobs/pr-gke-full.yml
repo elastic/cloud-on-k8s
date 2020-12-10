@@ -3,6 +3,7 @@
     description: Build a PR version of ECK and run full suite of E2E tests
     name: cloud-on-k8s-pr-full
     project-type: pipeline
+    disabled: true
     pipeline-scm:
       scm:
         - git:
