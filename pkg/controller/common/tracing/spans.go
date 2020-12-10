@@ -19,6 +19,11 @@ const (
 // Span starts an apm span named after callers function name. Returns a function that, when run, closes the span.
 // To create a span for the entire func use `defer tracing.Span(ctx)()` as the first call.
 func Span(ctx context.Context) func() {
+	if apm.TransactionFromContext(ctx) == nil {
+		// no transaction in the context implicates disabled tracing, exiting early to avoid unnecessary work
+		return func() {}
+	}
+
 	pc, _, _, ok := runtime.Caller(1)
 
 	name := "unknown_function"
