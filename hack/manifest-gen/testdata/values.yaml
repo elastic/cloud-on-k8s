@@ -93,16 +93,10 @@ webhook:
   certManagerCert: null
   # certsDir is the directory to mount the certificates.
   certsDir: "/tmp/k8s-webhook-server/serving-certs"
-  # certsSecret is the name of the secret containing the webhook certificates.
-  certsSecret: elastic-webhook-server-cert
   # failurePolicy of the webhook.
   failurePolicy: Ignore
   # manageCerts determines whether the operator manages the webhook certificates automatically.
   manageCerts: true
-  # name of the webhook
-  name: elastic-webhook.k8s.elastic.co
-  # name of the service used to expose the webhook.
-  serviceName: elastic-webhook-server
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions. 

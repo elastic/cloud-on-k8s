@@ -85,6 +85,7 @@ The operator automatically creates and manages Kubernetes resources to achieve t
 CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
 
 [float]
+[id="{p}-elasticsearch-monitor-cluster-health"]
 === Monitor cluster health and creation progress
 
 Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
@@ -100,7 +101,7 @@ NAME          HEALTH    NODES     VERSION   PHASE         AGE
 quickstart    green     1         {version}     Ready         1m
 ----
 
-When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.
+When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.  The `HEALTH` status comes from link:{ref}/cluster-health.html[Elasticsearch's cluster health API].
 
 You can see that one Pod is in the process of being started:
 
