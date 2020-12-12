@@ -16,6 +16,33 @@ webhooks:
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
+      path: /validate-agent-k8s-elastic-co-v1alpha1-agent
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  name: elastic-agent-validation-v1alpha1.k8s.elastic.co
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  rules:
+  - apiGroups:
+    - agent.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - agents
+- clientConfig:
+    caBundle: {{ .Values.webhook.caBundle }}
+    service:
+      name: {{ include "eck-operator.webhookServiceName" . }}
+      namespace: {{ .Release.Namespace }}
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
