@@ -5,16 +5,19 @@
 package log
 
 import (
+	"context"
 	"flag"
 	"os"
 	"strconv"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
+	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
+	"go.elastic.co/apm"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	klog "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -23,6 +26,10 @@ const (
 	EcsVersion     = "1.4.0"
 	EcsServiceType = "eck"
 	FlagName       = "log-verbosity"
+
+	SpanIDField        = "span.id"
+	TraceIDField       = "trace.id"
+	TransactionIDField = "transaction.id"
 )
 
 var verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
@@ -110,4 +117,48 @@ func determineLogLevel(v *int) zap.AtomicLevel {
 func getVersionString() string {
 	buildInfo := about.GetBuildInfo()
 	return buildInfo.VersionString()
+}
+
+func NewFromContext(ctx context.Context) logr.Logger {
+	traceContextFields := TraceContextKV(ctx)
+	return crlog.Log.WithValues(traceContextFields...)
+}
+
+// TraceContextKV returns logger key-values for the current trace context.
+func TraceContextKV(ctx context.Context) []interface{} {
+	tx := apm.TransactionFromContext(ctx)
+	if tx == nil {
+		return nil
+	}
+
+	traceCtx := tx.TraceContext()
+	fields := []interface{}{TraceIDField, traceCtx.Trace, TransactionIDField, traceCtx.Span}
+
+	return fields
+}
+
+type ctxKey struct{}
+
+var loggerCtxKey = ctxKey{}
+
+// InitInContext initializes a logger named `loggerName` with `keysAndValues` and transaction metadata values.
+// Returns a context containing the newly created logger.
+func InitInContext(ctx context.Context, loggerName string, keysAndValues ...interface{}) context.Context {
+	logger := NewFromContext(ctx).WithName(loggerName).WithValues(keysAndValues...)
+	return context.WithValue(ctx, loggerCtxKey, logger)
+}
+
+func FromContext(ctx context.Context) logr.Logger {
+	logger := ctx.Value(loggerCtxKey)
+	if logger == nil {
+		logger = crlog.Log
+	}
+
+	result := logger.(logr.Logger)
+
+	if span := apm.SpanFromContext(ctx); span != nil {
+		result = result.WithValues(SpanIDField, span.TraceContext().Span)
+	}
+
+	return result
 }

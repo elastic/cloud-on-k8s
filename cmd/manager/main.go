@@ -24,6 +24,7 @@ import (
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
@@ -646,6 +647,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Beats", registerFunc: beat.Add},
 		{name: "License", registerFunc: license.Add},
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
+		{name: "Agent", registerFunc: agent.Add},
 	}
 
 	for _, c := range controllers {
@@ -666,6 +668,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
+		{name: "AGENT-ES", registerFunc: associationctl.AddAgentES},
 	}
 
 	for _, c := range assocControllers {

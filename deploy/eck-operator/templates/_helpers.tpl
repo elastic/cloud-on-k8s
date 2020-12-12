@@ -242,6 +242,19 @@ RBAC permissions
   - update
   - patch
   - delete
+- apiGroups:
+  - agent.k8s.elastic.co
+  resources:
+  - agents
+  - agents/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 {{- end -}}
 
 {{/*

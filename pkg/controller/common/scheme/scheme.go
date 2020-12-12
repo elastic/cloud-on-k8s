@@ -7,6 +7,7 @@ package scheme
 import (
 	"sync"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -57,6 +58,10 @@ func SetupScheme() {
 		if err != nil {
 			panic(err)
 		}
+		err = agentv1alpha1.AddToScheme(clientgoscheme.Scheme)
+		if err != nil {
+			panic(err)
+		}
 	})
 }
 
@@ -91,6 +96,10 @@ func SetupV1beta1Scheme() {
 			panic(err)
 		}
 		err = beatv1beta1.AddToScheme(clientgoscheme.Scheme)
+		if err != nil {
+			panic(err)
+		}
+		err = agentv1alpha1.AddToScheme(clientgoscheme.Scheme)
 		if err != nil {
 			panic(err)
 		}
