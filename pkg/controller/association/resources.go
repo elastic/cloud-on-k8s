@@ -13,70 +13,63 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
-// attempts. If a user changes namespace on a vertex of an association (eg. reference to an Elasticsearch resource in
-// a different namespace) the standard reconcile mechanism will not delete the now redundant old user object/secret.
-// This function lists all resources that don't match the current name/namespace combinations and deletes them.
 func deleteOrphanedResources(
 	ctx context.Context,
 	c k8s.Client,
-	esRef commonv1.ObjectSelector,
-	association commonv1.Association,
-	matchLabels client.MatchingLabels,
+	info AssociationInfo,
+	associated commonv1.Associated,
 ) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources2", tracing.SpanTypeApp)
 	defer span.End()
+
+	assocKey := k8s.ExtractNamespacedName(associated)
+	var associatedLabels client.MatchingLabels = info.AssociatedLabels(assocKey)
 
 	// List all the Secrets involved in an association (users and ca)
 	var secrets corev1.SecretList
-	if err := c.List(&secrets, matchLabels); err != nil {
+	if err := c.List(&secrets, associatedLabels); err != nil {
 		return err
 	}
 
-	for _, s := range secrets.Items {
-		if err := deleteIfOrphaned(c, &s, esRef, association); err != nil {
+	for _, secret := range secrets.Items {
+		for _, association := range associated.GetAssociations() {
+			if isSecretForAssociation(info, secret, association) {
+				goto nextSecret
+			}
+		}
+
+		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
+		log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.GetName())
+		if err := c.Delete(&secret); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
-	}
-	return nil
-}
 
-// deleteIfOrphaned deletes a Secret if it is not needed anymore, either because the association has been removed
-// or the target namespace has changed.
-func deleteIfOrphaned(
-	c k8s.Client,
-	secret *corev1.Secret,
-	esRef commonv1.ObjectSelector,
-	association commonv1.Association,
-) error {
-	// Secret should not exist if there is no association referenced in the spec or if the resource is deleted
-	associationRef := association.AssociationRef()
-	if !associationRef.IsDefined() {
-		return deleteSecret(c, secret, association)
-	}
-
-	// User secrets created in the Elasticsearch namespace are handled differently.
-	// We need to check if the referenced namespace has changed in the Spec.
-	// If a Secret is found in a namespace which is not the one referenced in the Spec then the secret should be deleted.
-	if value, ok := secret.Labels[common.TypeLabelName]; ok &&
-		value == esuser.AssociatedUserType &&
-		(!esRef.IsDefined() || esRef.Namespace != secret.Namespace) {
-		return deleteSecret(c, secret, association)
+	nextSecret:
 	}
 
 	return nil
 }
 
-func deleteSecret(c k8s.Client, secret *corev1.Secret, associated commonv1.Associated) error {
-	log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.GetName())
-	if err := c.Delete(secret); err != nil && !apierrors.IsNotFound(err) {
-		return err
+func isSecretForAssociation(info AssociationInfo, secret corev1.Secret, association commonv1.Association) bool {
+	ref := association.AssociationRef()
+
+	// grab name from label (eg. elasticsearch.k8s.elastic.co/cluster-name=elasticsearch1 or kibana.k8s.elastic.co/name=kibana1)
+	resourceName, ok := secret.Labels[info.AssociationResourceNameLabelName]
+	if !ok || resourceName != ref.Name {
+		// name points to a resource not involved in this `association`
+		return false
 	}
-	return nil
+
+	// grab namespace from label (eg. elasticsearch.k8s.elastic.co/cluster-namespace=default or kibana.k8s.elastic.co/namespace=default)
+	resourceNamespace, ok := secret.Labels[info.AssociationResourceNamespaceLabelName]
+	if !ok || resourceNamespace != ref.Namespace {
+		// namespace points to a resource not involved in this `association`
+		return false
+	}
+
+	return true
 }

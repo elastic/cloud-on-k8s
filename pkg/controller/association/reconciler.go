@@ -122,8 +122,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, r.AssociationName)
 	defer tracing.EndTransaction(tx)
 
-	association := r.AssociationObjTemplate()
-	if err := FetchWithAssociations(ctx, r.Client, request, association.Associated()); err != nil {
+	associated := r.AssociatedObjTemplate()
+	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
@@ -134,37 +134,48 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(association) {
-		r.log(association).Info("Object is currently not managed by this controller. Skipping reconciliation")
+	if common.IsUnmanaged(associated) {
+		r.log(associated).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
-	if !association.GetDeletionTimestamp().IsZero() {
+	if !associated.GetDeletionTimestamp().IsZero() {
 		// Object is being deleted, short-circuit reconciliation
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, association.Associated()); err != nil || !compatible {
+	if compatible, err := r.isCompatible(ctx, associated); err != nil || !compatible {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, association, r.OperatorInfo.BuildInfo.Version); err != nil {
+	if err := annotation.UpdateControllerVersion(ctx, r.Client, associated, r.OperatorInfo.BuildInfo.Version); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	results := reconciler.NewResult(ctx)
-	newStatus, err := r.doReconcile(ctx, association)
-	if err != nil {
-		results.WithError(err)
+	newStatusGroup := commonv1.AssociationStatusGroup{}
+	for _, association := range associated.GetAssociations() {
+		if association.AssociatedType() != r.AssociationType {
+			// some resources have more than one type of resource associations, making sure we are looking at the right
+			// one for this controller
+			continue
+		}
+
+		newStatus, err := r.doReconcile(ctx, association)
+		if err != nil {
+			results.WithError(err)
+		}
+
+		newStatusGroup[association.AssociationRef().NamespacedName().String()] = newStatus
 	}
 
 	// we want to attempt a status update even in the presence of errors
-	if err := r.updateStatus(ctx, association, newStatus); err != nil {
+	if err := r.updateStatus(ctx, associated, newStatusGroup); err != nil {
 		return defaultRequeue, tracing.CaptureError(ctx, err)
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).
-		WithResult(resultFromStatus(newStatus)).
+		WithResult(resultFromStatuses(newStatusGroup)).
 		Aggregate()
 }
 
@@ -351,19 +362,25 @@ func (r *Reconciler) updateAssocConf(
 }
 
 // updateStatus updates the associated resource status.
-func (r *Reconciler) updateStatus(ctx context.Context, association commonv1.Association, newStatus commonv1.AssociationStatus) error {
+func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Associated, newStatus commonv1.AssociationStatusGroup) error {
 	span, _ := apm.StartSpan(ctx, "update_association_status", tracing.SpanTypeApp)
 	defer span.End()
 
-	oldStatus := association.AssociationStatus()
+	oldStatus := associated.AssociationStatusGroup(r.AssociationType)
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		association.SetAssociationStatus(newStatus)
-		if err := r.Status().Update(association.Associated()); err != nil {
+		if err := associated.SetAssociationStatusGroup(r.AssociationType, newStatus); err != nil {
+			return err
+		}
+		if err := r.Status().Update(associated); err != nil {
+			return err
+		}
+		annotations, err := annotation.ForAssociationStatusChange(oldStatus, newStatus)
+		if err != nil {
 			return err
 		}
 		r.recorder.AnnotatedEventf(
-			association.Associated(),
-			annotation.ForAssociationStatusChange(oldStatus, newStatus),
+			associated,
+			annotations,
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
@@ -371,13 +388,15 @@ func (r *Reconciler) updateStatus(ctx context.Context, association commonv1.Asso
 	return nil
 }
 
-func resultFromStatus(status commonv1.AssociationStatus) reconcile.Result {
-	switch status {
-	case commonv1.AssociationPending:
-		return defaultRequeue // retry
-	default:
-		return reconcile.Result{} // we are done or there is not much we can do
+func resultFromStatuses(statusGroup commonv1.AssociationStatusGroup) reconcile.Result {
+	for _, status := range statusGroup {
+		switch status {
+		case commonv1.AssociationPending:
+			return defaultRequeue // retry
+		}
 	}
+
+	return reconcile.Result{} // we are done or there is not much we can do
 }
 
 func (r *Reconciler) onDelete(associated types.NamespacedName) error {
