@@ -247,8 +247,12 @@ spec:
               format: int32
               type: integer
             elasticsearchAssociationStatus:
-              description: AssociationStatus is the status of an association resource.
-              type: string
+              additionalProperties:
+                description: AssociationStatus is the status of an association resource.
+                type: string
+              description: AssociationStatusGroup is the map of association to its
+                AssociationStatus
+              type: object
             expectedNodes:
               format: int32
               type: integer
