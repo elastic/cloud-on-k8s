@@ -16,7 +16,6 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -71,7 +70,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			"Association backend for "+association.AssociatedType()+" is not configured",
+			fmt.Sprintf("Association backend for %s is not configured", association.AssociatedType()),
 		)
 		log.Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
@@ -152,13 +151,15 @@ func GetAssociationConf(association commonv1.Association) (*commonv1.Association
 		return nil, err
 	}
 
-	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
+	return extractAssociationConf(annotations, association.AssociationConfAnnotationNameBase(), association.Id())
 }
 
-func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
+func extractAssociationConf(annotations map[string]string, annotationNameBase string, id int) (*commonv1.AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil
 	}
+
+	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
 
 	var assocConf commonv1.AssociationConf
 	serializedConf, exists := annotations[annotationName]
@@ -174,9 +175,9 @@ func extractAssociationConf(annotations map[string]string, annotationName string
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
-func RemoveAssociationConf(client k8s.Client, obj runtime.Object, annotationName string) error {
+func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, annotationNameBase string, id int) error {
 	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(obj)
+	annotations, err := accessor.Annotations(associated)
 	if err != nil {
 		return err
 	}
@@ -185,26 +186,28 @@ func RemoveAssociationConf(client k8s.Client, obj runtime.Object, annotationName
 		return nil
 	}
 
+	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
 	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
 
 	delete(annotations, annotationName)
-	if err := accessor.SetAnnotations(obj, annotations); err != nil {
+	if err := accessor.SetAnnotations(associated, annotations); err != nil {
 		return err
 	}
 
-	return client.Update(obj)
+	return client.Update(associated)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
 func UpdateAssociationConf(
 	client k8s.Client,
-	obj runtime.Object,
+	association commonv1.Association,
 	wantConf *commonv1.AssociationConf,
-	annotationName string,
 ) error {
 	accessor := meta.NewAccessor()
+
+	obj := association.Associated()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
 		return err
@@ -219,6 +222,8 @@ func UpdateAssociationConf(
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
+
+	annotationName := commonv1.FormatNameWithId(association.AssociationConfAnnotationNameBase()+"%s", association.Id())
 
 	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {

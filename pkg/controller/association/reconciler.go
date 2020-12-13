@@ -84,13 +84,28 @@ type AssociationInfo struct {
 	// pointing to the Beat resource).
 	AssociationResourceNamespaceLabelName string
 }
+
+func (a AssociationInfo) AssociationLabels(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
+	return maps.Merge(
+		map[string]string{
+			a.AssociationResourceNameLabelName:      association.Name,
+			a.AssociationResourceNamespaceLabelName: association.Namespace,
+		},
+		a.AssociatedLabels(associated),
+	)
 }
 
 // userLabelSelector returns labels selecting the ES user secret, including association labels and user type label.
-func (a AssociationInfo) userLabelSelector(associated types.NamespacedName) client.MatchingLabels {
+func (a AssociationInfo) userLabelSelector(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
 	return maps.Merge(
 		map[string]string{common.TypeLabelName: user.AssociatedUserType},
-		a.AssociationLabels(associated),
+		a.AssociationLabels(associated, association),
 	)
 }
 
@@ -210,7 +225,12 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 
 	// the associated resource does not exist yet, set status to Pending
 	if !associatedResourceFound {
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
+		return commonv1.AssociationPending, RemoveAssociationConf(
+			r.Client,
+			association.Associated(),
+			association.AssociationConfAnnotationNameBase(),
+			association.Id(),
+		)
 	}
 
 	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
@@ -259,7 +279,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		association,
 		r.AssociationInfo.AssociatedNamer,
 		associationRef.NamespacedName(),
-		r.CASecretLabelName)
+	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
 	}
@@ -293,7 +313,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 
 // isCompatible returns true if the given resource can be reconciled by the current controller.
 func (r *Reconciler) isCompatible(ctx context.Context, associated commonv1.Associated) (bool, error) {
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.AssociationLabels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
+	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.AssociatedLabels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, associated, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
@@ -317,7 +337,12 @@ func (r *Reconciler) getElasticsearch(
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName()); err != nil && !apierrors.IsConflict(err) {
+			if err := RemoveAssociationConf(
+				r.Client,
+				association.Associated(),
+				association.AssociationConfAnnotationNameBase(),
+				association.Id(),
+			); err != nil && !apierrors.IsConflict(err) {
 				r.log(association).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
@@ -331,11 +356,21 @@ func (r *Reconciler) getElasticsearch(
 // Unbind removes the association resources.
 func (r *Reconciler) Unbind(association commonv1.Association) error {
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := k8s.DeleteSecretMatching(r.Client, r.userLabelSelector(k8s.ExtractNamespacedName(association))); err != nil {
+	if err := k8s.DeleteSecretMatching(
+		r.Client,
+		r.userLabelSelector(
+			k8s.ExtractNamespacedName(association),
+			association.AssociationRef().NamespacedName(),
+		)); err != nil {
 		return err
 	}
 	// Also remove the association configuration
-	return RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
+	return RemoveAssociationConf(
+		r.Client,
+		association.Associated(),
+		association.AssociationConfAnnotationNameBase(),
+		association.Id(),
+	)
 }
 
 // updateAssocConf updates associated with the expected association conf.
@@ -349,7 +384,7 @@ func (r *Reconciler) updateAssocConf(
 
 	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
 		r.log(association).Info("Updating association configuration")
-		if err := UpdateAssociationConf(r.Client, association.Associated(), expectedAssocConf, association.AssociationConfAnnotationName()); err != nil {
+		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}

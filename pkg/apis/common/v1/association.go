@@ -116,6 +116,17 @@ type Association interface {
 	Id() int
 }
 
+func FormatNameWithId(template string, id int) string {
+	idString := ""
+	if id > 0 {
+		// we want names to be changed only all but first id. When appending the id, we want it to start from 2, so user
+		// sees "name", "name-2", "name-3", etc.
+		idString = fmt.Sprintf("-%d", id+1)
+	}
+
+	return fmt.Sprintf(template, idString)
+}
+
 // AssociationConf holds the association configuration of a referenced resource in an association.
 type AssociationConf struct {
 	AuthSecretName string `json:"authSecretName"`
