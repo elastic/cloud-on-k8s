@@ -5,6 +5,10 @@
 package association
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -13,20 +17,32 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// esWatchName returns the name of the watch setup on the referenced Elasticsearch resource.
-func esWatchName(associated types.NamespacedName) string {
-	return associated.Namespace + "-" + associated.Name + "-es-watch"
+const (
+	esWatchNameTemplate           = "%s-%s-es-watch-%s"
+	esUserWatchNameTemplate       = "%s-%s-es-user-watch-%s"
+	associatedCAWatchNameTemplate = "%s-%s-ca-watch-%s"
+)
+
+var (
+	esWatchNameRegexp           = regexp.MustCompile(fmt.Sprintf(esWatchNameTemplate, "(.*)", "(.*)", `(\d+)`))
+	esUserWatchNameRegexp       = regexp.MustCompile(fmt.Sprintf(esUserWatchNameTemplate, "(.*)", "(.*)", `(\d+)`))
+	associatedCAWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(associatedCAWatchNameTemplate, "(.*)", "(.*)", `(\d+)`))
+)
+
+// esWatchNameTemplate returns the name of the watch setup on the referenced Elasticsearch resource.
+func esWatchName(associated types.NamespacedName, id string) string {
+	return fmt.Sprintf(esWatchNameTemplate, associated.Namespace, associated.Name, id)
 }
 
-// esUserWatchName returns the name of the watch setup on the ES user secret.
-func esUserWatchName(associated types.NamespacedName) string {
-	return associated.Namespace + "-" + associated.Name + "-es-user-watch"
+// esUserWatchNameTemplate returns the name of the watch setup on the ES user secret.
+func esUserWatchName(associated types.NamespacedName, id string) string {
+	return fmt.Sprintf(esUserWatchNameTemplate, associated.Namespace, associated.Name, id)
 }
 
-// associatedCAWatchName returns the name of the watch setup on the secret of the associated resource that
+// associatedCAWatchNameTemplate returns the name of the watch setup on the secret of the associated resource that
 // contains the HTTP certificate chain of Elasticsearch.
-func associatedCAWatchName(associated types.NamespacedName) string {
-	return associated.Namespace + "-" + associated.Name + "-ca-watch"
+func associatedCAWatchName(associated types.NamespacedName, id string) string {
+	return fmt.Sprintf(associatedCAWatchNameTemplate, associated.Namespace, associated.Name, id)
 }
 
 // setUserAndCaWatches sets up dynamic watches related to:
@@ -35,15 +51,16 @@ func associatedCAWatchName(associated types.NamespacedName) string {
 // * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM)
 func (r *Reconciler) setUserAndCaWatches(
 	association commonv1.Association,
-	associationRef types.NamespacedName,
 	esRef types.NamespacedName,
 	remoteServiceNamer name.Namer,
 ) error {
 	associatedKey := k8s.ExtractNamespacedName(association)
 
+	id := strconv.Itoa(association.Id())
+
 	// watch the referenced ES cluster for future reconciliations
 	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
-		Name:    esWatchName(associatedKey),
+		Name:    esWatchName(associatedKey, id),
 		Watched: []types.NamespacedName{esRef},
 		Watcher: associatedKey,
 	}); err != nil {
@@ -53,17 +70,18 @@ func (r *Reconciler) setUserAndCaWatches(
 	// watch the user secret in the ES namespace
 	userSecretKey := UserKey(association, esRef.Namespace, r.UserSecretSuffix)
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
-		Name:    esUserWatchName(associatedKey),
+		Name:    esUserWatchName(associatedKey, id),
 		Watched: []types.NamespacedName{userSecretKey},
 		Watcher: associatedKey,
 	}); err != nil {
 		return err
 	}
 
+	associationRef := association.AssociationRef()
 	// watch the CA secret in the targeted service namespace
 	// Most of the time it is Elasticsearch, but it could be Kibana in the case of the APMServer
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
-		Name: associatedCAWatchName(associatedKey),
+		Name: associatedCAWatchName(associatedKey, id),
 		Watched: []types.NamespacedName{
 			{
 				Name:      certificates.PublicCertsSecretName(remoteServiceNamer, associationRef.Name),
@@ -78,11 +96,34 @@ func (r *Reconciler) setUserAndCaWatches(
 	return nil
 }
 
-func (r *Reconciler) removeWatches(associated types.NamespacedName) {
+func (r *Reconciler) removeWatches(associated types.NamespacedName, existing []commonv1.Association) {
+
 	// - ES resource
-	r.watches.ElasticsearchClusters.RemoveHandlerForKey(esWatchName(associated))
+	RemoveWatchesForDynamicRequest(associated, existing, esWatchNameRegexp, r.watches.ElasticsearchClusters)
 	// - ES CA Secret in the ES namespace
-	r.watches.Secrets.RemoveHandlerForKey(associatedCAWatchName(associated))
+	RemoveWatchesForDynamicRequest(associated, existing, associatedCAWatchNameRegexp, r.watches.Secrets)
 	// - user in the ES namespace
-	r.watches.Secrets.RemoveHandlerForKey(esUserWatchName(associated))
+	RemoveWatchesForDynamicRequest(associated, existing, esUserWatchNameRegexp, r.watches.Secrets)
+}
+
+func RemoveWatchesForDynamicRequest(
+	associated types.NamespacedName,
+	existing []commonv1.Association,
+	re *regexp.Regexp,
+	dynamicRequest *watches.DynamicEnqueueRequest,
+) {
+	lookup := make(map[string]bool)
+	for _, assoc := range existing {
+		lookup[fmt.Sprintf("%d", assoc.Id())] = true
+	}
+
+	for _, key := range dynamicRequest.Registrations() {
+		matches := re.FindStringSubmatch(key)
+		if len(matches) == 4 &&
+			matches[1] == associated.Name &&
+			matches[2] == associated.Namespace &&
+			!lookup[matches[3]] {
+			dynamicRequest.RemoveHandlerForKey(key)
+		}
+	}
 }

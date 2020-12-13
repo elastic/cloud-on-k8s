@@ -71,7 +71,7 @@ type AssociationInfo struct {
 	// SetDynamicWatches allows to set some specific watches.
 	SetDynamicWatches func(association commonv1.Association, watches watches.DynamicWatches) error
 	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for this association.
-	ClearDynamicWatches func(associated commonv1.Associated, watches watches.DynamicWatches)
+	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
 	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
@@ -167,14 +167,18 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
+	associations := associated.GetAssociations()
+
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated); err != nil {
 		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
+	r.removeWatches(associatedKey, associations)
+
 	results := reconciler.NewResult(ctx)
 	newStatusGroup := commonv1.AssociationStatusGroup{}
-	for _, association := range associated.GetAssociations() {
+	for _, association := range associations {
 		if association.AssociatedType() != r.AssociationType {
 			// some resources have more than one type of resource associations, making sure we are looking at the right
 			// one for this controller
@@ -204,16 +208,6 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 	associatedResourceFound, esRef, err := r.ElasticsearchRef(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationFailed, err
-	}
-
-	associationRef := association.AssociationRef()
-	if !associationRef.IsDefined() {
-		// clean up watchers and remove artifacts related to the association
-		if err := r.onDelete(assocKey); err != nil {
-			return commonv1.AssociationFailed, err
-		}
-		// remove the configuration in the annotation, other leftover resources are already garbage-collected
-		return commonv1.AssociationUnknown, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
 	}
 
 	// set additional watches, in the case of a transitive Elasticsearch reference we must watch the intermediate resource
@@ -439,7 +433,8 @@ func (r *Reconciler) onDelete(associated types.NamespacedName) error {
 	if r.SetDynamicWatches != nil {
 		r.ClearDynamicWatches(associated, r.watches)
 	}
-	r.removeWatches(associated)
+	// remove other watches
+	r.removeWatches(associated, nil)
 	// delete user Secret in the Elasticsearch namespace
 	return k8s.DeleteSecretMatching(r.Client, r.userLabelSelector(associated))
 }

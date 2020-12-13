@@ -6,6 +6,7 @@ package controller
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -22,6 +23,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+const (
+	kibanaWatchNameTemplate = "%s-%s-kibana-watch-%s"
+)
+
+var (
+	kibanaWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(kibanaWatchNameTemplate, "(.*)", "(.*)", `\d+`))
 )
 
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -46,8 +55,9 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			return user.ApmAgentUserRole, nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
+			id := strconv.Itoa(association.Id())
+			watchName := fmt.Sprintf(kibanaWatchNameTemplate, association.GetNamespace(), association.GetName(), id)
 			kibanaKey := association.AssociationRef().NamespacedName()
-			watchName := fmt.Sprintf("%s-%s-kibana-watch-%d", association.GetNamespace(), association.GetName(), association.Id())
 			if err := w.Kibanas.AddHandler(watches.NamedWatch{
 				Name:    watchName,
 				Watched: []types.NamespacedName{kibanaKey},
@@ -57,18 +67,8 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			}
 			return nil
 		},
-		ClearDynamicWatches: func(associated commonv1.Associated, w watches.DynamicWatches) {
-			//lookup := make(map[string]struct{})
-			//for _, r := range w.Kibanas.Registrations() {
-			//	lookup[r] = struct{}{}
-			//}
-			//
-			//for _, association := range associated.GetAssociations() {
-			//	watchName := fmt.Sprintf("%s-%s-kibana-watch-%d", associated.GetNamespace(), associated.GetName(), association.Id())
-			//	if _, ok := lookup[watchName]; !ok {
-			//		w.Kibanas.RemoveHandlerForKey(watchName)
-			//	}
-			//}
+		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
+			association.RemoveWatchesForDynamicRequest(associated, nil, kibanaWatchNameRegexp, w.Kibanas)
 		},
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,

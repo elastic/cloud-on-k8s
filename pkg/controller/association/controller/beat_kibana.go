@@ -6,6 +6,8 @@ package controller
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -21,6 +23,14 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+const (
+	beatWatchNameTemplate = "%s-%s-beat-watch-%s"
+)
+
+var (
+	beatWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(beatWatchNameTemplate, "(.*)", "(.*)", `\d+`))
 )
 
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -45,8 +55,9 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
+			id := strconv.Itoa(association.Id())
+			watchName := fmt.Sprintf(kibanaWatchNameTemplate, association.GetNamespace(), association.GetName(), id)
 			kibanaKey := association.AssociationRef().NamespacedName()
-			watchName := association.GetNamespace() + "-" + association.GetName() + "-kibana-watch"
 			if err := w.Kibanas.AddHandler(watches.NamedWatch{
 				Name:    watchName,
 				Watched: []types.NamespacedName{kibanaKey},
@@ -56,9 +67,8 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 			}
 			return nil
 		},
-		ClearDynamicWatches: func(associated commonv1.Associated, w watches.DynamicWatches) {
-			//watchName := associated.Namespace + "-" + associated.Name + "-kibana-watch"
-			//w.Kibanas.RemoveHandlerForKey(watchName)
+		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
+			association.RemoveWatchesForDynamicRequest(associated, nil, beatWatchNameRegexp, w.Kibanas)
 		},
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
