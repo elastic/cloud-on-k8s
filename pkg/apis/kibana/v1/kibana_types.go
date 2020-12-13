@@ -5,6 +5,8 @@
 package v1
 
 import (
+	"fmt"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,11 +67,11 @@ func (k *Kibana) Associated() commonv1.Associated {
 	return k
 }
 
-func (k *Kibana) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+func (k *Kibana) AssociationConfAnnotationNameBase() string {
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (k *Kibana) AssociatedType() string {
+func (k *Kibana) AssociatedType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -98,16 +100,38 @@ func (k *Kibana) RequiresAssociation() bool {
 	return k.Spec.ElasticsearchRef.Name != ""
 }
 
-func (k *Kibana) AssociationStatus() commonv1.AssociationStatus {
-	return k.Status.AssociationStatus
+func (k *Kibana) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusGroup {
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		if k.Spec.ElasticsearchRef.IsDefined() {
+			return commonv1.NewAssociationStatusGroup(k.Spec.ElasticsearchRef.NamespacedName().String(), k.Status.AssociationStatus)
+		}
+	}
+
+	return commonv1.AssociationStatusGroup{}
 }
 
-func (k *Kibana) SetAssociationStatus(status commonv1.AssociationStatus) {
-	k.Status.AssociationStatus = status
+func (k *Kibana) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusGroup) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		k.Status.AssociationStatus = single
+		return nil
+	default:
+		return fmt.Errorf("association type %s not known", typ)
+	}
 }
 
 func (k *Kibana) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{k}
+	associations := make([]commonv1.Association, 0)
+	if k.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, k)
+	}
+	return associations
 }
 
 var _ commonv1.Associated = &Kibana{}
@@ -130,6 +154,10 @@ type Kibana struct {
 	Spec      KibanaSpec                `json:"spec,omitempty"`
 	Status    KibanaStatus              `json:"status,omitempty"`
 	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
+}
+
+func (k *Kibana) Id() int {
+	return 0
 }
 
 // +kubebuilder:object:root=true

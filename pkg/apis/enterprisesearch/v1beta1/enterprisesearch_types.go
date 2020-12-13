@@ -78,11 +78,11 @@ func (ent *EnterpriseSearch) Associated() commonv1.Associated {
 	return &EnterpriseSearch{}
 }
 
-func (ent *EnterpriseSearch) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+func (ent *EnterpriseSearch) AssociationConfAnnotationNameBase() string {
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (ent *EnterpriseSearch) AssociatedType() string {
+func (ent *EnterpriseSearch) AssociatedType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -98,20 +98,38 @@ func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationC
 	ent.assocConf = assocConf
 }
 
-func (ent *EnterpriseSearch) AssociationStatus() commonv1.AssociationStatus {
-	return ent.Status.Association
-}
-
-func (ent *EnterpriseSearch) SetAssociationStatus(status commonv1.AssociationStatus) {
-	ent.Status.Association = status
-}
-
 func (ent *EnterpriseSearch) RequiresAssociation() bool {
 	return ent.Spec.ElasticsearchRef.Name != ""
 }
 
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{ent}
+	associations := make([]commonv1.Association, 0)
+	if ent.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, ent)
+	}
+	return associations
+}
+
+func (ent *EnterpriseSearch) Id() int {
+	return 0
+}
+
+func (ent *EnterpriseSearch) SetAssociationStatusGroup(_ commonv1.AssociationType, status commonv1.AssociationStatusGroup) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+	ent.Status.Association = single
+	return nil
+}
+
+func (ent *EnterpriseSearch) AssociationStatusGroup(associationType commonv1.AssociationType) commonv1.AssociationStatusGroup {
+	if ent.Spec.ElasticsearchRef.IsDefined() {
+		nsName := ent.Spec.ElasticsearchRef.NamespacedName().String()
+		return commonv1.NewAssociationStatusGroup(nsName, ent.Status.Association)
+	}
+
+	return commonv1.AssociationStatusGroup{}
 }
 
 var _ commonv1.Associated = &EnterpriseSearch{}

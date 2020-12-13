@@ -100,7 +100,7 @@ type AgentStatus struct {
 	Health AgentHealth `json:"health,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+	ElasticsearchAssociationStatus commonv1.AssociationStatusGroup `json:"elasticsearchAssociationStatus,omitempty"`
 }
 
 type AgentHealth string
@@ -135,9 +135,9 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec        AgentSpec                 `json:"spec,omitempty"`
-	Status      AgentStatus               `json:"status,omitempty"`
-	esAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
+	Spec       AgentSpec                         `json:"spec,omitempty"`
+	Status     AgentStatus                       `json:"status,omitempty"`
+	assocConfs map[int]*commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -145,9 +145,15 @@ type Agent struct {
 var _ commonv1.Associated = &Agent{}
 
 func (a *Agent) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{
-		&AgentESAssociation{Agent: a},
+	associations := make([]commonv1.Association, 0)
+	for i := range a.Spec.ElasticsearchRefs {
+		associations = append(associations, &AgentESAssociation{
+			Agent:         a,
+			associationId: i,
+		})
 	}
+
+	return associations
 }
 
 func (a *Agent) ServiceAccountName() string {
@@ -159,8 +165,22 @@ func (a *Agent) IsMarkedForDeletion() bool {
 	return !a.DeletionTimestamp.IsZero()
 }
 
+func (a *Agent) AssociationStatusGroup(_ commonv1.AssociationType) commonv1.AssociationStatusGroup {
+	return a.Status.ElasticsearchAssociationStatus
+}
+
+func (a *Agent) SetAssociationStatusGroup(_ commonv1.AssociationType, status commonv1.AssociationStatusGroup) error {
+	a.Status.ElasticsearchAssociationStatus = status
+	return nil
+}
+
 type AgentESAssociation struct {
 	*Agent
+	associationId int `json:"-"` // nolint:govet
+}
+
+func (a *AgentESAssociation) Id() int {
+	return a.associationId
 }
 
 var _ commonv1.Association = &AgentESAssociation{}
@@ -175,7 +195,7 @@ func (a *AgentESAssociation) Associated() commonv1.Associated {
 	return a.Agent
 }
 
-func (a *AgentESAssociation) AssociatedType() string {
+func (a *AgentESAssociation) AssociatedType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -189,24 +209,19 @@ func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	return selector.WithDefaultNamespace(a.Namespace)
 }
 
-func (a *AgentESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+func (a *AgentESAssociation) AssociationConfAnnotationNameBase() string {
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
 func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	return a.esAssocConf
+	return a.assocConfs[a.associationId]
 }
 
 func (a *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
-	a.esAssocConf = conf
-}
-
-func (a *AgentESAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return a.Status.ElasticsearchAssociationStatus
-}
-
-func (a *AgentESAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	a.Status.ElasticsearchAssociationStatus = status
+	if a.assocConfs == nil {
+		a.assocConfs = make(map[int]*commonv1.AssociationConf)
+	}
+	a.assocConfs[a.associationId] = conf
 }
 
 func (a *Agent) SecureSettings() []commonv1.SecretSource {
