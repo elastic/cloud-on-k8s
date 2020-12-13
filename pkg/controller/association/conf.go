@@ -160,7 +160,7 @@ func extractAssociationConf(annotations map[string]string, annotationNameBase st
 		return nil, nil
 	}
 
-	annotationName := commonv1.FormatNameWithId(annotationNameBase+"-%s", id)
+	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
 
 	var assocConf commonv1.AssociationConf
 	serializedConf, exists := annotations[annotationName]
@@ -189,13 +189,20 @@ func RemoveExcesiveAssociationConfs(
 
 	expected := make(map[string]bool)
 	for _, association := range associations {
-		expected[fmt.Sprintf("%s-%d", associationConfAnnotationNameBase, association.Id())] = true
+		key := commonv1.FormatNameWithId(associationConfAnnotationNameBase+"%s", association.Id())
+		expected[key] = true
 	}
 
+	modified := false
 	for key := range annotations {
 		if strings.HasPrefix(key, associationConfAnnotationNameBase) && !expected[key] {
 			delete(annotations, key)
+			modified = true
 		}
+	}
+
+	if !modified {
+		return nil
 	}
 
 	if err := accessor.SetAnnotations(associated, annotations); err != nil {
@@ -217,7 +224,7 @@ func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, an
 		return nil
 	}
 
-	annotationName := commonv1.FormatNameWithId(annotationNameBase+"-%s", id)
+	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
 	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
@@ -254,7 +261,7 @@ func UpdateAssociationConf(
 		annotations = make(map[string]string)
 	}
 
-	annotationName := commonv1.FormatNameWithId(association.AssociationConfAnnotationNameBase()+"-%s", association.Id())
+	annotationName := commonv1.FormatNameWithId(association.AssociationConfAnnotationNameBase()+"%s", association.Id())
 
 	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
