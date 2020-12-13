@@ -129,10 +129,10 @@ type Reconciler struct {
 }
 
 // log with namespace and name fields set for the given association resource.
-func (r *Reconciler) log(associated commonv1.Associated) logr.Logger {
+func (r *Reconciler) log(associatedNsName types.NamespacedName) logr.Logger {
 	return r.logger.WithValues(
-		"namespace", associated.GetNamespace(),
-		fmt.Sprintf("%s_name", r.AssociatedShortName), associated.GetName(),
+		"namespace", associatedNsName.Namespace,
+		fmt.Sprintf("%s_name", r.AssociatedShortName), associatedNsName.Name,
 	)
 }
 
@@ -145,7 +145,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(ctx, types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
@@ -153,8 +153,10 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
+	associatedKey := k8s.ExtractNamespacedName(associated)
+
 	if common.IsUnmanaged(associated) {
-		r.log(associated).Info("Object is currently not managed by this controller. Skipping reconciliation")
+		r.log(associatedKey).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -174,8 +176,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	associations := associated.GetAssociations()
 
 	// garbage collect leftover resources that are not required anymore
-	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated); err != nil {
-		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associatedKey, associations); err != nil {
+		r.log(associatedKey).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
 	if err := RemoveExcesiveAssociationConfs(r.Client, associated, associations, r.AssociationConfAnnotationNameBase); err != nil {
@@ -252,7 +254,6 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 	// watch resources related to the referenced ES and the target service
 	if err := r.setUserAndCaWatches(
 		association,
-		associationRef.NamespacedName(),
 		esRef.NamespacedName(),
 		r.AssociationInfo.AssociatedNamer,
 	); err != nil {
@@ -345,7 +346,7 @@ func (r *Reconciler) getElasticsearch(
 				association.AssociationConfAnnotationNameBase(),
 				association.Id(),
 			); err != nil && !apierrors.IsConflict(err) {
-				r.log(association).Error(err, "Failed to remove Elasticsearch association configuration")
+				r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
 			return esv1.Elasticsearch{}, commonv1.AssociationPending, nil
@@ -385,12 +386,12 @@ func (r *Reconciler) updateAssocConf(
 	defer span.End()
 
 	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
-		r.log(association).Info("Updating association configuration")
+		r.log(k8s.ExtractNamespacedName(association)).Info("Updating association configuration")
 		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}
-			r.log(association).Error(err, "Failed to update association configuration")
+			r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to update association configuration")
 			return commonv1.AssociationPending, err
 		}
 		association.SetAssociationConf(expectedAssocConf)
@@ -436,13 +437,17 @@ func resultFromStatuses(statusGroup commonv1.AssociationStatusGroup) reconcile.R
 	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler) onDelete(associated types.NamespacedName) error {
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) error {
 	// remove dynamic watches
 	if r.SetDynamicWatches != nil {
 		r.ClearDynamicWatches(associated, r.watches)
 	}
 	// remove other watches
 	r.removeWatches(associated, nil)
+
 	// delete user Secret in the Elasticsearch namespace
-	return k8s.DeleteSecretMatching(r.Client, r.userLabelSelector(associated))
+	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
+		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
+	return nil
 }

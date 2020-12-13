@@ -10,6 +10,7 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -21,13 +22,13 @@ func deleteOrphanedResources(
 	ctx context.Context,
 	c k8s.Client,
 	info AssociationInfo,
-	associated commonv1.Associated,
+	associated types.NamespacedName,
+	associations []commonv1.Association,
 ) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources2", tracing.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
 
-	assocKey := k8s.ExtractNamespacedName(associated)
-	var associatedLabels client.MatchingLabels = info.AssociatedLabels(assocKey)
+	var associatedLabels client.MatchingLabels = info.AssociatedLabels(associated)
 
 	// List all the Secrets involved in an association (users and ca)
 	var secrets corev1.SecretList
@@ -36,14 +37,14 @@ func deleteOrphanedResources(
 	}
 
 	for _, secret := range secrets.Items {
-		for _, association := range associated.GetAssociations() {
+		for _, association := range associations {
 			if isSecretForAssociation(info, secret, association) {
 				goto nextSecret
 			}
 		}
 
 		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
-		log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.GetName())
+		log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
 		if err := c.Delete(&secret); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
