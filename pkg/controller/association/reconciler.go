@@ -152,6 +152,11 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
+	// garbage collect leftover resources that are not required anymore
+	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated); err != nil {
+		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
+
 	results := reconciler.NewResult(ctx)
 	newStatusGroup := commonv1.AssociationStatusGroup{}
 	for _, association := range associated.GetAssociations() {
@@ -180,18 +185,10 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	assocKey := k8s.ExtractNamespacedName(association)
-	assocLabels := r.AssociationLabels(assocKey)
-
 	// retrieve the Elasticsearch resource, since it can be a transitive reference we need to use the provided ElasticsearchRef function
 	associatedResourceFound, esRef, err := r.ElasticsearchRef(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationFailed, err
-	}
-
-	// garbage collect leftover resources that are not required anymore
-	if err := deleteOrphanedResources(ctx, r, esRef, association, assocLabels); err != nil {
-		r.log(association).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
 	associationRef := association.AssociationRef()
@@ -228,6 +225,8 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		return commonv1.AssociationPending, err
 	}
 
+	associationRef := association.AssociationRef()
+
 	// watch resources related to the referenced ES and the target service
 	if err := r.setUserAndCaWatches(
 		association,
@@ -243,6 +242,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		return commonv1.AssociationFailed, err
 	}
 
+	assocLabels := r.AssociationLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
 	if err := ReconcileEsUser(
 		ctx,
 		r.Client,
