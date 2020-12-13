@@ -25,23 +25,23 @@ import (
 
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociationObjTemplate:    func() commonv1.Association { return &beatv1beta1.BeatKibanaAssociation{} },
+		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1beta1.Beat{} },
 		ElasticsearchRef:          getElasticsearchFromKibana,
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		AssociatedNamer:           kibana.Namer,
 		AssociationName:           "beat-kibana",
 		AssociatedShortName:       "beat",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		AssociationType:           commonv1.KibanaAssociationType,
+		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				BeatAssociationLabelName:      associated.Name,
 				BeatAssociationLabelNamespace: associated.Namespace,
-				BeatAssociationLabelType:      commonv1.KibanaAssociationType,
+				BeatAssociationLabelType:      string(commonv1.KibanaAssociationType),
 			}
 		},
-		UserSecretSuffix:  "beat-kb-user",
-		CASecretLabelName: kibana.KibanaNameLabelName,
-		ESUserRole:        getBeatKibanaRoles,
+		UserSecretSuffix: "beat-kb-user",
+		ESUserRole:       getBeatKibanaRoles,
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
@@ -56,10 +56,12 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 			}
 			return nil
 		},
-		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			watchName := associated.Namespace + "-" + associated.Name + "-kibana-watch"
-			w.Kibanas.RemoveHandlerForKey(watchName)
+		ClearDynamicWatches: func(associated commonv1.Associated, w watches.DynamicWatches) {
+			//watchName := associated.Namespace + "-" + associated.Name + "-kibana-watch"
+			//w.Kibanas.RemoveHandlerForKey(watchName)
 		},
+		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
+		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
 	})
 }
 

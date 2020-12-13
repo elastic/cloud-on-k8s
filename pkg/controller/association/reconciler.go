@@ -42,8 +42,11 @@ var (
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
 type AssociationInfo struct {
-	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{}).
-	AssociationObjTemplate func() commonv1.Association
+	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
+	// elasticsearch for Beat to Elasticsearch association)
+	AssociationType commonv1.AssociationType
+	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for Kibana to Elasticsearch association).
+	AssociatedObjTemplate func() commonv1.Associated
 	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
 	// In the case of a transitive reference this is used to create the Elasticsearch user.
 	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
@@ -55,21 +58,32 @@ type AssociationInfo struct {
 	AssociationName string
 	// AssociatedShortName is the short name of the associated resource type (eg. "kb").
 	AssociatedShortName string
-	// AssociationLabels are labels set on resources created for association purpose.
-	AssociationLabels func(associated types.NamespacedName) map[string]string
+	// AssociationLabels are labels set on resources created for association purpose. Note that resources will be also
+	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
+	// labels provided here.
+	AssociatedLabels func(associated types.NamespacedName) map[string]string
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
 	// CASecretLabelName is the name of the label added on the Secret that contains the CA of the remote service.
-	CASecretLabelName string
+	//CASecretLabelName string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
 	ESUserRole func(commonv1.Associated) (string, error)
 	// SetDynamicWatches allows to set some specific watches.
 	SetDynamicWatches func(association commonv1.Association, watches watches.DynamicWatches) error
 	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for this association.
-	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
+	ClearDynamicWatches func(associated commonv1.Associated, watches watches.DynamicWatches)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
 	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
+	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
+	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
+	// Beat resource).
+	AssociationResourceNameLabelName string
+	// AssociationResourceNamespaceLabelName is a label used on resources needed for an association. It identifies the
+	// namespace of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label
+	// pointing to the Beat resource).
+	AssociationResourceNamespaceLabelName string
+}
 }
 
 // userLabelSelector returns labels selecting the ES user secret, including association labels and user type label.

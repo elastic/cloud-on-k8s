@@ -5,6 +5,7 @@
 package controller
 
 import (
+	"fmt"
 	"strconv"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -26,27 +27,27 @@ import (
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedShortName:       "apm",
-		AssociationObjTemplate:    func() commonv1.Association { return &apmv1.ApmKibanaAssociation{} },
+		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		ElasticsearchRef:          getElasticsearchFromKibana,
 		AssociatedNamer:           kibana.Namer,
 		AssociationName:           "apm-kibana",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		AssociationType:           commonv1.KibanaAssociationType,
+		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,
-				ApmAssociationLabelType:      commonv1.KibanaAssociationType,
+				ApmAssociationLabelType:      string(commonv1.KibanaAssociationType),
 			}
 		},
-		UserSecretSuffix:  "apm-kb-user",
-		CASecretLabelName: kibana.KibanaNameLabelName,
+		UserSecretSuffix: "apm-kb-user",
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return user.ApmAgentUserRole, nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
 			kibanaKey := association.AssociationRef().NamespacedName()
-			watchName := association.GetNamespace() + "-" + association.GetName() + "-kibana-watch"
+			watchName := fmt.Sprintf("%s-%s-kibana-watch-%d", association.GetNamespace(), association.GetName(), association.Id())
 			if err := w.Kibanas.AddHandler(watches.NamedWatch{
 				Name:    watchName,
 				Watched: []types.NamespacedName{kibanaKey},
@@ -56,10 +57,21 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			}
 			return nil
 		},
-		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			watchName := associated.Namespace + "-" + associated.Name + "-kibana-watch"
-			w.Kibanas.RemoveHandlerForKey(watchName)
+		ClearDynamicWatches: func(associated commonv1.Associated, w watches.DynamicWatches) {
+			//lookup := make(map[string]struct{})
+			//for _, r := range w.Kibanas.Registrations() {
+			//	lookup[r] = struct{}{}
+			//}
+			//
+			//for _, association := range associated.GetAssociations() {
+			//	watchName := fmt.Sprintf("%s-%s-kibana-watch-%d", associated.GetNamespace(), associated.GetName(), association.Id())
+			//	if _, ok := lookup[watchName]; !ok {
+			//		w.Kibanas.RemoveHandlerForKey(watchName)
+			//	}
+			//}
 		},
+		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
+		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
 	})
 }
 
