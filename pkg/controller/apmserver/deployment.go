@@ -114,7 +114,7 @@ func (r *ReconcileApmServer) deploymentParams(
 
 			caVolume := volume.NewSecretVolumeWithMountPath(
 				caSecretName,
-				association.AssociatedType()+"-certs",
+				fmt.Sprintf("%s-certs", association.AssociatedType()),
 				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedType())),
 			)
 			podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, caVolume.Volume())

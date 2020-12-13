@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -34,7 +35,7 @@ const (
 	ApmCfgSecretKey = "apm-server.yml" // nolint:gosec
 )
 
-func certificatesDir(associatedType string) string {
+func certificatesDir(associatedType commonv1.AssociationType) string {
 	return fmt.Sprintf("config/%s-certs", associatedType)
 }
 

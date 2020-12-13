@@ -98,7 +98,7 @@ func buildPodTemplate(
 		caSecretName := association.AssociationConf().GetCASecretName()
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			association.AssociatedType()+"-certs",
+			fmt.Sprintf("%s-certs", association.AssociatedType()),
 			certificatesDir(association),
 		)
 		vols = append(vols, caVolume)

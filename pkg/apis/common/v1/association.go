@@ -11,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// AssociationType is the type of an association resource.
+type AssociationType string
 
 // AssociationStatus is the status of an association resource.
 type AssociationStatus string
@@ -57,11 +59,11 @@ func (asg AssociationStatusGroup) Aggregate() AssociationStatus {
 }
 
 const (
-	ElasticsearchConfigAnnotationName = "association.k8s.elastic.co/es-conf"
-	ElasticsearchAssociationType      = "elasticsearch"
+	ElasticsearchConfigAnnotationNameBase = "association.k8s.elastic.co/es-conf"
+	ElasticsearchAssociationType          = "elasticsearch"
 
-	KibanaAssociationType      = "kibana"
-	KibanaConfigAnnotationName = "association.k8s.elastic.co/kb-conf"
+	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
+	KibanaAssociationType          = "kibana"
 
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
@@ -96,15 +98,15 @@ type Association interface {
 
 	// AssociatedType returns a string describing the type of the target resource (elasticsearch most of the time)
 	// It is mostly used to build some other strings depending on the type of the targeted resource.
-	AssociatedType() string
+	AssociatedType() AssociationType
 
 	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
 	AssociationRef() ObjectSelector
 
-	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.
+	// AssociationConfAnnotationNameBase is the name of the annotation used to define the config for the associated resource.
 	// It is used by the association controller to store the configuration and by the controller which is
 	// managing the associated resource to build the appropriate configuration.
-	AssociationConfAnnotationName() string
+	AssociationConfAnnotationNameBase() string
 
 	// Configuration
 	AssociationConf() *AssociationConf
