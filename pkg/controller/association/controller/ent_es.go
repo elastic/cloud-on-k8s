@@ -44,10 +44,11 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			return map[string]string{
 				EntESAssociationLabelName:      associated.Name,
 				EntESAssociationLabelNamespace: associated.Namespace,
-				EntESAssociationLabelType:      string(commonv1.ElasticsearchAssociationType),
+				EntESAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix: "ent-user",
+		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                  "ent-user",
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return esuser.SuperUserBuiltinRole, nil
 		},

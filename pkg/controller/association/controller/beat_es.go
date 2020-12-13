@@ -49,9 +49,10 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 			return map[string]string{
 				BeatAssociationLabelName:      associated.Name,
 				BeatAssociationLabelNamespace: associated.Namespace,
-				BeatAssociationLabelType:      string(commonv1.ElasticsearchAssociationType),
+				BeatAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		UserSecretSuffix:                      "beat-user",
 		ESUserRole:                            getBeatRoles,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,

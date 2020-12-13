@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"unsafe"
 
 	"github.com/go-logr/logr"
@@ -159,7 +160,7 @@ func extractAssociationConf(annotations map[string]string, annotationNameBase st
 		return nil, nil
 	}
 
-	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
+	annotationName := commonv1.FormatNameWithId(annotationNameBase+"-%s", id)
 
 	var assocConf commonv1.AssociationConf
 	serializedConf, exists := annotations[annotationName]
@@ -174,6 +175,36 @@ func extractAssociationConf(annotations map[string]string, annotationNameBase st
 	return &assocConf, nil
 }
 
+func RemoveExcesiveAssociationConfs(
+	client k8s.Client,
+	associated commonv1.Associated,
+	associations []commonv1.Association,
+	associationConfAnnotationNameBase string,
+) error {
+	accessor := meta.NewAccessor()
+	annotations, err := accessor.Annotations(associated)
+	if err != nil {
+		return err
+	}
+
+	expected := make(map[string]bool)
+	for _, association := range associations {
+		expected[fmt.Sprintf("%s-%d", associationConfAnnotationNameBase, association.Id())] = true
+	}
+
+	for key := range annotations {
+		if strings.HasPrefix(key, associationConfAnnotationNameBase) && !expected[key] {
+			delete(annotations, key)
+		}
+	}
+
+	if err := accessor.SetAnnotations(associated, annotations); err != nil {
+		return err
+	}
+
+	return client.Update(associated)
+}
+
 // RemoveAssociationConf removes the association configuration annotation.
 func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, annotationNameBase string, id int) error {
 	accessor := meta.NewAccessor()
@@ -186,7 +217,7 @@ func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, an
 		return nil
 	}
 
-	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
+	annotationName := commonv1.FormatNameWithId(annotationNameBase+"-%s", id)
 	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
@@ -223,7 +254,7 @@ func UpdateAssociationConf(
 		annotations = make(map[string]string)
 	}
 
-	annotationName := commonv1.FormatNameWithId(association.AssociationConfAnnotationNameBase()+"%s", association.Id())
+	annotationName := commonv1.FormatNameWithId(association.AssociationConfAnnotationNameBase()+"-%s", association.Id())
 
 	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {

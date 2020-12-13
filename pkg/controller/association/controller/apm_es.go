@@ -48,9 +48,10 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,
-				ApmAssociationLabelType:      string(commonv1.ElasticsearchAssociationType),
+				ApmAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		UserSecretSuffix:                      "apm-user",
 		ESUserRole:                            getAPMElasticsearchRoles,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,

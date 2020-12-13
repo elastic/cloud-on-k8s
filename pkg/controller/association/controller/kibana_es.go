@@ -46,10 +46,11 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 			return map[string]string{
 				KibanaESAssociationLabelName:      associated.Name,
 				KibanaESAssociationLabelNamespace: associated.Namespace,
-				KibanaESAssociationLabelType:      string(commonv1.ElasticsearchAssociationType),
+				KibanaESAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix: "kibana-user",
+		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                  "kibana-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return KibanaSystemUserBuiltinRole, nil
 		},

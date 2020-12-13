@@ -47,10 +47,11 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,
-				ApmAssociationLabelType:      string(commonv1.KibanaAssociationType),
+				ApmAssociationLabelType:      commonv1.KibanaAssociationType,
 			}
 		},
-		UserSecretSuffix: "apm-kb-user",
+		AssociationConfAnnotationNameBase: commonv1.KibanaConfigAnnotationNameBase,
+		UserSecretSuffix:                  "apm-kb-user",
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return user.ApmAgentUserRole, nil
 		},

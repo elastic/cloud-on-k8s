@@ -62,6 +62,10 @@ type AssociationInfo struct {
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
 	// labels provided here.
 	AssociatedLabels func(associated types.NamespacedName) map[string]string
+	// AssociationConfAnnotationNameBase is the name of the annotation used to define the config for the associated resource.
+	// It is used by the association controller to store the configuration and by the controller which is
+	// managing the associated resource to build the appropriate configuration.
+	AssociationConfAnnotationNameBase string
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
 	// CASecretLabelName is the name of the label added on the Secret that contains the CA of the remote service.
@@ -172,6 +176,10 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated); err != nil {
 		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
+
+	if err := RemoveExcesiveAssociationConfs(r.Client, associated, associations, r.AssociationConfAnnotationNameBase); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	r.removeWatches(associatedKey, associations)

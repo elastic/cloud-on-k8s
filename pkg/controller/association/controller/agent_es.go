@@ -43,10 +43,11 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 			return map[string]string{
 				AgentAssociationLabelName:      associated.Name,
 				AgentAssociationLabelNamespace: associated.Namespace,
-				AgentAssociationLabelType:      string(commonv1.ElasticsearchAssociationType),
+				AgentAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix: "agent-user",
+		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                  "agent-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return "superuser", nil
 		},
