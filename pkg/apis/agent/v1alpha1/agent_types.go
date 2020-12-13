@@ -201,11 +201,9 @@ func (a *AgentESAssociation) AssociatedType() commonv1.AssociationType {
 
 func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	selector := commonv1.ObjectSelector{}
-	if len(a.Spec.ElasticsearchRefs) > 0 {
-		// only first one is used as association controller doesn't support more right now
-		selector = a.Spec.ElasticsearchRefs[0].ObjectSelector
+	if len(a.Spec.ElasticsearchRefs) > a.associationId {
+		selector = a.Spec.ElasticsearchRefs[a.associationId].ObjectSelector
 	}
-
 	return selector.WithDefaultNamespace(a.Namespace)
 }
 
@@ -214,6 +212,9 @@ func (a *AgentESAssociation) AssociationConfAnnotationNameBase() string {
 }
 
 func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
+	if a.assocConfs == nil {
+		a.assocConfs = make(map[int]*commonv1.AssociationConf)
+	}
 	return a.assocConfs[a.associationId]
 }
 
