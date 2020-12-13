@@ -5,12 +5,56 @@
 package v1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+
 // AssociationStatus is the status of an association resource.
 type AssociationStatus string
+
+// AssociationStatusGroup is the map of association to its AssociationStatus
+type AssociationStatusGroup map[string]AssociationStatus
+
+func NewAssociationStatusGroup(nsName string, status AssociationStatus) AssociationStatusGroup {
+	return map[string]AssociationStatus{
+		nsName: status,
+	}
+}
+
+func (asg AssociationStatusGroup) Single() (AssociationStatus, error) {
+	if len(asg) > 1 {
+		return "", fmt.Errorf("expected at most one key-value but found %d", len(asg))
+	}
+
+	var result AssociationStatus
+	for _, status := range asg {
+		result = status
+	}
+	return result, nil
+}
+
+func (asg AssociationStatusGroup) Aggregate() AssociationStatus {
+	worst := AssociationUnknown
+	for _, status := range asg {
+		switch status {
+		case AssociationEstablished:
+			if worst == AssociationUnknown {
+				worst = AssociationEstablished
+			}
+		case AssociationPending:
+			if worst == AssociationUnknown || worst == AssociationEstablished {
+				worst = AssociationPending
+			}
+		case AssociationFailed:
+			return AssociationFailed
+		}
+	}
+
+	return worst
+}
 
 const (
 	ElasticsearchConfigAnnotationName = "association.k8s.elastic.co/es-conf"
@@ -30,12 +74,16 @@ const (
 // - Kibana can be associated with Elasticsearch
 // - APMServer can be associated with Elasticsearch and Kibana
 // - EnterpriseSearch can be associated with Elasticsearch
+// - Beat can be associated with Elasticsearch and Kibana
+// - Agent can be associated with multiple Elasticsearches
 // +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
 	runtime.Object
 	ServiceAccountName() string
 	GetAssociations() []Association
+	AssociationStatusGroup(typ AssociationType) AssociationStatusGroup
+	SetAssociationStatusGroup(typ AssociationType, statusGroup AssociationStatusGroup) error
 }
 
 // Association interface helps to manage the Spec fields involved in an association.
@@ -62,9 +110,8 @@ type Association interface {
 	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
 
-	// Status
-	AssociationStatus() AssociationStatus
-	SetAssociationStatus(status AssociationStatus)
+	// Id allows to distinguish between many associations of the same type
+	Id() int
 }
 
 // AssociationConf holds the association configuration of a referenced resource in an association.
