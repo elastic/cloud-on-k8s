@@ -5,8 +5,6 @@
 package v1alpha1
 
 import (
-	"regexp"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -25,8 +23,6 @@ var (
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
 		checkNoDowngrade,
 	}
-
-	typeRegex = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 )
 
 func checkNoUnknownFields(b *Agent) field.ErrorList {
