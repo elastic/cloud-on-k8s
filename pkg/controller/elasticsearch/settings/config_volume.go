@@ -88,7 +88,7 @@ func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte) cor
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
 func ReconcileConfig(client k8s.Client, es esv1.Elasticsearch, ssetName string, config CanonicalConfig) error {
-	rendered, err := config.Render()
+	rendered, err := config.Render(replaceNilNodeRoles)
 	if err != nil {
 		return err
 	}

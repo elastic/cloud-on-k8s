@@ -10,6 +10,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
+var replaceNilNodeRoles = common.Replacement{
+	Path: []string{
+		"node", "roles",
+	},
+	Expected:    nil,
+	Replacement: make([]string, 0),
+}
+
 // CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
 // as a hierarchical key-value configuration.
 type CanonicalConfig struct {
