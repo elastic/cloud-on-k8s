@@ -6,6 +6,7 @@ package agent
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
@@ -124,7 +125,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 				// don't check association statuses that may vary across tests
-				agent.Status.ElasticsearchAssociationStatus = ""
+				agent.Status.ElasticsearchAssociationStatus = nil
 
 				expected := agentv1alpha1.AgentStatus{
 					Version: b.Agent.Spec.Version,
@@ -139,7 +140,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					agent.Status.ExpectedNodes = 0
 					agent.Status.AvailableNodes = 0
 				}
-				if agent.Status != expected {
+				if !reflect.DeepEqual(agent.Status, expected) {
 					return fmt.Errorf("expected status %+v but got %+v", expected, agent.Status)
 				}
 				return nil
