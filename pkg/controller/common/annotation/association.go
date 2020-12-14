@@ -30,8 +30,8 @@ func ForAssociationStatusChange(prevStatus, currStatus commonv1.AssociationStatu
 		return nil, err
 	}
 	return map[string]string{
-		CurrAssocStatusAnnotation: string(prev),
-		PrevAssocStatusAnnotation: string(curr),
+		PrevAssocStatusAnnotation: string(prev),
+		CurrAssocStatusAnnotation: string(curr),
 	}, nil
 }
 
@@ -47,7 +47,7 @@ func ExtractAssociationStatus(obj metav1.ObjectMeta) (prevStatus, currStatus com
 	}
 
 	curr := &commonv1.AssociationStatusGroup{}
-	if err = json.Unmarshal([]byte(obj.Annotations[PrevAssocStatusAnnotation]), curr); err != nil {
+	if err = json.Unmarshal([]byte(obj.Annotations[CurrAssocStatusAnnotation]), curr); err != nil {
 		return
 	}
 
