@@ -119,8 +119,8 @@ func RemoveWatchesForDynamicRequest(
 	for _, key := range dynamicRequest.Registrations() {
 		matches := re.FindStringSubmatch(key)
 		if len(matches) == 4 &&
-			matches[1] == associated.Name &&
-			matches[2] == associated.Namespace &&
+			matches[1] == associated.Namespace &&
+			matches[2] == associated.Name &&
 			!lookup[matches[3]] {
 			dynamicRequest.RemoveHandlerForKey(key)
 		}
