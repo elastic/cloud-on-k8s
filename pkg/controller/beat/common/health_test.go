@@ -7,10 +7,11 @@ package common_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_CalculateHealth(t *testing.T) {

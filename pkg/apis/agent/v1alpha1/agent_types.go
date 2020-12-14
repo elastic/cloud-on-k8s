@@ -100,7 +100,7 @@ type AgentStatus struct {
 	Health AgentHealth `json:"health,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	ElasticsearchAssociationStatus commonv1.AssociationStatusGroup `json:"elasticsearchAssociationStatus,omitempty"`
+	ElasticsearchAssociationStatusGroup commonv1.AssociationStatusGroup `json:"elasticsearchAssociationStatusGroup,omitempty"`
 }
 
 type AgentHealth string
@@ -166,11 +166,11 @@ func (a *Agent) IsMarkedForDeletion() bool {
 }
 
 func (a *Agent) AssociationStatusGroup(_ commonv1.AssociationType) commonv1.AssociationStatusGroup {
-	return a.Status.ElasticsearchAssociationStatus
+	return a.Status.ElasticsearchAssociationStatusGroup
 }
 
 func (a *Agent) SetAssociationStatusGroup(_ commonv1.AssociationType, status commonv1.AssociationStatusGroup) error {
-	a.Status.ElasticsearchAssociationStatus = status
+	a.Status.ElasticsearchAssociationStatusGroup = status
 	return nil
 }
 

@@ -20,7 +20,7 @@ import (
 const (
 	// ClusterNameLabelName used to represent a cluster in k8s resources
 	ClusterNameLabelName = "elasticsearch.k8s.elastic.co/cluster-name"
-	// ClusterNameLabelName used to represent a cluster in k8s resources
+	// ClusterNamespaceLabelName used to represent a cluster in k8s resources
 	ClusterNamespaceLabelName = "elasticsearch.k8s.elastic.co/cluster-namespace"
 
 	// VersionLabelName used to store the Elasticsearch version of the resource

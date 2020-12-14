@@ -5,7 +5,6 @@
 package agent
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -119,19 +118,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"), "default")
 
-	multiOutputConfig := strings.Replace(
-		E2EAgentSystemIntegrationConfig,
-		`agent:
-  monitoring:
-    enabled: true
-    use_output: default`,
-		`agent:
-  monitoring:
-    enabled: true
-    use_output: monitoring`,
-		1)
-
-	agentBuilder = agent.ApplyYamls(t, agentBuilder, multiOutputConfig, E2EAgentSystemIntegrationPodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder1, esBuilder2, agentBuilder).RunSequential(t)
 }

@@ -18,6 +18,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+// deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
+// attempts. If a user changes namespace on a vertex of an association (eg. reference to an Elasticsearch resource in
+// a different namespace) the standard reconcile mechanism will not delete the now redundant old user object/secret.
+// This function lists all resources that don't match the current name/namespace combinations and deletes them.
 func deleteOrphanedResources(
 	ctx context.Context,
 	c k8s.Client,
