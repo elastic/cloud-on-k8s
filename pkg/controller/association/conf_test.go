@@ -175,7 +175,11 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 
 	if withAnnotations {
 		kb.ObjectMeta.Annotations = map[string]string{
-			kb.AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+			kb.AssociationConfAnnotationNameBase(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+		}
+		kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{
+			Name:      "es-test",
+			Namespace: "es-ns",
 		}
 	}
 
@@ -366,7 +370,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err = UpdateAssociationConf(client, &got, newAssocConf, "association.k8s.elastic.co/es-conf")
+	err = UpdateAssociationConf(client, &got, newAssocConf)
 	require.NoError(t, err)
 
 	err = FetchWithAssociations(context.Background(), client, request, &got)
@@ -401,7 +405,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// remove and check the new values
-	err = RemoveAssociationConf(client, &got, "association.k8s.elastic.co/es-conf")
+	err = RemoveAssociationConf(client, &got, "association.k8s.elastic.co/es-conf", 0)
 	require.NoError(t, err)
 
 	err = FetchWithAssociations(context.Background(), client, request, &got)
