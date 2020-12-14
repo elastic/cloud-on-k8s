@@ -110,7 +110,7 @@ func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	return associations
 }
 
-func (ent *EnterpriseSearch) Id() int {
+func (ent *EnterpriseSearch) ID() int {
 	return 0
 }
 

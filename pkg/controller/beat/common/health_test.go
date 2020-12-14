@@ -42,7 +42,7 @@ func Test_CalculateHealth(t *testing.T) {
 			esAssoc := beatv1beta1.BeatESAssociation{Beat: beat}
 			esAssoc.SetAssociationConf(&dummyConf)
 			if assocDef.esAssocEstablished {
-				esAssoc.SetAssociationStatusGroup(commonv1.ElasticsearchAssociationType, commonv1.AssociationStatusGroup{"a/es": commonv1.AssociationEstablished})
+				_ = esAssoc.SetAssociationStatusGroup(commonv1.ElasticsearchAssociationType, commonv1.AssociationStatusGroup{"a/es": commonv1.AssociationEstablished})
 			}
 			result = append(result, &esAssoc)
 		}
@@ -54,7 +54,7 @@ func Test_CalculateHealth(t *testing.T) {
 			kbAssoc := beatv1beta1.BeatKibanaAssociation{Beat: beat}
 			kbAssoc.SetAssociationConf(&dummyConf)
 			if assocDef.kbAssocEstablished {
-				kbAssoc.SetAssociationStatusGroup(commonv1.KibanaAssociationType, commonv1.AssociationStatusGroup{"a/kb": commonv1.AssociationEstablished})
+				_ = kbAssoc.SetAssociationStatusGroup(commonv1.KibanaAssociationType, commonv1.AssociationStatusGroup{"a/kb": commonv1.AssociationEstablished})
 			}
 			result = append(result, &kbAssoc)
 		}

@@ -113,10 +113,10 @@ type Association interface {
 	SetAssociationConf(*AssociationConf)
 
 	// Id allows to distinguish between many associations of the same type
-	Id() int
+	ID() int
 }
 
-func FormatNameWithId(template string, id int) string {
+func FormatNameWithID(template string, id int) string {
 	idString := ""
 	if id > 0 {
 		// we want names to be changed only all but first id. When appending the id, we want it to start from 2, so user

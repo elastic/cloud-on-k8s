@@ -149,7 +149,7 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 	for i := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
 			Agent:         a,
-			associationId: i,
+			associationID: i,
 		})
 	}
 
@@ -176,11 +176,11 @@ func (a *Agent) SetAssociationStatusGroup(_ commonv1.AssociationType, status com
 
 type AgentESAssociation struct {
 	*Agent
-	associationId int `json:"-"` // nolint:govet
+	associationID int `json:"-"` // nolint:govet
 }
 
-func (a *AgentESAssociation) Id() int {
-	return a.associationId
+func (a *AgentESAssociation) ID() int {
+	return a.associationID
 }
 
 var _ commonv1.Association = &AgentESAssociation{}
@@ -201,8 +201,8 @@ func (a *AgentESAssociation) AssociatedType() commonv1.AssociationType {
 
 func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	selector := commonv1.ObjectSelector{}
-	if len(a.Spec.ElasticsearchRefs) > a.associationId {
-		selector = a.Spec.ElasticsearchRefs[a.associationId].ObjectSelector
+	if len(a.Spec.ElasticsearchRefs) > a.associationID {
+		selector = a.Spec.ElasticsearchRefs[a.associationID].ObjectSelector
 	}
 	return selector.WithDefaultNamespace(a.Namespace)
 }
@@ -215,14 +215,14 @@ func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
 	if a.assocConfs == nil {
 		a.assocConfs = make(map[int]*commonv1.AssociationConf)
 	}
-	return a.assocConfs[a.associationId]
+	return a.assocConfs[a.associationID]
 }
 
 func (a *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if a.assocConfs == nil {
 		a.assocConfs = make(map[int]*commonv1.AssociationConf)
 	}
-	a.assocConfs[a.associationId] = conf
+	a.assocConfs[a.associationID] = conf
 }
 
 func (a *Agent) SecureSettings() []commonv1.SecretSource {

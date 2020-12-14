@@ -101,11 +101,8 @@ func (k *Kibana) RequiresAssociation() bool {
 }
 
 func (k *Kibana) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusGroup {
-	switch typ {
-	case commonv1.ElasticsearchAssociationType:
-		if k.Spec.ElasticsearchRef.IsDefined() {
-			return commonv1.NewAssociationStatusGroup(k.Spec.ElasticsearchRef.NamespacedName().String(), k.Status.AssociationStatus)
-		}
+	if typ == commonv1.ElasticsearchAssociationType && k.Spec.ElasticsearchRef.IsDefined() {
+		return commonv1.NewAssociationStatusGroup(k.Spec.ElasticsearchRef.NamespacedName().String(), k.Status.AssociationStatus)
 	}
 
 	return commonv1.AssociationStatusGroup{}
@@ -156,7 +153,7 @@ type Kibana struct {
 	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
 }
 
-func (k *Kibana) Id() int {
+func (k *Kibana) ID() int {
 	return 0
 }
 

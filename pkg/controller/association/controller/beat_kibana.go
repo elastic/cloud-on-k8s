@@ -56,7 +56,7 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
-			id := strconv.Itoa(association.Id())
+			id := strconv.Itoa(association.ID())
 			watchName := fmt.Sprintf(kibanaWatchNameTemplate, association.GetNamespace(), association.GetName(), id)
 			kibanaKey := association.AssociationRef().NamespacedName()
 			if err := w.Kibanas.AddHandler(watches.NamedWatch{

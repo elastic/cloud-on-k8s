@@ -148,7 +148,8 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 					for _, evt := range eventList {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
-							prevStatus, currStatus := annotation.ExtractAssociationStatus(evt.ObjectMeta)
+							prevStatus, currStatus, err := annotation.ExtractAssociationStatus(evt.ObjectMeta)
+							require.NoError(t, err)
 							if prevStatus == commonv1.AssociationEstablished && currStatus != prevStatus {
 								assocLostEventSeen = true
 							}

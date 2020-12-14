@@ -252,7 +252,7 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	b.esAssocConf = conf
 }
 
-func (b *BeatESAssociation) Id() int {
+func (b *BeatESAssociation) ID() int {
 	return 0
 }
 
@@ -292,7 +292,7 @@ func (b *BeatKibanaAssociation) AssociationConfAnnotationNameBase() string {
 	return commonv1.KibanaConfigAnnotationNameBase
 }
 
-func (b *BeatKibanaAssociation) Id() int {
+func (b *BeatKibanaAssociation) ID() int {
 	return 0
 }
 

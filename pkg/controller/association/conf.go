@@ -152,7 +152,7 @@ func GetAssociationConf(association commonv1.Association) (*commonv1.Association
 		return nil, err
 	}
 
-	return extractAssociationConf(annotations, association.AssociationConfAnnotationNameBase(), association.Id())
+	return extractAssociationConf(annotations, association.AssociationConfAnnotationNameBase(), association.ID())
 }
 
 func extractAssociationConf(annotations map[string]string, annotationNameBase string, id int) (*commonv1.AssociationConf, error) {
@@ -160,7 +160,7 @@ func extractAssociationConf(annotations map[string]string, annotationNameBase st
 		return nil, nil
 	}
 
-	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
+	annotationName := commonv1.FormatNameWithID(annotationNameBase+"%s", id)
 
 	var assocConf commonv1.AssociationConf
 	serializedConf, exists := annotations[annotationName]
@@ -189,7 +189,7 @@ func RemoveExcesiveAssociationConfs(
 
 	expected := make(map[string]bool)
 	for _, association := range associations {
-		key := commonv1.FormatNameWithId(associationConfAnnotationNameBase+"%s", association.Id())
+		key := commonv1.FormatNameWithID(associationConfAnnotationNameBase+"%s", association.ID())
 		expected[key] = true
 	}
 
@@ -224,7 +224,7 @@ func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, an
 		return nil
 	}
 
-	annotationName := commonv1.FormatNameWithId(annotationNameBase+"%s", id)
+	annotationName := commonv1.FormatNameWithID(annotationNameBase+"%s", id)
 	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
@@ -261,7 +261,7 @@ func UpdateAssociationConf(
 		annotations = make(map[string]string)
 	}
 
-	annotationName := commonv1.FormatNameWithId(association.AssociationConfAnnotationNameBase()+"%s", association.Id())
+	annotationName := commonv1.FormatNameWithID(association.AssociationConfAnnotationNameBase()+"%s", association.ID())
 
 	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {

@@ -145,10 +145,11 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
-			return reconcile.Result{}, r.onDelete(ctx, types.NamespacedName{
+			r.onDelete(ctx, types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
+			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -233,7 +234,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 			r.Client,
 			association.Associated(),
 			association.AssociationConfAnnotationNameBase(),
-			association.Id(),
+			association.ID(),
 		)
 	}
 
@@ -344,7 +345,7 @@ func (r *Reconciler) getElasticsearch(
 				r.Client,
 				association.Associated(),
 				association.AssociationConfAnnotationNameBase(),
-				association.Id(),
+				association.ID(),
 			); err != nil && !apierrors.IsConflict(err) {
 				r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
@@ -372,7 +373,7 @@ func (r *Reconciler) Unbind(association commonv1.Association) error {
 		r.Client,
 		association.Associated(),
 		association.AssociationConfAnnotationNameBase(),
-		association.Id(),
+		association.ID(),
 	)
 }
 
@@ -428,8 +429,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 
 func resultFromStatuses(statusGroup commonv1.AssociationStatusGroup) reconcile.Result {
 	for _, status := range statusGroup {
-		switch status {
-		case commonv1.AssociationPending:
+		if status == commonv1.AssociationPending {
 			return defaultRequeue // retry
 		}
 	}
@@ -437,7 +437,7 @@ func resultFromStatuses(statusGroup commonv1.AssociationStatusGroup) reconcile.R
 	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) error {
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
 	// remove dynamic watches
 	if r.SetDynamicWatches != nil {
 		r.ClearDynamicWatches(associated, r.watches)
@@ -449,5 +449,4 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
 		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
-	return nil
 }

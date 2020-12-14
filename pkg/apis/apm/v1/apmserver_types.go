@@ -213,7 +213,7 @@ func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationC
 	aes.esAssocConf = assocConf
 }
 
-func (aes *ApmEsAssociation) Id() int {
+func (aes *ApmEsAssociation) ID() int {
 	return 0
 }
 
@@ -262,7 +262,7 @@ func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.Associat
 	akb.kibanaAssocConf = assocConf
 }
 
-func (akb *ApmKibanaAssociation) Id() int {
+func (akb *ApmKibanaAssociation) ID() int {
 	return 0
 }
 
