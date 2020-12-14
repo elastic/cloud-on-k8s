@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -16,6 +18,8 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAtMostOneDeploymentOption,
+		checkAtMostOneDefaultESRef,
+		checkESRefsNamed,
 		checkSingleConfigSource,
 		checkSpec,
 	}
@@ -46,6 +50,41 @@ func checkAtMostOneDeploymentOption(b *Agent) field.ErrorList {
 		}
 	}
 
+	return nil
+}
+
+func checkAtMostOneDefaultESRef(b *Agent) field.ErrorList {
+	var found int
+	for _, o := range b.Spec.ElasticsearchRefs {
+		if o.OutputName == "default" {
+			found++
+		}
+	}
+	if found > 1 {
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), "only one elasticsearchRef may be named 'default'"),
+		}
+	}
+	return nil
+}
+
+func checkESRefsNamed(b *Agent) field.ErrorList {
+	if len(b.Spec.ElasticsearchRefs) <= 1 {
+		// a single output does not need to be named
+		return nil
+	}
+	var notNamed []string
+	for _, o := range b.Spec.ElasticsearchRefs {
+		if o.OutputName == "" {
+			notNamed = append(notNamed, o.NamespacedName().String())
+		}
+	}
+	if len(notNamed) > 0 {
+		msg := fmt.Sprintf("when declaring mulitiple refs all have to be named, missing names on %v", notNamed)
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), msg),
+		}
+	}
 	return nil
 }
 
