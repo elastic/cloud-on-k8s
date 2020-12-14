@@ -12,6 +12,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
+const (
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "Agent"
+)
+
 // AgentSpec defines the desired state of the Agent
 type AgentSpec struct {
 	// Version of the Agent.
