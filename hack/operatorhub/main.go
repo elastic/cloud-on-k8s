@@ -109,7 +109,6 @@ type config struct {
 	NewVersion   string `json:"newVersion"`
 	PrevVersion  string `json:"prevVersion"`
 	StackVersion string `json:"stackVersion"`
-	OperatorRepo string `json:"operatorRepo"`
 	CRDs         []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
@@ -119,6 +118,7 @@ type config struct {
 		OutputPath          string `json:"outputPath"`
 		PackageName         string `json:"packageName"`
 		DistributionChannel string `json:"distributionChannel"`
+		OperatorRepo        string `json:"operatorRepo"`
 		UbiOnly             bool   `json:"ubiOnly"`
 	} `json:"packages"`
 }
@@ -305,7 +305,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		ShortVersion:   strings.Join(versionParts[:2], "."),
 		PrevVersion:    conf.PrevVersion,
 		StackVersion:   conf.StackVersion,
-		OperatorRepo:   conf.OperatorRepo,
+		OperatorRepo:   conf.Packages[packageIndex].OperatorRepo,
 		AdditionalArgs: additionalArgs,
 		CRDList:        crdList,
 		OperatorRBAC:   string(rbac),
