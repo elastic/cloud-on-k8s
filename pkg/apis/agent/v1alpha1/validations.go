@@ -62,7 +62,7 @@ func checkAtMostOneDefaultESRef(b *Agent) field.ErrorList {
 	}
 	if found > 1 {
 		return field.ErrorList{
-			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), "only one elasticsearchRef may be named 'default'"),
+			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), "only one elasticsearchRef may have the outputName 'default'"),
 		}
 	}
 	return nil
@@ -80,7 +80,7 @@ func checkESRefsNamed(b *Agent) field.ErrorList {
 		}
 	}
 	if len(notNamed) > 0 {
-		msg := fmt.Sprintf("when declaring mulitiple refs all have to be named, missing names on %v", notNamed)
+		msg := fmt.Sprintf("when declaring mulitiple refs all have to be named, missing outputName on %v", notNamed)
 		return field.ErrorList{
 			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), msg),
 		}
