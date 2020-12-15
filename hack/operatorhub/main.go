@@ -32,7 +32,6 @@ import (
 const (
 	manifestURL  = "https://download.elastic.co/downloads/eck/%s/all-in-one.yaml"
 	operatorName = "elastic-operator"
-	packageName  = "elastic-cloud-eck"
 
 	csvTemplateFile     = "csv.tpl"
 	packageTemplateFile = "package.tpl"
@@ -46,8 +45,6 @@ type cmdArgs struct {
 	confPath     string
 	allInOnePath string
 	templatesDir string
-	outDir       string
-	ubiOnly      bool
 }
 
 var args = cmdArgs{}
@@ -55,9 +52,9 @@ var args = cmdArgs{}
 func main() {
 	cmd := &cobra.Command{
 		Use:           "operatorhub",
-		Short:         "Generate Operator Hub files",
-		Example:       "./operatorhub --conf=config.yaml --out=${GIT_ROOT}/community-operators/upstream-community-operators/elastic-cloud",
-		Version:       "0.1.0",
+		Short:         "Generate Operator Lifecycle Manager format files",
+		Example:       "./operatorhub --conf=config.yaml",
+		Version:       "0.2.0",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE:          doRun,
@@ -66,12 +63,8 @@ func main() {
 	cmd.Flags().StringVar(&args.confPath, "conf", "", "Path to config file")
 	_ = cmd.MarkFlagRequired("conf")
 
-	cmd.Flags().StringVar(&args.outDir, "out", "", "Path to the output directory")
-	_ = cmd.MarkFlagRequired("out")
-
 	cmd.Flags().StringVar(&args.allInOnePath, "all-in-one", "", "Path to all-in-one.yaml")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
-	cmd.Flags().BoolVar(&args.ubiOnly, "ubi-only", false, "Use only UBI container images")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -97,25 +90,37 @@ func doRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	params, err := buildRenderParams(conf, extracts)
-	if err != nil {
-		return err
+	for i := range conf.Packages {
+		params, err := buildRenderParams(conf, i, extracts)
+		if err != nil {
+			return err
+		}
+
+		outDir := conf.Packages[i].OutputPath
+		if err := render(params, args.templatesDir, outDir); err != nil {
+			return err
+		}
 	}
 
-	return render(params, args.templatesDir, args.outDir)
+	return nil
 }
 
 type config struct {
-	NewVersion          string `json:"newVersion"`
-	PrevVersion         string `json:"prevVersion"`
-	StackVersion        string `json:"stackVersion"`
-	OperatorRepo        string `json:"operatorRepo"`
-	DistributionChannel string `json:"distributionChannel"`
-	CRDs                []struct {
+	NewVersion   string `json:"newVersion"`
+	PrevVersion  string `json:"prevVersion"`
+	StackVersion string `json:"stackVersion"`
+	CRDs         []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 		Description string `json:"description"`
 	} `json:"crds"`
+	Packages []struct {
+		OutputPath          string `json:"outputPath"`
+		PackageName         string `json:"packageName"`
+		DistributionChannel string `json:"distributionChannel"`
+		OperatorRepo        string `json:"operatorRepo"`
+		UbiOnly             bool   `json:"ubiOnly"`
+	} `json:"packages"`
 }
 
 func loadConfig(path string) (*config, error) {
@@ -247,9 +252,10 @@ type RenderParams struct {
 	OperatorRBAC   string
 	AdditionalArgs []string
 	CRDList        []*CRD
+	PackageName    string
 }
 
-func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, error) {
+func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
 	for _, c := range conf.CRDs {
 		if crd, ok := extracts.crds[c.Name]; ok {
 			crd.DisplayName = c.DisplayName
@@ -288,23 +294,22 @@ func buildRenderParams(conf *config, extracts *yamlExtracts) (*RenderParams, err
 	}
 
 	var additionalArgs []string
-	if args.ubiOnly {
+	if conf.Packages[packageIndex].UbiOnly {
 		additionalArgs = append(additionalArgs, "--ubi-only")
 	}
 
-	if conf.DistributionChannel != "" {
-		additionalArgs = append(additionalArgs, "--distribution-channel=" + conf.DistributionChannel)
-	}
+	additionalArgs = append(additionalArgs, "--distribution-channel="+conf.Packages[packageIndex].DistributionChannel)
 
 	return &RenderParams{
 		NewVersion:     conf.NewVersion,
 		ShortVersion:   strings.Join(versionParts[:2], "."),
 		PrevVersion:    conf.PrevVersion,
 		StackVersion:   conf.StackVersion,
-		OperatorRepo:   conf.OperatorRepo,
+		OperatorRepo:   conf.Packages[packageIndex].OperatorRepo,
 		AdditionalArgs: additionalArgs,
 		CRDList:        crdList,
 		OperatorRBAC:   string(rbac),
+		PackageName:    conf.Packages[packageIndex].PackageName,
 	}, nil
 }
 
@@ -339,14 +344,14 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 
 func renderCSVFile(params *RenderParams, templatesDir, outDir string) error {
 	templateFile := filepath.Join(templatesDir, csvTemplateFile)
-	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.v%s.%s", packageName, params.NewVersion, csvFileSuffix))
+	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.v%s.%s", params.PackageName, params.NewVersion, csvFileSuffix))
 
 	return renderTemplate(params, templateFile, csvFile)
 }
 
 func renderPackageFile(params *RenderParams, templatesDir, outDir string) error {
 	templateFile := filepath.Join(templatesDir, packageTemplateFile)
-	pkgFile := filepath.Join(outDir, fmt.Sprintf("%s.%s", packageName, packageFileSuffix))
+	pkgFile := filepath.Join(outDir, fmt.Sprintf("%s.%s", params.PackageName, packageFileSuffix))
 
 	return renderTemplate(params, templateFile, pkgFile)
 }
