@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -753,6 +754,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		runtime.Object
 		SetupWebhookWithManager(manager.Manager) error
 	}{
+		&agentv1alpha1.Agent{},
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},
