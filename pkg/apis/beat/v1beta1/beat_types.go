@@ -79,7 +79,8 @@ type BeatSpec struct {
 }
 
 type DaemonSetSpec struct {
-	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate corev1.PodTemplateSpec         `json:"podTemplate,omitempty"`
+	Strategy    appsv1.DaemonSetUpdateStrategy `json:"strategy,omitempty"`
 }
 
 type DeploymentSpec struct {
