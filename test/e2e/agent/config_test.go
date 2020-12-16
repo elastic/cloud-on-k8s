@@ -24,21 +24,20 @@ func TestSystemIntegrationConfig(t *testing.T) {
 	agentBuilder := agent.NewBuilder(name).
 		WithRoles(agent.PSPClusterRoleName).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
-		WithDefaultESValidation(agent.HasEventFromAgent()).
-		WithDefaultESValidation(agent.HasDataStream("logs-elastic_agent-default")).
-		WithDefaultESValidation(agent.HasDataStream("logs-elastic_agent.filebeat-default")).
-		WithDefaultESValidation(agent.HasDataStream("logs-elastic_agent.metricbeat-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-elastic_agent.filebeat-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-elastic_agent.metricbeat-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.cpu-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.diskio-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.load-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.memory-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.network-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.process-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.process_summary-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.socket_summary-default")).
-		WithDefaultESValidation(agent.HasDataStream("metrics-system.uptime-default"))
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process_summary", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptim", "default"))
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate)
 

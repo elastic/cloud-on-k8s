@@ -48,6 +48,22 @@ func (b Builder) SkipTest() bool {
 	return version.SupportedAgentVersions.WithinRange(ver) != nil
 }
 
+// NewBuilderFromAgent creates an Agent builder from an existing Agent config. Sets all additional Builder fields
+// appropriately.
+func NewBuilderFromAgent(agent *agentv1alpha1.Agent) Builder {
+	var podTemplate *corev1.PodTemplateSpec
+	if agent.Spec.DaemonSet != nil {
+		podTemplate = &agent.Spec.DaemonSet.PodTemplate
+	} else if agent.Spec.Deployment != nil {
+		podTemplate = &agent.Spec.Deployment.PodTemplate
+	}
+
+	return Builder{
+		Agent:       *agent,
+		PodTemplate: podTemplate,
+	}
+}
+
 func NewBuilder(name string) Builder {
 	suffix := rand.String(4)
 	meta := metav1.ObjectMeta{
