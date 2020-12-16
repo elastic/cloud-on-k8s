@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/sprig/v3
-Version : v3.1.0
-Time    : 2020-04-16T17:44:58Z
+Version : v3.2.0
+Time    : 2020-12-14T15:53:51Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.1.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.0/LICENSE.txt:
 
 Copyright (C) 2013-2020 Masterminds
 
@@ -7463,11 +7463,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/semver/v3
-Version : v3.1.0
-Time    : 2020-04-16T14:13:10Z
+Version : v3.1.1
+Time    : 2020-11-23T17:02:18Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.1.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.1.1/LICENSE.txt:
 
 Copyright (C) 2014-2019, Matt Butcher and Matt Farina
 
@@ -29269,6 +29269,61 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/shopspring/decimal
+Version : v1.2.0
+Time    : 2020-04-28T21:23:09Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/shopspring/decimal@v1.2.0/LICENSE:
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Spring, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+- Based on https://github.com/oguzbilgic/fpd, which has the following license:
+"""
+The MIT License (MIT)
+
+Copyright (c) 2013 Oguz Bilgic
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
 
 
 --------------------------------------------------------------------------------
