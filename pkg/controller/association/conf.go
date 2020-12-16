@@ -175,7 +175,7 @@ func extractAssociationConf(annotations map[string]string, annotationNameBase st
 	return &assocConf, nil
 }
 
-func RemoveExcesiveAssociationConfs(
+func RemoveObsoleteAssociationConfs(
 	client k8s.Client,
 	associated commonv1.Associated,
 	associations []commonv1.Association,

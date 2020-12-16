@@ -179,7 +179,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		r.log(associatedKey).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
-	if err := RemoveExcesiveAssociationConfs(r.Client, associated, associations, r.AssociationConfAnnotationNameBase); err != nil {
+	if err := RemoveObsoleteAssociationConfs(r.Client, associated, associations, r.AssociationConfAnnotationNameBase); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
