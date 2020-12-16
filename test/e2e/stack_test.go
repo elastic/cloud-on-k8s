@@ -52,7 +52,7 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext().
-		WithTelemetryDisabled(true)
+		WithTelemetryEnabled(false)
 	kbUpdated := kb.WithVersion(updatedVersion)
 	kbRef := commonv1.ObjectSelector{Namespace: kb.Kibana.Namespace, Name: kb.Kibana.Name}
 	apm := apmserver.NewBuilder("apm").

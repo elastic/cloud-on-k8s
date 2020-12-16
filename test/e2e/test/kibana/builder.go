@@ -66,7 +66,7 @@ func newBuilder(name, randSuffix string) Builder {
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name).
-		WithTelemetryDisabled(true)
+		WithTelemetryEnabled(false)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -167,7 +167,7 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
-func (b Builder) WithTelemetryDisabled(disabled bool) Builder {
+func (b Builder) WithTelemetryEnabled(enabled bool) Builder {
 	if b.Kibana.Spec.Config == nil {
 		b.Kibana.Spec.Config = &commonv1.Config{
 			Data: map[string]interface{}{},
@@ -177,7 +177,7 @@ func (b Builder) WithTelemetryDisabled(disabled bool) Builder {
 	cfg := settings.MustCanonicalConfig(b.Kibana.Spec.Config.Data)
 	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 		"telemetry": map[string]interface{}{
-			"disabled": disabled,
+			"enabled": enabled,
 		},
 	})); err != nil {
 		panic(err)
