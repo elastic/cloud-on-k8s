@@ -20,7 +20,7 @@ docker-build:
 
 .PHONY: docker-push
 docker-push:
-	@ ../docker-push.sh $(DOCKER_IMAGE)
+	@ ../docker.sh -l -p $(DOCKER_IMAGE)
 
 .PHONY: docker-gen-global
 docker-gen-global: docker-build

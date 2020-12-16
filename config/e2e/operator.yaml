@@ -145,6 +145,19 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - agent.k8s.elastic.co
+  resources:
+  - agents
+  - agents/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - admissionregistration.k8s.io
   resources:
   - mutatingwebhookconfigurations
@@ -369,6 +382,30 @@ webhooks:
       - UPDATE
       resources:
       - beats
+    namespaceSelector:
+      matchExpressions:
+      - key: name
+        operator: In
+        values: [{{ .Operator.ManagedNamespaces | join $comma }}]
+  - clientConfig:
+      caBundle: Cg==
+      service:
+        name: elastic-webhook-server
+        namespace: {{ .Operator.Namespace }}
+        # this is the path controller-runtime automatically generates
+        path: /validate-agent-k8s-elastic-co-v1alpha1-agent
+    failurePolicy: {{ if .IgnoreWebhookFailures }}Ignore{{ else }}Fail{{ end }}
+    name: elastic-agent-validation-v1alpha1.k8s.elastic.co
+    rules:
+    - apiGroups:
+      - agent.k8s.elastic.co
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - agents
     namespaceSelector:
       matchExpressions:
       - key: name

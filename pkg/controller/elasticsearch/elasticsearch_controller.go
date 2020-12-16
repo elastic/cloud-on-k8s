@@ -108,7 +108,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
@@ -118,6 +118,9 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 			OwnerType:    &esv1.Elasticsearch{},
 		},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind); err != nil {
 		return err
 	}
 
@@ -211,13 +214,12 @@ func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request
 	err := r.Get(request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// Additional cleanup is done by the onDelete function.
-			r.onDelete(types.NamespacedName{
+			// Object not found, cleanup in-memory state. Children resources are garbage-collected either by
+			// the operator (see `onDelete`), either by k8s through the ownerReference mechanism.
+			return true, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return true, nil
 		}
 		// Error reading the object - requeue the request.
 		return true, err
@@ -234,8 +236,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
-		r.onDelete(k8s.ExtractNamespacedName(&es))
-		return results
+		return results.WithError(r.onDelete(k8s.ExtractNamespacedName(&es)))
 	}
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
@@ -314,11 +315,12 @@ func (r *ReconcileElasticsearch) updateStatus(
 }
 
 // onDelete garbage collect resources when a Elasticsearch cluster is deleted
-func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
+func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es, esv1.Kind)
 }

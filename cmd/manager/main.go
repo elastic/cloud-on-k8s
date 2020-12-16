@@ -16,13 +16,16 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
@@ -30,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -47,6 +51,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -611,8 +616,11 @@ func asyncTasks(
 		}()
 	}
 
-	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
+	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
+	// - soft-owned secrets
+	garbageCollectSoftOwnedSecrets(k8s.WrapClient(mgr.GetClient()))
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -640,6 +648,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Beats", registerFunc: beat.Add},
 		{name: "License", registerFunc: license.Add},
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
+		{name: "Agent", registerFunc: agent.Add},
 	}
 
 	for _, c := range controllers {
@@ -660,6 +669,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
+		{name: "AGENT-ES", registerFunc: associationctl.AddAgentES},
 	}
 
 	for _, c := range assocControllers {
@@ -701,6 +711,20 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
+func garbageCollectSoftOwnedSecrets(client k8s.Client) {
+	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(client, map[string]runtime.Object{
+		esv1.Kind:        &esv1.Elasticsearch{},
+		apmv1.Kind:       &apmv1.ApmServer{},
+		kbv1.Kind:        &kbv1.Kibana{},
+		entv1beta1.Kind:  &entv1beta1.EnterpriseSearch{},
+		beatv1beta1.Kind: &beatv1beta1.Beat{},
+	}); err != nil {
+		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
+		return
+	}
+	log.Info("Orphan secrets garbage collection complete")
+}
+
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, validateStorageClass bool, clientset kubernetes.Interface) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
@@ -730,6 +754,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		runtime.Object
 		SetupWebhookWithManager(manager.Manager) error
 	}{
+		&agentv1alpha1.Agent{},
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},

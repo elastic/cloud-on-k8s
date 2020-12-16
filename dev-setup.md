@@ -10,7 +10,7 @@ Before you start, install the following tools and packages:
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
-* [docker](https://docs.docker.com/)
+* [docker](https://docs.docker.com/) (>= 19.0.0 with optional `buildx` extension for multi-arch builds)
 * Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine) or [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/)
 
 ### Get sources

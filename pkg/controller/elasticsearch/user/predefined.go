@@ -39,6 +39,9 @@ func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm
 			{Name: ElasticUserName, Roles: []string{SuperUserBuiltinRole}},
 		},
 		esv1.ElasticUserSecret(es.Name),
+		// Don't set an ownerRef for the elastic user secret, likely to be copied into different namespaces.
+		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
+		false,
 	)
 }
 
@@ -52,7 +55,9 @@ func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRea
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 		},
-		esv1.InternalUsersSecret(es.Name))
+		esv1.InternalUsersSecret(es.Name),
+		true,
+	)
 }
 
 // reconcilePredefinedUsers reconciles a secret with the given name holding the given users.
@@ -63,6 +68,7 @@ func reconcilePredefinedUsers(
 	existingFileRealm filerealm.Realm,
 	users users,
 	secretName string,
+	setOwnerRef bool,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
@@ -92,7 +98,11 @@ func reconcilePredefinedUsers(
 		Data: secretData,
 	}
 
-	_, err = reconciler.ReconcileSecret(c, expected, &es)
+	if setOwnerRef {
+		_, err = reconciler.ReconcileSecret(c, expected, &es)
+	} else {
+		_, err = reconciler.ReconcileSecretNoOwnerRef(c, expected, &es)
+	}
 	return users, err
 }
 

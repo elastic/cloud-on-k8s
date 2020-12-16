@@ -68,6 +68,42 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Determine the name for the webhook 
+*/}}
+{{- define "eck-operator.webhookName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook.k8s.elastic.co
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s.%s.k8s.elastic.co" $name .Release.Namespace }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook secret 
+*/}}
+{{- define "eck-operator.webhookSecretName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook-server-cert
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s-webhook-cert" $name | trunc 63 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook service 
+*/}}
+{{- define "eck-operator.webhookServiceName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook-server
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s-webhook" $name | trunc 63 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Add the webhook sideEffects field on supported Kubernetes versions
 */}}
 {{- define "eck-operator.webhookSideEffects" -}}
@@ -77,6 +113,7 @@ Add the webhook sideEffects field on supported Kubernetes versions
 sideEffects: "None"
 {{- end }}
 {{- end }}
+
 
 {{/*
 RBAC permissions
@@ -197,6 +234,19 @@ RBAC permissions
   - beats
   - beats/status
   - beats/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - agent.k8s.elastic.co
+  resources:
+  - agents
+  - agents/status
   verbs:
   - get
   - list

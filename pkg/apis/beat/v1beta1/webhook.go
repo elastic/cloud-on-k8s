@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "Beat"}
+	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 	validationLog = logf.Log.WithName("beat-v1beta1-validation")
 )
 

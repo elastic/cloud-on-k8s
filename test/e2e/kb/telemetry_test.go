@@ -82,12 +82,7 @@ func TestTelemetry(t *testing.T) {
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: test.Eventually(func() error {
 					kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
-					apiVersion := "v1"
-					payload := telemetryRequest{}
-					if kbVersion.IsSameOrAfter(version.MustParse("7.2.0")) {
-						apiVersion = "v2"
-						payload.Unencrypted = true
-					}
+					apiVersion, payload := apiVersionAndTelemetryRequestBody(kbVersion)
 					uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
 					password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
 					if err != nil {
@@ -126,13 +121,30 @@ func TestTelemetry(t *testing.T) {
 
 }
 
+func apiVersionAndTelemetryRequestBody(kbVersion version.Version) (string, telemetryRequest) {
+	apiVersion := "v1"
+	payload := telemetryRequest{
+		TimeRange: &timeRange{},
+	}
+	if kbVersion.IsSameOrAfter(version.From(7, 2, 0)) {
+		apiVersion = "v2"
+		payload.Unencrypted = true
+	}
+	if kbVersion.IsSameOrAfter(version.From(7, 11, 0)) {
+		payload.TimeRange = nil // removed in 7.11
+	}
+	return apiVersion, payload
+}
+
+type timeRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
 // telemetryRequest is the request body for v1/v2 Kibana telemetry requests
 type telemetryRequest struct {
-	TimeRange struct {
-		Min int `json:"min"`
-		Max int `json:"max"`
-	} `json:"timeRange"`
-	Unencrypted bool `json:"unencrypted,omitempty"`
+	TimeRange   *timeRange `json:"timeRange,omitempty"`
+	Unencrypted bool       `json:"unencrypted,omitempty"`
 }
 
 // clusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats

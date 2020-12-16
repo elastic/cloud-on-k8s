@@ -203,7 +203,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			Name: "test-apm-server",
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind: "apmserver",
+			Kind: apmv1.Kind,
 		},
 	}
 	defaultPodSpecParams := PodSpecParams{

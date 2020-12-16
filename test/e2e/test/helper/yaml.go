@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -23,6 +24,7 @@ import (
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -52,6 +54,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(apmv1.GroupVersion, &apmv1.ApmServer{}, &apmv1.ApmServerList{})
 	scheme.AddKnownTypes(beatv1beta1.GroupVersion, &beatv1beta1.Beat{}, &beatv1beta1.BeatList{})
 	scheme.AddKnownTypes(entv1beta1.GroupVersion, &entv1beta1.EnterpriseSearch{}, &entv1beta1.EnterpriseSearchList{})
+	scheme.AddKnownTypes(agentv1alpha1.GroupVersion, &agentv1alpha1.Agent{}, &agentv1alpha1.AgentList{})
 
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{}, &rbacv1.ClusterRoleBindingList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
@@ -270,6 +273,19 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
+		case *agentv1alpha1.Agent:
+			b := agent.NewBuilderFromAgent(decodedObj)
+
+			builder = b.WithNamespace(namespace).
+				WithSuffix(suffix).
+				WithElasticsearchRefs(tweakOutputRefs(b.Agent.Spec.ElasticsearchRefs, suffix)...).
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName).
+				WithDefaultESValidation(agent.HasAnyDataStream())
+
+			if b.PodTemplate.Spec.ServiceAccountName != "" {
+				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
+			}
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
@@ -333,6 +349,18 @@ func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.Object
 	}
 
 	return ref
+}
+
+func tweakOutputRefs(outputs []agentv1alpha1.Output, suffix string) (results []agentv1alpha1.Output) {
+	for _, output := range outputs {
+		// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
+		// This necessitates changing the Elasticsearch reference to match the suffixed name.
+		ref := tweakServiceRef(output.ObjectSelector, suffix)
+		output.ObjectSelector = ref
+		results = append(results, output)
+	}
+
+	return results
 }
 
 func MkTestName(t *testing.T, path string) string {

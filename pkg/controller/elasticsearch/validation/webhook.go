@@ -67,7 +67,7 @@ func (wh *validatingWebhook) validateUpdate(old esv1.Elasticsearch, new esv1.Ela
 	}
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
-			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			new.Name, errs)
 	}
 	return ValidateElasticsearch(new)
@@ -107,7 +107,7 @@ func ValidateElasticsearch(es esv1.Elasticsearch) error {
 	errs := check(es, validations)
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
-			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			es.Name,
 			errs,
 		)

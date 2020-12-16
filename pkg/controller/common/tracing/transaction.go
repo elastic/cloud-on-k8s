@@ -28,3 +28,26 @@ func EndTransaction(tx *apm.Transaction) {
 		tx.End()
 	}
 }
+
+// NewContextTransaction starts a new transaction and sets up a new context with that transaction that also contains the related
+// APM agent's tracer.
+func NewContextTransaction(t *apm.Tracer, txType, txName string, labels map[string]string) context.Context {
+	if t == nil {
+		return context.Background() // apm turned off
+	}
+
+	tx := t.StartTransaction(txName, txType)
+	for k, v := range labels {
+		tx.Context.SetLabel(k, v)
+	}
+
+	return apm.ContextWithTransaction(context.Background(), tx)
+}
+
+// EndContextTransaction nil safe version of APM agents tx.End()
+func EndContextTransaction(ctx context.Context) {
+	tx := apm.TransactionFromContext(ctx)
+	if tx != nil {
+		tx.End()
+	}
+}

@@ -22,3 +22,15 @@ func LogReconciliationRun(log logr.Logger, request reconcile.Request, nameField 
 		log.Info("Ending reconciliation run", "iteration", currentIteration, "namespace", request.Namespace, nameField, request.Name, "took", totalTime)
 	}
 }
+
+// LogReconciliationRunNoSideEffects is the common logging function used to record a reconciliation run, it doesn't
+// increment the iteration. When all controllers move away from package level loggers and move to using one from the
+// context, the other logging function (LogReconciliationRun) can be removed in favor of this one.
+func LogReconciliationRunNoSideEffects(log logr.Logger) func() {
+	startTime := time.Now()
+	log.Info("Starting reconciliation run")
+	return func() {
+		totalTime := time.Since(startTime)
+		log.Info("Ending reconciliation run", "took", totalTime)
+	}
+}
