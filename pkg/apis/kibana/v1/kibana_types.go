@@ -100,15 +100,15 @@ func (k *Kibana) RequiresAssociation() bool {
 	return k.Spec.ElasticsearchRef.Name != ""
 }
 
-func (k *Kibana) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusGroup {
+func (k *Kibana) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	if typ == commonv1.ElasticsearchAssociationType && k.Spec.ElasticsearchRef.IsDefined() {
 		return commonv1.NewAssociationStatusGroup(k.Spec.ElasticsearchRef.NamespacedName().String(), k.Status.AssociationStatus)
 	}
 
-	return commonv1.AssociationStatusGroup{}
+	return commonv1.AssociationStatusMap{}
 }
 
-func (k *Kibana) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusGroup) error {
+func (k *Kibana) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	single, err := status.Single()
 	if err != nil {
 		return err

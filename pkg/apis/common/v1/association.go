@@ -17,16 +17,16 @@ type AssociationType string
 // AssociationStatus is the status of an association resource.
 type AssociationStatus string
 
-// AssociationStatusGroup is the map of association to its AssociationStatus
-type AssociationStatusGroup map[string]AssociationStatus
+// AssociationStatusMap is the map of association to its AssociationStatus
+type AssociationStatusMap map[string]AssociationStatus
 
-func NewAssociationStatusGroup(nsName string, status AssociationStatus) AssociationStatusGroup {
+func NewAssociationStatusGroup(nsName string, status AssociationStatus) AssociationStatusMap {
 	return map[string]AssociationStatus{
 		nsName: status,
 	}
 }
 
-func (asg AssociationStatusGroup) Single() (AssociationStatus, error) {
+func (asg AssociationStatusMap) Single() (AssociationStatus, error) {
 	if len(asg) > 1 {
 		return "", fmt.Errorf("expected at most one key-value but found %d", len(asg))
 	}
@@ -38,7 +38,7 @@ func (asg AssociationStatusGroup) Single() (AssociationStatus, error) {
 	return result, nil
 }
 
-func (asg AssociationStatusGroup) Aggregate() AssociationStatus {
+func (asg AssociationStatusMap) Aggregate() AssociationStatus {
 	worst := AssociationUnknown
 	for _, status := range asg {
 		switch status {
@@ -84,8 +84,8 @@ type Associated interface {
 	runtime.Object
 	ServiceAccountName() string
 	GetAssociations() []Association
-	AssociationStatusGroup(typ AssociationType) AssociationStatusGroup
-	SetAssociationStatusGroup(typ AssociationType, statusGroup AssociationStatusGroup) error
+	AssociationStatusGroup(typ AssociationType) AssociationStatusMap
+	SetAssociationStatusGroup(typ AssociationType, statusGroup AssociationStatusMap) error
 }
 
 // Association interface helps to manage the Spec fields involved in an association.

@@ -139,7 +139,7 @@ func (as *ApmServer) GetAssociations() []commonv1.Association {
 	return associations
 }
 
-func (as *ApmServer) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusGroup {
+func (as *ApmServer) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
 		if as.Spec.ElasticsearchRef.IsDefined() {
@@ -151,10 +151,10 @@ func (as *ApmServer) AssociationStatusGroup(typ commonv1.AssociationType) common
 		}
 	}
 
-	return commonv1.AssociationStatusGroup{}
+	return commonv1.AssociationStatusMap{}
 }
 
-func (as *ApmServer) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusGroup) error {
+func (as *ApmServer) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	single, err := status.Single()
 	if err != nil {
 		return err

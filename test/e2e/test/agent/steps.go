@@ -125,7 +125,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 				// don't check association statuses that may vary across tests
-				agent.Status.ElasticsearchAssociationStatusGroup = nil
+				agent.Status.ElasticsearchAssociationsStatus = nil
 
 				expected := agentv1alpha1.AgentStatus{
 					Version: b.Agent.Spec.Version,

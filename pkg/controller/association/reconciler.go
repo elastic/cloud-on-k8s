@@ -188,7 +188,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	r.removeWatches(associatedKey, associations)
 
 	results := reconciler.NewResult(ctx)
-	newStatusGroup := commonv1.AssociationStatusGroup{}
+	newStatusGroup := commonv1.AssociationStatusMap{}
 	for _, association := range associations {
 		if association.AssociatedType() != r.AssociationType {
 			// some resources have more than one type of resource associations, making sure we are looking at the right
@@ -401,7 +401,7 @@ func (r *Reconciler) updateAssocConf(
 }
 
 // updateStatus updates the associated resource status.
-func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Associated, newStatus commonv1.AssociationStatusGroup) error {
+func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Associated, newStatus commonv1.AssociationStatusMap) error {
 	span, _ := apm.StartSpan(ctx, "update_association_status", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -427,7 +427,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	return nil
 }
 
-func resultFromStatuses(statusGroup commonv1.AssociationStatusGroup) reconcile.Result {
+func resultFromStatuses(statusGroup commonv1.AssociationStatusMap) reconcile.Result {
 	for _, status := range statusGroup {
 		if status == commonv1.AssociationPending {
 			return defaultRequeue // retry

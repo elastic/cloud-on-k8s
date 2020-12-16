@@ -20,7 +20,7 @@ const (
 )
 
 // ForAssociationStatusChange constructs the annotation map for an association status change event.
-func ForAssociationStatusChange(prevStatus, currStatus commonv1.AssociationStatusGroup) (map[string]string, error) {
+func ForAssociationStatusChange(prevStatus, currStatus commonv1.AssociationStatusMap) (map[string]string, error) {
 	prev, err := json.Marshal(prevStatus)
 	if err != nil {
 		return nil, err
@@ -41,12 +41,12 @@ func ExtractAssociationStatus(obj metav1.ObjectMeta) (prevStatus, currStatus com
 		return commonv1.AssociationUnknown, commonv1.AssociationUnknown, nil
 	}
 
-	prev := &commonv1.AssociationStatusGroup{}
+	prev := &commonv1.AssociationStatusMap{}
 	if err = json.Unmarshal([]byte(obj.Annotations[PrevAssocStatusAnnotation]), prev); err != nil {
 		return
 	}
 
-	curr := &commonv1.AssociationStatusGroup{}
+	curr := &commonv1.AssociationStatusMap{}
 	if err = json.Unmarshal([]byte(obj.Annotations[CurrAssocStatusAnnotation]), curr); err != nil {
 		return
 	}
