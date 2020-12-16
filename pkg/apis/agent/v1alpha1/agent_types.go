@@ -207,8 +207,8 @@ func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	return selector.WithDefaultNamespace(a.Namespace)
 }
 
-func (a *AgentESAssociation) AssociationConfAnnotationNameBase() string {
-	return commonv1.ElasticsearchConfigAnnotationNameBase
+func (a *AgentESAssociation) AnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", a.ID())
 }
 
 func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {

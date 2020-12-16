@@ -193,8 +193,8 @@ func (aes *ApmEsAssociation) Associated() commonv1.Associated {
 	return aes.ApmServer
 }
 
-func (aes *ApmEsAssociation) AssociationConfAnnotationNameBase() string {
-	return commonv1.ElasticsearchConfigAnnotationNameBase
+func (aes *ApmEsAssociation) AnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", aes.ID())
 }
 
 func (aes *ApmEsAssociation) AssociationType() commonv1.AssociationType {
@@ -238,8 +238,8 @@ func (akb *ApmKibanaAssociation) Associated() commonv1.Associated {
 	return akb.ApmServer
 }
 
-func (akb *ApmKibanaAssociation) AssociationConfAnnotationNameBase() string {
-	return commonv1.KibanaConfigAnnotationNameBase
+func (akb *ApmKibanaAssociation) AnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", akb.ID())
 }
 
 func (akb *ApmKibanaAssociation) AssociationType() commonv1.AssociationType {

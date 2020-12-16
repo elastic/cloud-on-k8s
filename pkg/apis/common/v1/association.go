@@ -106,7 +106,7 @@ type Association interface {
 	// AssociationConfAnnotationNameBase is the name of the annotation used to define the config for the associated resource.
 	// It is used by the association controller to store the configuration and by the controller which is
 	// managing the associated resource to build the appropriate configuration.
-	AssociationConfAnnotationNameBase() string
+	AnnotationName() string
 
 	// Configuration
 	AssociationConf() *AssociationConf

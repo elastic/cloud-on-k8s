@@ -240,8 +240,8 @@ func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
 	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
 }
 
-func (b *BeatESAssociation) AssociationConfAnnotationNameBase() string {
-	return commonv1.ElasticsearchConfigAnnotationNameBase
+func (b *BeatESAssociation) AnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", b.ID())
 }
 
 func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
@@ -288,8 +288,8 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
 }
 
-func (b *BeatKibanaAssociation) AssociationConfAnnotationNameBase() string {
-	return commonv1.KibanaConfigAnnotationNameBase
+func (b *BeatKibanaAssociation) AnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", b.ID())
 }
 
 func (b *BeatKibanaAssociation) ID() int {

@@ -228,12 +228,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 
 	// the associated resource does not exist yet, set status to Pending
 	if !associatedResourceFound {
-		return commonv1.AssociationPending, RemoveAssociationConf(
-			r.Client,
-			association.Associated(),
-			association.AssociationConfAnnotationNameBase(),
-			association.ID(),
-		)
+		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
 	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
@@ -339,12 +334,7 @@ func (r *Reconciler) getElasticsearch(
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := RemoveAssociationConf(
-				r.Client,
-				association.Associated(),
-				association.AssociationConfAnnotationNameBase(),
-				association.ID(),
-			); err != nil && !apierrors.IsConflict(err) {
+			if err := RemoveAssociationConf(r.Client, association); err != nil && !apierrors.IsConflict(err) {
 				r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
@@ -367,12 +357,7 @@ func (r *Reconciler) Unbind(association commonv1.Association) error {
 		return err
 	}
 	// Also remove the association configuration
-	return RemoveAssociationConf(
-		r.Client,
-		association.Associated(),
-		association.AssociationConfAnnotationNameBase(),
-		association.ID(),
-	)
+	return RemoveAssociationConf(r.Client, association)
 }
 
 // updateAssocConf updates associated with the expected association conf.

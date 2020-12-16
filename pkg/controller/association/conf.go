@@ -152,15 +152,13 @@ func GetAssociationConf(association commonv1.Association) (*commonv1.Association
 		return nil, err
 	}
 
-	return extractAssociationConf(annotations, association.AssociationConfAnnotationNameBase(), association.ID())
+	return extractAssociationConf(annotations, association.AnnotationName())
 }
 
-func extractAssociationConf(annotations map[string]string, annotationNameBase string, id int) (*commonv1.AssociationConf, error) {
+func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil
 	}
-
-	annotationName := commonv1.FormatNameWithID(annotationNameBase+"%s", id)
 
 	var assocConf commonv1.AssociationConf
 	serializedConf, exists := annotations[annotationName]
@@ -212,7 +210,8 @@ func RemoveObsoleteAssociationConfs(
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
-func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, annotationNameBase string, id int) error {
+func RemoveAssociationConf(client k8s.Client, association commonv1.Association) error {
+	associated := association.Associated()
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(associated)
 	if err != nil {
@@ -223,7 +222,7 @@ func RemoveAssociationConf(client k8s.Client, associated commonv1.Associated, an
 		return nil
 	}
 
-	annotationName := commonv1.FormatNameWithID(annotationNameBase+"%s", id)
+	annotationName := association.AnnotationName()
 	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
@@ -260,8 +259,7 @@ func UpdateAssociationConf(
 		annotations = make(map[string]string)
 	}
 
-	annotationName := commonv1.FormatNameWithID(association.AssociationConfAnnotationNameBase()+"%s", association.ID())
-
+	annotationName := association.AnnotationName()
 	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
 		return err
