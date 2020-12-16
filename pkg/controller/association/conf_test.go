@@ -94,13 +94,13 @@ func testFetchAPMServer(t *testing.T) {
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
 			for _, assoc := range got.GetAssociations() {
-				switch assoc.AssociatedType() {
+				switch assoc.AssociationType() {
 				case "elasticsearch":
 					require.Equal(t, tc.wantEsAssocConf, assoc.AssociationConf())
 				case "kibana":
 					require.Equal(t, tc.wantKibanaAssocConf, assoc.AssociationConf())
 				default:
-					t.Fatalf("unknown association type: %s", assoc.AssociatedType())
+					t.Fatalf("unknown association type: %s", assoc.AssociationType())
 				}
 			}
 

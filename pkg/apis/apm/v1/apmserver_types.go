@@ -197,7 +197,7 @@ func (aes *ApmEsAssociation) AssociationConfAnnotationNameBase() string {
 	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (aes *ApmEsAssociation) AssociatedType() commonv1.AssociationType {
+func (aes *ApmEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -242,7 +242,7 @@ func (akb *ApmKibanaAssociation) AssociationConfAnnotationNameBase() string {
 	return commonv1.KibanaConfigAnnotationNameBase
 }
 
-func (akb *ApmKibanaAssociation) AssociatedType() commonv1.AssociationType {
+func (akb *ApmKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 

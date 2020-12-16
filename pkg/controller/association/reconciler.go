@@ -68,8 +68,6 @@ type AssociationInfo struct {
 	AssociationConfAnnotationNameBase string
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
-	// CASecretLabelName is the name of the label added on the Secret that contains the CA of the remote service.
-	//CASecretLabelName string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
 	ESUserRole func(commonv1.Associated) (string, error)
 	// SetDynamicWatches allows to set some specific watches.
@@ -190,7 +188,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	results := reconciler.NewResult(ctx)
 	newStatusGroup := commonv1.AssociationStatusMap{}
 	for _, association := range associations {
-		if association.AssociatedType() != r.AssociationType {
+		if association.AssociationType() != r.AssociationType {
 			// some resources have more than one type of resource associations, making sure we are looking at the right
 			// one for this controller
 			continue

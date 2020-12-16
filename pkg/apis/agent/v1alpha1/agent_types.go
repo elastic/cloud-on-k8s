@@ -195,7 +195,7 @@ func (a *AgentESAssociation) Associated() commonv1.Associated {
 	return a.Agent
 }
 
-func (a *AgentESAssociation) AssociatedType() commonv1.AssociationType {
+func (a *AgentESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 

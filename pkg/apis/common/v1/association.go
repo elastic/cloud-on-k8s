@@ -98,7 +98,7 @@ type Association interface {
 
 	// AssociatedType returns a string describing the type of the target resource (elasticsearch most of the time)
 	// It is mostly used to build some other strings depending on the type of the targeted resource.
-	AssociatedType() AssociationType
+	AssociationType() AssociationType
 
 	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
 	AssociationRef() ObjectSelector

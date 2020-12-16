@@ -82,7 +82,7 @@ func (ent *EnterpriseSearch) AssociationConfAnnotationNameBase() string {
 	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (ent *EnterpriseSearch) AssociatedType() commonv1.AssociationType {
+func (ent *EnterpriseSearch) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 

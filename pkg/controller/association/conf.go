@@ -71,7 +71,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			fmt.Sprintf("Association backend for %s is not configured", association.AssociatedType()),
+			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
 		)
 		log.Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
@@ -135,9 +135,9 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociatedType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
-				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociatedType()))
+				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
 			return false
 		}
 	}

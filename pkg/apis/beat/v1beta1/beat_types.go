@@ -232,7 +232,7 @@ func (b *BeatESAssociation) Associated() commonv1.Associated {
 	return b.Beat
 }
 
-func (b *BeatESAssociation) AssociatedType() commonv1.AssociationType {
+func (b *BeatESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -280,7 +280,7 @@ func (b *BeatKibanaAssociation) Associated() commonv1.Associated {
 	return b.Beat
 }
 
-func (b *BeatKibanaAssociation) AssociatedType() commonv1.AssociationType {
+func (b *BeatKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 

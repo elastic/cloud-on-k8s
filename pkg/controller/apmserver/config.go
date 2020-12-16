@@ -121,7 +121,7 @@ func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssoc
 		"output.elasticsearch.password": password,
 	}
 	if esAssociation.AssociationConf().GetCACertProvided() {
-		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociatedType()), certificates.CAFileName)}
+		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
@@ -145,7 +145,7 @@ func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAsso
 		"apm-server.kibana.password": password,
 	}
 	if kibanaAssociation.AssociationConf().GetCACertProvided() {
-		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociatedType()), certificates.CAFileName)}
+		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociationType()), certificates.CAFileName)}
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
