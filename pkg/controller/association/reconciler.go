@@ -183,7 +183,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	r.removeWatches(associatedKey, associations)
+	r.removeWatchesExcept(associatedKey, associations)
 
 	results := reconciler.NewResult(ctx)
 	newStatusGroup := commonv1.AssociationStatusMap{}
@@ -441,7 +441,7 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 		r.ClearDynamicWatches(associated, r.watches)
 	}
 	// remove other watches
-	r.removeWatches(associated, nil)
+	r.removeWatchesExcept(associated, nil)
 
 	// delete user Secret in the Elasticsearch namespace
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
