@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -100,6 +101,7 @@ func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
 		apmStats,
 		beatStats,
 		entStats,
+		agentStats,
 	} {
 		key, statsPart, err := f(r.client, r.managedNamespaces)
 		if err != nil {
@@ -260,10 +262,31 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 			return "", nil, err
 		}
 
-		for _, apm := range entList.Items {
+		for _, ent := range entList.Items {
 			stats[resourceCount]++
-			stats[podCount] += apm.Status.AvailableNodes
+			stats[podCount] += ent.Status.AvailableNodes
 		}
 	}
 	return "enterprisesearches", stats, nil
+}
+
+func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	multipleRefsKey := "multiple_refs"
+	stats := map[string]int32{resourceCount: 0, podCount: 0, multipleRefsKey: 0}
+
+	var agentList agentv1alpha1.AgentList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(&agentList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+
+		for _, agent := range agentList.Items {
+			stats[resourceCount]++
+			stats[podCount] += agent.Status.AvailableNodes
+			if len(agent.Spec.ElasticsearchRefs) > 1 {
+				stats[multipleRefsKey]++
+			}
+		}
+	}
+	return "agents", stats, nil
 }
