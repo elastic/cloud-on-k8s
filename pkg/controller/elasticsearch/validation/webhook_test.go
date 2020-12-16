@@ -43,6 +43,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 	}{
 		{
 			name: "accept valid creation",
+			fields: fields{
+				client: k8s.WrappedFakeClient(),
+			},
 			args: args{
 				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
 					Operation: v1beta1.Create,
@@ -58,6 +61,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		},
 		{
 			name: "reject invalid creation (no version provided)",
+			fields: fields{
+				client: k8s.WrappedFakeClient(),
+			},
 			args: args{
 				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
 					Operation: v1beta1.Create,

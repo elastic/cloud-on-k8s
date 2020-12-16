@@ -53,7 +53,7 @@ func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 
 func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(es)
+	return ValidateElasticsearch(wh.client, es)
 }
 
 func (wh *validatingWebhook) validateUpdate(old esv1.Elasticsearch, new esv1.Elasticsearch) error {
@@ -70,7 +70,7 @@ func (wh *validatingWebhook) validateUpdate(old esv1.Elasticsearch, new esv1.Ela
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			new.Name, errs)
 	}
-	return ValidateElasticsearch(new)
+	return ValidateElasticsearch(wh.client, new)
 }
 
 func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {
@@ -103,8 +103,8 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 	return admission.Allowed("")
 }
 
-func ValidateElasticsearch(es esv1.Elasticsearch) error {
-	errs := check(es, validations)
+func ValidateElasticsearch(k8sClient k8s.Client, es esv1.Elasticsearch) error {
+	errs := check(es, createValidations(k8sClient))
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},

@@ -457,3 +457,47 @@ func es(v string) esv1.Elasticsearch {
 		Spec: esv1.ElasticsearchSpec{Version: v},
 	}
 }
+
+func Test_validVolumeClaimDeletePolicy(t *testing.T) {
+
+	esFixture := func(policyValue string) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "foo",
+			},
+			Spec: esv1.ElasticsearchSpec{VolumeClaimDeletePolicy: esv1.VolumeClaimDeletePolicy(policyValue)},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name:         "NOK: invalid policy",
+			es:           esFixture("blah"),
+			expectErrors: true,
+		},
+		{
+			name:         "OK: empty policy",
+			es:           esFixture(""),
+			expectErrors: false,
+		},
+		{
+			name:         "OK: valid policy",
+			es:           esFixture("Retain"),
+			expectErrors: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := validVolumeClaimDeletePolicy(tt.es)
+			gotErrors := len(got) > 0
+			if tt.expectErrors != gotErrors {
+				t.Errorf("failed validVolumeClaimDeletePolicy. Name %s, wantedErrs: %v, actual: %s, value: %s", tt.name, tt.expectErrors, got, tt.es.Spec.VolumeClaimDeletePolicy)
+			}
+		})
+	}
+}

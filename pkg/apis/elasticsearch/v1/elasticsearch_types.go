@@ -66,6 +66,30 @@ type ElasticsearchSpec struct {
 	// RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 	// +optional
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
+
+	// VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
+	// Defaults to RemoveOnScaleDownPolicy.
+	// +kubebuilder:validation:Optional
+	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
+}
+
+//VolumeClaimDeletePolicy describes the policy for handling PersistentVolumeClaims that hold Elasticsearch data.
+type VolumeClaimDeletePolicy string
+
+const (
+	//RemoveOnScaleDownPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is scaled down.
+	RemoveOnScaleDownPolicy VolumeClaimDeletePolicy = "RemoveOnScaleDown"
+	//RemoveOnClusterDeletionPolicy remove all PersistentVolumeClaims when the corresponding Elasticsearch cluster is deleted.
+	RemoveOnClusterDeletionPolicy VolumeClaimDeletePolicy = "RemoveOnClusterDeletion"
+	//RetainPolicy retain all PersistenVolumeClaims even after the corresponding Elasticsearch cluster has been deleted.
+	RetainPolicy VolumeClaimDeletePolicy = "Retain"
+)
+
+var ValidVolumeClaimDeletePolicies = map[VolumeClaimDeletePolicy]struct{}{
+	RemoveOnScaleDownPolicy:       {},
+	RemoveOnClusterDeletionPolicy: {},
+	RetainPolicy:                  {},
+	VolumeClaimDeletePolicy(""):   {}, // empty value is valid and will be interpreted as default i.e RemoveOnScaleDown
 }
 
 // TransportConfig holds the transport layer settings for Elasticsearch.
@@ -100,6 +124,13 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 		count += topoElem.Count
 	}
 	return count
+}
+
+func (es ElasticsearchSpec) VolumeClaimDeletePolicyOrDefault() VolumeClaimDeletePolicy {
+	if es.VolumeClaimDeletePolicy == "" {
+		return RemoveOnScaleDownPolicy
+	}
+	return es.VolumeClaimDeletePolicy
 }
 
 // Auth contains user authentication and authorization security settings for Elasticsearch.

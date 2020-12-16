@@ -141,6 +141,7 @@ func setVolumeClaimsControllerReference(
 	existingClaims []corev1.PersistentVolumeClaim,
 	es esv1.Elasticsearch,
 ) ([]corev1.PersistentVolumeClaim, error) {
+	deletePolicy := es.Spec.VolumeClaimDeletePolicyOrDefault()
 	// set the owner reference of all volume claims to the ES resource,
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
@@ -157,6 +158,16 @@ func setVolumeClaimsControllerReference(
 			// from being garbage collected as expected.
 			claim.OwnerReferences = existingClaim.OwnerReferences
 
+			claims = append(claims, claim)
+			continue
+		}
+
+		// TODO we can skip the whole setting of ownerReferences for the retain case if we can make sure via validation
+		//  that there will be no policy change. Right now the code just above makes sure that no errors occur on policy
+		//  change caused by violations of the immutability of the podTemplate in ssets. But this hides a class of errors where
+		//  users think they switched to a Retain strategy but in fact their volumes will still be deleted.
+		// Do not set an owner reference if the volume claim delete policy instructs to retain the volume.
+		if deletePolicy == esv1.RetainPolicy {
 			claims = append(claims, claim)
 			continue
 		}

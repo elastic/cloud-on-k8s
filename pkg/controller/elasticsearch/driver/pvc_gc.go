@@ -27,6 +27,11 @@ func GarbageCollectPVCs(
 	actualStatefulSets sset.StatefulSetList,
 	expectedStatefulSets sset.StatefulSetList,
 ) error {
+	// Only garbage collect if RemoveOnScaleDown is configured. RemoveOnClusterDeletion will be handled by k8s garbage
+	// collector via OwnerReferences. RetainPolicy forbids garbage collection.
+	if es.Spec.VolumeClaimDeletePolicyOrDefault() != esv1.RemoveOnScaleDownPolicy {
+		return nil
+	}
 	// PVCs are using the same labels as their corresponding StatefulSet, so we can filter on ES cluster name.
 	var pvcs corev1.PersistentVolumeClaimList
 	ns := client.InNamespace(es.Namespace)

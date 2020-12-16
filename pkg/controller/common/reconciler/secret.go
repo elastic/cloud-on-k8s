@@ -117,7 +117,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner r
 				// or if secret data is not strictly equal
 				!reflect.DeepEqual(expected.Data, reconciled.Data) ||
 				// or if an existing owner should be removed
-				hasOwner(&reconciled, ownerMeta)
+				k8s.HasOwner(&reconciled, ownerMeta)
 		},
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones
@@ -126,7 +126,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner r
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 			// remove existing owner
-			removeOwner(&reconciled, ownerMeta)
+			k8s.RemoveOwner(&reconciled, ownerMeta)
 		},
 	}); err != nil {
 		return corev1.Secret{}, err
@@ -219,39 +219,4 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 		// owner still exists, keep the secret
 	}
 	return nil
-}
-
-func hasOwner(resource metav1.Object, owner metav1.Object) bool {
-	if owner == nil || resource == nil {
-		return false
-	}
-	found, _ := findOwner(resource, owner)
-	return found
-}
-
-func removeOwner(resource metav1.Object, owner metav1.Object) {
-	if resource == nil || owner == nil {
-		return
-	}
-	found, index := findOwner(resource, owner)
-	if !found {
-		return
-	}
-	owners := resource.GetOwnerReferences()
-	// remove the owner at index i from the slice
-	newOwners := append(owners[:index], owners[index+1:]...)
-	resource.SetOwnerReferences(newOwners)
-}
-
-func findOwner(resource metav1.Object, owner metav1.Object) (found bool, index int) {
-	if owner == nil || resource == nil {
-		return false, 0
-	}
-	ownerRefs := resource.GetOwnerReferences()
-	for i := range ownerRefs {
-		if ownerRefs[i].Name == owner.GetName() && ownerRefs[i].UID == owner.GetUID() {
-			return true, i
-		}
-	}
-	return false, 0
 }
