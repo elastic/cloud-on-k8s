@@ -178,7 +178,6 @@ func extractAssociationConf(annotations map[string]string, annotationNameBase st
 func RemoveObsoleteAssociationConfs(
 	client k8s.Client,
 	associated commonv1.Associated,
-	associations []commonv1.Association,
 	associationConfAnnotationNameBase string,
 ) error {
 	accessor := meta.NewAccessor()
@@ -188,7 +187,7 @@ func RemoveObsoleteAssociationConfs(
 	}
 
 	expected := make(map[string]bool)
-	for _, association := range associations {
+	for _, association := range associated.GetAssociations() {
 		key := commonv1.FormatNameWithID(associationConfAnnotationNameBase+"%s", association.ID())
 		expected[key] = true
 	}
