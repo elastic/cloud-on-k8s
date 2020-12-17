@@ -252,8 +252,8 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	b.esAssocConf = conf
 }
 
-func (b *BeatESAssociation) ID() int {
-	return 0
+func (b *BeatESAssociation) ID() string {
+	return ""
 }
 
 type BeatKibanaAssociation struct {
@@ -292,8 +292,8 @@ func (b *BeatKibanaAssociation) AnnotationName() string {
 	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", b.ID())
 }
 
-func (b *BeatKibanaAssociation) ID() int {
-	return 0
+func (b *BeatKibanaAssociation) ID() string {
+	return ""
 }
 
 func (b *Beat) SecureSettings() []commonv1.SecretSource {

@@ -7,7 +7,6 @@ package association
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -56,7 +55,7 @@ func (r *Reconciler) setUserAndCaWatches(
 ) error {
 	associatedKey := k8s.ExtractNamespacedName(association)
 
-	id := strconv.Itoa(association.ID())
+	id := association.ID()
 
 	// watch the referenced ES cluster for future reconciliations
 	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
@@ -115,7 +114,7 @@ func RemoveWatchesForDynamicRequest(
 ) {
 	lookup := make(map[string]bool)
 	for _, assoc := range toKeep {
-		lookup[fmt.Sprintf("%d", assoc.ID())] = true
+		lookup[assoc.ID()] = true
 	}
 
 	for _, key := range dynamicRequest.Registrations() {

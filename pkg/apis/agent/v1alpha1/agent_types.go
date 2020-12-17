@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -179,8 +181,9 @@ type AgentESAssociation struct {
 	associationID int `json:"-"` // nolint:govet
 }
 
-func (a *AgentESAssociation) ID() int {
-	return a.associationID
+func (a *AgentESAssociation) ID() string {
+	nsName := a.AssociationRef().NamespacedName()
+	return fmt.Sprintf("%s-%s", nsName.Namespace, nsName.Name)
 }
 
 var _ commonv1.Association = &AgentESAssociation{}

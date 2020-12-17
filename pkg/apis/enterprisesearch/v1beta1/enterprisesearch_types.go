@@ -110,8 +110,8 @@ func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	return associations
 }
 
-func (ent *EnterpriseSearch) ID() int {
-	return 0
+func (ent *EnterpriseSearch) ID() string {
+	return ""
 }
 
 func (ent *EnterpriseSearch) SetAssociationStatusMap(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {

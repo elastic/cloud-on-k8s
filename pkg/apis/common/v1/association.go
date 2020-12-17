@@ -127,26 +127,25 @@ type Association interface {
 	SetAssociationConf(*AssociationConf)
 
 	// ID allows to distinguish between many associations of the same type
-	ID() int
+	ID() string
 }
 
 // FormatNameWithID conditionally formats `template`. `template` is expected to have
-// a single %s verb. If `id` is 0, the %s verb will be formatted with empty string. Otherwise %s verb will be
-// replaced with `-ordinal` where ordinal is `id`+1. Eg.:
-// FormatNameWithID("name%s", 0) returns "name"
-// FormatNameWithID("name%s", 1) returns "name-2"
-// FormatNameWithID("name%s", 2) returns "name-3"
+// a single %s verb. If `id` is empty, the %s verb will be formatted with empty string. Otherwise %s verb will be
+// replaced with `-id`.
+// FormatNameWithID("name%s", "") returns "name"
+// FormatNameWithID("name%s", "ns1-es1") returns "name-ns1-es2"
+// FormatNameWithID("name%s", "ns2-es2") returns "name-ns2-es2"
 // This function can be used to format names for objects differing only by id, that would otherwise collide. It allows
-// to preserve current naming for object types with a single id and introduce object types with unbounded number of ids.
-func FormatNameWithID(template string, id int) string {
-	idString := ""
-	if id > 0 {
-		// we want names to be changed only all but first id. When appending the id, we want it to start from 2, so user
-		// sees "name", "name-2", "name-3", etc.
-		idString = fmt.Sprintf("-%d", id+1)
+// to preserve current naming for object types with a single instance and introduce object types with unbounded number of ids.
+func FormatNameWithID(template string, id string) string {
+	if id != "" {
+		// we want names to be changed only all but first id. When appending the id, we want to append it only if
+		// it's not empty
+		id = fmt.Sprintf("-%s", id)
 	}
 
-	return fmt.Sprintf(template, idString)
+	return fmt.Sprintf(template, id)
 }
 
 // AssociationConf holds the association configuration of a referenced resource in an association.

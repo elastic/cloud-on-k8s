@@ -153,8 +153,8 @@ type Kibana struct {
 	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
 }
 
-func (k *Kibana) ID() int {
-	return 0
+func (k *Kibana) ID() string {
+	return ""
 }
 
 // +kubebuilder:object:root=true

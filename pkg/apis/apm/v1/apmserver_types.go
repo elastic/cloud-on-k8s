@@ -213,8 +213,8 @@ func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationC
 	aes.esAssocConf = assocConf
 }
 
-func (aes *ApmEsAssociation) ID() int {
-	return 0
+func (aes *ApmEsAssociation) ID() string {
+	return ""
 }
 
 var _ commonv1.Association = &ApmKibanaAssociation{}
@@ -262,8 +262,8 @@ func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.Associat
 	akb.kibanaAssocConf = assocConf
 }
 
-func (akb *ApmKibanaAssociation) ID() int {
-	return 0
+func (akb *ApmKibanaAssociation) ID() string {
+	return ""
 }
 
 var _ commonv1.Associated = &ApmServer{}
