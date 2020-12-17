@@ -96,14 +96,14 @@ type Association interface {
 	// Associated can be used to retrieve the associated object
 	Associated() Associated
 
-	// AssociatedType returns a string describing the type of the target resource (elasticsearch most of the time)
+	// AssociationType returns a string describing the type of the target resource (elasticsearch most of the time)
 	// It is mostly used to build some other strings depending on the type of the targeted resource.
 	AssociationType() AssociationType
 
 	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
 	AssociationRef() ObjectSelector
 
-	// AssociationConfAnnotationNameBase is the name of the annotation used to define the config for the associated resource.
+	// AnnotationName is the name of the annotation used to define the config for the associated resource.
 	// It is used by the association controller to store the configuration and by the controller which is
 	// managing the associated resource to build the appropriate configuration.
 	AnnotationName() string
