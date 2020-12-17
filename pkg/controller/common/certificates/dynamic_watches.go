@@ -18,18 +18,27 @@ func CertificateWatchKey(namer name.Namer, ownerName string) string {
 
 // reconcileDynamicWatches reconciles the dynamic watches needed by the HTTP certificates.
 func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, owner types.NamespacedName, namer name.Namer, tls commonv1.TLSOptions) error {
+	return ReconcileCustomCertWatch(dynamicWatches, CertificateWatchKey(namer, owner.Name), owner, tls.Certificate)
+}
+
+func ReconcileCustomCertWatch(
+	dynamicWatches watches.DynamicWatches,
+	watchKey string,
+	owner types.NamespacedName,
+	tlsSecret commonv1.SecretRef,
+) error {
 	// watch the Secret specified in es.Spec.HTTP.TLS.Certificate because if it changes we should reconcile the new
 	// user provided certificates.
 	httpCertificateWatch := watches.NamedWatch{
-		Name: CertificateWatchKey(namer, owner.Name),
+		Name: watchKey,
 		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,
-			Name:      tls.Certificate.SecretName,
+			Name:      tlsSecret.SecretName,
 		}},
 		Watcher: owner,
 	}
 
-	if tls.Certificate.SecretName != "" {
+	if tlsSecret.SecretName != "" {
 		if err := dynamicWatches.Secrets.AddHandler(httpCertificateWatch); err != nil {
 			return err
 		}

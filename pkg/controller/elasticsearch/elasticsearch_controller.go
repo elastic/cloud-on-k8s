@@ -8,6 +8,8 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -320,6 +322,7 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es, esv1.Kind)

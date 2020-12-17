@@ -79,12 +79,10 @@ func Reconcile(
 	}
 
 	// reconcile transport CA and certs
-	transportCA, err := certificates.ReconcileCAForOwner(
-		driver.K8sClient(),
-		esv1.ESNamer,
-		&es,
+	transportCA, err := transport.ReconcileOrRetrieveCA(
+		driver,
+		es,
 		certsLabels,
-		certificates.TransportCAType,
 		caRotation,
 	)
 	if err != nil {
