@@ -123,10 +123,9 @@ func (ent *EnterpriseSearch) SetAssociationStatusMap(_ commonv1.AssociationType,
 	return nil
 }
 
-func (ent *EnterpriseSearch) AssociationStatusMap(associationType commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if ent.Spec.ElasticsearchRef.IsDefined() {
-		nsName := ent.Spec.ElasticsearchRef.NamespacedName().String()
-		return commonv1.NewAssociationStatusMap(nsName, ent.Status.Association)
+func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	if typ == commonv1.ElasticsearchAssociationType && ent.Spec.ElasticsearchRef.IsDefined() {
+		return commonv1.NewAssociationStatusMap(ent.Spec.ElasticsearchRef.WithDefaultNamespace(ent.Namespace), ent.Status.Association)
 	}
 
 	return commonv1.AssociationStatusMap{}

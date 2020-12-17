@@ -21,27 +21,40 @@ type AssociationStatus string
 // AssociationStatusMap is the map of association to its AssociationStatus
 type AssociationStatusMap map[string]AssociationStatus
 
-func NewAssociationStatusMap(nsName string, status AssociationStatus) AssociationStatusMap {
+func NewAssociationStatusMap(selector ObjectSelector, status AssociationStatus) AssociationStatusMap {
 	return map[string]AssociationStatus{
-		nsName: status,
+		selector.NamespacedName().String(): status,
 	}
 }
 
-func (asg AssociationStatusMap) Single() (AssociationStatus, error) {
-	if len(asg) > 1 {
-		return "", fmt.Errorf("expected at most one key-value but found %d", len(asg))
+func (asm AssociationStatusMap) String() string {
+	var i int
+	var sb strings.Builder
+	for key, value := range asm {
+		i++
+		sb.WriteString(key + ": " + string(value))
+		if len(asm) != i {
+			sb.WriteString(", ")
+		}
+	}
+	return sb.String()
+}
+
+func (asm AssociationStatusMap) Single() (AssociationStatus, error) {
+	if len(asm) > 1 {
+		return "", fmt.Errorf("expected at most one key-value but found %d", len(asm))
 	}
 
 	var result AssociationStatus
-	for _, status := range asg {
+	for _, status := range asm {
 		result = status
 	}
 	return result, nil
 }
 
-func (asg AssociationStatusMap) Aggregate() AssociationStatus {
+func (asm AssociationStatusMap) Aggregate() AssociationStatus {
 	worst := AssociationUnknown
-	for _, status := range asg {
+	for _, status := range asm {
 		switch status {
 		case AssociationEstablished:
 			if worst == AssociationUnknown {
@@ -86,7 +99,7 @@ type Associated interface {
 	ServiceAccountName() string
 	GetAssociations() []Association
 	AssociationStatusMap(typ AssociationType) AssociationStatusMap
-	SetAssociationStatusMap(typ AssociationType, statusGroup AssociationStatusMap) error
+	SetAssociationStatusMap(typ AssociationType, statusMap AssociationStatusMap) error
 }
 
 // Association interface helps to manage the Spec fields involved in an association.

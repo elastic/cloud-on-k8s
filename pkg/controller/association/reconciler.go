@@ -186,7 +186,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	r.removeWatchesExcept(associatedKey, associations)
 
 	results := reconciler.NewResult(ctx)
-	newStatusGroup := commonv1.AssociationStatusMap{}
+	newStatusMap := commonv1.AssociationStatusMap{}
 	for _, association := range associations {
 		if association.AssociationType() != r.AssociationType {
 			// some resources have more than one type of resource associations, making sure we are looking at the right
@@ -199,16 +199,16 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 			results.WithError(err)
 		}
 
-		newStatusGroup[association.AssociationRef().NamespacedName().String()] = newStatus
+		newStatusMap[association.AssociationRef().NamespacedName().String()] = newStatus
 	}
 
 	// we want to attempt a status update even in the presence of errors
-	if err := r.updateStatus(ctx, associated, newStatusGroup); err != nil {
+	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil {
 		return defaultRequeue, tracing.CaptureError(ctx, err)
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).
-		WithResult(resultFromStatuses(newStatusGroup)).
+		WithResult(resultFromStatuses(newStatusMap)).
 		Aggregate()
 }
 
@@ -410,8 +410,8 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	return nil
 }
 
-func resultFromStatuses(statusGroup commonv1.AssociationStatusMap) reconcile.Result {
-	for _, status := range statusGroup {
+func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Result {
+	for _, status := range statusMap {
 		if status == commonv1.AssociationPending {
 			return defaultRequeue // retry
 		}
