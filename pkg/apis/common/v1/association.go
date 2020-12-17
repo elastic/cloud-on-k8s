@@ -112,7 +112,7 @@ type Association interface {
 	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
 
-	// Id allows to distinguish between many associations of the same type
+	// ID allows to distinguish between many associations of the same type
 	ID() int
 }
 
