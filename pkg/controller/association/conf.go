@@ -173,6 +173,8 @@ func extractAssociationConf(annotations map[string]string, annotationName string
 	return &assocConf, nil
 }
 
+// RemoveObsoleteAssociationConfs removes all no longer needed annotations on `associated` matching
+// `associationConfAnnotationNameBase` prefix.
 func RemoveObsoleteAssociationConfs(
 	client k8s.Client,
 	associated commonv1.Associated,

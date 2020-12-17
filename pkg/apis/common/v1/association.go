@@ -117,6 +117,14 @@ type Association interface {
 	ID() int
 }
 
+// FormatNameWithID conditionally formats `template`. `template` is expected to have
+// a single %s verb. If `id` is 0, the %s verb will be formatted with empty string. Otherwise %s verb will be
+// replaced with `-ordinal` where ordinal is `id`+1. Eg.:
+// FormatNameWithID("name%s", 0) returns "name"
+// FormatNameWithID("name%s", 1) returns "name-2"
+// FormatNameWithID("name%s", 2) returns "name-3"
+// This function can be used to format names for objects differing only by id, that would otherwise collide. It allows
+// to preserve current naming for object types with a single id and introduce object types with unbounded number of ids.
 func FormatNameWithID(template string, id int) string {
 	idString := ""
 	if id > 0 {
