@@ -99,20 +99,22 @@ func (r *Reconciler) setUserAndCaWatches(
 func (r *Reconciler) removeWatchesExcept(associated types.NamespacedName, existing []commonv1.Association) {
 	// - ES resource
 	RemoveWatchesForDynamicRequest(associated, existing, esWatchNameRegexp, r.watches.ElasticsearchClusters)
-	// - ES CA Secret in the ES namespace
-	RemoveWatchesForDynamicRequest(associated, existing, associatedCAWatchNameRegexp, r.watches.Secrets)
 	// - user in the ES namespace
 	RemoveWatchesForDynamicRequest(associated, existing, esUserWatchNameRegexp, r.watches.Secrets)
+	// - ES CA Secret in the ES namespace
+	RemoveWatchesForDynamicRequest(associated, existing, associatedCAWatchNameRegexp, r.watches.Secrets)
 }
 
+// RemoveWatchesForDynamicRequest removes handlers in `dynamicRequest`. Handlers to remove are selected based
+// on `regexp` and `associated`. Handlers related to any Association in `toKeep` won't be removed.
 func RemoveWatchesForDynamicRequest(
 	associated types.NamespacedName,
-	existing []commonv1.Association,
+	toKeep []commonv1.Association,
 	re *regexp.Regexp,
 	dynamicRequest *watches.DynamicEnqueueRequest,
 ) {
 	lookup := make(map[string]bool)
-	for _, assoc := range existing {
+	for _, assoc := range toKeep {
 		lookup[fmt.Sprintf("%d", assoc.ID())] = true
 	}
 
