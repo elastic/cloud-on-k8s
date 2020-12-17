@@ -7,13 +7,12 @@ package agent
 import (
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSystemIntegrationConfig(t *testing.T) {
