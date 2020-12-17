@@ -128,30 +128,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "Do not override existing keys",
-			args: args{
-				c: k8s.WrappedFakeClient(
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
-						Data: map[string][]byte{
-							ConfigFilename: []byte(existingConfigWithReusableSettings),
-						},
-					},
-				),
-				ent: entv1beta1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
-				},
-			},
-			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
-				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
-					SecretSessionSetting:  "alreadysetsessionkey",
-					EncryptionKeysSetting: []string{"alreadysetencryptionkey1", "alreadysetencryptionkey2"},
-				})
-				assert.Equal(t, expectedSettings, got)
-			},
-		},
-		{
-			name: "Do not override existing encryption keys, create missing session key",
+			name: "Generate session key and encryption key when missing",
 			args: args{
 				c: k8s.WrappedFakeClient(
 					&corev1.Secret{
@@ -175,13 +152,13 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 		},
 		{
-			name: "Create missing keys",
+			name: "Reuse existing session key, and first operator-managed encryption key",
 			args: args{
 				c: k8s.WrappedFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
 						Data: map[string][]byte{
-							ConfigFilename: []byte(existingConfig),
+							ConfigFilename: []byte(existingConfigWithReusableSettings),
 						},
 					},
 				),
@@ -190,29 +167,12 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
-				// Unpack the configuration to check that some default reusable settings have been generated
-				var e reusableSettings
-				assert.NoError(t, got.Unpack(&e))
-				assert.Equal(t, len(e.EncryptionKeys), 1)     // We set 1 encryption key by default
-				assert.Equal(t, len(e.EncryptionKeys[0]), 32) // encryption key length should be 32
-				assert.Equal(t, len(e.SecretSession), 32)     // session key length should be 32
-			},
-		},
-		{
-			name: "No configuration to reuse",
-			args: args{
-				c: k8s.WrappedFakeClient(),
-				ent: entv1beta1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
-				},
-			},
-			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
-				// Unpack the configuration to check that some default reusable settings have been generated
-				var e reusableSettings
-				assert.NoError(t, got.Unpack(&e))
-				assert.Equal(t, len(e.EncryptionKeys), 1)     // We set 1 encryption key by default
-				assert.Equal(t, len(e.EncryptionKeys[0]), 32) // encryption key length should be 32
-				assert.Equal(t, len(e.SecretSession), 32)     // session key length should be 32
+				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
+					SecretSessionSetting: "alreadysetsessionkey",
+					// we don't want "user-provided-encryption-key" here
+					EncryptionKeysSetting: []string{"operator-managed-encryption-key"},
+				})
+				assert.Equal(t, expectedSettings, got)
 			},
 		},
 	}
@@ -565,6 +525,168 @@ func TestReconcileConfig(t *testing.T) {
 			err = driver.K8sClient().Get(k8s.ExtractNamespacedName(&got), &updatedResource)
 			assert.NoError(t, err)
 			assert.Equal(t, got.Data, updatedResource.Data)
+		})
+	}
+}
+
+func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
+	tests := []struct {
+		name        string
+		runtimeObjs []runtime.Object
+		ent         entv1beta1.EnterpriseSearch
+		assertions  func(t *testing.T, settings reusableSettings)
+	}{
+		{
+			name:        "generate default session key and encryption key",
+			runtimeObjs: nil,
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+				},
+			},
+			assertions: func(t *testing.T, settings reusableSettings) {
+				require.NotEmpty(t, settings.SecretSession)
+				require.Len(t, settings.EncryptionKeys, 1)
+				require.NotEmpty(t, settings.EncryptionKeys[0])
+			},
+		},
+		{
+			name: "generate defaults, append user-provided encryption keys",
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"secret_management": map[string]interface{}{
+							"encryption_keys": []string{
+								"user-provided-key-1",
+								"user-provided-key-2",
+							},
+						},
+					}},
+				},
+			},
+			assertions: func(t *testing.T, settings reusableSettings) {
+				require.NotEmpty(t, settings.SecretSession)
+				require.Len(t, settings.EncryptionKeys, 3)
+				require.NotEmpty(t, settings.EncryptionKeys[0])
+				require.Equal(t, "user-provided-key-1", settings.EncryptionKeys[1])
+				require.Equal(t, "user-provided-key-2", settings.EncryptionKeys[2])
+			},
+		},
+		{
+			name: "reuse existing generated keys, append user-provided encryption keys",
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"secret_management": map[string]interface{}{
+							"encryption_keys": []string{
+								"user-provided-key-1",
+								"user-provided-key-2",
+							},
+						},
+					}},
+				},
+			},
+			runtimeObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-config",
+					},
+					Data: map[string][]byte{
+						"enterprise-search.yml": []byte(`
+secret_management:
+ encryption_keys:
+ - operator-managed-encryption-key
+secret_session_key: alreadysetsessionkey
+`),
+					},
+				},
+			},
+			assertions: func(t *testing.T, settings reusableSettings) {
+				require.Equal(t, "alreadysetsessionkey", settings.SecretSession)
+				require.Len(t, settings.EncryptionKeys, 3)
+				require.Equal(t, "operator-managed-encryption-key", settings.EncryptionKeys[0])
+				require.Equal(t, "user-provided-key-1", settings.EncryptionKeys[1])
+				require.Equal(t, "user-provided-key-2", settings.EncryptionKeys[2])
+			},
+		},
+		{
+			name: "reuse only the first operator-managed encryption key",
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					Version: "7.9.1",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"secret_management": map[string]interface{}{
+							"encryption_keys": []string{
+								"user-provided-key-1", // already exists in the secret
+								"user-provided-key-2", // already exists in the secret
+								"user-provided-key-3", // new one
+							},
+						},
+					}},
+				},
+			},
+			runtimeObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-config",
+					},
+					Data: map[string][]byte{
+						"enterprise-search.yml": []byte(`
+secret_management:
+ encryption_keys:
+ - operator-managed-encryption-key
+ - user-provided-key-1
+ - user-provided-key-2
+secret_session_key: alreadysetsessionkey
+`),
+					},
+				},
+			},
+			assertions: func(t *testing.T, settings reusableSettings) {
+				require.Equal(t, "alreadysetsessionkey", settings.SecretSession)
+				require.Len(t, settings.EncryptionKeys, 4)
+				require.Equal(t, "operator-managed-encryption-key", settings.EncryptionKeys[0])
+				require.Equal(t, "user-provided-key-1", settings.EncryptionKeys[1])
+				require.Equal(t, "user-provided-key-2", settings.EncryptionKeys[2])
+				require.Equal(t, "user-provided-key-3", settings.EncryptionKeys[3])
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			driver := &ReconcileEnterpriseSearch{
+				Client:         k8s.WrappedFakeClient(tt.runtimeObjs...),
+				recorder:       record.NewFakeRecorder(10),
+				dynamicWatches: watches.NewDynamicWatches(),
+			}
+
+			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
+			require.NoError(t, err)
+			cfg, err := settings.ParseConfig(got.Data["enterprise-search.yml"])
+			require.NoError(t, err)
+			var reusable reusableSettings
+			require.NoError(t, cfg.Unpack(&reusable))
+			tt.assertions(t, reusable)
 		})
 	}
 }
