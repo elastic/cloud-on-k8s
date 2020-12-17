@@ -114,7 +114,7 @@ func (ent *EnterpriseSearch) ID() int {
 	return 0
 }
 
-func (ent *EnterpriseSearch) SetAssociationStatusGroup(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+func (ent *EnterpriseSearch) SetAssociationStatusMap(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	single, err := status.Single()
 	if err != nil {
 		return err
@@ -123,10 +123,10 @@ func (ent *EnterpriseSearch) SetAssociationStatusGroup(_ commonv1.AssociationTyp
 	return nil
 }
 
-func (ent *EnterpriseSearch) AssociationStatusGroup(associationType commonv1.AssociationType) commonv1.AssociationStatusMap {
+func (ent *EnterpriseSearch) AssociationStatusMap(associationType commonv1.AssociationType) commonv1.AssociationStatusMap {
 	if ent.Spec.ElasticsearchRef.IsDefined() {
 		nsName := ent.Spec.ElasticsearchRef.NamespacedName().String()
-		return commonv1.NewAssociationStatusGroup(nsName, ent.Status.Association)
+		return commonv1.NewAssociationStatusMap(nsName, ent.Status.Association)
 	}
 
 	return commonv1.AssociationStatusMap{}

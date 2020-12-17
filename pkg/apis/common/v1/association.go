@@ -20,7 +20,7 @@ type AssociationStatus string
 // AssociationStatusMap is the map of association to its AssociationStatus
 type AssociationStatusMap map[string]AssociationStatus
 
-func NewAssociationStatusGroup(nsName string, status AssociationStatus) AssociationStatusMap {
+func NewAssociationStatusMap(nsName string, status AssociationStatus) AssociationStatusMap {
 	return map[string]AssociationStatus{
 		nsName: status,
 	}
@@ -84,8 +84,8 @@ type Associated interface {
 	runtime.Object
 	ServiceAccountName() string
 	GetAssociations() []Association
-	AssociationStatusGroup(typ AssociationType) AssociationStatusMap
-	SetAssociationStatusGroup(typ AssociationType, statusGroup AssociationStatusMap) error
+	AssociationStatusMap(typ AssociationType) AssociationStatusMap
+	SetAssociationStatusMap(typ AssociationType, statusGroup AssociationStatusMap) error
 }
 
 // Association interface helps to manage the Spec fields involved in an association.

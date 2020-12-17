@@ -13,7 +13,7 @@ import (
 func CalculateHealth(associations []v1.Association, ready, desired int32) beatv1beta1.BeatHealth {
 	for _, assoc := range associations {
 		if assoc.AssociationConf().IsConfigured() &&
-			assoc.AssociationStatusGroup(assoc.AssociationType()).Aggregate() != v1.AssociationEstablished {
+			assoc.AssociationStatusMap(assoc.AssociationType()).Aggregate() != v1.AssociationEstablished {
 			return beatv1beta1.BeatRedHealth
 		}
 	}

@@ -165,11 +165,11 @@ func (a *Agent) IsMarkedForDeletion() bool {
 	return !a.DeletionTimestamp.IsZero()
 }
 
-func (a *Agent) AssociationStatusGroup(_ commonv1.AssociationType) commonv1.AssociationStatusMap {
+func (a *Agent) AssociationStatusMap(_ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	return a.Status.ElasticsearchAssociationsStatus
 }
 
-func (a *Agent) SetAssociationStatusGroup(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+func (a *Agent) SetAssociationStatusMap(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	a.Status.ElasticsearchAssociationsStatus = status
 	return nil
 }

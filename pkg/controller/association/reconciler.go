@@ -388,9 +388,9 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	span, _ := apm.StartSpan(ctx, "update_association_status", tracing.SpanTypeApp)
 	defer span.End()
 
-	oldStatus := associated.AssociationStatusGroup(r.AssociationType)
+	oldStatus := associated.AssociationStatusMap(r.AssociationType)
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		if err := associated.SetAssociationStatusGroup(r.AssociationType, newStatus); err != nil {
+		if err := associated.SetAssociationStatusMap(r.AssociationType, newStatus); err != nil {
 			return err
 		}
 		if err := r.Status().Update(associated); err != nil {

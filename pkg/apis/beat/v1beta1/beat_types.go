@@ -151,22 +151,22 @@ type Beat struct {
 	kbAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
-func (b *Beat) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
 		if b.Spec.ElasticsearchRef.IsDefined() {
-			return commonv1.NewAssociationStatusGroup(b.Spec.ElasticsearchRef.NamespacedName().String(), b.Status.ElasticsearchAssociationStatus)
+			return commonv1.NewAssociationStatusMap(b.Spec.ElasticsearchRef.NamespacedName().String(), b.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
 		if b.Spec.KibanaRef.IsDefined() {
-			return commonv1.NewAssociationStatusGroup(b.Spec.KibanaRef.NamespacedName().String(), b.Status.KibanaAssociationStatus)
+			return commonv1.NewAssociationStatusMap(b.Spec.KibanaRef.NamespacedName().String(), b.Status.KibanaAssociationStatus)
 		}
 	}
 
 	return commonv1.AssociationStatusMap{}
 }
 
-func (b *Beat) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	single, err := status.Single()
 	if err != nil {
 		return err

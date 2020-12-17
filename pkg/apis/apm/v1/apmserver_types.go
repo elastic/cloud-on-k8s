@@ -139,22 +139,22 @@ func (as *ApmServer) GetAssociations() []commonv1.Association {
 	return associations
 }
 
-func (as *ApmServer) AssociationStatusGroup(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+func (as *ApmServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
 		if as.Spec.ElasticsearchRef.IsDefined() {
-			return commonv1.NewAssociationStatusGroup(as.Spec.ElasticsearchRef.NamespacedName().String(), as.Status.ElasticsearchAssociationStatus)
+			return commonv1.NewAssociationStatusMap(as.Spec.ElasticsearchRef.NamespacedName().String(), as.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
 		if as.Spec.KibanaRef.IsDefined() {
-			return commonv1.NewAssociationStatusGroup(as.Spec.KibanaRef.NamespacedName().String(), as.Status.KibanaAssociationStatus)
+			return commonv1.NewAssociationStatusMap(as.Spec.KibanaRef.NamespacedName().String(), as.Status.KibanaAssociationStatus)
 		}
 	}
 
 	return commonv1.AssociationStatusMap{}
 }
 
-func (as *ApmServer) SetAssociationStatusGroup(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+func (as *ApmServer) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	single, err := status.Single()
 	if err != nil {
 		return err
