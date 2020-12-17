@@ -704,6 +704,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
 		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
+		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		DoGarbageCollection()
 	if err != nil {
 		log.Error(err, "user garbage collector failed")
@@ -713,11 +714,12 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 
 func garbageCollectSoftOwnedSecrets(client k8s.Client) {
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(client, map[string]runtime.Object{
-		esv1.Kind:        &esv1.Elasticsearch{},
-		apmv1.Kind:       &apmv1.ApmServer{},
-		kbv1.Kind:        &kbv1.Kibana{},
-		entv1beta1.Kind:  &entv1beta1.EnterpriseSearch{},
-		beatv1beta1.Kind: &beatv1beta1.Beat{},
+		esv1.Kind:          &esv1.Elasticsearch{},
+		apmv1.Kind:         &apmv1.ApmServer{},
+		kbv1.Kind:          &kbv1.Kibana{},
+		entv1beta1.Kind:    &entv1beta1.EnterpriseSearch{},
+		beatv1beta1.Kind:   &beatv1beta1.Beat{},
+		agentv1alpha1.Kind: &agentv1alpha1.Agent{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
