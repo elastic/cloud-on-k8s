@@ -1,8 +1,6 @@
-newVersion: 1.3.0
-prevVersion: 1.2.1
-stackVersion: 7.9.2
-operatorRepo: docker.elastic.co/eck/eck-operator
-distributionChannel: upstream-community-operators
+newVersion: 1.3.1
+prevVersion: 1.3.0
+stackVersion: 7.10.1
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
@@ -19,3 +17,19 @@ crds:
   - name: beats.beat.k8s.elastic.co
     displayName: Beats
     description: Beats instance
+packages:
+  - outputPath: community-operators
+    packageName: elastic-cloud-eck
+    distributionChannel: community-operators
+    operatorRepo: docker.elastic.co/eck/eck-operator
+    ubiOnly: false
+  - outputPath: upstream-community-operators
+    packageName: elastic-cloud-eck
+    distributionChannel: upstream-community-operators
+    operatorRepo: docker.elastic.co/eck/eck-operator
+    ubiOnly: false
+  - outputPath: certified-operators
+    packageName: elasticsearch-eck-operator-certified
+    distributionChannel: certified-operators
+    operatorRepo: registry.connect.redhat.com/elastic/eck-operator
+    ubiOnly: true

@@ -18,7 +18,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.4
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/vault/api v1.0.4

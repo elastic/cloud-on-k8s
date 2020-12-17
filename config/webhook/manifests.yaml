@@ -14,6 +14,28 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-agent-k8s-elastic-co-v1alpha1-agent
+  failurePolicy: Ignore
+  name: elastic-agent-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - agent.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - agents
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: Ignore
   name: elastic-apm-validation-v1.k8s.elastic.co
