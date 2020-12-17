@@ -197,12 +197,12 @@ func getKubernetesVersion(h *helper) string {
 	}{}
 
 	if err := json.Unmarshal([]byte(out), &kubectlVersionResponse); err != nil {
-		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
+		panic(fmt.Sprintf("can't determine Kubernetes version, err %s", err))
 	}
 
 	serverVersion, ok := kubectlVersionResponse.ServerVersion["gitVersion"]
 	if !ok {
-		panic("can't determine kubernetes version, gitVersion missing from kubectl response")
+		panic("can't determine Kubernetes version, gitVersion missing from kubectl response")
 	}
 
 	serverVersion = strings.TrimPrefix(serverVersion, "v")
