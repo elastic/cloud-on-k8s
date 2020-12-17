@@ -2,9 +2,9 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: v130
+  name: v131
 spec:
-  version: 7.10.0
+  version: 7.10.1
   nodeSets:
   - name: default
     count: 3
@@ -14,19 +14,19 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: v130
+  name: v131
 spec:
-  version: 7.10.0
+  version: 7.10.1
   count: 1
   elasticsearchRef:
-    name: v130
+    name: v131
 ---
 apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
-  name: v130
+  name: v131
 spec:
-  version: 7.10.0
+  version: 7.10.1
   count: 1
   elasticsearchRef:
-    name: v130
+    name: v131
