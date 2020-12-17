@@ -62,7 +62,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		return nil, err
 	}
 	ownerNSN := k8s.ExtractNamespacedName(ownerMeta)
-	customCertificates, err := GetCustomCertificates(r.K8sClient, ownerNSN, r.TLSOptions)
+	customCertificates, err := getCustomCertificates(r.K8sClient, ownerNSN, r.TLSOptions)
 	if err != nil {
 		return nil, err
 	}
