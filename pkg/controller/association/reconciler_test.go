@@ -53,7 +53,7 @@ var (
 		},
 		AssociationName:     "kb-es",
 		AssociatedShortName: "kb",
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				"kibanaassociation.k8s.elastic.co/name":      associated.Name,
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,

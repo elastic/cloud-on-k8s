@@ -43,7 +43,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociatedNamer:           kibana.Namer,
 		AssociationName:           "apm-kibana",
 		AssociationType:           commonv1.KibanaAssociationType,
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,

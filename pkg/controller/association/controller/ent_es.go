@@ -40,7 +40,7 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "ent-es",
 		AssociatedShortName:       "ent",
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				EntESAssociationLabelName:      associated.Name,
 				EntESAssociationLabelNamespace: associated.Namespace,

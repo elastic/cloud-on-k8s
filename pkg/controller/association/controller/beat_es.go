@@ -45,7 +45,7 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "beat-es",
 		AssociatedShortName:       "beat",
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				BeatAssociationLabelName:      associated.Name,
 				BeatAssociationLabelNamespace: associated.Namespace,

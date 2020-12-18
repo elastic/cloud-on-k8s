@@ -32,7 +32,7 @@ func deleteOrphanedResources(
 	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
 
-	var associatedLabels client.MatchingLabels = info.AssociatedLabels(associated)
+	var associatedLabels client.MatchingLabels = info.Labels(associated)
 
 	// List all the Secrets involved in an association (users and ca)
 	var secrets corev1.SecretList

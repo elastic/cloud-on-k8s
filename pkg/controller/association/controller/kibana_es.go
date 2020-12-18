@@ -42,7 +42,7 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "kb-es",
 		AssociatedShortName:       "kb",
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				KibanaESAssociationLabelName:      associated.Name,
 				KibanaESAssociationLabelNamespace: associated.Namespace,

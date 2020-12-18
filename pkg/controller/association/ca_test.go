@@ -163,7 +163,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Reconciler{
 				AssociationInfo: AssociationInfo{
-					AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+					Labels: func(associated types.NamespacedName) map[string]string {
 						return map[string]string{}
 					},
 					AssociationName:                       "kibana-es",

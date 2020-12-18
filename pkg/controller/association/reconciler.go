@@ -58,10 +58,10 @@ type AssociationInfo struct {
 	AssociationName string
 	// AssociatedShortName is the short name of the associated resource type (eg. "kb").
 	AssociatedShortName string
-	// AssociatedLabels are labels set on resources created for association purpose. Note that resources will be also
+	// Labels are labels set on all resources created for association purpose. Note that some resources will be also
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
 	// labels provided here.
-	AssociatedLabels func(associated types.NamespacedName) map[string]string
+	Labels func(associated types.NamespacedName) map[string]string
 	// AssociationConfAnnotationNameBase is prefix of the name of the annotation used to define the config for the
 	// associated resource. The annotation is used by the association controller to store the configuration and by
 	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
@@ -88,7 +88,9 @@ type AssociationInfo struct {
 	AssociationResourceNamespaceLabelName string
 }
 
-func (a AssociationInfo) AssociationLabels(
+// AssociationResourceLabels returns all labels required by a resource to allow identifying both its Associated resource
+// (ie. Kibana for Kibana-ES association) and its Association resource (ie. ES for APM-ES association).
+func (a AssociationInfo) AssociationResourceLabels(
 	associated types.NamespacedName,
 	association types.NamespacedName,
 ) client.MatchingLabels {
@@ -97,7 +99,7 @@ func (a AssociationInfo) AssociationLabels(
 			a.AssociationResourceNameLabelName:      association.Name,
 			a.AssociationResourceNamespaceLabelName: association.Namespace,
 		},
-		a.AssociatedLabels(associated),
+		a.Labels(associated),
 	)
 }
 
@@ -108,7 +110,7 @@ func (a AssociationInfo) userLabelSelector(
 ) client.MatchingLabels {
 	return maps.Merge(
 		map[string]string{common.TypeLabelName: user.AssociatedUserType},
-		a.AssociationLabels(associated, association),
+		a.AssociationResourceLabels(associated, association),
 	)
 }
 
@@ -260,7 +262,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		return commonv1.AssociationFailed, err
 	}
 
-	assocLabels := r.AssociationLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
 	if err := ReconcileEsUser(
 		ctx,
 		r.Client,
@@ -311,7 +313,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 
 // isCompatible returns true if the given resource can be reconciled by the current controller.
 func (r *Reconciler) isCompatible(ctx context.Context, associated commonv1.Associated) (bool, error) {
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.AssociatedLabels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
+	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.Labels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, associated, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}

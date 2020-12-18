@@ -76,7 +76,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	}
 
 	info := AssociationInfo{
-		AssociatedLabels:                      func(associated types.NamespacedName) map[string]string { return associationLabels },
+		Labels:                                func(associated types.NamespacedName) map[string]string { return associationLabels },
 		AssociationResourceNameLabelName:      "kibana.k8s.elastic.co/name",
 		AssociationResourceNamespaceLabelName: "kibana.k8s.elastic.co/namespace",
 	}

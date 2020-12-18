@@ -42,7 +42,7 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		AssociationName:           "beat-kibana",
 		AssociatedShortName:       "beat",
 		AssociationType:           commonv1.KibanaAssociationType,
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				BeatAssociationLabelName:      associated.Name,
 				BeatAssociationLabelNamespace: associated.Namespace,

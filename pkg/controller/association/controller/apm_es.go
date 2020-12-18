@@ -44,7 +44,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "apm-es",
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,

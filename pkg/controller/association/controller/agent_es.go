@@ -39,7 +39,7 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "agent-es",
 		AssociatedShortName:       "agent",
-		AssociatedLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				AgentAssociationLabelName:      associated.Name,
 				AgentAssociationLabelNamespace: associated.Namespace,

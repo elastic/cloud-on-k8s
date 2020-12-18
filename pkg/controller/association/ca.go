@@ -42,7 +42,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 		return CASecret{}, err
 	}
 
-	labels := r.AssociationLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
+	labels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
 
 	// Certificate data should be copied over a secret in the association namespace
 	expectedSecret := corev1.Secret{
