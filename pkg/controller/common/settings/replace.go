@@ -13,23 +13,23 @@ type Replacement struct {
 }
 
 func (r Replacement) apply(out untypedDict) {
-	replaceTarget := out
-	for i, p := range r.Path {
-		// last element?
-		if i == len(r.Path)-1 {
+	dict := out
+	for idx, pathSegment := range r.Path {
+		// last path element?
+		if idx == len(r.Path)-1 {
 			// matches expected value?
-			actual, exists := replaceTarget[p]
+			actual, exists := dict[pathSegment]
 			if exists && actual == r.Expected {
 				// do the replacement
-				replaceTarget[p] = r.Replacement
+				dict[pathSegment] = r.Replacement
 				return
 			}
 		}
-
-		v, exists := replaceTarget[p].(untypedDict)
+		// move one level down into the structure of nested maps
+		nestedDict, exists := dict[pathSegment].(untypedDict)
 		if !exists {
 			return
 		}
-		replaceTarget = v
+		dict = nestedDict
 	}
 }
