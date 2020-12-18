@@ -28,17 +28,17 @@ var (
 	associatedCAWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(associatedCAWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
 )
 
-// esWatchNameTemplate returns the name of the watch setup on the referenced Elasticsearch resource.
+// esWatchName returns the name of the watch setup on the referenced Elasticsearch resource.
 func esWatchName(associated types.NamespacedName, id string) string {
 	return fmt.Sprintf(esWatchNameTemplate, associated.Namespace, associated.Name, id)
 }
 
-// esUserWatchNameTemplate returns the name of the watch setup on the ES user secret.
+// esUserWatchName returns the name of the watch setup on the ES user secret.
 func esUserWatchName(associated types.NamespacedName, id string) string {
 	return fmt.Sprintf(esUserWatchNameTemplate, associated.Namespace, associated.Name, id)
 }
 
-// associatedCAWatchNameTemplate returns the name of the watch setup on the secret of the associated resource that
+// associatedCAWatchName returns the name of the watch setup on the secret of the associated resource that
 // contains the HTTP certificate chain of Elasticsearch.
 func associatedCAWatchName(associated types.NamespacedName, id string) string {
 	return fmt.Sprintf(associatedCAWatchNameTemplate, associated.Namespace, associated.Name, id)

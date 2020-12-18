@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	beatWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(beatWatchNameTemplate, "(.*)", "(.*)", `\d+`))
+	beatWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(beatWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
 )
 
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {

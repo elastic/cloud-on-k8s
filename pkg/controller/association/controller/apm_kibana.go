@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	kibanaWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(kibanaWatchNameTemplate, "(.*)", "(.*)", `\d+`))
+	kibanaWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(kibanaWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
 )
 
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
