@@ -22,7 +22,6 @@ const (
 	ClusterNameLabelName = "elasticsearch.k8s.elastic.co/cluster-name"
 	// ClusterNamespaceLabelName used to represent a cluster in k8s resources
 	ClusterNamespaceLabelName = "elasticsearch.k8s.elastic.co/cluster-namespace"
-
 	// VersionLabelName used to store the Elasticsearch version of the resource
 	VersionLabelName = "elasticsearch.k8s.elastic.co/version"
 	// PodNameLabelName used to store the name of the pod on other objects

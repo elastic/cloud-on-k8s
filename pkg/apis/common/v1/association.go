@@ -30,7 +30,7 @@ func NewAssociationStatusMap(selector ObjectSelector, status AssociationStatus) 
 
 func (asm AssociationStatusMap) String() string {
 	// sort by keys to make String() stable
-	var keys []string
+	keys := make([]string, 0, len(asm))
 	for key := range asm {
 		keys = append(keys, key)
 	}
