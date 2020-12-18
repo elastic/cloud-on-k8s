@@ -18,7 +18,7 @@ type AssociationType string
 // AssociationStatus is the status of an association resource.
 type AssociationStatus string
 
-// AssociationStatusMap is the map of association's namespaced name to its AssociationStatus
+// AssociationStatusMap is the map of association's namespaced name string to its AssociationStatus
 type AssociationStatusMap map[string]AssociationStatus
 
 func NewAssociationStatusMap(selector ObjectSelector, status AssociationStatus) AssociationStatusMap {

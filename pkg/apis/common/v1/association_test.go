@@ -89,3 +89,70 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatNameWithID(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		template string
+		id       string
+		wanted   string
+	}{
+		{
+			name:     "no id",
+			template: "name%s",
+			id:       "",
+			wanted:   "name",
+		},
+		{
+			name:     "id present",
+			template: "name%s",
+			id:       "ns1-es1",
+			wanted:   "name-ns1-es1",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.wanted, FormatNameWithID(tt.template, tt.id))
+		})
+	}
+}
+
+func TestAssociationStatusMap_AllEstablished(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		statusMap AssociationStatusMap
+		wanted    bool
+	}{
+		{
+			name:      "no elements",
+			statusMap: AssociationStatusMap{},
+			wanted:    true,
+		},
+		{
+			name: "single established",
+			statusMap: map[string]AssociationStatus{
+				"": AssociationEstablished,
+			},
+			wanted: true,
+		},
+		{
+			name: "many established",
+			statusMap: map[string]AssociationStatus{
+				"1": AssociationEstablished,
+				"2": AssociationEstablished,
+			},
+			wanted: true,
+		},
+		{
+			name: "one pending",
+			statusMap: map[string]AssociationStatus{
+				"1": AssociationEstablished,
+				"2": AssociationPending,
+			},
+			wanted: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.wanted, tt.statusMap.AllEstablished())
+		})
+	}
+}
