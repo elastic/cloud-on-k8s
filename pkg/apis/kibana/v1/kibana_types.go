@@ -130,6 +130,10 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 	return associations
 }
 
+func (k *Kibana) ID() string {
+	return ""
+}
+
 var _ commonv1.Associated = &Kibana{}
 var _ commonv1.Association = &Kibana{}
 
@@ -150,10 +154,6 @@ type Kibana struct {
 	Spec      KibanaSpec                `json:"spec,omitempty"`
 	Status    KibanaStatus              `json:"status,omitempty"`
 	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
-}
-
-func (k *Kibana) ID() string {
-	return ""
 }
 
 // +kubebuilder:object:root=true
