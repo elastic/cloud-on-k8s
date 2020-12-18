@@ -194,20 +194,20 @@ type AgentESAssociation struct {
 	ordinal int
 }
 
-func (a *AgentESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", a.ref.Namespace, a.ref.Name)
+func (aea *AgentESAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.Name)
 }
 
 var _ commonv1.Association = &AgentESAssociation{}
 
-func (a *AgentESAssociation) Associated() commonv1.Associated {
-	if a == nil {
+func (aea *AgentESAssociation) Associated() commonv1.Associated {
+	if aea == nil {
 		return nil
 	}
-	if a.Agent == nil {
-		a.Agent = &Agent{}
+	if aea.Agent == nil {
+		aea.Agent = &Agent{}
 	}
-	return a.Agent
+	return aea.Agent
 }
 
 func (aea *AgentESAssociation) AssociationType() commonv1.AssociationType {
