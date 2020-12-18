@@ -42,9 +42,10 @@ func (asm AssociationStatusMap) String() string {
 
 func (asm AssociationStatusMap) Single() (AssociationStatus, error) {
 	if len(asm) > 1 {
-		return "", fmt.Errorf("expected at most one key-value but found %d", len(asm))
+		return "", fmt.Errorf("expected at most one AssociationStatus in map, but found %d: %s", len(asm), asm)
 	}
 
+	// returns the only AssociationStatus present or zero value if none are
 	var result AssociationStatus
 	for _, status := range asm {
 		result = status
@@ -70,6 +71,16 @@ func (asm AssociationStatusMap) Aggregate() AssociationStatus {
 	}
 
 	return worst
+}
+
+// AllEstablished returns true iff all Associations have AssociationEstablished status, false otherwise.
+func (asm AssociationStatusMap) AllEstablished() bool {
+	for _, status := range asm {
+		if status != AssociationEstablished {
+			return false
+		}
+	}
+	return true
 }
 
 const (
