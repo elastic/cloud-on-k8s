@@ -487,6 +487,16 @@ kubectl apply -f {beats_url}/packetbeat_dns_http.yaml
 
 Deploys Packetbeat as a DaemonSet that monitors DNS on port `53` and HTTP(S) traffic on ports `80`, `8000`, `8080` and `9200`.
 
+
+=== OpenShift monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/openshift_monitoring.yaml
+----
+
+Deploys Metricbeat as a DaemonSet that monitors the host resource usage (CPU, memory, network, filesystem), OpenShift resources (Nodes, Pods, Containers, Volumes), API Server and Filebeat using autodiscover. Deploys an Elasticsearch cluster and Kibana to centralize data collection.
+
 [id="{p}-beat-troubleshooting"]
 == Troubleshooting
 
