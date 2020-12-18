@@ -30,11 +30,10 @@ import (
 )
 
 func TestCustomTransportCA(t *testing.T) {
-	var caSecret corev1.Secret
 	caSecretName := "my-custom-ca"
 
 	mkTestSecret := func(cert, key []byte) corev1.Secret {
-		caSecret = corev1.Secret{
+		return corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: test.Ctx().ManagedNamespace(0),
 				Name:      caSecretName,
@@ -44,7 +43,6 @@ func TestCustomTransportCA(t *testing.T) {
 				certificates.KeyFileName:  key,
 			},
 		}
-		return caSecret
 	}
 
 	// Create a multi-node cluster so we have inter-node communication and configure it to use a custom transport CA
@@ -65,18 +63,18 @@ func TestCustomTransportCA(t *testing.T) {
 						},
 					})
 					require.NoError(t, err)
-					caSecret = mkTestSecret(
+					caSecret := mkTestSecret(
 						certificates.EncodePEMCert(ca.Cert.Raw),
 						certificates.EncodePEMPrivateKey(*ca.PrivateKey),
 					)
-					caSecret, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
+					_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
 					require.NoError(t, err)
 				},
 			},
 		}
 	}
 
-	// This should result in a healthy cluster as verified by the standard check steps
+	// The above should result in a healthy cluster as verified by the standard check steps
 	// Now modify the secret to contain garbage and verify this is bubbled up through an event
 	modificationSteps := func(k *test.K8sClient) test.StepList {
 		return append(test.StepList{
@@ -96,7 +94,6 @@ func TestCustomTransportCA(t *testing.T) {
 						return err
 					}
 					for _, evt := range eventList {
-						println(evt.Message)
 						if evt.Type == corev1.EventTypeWarning &&
 							evt.Reason == events.EventReasonValidation &&
 							strings.Contains(evt.Message, "can't parse") {
@@ -107,8 +104,8 @@ func TestCustomTransportCA(t *testing.T) {
 				}),
 			},
 		},
-			// This should not have had any impact on cluster health so we are running the check steps once more
-			// However this is no guarantee  we are only looking at a point in time snapshot with these steps.
+			// The invalid CA should not have had any impact on cluster health so we are running the check steps once more.
+			// However this is no guarantee we are only looking at a point in time snapshot with these steps.
 			b.CheckStackTestSteps(k)...)
 	}
 
