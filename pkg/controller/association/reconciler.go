@@ -197,7 +197,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 			continue
 		}
 
-		newStatus, err := r.doReconcile(ctx, association)
+		newStatus, err := r.reconcileAssociation(ctx, association)
 		if err != nil {
 			results.WithError(err)
 		}
@@ -215,7 +215,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		Aggregate()
 }
 
-func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
+func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
 	// retrieve the Elasticsearch resource, since it can be a transitive reference we need to use the provided ElasticsearchRef function
 	associatedResourceFound, esRef, err := r.ElasticsearchRef(r.Client, association)
 	if err != nil {

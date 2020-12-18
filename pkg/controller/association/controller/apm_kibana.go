@@ -56,7 +56,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			return user.ApmAgentUserRole, nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
-			id := association.ID()
+			id := association.AssociationID()
 			watchName := fmt.Sprintf(kibanaWatchNameTemplate, association.GetNamespace(), association.GetName(), id)
 			kibanaKey := association.AssociationRef().NamespacedName()
 			if err := w.Kibanas.AddHandler(watches.NamedWatch{

@@ -194,7 +194,7 @@ type AgentESAssociation struct {
 	ordinal int
 }
 
-func (a *AgentESAssociation) ID() string {
+func (a *AgentESAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", a.ref.Namespace, a.ref.Name)
 }
 
@@ -221,7 +221,7 @@ func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (aea *AgentESAssociation) AnnotationName() string {
+func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", strconv.Itoa(aea.ordinal))
 }
 

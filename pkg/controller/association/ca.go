@@ -26,7 +26,7 @@ type CASecret struct {
 // by the associated resource to establish and validate a secured HTTP connection to the target service.
 func CACertSecretName(association commonv1.Association, associationName string) string {
 	associatedName := association.Associated().GetName()
-	return commonv1.FormatNameWithID(associatedName+"-"+associationName+"%s-ca", association.ID())
+	return commonv1.FormatNameWithID(associatedName+"-"+associationName+"%s-ca", association.AssociationID())
 }
 
 // ReconcileCASecret keeps in sync a copy of the target service CA.

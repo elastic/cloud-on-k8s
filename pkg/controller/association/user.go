@@ -30,14 +30,14 @@ func elasticsearchUserName(association commonv1.Association, userSuffix string) 
 	// in the Elasticsearch namespace
 
 	esUserNameTemplate := association.GetNamespace() + "-" + association.GetName() + "%s-" + userSuffix
-	return commonv1.FormatNameWithID(esUserNameTemplate, association.ID())
+	return commonv1.FormatNameWithID(esUserNameTemplate, association.AssociationID())
 }
 
 // userSecretObjectName identifies the associated secret object.
 func userSecretObjectName(association commonv1.Association, userSuffix string) string {
 	// does not need to be namespace aware, since it lives in associated object namespace.
 
-	return commonv1.FormatNameWithID(association.GetName()+"%s-"+userSuffix, association.ID())
+	return commonv1.FormatNameWithID(association.GetName()+"%s-"+userSuffix, association.AssociationID())
 }
 
 // UserKey is the namespaced name to identify the user resource created by the controller.

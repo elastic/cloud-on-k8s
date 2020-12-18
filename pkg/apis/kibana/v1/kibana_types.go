@@ -67,8 +67,8 @@ func (k *Kibana) Associated() commonv1.Associated {
 	return k
 }
 
-func (k *Kibana) AnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", k.ID())
+func (k *Kibana) AssociationConfAnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", k.AssociationID())
 }
 
 func (k *Kibana) AssociationType() commonv1.AssociationType {
@@ -130,7 +130,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 	return associations
 }
 
-func (k *Kibana) ID() string {
+func (k *Kibana) AssociationID() string {
 	return ""
 }
 

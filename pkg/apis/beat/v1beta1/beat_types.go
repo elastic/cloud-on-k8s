@@ -240,8 +240,8 @@ func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
 	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
 }
 
-func (b *BeatESAssociation) AnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", b.ID())
+func (b *BeatESAssociation) AssociationConfAnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", b.AssociationID())
 }
 
 func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
@@ -252,7 +252,7 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	b.esAssocConf = conf
 }
 
-func (b *BeatESAssociation) ID() string {
+func (b *BeatESAssociation) AssociationID() string {
 	return ""
 }
 
@@ -288,11 +288,11 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
 }
 
-func (b *BeatKibanaAssociation) AnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", b.ID())
+func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", b.AssociationID())
 }
 
-func (b *BeatKibanaAssociation) ID() string {
+func (b *BeatKibanaAssociation) AssociationID() string {
 	return ""
 }
 

@@ -55,7 +55,7 @@ func (r *Reconciler) setUserAndCaWatches(
 ) error {
 	associatedKey := k8s.ExtractNamespacedName(association)
 
-	id := association.ID()
+	id := association.AssociationID()
 
 	// watch the referenced ES cluster for future reconciliations
 	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
@@ -118,7 +118,7 @@ func RemoveWatchesForDynamicRequest(
 ) {
 	lookup := make(map[string]bool)
 	for _, assoc := range toKeep {
-		lookup[assoc.ID()] = true
+		lookup[assoc.AssociationID()] = true
 	}
 
 	for _, key := range dynamicRequest.Registrations() {
