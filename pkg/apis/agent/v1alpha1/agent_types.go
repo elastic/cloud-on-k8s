@@ -139,9 +139,9 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec       AgentSpec                                          `json:"spec,omitempty"`
-	Status     AgentStatus                                        `json:"status,omitempty"`
-	assocConfs map[types.NamespacedName]*commonv1.AssociationConf `json:"-"` // nolint:govet
+	Spec       AgentSpec                   `json:"spec,omitempty"`
+	Status     AgentStatus                 `json:"status,omitempty"`
+	assocConfs []*commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -150,10 +150,9 @@ var _ commonv1.Associated = &Agent{}
 
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	for i, ref := range a.Spec.ElasticsearchRefs {
+	for i := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
 			Agent:   a,
-			ref:     ref.NamespacedName(),
 			ordinal: i,
 		})
 	}
@@ -183,6 +182,10 @@ func (a *Agent) SetAssociationStatusMap(typ commonv1.AssociationType, status com
 	return nil
 }
 
+func (a *Agent) SecureSettings() []commonv1.SecretSource {
+	return a.Spec.SecureSettings
+}
+
 type AgentESAssociation struct {
 	*Agent
 	// ref is the namespaced name of the Association (eg. for Kibana-ES Association, ref points to the ES)
@@ -207,37 +210,33 @@ func (a *AgentESAssociation) Associated() commonv1.Associated {
 	return a.Agent
 }
 
-func (a *AgentESAssociation) AssociationType() commonv1.AssociationType {
+func (aea *AgentESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
-		Name:      a.ref.Name,
-		Namespace: a.ref.Namespace,
+		Name:      aea.ref.Name,
+		Namespace: aea.ref.Namespace,
 	}
 }
 
-func (a *AgentESAssociation) AnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", strconv.Itoa(a.ordinal))
+func (aea *AgentESAssociation) AnnotationName() string {
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", strconv.Itoa(aea.ordinal))
 }
 
-func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	if a.assocConfs == nil {
-		return nil
+func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
+	if aea.ordinal < len(aea.assocConfs) {
+		return aea.assocConfs[aea.ordinal]
 	}
-	return a.assocConfs[a.ref]
+	return nil
 }
 
-func (a *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
-	if a.assocConfs == nil {
-		a.assocConfs = make(map[types.NamespacedName]*commonv1.AssociationConf)
+func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	if aea.assocConfs == nil {
+		aea.assocConfs = make([]*commonv1.AssociationConf, len(aea.Spec.ElasticsearchRefs))
 	}
-	a.assocConfs[a.ref] = conf
-}
-
-func (a *Agent) SecureSettings() []commonv1.SecretSource {
-	return a.Spec.SecureSettings
+	aea.assocConfs[aea.ordinal] = conf
 }
 
 var _ commonv1.Associated = &Agent{}
