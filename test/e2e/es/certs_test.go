@@ -7,23 +7,114 @@ package es
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
+
+func TestCustomTransportCA(t *testing.T) {
+	var caSecret corev1.Secret
+	caSecretName := "my-custom-ca"
+
+	mkTestSecret := func(cert, key []byte) corev1.Secret {
+		caSecret = corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: test.Ctx().ManagedNamespace(0),
+				Name:      caSecretName,
+			},
+			Data: map[string][]byte{
+				certificates.CertFileName: cert,
+				certificates.KeyFileName:  key,
+			},
+		}
+		return caSecret
+	}
+
+	// Create a multi-node cluster so we have inter-node communication and configure it to use a custom transport CA
+	b := elasticsearch.NewBuilder("test-custom-ca").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithCustomTransportCA(caSecretName)
+
+	// Before creating the cluster set up the CA secret (using the existing CA generation code in the operator)
+	initSteps := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Create custom CA secret",
+				Test: func(t *testing.T) {
+					ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+						Subject: pkix.Name{
+							CommonName:         "eck-e2e-test-custom-ca",
+							OrganizationalUnit: []string{"eck-e2e"},
+						},
+					})
+					require.NoError(t, err)
+					caSecret = mkTestSecret(
+						certificates.EncodePEMCert(ca.Cert.Raw),
+						certificates.EncodePEMPrivateKey(*ca.PrivateKey),
+					)
+					caSecret, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
+					require.NoError(t, err)
+				},
+			},
+		}
+	}
+
+	// This should result in a healthy cluster as verified by the standard check steps
+	// Now modify the secret to contain garbage and verify this is bubbled up through an event
+	modificationSteps := func(k *test.K8sClient) test.StepList {
+		return append(test.StepList{
+			{
+				Name: "Create an invalid CA secret",
+				Test: func(t *testing.T) {
+					bogusSecret := mkTestSecret([]byte("garbage"), []byte("more garbage"))
+					_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
+					require.NoError(t, err)
+				},
+			},
+			{
+				Name: "Invalid CA secret should create events",
+				Test: test.Eventually(func() error {
+					eventList, err := k.GetEvents(test.EventListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
+					if err != nil {
+						return err
+					}
+					for _, evt := range eventList {
+						println(evt.Message)
+						if evt.Type == corev1.EventTypeWarning &&
+							evt.Reason == events.EventReasonValidation &&
+							strings.Contains(evt.Message, "can't parse") {
+							return nil
+						}
+					}
+					return fmt.Errorf("expected validation event but could not observe it")
+				}),
+			},
+		},
+			// This should not have had any impact on cluster health so we are running the check steps once more
+			// However this is no guarantee  we are only looking at a point in time snapshot with these steps.
+			b.CheckStackTestSteps(k)...)
+	}
+
+	test.Sequence(initSteps, modificationSteps, b).RunSequential(t)
+
+}
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-http-cert-san").

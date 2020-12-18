@@ -86,6 +86,10 @@ type TransportTLSOptions struct {
 	Certificate commonv1.SecretRef `json:"certificate,omitempty"`
 }
 
+func (tto TransportTLSOptions) UserDefinedCA() bool {
+	return tto.Certificate.SecretName != ""
+}
+
 // RemoteCluster declares a remote Elasticsearch cluster connection.
 type RemoteCluster struct {
 	// Name is the name of the remote cluster as it is set in the Elasticsearch settings.

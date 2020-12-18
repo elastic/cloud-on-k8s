@@ -39,7 +39,8 @@ const (
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		CheckCertificateAuthority(b, k),
+		CheckHTTPCertificateAuthority(b, k),
+		CheckTransportCertificateAuthority(b, k),
 		CheckExpectedPodsEventuallyReady(b, k),
 		CheckESVersion(b, k),
 		CheckServices(b, k),
@@ -53,25 +54,37 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckCertificateAuthority checks that the CA is fully setup (CA cert + private key)
-func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
+// CheckHTTPCertificateAuthority checks that the CA is fully setup (CA cert + private key)
+func CheckHTTPCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
-		Name: "ES certificate authority should be set and deployed",
+		Name: "ES HTTP certificate authority should be set and deployed",
 		Test: test.Eventually(func() error {
-			// Check that the Transport CA may be loaded
-			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.TransportCAType)
-			if err != nil {
-				return err
-			}
-
 			// Check that the HTTP CA may be loaded
-			_, err = k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.HTTPCAType)
+			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.HTTPCAType)
 			if err != nil {
 				return err
 			}
 
 			return nil
 		}),
+	}
+}
+
+// CheckTransportCertificateAuthority checks that the CA is fully setup (CA cert + private key)
+func CheckTransportCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "ES transport certificate authority should be set and deployed",
+		Test: test.Eventually(func() error {
+			// Check that the Transport CA may be loaded
+			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.TransportCAType)
+			if err != nil {
+				return err
+			}
+			return nil
+		}),
+		Skip: func() bool {
+			return b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA()
+		},
 	}
 }
 
@@ -131,14 +144,6 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			},
 			{
-				Name: esName + "-es-transport-ca-internal",
-				Keys: []string{"tls.crt", "tls.key"},
-				Labels: map[string]string{
-					"common.k8s.elastic.co/type":                "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": esName,
-				},
-			},
-			{
 				Name: esName + "-es-transport-certs-public",
 				Keys: []string{"ca.crt"},
 				Labels: map[string]string{
@@ -156,6 +161,18 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			},
 			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
 		}
+		// check internal TLS CA if no user provided CA is spec'ed
+		if !b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() {
+			expected = append(expected, test.ExpectedSecret{
+				Name: esName + "-es-transport-ca-internal",
+				Keys: []string{"tls.crt", "tls.key"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			})
+		}
+
 		for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 			expected = append(expected, test.ExpectedSecret{
 				Name: esName + "-es-" + nodeSet.Name + "-es-config",
