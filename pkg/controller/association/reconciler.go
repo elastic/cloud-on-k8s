@@ -58,13 +58,14 @@ type AssociationInfo struct {
 	AssociationName string
 	// AssociatedShortName is the short name of the associated resource type (eg. "kb").
 	AssociatedShortName string
-	// AssociationLabels are labels set on resources created for association purpose. Note that resources will be also
+	// AssociatedLabels are labels set on resources created for association purpose. Note that resources will be also
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
 	// labels provided here.
 	AssociatedLabels func(associated types.NamespacedName) map[string]string
-	// AssociationConfAnnotationNameBase is the name of the annotation used to define the config for the associated resource.
-	// It is used by the association controller to store the configuration and by the controller which is
-	// managing the associated resource to build the appropriate configuration.
+	// AssociationConfAnnotationNameBase is prefix of the name of the annotation used to define the config for the
+	// associated resource. The annotation is used by the association controller to store the configuration and by
+	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
+	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string

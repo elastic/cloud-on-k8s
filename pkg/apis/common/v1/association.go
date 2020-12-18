@@ -12,13 +12,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// AssociationType is the type of an association resource.
+// AssociationType is the type of an association resource, eg. for Kibana-ES association, AssociationType identifies ES.
 type AssociationType string
 
 // AssociationStatus is the status of an association resource.
 type AssociationStatus string
 
-// AssociationStatusMap is the map of association to its AssociationStatus
+// AssociationStatusMap is the map of association's namespaced name to its AssociationStatus
 type AssociationStatusMap map[string]AssociationStatus
 
 func NewAssociationStatusMap(selector ObjectSelector, status AssociationStatus) AssociationStatusMap {
@@ -126,7 +126,7 @@ type Association interface {
 	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
 
-	// ID allows to distinguish between many associations of the same type
+	// ID uniquely identifies this Association among all Associations of the same type belonging to Associated()
 	ID() string
 }
 
