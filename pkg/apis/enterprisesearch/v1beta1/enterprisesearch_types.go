@@ -5,6 +5,8 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -114,11 +116,16 @@ func (ent *EnterpriseSearch) ID() string {
 	return ""
 }
 
-func (ent *EnterpriseSearch) SetAssociationStatusMap(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+func (ent *EnterpriseSearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	single, err := status.Single()
 	if err != nil {
 		return err
 	}
+
+	if typ != commonv1.ElasticsearchAssociationType {
+		return fmt.Errorf("association type %s not known", typ)
+	}
+
 	ent.Status.Association = single
 	return nil
 }

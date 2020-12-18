@@ -172,7 +172,11 @@ func (a *Agent) AssociationStatusMap(_ commonv1.AssociationType) commonv1.Associ
 	return a.Status.ElasticsearchAssociationsStatus
 }
 
-func (a *Agent) SetAssociationStatusMap(_ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+func (a *Agent) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	if typ != commonv1.ElasticsearchAssociationType {
+		return fmt.Errorf("association type %s not known", typ)
+	}
+
 	a.Status.ElasticsearchAssociationsStatus = status
 	return nil
 }

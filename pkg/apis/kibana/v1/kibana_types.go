@@ -114,13 +114,12 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 		return err
 	}
 
-	switch typ {
-	case commonv1.ElasticsearchAssociationType:
-		k.Status.AssociationStatus = single
-		return nil
-	default:
+	if typ != commonv1.ElasticsearchAssociationType {
 		return fmt.Errorf("association type %s not known", typ)
 	}
+
+	k.Status.AssociationStatus = single
+	return nil
 }
 
 func (k *Kibana) GetAssociations() []commonv1.Association {
