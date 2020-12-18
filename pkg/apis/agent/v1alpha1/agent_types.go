@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -149,10 +150,11 @@ var _ commonv1.Associated = &Agent{}
 
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	for _, ref := range a.Spec.ElasticsearchRefs {
+	for i, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
-			Agent: a,
-			ref:   ref.NamespacedName(),
+			Agent:   a,
+			ref:     ref.NamespacedName(),
+			ordinal: i,
 		})
 	}
 
@@ -185,6 +187,8 @@ type AgentESAssociation struct {
 	*Agent
 	// ref is the namespaced name of the Association (eg. for Kibana-ES Association, ref points to the ES)
 	ref types.NamespacedName
+	// ordinal is the sequence number of this Association in owning Agent's ElasticsearchRefs slice
+	ordinal int
 }
 
 func (a *AgentESAssociation) ID() string {
@@ -215,7 +219,7 @@ func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (a *AgentESAssociation) AnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", a.ID())
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", strconv.Itoa(a.ordinal))
 }
 
 func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
