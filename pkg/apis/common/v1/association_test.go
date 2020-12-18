@@ -157,3 +157,45 @@ func TestAssociationStatusMap_AllEstablished(t *testing.T) {
 		})
 	}
 }
+
+func TestAssociationStatusMap_String(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		statusMap AssociationStatusMap
+		wanted    string
+	}{
+		{
+			name:      "no elements",
+			statusMap: AssociationStatusMap{},
+			wanted:    "",
+		},
+		{
+			name: "single established",
+			statusMap: map[string]AssociationStatus{
+				"ns/name": AssociationEstablished,
+			},
+			wanted: "ns/name: Established",
+		},
+		{
+			name: "single unknown",
+			statusMap: map[string]AssociationStatus{
+				"ns/name": AssociationUnknown,
+			},
+			wanted: "ns/name: ",
+		},
+		{
+			name: "multiple mixed",
+			statusMap: map[string]AssociationStatus{
+				"ns/name":   AssociationEstablished,
+				"ns2/name2": AssociationPending,
+				"ns3/name3": AssociationFailed,
+				"ns4/name4": AssociationUnknown,
+			},
+			wanted: "ns/name: Established, ns2/name2: Pending, ns3/name3: Failed, ns4/name4: ",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.wanted, tt.statusMap.String())
+		})
+	}
+}

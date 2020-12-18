@@ -6,6 +6,7 @@ package v1
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,9 +29,17 @@ func NewAssociationStatusMap(selector ObjectSelector, status AssociationStatus) 
 }
 
 func (asm AssociationStatusMap) String() string {
+	// sort by keys to make String() stable
+	var keys []string
+	for key := range asm {
+		keys = append(keys, key)
+	}
+	sort.StringSlice(keys).Sort()
+
 	var i int
 	var sb strings.Builder
-	for key, value := range asm {
+	for _, key := range keys {
+		value := asm[key]
 		i++
 		sb.WriteString(key + ": " + string(value))
 		if len(asm) != i {
@@ -129,7 +138,7 @@ type Association interface {
 // FormatNameWithID("name%s", "ns2-es2") returns "name-ns2-es2"
 // This function exists to abstract this conditional logic away from the callers. It can be used to format names
 // for objects differing only by id, that would otherwise collide. In addition, it allows to preserve current naming
-// for object types with a single instance and introduce object types with unbounded number of ids.
+// for object types with a single association and introduce object types with unbounded number of associations.
 func FormatNameWithID(template string, id string) string {
 	if id != "" {
 		// we want names to be changed for any but empty id
