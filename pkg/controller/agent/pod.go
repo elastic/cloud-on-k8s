@@ -74,15 +74,15 @@ func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpe
 		dataVolume,
 	}
 
-	for _, association := range params.Agent.GetAssociations() {
+	for i, association := range params.Agent.GetAssociations() {
 		if !association.AssociationConf().CAIsConfigured() {
 			continue
 		}
 		caSecretName := association.AssociationConf().GetCASecretName()
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("%s-certs-%s", association.AssociationType(), association.ID()),
-			certificatesDir(association),
+			fmt.Sprintf("%s-certs-%d", association.AssociationType(), i),
+			certificatesDir(association, i),
 		)
 		vols = append(vols, caVolume)
 	}
@@ -120,6 +120,6 @@ func createDataVolume(params Params) volume.VolumeLike {
 		corev1.HostPathDirectoryOrCreate)
 }
 
-func certificatesDir(association commonv1.Association) string {
-	return fmt.Sprintf("/mnt/elastic-internal/%s-certs-%s", association.AssociationType(), association.ID())
+func certificatesDir(association commonv1.Association, associationIndex int) string {
+	return fmt.Sprintf("/mnt/elastic-internal/%s-certs-%d", association.AssociationType(), associationIndex)
 }

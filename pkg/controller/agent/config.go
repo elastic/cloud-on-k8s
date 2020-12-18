@@ -94,7 +94,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			"hosts":    []string{assoc.AssociationConf().GetURL()},
 		}
 		if assoc.AssociationConf().GetCACertProvided() {
-			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
+			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc, i), CAFileName)}
 		}
 
 		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
