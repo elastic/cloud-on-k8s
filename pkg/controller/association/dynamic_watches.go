@@ -23,9 +23,9 @@ const (
 )
 
 var (
-	esWatchNameRegexp           = regexp.MustCompile(fmt.Sprintf(esWatchNameTemplate, "(.*)", "(.*)", `(\d+)`))
-	esUserWatchNameRegexp       = regexp.MustCompile(fmt.Sprintf(esUserWatchNameTemplate, "(.*)", "(.*)", `(\d+)`))
-	associatedCAWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(associatedCAWatchNameTemplate, "(.*)", "(.*)", `(\d+)`))
+	esWatchNameRegexp           = regexp.MustCompile(fmt.Sprintf(esWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
+	esUserWatchNameRegexp       = regexp.MustCompile(fmt.Sprintf(esUserWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
+	associatedCAWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(associatedCAWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
 )
 
 // esWatchNameTemplate returns the name of the watch setup on the referenced Elasticsearch resource.

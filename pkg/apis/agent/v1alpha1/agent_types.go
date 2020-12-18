@@ -180,7 +180,7 @@ func (a *Agent) SetAssociationStatusMap(_ commonv1.AssociationType, status commo
 type AgentESAssociation struct {
 	*Agent
 	// ref is the namespaced name of the Association (eg. for Kibana-ES Association, ref points to the ES)
-	ref types.NamespacedName // nolint:govet
+	ref types.NamespacedName
 }
 
 func (a *AgentESAssociation) ID() string {
