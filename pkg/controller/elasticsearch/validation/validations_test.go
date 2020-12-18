@@ -153,7 +153,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 		},
 		{
 			name: "valid configuration (node roles)",
-			es:   esWithRoles("7.9.0", 3, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}),
+			es:   esWithRoles("7.9.0", 4, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.RemoteClusterClientRole}}),
 		},
 	}
 	for _, tt := range tests {

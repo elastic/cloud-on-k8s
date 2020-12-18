@@ -186,22 +186,31 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 }
 
 func compareRoles(expected *esv1.Node, actualRoles []string) bool {
+	fmt.Printf("roles: %v\n", actualRoles)
 	for _, r := range actualRoles {
 		switch r {
-		case "master":
+		case esv1.MasterRole:
 			if !expected.HasMasterRole() {
 				return false
 			}
-		case "data":
+		case esv1.DataRole:
 			if !expected.HasDataRole() {
 				return false
 			}
-		case "ingest":
+		case esv1.IngestRole:
 			if !expected.HasIngestRole() {
 				return false
 			}
-		case "transform":
+		case esv1.RemoteClusterClientRole:
+			if !expected.HasRemoteClusterClientRole() {
+				return false
+			}
+		case esv1.TransformRole:
 			if !expected.HasTransformRole() {
+				return false
+			}
+		case esv1.VotingOnlyRole:
+			if !expected.HasVotingOnlyRole() {
 				return false
 			}
 		}
