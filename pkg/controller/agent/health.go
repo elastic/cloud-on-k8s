@@ -14,7 +14,7 @@ func CalculateHealth(associations []v1.Association, ready, desired int32) agentv
 	for _, assoc := range associations {
 		if assoc.AssociationConf().IsConfigured() {
 			statusMap := assoc.AssociationStatusMap(assoc.AssociationType())
-			if status, ok := statusMap[assoc.AssociationRef().NamespacedName()]; !ok || status != v1.AssociationEstablished {
+			if !statusMap.AllEstablished() {
 				return agentv1alpha1.AgentRedHealth
 			}
 		}

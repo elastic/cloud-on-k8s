@@ -141,18 +141,18 @@ type Association interface {
 	ID() string
 }
 
-// FormatNameWithID conditionally formats `template`. `template` is expected to have
-// a single %s verb. If `id` is empty, the %s verb will be formatted with empty string. Otherwise %s verb will be
-// replaced with `-id`.
+// FormatNameWithID conditionally formats `template`. `template` is expected to have a single %s verb.
+// If `id` is empty, the %s verb will be formatted with empty string. Otherwise %s verb will be replaced with `-id`.
+// Eg:
 // FormatNameWithID("name%s", "") returns "name"
 // FormatNameWithID("name%s", "ns1-es1") returns "name-ns1-es2"
 // FormatNameWithID("name%s", "ns2-es2") returns "name-ns2-es2"
-// This function can be used to format names for objects differing only by id, that would otherwise collide. It allows
-// to preserve current naming for object types with a single instance and introduce object types with unbounded number of ids.
+// This function exists to abstract this conditional logic away from the callers. It can be used to format names
+// for objects differing only by id, that would otherwise collide. In addition, it allows to preserve current naming
+// for object types with a single instance and introduce object types with unbounded number of ids.
 func FormatNameWithID(template string, id string) string {
 	if id != "" {
-		// we want names to be changed only all but first id. When appending the id, we want to append it only if
-		// it's not empty
+		// we want names to be changed for any but empty id
 		id = fmt.Sprintf("-%s", id)
 	}
 
