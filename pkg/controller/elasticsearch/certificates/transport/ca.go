@@ -59,14 +59,6 @@ func ReconcileOrRetrieveCA(
 
 	// 2. Assuming from here on the user wants to use custom certs and has configured a secret with them.
 
-	// Garbage collect the self-signed CA secret which might be left over from an earlier revision on a best effort basis.
-	_ = driver.K8sClient().Delete(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
-			Namespace: esNSN.Namespace,
-		},
-	})
-
 	// Try to parse the provided secret to get to the CA and to report any validation errors to the user.
 	ca, err := certificates.ParseCustomCASecret(*customCASecret)
 	if err != nil {
@@ -74,6 +66,21 @@ func ReconcileOrRetrieveCA(
 		// validation at admission would also be an alternative but seems quite costly and secret contents might change
 		// in the time between admission and reading the secret contents so we need to re-run validation here anyway.
 		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+		return nil, err
 	}
-	return ca, err
+
+	// Garbage collect the self-signed CA secret which might be left over from an earlier revision on a best effort basis.
+	err = driver.K8sClient().Delete(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
+			Namespace: esNSN.Namespace,
+		},
+	})
+	if err != nil {
+		log.Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",
+			"err", err.Error(),
+		)
+	}
+
+	return ca, nil
 }
