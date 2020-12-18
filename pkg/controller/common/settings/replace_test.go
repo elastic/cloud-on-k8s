@@ -49,7 +49,7 @@ func TestCanonicalConfig_RenderSeq(t *testing.T) {
 `),
 		},
 		{
-			name: "does not touch non-nil values",
+			name: "does not touch other paths",
 			input: map[string]interface{}{
 				"node": map[string]interface{}{
 					"something": "else",

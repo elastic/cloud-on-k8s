@@ -4,6 +4,8 @@
 
 package settings
 
+// Replacement is a utility to replace an element in an untypedDict at Path with Replacement iff the element is equal
+// to Expected. This is mainly intended to enable a workaround around for https://github.com/elastic/cloud-on-k8s/issues/3718
 type Replacement struct {
 	Path        []string
 	Expected    interface{}
