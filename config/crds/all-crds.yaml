@@ -2022,8 +2022,9 @@ spec:
                       description: "Certificate is a reference to a Kubernetes secret
                         that contains the CA certificate and private key for generating
                         node certificates. The referenced secret should contain the
-                        following: \n - `tls.crt`: The CA certificate. - `tls.key`:
-                        The private key for the CA certificate."
+                        following: \n - `tls.crt`: The CA certificate in PEM format.
+                        - `tls.key`: The private key for the CA certificate in PEM
+                        format."
                       properties:
                         secretName:
                           description: SecretName is the name of the secret.
