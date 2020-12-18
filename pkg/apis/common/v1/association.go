@@ -53,26 +53,6 @@ func (asm AssociationStatusMap) Single() (AssociationStatus, error) {
 	return result, nil
 }
 
-func (asm AssociationStatusMap) Aggregate() AssociationStatus {
-	worst := AssociationUnknown
-	for _, status := range asm {
-		switch status {
-		case AssociationEstablished:
-			if worst == AssociationUnknown {
-				worst = AssociationEstablished
-			}
-		case AssociationPending:
-			if worst == AssociationUnknown || worst == AssociationEstablished {
-				worst = AssociationPending
-			}
-		case AssociationFailed:
-			return AssociationFailed
-		}
-	}
-
-	return worst
-}
-
 // AllEstablished returns true iff all Associations have AssociationEstablished status, false otherwise.
 func (asm AssociationStatusMap) AllEstablished() bool {
 	for _, status := range asm {

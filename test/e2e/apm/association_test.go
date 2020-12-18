@@ -148,13 +148,15 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 					for _, evt := range eventList {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
-							prevStatus, currStatus, err := annotation.ExtractAssociationStatus(evt.ObjectMeta)
-							require.NoError(t, err)
-							if prevStatus == commonv1.AssociationEstablished && currStatus != prevStatus {
+							// build expected string and use it for comparisons with actual
+							establishedString := commonv1.NewAssociationStatusMap(esBuilder.Ref(), commonv1.AssociationEstablished).String()
+							prevStatusString, currStatusString := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
+
+							if prevStatusString == establishedString && currStatusString != prevStatusString {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == commonv1.AssociationEstablished {
+							if currStatusString == establishedString {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:
