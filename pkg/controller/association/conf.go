@@ -188,8 +188,7 @@ func RemoveObsoleteAssociationConfs(
 
 	expected := make(map[string]bool)
 	for _, association := range associated.GetAssociations() {
-		key := commonv1.FormatNameWithID(associationConfAnnotationNameBase+"%s", association.AssociationID())
-		expected[key] = true
+		expected[association.AssociationConfAnnotationName()] = true
 	}
 
 	modified := false

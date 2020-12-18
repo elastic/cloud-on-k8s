@@ -6,7 +6,6 @@ package v1alpha1
 
 import (
 	"fmt"
-	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -139,9 +138,9 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec       AgentSpec                   `json:"spec,omitempty"`
-	Status     AgentStatus                 `json:"status,omitempty"`
-	assocConfs []*commonv1.AssociationConf `json:"-"` // nolint:govet
+	Spec       AgentSpec                                          `json:"spec,omitempty"`
+	Status     AgentStatus                                        `json:"status,omitempty"`
+	assocConfs map[types.NamespacedName]*commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -150,10 +149,10 @@ var _ commonv1.Associated = &Agent{}
 
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	for i := range a.Spec.ElasticsearchRefs {
+	for _, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
-			Agent:   a,
-			ordinal: i,
+			Agent: a,
+			ref:   ref.WithDefaultNamespace(a.Namespace).NamespacedName(),
 		})
 	}
 
@@ -190,8 +189,6 @@ type AgentESAssociation struct {
 	*Agent
 	// ref is the namespaced name of the Association (eg. for Kibana-ES Association, ref points to the ES)
 	ref types.NamespacedName
-	// ordinal is the sequence number of this Association in owning Agent's ElasticsearchRefs slice
-	ordinal int
 }
 
 func (aea *AgentESAssociation) AssociationID() string {
@@ -222,21 +219,26 @@ func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", strconv.Itoa(aea.ordinal))
+	// annotation key should be stable to allow Agent Controller only pick up the ones it expects,
+	// based on ElasticsearchRefs
+	return commonv1.FormatNameWithID(
+		commonv1.ElasticsearchConfigAnnotationNameBase+"%s",
+		fmt.Sprintf("%s.%s", aea.ref.Namespace, aea.ref.Name),
+	)
 }
 
 func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	if aea.ordinal < len(aea.assocConfs) {
-		return aea.assocConfs[aea.ordinal]
+	if aea.assocConfs == nil {
+		return nil
 	}
-	return nil
+	return aea.assocConfs[aea.ref]
 }
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.assocConfs == nil {
-		aea.assocConfs = make([]*commonv1.AssociationConf, len(aea.Spec.ElasticsearchRefs))
+		aea.assocConfs = make(map[types.NamespacedName]*commonv1.AssociationConf)
 	}
-	aea.assocConfs[aea.ordinal] = conf
+	aea.assocConfs[aea.ref] = conf
 }
 
 var _ commonv1.Associated = &Agent{}
