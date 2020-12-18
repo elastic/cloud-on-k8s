@@ -95,6 +95,10 @@ func (r *Reconciler) setUserAndCaWatches(
 	return nil
 }
 
+func (r *Reconciler) removeWatches(associated types.NamespacedName) {
+	r.removeWatchesExcept(associated, nil)
+}
+
 func (r *Reconciler) removeWatchesExcept(associated types.NamespacedName, existing []commonv1.Association) {
 	// - ES resource
 	RemoveWatchesForDynamicRequest(associated, existing, esWatchNameRegexp, r.watches.ElasticsearchClusters)

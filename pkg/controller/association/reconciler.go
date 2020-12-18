@@ -427,7 +427,7 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 		r.ClearDynamicWatches(associated, r.watches)
 	}
 	// remove other watches
-	r.removeWatchesExcept(associated, nil)
+	r.removeWatches(associated)
 
 	// delete user Secret in the Elasticsearch namespace
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
