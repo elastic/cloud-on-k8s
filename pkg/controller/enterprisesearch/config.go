@@ -211,6 +211,7 @@ func getOrCreateReusableSettings(c k8s.Client, ent entv1beta1.EnterpriseSearch) 
 		e.EncryptionKeys = []string{string(common.RandomBytes(32))}
 	} else {
 		// encryption keys already exist, reuse the first ECK-managed one
+		// other user-provided keys from user-provided config will be merged in later
 		e.EncryptionKeys = []string{e.EncryptionKeys[0]}
 	}
 	return settings.MustCanonicalConfig(e), nil
