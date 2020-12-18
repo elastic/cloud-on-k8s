@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
@@ -137,9 +138,9 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec       AgentSpec                         `json:"spec,omitempty"`
-	Status     AgentStatus                       `json:"status,omitempty"`
-	assocConfs map[int]*commonv1.AssociationConf `json:"-"` // nolint:govet
+	Spec       AgentSpec                                          `json:"spec,omitempty"`
+	Status     AgentStatus                                        `json:"status,omitempty"`
+	assocConfs map[types.NamespacedName]*commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -148,10 +149,10 @@ var _ commonv1.Associated = &Agent{}
 
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	for i := range a.Spec.ElasticsearchRefs {
+	for _, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
-			Agent:         a,
-			associationID: i,
+			Agent: a,
+			ref:   ref.NamespacedName(),
 		})
 	}
 
@@ -178,12 +179,12 @@ func (a *Agent) SetAssociationStatusMap(_ commonv1.AssociationType, status commo
 
 type AgentESAssociation struct {
 	*Agent
-	associationID int `json:"-"` // nolint:govet
+	// ref is the namespaced name of the Association (eg. for Kibana-ES Association, ref points to the ES)
+	ref types.NamespacedName // nolint:govet
 }
 
 func (a *AgentESAssociation) ID() string {
-	nsName := a.AssociationRef().NamespacedName()
-	return fmt.Sprintf("%s-%s", nsName.Namespace, nsName.Name)
+	return fmt.Sprintf("%s-%s", a.ref.Namespace, a.ref.Name)
 }
 
 var _ commonv1.Association = &AgentESAssociation{}
@@ -203,11 +204,10 @@ func (a *AgentESAssociation) AssociationType() commonv1.AssociationType {
 }
 
 func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
-	selector := commonv1.ObjectSelector{}
-	if len(a.Spec.ElasticsearchRefs) > a.associationID {
-		selector = a.Spec.ElasticsearchRefs[a.associationID].ObjectSelector
+	return commonv1.ObjectSelector{
+		Name:      a.ref.Name,
+		Namespace: a.ref.Namespace,
 	}
-	return selector.WithDefaultNamespace(a.Namespace)
 }
 
 func (a *AgentESAssociation) AnnotationName() string {
@@ -216,16 +216,16 @@ func (a *AgentESAssociation) AnnotationName() string {
 
 func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
 	if a.assocConfs == nil {
-		a.assocConfs = make(map[int]*commonv1.AssociationConf)
+		return nil
 	}
-	return a.assocConfs[a.associationID]
+	return a.assocConfs[a.ref]
 }
 
 func (a *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if a.assocConfs == nil {
-		a.assocConfs = make(map[int]*commonv1.AssociationConf)
+		a.assocConfs = make(map[types.NamespacedName]*commonv1.AssociationConf)
 	}
-	a.assocConfs[a.associationID] = conf
+	a.assocConfs[a.ref] = conf
 }
 
 func (a *Agent) SecureSettings() []commonv1.SecretSource {
