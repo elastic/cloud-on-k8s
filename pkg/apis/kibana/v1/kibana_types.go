@@ -131,7 +131,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 }
 
 func (k *Kibana) AssociationID() string {
-	return ""
+	return commonv1.SingletonAssociationID
 }
 
 var _ commonv1.Associated = &Kibana{}

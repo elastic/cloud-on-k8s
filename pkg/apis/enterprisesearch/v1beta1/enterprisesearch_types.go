@@ -113,7 +113,7 @@ func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 }
 
 func (ent *EnterpriseSearch) AssociationID() string {
-	return ""
+	return commonv1.SingletonAssociationID
 }
 
 func (ent *EnterpriseSearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {

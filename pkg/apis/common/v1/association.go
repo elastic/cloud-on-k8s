@@ -83,6 +83,12 @@ const (
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
 	AssociationFailed      AssociationStatus = "Failed"
+
+	// SingletonAssociationID is an `AssociationID` used for Associations for resources that can have only a single
+	// Association of each type. For example, Kibana can only have a single ES Association, so Kibana-ES Associations
+	// should use `SingletonAssociationID` as their `AssociationID`. On the contrary, Agent can have unbounded number
+	// of Associations so Agent-ES Associations should _not_ use `SingletonAssociationID`.
+	SingletonAssociationID = ""
 )
 
 // Associated represents an Elastic stack resource that is associated with other stack resources.
@@ -140,8 +146,8 @@ type Association interface {
 // for objects differing only by id, that would otherwise collide. In addition, it allows to preserve current naming
 // for object types with a single association and introduce object types with unbounded number of associations.
 func FormatNameWithID(template string, id string) string {
-	if id != "" {
-		// we want names to be changed for any but empty id
+	if id != SingletonAssociationID {
+		// we want names to be changed for any id but SingletonAssociationID
 		id = fmt.Sprintf("-%s", id)
 	}
 

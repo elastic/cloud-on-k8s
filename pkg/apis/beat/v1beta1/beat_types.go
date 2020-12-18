@@ -253,7 +253,7 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 }
 
 func (b *BeatESAssociation) AssociationID() string {
-	return ""
+	return commonv1.SingletonAssociationID
 }
 
 type BeatKibanaAssociation struct {
@@ -293,7 +293,7 @@ func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
 }
 
 func (b *BeatKibanaAssociation) AssociationID() string {
-	return ""
+	return commonv1.SingletonAssociationID
 }
 
 func (b *Beat) SecureSettings() []commonv1.SecretSource {
