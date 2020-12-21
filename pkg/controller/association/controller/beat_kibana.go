@@ -6,7 +6,6 @@ package controller
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -17,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,11 +23,7 @@ import (
 )
 
 const (
-	beatWatchNameTemplate = "%s-%s-beat-watch-%s"
-)
-
-var (
-	beatWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(beatWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
+	beatWatchNameTemplate = "%s-%s-beat-watch"
 )
 
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -54,21 +48,19 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		ESUserRole:                        getBeatKibanaRoles,
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
-		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
-			id := association.AssociationID()
-			watchName := fmt.Sprintf(kibanaWatchNameTemplate, association.GetNamespace(), association.GetName(), id)
-			kibanaKey := association.AssociationRef().NamespacedName()
-			if err := w.Kibanas.AddHandler(watches.NamedWatch{
-				Name:    watchName,
-				Watched: []types.NamespacedName{kibanaKey},
-				Watcher: k8s.ExtractNamespacedName(association),
-			}); err != nil {
-				return err
-			}
-			return nil
+		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
+			return association.ReconcileWatch(
+				associated,
+				associations,
+				w.Kibanas,
+				fmt.Sprintf(beatWatchNameTemplate, associated.Namespace, associated.Name),
+				func(association commonv1.Association) types.NamespacedName {
+					return association.AssociationRef().NamespacedName()
+				},
+			)
 		},
 		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			association.RemoveWatchesForDynamicRequest(associated, nil, beatWatchNameRegexp, w.Kibanas)
+			association.RemoveWatch(w.Kibanas, fmt.Sprintf(beatWatchNameTemplate, associated.Namespace, associated.Name))
 		},
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,

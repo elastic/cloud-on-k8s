@@ -72,8 +72,8 @@ type AssociationInfo struct {
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
 	ESUserRole func(commonv1.Associated) (string, error)
 	// SetDynamicWatches allows to set some specific watches.
-	SetDynamicWatches func(association commonv1.Association, watches watches.DynamicWatches) error
-	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for this association.
+	SetDynamicWatches func(associated types.NamespacedName, associations []commonv1.Association, watches watches.DynamicWatches) error
+	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for the associated resource.
 	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
@@ -186,7 +186,9 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	r.removeWatchesExcept(associatedKey, associations)
+	if err := r.reconcileWatches(associatedKey, associations); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
 
 	results := reconciler.NewResult(ctx)
 	newStatusMap := commonv1.AssociationStatusMap{}
@@ -222,13 +224,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationFailed, err
 	}
 
-	// set additional watches, in the case of a transitive Elasticsearch reference we must watch the intermediate resource
-	if r.SetDynamicWatches != nil {
-		if err := r.SetDynamicWatches(association, r.watches); err != nil {
-			return commonv1.AssociationFailed, err
-		}
-	}
-
 	// the associated resource does not exist yet, set status to Pending
 	if !associatedResourceFound {
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
@@ -247,15 +242,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	associationRef := association.AssociationRef()
-
-	// watch resources related to the referenced ES and the target service
-	if err := r.setUserAndCaWatches(
-		association,
-		esRef.NamespacedName(),
-		r.AssociationInfo.AssociatedNamer,
-	); err != nil {
-		return commonv1.AssociationFailed, err
-	}
 
 	userRole, err := r.ESUserRole(association.Associated())
 	if err != nil {

@@ -198,7 +198,7 @@ var (
 		},
 	}
 	setDynamicWatches = func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
-		err := r.setUserAndCaWatches(&kb, kb.Spec.ElasticsearchRef.NamespacedName(), esv1.ESNamer)
+		err := r.reconcileWatches(k8s.ExtractNamespacedName(&kb), kb.GetAssociations())
 		require.NoError(t, err)
 	}
 )

@@ -6,7 +6,6 @@ package controller
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -26,11 +25,7 @@ import (
 )
 
 const (
-	kibanaWatchNameTemplate = "%s-%s-kibana-watch-%s"
-)
-
-var (
-	kibanaWatchNameRegexp = regexp.MustCompile(fmt.Sprintf(kibanaWatchNameTemplate, "(.*)", "(.*)", `(.*)`))
+	kibanaWatchNameTemplate = "%s-%s-kibana-watch"
 )
 
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -55,21 +50,19 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return user.ApmAgentUserRole, nil
 		},
-		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
-			id := association.AssociationID()
-			watchName := fmt.Sprintf(kibanaWatchNameTemplate, association.GetNamespace(), association.GetName(), id)
-			kibanaKey := association.AssociationRef().NamespacedName()
-			if err := w.Kibanas.AddHandler(watches.NamedWatch{
-				Name:    watchName,
-				Watched: []types.NamespacedName{kibanaKey},
-				Watcher: k8s.ExtractNamespacedName(association),
-			}); err != nil {
-				return err
-			}
-			return nil
+		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
+			return association.ReconcileWatch(
+				associated,
+				associations,
+				w.Kibanas,
+				fmt.Sprintf(kibanaWatchNameTemplate, associated.Namespace, associated.Name),
+				func(association commonv1.Association) types.NamespacedName {
+					return association.AssociationRef().NamespacedName()
+				},
+			)
 		},
 		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			association.RemoveWatchesForDynamicRequest(associated, nil, kibanaWatchNameRegexp, w.Kibanas)
+			association.RemoveWatch(w.Kibanas, fmt.Sprintf(kibanaWatchNameTemplate, associated.Namespace, associated.Name))
 		},
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
