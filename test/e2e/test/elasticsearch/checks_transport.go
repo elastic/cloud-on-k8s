@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -41,7 +42,7 @@ func MakeTransportTLSHandshake(es esv1.Elasticsearch, ca *x509.Certificate) erro
 	var conn net.Conn
 	var err error
 	if test.Ctx().AutoPortForwarding {
-		conn, err = portforward.NewForwardingDialer().Dial("tcp", host)
+		conn, err = portforward.NewForwardingDialer().DialContext(context.Background(), "tcp", host)
 		if err != nil {
 			return err
 		}
