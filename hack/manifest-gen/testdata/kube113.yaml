@@ -5,7 +5,17 @@ nameOverride: "elastic-operator"
 fullnameOverride: "elastic-operator"
 
 # managedNamespaces is the set of namespaces that the operator manages. Leave empty to manage all namespaces.
-managedNamespaces: ["ns-a", "ns-b", "ns-c"]
+managedNamespaces: []
+
+# installCRDs determines whether Custom Resource Definitions (CRD) are installed by the chart.
+# Note that CRDs are global resources and require cluster admin privileges to install. 
+# If you are sharing a cluster with other users who may want to install ECK on their own namespaces, setting this to true can have unintended consequences.
+# 1. Upgrades will overwrite the global CRDs and could disrupt the other users of ECK who may be running a different version.
+# 2. Uninstalling the chart will delete the CRDs and potentially cause Elastic resources deployed by other users to be removed as well.
+installCRDs: true
+
+# replicaCount is the number of operator pods to run.
+replicaCount: 1
 
 image:
   # repository is the container image prefixed by the registry name.
@@ -16,8 +26,7 @@ image:
   tag: null
 
 # imagePullSecrets defines the secrets to use when pulling the operator container image.
-imagePullSecrets: 
-  - name: my-secret
+imagePullSecrets: []
 
 # resources define the container resource limits for the operator.
 resources:
@@ -29,52 +38,38 @@ resources:
     memory: 150Mi
 
 # podAnnotations define the annotations that should be added to the operator pod. 
-podAnnotations: 
-  my-annotation1 : value1
-  my-annotation2 : value2
+podAnnotations: {}
 
 # podSecurityContext defines the pod security context for the operator pod.
 podSecurityContext: 
   runAsNonRoot: true 
 
 # securityContext defines the security context of the operator container.
-securityContext: 
-  runAsNonRoot: true
+securityContext: {} 
 
 # nodeSelector defines the node selector for the operator pod.
-nodeSelector: 
-  my-node-selector: value1
+nodeSelector: {}
 
 # tolerations defines the node tolerations for the operator pod.
-tolerations: 
-  - key: my-key
-    value: my-value
+tolerations: []
 
 # affinity defines the node affinity rules for the operator pod.
-affinity: 
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchFields:
-            - key: my-key
-              operator: In
-              values: ["x"]
+affinity: {} 
 
 # createClusterScopedResources determines whether cluster-scoped resources (ClusterRoles, ClusterRoleBindings) should be created.
-createClusterScopedResources: false
+createClusterScopedResources: true
 
 serviceAccount:
   # create specifies whether a service account should be created for the operator.
   create: true
   # annotations to add to the service account
-  annotations: 
-    my-annotation: my-value
+  annotations: {}
   # name of the service account to use. If not set and create is true, a name is generated using the fullname template.
   name: ""
 
 tracing:
   # enabled specifies whether APM tracing is enabled for the operator.
-  enabled: true
+  enabled: false
   # config is a map of APM Server configuration variables that should be set in the environment.
   config:
     ELASTIC_APM_SERVER_URL: http://localhost:8200
@@ -82,29 +77,35 @@ tracing:
 
 refs:
   # enforceRBAC specifies whether RBAC should be enforced for cross-namespace associations between resources.
-  enforceRBAC: true
+  enforceRBAC: false
 
 webhook:
   # enabled determines whether the webhook is installed.
-  enabled: false
+  enabled: true
   # caBundle is the PEM-encoded CA trust bundle for the webhook certificate. Only required if manageCerts is false and certManagerCert is null.
   caBundle: Cg==
   # certManagerCert is the name of the cert-manager certificate to use with the webhook. 
   certManagerCert: null
   # certsDir is the directory to mount the certificates.
   certsDir: "/tmp/k8s-webhook-server/serving-certs"
+  # certsSecret is the name of the secret containing the webhook certificates.
+  certsSecret: elastic-webhook-server-cert
   # failurePolicy of the webhook.
   failurePolicy: Ignore
   # manageCerts determines whether the operator manages the webhook certificates automatically.
   manageCerts: true
+  # name of the webhook
+  name: elastic-webhook.k8s.elastic.co
+  # name of the service used to expose the webhook.
+  serviceName: elastic-webhook-server
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions. 
   # This requires network policies to be enabled on the Kubernetes cluster.
-  enabled: true
+  enabled: false
 
 # kubeAPIServerIP is required when softMultiTenancy is enabled.
-kubeAPIServerIP: 1.2.3.4
+kubeAPIServerIP: null
 
 telemetry:
   # disabled determines whether the operator periodically updates ECK telemetry data for Kibana to consume.
@@ -122,12 +123,12 @@ config:
   logVerbosity: "0"
 
   # metricsPort defines the port to expose operator metrics. Set to 0 to disable metrics reporting.
-  metricsPort: "6000"
+  metricsPort: "0"
 
   # containerRegistry to use for pulling Elasticsearch and other application container images.
   containerRegistry: docker.elastic.co
 
-  # maxConcurrentReconciles is the number of concurrent reconciliation operations to perform.
+  # maxConcurrentReconciles is the number of concurrent reconciliation operations to perform per controller.
   maxConcurrentReconciles: "3"
 
   # caValidity defines the validity period of the CA certificates generated by the operator.
@@ -153,8 +154,10 @@ config:
 
   # validateStorageClass specifies whether storage classes volume expansion support should be verified.
   # Can be disabled if cluster-wide storage class RBAC access is not available.
-  validateStorageClass: false
+  validateStorageClass: true
 
-# for internal use only.
+# Internal use only
 internal:
   manifestGen: false
+  kubeVersion: 1.13.0
+
