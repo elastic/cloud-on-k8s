@@ -51,7 +51,8 @@ func TestSmoke(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext().
 		WithLabel(run.TestNameLabel, testName).
-		WithPodLabel(run.TestNameLabel, testName)
+		WithPodLabel(run.TestNameLabel, testName).
+		WithTelemetryEnabled(false)
 	apmBuilder = apmBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
