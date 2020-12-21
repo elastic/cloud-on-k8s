@@ -154,7 +154,7 @@ func TestCustomTransportCA(t *testing.T) {
 					Test: test.Eventually(func() error {
 						// transport certs are checked as part of stack checks now but let's run this step explicitly once more
 						// with the defined CA as a parameter to catch the case where both CA cert in the secret and presented
-						//certs on the nodes are not the ones defined by the user
+						// certs on the nodes are not the ones defined by the user
 						return elasticsearch.MakeTransportTLSHandshake(initialCluster.Elasticsearch, ca.Cert)
 					}),
 				},
@@ -167,7 +167,6 @@ func TestCustomTransportCA(t *testing.T) {
 	// 2. reconfigure to use custom certs but simulate user error on certificate setup: cluster to stay healthy
 	// 3. reconfigure with correct custom certificates
 	// 4. reconfigure back to self-signed operator provided CA
-	// TODO make TCP request to ES and verify that custom certs are actually used.
 	test.RunMutations(t, []test.Builder{withBuiltinCA}, []test.Builder{withBogusCert, withCustomCert, withBuiltinCA})
 
 }
