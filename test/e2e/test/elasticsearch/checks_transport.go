@@ -46,8 +46,6 @@ func MakeTransportTLSHandshake(es esv1.Elasticsearch, ca *x509.Certificate) erro
 		if err != nil {
 			return err
 		}
-		client := tls.Client(conn, &config)
-		return client.Handshake()
 	} else {
 		conn, err = net.Dial("tcp", host)
 	}
