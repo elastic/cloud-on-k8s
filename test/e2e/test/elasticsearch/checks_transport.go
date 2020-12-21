@@ -43,11 +43,11 @@ func MakeTransportTLSHandshake(es esv1.Elasticsearch, ca *x509.Certificate) erro
 	var err error
 	if test.Ctx().AutoPortForwarding {
 		conn, err = portforward.NewForwardingDialer().DialContext(context.Background(), "tcp", host)
-		if err != nil {
-			return err
-		}
 	} else {
 		conn, err = net.Dial("tcp", host)
+	}
+	if err != nil {
+		return err
 	}
 	defer conn.Close()
 	client := tls.Client(conn, &config)
