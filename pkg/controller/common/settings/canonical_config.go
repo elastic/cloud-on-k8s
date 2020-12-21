@@ -155,14 +155,19 @@ func (c *CanonicalConfig) HasKeys(keys []string) []string {
 
 // Render returns the content of the configuration file,
 // with fields sorted alphabetically
-func (c *CanonicalConfig) Render() ([]byte, error) {
+func (c *CanonicalConfig) Render(rs ...Replacement) ([]byte, error) {
 	if c == nil {
 		return []byte{}, nil
 	}
+
 	var out untypedDict
 	err := c.asUCfg().Unpack(&out)
 	if err != nil {
 		return []byte{}, err
+	}
+
+	for _, r := range rs {
+		r.apply(out)
 	}
 	return yaml.Marshal(out)
 }

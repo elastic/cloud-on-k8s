@@ -266,6 +266,11 @@ func (in *Node) DeepCopyInto(out *Node) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.RemoteClusterClient != nil {
+		in, out := &in.RemoteClusterClient, &out.RemoteClusterClient
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Roles != nil {
 		in, out := &in.Roles, &out.Roles
 		*out = make([]string, len(*in))
