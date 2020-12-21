@@ -83,11 +83,11 @@ func TestCustomTransportCA(t *testing.T) {
 			return test.StepList{
 				{
 					Name: "Create an invalid CA secret",
-					Test: func(t *testing.T) {
+					Test: test.Eventually(func() error {
 						bogusSecret := mkTestSecret([]byte("garbage"), []byte("more garbage"))
 						_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
-						require.NoError(t, err)
-					},
+						return err
+					}),
 				},
 			}
 

@@ -19,7 +19,7 @@ func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 	}
 	privateKey, err := ParsePEMPrivateKey(key)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "can't parse private key  %s in %s/%s", KeyFileName, s.Namespace, s.Name)
+		return nil, pkgerrors.Wrapf(err, "can't parse private key %s in %s/%s", KeyFileName, s.Namespace, s.Name)
 	}
 	// Validate CA certificate
 	cert, exist := s.Data[CertFileName]
@@ -33,10 +33,5 @@ func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 	if len(pubKeys) != 1 {
 		return nil, pkgerrors.Errorf("only expected one PEM formated CA certificate in %s/%s", s.Namespace, s.Name)
 	}
-
-	certificate := pubKeys[0]
-	if !certificate.IsCA {
-		return nil, pkgerrors.Errorf("valid certificate %s found but it is not a CA certificate in %s/%s", CertFileName, s.Namespace, s.Name)
-	}
-	return NewCA(privateKey, certificate), nil
+	return NewCA(privateKey, pubKeys[0]), nil
 }

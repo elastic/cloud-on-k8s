@@ -67,7 +67,8 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		return nil, err
 	}
 
-	if err := reconcileDynamicWatches(r.DynamicWatches, ownerNSN, r.Namer, r.TLSOptions); err != nil {
+	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
+	if err := ReconcileCustomCertWatch(r.DynamicWatches, watchKey, ownerNSN, r.TLSOptions.Certificate); err != nil {
 		return nil, err
 	}
 

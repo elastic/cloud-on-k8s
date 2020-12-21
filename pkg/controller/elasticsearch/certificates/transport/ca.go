@@ -43,6 +43,8 @@ func ReconcileOrRetrieveCA(
 
 	customCASecret, err := certificates.GetSecretFromRef(driver.K8sClient(), esNSN, es.Spec.Transport.TLS.Certificate)
 	if err != nil {
+		// error should already contain enough context including the name of the secret
+		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 		return nil, err
 	}
 	// 1. No custom certs are specified, reconcile our internal self-signed CA instead (probably the common case)
@@ -78,7 +80,7 @@ func ReconcileOrRetrieveCA(
 	})
 	if err != nil {
 		log.Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",
-			"err", err.Error(),
+			"namespace", esNSN.Namespace, "name", esNSN.Name, "err", err.Error(),
 		)
 	}
 
