@@ -186,7 +186,6 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 }
 
 func compareRoles(expected *esv1.Node, actualRoles []string) bool {
-	fmt.Printf("roles: %v\n", actualRoles)
 	for _, r := range actualRoles {
 		switch r {
 		case esv1.MasterRole:
