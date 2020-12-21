@@ -15,9 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -115,6 +116,8 @@ func TestCustomTransportCA(t *testing.T) {
 		},
 	}
 
+	var ca *certificates.CA
+
 	// A NOOP mutation but set up the CA secret correctly now (using the existing CA generation code in the operator)
 	withCustomCert := test.WrappedBuilder{
 		BuildingThis: initialCluster.
@@ -126,7 +129,8 @@ func TestCustomTransportCA(t *testing.T) {
 				{
 					Name: "Create custom CA secret",
 					Test: func(t *testing.T) {
-						ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+						var err error
+						ca, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 							Subject: pkix.Name{
 								CommonName:         "eck-e2e-test-custom-ca",
 								OrganizationalUnit: []string{"eck-e2e"},
@@ -140,6 +144,19 @@ func TestCustomTransportCA(t *testing.T) {
 						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
 						require.NoError(t, err)
 					},
+				},
+			}
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Check TLS certs are the expected custom certs",
+					Test: test.Eventually(func() error {
+						// transport certs are checked as part of stack checks now but let's run this step explicitly once more
+						// with the defined CA as a parameter to catch the case where both CA cert in the secret and presented
+						//certs on the nodes are not the ones defined by the user
+						return elasticsearch.MakeTransportTLSHandshake(initialCluster.Elasticsearch, ca.Cert)
+					}),
 				},
 			}
 		},
