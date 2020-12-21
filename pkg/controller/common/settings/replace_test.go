@@ -29,7 +29,7 @@ func TestCanonicalConfig_RenderReplacement(t *testing.T) {
 			name: "nil roles replacement",
 			input: map[string]interface{}{
 				"node": map[string]interface{}{
-					// nil in input either contstructed programmatically or from NULL in YAML
+					// nil in input either constructed programmatically or from NULL in YAML
 					"roles": nil,
 				},
 			},
@@ -65,11 +65,11 @@ func TestCanonicalConfig_RenderReplacement(t *testing.T) {
 			name: "does not touch other paths",
 			input: map[string]interface{}{
 				"node": map[string]interface{}{
-					"something": "else",
+					"something": nil,
 				},
 			},
 			expected: []byte(`node:
-  something: else
+  something: null
 `),
 		},
 	}
