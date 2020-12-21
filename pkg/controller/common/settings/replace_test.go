@@ -18,7 +18,7 @@ var testReplacement = Replacement{
 	Replacement: make([]string, 0),
 }
 
-func TestCanonicalConfig_RenderSeq(t *testing.T) {
+func TestCanonicalConfig_RenderReplacement(t *testing.T) {
 
 	tests := []struct {
 		name     string
@@ -29,6 +29,19 @@ func TestCanonicalConfig_RenderSeq(t *testing.T) {
 			name: "nil roles replacement",
 			input: map[string]interface{}{
 				"node": map[string]interface{}{
+					// nil in input either contstructed programmatically or from NULL in YAML
+					"roles": nil,
+				},
+			},
+			expected: []byte(`node:
+  roles: []
+`),
+		},
+		{
+			name: "[]/nil roles replacement",
+			input: map[string]interface{}{
+				"node": map[string]interface{}{
+					// [] in YAML translates to a zero length array which ucfg turns into nil
 					"roles": make([]string, 0),
 				},
 			},
@@ -62,10 +75,11 @@ func TestCanonicalConfig_RenderSeq(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		config := MustCanonicalConfig(tt.input)
-		output, err := config.Render(testReplacement)
-		require.NoError(t, err)
-		require.Equal(t, tt.expected, output)
-
+		t.Run(tt.name, func(t *testing.T) {
+			config := MustCanonicalConfig(tt.input)
+			output, err := config.Render(testReplacement)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, output)
+		})
 	}
 }

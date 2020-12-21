@@ -201,6 +201,10 @@ func compareRoles(expected *esv1.Node, actualRoles []string) bool {
 			if !expected.HasIngestRole() {
 				return false
 			}
+		case esv1.MLRole:
+			if !expected.HasMLRole() {
+				return false
+			}
 		case esv1.RemoteClusterClientRole:
 			if !expected.HasRemoteClusterClientRole() {
 				return false
