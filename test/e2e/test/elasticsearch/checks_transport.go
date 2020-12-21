@@ -31,7 +31,7 @@ func MakeTransportTLSHandshake(es esv1.Elasticsearch, ca *x509.Certificate) erro
 		RootCAs: certPool,
 		// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
 		// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: true, // nolint:gosec
 	}
 	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, &config)
