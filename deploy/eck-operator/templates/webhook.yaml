@@ -27,6 +27,7 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-agent-validation-v1alpha1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
