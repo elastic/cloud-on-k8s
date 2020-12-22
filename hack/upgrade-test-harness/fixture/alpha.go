@@ -19,9 +19,9 @@ func TestRemoveFinalizers(param TestParam) *Fixture {
 	return &Fixture{
 		Name: "TestRemoveFinalizers",
 		Steps: []*TestStep{
-			noRetry("RemoveESFinalizers", removeFinalizers("elasticsearch", param.Name, param.GVR("elasticsearch"))),
-			noRetry("RemoveKBFinalizers", removeFinalizers("kibana", param.Name, param.GVR("kibana"))),
-			noRetry("RemoveAPMFinalizers", removeFinalizers("apmserver", param.Name, param.GVR("apmserver"))),
+			noRetry("RemoveESFinalizers", removeFinalizers("elasticsearch", esName, param.GVR("elasticsearch"))),
+			noRetry("RemoveKBFinalizers", removeFinalizers("kibana", kbName, param.GVR("kibana"))),
+			noRetry("RemoveAPMFinalizers", removeFinalizers("apmserver", apmName, param.GVR("apmserver"))),
 		},
 	}
 }

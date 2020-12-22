@@ -176,8 +176,6 @@ func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) []*fixt
 		if from.Name == "alpha" {
 			fixtures = append(fixtures, fixture.TestRemoveFinalizers(*from))
 		}
-
-		fixtures = append(fixtures, fixture.TestRemoveResources(*from))
 	}
 
 	fixtures = append(fixtures, fixture.TestDeployResources(to), fixture.TestStatusOfResources(to))

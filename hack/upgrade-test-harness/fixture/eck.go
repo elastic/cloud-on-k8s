@@ -21,6 +21,9 @@ import (
 const (
 	operatorNamespace      = "elastic-system"
 	operatorSTS            = "elastic-operator"
+	esName                 = "es"
+	kbName                 = "kb"
+	apmName                = "apm"
 	wantAPMServerNodes     = 1
 	wantElasticsearchNodes = 3
 	wantHealth             = "green"
@@ -113,11 +116,11 @@ func TestStatusOfResources(param TestParam) *Fixture {
 		Name: param.Suffixed("TestStatusOfResources"),
 		Steps: []*TestStep{
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", param.Name, status{health: wantHealth, nodes: wantElasticsearchNodes, version: param.StackVersion})),
+				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: wantElasticsearchNodes, version: param.StackVersion})),
 			retryRetriable(param.Suffixed("CheckKibana"),
-				checkStatus("kibana", param.Name, status{health: wantHealth, nodes: wantKibanaNodes, version: param.StackVersion})),
+				checkStatus("kibana", kbName, status{health: wantHealth, nodes: wantKibanaNodes, version: param.StackVersion})),
 			retryRetriable(param.Suffixed("CheckAPMServer"),
-				checkStatus("apmserver", param.Name, status{health: wantHealth, nodes: wantAPMServerNodes, version: param.StackVersion})),
+				checkStatus("apmserver", apmName, status{health: wantHealth, nodes: wantAPMServerNodes, version: param.StackVersion})),
 		},
 	}
 }
@@ -195,14 +198,14 @@ func TestScaleElasticsearch(param TestParam, count int) *Fixture {
 			retryRetriable(param.Suffixed("ScaleElasticsearch"), scaleElasticsearch(param, int64(count))),
 			pause(30 * time.Second),
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", param.Name, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
+				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
 		},
 	}
 }
 
 func scaleElasticsearch(param TestParam, count int64) func(*TestContext) error {
 	return func(ctx *TestContext) error {
-		resources := ctx.GetResources(ctx.Namespace(), "elasticsearch", param.Name)
+		resources := ctx.GetResources(ctx.Namespace(), "elasticsearch", esName)
 
 		dynamicClient, err := ctx.DynamicClient()
 		if err != nil {
