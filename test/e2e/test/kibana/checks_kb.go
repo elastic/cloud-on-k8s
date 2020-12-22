@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 )
@@ -34,6 +35,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	}
 	return test.StepList{
 		checks.CheckKbStatusHealthy(b),
+		checks.CheckKbTelemetryStatus(b),
 	}
 }
 
@@ -60,5 +62,24 @@ func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 			}
 			return nil
 		}),
+	}
+}
+
+func (check *kbChecks) CheckKbTelemetryStatus(b Builder) test.Step {
+	return test.Step{
+		Name: "Kibana telemetry status should be as expected",
+		Test: test.Eventually(func() error {
+			_, reqErr := MakeTelemetryRequest(b, check.client) // 404 is represented as an error
+
+			expectedState, err := kibana.IsTelemetryEnabled(b.Kibana)
+			if err != nil {
+				return err
+			}
+			if expectedState == (reqErr == nil) {
+				return nil // expectedState error or nil
+			}
+			return fmt.Errorf("telemetry in Kibana should be enabled [%v] but got [%s]", expectedState, err.Error())
+		}),
+		OnFailure: nil,
 	}
 }

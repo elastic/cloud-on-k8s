@@ -165,6 +165,31 @@ type reusableSettings struct {
 	SavedObjectsKey string `config:"xpack.encryptedSavedObjects.encryptionKey"`
 }
 
+//TelemetrySetting represents the telemetry toggle in Kibana configuration.
+type TelemetrySetting struct {
+	Enabled bool `config:"telemetry.enabled"`
+}
+
+func IsTelemetryEnabled(kv kbv1.Kibana) (bool, error) {
+	config := kv.Spec.Config
+	if config == nil {
+		return true, nil // enabled by default
+	}
+	canonicalCfg, err := settings.NewCanonicalConfigFrom(config.Data)
+	if err != nil {
+		return true, err
+	}
+	if len(canonicalCfg.HasKeys([]string{"telemetry.enabled"})) == 0 {
+		return true, nil // enabled by default
+	}
+
+	var telemetry TelemetrySetting
+	if err := canonicalCfg.Unpack(&telemetry); err != nil {
+		return true, errors.Wrap(err, "while unpacking telemetry setting")
+	}
+	return telemetry.Enabled, nil
+}
+
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
 func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
