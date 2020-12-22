@@ -76,7 +76,7 @@ func (check *kbChecks) CheckKbTelemetryStatus(b Builder) test.Step {
 				return err
 			}
 			if expectedState == (reqErr == nil) {
-				return nil // expectedState error or nil
+				return nil // either disabled and we have an error or enabled and we should have no error
 			}
 			return fmt.Errorf("telemetry in Kibana should be enabled [%v] but got [%s]", expectedState, err.Error())
 		}),
