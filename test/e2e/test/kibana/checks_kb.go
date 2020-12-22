@@ -7,6 +7,7 @@ package kibana
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -69,17 +70,22 @@ func (check *kbChecks) CheckKbTelemetryStatus(b Builder) test.Step {
 	return test.Step{
 		Name: "Kibana telemetry status should be as expected",
 		Test: test.Eventually(func() error {
-			_, reqErr := MakeTelemetryRequest(b, check.client) // 404 is represented as an error
-
-			expectedState, err := kibana.IsTelemetryEnabled(b.Kibana)
+			shouldBeEnabled, err := kibana.IsTelemetryEnabled(b.Kibana)
 			if err != nil {
 				return err
 			}
-			if expectedState == (reqErr == nil) {
-				return nil // either disabled and we have an error or enabled and we should have no error
+
+			_, err = MakeTelemetryRequest(b, check.client)
+			switch {
+			case shouldBeEnabled && err == nil:
+				return nil
+			case !shouldBeEnabled:
+				// Kibana returns a 404 if telemetry is disabled
+				if e, ok := err.(*APIError); ok && e.StatusCode == http.StatusNotFound {
+					return nil
+				}
 			}
-			return fmt.Errorf("telemetry in Kibana should be enabled [%v] but got [%s]", expectedState, err.Error())
+			return fmt.Errorf("telemetry in Kibana should be enabled [%v] but got [%s]", shouldBeEnabled, err.Error())
 		}),
-		OnFailure: nil,
 	}
 }
