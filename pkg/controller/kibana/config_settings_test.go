@@ -550,3 +550,65 @@ func Test_getExistingConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestIsTelemetryEnabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    kbv1.Kibana
+		want    bool
+		wantErr bool
+	}{
+		{
+			name:    "no config: enabled",
+			args:    kbv1.Kibana{},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "empty config: enabled",
+			args: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{Data: map[string]interface{}{}},
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "explicitly enabled",
+			args: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"telemetry.enabled": true,
+					}},
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "explicitly disabled",
+			args: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"telemetry.enabled": false,
+					}},
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IsTelemetryEnabled(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsTelemetryEnabled() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("IsTelemetryEnabled() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
