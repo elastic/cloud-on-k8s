@@ -128,7 +128,7 @@ func TestCustomTransportCA(t *testing.T) {
 			return test.StepList{
 				{
 					Name: "Create custom CA secret",
-					Test: func(t *testing.T) {
+					Test: test.Eventually(func() error {
 						var err error
 						ca, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 							Subject: pkix.Name{
@@ -136,14 +136,17 @@ func TestCustomTransportCA(t *testing.T) {
 								OrganizationalUnit: []string{"eck-e2e"},
 							},
 						})
-						require.NoError(t, err)
+						if err != nil {
+							return err
+						}
+
 						caSecret := mkTestSecret(
 							certificates.EncodePEMCert(ca.Cert.Raw),
 							certificates.EncodePEMPrivateKey(*ca.PrivateKey),
 						)
 						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
-						require.NoError(t, err)
-					},
+						return err
+					}),
 				},
 			}
 		},

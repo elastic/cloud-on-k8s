@@ -5,6 +5,7 @@
 package transport
 
 import (
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -78,7 +79,7 @@ func ReconcileOrRetrieveCA(
 			Namespace: esNSN.Namespace,
 		},
 	})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		log.Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",
 			"namespace", esNSN.Namespace, "name", esNSN.Name, "err", err.Error(),
 		)
