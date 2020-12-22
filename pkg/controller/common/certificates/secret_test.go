@@ -128,7 +128,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Corrupted key",
+			name: "Encrypted key",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
 					CertFileName: tls,
@@ -138,7 +138,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Encrypted private key",
+			name: "Corrupted private key",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
 					CertFileName: tls,

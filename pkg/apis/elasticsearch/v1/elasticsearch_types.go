@@ -72,6 +72,22 @@ type ElasticsearchSpec struct {
 type TransportConfig struct {
 	// Service defines the template for the associated Kubernetes Service object.
 	Service commonv1.ServiceTemplate `json:"service,omitempty"`
+	// TLS defines options for configuring TLS on the transport layer.
+	TLS TransportTLSOptions `json:"tls,omitempty"`
+}
+
+type TransportTLSOptions struct {
+	// Certificate is a reference to a Kubernetes secret that contains the CA certificate
+	// and private key for generating node certificates.
+	// The referenced secret should contain the following:
+	//
+	// - `tls.crt`: The CA certificate in PEM format.
+	// - `tls.key`: The private key for the CA certificate in PEM format.
+	Certificate commonv1.SecretRef `json:"certificate,omitempty"`
+}
+
+func (tto TransportTLSOptions) UserDefinedCA() bool {
+	return tto.Certificate.SecretName != ""
 }
 
 // RemoteCluster declares a remote Elasticsearch cluster connection.

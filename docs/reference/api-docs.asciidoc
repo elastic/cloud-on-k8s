@@ -473,6 +473,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-filerealmsource[$$FileRealmSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-rolesource[$$RoleSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transporttlsoptions[$$TransportTLSOptions$$]
 ****
 
 [cols="25a,75a", options="header"]
@@ -975,6 +976,25 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 |===
 | Field | Description
 | *`service`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-servicetemplate[$$ServiceTemplate$$]__ | Service defines the template for the associated Kubernetes Service object.
+| *`tls`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transporttlsoptions[$$TransportTLSOptions$$]__ | TLS defines options for configuring TLS on the transport layer.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transporttlsoptions"]
+=== TransportTLSOptions 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transportconfig[$$TransportConfig$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the CA certificate and private key for generating node certificates. The referenced secret should contain the following: 
+ - `tls.crt`: The CA certificate in PEM format. - `tls.key`: The private key for the CA certificate in PEM format.
 |===
 
 

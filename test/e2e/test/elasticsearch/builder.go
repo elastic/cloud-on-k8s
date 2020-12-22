@@ -145,6 +145,11 @@ func (b Builder) WithHTTPSAN(ip string) Builder {
 	return b
 }
 
+func (b Builder) WithCustomTransportCA(name string) Builder {
+	b.Elasticsearch.Spec.Transport.TLS.Certificate.SecretName = name
+	return b
+}
+
 // -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {

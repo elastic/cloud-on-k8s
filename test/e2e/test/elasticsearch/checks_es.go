@@ -31,6 +31,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		e.CheckESNodesTopology(b.Elasticsearch),
 		e.CheckESVersion(b.Elasticsearch),
 		e.CheckESHealthGreen(),
+		b.CheckTransportCertificatesStep(k),
 	}
 }
 
