@@ -27,8 +27,7 @@ func TestTelemetry(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(1).
-		WithTelemetryEnabled(true)
+		WithNodeCount(1)
 
 	// Kibana picks up static telemetry data from telemetry.yml very close to its start and then rereads it on a rather
 	// long interval (~hours). This means that the telemetry reporter is likely to be updating Kibana config Secret
