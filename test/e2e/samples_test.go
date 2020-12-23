@@ -60,8 +60,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
-				WithPodLabel(run.TestNameLabel, fullTestName).
-				WithTelemetryEnabled(false)
+				WithPodLabel(run.TestNameLabel, fullTestName)
 		case apmserver.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
