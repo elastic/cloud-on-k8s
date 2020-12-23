@@ -11,11 +11,12 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
@@ -25,24 +26,10 @@ import (
 // CheckTransportCACertificate attempts a TLS handshake to inspect the peer certificates presented by the Elasticsearch
 // node to verify the expected CA certificate is among them.
 func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) error {
-	certPool := x509.NewCertPool()
-	certPool.AddCert(ca)
-	config := tls.Config{
-		// add the CA cert to the pool to allow the successful handshake if the presented transport cert was
-		// signed by this CA
-		RootCAs: certPool,
-		// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
-		// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
-		InsecureSkipVerify: true, // nolint:gosec
-	}
-	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, &config)
-		return err
-	}
 	host := services.ExternalTransportServiceHost(k8s.ExtractNamespacedName(&es))
-
 	var conn net.Conn
 	var err error
+
 	if test.Ctx().AutoPortForwarding {
 		conn, err = portforward.NewForwardingDialer().DialContext(context.Background(), "tcp", host)
 	} else {
@@ -51,15 +38,34 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
-	client := tls.Client(conn, &config)
-	// Handshake can fail on single node clusters because we are not presenting a client certificate, but we are only
-	// interested in the peer certificates anyway so this is not considered a test failure.
-	err = client.Handshake()
-	for _, c := range client.ConnectionState().PeerCertificates {
-		if c.Equal(ca) {
-			return nil
+
+	certPool := x509.NewCertPool()
+	certPool.AddCert(ca)
+	config := tls.Config{
+		RootCAs: certPool,
+		// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
+		// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
+		InsecureSkipVerify: true, // nolint:gosec
+	}
+	var correctCertsPresented bool
+	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		// we are not interested in a valid TLS handshake but only in the CA certs presented by the remote side
+		// therefore we only verify the peer certificate chain against our expected CA cert. We cannot rely on
+		// tls.ConnectionState because it is only populated with the peer certificates after a successful handshake
+		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, &config)
+		if err == nil {
+			correctCertsPresented = true
 		}
+		return err
+	}
+	client := tls.Client(conn, &config)
+	// handshake can fail on 6.x versions of Elasticsearch because the test client is not presenting the right certificates
+	// but we are only interested in the peer certificates
+	err = client.Handshake()
+	if correctCertsPresented {
+		return nil
 	}
 	return fmt.Errorf("expected %v %s among peer certificates but was not found, handshake err %w", ca.Issuer, ca.SerialNumber, err)
 }
