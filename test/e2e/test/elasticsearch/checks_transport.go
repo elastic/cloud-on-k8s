@@ -47,7 +47,7 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 	var correctCAPresented bool
 	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		// we are not interested in a valid TLS handshake but only in the CA certs presented by the remote side
-		// there we only parse the peer certificate to compare with our expected CA cert. We cannot rely on
+		// therefore we only parse the peer certificate to compare with our expected CA cert. We cannot rely on
 		// tls.ConnectionState because it is only populated with the peer certificates after a successful handshake
 		for _, asn1Data := range rawCerts {
 			cert, err := x509.ParseCertificate(asn1Data)
