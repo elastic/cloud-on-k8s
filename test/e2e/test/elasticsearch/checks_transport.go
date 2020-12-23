@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
@@ -39,31 +41,30 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 
 	defer conn.Close()
 
+	certPool := x509.NewCertPool()
+	certPool.AddCert(ca)
 	config := tls.Config{
+		RootCAs: certPool,
 		// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
 		// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
 		InsecureSkipVerify: true, // nolint:gosec
 	}
-	var correctCAPresented bool
+	var correctCertsPresented bool
 	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		// we are not interested in a valid TLS handshake but only in the CA certs presented by the remote side
-		// therefore we only parse the peer certificate to compare with our expected CA cert. We cannot rely on
+		// therefore we only verify the peer certificate chain against our expected CA cert. We cannot rely on
 		// tls.ConnectionState because it is only populated with the peer certificates after a successful handshake
-		for _, asn1Data := range rawCerts {
-			cert, err := x509.ParseCertificate(asn1Data)
-			if err != nil {
-				return fmt.Errorf("tls: failed to parse certificate from server: %w", err)
-			}
-			if cert.Equal(ca) {
-				correctCAPresented = true
-			}
+		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, &config)
+		if err == nil {
+			correctCertsPresented = true
 		}
-		return nil
+		return err
 	}
 	client := tls.Client(conn, &config)
-	// handshake can fail on 6.x versions of Elasticsearch but we are only interested in the peer certificates
+	// handshake can fail on 6.x versions of Elasticsearch because the test client is not presenting the right certificates
+	// but we are only interested in the peer certificates
 	err = client.Handshake()
-	if correctCAPresented {
+	if correctCertsPresented {
 		return nil
 	}
 	return fmt.Errorf("expected %v %s among peer certificates but was not found, handshake err %w", ca.Issuer, ca.SerialNumber, err)
