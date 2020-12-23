@@ -22,7 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func MakeTransportTLSHandshake(es esv1.Elasticsearch, ca *x509.Certificate) error {
+// CheckTransportCACertificate attempts a TLS handshake to inspect the peer certificates presented by the Elasticsearch
+// node to verify the expected CA certificate is among them.
+func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) error {
 	certPool := x509.NewCertPool()
 	certPool.AddCert(ca)
 	config := tls.Config{
@@ -51,12 +53,20 @@ func MakeTransportTLSHandshake(es esv1.Elasticsearch, ca *x509.Certificate) erro
 	}
 	defer conn.Close()
 	client := tls.Client(conn, &config)
-	return client.Handshake()
+	// Handshake can fail on single node clusters because we are not presenting a client certificate, but we are only
+	// interested in the peer certificates anyway so this is not considered a test failure.
+	err = client.Handshake()
+	for _, c := range client.ConnectionState().PeerCertificates {
+		if c.Equal(ca) {
+			return nil
+		}
+	}
+	return fmt.Errorf("expected %v %s among peer certificates but was not found, handshake err %w", ca.Issuer, ca.SerialNumber, err)
 }
 
 func (b Builder) CheckTransportCertificatesStep(k *test.K8sClient) test.Step {
 	return test.Step{
-		Name: "Check TLS certs on transport layer",
+		Name: "Verify TLS CA cert on transport layer is the expected one",
 		Test: test.Eventually(func() error {
 			var secret corev1.Secret
 			secretName := certificates.PublicTransportCertsSecretName(esv1.ESNamer, b.Elasticsearch.Name)
@@ -80,7 +90,7 @@ func (b Builder) CheckTransportCertificatesStep(k *test.K8sClient) test.Step {
 					certificates.CAFileName, secretName, len(caCerts),
 				)
 			}
-			return MakeTransportTLSHandshake(b.Elasticsearch, caCerts[0])
+			return CheckTransportCACertificate(b.Elasticsearch, caCerts[0])
 		}),
 	}
 }

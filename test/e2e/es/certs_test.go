@@ -158,7 +158,7 @@ func TestCustomTransportCA(t *testing.T) {
 						// transport certs are checked as part of stack checks now but let's run this step explicitly once more
 						// with the defined CA as a parameter to catch the case where both CA cert in the secret and presented
 						// certs on the nodes are not the ones defined by the user
-						return elasticsearch.MakeTransportTLSHandshake(initialCluster.Elasticsearch, ca.Cert)
+						return elasticsearch.CheckTransportCACertificate(initialCluster.Elasticsearch, ca.Cert)
 					}),
 				},
 			}
