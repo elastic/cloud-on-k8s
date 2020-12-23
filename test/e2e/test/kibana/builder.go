@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -175,8 +176,10 @@ func (b Builder) WithTelemetryEnabled(enabled bool) Builder {
 		}
 	}
 
+	ver := version.MustParse(b.Kibana.Spec.Version)
 	cfg := settings.MustCanonicalConfig(b.Kibana.Spec.Config.Data)
-	if err := cfg.MergeWith(settings.MustCanonicalConfig(kibana.TelemetrySetting{Enabled: enabled})); err != nil {
+	telemetrySetting := kibana.TelemetrySetting(ver)
+	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{telemetrySetting: enabled})); err != nil {
 		panic(err)
 	}
 

@@ -165,12 +165,21 @@ type reusableSettings struct {
 	SavedObjectsKey string `config:"xpack.encryptedSavedObjects.encryptionKey"`
 }
 
-//TelemetrySetting represents the telemetry toggle in Kibana configuration.
-type TelemetrySetting struct {
-	Enabled bool `config:"telemetry.enabled"`
+// TelemetrySetting returns the telemetry toggle setting in Kibana configuration.
+func TelemetrySetting(v version.Version) string {
+	if v.Major == 6 {
+		return "xpack.xpack_main.telemetry.enabled"
+	}
+	return "telemetry.enabled"
 }
 
 func IsTelemetryEnabled(kv kbv1.Kibana) (bool, error) {
+	ver, err := version.Parse(kv.Spec.Version)
+	if err != nil {
+		return true, err
+	}
+	telemetrySetting := TelemetrySetting(*ver)
+
 	config := kv.Spec.Config
 	if config == nil {
 		return true, nil // enabled by default
@@ -179,15 +188,10 @@ func IsTelemetryEnabled(kv kbv1.Kibana) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	if len(canonicalCfg.HasKeys([]string{"telemetry.enabled"})) == 0 {
+	if len(canonicalCfg.HasKeys([]string{telemetrySetting})) == 0 {
 		return true, nil // enabled by default
 	}
-
-	var telemetry TelemetrySetting
-	if err := canonicalCfg.Unpack(&telemetry); err != nil {
-		return true, errors.Wrap(err, "while unpacking telemetry setting")
-	}
-	return telemetry.Enabled, nil
+	return (*ucfg.Config)(canonicalCfg).Bool(telemetrySetting, -1, settings.Options...)
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists

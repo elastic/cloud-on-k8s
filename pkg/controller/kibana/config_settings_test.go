@@ -559,8 +559,18 @@ func TestIsTelemetryEnabled(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "no config: enabled",
+			name:    "no version: error",
 			args:    kbv1.Kibana{},
+			want:    true,
+			wantErr: true,
+		},
+		{
+			name: "no config: enabled",
+			args: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "7.10.0",
+				},
+			},
 			want:    true,
 			wantErr: false,
 		},
@@ -568,16 +578,31 @@ func TestIsTelemetryEnabled(t *testing.T) {
 			name: "empty config: enabled",
 			args: kbv1.Kibana{
 				Spec: kbv1.KibanaSpec{
-					Config: &commonv1.Config{Data: map[string]interface{}{}},
+					Version: "7.10.0",
+					Config:  &commonv1.Config{Data: map[string]interface{}{}},
 				},
 			},
 			want:    true,
 			wantErr: false,
 		},
 		{
-			name: "explicitly enabled",
+			name: "explicitly enabled 6.x",
 			args: kbv1.Kibana{
 				Spec: kbv1.KibanaSpec{
+					Version: "6.8.0",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"xpack.xpack_main.telemetry.enabled": true,
+					}},
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "explicitly enabled 7.x",
+			args: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "7.10.0",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"telemetry.enabled": true,
 					}},
@@ -587,9 +612,23 @@ func TestIsTelemetryEnabled(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "explicitly disabled",
+			name: "explicitly disabled 6.x",
 			args: kbv1.Kibana{
 				Spec: kbv1.KibanaSpec{
+					Version: "6.8.0",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"xpack.xpack_main.telemetry.enabled": false,
+					}},
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "explicitly disabled 7.x",
+			args: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "7.10.0",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"telemetry.enabled": false,
 					}},

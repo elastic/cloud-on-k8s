@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
@@ -85,7 +86,11 @@ func (check *kbChecks) CheckKbTelemetryStatus(b Builder) test.Step {
 					return nil
 				}
 			}
-			return fmt.Errorf("telemetry in Kibana should be enabled [%v] but got [%s]", shouldBeEnabled, err.Error())
+			return fmt.Errorf("telemetry in Kibana should be enabled [%v] but got [%w]", shouldBeEnabled, err)
 		}),
+		Skip: func() bool {
+			// Disabling telemetry does not disable the telemetry route in version 6.x
+			return version.MustParse(b.Kibana.Spec.Version).Major == 6
+		},
 	}
 }
