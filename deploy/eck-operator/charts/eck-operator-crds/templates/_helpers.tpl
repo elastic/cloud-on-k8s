@@ -31,6 +31,17 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
+Return the appropriate apiVersion for CustomResourceDefinition.
+*/}}
+{{- define "eck-operator-crds.CustomResourceDefinition.apiVersion" -}}
+{{- if semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- print "apiextensions.k8s.io/v1" -}}
+{{- else -}}
+{{- print "apiextensions.k8s.io/v1beta1" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "eck-operator-crds.labels" -}}
