@@ -99,15 +99,15 @@ func TestFormatNameWithID(t *testing.T) {
 	}{
 		{
 			name:     "no id",
-			template: "name%s",
+			template: "association.k8s.elastic.co/es-conf%s",
 			id:       "",
-			wanted:   "name",
+			wanted:   "association.k8s.elastic.co/es-conf",
 		},
 		{
 			name:     "id present",
-			template: "name%s",
-			id:       "ns1-es1",
-			wanted:   "name-ns1-es1",
+			template: "association.k8s.elastic.co/es-conf%s",
+			id:       "agentNamespace.agentName",
+			wanted:   "association.k8s.elastic.co/es-conf-agentNamespace.agentName",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
