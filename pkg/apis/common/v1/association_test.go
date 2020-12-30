@@ -157,6 +157,50 @@ func TestAssociationStatusMap_AllEstablished(t *testing.T) {
 	}
 }
 
+func TestAssociationStatusMap_Single(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		statusMap    AssociationStatusMap
+		wantedStatus AssociationStatus
+		wantedErr    bool
+	}{
+		{
+			name:         "no elements",
+			statusMap:    AssociationStatusMap{},
+			wantedStatus: AssociationUnknown,
+		},
+		{
+			name: "single established",
+			statusMap: map[string]AssociationStatus{
+				"": AssociationEstablished,
+			},
+			wantedStatus: AssociationEstablished,
+		},
+		{
+			name: "single pending",
+			statusMap: map[string]AssociationStatus{
+				"": AssociationPending,
+			},
+			wantedStatus: AssociationPending,
+		},
+		{
+			name: "many established",
+			statusMap: map[string]AssociationStatus{
+				"1": AssociationEstablished,
+				"2": AssociationEstablished,
+			},
+			wantedStatus: AssociationUnknown,
+			wantedErr:    true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStatus, gotErr := tt.statusMap.Single()
+			require.Equal(t, tt.wantedStatus, gotStatus)
+			require.Equal(t, tt.wantedErr, gotErr != nil)
+		})
+	}
+}
+
 func TestAssociationStatusMap_String(t *testing.T) {
 	for _, tt := range []struct {
 		name      string

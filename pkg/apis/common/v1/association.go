@@ -121,19 +121,20 @@ type Association interface {
 	// It is mostly used to build some other strings depending on the type of the targeted resource.
 	AssociationType() AssociationType
 
-	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
+	// AssociationRef is a reference to the associated resource. If defined with a Name then the Namespace is expected
+	// to be set in the returned object.
 	AssociationRef() ObjectSelector
 
-	// AnnotationName is the name of the annotation used to define the config for the associated resource.
+	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.
 	// It is used by the association controller to store the configuration and by the controller which is
 	// managing the associated resource to build the appropriate configuration.
 	AssociationConfAnnotationName() string
 
-	// Configuration
+	// AssociationConf is the configuration of the Association allowing to connect to the Association resource.
 	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
 
-	// ID uniquely identifies this Association among all Associations of the same type belonging to Associated()
+	// AssociationID uniquely identifies this Association among all Associations of the same type belonging to Associated()
 	AssociationID() string
 }
 
