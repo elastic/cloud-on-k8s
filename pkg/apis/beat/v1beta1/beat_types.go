@@ -241,7 +241,7 @@ func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (b *BeatESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", b.AssociationID())
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
 func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {

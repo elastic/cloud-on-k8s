@@ -194,7 +194,7 @@ func (aes *ApmEsAssociation) Associated() commonv1.Associated {
 }
 
 func (aes *ApmEsAssociation) AssociationConfAnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", aes.AssociationID())
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
 func (aes *ApmEsAssociation) AssociationType() commonv1.AssociationType {

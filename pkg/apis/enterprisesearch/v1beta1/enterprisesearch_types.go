@@ -81,7 +81,7 @@ func (ent *EnterpriseSearch) Associated() commonv1.Associated {
 }
 
 func (ent *EnterpriseSearch) AssociationConfAnnotationName() string {
-	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s", ent.AssociationID())
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
 func (ent *EnterpriseSearch) AssociationType() commonv1.AssociationType {
