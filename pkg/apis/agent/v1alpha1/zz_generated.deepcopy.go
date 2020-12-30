@@ -23,17 +23,9 @@ func (in *Agent) DeepCopyInto(out *Agent) {
 	in.Status.DeepCopyInto(&out.Status)
 	if in.assocConfs != nil {
 		in, out := &in.assocConfs, &out.assocConfs
-		*out = make(map[types.NamespacedName]*v1.AssociationConf, len(*in))
+		*out = make(map[types.NamespacedName]v1.AssociationConf, len(*in))
 		for key, val := range *in {
-			var outVal *v1.AssociationConf
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(v1.AssociationConf)
-				**out = **in
-			}
-			(*out)[key] = outVal
+			(*out)[key] = val
 		}
 	}
 }

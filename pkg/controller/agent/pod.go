@@ -122,5 +122,10 @@ func createDataVolume(params Params) volume.VolumeLike {
 
 func certificatesDir(association commonv1.Association) string {
 	ref := association.AssociationRef()
-	return fmt.Sprintf("/mnt/elastic-internal/%s/%s/%s/certs", association.AssociationType(), ref.Namespace, ref.Name)
+	return fmt.Sprintf(
+		"/mnt/elastic-internal/%s-association/%s/%s/certs",
+		association.AssociationType(),
+		ref.Namespace,
+		ref.Name,
+	)
 }

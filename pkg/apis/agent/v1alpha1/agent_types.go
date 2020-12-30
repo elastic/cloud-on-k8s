@@ -138,9 +138,9 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec       AgentSpec                                          `json:"spec,omitempty"`
-	Status     AgentStatus                                        `json:"status,omitempty"`
-	assocConfs map[types.NamespacedName]*commonv1.AssociationConf `json:"-"` // nolint:govet
+	Spec       AgentSpec                                         `json:"spec,omitempty"`
+	Status     AgentStatus                                       `json:"status,omitempty"`
+	assocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -187,7 +187,7 @@ func (a *Agent) SecureSettings() []commonv1.SecretSource {
 
 type AgentESAssociation struct {
 	*Agent
-	// ref is the namespaced name of the Association (eg. for Kibana-ES Association, ref points to the ES)
+	// ref is the namespaced name of the Elasticsearch used in Association
 	ref types.NamespacedName
 }
 
@@ -231,14 +231,21 @@ func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
 	if aea.assocConfs == nil {
 		return nil
 	}
-	return aea.assocConfs[aea.ref]
+	assocConf, found := aea.assocConfs[aea.ref]
+	if !found {
+		return nil
+	}
+
+	return &assocConf
 }
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.assocConfs == nil {
-		aea.assocConfs = make(map[types.NamespacedName]*commonv1.AssociationConf)
+		aea.assocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
 	}
-	aea.assocConfs[aea.ref] = conf
+	if conf != nil {
+		aea.assocConfs[aea.ref] = *conf
+	}
 }
 
 var _ commonv1.Associated = &Agent{}
