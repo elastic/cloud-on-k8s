@@ -72,6 +72,8 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 	return nil
 }
 
+// ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
+// `watchedFunc`.
 func ReconcileWatch(
 	associated types.NamespacedName,
 	associations []commonv1.Association,
@@ -97,6 +99,7 @@ func ReconcileWatch(
 	})
 }
 
+// RemoveWatch removes `watchName` watch from `dynamicRequest`.
 func RemoveWatch(dynamicRequest *watches.DynamicEnqueueRequest, watchName string) {
 	dynamicRequest.RemoveHandlerForKey(watchName)
 }

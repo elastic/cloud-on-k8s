@@ -168,7 +168,11 @@ func (a *Agent) IsMarkedForDeletion() bool {
 	return !a.DeletionTimestamp.IsZero()
 }
 
-func (a *Agent) AssociationStatusMap(_ commonv1.AssociationType) commonv1.AssociationStatusMap {
+func (a *Agent) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	if typ != commonv1.ElasticsearchAssociationType {
+		return commonv1.AssociationStatusMap{}
+	}
+
 	return a.Status.ElasticsearchAssociationsStatus
 }
 
