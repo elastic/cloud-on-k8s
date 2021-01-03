@@ -13,6 +13,7 @@
 
 # Exit immediately for non zero status
 set -e
+set -x
 
 KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-"1"}
 log_lvl=("-v" "$KIND_LOG_LEVEL")
@@ -37,7 +38,7 @@ function check_kind() {
 function create_manifest() {
 cat <<EOT > ${MANIFEST}
 kind: Cluster
-apiVersion: kind.sigs.k8s.io/v1alpha3
+apiVersion: kind.x-k8s.io/v1alpha4
 networking:
   ipFamily: ${IP_FAMILY}
 nodes:
