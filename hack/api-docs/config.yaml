@@ -11,4 +11,4 @@ processor:
     - "TypeMeta$"
 
 render:
-  kubernetesVersion: 1.18
+  kubernetesVersion: "1.20"
