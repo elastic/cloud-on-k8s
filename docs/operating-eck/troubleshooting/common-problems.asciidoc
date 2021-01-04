@@ -85,10 +85,10 @@ type: Opaque
 
 Failure to do so can cause data loss.
 
-[id="{p}-{page_id}-pod-updates"]
+[id="{p}-{page_id}-scale-down"]
 == Scale down of Elasticsearch master-eligible Pods seems stuck
 
-If a master-eligible Elasticsarch Pod was never successfully scheduled and the Elasticsearch cluster is running version 7.8 or earlier ECK may fail to scale down the Pod. Verify that the Pod in question is pending:
+If a master-eligible Elasticsarch Pod was never successfully scheduled and the Elasticsearch cluster is running version 7.8 or earlier ECK may fail to scale down the Pod. To find out whether you are affected, check that the Pod in question is pending:
 [source,sh]
 ----
 > kubectl get pods
