@@ -541,6 +541,16 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 // TestReconciler_Reconcile_MultiRef tests Agent with multiple ES refs by checking resources, watches and annotations
 // are created and deleted as refs are added and removed.
 func TestReconciler_Reconcile_MultiRef(t *testing.T) {
+	generateAnnotationName := func(namespace, name string) string {
+		agent := agentv1alpha1.Agent{
+			Spec: agentv1alpha1.AgentSpec{
+				ElasticsearchRefs: []agentv1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+			},
+		}
+		associations := agent.GetAssociations()
+		return associations[0].AssociationConfAnnotationName()
+	}
+
 	agentAssociationInfo := AssociationInfo{
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
@@ -744,7 +754,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	// get Agent resource and run checks
 	require.NoError(t, r.Get(k8s.ExtractNamespacedName(&agent), &agent))
 	checkSecrets(t, r, true, ref1ExpectedSecrets, ref2ExpectedSecrets)
-	checkAnnotations(t, agent, true, "association.k8s.elastic.co/es-conf-es1Namespace.es1", "association.k8s.elastic.co/es-conf-es2Namespace.es2")
+	checkAnnotations(t, agent, true, generateAnnotationName("es1Namespace", "es1"), generateAnnotationName("es2Namespace", "es2"))
 	checkWatches(t, r.watches, true)
 	checkStatus(t, agent, "es1Namespace/es1", "es2Namespace/es2")
 
@@ -763,8 +773,8 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	require.NoError(t, r.Get(k8s.ExtractNamespacedName(&agent), &updatedAgent))
 	checkSecrets(t, r, false, ref1ExpectedSecrets)
 	checkSecrets(t, r, true, ref2ExpectedSecrets)
-	checkAnnotations(t, updatedAgent, false, "association.k8s.elastic.co/es-conf-es1Namespace.es1")
-	checkAnnotations(t, updatedAgent, true, "association.k8s.elastic.co/es-conf-es2Namespace.es2")
+	checkAnnotations(t, updatedAgent, false, generateAnnotationName("es1Namespace", "es1"))
+	checkAnnotations(t, updatedAgent, true, generateAnnotationName("es2Namespace", "es2"))
 	checkWatches(t, r.watches, true)
 	checkStatus(t, updatedAgent, "es2Namespace/es2")
 

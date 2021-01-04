@@ -521,7 +521,6 @@ func TestAllowVersion(t *testing.T) {
 }
 
 func TestRemoveObsoleteAssociationConfs(t *testing.T) {
-	const annotationNameBase = "association.k8s.elastic.co/es-conf"
 	withAnnotations := func(annotationNames ...string) *v1alpha1.Agent {
 		result := &v1alpha1.Agent{
 			ObjectMeta: metav1.ObjectMeta{
@@ -550,6 +549,16 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 		return agent
 	}
 
+	generateAnnotationName := func(namespace, name string) string {
+		agent := v1alpha1.Agent{
+			Spec: v1alpha1.AgentSpec{
+				ElasticsearchRefs: []v1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+			},
+		}
+		associations := agent.GetAssociations()
+		return associations[0].AssociationConfAnnotationName()
+	}
+
 	for _, tt := range []struct {
 		name              string
 		associated        commonv1.Associated
@@ -567,32 +576,32 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 		},
 		{
 			name: "related annotation with ref - should be preserved",
-			associated: withRefs(withAnnotations(annotationNameBase+"-a.b"), types.NamespacedName{
+			associated: withRefs(withAnnotations(generateAnnotationName("a", "b")), types.NamespacedName{
 				Namespace: "a",
 				Name:      "b",
 			},
 			),
-			wantedAnnotations: []string{annotationNameBase + "-a.b"},
+			wantedAnnotations: []string{generateAnnotationName("a", "b")},
 		},
 		{
 			name:              "related annotation without ref - should be removed",
-			associated:        withAnnotations(annotationNameBase + "-a.b"),
+			associated:        withAnnotations(generateAnnotationName("a", "b")),
 			wantedAnnotations: []string{},
 		},
 		{
 			name: "mixed annotations - should be cleaned up",
-			associated: withRefs(withAnnotations(annotationNameBase+"-a.b", annotationNameBase+"-c.d", "not-related"), types.NamespacedName{
+			associated: withRefs(withAnnotations(generateAnnotationName("a", "b"), generateAnnotationName("c", "d"), "not-related"), types.NamespacedName{
 				Namespace: "a",
 				Name:      "b",
 			},
 			),
-			wantedAnnotations: []string{annotationNameBase + "-a.b", "not-related"},
+			wantedAnnotations: []string{generateAnnotationName("a", "b"), "not-related"},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.associated)
 
-			require.NoError(t, RemoveObsoleteAssociationConfs(client, tt.associated, annotationNameBase))
+			require.NoError(t, RemoveObsoleteAssociationConfs(client, tt.associated, "association.k8s.elastic.co/es-conf"))
 
 			var got v1alpha1.Agent
 			require.NoError(t, client.Get(k8s.ExtractNamespacedName(tt.associated), &got))
@@ -602,7 +611,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 				gotAnnotations = append(gotAnnotations, key)
 			}
 
-			require.Equal(t, tt.wantedAnnotations, gotAnnotations)
+			require.ElementsMatch(t, tt.wantedAnnotations, gotAnnotations)
 		})
 	}
 }
