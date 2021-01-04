@@ -142,7 +142,7 @@ type Association interface {
 // If `id` is empty, the %s verb will be formatted with empty string. Otherwise %s verb will be replaced with `-id`.
 // Eg:
 // FormatNameWithID("name%s", "") returns "name"
-// FormatNameWithID("name%s", "ns1-es1") returns "name-ns1-es2"
+// FormatNameWithID("name%s", "ns1-es1") returns "name-ns1-es1"
 // FormatNameWithID("name%s", "ns2-es2") returns "name-ns2-es2"
 // This function exists to abstract this conditional logic away from the callers. It can be used to format names
 // for objects differing only by id, that would otherwise collide. In addition, it allows to preserve current naming
