@@ -108,7 +108,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.18
+  kubernetesVersion: 1.17
   eks:
     region: eu-central-1
     nodeCount: 3
@@ -120,7 +120,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.18
+  kubernetesVersion: 1.17
   eks:
     region: eu-west-2
     nodeCount: 3
