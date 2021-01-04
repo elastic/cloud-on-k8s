@@ -230,7 +230,7 @@ func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 
 	nsNameHash := sha256.New224()
 	// concat with dot to avoid collisions, as namespace can't contain dots
-	nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", aea.ref.Namespace, aea.ref.Name)))
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", aea.ref.Namespace, aea.ref.Name)))
 	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
 	// give too long output
 	// no padding to avoid illegal '=' character in the annotation name
