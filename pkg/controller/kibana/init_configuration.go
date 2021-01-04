@@ -17,7 +17,7 @@ const (
 	InitConfigScript = `#!/usr/bin/env bash
 set -eux
 
-init_config_initialized_flag=/usr/share/kibana/config/elastic-internal-init-config.ok
+init_config_initialized_flag=` + InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
 if [[ -f "${init_config_initialized_flag}" ]]; then
     echo "Kibana configuration already initialized."

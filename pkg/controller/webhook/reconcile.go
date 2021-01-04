@@ -48,7 +48,7 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 			"secret_namespace", webhookServerSecret.Namespace,
 			"secret_name", webhookServerSecret.Name,
 		)
-		newCertificates, err := w.newCertificates()
+		newCertificates, err := w.newCertificates(webhookConfiguration)
 		if err != nil {
 			return err
 		}

@@ -1,0 +1,15 @@
+= Elastic Agent Configuration Examples
+
+This directory contains yaml manifests with example configurations for Elastic Agent. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. All of them contain a three-node Elasticsearch cluster, a single Kibana instance and all required RBAC resources.
+
+IMPORTANT: These examples are for illustration purposes only and should not be considered to be production-ready.
+
+CAUTION: Some of these examples use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+==== System integration - `system-integration.yaml`
+
+Deploys Elastic Agent as a DaemonSet in standalone mode with system integration enabled. Collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others).
+
+==== Kubernetes integration - `kubernetes-integration.yaml`
+
+Deploys Elastic Agent as a DaemonSet in standalone mode with Kubernetes integration enabled. Collects API server, Container, Event, Node, Pod, Volume and system metrics.

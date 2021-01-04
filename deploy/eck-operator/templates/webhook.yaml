@@ -1,9 +1,9 @@
 {{- if .Values.webhook.enabled -}}
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: {{ include "eck-operator.webhookAPIVersion" $ }}
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: {{ .Values.webhook.name }}
+  name: {{ include "eck-operator.webhookName" . }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
 {{- if .Values.webhook.certManagerCert }}
@@ -14,11 +14,48 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-agent-k8s-elastic-co-v1alpha1-agent
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  name: elastic-agent-validation-v1alpha1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
+{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  rules:
+  - apiGroups:
+    - agent.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - agents
+- clientConfig:
+    caBundle: {{ .Values.webhook.caBundle }}
+    service:
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-apm-validation-v1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -33,11 +70,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -52,11 +98,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-beat-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -71,11 +126,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-ent-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -90,11 +154,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-es-validation-v1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -109,11 +182,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-es-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -128,11 +210,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-kb-validation-v1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -147,11 +238,20 @@ webhooks:
 - clientConfig:
     caBundle: {{ .Values.webhook.caBundle }}
     service:
-      name: {{ .Values.webhook.serviceName }}
+      name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
+{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
 {{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
   rules:
   - apiGroups:
@@ -167,7 +267,7 @@ webhooks:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.webhook.serviceName }}
+  name: {{ include "eck-operator.webhookServiceName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
@@ -183,7 +283,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: "{{ .Values.webhook.certsSecret }}"
+  name: {{ include "eck-operator.webhookSecretName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}

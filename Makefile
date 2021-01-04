@@ -430,7 +430,6 @@ e2e-run:
 		--build-number=$(BUILD_NUMBER) \
 		--provider=$(E2E_PROVIDER) \
 		--clusterName=$(CLUSTER_NAME) \
-		--kubernetes-version=$(KUBERNETES_VERSION) \
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB)

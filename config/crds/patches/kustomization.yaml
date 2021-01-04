@@ -56,3 +56,10 @@ patchesJson6902:
       kind: CustomResourceDefinition
       name: beats.beat.k8s.elastic.co
     path: beat-patches.yaml
+  # custom patches for Agent
+  - target:
+      group: apiextensions.k8s.io
+      version: v1beta1
+      kind: CustomResourceDefinition
+      name: agents.agent.k8s.elastic.co
+    path: agent-patches.yaml

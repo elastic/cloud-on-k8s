@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: v130
 spec:
-  version: 7.9.2
+  version: 7.10.0
   nodeSets:
   - name: default
     count: 3
@@ -16,7 +16,7 @@ kind: Kibana
 metadata:
   name: v130
 spec:
-  version: 7.9.2
+  version: 7.10.0
   count: 1
   elasticsearchRef:
     name: v130
@@ -26,7 +26,7 @@ kind: ApmServer
 metadata:
   name: v130
 spec:
-  version: 7.9.2
+  version: 7.10.0
   count: 1
   elasticsearchRef:
     name: v130

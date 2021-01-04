@@ -20,6 +20,7 @@ type Params struct {
 	Owner       metav1.Object
 	Labels      map[string]string
 	Selectors   map[string]string
+	Strategy    appsv1.DaemonSetUpdateStrategy
 }
 
 func New(params Params) appsv1.DaemonSet {
@@ -33,7 +34,8 @@ func New(params Params) appsv1.DaemonSet {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selectors,
 			},
-			Template: params.PodTemplate,
+			Template:       params.PodTemplate,
+			UpdateStrategy: params.Strategy,
 		},
 	}
 }

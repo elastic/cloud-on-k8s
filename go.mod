@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s
 go 1.13
 
 require (
-	github.com/Masterminds/sprig/v3 v3.1.0
+	github.com/Masterminds/sprig/v3 v3.2.0
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/davecgh/go-spew v1.1.1
@@ -18,7 +18,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.4
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/vault/api v1.0.4
@@ -44,7 +44,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6

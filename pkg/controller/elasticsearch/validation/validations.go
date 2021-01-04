@@ -169,6 +169,10 @@ func getNodeRoleAttrs(cfg esv1.ElasticsearchSettings) []string {
 			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeML)
 		}
 
+		if cfg.Node.RemoteClusterClient != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeRemoteClusterClient)
+		}
+
 		if cfg.Node.Transform != nil {
 			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeTransform)
 		}

@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -320,6 +321,7 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es, esv1.Kind)

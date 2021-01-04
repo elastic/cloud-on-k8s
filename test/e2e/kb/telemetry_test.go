@@ -9,18 +9,16 @@ import (
 	"fmt"
 	"testing"
 
+	kibana2 "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	kibana2 "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
 func TestTelemetry(t *testing.T) {
@@ -81,20 +79,7 @@ func TestTelemetry(t *testing.T) {
 			{
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: test.Eventually(func() error {
-					kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
-					apiVersion, payload := apiVersionAndTelemetryRequestBody(kbVersion)
-					uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
-					password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
-					if err != nil {
-						return err
-					}
-					payloadBytes, err := json.Marshal(payload)
-					if err != nil {
-						return err
-					}
-					// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
-					// in which case we'll just retry that test step
-					body, err := kibana.DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
+					body, err := kibana.MakeTelemetryRequest(kbBuilder, k)
 					if err != nil {
 						return err
 					}
@@ -119,32 +104,6 @@ func TestTelemetry(t *testing.T) {
 
 	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
 
-}
-
-func apiVersionAndTelemetryRequestBody(kbVersion version.Version) (string, telemetryRequest) {
-	apiVersion := "v1"
-	payload := telemetryRequest{
-		TimeRange: &timeRange{},
-	}
-	if kbVersion.IsSameOrAfter(version.From(7, 2, 0)) {
-		apiVersion = "v2"
-		payload.Unencrypted = true
-	}
-	if kbVersion.IsSameOrAfter(version.From(7, 11, 0)) {
-		payload.TimeRange = nil // removed in 7.11
-	}
-	return apiVersion, payload
-}
-
-type timeRange struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
-}
-
-// telemetryRequest is the request body for v1/v2 Kibana telemetry requests
-type telemetryRequest struct {
-	TimeRange   *timeRange `json:"timeRange,omitempty"`
-	Unencrypted bool       `json:"unencrypted,omitempty"`
 }
 
 // clusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats

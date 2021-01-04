@@ -19,6 +19,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
+type APIError struct {
+	StatusCode int
+	msg        string
+}
+
+func (e *APIError) Error() string {
+	return e.msg
+}
+
 func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	if kb.Spec.HTTP.TLS.Enabled() {
@@ -70,7 +79,10 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("fail to request %s, status is %d)", pathAndQuery, resp.StatusCode)
+		return nil, &APIError{
+			StatusCode: resp.StatusCode,
+			msg:        fmt.Sprintf("fail to request %s, status is %d)", pathAndQuery, resp.StatusCode),
+		}
 	}
 
 	defer resp.Body.Close()

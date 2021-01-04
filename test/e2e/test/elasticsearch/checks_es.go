@@ -31,6 +31,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		e.CheckESNodesTopology(b.Elasticsearch),
 		e.CheckESVersion(b.Elasticsearch),
 		e.CheckESHealthGreen(),
+		b.CheckTransportCertificatesStep(k),
 	}
 }
 
@@ -188,20 +189,32 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 func compareRoles(expected *esv1.Node, actualRoles []string) bool {
 	for _, r := range actualRoles {
 		switch r {
-		case "master":
+		case esv1.MasterRole:
 			if !expected.HasMasterRole() {
 				return false
 			}
-		case "data":
+		case esv1.DataRole:
 			if !expected.HasDataRole() {
 				return false
 			}
-		case "ingest":
+		case esv1.IngestRole:
 			if !expected.HasIngestRole() {
 				return false
 			}
-		case "transform":
+		case esv1.MLRole:
+			if !expected.HasMLRole() {
+				return false
+			}
+		case esv1.RemoteClusterClientRole:
+			if !expected.HasRemoteClusterClientRole() {
+				return false
+			}
+		case esv1.TransformRole:
 			if !expected.HasTransformRole() {
+				return false
+			}
+		case esv1.VotingOnlyRole:
+			if !expected.HasVotingOnlyRole() {
 				return false
 			}
 		}

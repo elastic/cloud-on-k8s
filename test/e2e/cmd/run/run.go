@@ -19,6 +19,7 @@ import (
 	"time"
 
 	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -56,7 +57,7 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
-			helper.createBeatRoles,
+			helper.createRoles,
 			helper.createManagedNamespaces,
 		}
 	} else {
@@ -66,7 +67,7 @@ func doRun(flags runFlags) error {
 			helper.initTestContext,
 			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
-			helper.createBeatRoles,
+			helper.createRoles,
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
@@ -156,7 +157,7 @@ func (h *helper) initTestContext() error {
 		BuildNumber:           h.buildNumber,
 		Provider:              h.provider,
 		ClusterName:           h.clusterName,
-		KubernetesVersion:     h.kubernetesVersion,
+		KubernetesVersion:     getKubernetesVersion(h),
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
 		Ocp3Cluster:           isOcp3Cluster(h),
@@ -185,14 +186,42 @@ func (h *helper) initTestContext() error {
 	return nil
 }
 
+func getKubernetesVersion(h *helper) string {
+	out, err := h.kubectl("version", "--output=json")
+	if err != nil {
+		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
+	}
+
+	kubectlVersionResponse := struct {
+		ServerVersion map[string]string `json:"serverVersion"`
+	}{}
+
+	if err := json.Unmarshal([]byte(out), &kubectlVersionResponse); err != nil {
+		panic(fmt.Sprintf("can't determine Kubernetes version, err %s", err))
+	}
+
+	serverVersion, ok := kubectlVersionResponse.ServerVersion["gitVersion"]
+	if !ok {
+		panic("can't determine Kubernetes version, gitVersion missing from kubectl response")
+	}
+
+	serverVersion = strings.TrimPrefix(serverVersion, "v")
+	v := version.MustParse(serverVersion)
+
+	// we just want major and minor to aggregate test results
+	return fmt.Sprintf("%d.%d", v.Major, v.Minor)
+}
+
 func isOcpCluster(h *helper) bool {
-	isOCP4 := h.kubectl("get", "clusterversion") == nil
+	_, err := h.kubectl("get", "clusterversion")
+	isOCP4 := err == nil
 	isOCP3 := isOcp3Cluster(h)
 	return isOCP4 || isOCP3
 }
 
 func isOcp3Cluster(h *helper) bool {
-	return h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver") == nil
+	_, err := h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver")
+	return err == nil
 }
 
 func (h *helper) initTestSecrets() error {
@@ -254,14 +283,15 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/rbac.yaml", h.testContext)
 }
 
-func (h *helper) createBeatRoles() error {
-	log.Info("Creating Beat roles")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/beat-roles.yaml", h.testContext)
+func (h *helper) createRoles() error {
+	log.Info("Creating Beat/Agent roles")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
 }
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	return h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
+	_, err := h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
+	return err
 }
 
 func (h *helper) createOperatorNamespaces() error {
@@ -543,7 +573,8 @@ func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interfa
 		return "", err
 	}
 
-	return outFilePath, h.kubectl("apply", "-f", outFilePath)
+	_, err = h.kubectl("apply", "-f", outFilePath)
+	return outFilePath, err
 }
 
 func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam interface{}) error {
@@ -556,16 +587,17 @@ func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templatePa
 	return nil
 }
 
-func (h *helper) kubectl(command string, args ...string) error {
+func (h *helper) kubectl(command string, args ...string) (string, error) {
 	return h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
-func (h *helper) exec(cmd *command.Command) error {
+func (h *helper) exec(cmd *command.Command) (string, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
 	defer cancelFunc()
 
 	log.V(1).Info("Executing command", "command", cmd)
 	out, err := cmd.Execute(ctx)
+	outString := string(out)
 	if err != nil {
 		// suppress the stacktrace when the command fails naturally
 		if _, ok := err.(*exec.ExitError); ok {
@@ -574,15 +606,15 @@ func (h *helper) exec(cmd *command.Command) error {
 			log.Error(err, "Command execution failed", "command", cmd)
 		}
 
-		fmt.Fprintln(os.Stderr, string(out))
-		return errors.Wrapf(err, "command failed: [%s]", cmd)
+		fmt.Fprintln(os.Stderr, outString)
+		return "", errors.Wrapf(err, "command failed: [%s]", cmd)
 	}
 
 	if log.V(1).Enabled() {
-		fmt.Println(string(out))
+		fmt.Println(outString)
 	}
 
-	return nil
+	return outString, nil
 }
 
 func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
@@ -610,7 +642,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 func (h *helper) deleteResources(file string) func() {
 	return func() {
 		log.Info("Deleting resources", "file", file)
-		if err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
+		if _, err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
 			log.Error(err, "Failed to delete resources", "file", file)
 		}
 	}

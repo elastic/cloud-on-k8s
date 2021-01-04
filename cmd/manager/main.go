@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -24,6 +25,7 @@ import (
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
@@ -646,6 +648,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Beats", registerFunc: beat.Add},
 		{name: "License", registerFunc: license.Add},
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
+		{name: "Agent", registerFunc: agent.Add},
 	}
 
 	for _, c := range controllers {
@@ -666,6 +669,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
+		{name: "AGENT-ES", registerFunc: associationctl.AddAgentES},
 	}
 
 	for _, c := range assocControllers {
@@ -700,6 +704,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
 		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
+		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		DoGarbageCollection()
 	if err != nil {
 		log.Error(err, "user garbage collector failed")
@@ -709,11 +714,12 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 
 func garbageCollectSoftOwnedSecrets(client k8s.Client) {
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(client, map[string]runtime.Object{
-		esv1.Kind:        &esv1.Elasticsearch{},
-		apmv1.Kind:       &apmv1.ApmServer{},
-		kbv1.Kind:        &kbv1.Kibana{},
-		entv1beta1.Kind:  &entv1beta1.EnterpriseSearch{},
-		beatv1beta1.Kind: &beatv1beta1.Beat{},
+		esv1.Kind:          &esv1.Elasticsearch{},
+		apmv1.Kind:         &apmv1.ApmServer{},
+		kbv1.Kind:          &kbv1.Kibana{},
+		entv1beta1.Kind:    &entv1beta1.EnterpriseSearch{},
+		beatv1beta1.Kind:   &beatv1beta1.Beat{},
+		agentv1alpha1.Kind: &agentv1alpha1.Agent{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
@@ -750,6 +756,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		runtime.Object
 		SetupWebhookWithManager(manager.Manager) error
 	}{
+		&agentv1alpha1.Agent{},
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},

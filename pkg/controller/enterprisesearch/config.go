@@ -192,11 +192,27 @@ func getOrCreateReusableSettings(c k8s.Client, ent entv1beta1.EnterpriseSearch) 
 	} else if err := cfg.Unpack(&e); err != nil {
 		return nil, err
 	}
+
+	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
 		e.SecretSession = string(common.RandomBytes(32))
 	}
+
+	// generate a random encryption key, or reuse the existing one
+	// Encryption keys are stored in an array, so they can be rotated.
+	// When Enterprise Search decrypts a secret, it tries all encryption keys in the array, in order.
+	// When Enterprise Search rewrites a secret, it uses the latest encryption key in the array.
+	// We manage the first item of that array: it is randomly generated once, then reused.
+	// Users are free to provide their own encryption keys through the configuration:
+	// in that case we still keep the first item we manage, user-provided keys will be appended to the array.
+	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
+		// no encryption key, generate a new one
 		e.EncryptionKeys = []string{string(common.RandomBytes(32))}
+	} else {
+		// encryption keys already exist, reuse the first ECK-managed one
+		// other user-provided keys from user-provided config will be merged in later
+		e.EncryptionKeys = []string{e.EncryptionKeys[0]}
 	}
 	return settings.MustCanonicalConfig(e), nil
 }

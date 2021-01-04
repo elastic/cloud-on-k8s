@@ -10,10 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 

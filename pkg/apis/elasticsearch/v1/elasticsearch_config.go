@@ -14,20 +14,22 @@ import (
 )
 
 const (
-	NodeData       = "node.data"
-	NodeIngest     = "node.ingest"
-	NodeMaster     = "node.master"
-	NodeML         = "node.ml"
-	NodeTransform  = "node.transform"
-	NodeVotingOnly = "node.voting_only"
-	NodeRoles      = "node.roles"
+	NodeData                = "node.data"
+	NodeIngest              = "node.ingest"
+	NodeMaster              = "node.master"
+	NodeML                  = "node.ml"
+	NodeTransform           = "node.transform"
+	NodeVotingOnly          = "node.voting_only"
+	NodeRemoteClusterClient = "node.remote_cluster_client"
+	NodeRoles               = "node.roles"
 
-	MasterRole     = "master"
-	DataRole       = "data"
-	IngestRole     = "ingest"
-	MLRole         = "ml"
-	TransformRole  = "transform"
-	VotingOnlyRole = "voting_only"
+	MasterRole              = "master"
+	DataRole                = "data"
+	IngestRole              = "ingest"
+	MLRole                  = "ml"
+	RemoteClusterClientRole = "remote_cluster_client"
+	TransformRole           = "transform"
+	VotingOnlyRole          = "voting_only"
 )
 
 // ClusterSettings is the cluster node in elasticsearch.yml.
@@ -37,13 +39,14 @@ type ClusterSettings struct {
 
 // Node is the node section in elasticsearch.yml.
 type Node struct {
-	Master     *bool    `config:"master"`
-	Data       *bool    `config:"data"`
-	Ingest     *bool    `config:"ingest"`
-	ML         *bool    `config:"ml"`
-	Transform  *bool    `config:"transform"` // available as of 7.7.0
-	Roles      []string `config:"roles"`     // available as of 7.9.0, takes priority over the other fields if non-nil
-	VotingOnly *bool    `config:"voting_only"`
+	Master              *bool    `config:"master"`
+	Data                *bool    `config:"data"`
+	Ingest              *bool    `config:"ingest"`
+	ML                  *bool    `config:"ml"`
+	Transform           *bool    `config:"transform"`             // available as of 7.7.0
+	RemoteClusterClient *bool    `config:"remote_cluster_client"` // available as of 7.7.0
+	Roles               []string `config:"roles"`                 // available as of 7.9.0, takes priority over the other fields if non-nil
+	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
 }
 
 func (n *Node) HasMasterRole() bool {
@@ -96,6 +99,19 @@ func (n *Node) HasMLRole() bool {
 	}
 
 	return stringsutil.StringInSlice(MLRole, n.Roles)
+}
+
+func (n *Node) HasRemoteClusterClientRole() bool {
+	// all nodes are remote_cluster_client nodes by default
+	if n == nil {
+		return true
+	}
+
+	if n.Roles == nil {
+		return pointer.BoolPtrDerefOr(n.RemoteClusterClient, true)
+	}
+
+	return stringsutil.StringInSlice(RemoteClusterClientRole, n.Roles)
 }
 
 func (n *Node) HasTransformRole() bool {
