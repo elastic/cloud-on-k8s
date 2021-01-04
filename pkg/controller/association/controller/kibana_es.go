@@ -23,6 +23,8 @@ const (
 	KibanaESAssociationLabelName = "kibanaassociation.k8s.elastic.co/name"
 	// KibanaESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
 	KibanaESAssociationLabelNamespace = "kibanaassociation.k8s.elastic.co/namespace"
+	// KibanaESAssociationLabelType marks the type of association
+	KibanaESAssociationLabelType = "kibanaassociation.k8s.elastic.co/type"
 
 	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
 	KibanaSystemUserBuiltinRole = "kibana_system"
@@ -30,25 +32,29 @@ const (
 
 func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociationObjTemplate: func() commonv1.Association { return &kbv1.Kibana{} },
+		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 			return true, association.AssociationRef(), nil
 		},
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
+		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "kb-es",
 		AssociatedShortName:       "kb",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				KibanaESAssociationLabelName:      associated.Name,
 				KibanaESAssociationLabelNamespace: associated.Namespace,
+				KibanaESAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix:  "kibana-user",
-		CASecretLabelName: eslabel.ClusterNameLabelName,
+		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                  "kibana-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return KibanaSystemUserBuiltinRole, nil
 		},
+		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
+		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 	})
 }

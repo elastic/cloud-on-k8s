@@ -163,10 +163,12 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Reconciler{
 				AssociationInfo: AssociationInfo{
-					AssociationLabels: func(associated types.NamespacedName) map[string]string {
+					Labels: func(associated types.NamespacedName) map[string]string {
 						return map[string]string{}
 					},
-					AssociationName: "kibana-es",
+					AssociationName:                       "kibana-es",
+					AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
+					AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
 				},
 				Client:     tt.client,
 				watches:    watches.DynamicWatches{},
@@ -180,7 +182,6 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 				&tt.kibana,
 				esv1.ESNamer,
 				k8s.ExtractNamespacedName(&tt.es),
-				caSecretServiceLabelName,
 			)
 			require.NoError(t, err)
 

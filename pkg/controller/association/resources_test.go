@@ -51,7 +51,10 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	associationLabels := map[string]string{
 		"kibanaassociation.k8s.elastic.co/name":      kibanaFixtureObjectMeta.Name,
 		"kibanaassociation.k8s.elastic.co/namespace": kibanaFixtureObjectMeta.Namespace,
+		"kibana.k8s.elastic.co/name":                 esFixture.Name,
+		"kibana.k8s.elastic.co/namespace":            esFixture.Namespace,
 	}
+
 	userSecretLabels := maps.Merge(map[string]string{common.TypeLabelName: esuser.AssociatedUserType}, associationLabels)
 
 	assertExpectObjectsExist := func(t *testing.T, c k8s.Client) {
@@ -70,6 +73,12 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			Namespace: kibanaFixture.Namespace,
 			Name:      CACertSecretName(&kibanaFixture, kibanaESAssociationName),
 		}, &corev1.Secret{}))
+	}
+
+	info := AssociationInfo{
+		Labels:                                func(associated types.NamespacedName) map[string]string { return associationLabels },
+		AssociationResourceNameLabelName:      "kibana.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "kibana.k8s.elastic.co/namespace",
 	}
 
 	tests := []struct {
@@ -300,7 +309,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrappedFakeClient(tt.initialObjects...)
-			if err := deleteOrphanedResources(context.Background(), c, tt.kibana.AssociationRef().WithDefaultNamespace(tt.kibana.Namespace), &tt.kibana, associationLabels); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(context.Background(), c, info, tt.kibana.AssociationRef().WithDefaultNamespace(tt.kibana.Namespace).NamespacedName(), tt.kibana.GetAssociations()); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

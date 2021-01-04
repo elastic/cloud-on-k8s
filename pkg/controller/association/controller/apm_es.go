@@ -34,8 +34,9 @@ const (
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:    "apm",
-		AssociationObjTemplate: func() commonv1.Association { return &apmv1.ApmEsAssociation{} },
+		AssociatedShortName:   "apm",
+		AssociatedObjTemplate: func() commonv1.Associated { return &apmv1.ApmServer{} },
+		AssociationType:       commonv1.ElasticsearchAssociationType,
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 			return true, association.AssociationRef(), nil
 		},
@@ -43,16 +44,18 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "apm-es",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,
 				ApmAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix:  "apm-user",
-		CASecretLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole:        getAPMElasticsearchRoles,
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                      "apm-user",
+		ESUserRole:                            getAPMElasticsearchRoles,
+		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
+		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 	})
 }
 

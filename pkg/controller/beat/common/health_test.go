@@ -7,11 +7,10 @@ package common_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_CalculateHealth(t *testing.T) {
@@ -24,7 +23,9 @@ func Test_CalculateHealth(t *testing.T) {
 
 	var noAssociation []commonv1.Association
 	createAssociation := func(assocDef params) []commonv1.Association {
-		beat := &beatv1beta1.Beat{}
+		beat := &beatv1beta1.Beat{
+			Spec: beatv1beta1.BeatSpec{},
+		}
 		var result []commonv1.Association
 		dummyConf := commonv1.AssociationConf{
 			AuthSecretName: "name",
@@ -34,18 +35,29 @@ func Test_CalculateHealth(t *testing.T) {
 			URL:            "url",
 		}
 		if assocDef.esAssoc {
+			beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{
+				Name:      "es",
+				Namespace: "a",
+			}
 			esAssoc := beatv1beta1.BeatESAssociation{Beat: beat}
 			esAssoc.SetAssociationConf(&dummyConf)
 			if assocDef.esAssocEstablished {
-				esAssoc.SetAssociationStatus(commonv1.AssociationEstablished)
+				_ = esAssoc.SetAssociationStatusMap(
+					commonv1.ElasticsearchAssociationType,
+					map[string]commonv1.AssociationStatus{"a/es": commonv1.AssociationEstablished})
 			}
 			result = append(result, &esAssoc)
 		}
 		if assocDef.kbAssoc {
+			beat.Spec.KibanaRef = commonv1.ObjectSelector{
+				Name:      "kb",
+				Namespace: "a",
+			}
 			kbAssoc := beatv1beta1.BeatKibanaAssociation{Beat: beat}
 			kbAssoc.SetAssociationConf(&dummyConf)
 			if assocDef.kbAssocEstablished {
-				kbAssoc.SetAssociationStatus(commonv1.AssociationEstablished)
+				_ = kbAssoc.SetAssociationStatusMap(commonv1.KibanaAssociationType,
+					map[string]commonv1.AssociationStatus{"a/kb": commonv1.AssociationEstablished})
 			}
 			result = append(result, &kbAssoc)
 		}

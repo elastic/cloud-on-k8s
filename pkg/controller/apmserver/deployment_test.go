@@ -194,6 +194,15 @@ func expectedDeploymentParams() testParams {
 func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.AssociationConf) *apmv1.ApmServer {
 	apmv1.NewApmEsAssociation(as).SetAssociationConf(esAssocConf)
 	apmv1.NewApmKibanaAssociation(as).SetAssociationConf(kbAssocConf)
+
+	if esAssocConf != nil {
+		as.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "es"}
+	}
+
+	if kbAssocConf != nil {
+		as.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kb"}
+	}
+
 	return as
 }
 

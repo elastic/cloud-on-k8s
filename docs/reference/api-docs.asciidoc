@@ -342,6 +342,8 @@ Package v1 contains API schema definitions for common types used by all resource
 
 
 
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config"]
 === Config 
 

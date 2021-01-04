@@ -12277,9 +12277,15 @@ spec:
             availableNodes:
               format: int32
               type: integer
-            elasticsearchAssociationStatus:
-              description: AssociationStatus is the status of an association resource.
-              type: string
+            elasticsearchAssociationsStatus:
+              additionalProperties:
+                description: AssociationStatus is the status of an association resource.
+                type: string
+              description: AssociationStatusMap is the map of association's namespaced
+                name string to its AssociationStatus. For resources that have a single
+                Association of a given type (eg. single ES reference), this map will
+                contain a single entry.
+              type: object
             expectedNodes:
               format: int32
               type: integer

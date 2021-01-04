@@ -605,6 +605,9 @@ func kibanaFixture() *kbv1.Kibana {
 			Version: "7.0.0",
 			Image:   "my-image",
 			Count:   1,
+			ElasticsearchRef: commonv1.ObjectSelector{
+				Name: "es",
+			},
 		},
 	}
 

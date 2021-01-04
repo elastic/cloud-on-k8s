@@ -10,6 +10,9 @@ const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources
 	KibanaNameLabelName = "kibana.k8s.elastic.co/name"
 
+	// KibanaNamespaceLabelName used to represent a Kibana in k8s resources
+	KibanaNamespaceLabelName = "kibana.k8s.elastic.co/namespace"
+
 	// KibanaVersionLabelName used to propagate Kibana version from the spec to the pods
 	KibanaVersionLabelName = "kibana.k8s.elastic.co/version"
 

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"unsafe"
 
 	"github.com/go-logr/logr"
@@ -16,7 +17,6 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -71,7 +71,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			"Association backend for "+association.AssociatedType()+" is not configured",
+			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
 		)
 		log.Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
@@ -135,9 +135,9 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociatedType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
-				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociatedType()))
+				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
 			return false
 		}
 	}
@@ -173,10 +173,48 @@ func extractAssociationConf(annotations map[string]string, annotationName string
 	return &assocConf, nil
 }
 
-// RemoveAssociationConf removes the association configuration annotation.
-func RemoveAssociationConf(client k8s.Client, obj runtime.Object, annotationName string) error {
+// RemoveObsoleteAssociationConfs removes all no longer needed annotations on `associated` matching
+// `associationConfAnnotationNameBase` prefix.
+func RemoveObsoleteAssociationConfs(
+	client k8s.Client,
+	associated commonv1.Associated,
+	associationConfAnnotationNameBase string,
+) error {
 	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(obj)
+	annotations, err := accessor.Annotations(associated)
+	if err != nil {
+		return err
+	}
+
+	expected := make(map[string]bool)
+	for _, association := range associated.GetAssociations() {
+		expected[association.AssociationConfAnnotationName()] = true
+	}
+
+	modified := false
+	for key := range annotations {
+		if strings.HasPrefix(key, associationConfAnnotationNameBase) && !expected[key] {
+			delete(annotations, key)
+			modified = true
+		}
+	}
+
+	if !modified {
+		return nil
+	}
+
+	if err := accessor.SetAnnotations(associated, annotations); err != nil {
+		return err
+	}
+
+	return client.Update(associated)
+}
+
+// RemoveAssociationConf removes the association configuration annotation.
+func RemoveAssociationConf(client k8s.Client, association commonv1.Association) error {
+	associated := association.Associated()
+	accessor := meta.NewAccessor()
+	annotations, err := accessor.Annotations(associated)
 	if err != nil {
 		return err
 	}
@@ -185,26 +223,28 @@ func RemoveAssociationConf(client k8s.Client, obj runtime.Object, annotationName
 		return nil
 	}
 
+	annotationName := association.AssociationConfAnnotationName()
 	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
 
 	delete(annotations, annotationName)
-	if err := accessor.SetAnnotations(obj, annotations); err != nil {
+	if err := accessor.SetAnnotations(associated, annotations); err != nil {
 		return err
 	}
 
-	return client.Update(obj)
+	return client.Update(associated)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
 func UpdateAssociationConf(
 	client k8s.Client,
-	obj runtime.Object,
+	association commonv1.Association,
 	wantConf *commonv1.AssociationConf,
-	annotationName string,
 ) error {
 	accessor := meta.NewAccessor()
+
+	obj := association.Associated()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
 		return err
@@ -220,6 +260,7 @@ func UpdateAssociationConf(
 		annotations = make(map[string]string)
 	}
 
+	annotationName := association.AssociationConfAnnotationName()
 	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
 		return err

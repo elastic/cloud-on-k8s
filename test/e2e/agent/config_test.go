@@ -87,3 +87,38 @@ func TestAgentConfigRef(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, agentBuilder).RunSequential(t)
 }
+
+func TestMultipleOutputConfig(t *testing.T) {
+	name := "test-agent-multi-out"
+
+	esBuilder1 := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	esBuilder2 := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	agentBuilder := agent.NewBuilder(name).
+		WithRoles(agent.PSPClusterRoleName).
+		WithElasticsearchRefs(
+			agent.ToOutput(esBuilder1.Ref(), "default"),
+			agent.ToOutput(esBuilder2.Ref(), "monitoring"),
+		).
+		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
+		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring").
+		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"), "monitoring").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process_summary", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default"), "default").
+		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"), "default")
+
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder1, esBuilder2, agentBuilder).RunSequential(t)
+}
