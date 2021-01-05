@@ -213,6 +213,16 @@ func TestAssociationStatusMap_String(t *testing.T) {
 			wanted:    "",
 		},
 		{
+			name:      "single Established status, old behavior",
+			statusMap: NewSingleAssociationStatusMap(AssociationEstablished),
+			wanted:    "Established",
+		},
+		{
+			name:      "single Unknown status, old behavior",
+			statusMap: NewSingleAssociationStatusMap(AssociationUnknown),
+			wanted:    "",
+		},
+		{
 			name: "single established",
 			statusMap: map[string]AssociationStatus{
 				"ns/name": AssociationEstablished,
