@@ -6,7 +6,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.9.2
+  version: 7.10.1
   nodeSets:
   - name: master
     count: 1
@@ -56,7 +56,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   elasticsearchRef:
     name: hulk
@@ -68,7 +68,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   elasticsearchRef:
     name: hulk
