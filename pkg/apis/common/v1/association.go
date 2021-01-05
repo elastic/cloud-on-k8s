@@ -13,6 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	singleStatusKey = ""
+)
+
 // AssociationType is the type of an association resource, eg. for Kibana-ES association, AssociationType identifies ES.
 type AssociationType string
 
@@ -23,13 +27,25 @@ type AssociationStatus string
 // have a single Association of a given type (eg. single ES reference), this map will contain a single entry.
 type AssociationStatusMap map[string]AssociationStatus
 
-func NewAssociationStatusMap(selector ObjectSelector, status AssociationStatus) AssociationStatusMap {
+// NewSingleAssociationStatusMap creates an AssociationStatusMap that expects only a single Association. Using a
+// well-known key allows to keep serialization of the map backwards compatible.
+func NewSingleAssociationStatusMap(status AssociationStatus) AssociationStatusMap {
 	return map[string]AssociationStatus{
-		selector.NamespacedName().String(): status,
+		singleStatusKey: status,
 	}
 }
 
 func (asm AssociationStatusMap) String() string {
+	// check if it's single status map and return only status string if yes
+	// this allows to keep serialization backwards compatible
+	if len(asm) == 1 {
+		for key, value := range asm {
+			if key == singleStatusKey {
+				return string(value)
+			}
+		}
+	}
+
 	// sort by keys to make String() stable
 	keys := make([]string, 0, len(asm))
 	for key := range asm {
