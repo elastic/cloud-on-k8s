@@ -335,7 +335,6 @@ write_deployer_config <<CFG
 id: eks-arm-ci
 overrides:
   clusterName: ${BUILD_TAG}-arm
-  machineType: m6gd.2xlarge
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
