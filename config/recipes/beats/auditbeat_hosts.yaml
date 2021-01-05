@@ -4,7 +4,7 @@ metadata:
   name: auditbeat
 spec:
   type: auditbeat
-  version: 7.9.2
+  version: 7.10.1
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -76,7 +76,7 @@ spec:
         #    path: /run
         #initContainers:
         #- name: cos-init
-        #  image: docker.elastic.co/beats/auditbeat:7.9.2
+        #  image: docker.elastic.co/beats/auditbeat:7.10.1
         #  volumeMounts:
         #  - name: run
         #    mountPath: /run
@@ -118,7 +118,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.9.2
+  version: 7.10.1
   nodeSets:
   - name: default
     count: 3
@@ -130,7 +130,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

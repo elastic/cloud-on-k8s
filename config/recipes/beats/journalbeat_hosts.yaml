@@ -4,7 +4,7 @@ metadata:
   name: journalbeat
 spec:
   type: journalbeat
-  version: 7.9.2
+  version: 7.10.1
   elasticsearchRef:
     name: elasticsearch
   config:
@@ -49,7 +49,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.9.2
+  version: 7.10.1
   nodeSets:
   - name: default
     count: 3
@@ -61,7 +61,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

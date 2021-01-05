@@ -5,7 +5,7 @@ kind: Elasticsearch
 metadata:
   name: es-apm-sample
 spec:
-  version: 7.9.2
+  version: 7.10.1
   nodeSets:
   - name: default
     count: 3
@@ -19,7 +19,7 @@ kind: Kibana
 metadata:
   name: kb-apm-sample
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   elasticsearchRef:
     name: "es-apm-sample"
@@ -29,7 +29,7 @@ kind: ApmServer
 metadata:
   name: apm-apm-sample
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   elasticsearchRef:
     name: "es-apm-sample"

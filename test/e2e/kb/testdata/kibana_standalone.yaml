@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: {{ .ESName }}
 spec:
-  version: 7.9.2
+  version: 7.10.1
   nodeSets:
   - count: 1
     name: mdi
@@ -18,7 +18,7 @@ kind: Kibana
 metadata:
   name: test-kibana-standalone-{{ .Suffix }}
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   config:
     elasticsearch.hosts:

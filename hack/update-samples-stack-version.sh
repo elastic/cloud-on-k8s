@@ -24,5 +24,5 @@ dirs=(config/samples config/recipes config/e2e test/e2e)
 # - version: 1.2.3<EOL>
 # - version: "1.2.3"<EOL>
 LC_CTYPE=C LANG=C find "${dirs[@]}" -type f -iname \*.yaml \
-    -exec sed -i.bak -E "s|version: \"?[0-9]\.[0-9]\.[0-9]\"?$|version: $VERSION|g" "{}" \; \
+    -exec sed -i.bak -E "s|version: \"?[0-9]+\.[0-9]+\.[0-9]+\"?$|version: $VERSION|g" "{}" \; \
     -exec rm "{}.bak" \;
