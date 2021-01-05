@@ -317,7 +317,7 @@ func (r *Reconciler) getElasticsearch(
 	defer span.End()
 
 	var es esv1.Elasticsearch
-	err := r.Get(elasticsearchRef.NamespacedName(), &es)
+	err := r.Get(context.Background(), elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, association, events.EventAssociationError,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
@@ -382,7 +382,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 		if err := associated.SetAssociationStatusMap(r.AssociationType, newStatus); err != nil {
 			return err
 		}
-		if err := r.Status().Update(associated); err != nil {
+		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
 		}
 		annotations, err := annotation.ForAssociationStatusChange(oldStatus, newStatus)

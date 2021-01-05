@@ -89,7 +89,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileApmServer{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
@@ -325,7 +325,7 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	}
 	// reuse the secret token if it already exists
 	var existingSecret corev1.Secret
-	err := c.Get(k8s.ExtractNamespacedName(&expectedApmServerSecret), &existingSecret)
+	err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedApmServerSecret), &existingSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return corev1.Secret{}, err
 	}

@@ -64,7 +64,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileElasticsearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
@@ -212,7 +212,7 @@ func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request
 	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
-	err := r.Get(request.NamespacedName, es)
+	err := r.Get(context.Background(), request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, cleanup in-memory state. Children resources are garbage-collected either by

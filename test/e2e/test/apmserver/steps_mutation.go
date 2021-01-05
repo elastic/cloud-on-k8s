@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -23,9 +24,9 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Applying the ApmServer mutation should succeed",
 			Test: func(t *testing.T) {
 				var as apmv1.ApmServer
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &as))
+				require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &as))
 				as.Spec = b.ApmServer.Spec
-				require.NoError(t, k.Client.Update(&as))
+				require.NoError(t, k.Client.Update(context.Background(), &as))
 			},
 		}}
 }

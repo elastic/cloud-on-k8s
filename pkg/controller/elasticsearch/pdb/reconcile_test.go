@@ -5,6 +5,7 @@
 package pdb
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -59,7 +60,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "no existing pdb: should create one",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(),
+				k8sClient:    k8s.NewFakeClient(),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -68,7 +69,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb already exists: should remain unmodified",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(withHashLabel(withOwnerRef(defaultPDB(), defaultEs))),
+				k8sClient:    k8s.NewFakeClient(withHashLabel(withOwnerRef(defaultPDB(), defaultEs))),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -77,7 +78,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb needs a MinAvailable update",
 			args: args{
-				k8sClient:    k8s.WrappedFakeClient(defaultPDB()),
+				k8sClient:    k8s.NewFakeClient(defaultPDB()),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
 			},
@@ -101,7 +102,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb disabled in the ES spec: should delete the existing one",
 			args: args{
-				k8sClient: k8s.WrappedFakeClient(defaultPDB()),
+				k8sClient: k8s.NewFakeClient(defaultPDB()),
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec:       esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}},
@@ -117,7 +118,7 @@ func TestReconcile(t *testing.T) {
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget
-			err = tt.args.k8sClient.Get(pdbNsn, &retrieved)
+			err = tt.args.k8sClient.Get(context.Background(), pdbNsn, &retrieved)
 			if tt.wantPDB == nil {
 				require.True(t, errors.IsNotFound(err))
 			} else {

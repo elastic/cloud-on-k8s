@@ -54,7 +54,7 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmv1.ApmServer, k *test.K8s
 				// fetch the latest APM Server resource from the API because we need to get resources that are provided
 				// by the controller apm part of the status section
 				var updatedApmServer apmv1.ApmServer
-				if err := k.Client.Get(k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
 					return err
 				}
 
@@ -75,7 +75,7 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmv1.ApmServer, k *test.K8s
 				if len(namespace) == 0 {
 					namespace = apm.Namespace
 				}
-				if err := k.Client.Get(types.NamespacedName{
+				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: namespace,
 					Name:      apm.Spec.ElasticsearchRef.Name,
 				}, &es); err != nil {
@@ -183,7 +183,7 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 		Test: test.Eventually(func() error {
 			// Fetch the last version of the APM Server
 			var updatedApmServer apmv1.ApmServer
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
 				return err
 			}
 
@@ -284,7 +284,7 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 			Name: "Create the default Agent Configuration in Kibana",
 			Test: test.Eventually(func() error {
 				kb := kbv1.Kibana{}
-				if err := k.Client.Get(apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).NamespacedName(), &kb); err != nil {
+				if err := k.Client.Get(context.Background(), apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).NamespacedName(), &kb); err != nil {
 					return err
 				}
 

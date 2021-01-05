@@ -80,7 +80,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			nodeSpecResources: nodespec.ResourcesList{
 				{StatefulSet: sset.TestSset{Name: "es-master", Version: "6.8.5", Replicas: 3, Master: true, ClusterName: "es"}.Build(), Config: settings.NewCanonicalConfig()},
 			},
-			k8sClient:          k8s.WrappedFakeClient(),
+			k8sClient:          k8s.NewFakeClient(),
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},
@@ -88,7 +88,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			name:              "v7 cluster initial creation: compute and set cluster.initial_master_nodes",
 			es:                esv7(),
 			nodeSpecResources: expectedv7resources(),
-			k8sClient:         k8s.WrappedFakeClient(),
+			k8sClient:         k8s.NewFakeClient(),
 			expectedConfigs: []settings.CanonicalConfig{
 				// master nodes config
 				{CanonicalConfig: commonsettings.MustCanonicalConfig(map[string][]string{
@@ -109,7 +109,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			// those "fake" node values are the ones being reused
 			es:                withAnnotations(esv7(), map[string]string{initialMasterNodesAnnotation: "node-0,node-1,node-2"}),
 			nodeSpecResources: expectedv7resources(),
-			k8sClient:         k8s.WrappedFakeClient(),
+			k8sClient:         k8s.NewFakeClient(),
 			expectedConfigs: []settings.CanonicalConfig{
 				// master nodes config
 				{CanonicalConfig: commonsettings.MustCanonicalConfig(map[string][]string{
@@ -131,7 +131,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			// cluster.Initial_master_nodes should not be set
 			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
 			nodeSpecResources:  expectedv7resources(),
-			k8sClient:          k8s.WrappedFakeClient(), // no existing v6 master running - there should be v7 masters in there though, but we don't care in this test
+			k8sClient:          k8s.NewFakeClient(), // no existing v6 master running - there should be v7 masters in there though, but we don't care in this test
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig(), settings.NewCanonicalConfig(), settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},
@@ -139,7 +139,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			name:              "upgrade single v6 master to single v7 master: should set cluster.initial_master_nodes",
 			es:                withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
 			nodeSpecResources: expectedv7SingleMasterResources("es-master"),
-			k8sClient:         k8s.WrappedFakeClient(v6Masters[0]), // one existing v6 master running
+			k8sClient:         k8s.NewFakeClient(v6Masters[0]), // one existing v6 master running
 			expectedConfigs: []settings.CanonicalConfig{
 				// master nodes config
 				{CanonicalConfig: commonsettings.MustCanonicalConfig(map[string][]string{
@@ -153,7 +153,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 				"cluster.initial_master_nodes since the new master will be created before the old one is removed",
 			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
 			nodeSpecResources:  expectedv7SingleMasterResources("es-different-sset"), // v7 master in a different sset
-			k8sClient:          k8s.WrappedFakeClient(v6Masters[0]),                  // one existing v6 master running
+			k8sClient:          k8s.NewFakeClient(v6Masters[0]),                      // one existing v6 master running
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},
@@ -161,8 +161,8 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			name: "upgrade single v6 master to more v7 masters: should not set cluster.initial_master_nodes" +
 				"since additional v7 masters will get created before existing v6 master is upgraded",
 			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
-			nodeSpecResources:  expectedv7resources(),               // more than 1 v7 master to create
-			k8sClient:          k8s.WrappedFakeClient(v6Masters[0]), // single v6 master
+			nodeSpecResources:  expectedv7resources(),           // more than 1 v7 master to create
+			k8sClient:          k8s.NewFakeClient(v6Masters[0]), // single v6 master
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig(), settings.NewCanonicalConfig(), settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},
@@ -170,7 +170,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			name:               "rolling-upgrade multiple v6 masters to multiple v7 masters: should not set cluster.initial_master_nodes",
 			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
 			nodeSpecResources:  expectedv7resources(),
-			k8sClient:          k8s.WrappedFakeClient(v6Masters...), // v6 masters getting replaced by v7 masters
+			k8sClient:          k8s.NewFakeClient(v6Masters...), // v6 masters getting replaced by v7 masters
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig(), settings.NewCanonicalConfig(), settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},
@@ -178,15 +178,15 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			name: "upgrade single v6 master to more v7 masters: should not set cluster.initial_master_nodes" +
 				"since additional v7 masters will get created before existing v6 master is upgraded",
 			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
-			nodeSpecResources:  expectedv7resources(),               // more than 1 v7 master to create
-			k8sClient:          k8s.WrappedFakeClient(v6Masters[0]), // single v6 master
+			nodeSpecResources:  expectedv7resources(),           // more than 1 v7 master to create
+			k8sClient:          k8s.NewFakeClient(v6Masters[0]), // single v6 master
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig(), settings.NewCanonicalConfig(), settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, tt.k8sClient.Create(&tt.es))
+			require.NoError(t, tt.k8sClient.Create(context.Background(), &tt.es))
 			err := SetupInitialMasterNodes(tt.es, tt.k8sClient, tt.nodeSpecResources)
 			require.NoError(t, err)
 			// nodeSpecResources configurations should be updated accordingly
@@ -199,7 +199,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			}
 			// es annotation should be set accordingly
 			var updatedEs esv1.Elasticsearch
-			err = tt.k8sClient.Get(k8s.ExtractNamespacedName(&tt.es), &updatedEs)
+			err = tt.k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.es), &updatedEs)
 			require.NoError(t, err)
 			if tt.expectedAnnotation != "" {
 				require.Equal(t, tt.expectedAnnotation, updatedEs.Annotations[initialMasterNodesAnnotation])
@@ -252,12 +252,12 @@ func Test_getInitialMasterNodesAnnotation(t *testing.T) {
 
 func Test_setInitialMasterNodesAnnotation(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
-	k8sClient := k8s.WrappedFakeClient(&es)
+	k8sClient := k8s.NewFakeClient(&es)
 	initialMasterNodes := []string{"node-0", "node-1", "node-2"}
 	err := setInitialMasterNodesAnnotation(k8sClient, es, initialMasterNodes)
 	require.NoError(t, err)
 	var updatedEs esv1.Elasticsearch
-	err = k8sClient.Get(k8s.ExtractNamespacedName(&es), &updatedEs)
+	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es), &updatedEs)
 	require.NoError(t, err)
 	require.Equal(t, "node-0,node-1,node-2", updatedEs.Annotations[initialMasterNodesAnnotation])
 }
@@ -331,7 +331,7 @@ func TestRemoveZen2BootstrapAnnotation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(&tt.args.es)
+			k8sClient := k8s.NewFakeClient(&tt.args.es)
 			requeue, err := RemoveZen2BootstrapAnnotation(context.Background(), k8sClient, tt.args.es, tt.args.esClient)
 			if tt.args.esClient.(*mockZen2BootstrapESClient).err != nil {
 				require.Error(t, err)
@@ -340,7 +340,7 @@ func TestRemoveZen2BootstrapAnnotation(t *testing.T) {
 			}
 			require.Equal(t, tt.wantRequeue, requeue)
 			var updatedES esv1.Elasticsearch
-			err = k8sClient.Get(k8s.ExtractNamespacedName(&tt.args.es), &updatedES)
+			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.args.es), &updatedES)
 			require.NoError(t, err)
 			_, exists := updatedES.Annotations[initialMasterNodesAnnotation]
 			require.Equal(t, tt.wantAnnotation, exists)

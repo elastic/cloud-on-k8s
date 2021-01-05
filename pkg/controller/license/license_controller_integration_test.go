@@ -7,6 +7,7 @@
 package license
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -41,7 +42,7 @@ func TestMain(m *testing.M) {
 func TestReconcile(t *testing.T) {
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
 		r := &ReconcileLicenses{
-			Client:  k8s.WrapClient(mgr.GetClient()),
+			Client:  mgr.GetClient(),
 			checker: license.MockChecker{},
 		}
 		c, err := common.NewController(mgr, name, r, p)
@@ -86,7 +87,7 @@ func TestReconcile(t *testing.T) {
 	// give the client some time to sync up
 	test.RetryUntilSuccess(t, func() error {
 		var secs corev1.SecretList
-		err := c.List(&secs)
+		err := c.List(context.Background(), &secs)
 		if err != nil {
 			return err
 		}
@@ -111,12 +112,12 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, c.Create(cluster))
+	require.NoError(t, c.Create(context.Background(), cluster))
 
 	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
 		var clusterLicense corev1.Secret
-		if err := c.Get(types.NamespacedName{Namespace: "default", Name: esv1.LicenseSecretName("foo")}, &clusterLicense); err != nil {
+		if err := c.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: esv1.LicenseSecretName("foo")}, &clusterLicense); err != nil {
 			return err
 		}
 		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)
@@ -234,7 +235,7 @@ func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l license.E
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal license")
 	}
-	return c.Create(&corev1.Secret{
+	return c.Create(context.Background(), &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: key.Namespace,
 			Name:      key.Name,

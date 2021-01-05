@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -47,7 +48,7 @@ func newUserSecret(
 
 func TestUsersGarbageCollector_GC(t *testing.T) {
 
-	client := k8s.WrappedFakeClient(
+	client := k8s.NewFakeClient(
 		// Create 5 secrets, 3 actually used and 2 orphaned
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
 		newUserSecret("es", "ns1-kb-kibana1-w2fz-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "kibana1"),
@@ -91,31 +92,31 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 
 	// kibana1, kibana2 and apm1 user Secret must still be present
 	s := &corev1.Secret{}
-	err = client.Get(types.NamespacedName{
+	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
 		Name:      "ns1-kb-kibana1-w2fz-kibana-user",
 	}, s)
 	assert.NoError(t, err)
-	err = client.Get(types.NamespacedName{
+	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
 		Name:      "ns1-kb-kibana2-fy8i-kibana-user",
 	}, s)
 	assert.NoError(t, err)
-	err = client.Get(types.NamespacedName{
+	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
 		Name:      "ns1-kb-apm1-yrfa-apm-user",
 	}, s)
 	assert.NoError(t, err)
 
 	// Orphaned secret must have been deleted
-	err = client.Get(types.NamespacedName{
+	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
 		Name:      "ns1-kb-orphaned-xxxx-kibana-user",
 	}, s)
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsNotFound(err))
 
-	err = client.Get(types.NamespacedName{
+	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
 		Name:      "ns1-kb-orphaned-xxxx-apm-user",
 	}, s)

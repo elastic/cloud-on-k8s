@@ -140,14 +140,14 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 
 func deleteIfExists(c k8s.Client, secretRef types.NamespacedName) error {
 	var secret corev1.Secret
-	err := c.Get(secretRef, &secret)
+	err := c.Get(context.Background(), secretRef, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
 	log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
-	err = c.Delete(&secret)
+	err = c.Delete(context.Background(), &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil
 	}

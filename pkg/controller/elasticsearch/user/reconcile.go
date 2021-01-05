@@ -70,7 +70,7 @@ func ReconcileUsersAndRoles(
 
 func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm, error) {
 	var secret corev1.Secret
-	if err := c.Get(RolesFileRealmSecretKey(es), &secret); err != nil {
+	if err := c.Get(context.Background(), RolesFileRealmSecretKey(es), &secret); err != nil {
 		return filerealm.Realm{}, err
 	}
 	return filerealm.FromSecret(secret)

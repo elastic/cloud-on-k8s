@@ -5,6 +5,7 @@
 package es
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -62,7 +63,7 @@ func TestCustomTransportCA(t *testing.T) {
 						// This is counter-intuitive but deletion steps run on the initial builder
 						// let's clean up the CA secret here.
 						toDelete := mkTestSecret(nil, nil)
-						_ = k.Client.Delete(&toDelete)
+						_ = k.Client.Delete(context.Background(), &toDelete)
 					},
 					Skip:      nil,
 					OnFailure: nil,
@@ -210,12 +211,12 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				Name: "Add load balancer IP to the SAN",
 				Test: func(t *testing.T) {
 					var currentEs esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
 					require.NoError(t, err)
 
 					b.Elasticsearch = currentEs
 					b = b.WithHTTPSAN(podIP)
-					require.NoError(t, k.Client.Update(&b.Elasticsearch))
+					require.NoError(t, k.Client.Update(context.Background(), &b.Elasticsearch))
 				},
 			},
 			{
@@ -244,7 +245,7 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 		Namespace: ns,
 		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, esName),
 	}
-	if err := k.Client.Get(key, &secret); err != nil {
+	if err := k.Client.Get(context.Background(), key, &secret); err != nil {
 		return nil, err
 	}
 	certBytes, exists := secret.Data[certificates.CertFileName]

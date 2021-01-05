@@ -7,7 +7,6 @@ package license
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -26,7 +25,7 @@ type ResourceReporter struct {
 
 // NewResourceReporter returns a new ResourceReporter
 func NewResourceReporter(client client.Client, operatorNs string) ResourceReporter {
-	c := k8s.WrapClient(client)
+	c := client
 	return ResourceReporter{
 		aggregator: Aggregator{
 			client: c,

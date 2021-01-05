@@ -110,7 +110,7 @@ func ReconcileConfigSecret(
 // if the Secret or usage key doesn't exist yet.
 func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
 	var secret corev1.Secret
-	if err := client.Get(types.NamespacedName{Namespace: kb.Namespace, Name: SecretName(kb)}, &secret); err != nil {
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: SecretName(kb)}, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// this secret is just about to be created, we don't know usage yet
 			return nil, nil

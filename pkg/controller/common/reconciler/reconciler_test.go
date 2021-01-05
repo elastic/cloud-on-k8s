@@ -5,20 +5,20 @@
 package reconciler
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -287,7 +287,7 @@ func TestReconcileResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			client := k8s.WrappedFakeClient(tt.initialObjects...)
+			client := k8s.NewFakeClient(tt.initialObjects...)
 			args := tt.args()
 			p := Params{
 				Client:           client,
@@ -308,7 +308,7 @@ func TestReconcileResource(t *testing.T) {
 			}
 			if tt.serverStateAssertion != nil {
 				var serverState corev1.Secret
-				require.NoError(t, client.Get(objectKey, &serverState))
+				require.NoError(t, client.Get(context.Background(), objectKey, &serverState))
 				tt.serverStateAssertion(serverState)
 			}
 			if tt.argAssertion != nil {

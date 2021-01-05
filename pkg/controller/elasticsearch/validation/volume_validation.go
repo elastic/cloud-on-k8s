@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -53,7 +54,7 @@ func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearc
 		// Hence here we compare proposed claims with **current StatefulSet** claims.
 		matchingSsetName := esv1.StatefulSet(proposed.Name, proposedNodeSet.Name)
 		var matchingSset appsv1.StatefulSet
-		err := k8sClient.Get(types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
 		if err != nil && apierrors.IsNotFound(err) {
 			// matching StatefulSet does not exist, this is likely the initial creation
 			continue
@@ -161,7 +162,7 @@ func getStorageClass(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim) (
 		return getDefaultStorageClass(k8sClient)
 	}
 	var sc storagev1.StorageClass
-	if err := k8sClient.Get(types.NamespacedName{Name: *claim.Spec.StorageClassName}, &sc); err != nil {
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: *claim.Spec.StorageClassName}, &sc); err != nil {
 		return storagev1.StorageClass{}, fmt.Errorf("cannot retrieve storage class: %w", err)
 	}
 	return sc, nil
@@ -171,7 +172,7 @@ func getStorageClass(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim) (
 // or an error if there is none.
 func getDefaultStorageClass(k8sClient k8s.Client) (storagev1.StorageClass, error) {
 	var scs storagev1.StorageClassList
-	if err := k8sClient.List(&scs); err != nil {
+	if err := k8sClient.List(context.Background(), &scs); err != nil {
 		return storagev1.StorageClass{}, err
 	}
 	for _, sc := range scs.Items {

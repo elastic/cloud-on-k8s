@@ -81,7 +81,7 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface) *ReconcileWebhookResources {
-	c := k8s.WrapClient(mgr.GetClient())
+	c := mgr.GetClient()
 	return &ReconcileWebhookResources{
 		Client:        c,
 		webhookParams: webhookParams,

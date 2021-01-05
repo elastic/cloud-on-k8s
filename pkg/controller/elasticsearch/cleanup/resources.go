@@ -46,7 +46,7 @@ func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
-	if err := c.List(&secrets, ns, matchLabels); err != nil {
+	if err := c.List(context.Background(), &secrets, ns, matchLabels); err != nil {
 		return err
 	}
 	resources := make([]runtime.Object, len(secrets.Items))
@@ -71,7 +71,7 @@ func cleanupFromPodReference(c k8s.Client, namespace string, objects []runtime.O
 		// this secret applies to a particular pod
 		// remove it if the pod does not exist anymore
 		var pod corev1.Pod
-		err = c.Get(types.NamespacedName{
+		err = c.Get(context.Background(), types.NamespacedName{
 			Namespace: namespace,
 			Name:      podName,
 		}, &pod)
@@ -83,7 +83,7 @@ func cleanupFromPodReference(c k8s.Client, namespace string, objects []runtime.O
 			}
 			// pod does not exist anymore, delete the object
 			log.Info("Garbage-collecting resource", "namespace", namespace, "name", obj.GetName())
-			if deleteErr := c.Delete(runtimeObj); deleteErr != nil {
+			if deleteErr := c.Delete(context.Background(), runtimeObj); deleteErr != nil {
 				return deleteErr
 			}
 		} else if err != nil {

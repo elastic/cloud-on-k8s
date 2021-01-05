@@ -6,6 +6,7 @@ package trial
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -113,7 +114,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
 	var trialStatus corev1.Secret
-	err := r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	err := r.Get(context.Background(), types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		if r.trialState.IsEmpty() {
 			// we have no state in memory nor in the status secret: start the activation process
@@ -127,7 +128,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 		if err != nil {
 			return fmt.Errorf("while creating expected trial status %w", err)
 		}
-		return r.Create(&trialStatus)
+		return r.Create(context.Background(), &trialStatus)
 	}
 	if err != nil {
 		return fmt.Errorf("while fetching trial status %w", err)
@@ -153,7 +154,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 		return nil
 	}
 	trialStatus.Data = expected.Data
-	return r.Update(&trialStatus)
+	return r.Update(context.Background(), &trialStatus)
 }
 
 func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret) (licensing.TrialState, error) {
@@ -200,7 +201,7 @@ func (r *ReconcileTrials) initTrialLicense(secret corev1.Secret, license licensi
 
 func (r *ReconcileTrials) invalidOperation(secret corev1.Secret, msg string) (reconcile.Result, error) {
 	setValidationMsg(&secret, msg)
-	return reconcile.Result{}, r.Update(&secret)
+	return reconcile.Result{}, r.Update(context.Background(), &secret)
 }
 
 func validLicense(status licensing.LicenseStatus) bool {
@@ -229,7 +230,7 @@ func setValidationMsg(secret *corev1.Secret, violation string) {
 
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
-		Client:            k8s.WrapClient(mgr.GetClient()),
+		Client:            mgr.GetClient(),
 		recorder:          mgr.GetEventRecorderFor(name),
 		operatorNamespace: params.OperatorNamespace,
 	}

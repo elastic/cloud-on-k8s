@@ -68,35 +68,35 @@ func Test_ensureClaimSupportsExpansion(t *testing.T) {
 	}{
 		{
 			name:                "specified storage class supports volume expansion",
-			k8sClient:           k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+			k8sClient:           k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
 			claim:               sampleClaim,
 			validateStoragClass: true,
 			wantErr:             false,
 		},
 		{
 			name:                "specified storage class does not support volume expansion",
-			k8sClient:           k8s.WrappedFakeClient(&sampleStorageClass),
+			k8sClient:           k8s.NewFakeClient(&sampleStorageClass),
 			claim:               sampleClaim,
 			validateStoragClass: true,
 			wantErr:             true,
 		},
 		{
 			name:                "default storage class supports volume expansion",
-			k8sClient:           k8s.WrappedFakeClient(withVolumeExpansion(defaultStorageClass)),
+			k8sClient:           k8s.NewFakeClient(withVolumeExpansion(defaultStorageClass)),
 			claim:               corev1.PersistentVolumeClaim{},
 			validateStoragClass: true,
 			wantErr:             false,
 		},
 		{
 			name:                "default storage class does not support volume expansion",
-			k8sClient:           k8s.WrappedFakeClient(&defaultStorageClass),
+			k8sClient:           k8s.NewFakeClient(&defaultStorageClass),
 			claim:               corev1.PersistentVolumeClaim{},
 			validateStoragClass: true,
 			wantErr:             true,
 		},
 		{
 			name:                "storage class validation disabled: no-op",
-			k8sClient:           k8s.WrappedFakeClient(&sampleStorageClass), // would otherwise be refused: no expansion
+			k8sClient:           k8s.NewFakeClient(&sampleStorageClass), // would otherwise be refused: no expansion
 			claim:               sampleClaim,
 			validateStoragClass: false,
 			wantErr:             false,
@@ -195,12 +195,12 @@ func Test_getDefaultStorageClass(t *testing.T) {
 	}{
 		{
 			name:      "return the default storage class",
-			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass, &defaultStorageClass),
+			k8sClient: k8s.NewFakeClient(&sampleStorageClass, &defaultStorageClass),
 			want:      defaultStorageClass,
 		},
 		{
 			name:      "default storage class not found",
-			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass),
+			k8sClient: k8s.NewFakeClient(&sampleStorageClass),
 			want:      storagev1.StorageClass{},
 			wantErr:   true,
 		},
@@ -229,28 +229,28 @@ func Test_getStorageClass(t *testing.T) {
 	}{
 		{
 			name:      "return the specified storage class",
-			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass, &defaultStorageClass),
+			k8sClient: k8s.NewFakeClient(&sampleStorageClass, &defaultStorageClass),
 			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: pointer.StringPtr(sampleStorageClass.Name)}},
 			want:      sampleStorageClass,
 			wantErr:   false,
 		},
 		{
 			name:      "error out if not found",
-			k8sClient: k8s.WrappedFakeClient(&defaultStorageClass),
+			k8sClient: k8s.NewFakeClient(&defaultStorageClass),
 			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: pointer.StringPtr(sampleStorageClass.Name)}},
 			want:      storagev1.StorageClass{},
 			wantErr:   true,
 		},
 		{
 			name:      "fallback to the default storage class if unspecified",
-			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass, &defaultStorageClass),
+			k8sClient: k8s.NewFakeClient(&sampleStorageClass, &defaultStorageClass),
 			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{}},
 			want:      defaultStorageClass,
 			wantErr:   false,
 		},
 		{
 			name:      "error out if unspecified and default storage class not found",
-			k8sClient: k8s.WrappedFakeClient(&sampleStorageClass),
+			k8sClient: k8s.NewFakeClient(&sampleStorageClass),
 			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{}},
 			want:      storagev1.StorageClass{},
 			wantErr:   true,
@@ -285,7 +285,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "same claims: ok",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				k8sClient:            k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
 				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
 				updated:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
 				validateStorageClass: true,
@@ -295,7 +295,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "no claims: ok",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				k8sClient:            k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
 				initial:              nil,
 				updated:              nil,
 				validateStorageClass: true,
@@ -305,7 +305,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "claim in updated does not exist in initial: error",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				k8sClient:            k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
 				initial:              []corev1.PersistentVolumeClaim{sampleClaim},
 				updated:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2},
 				validateStorageClass: true,
@@ -315,7 +315,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "storage increase: ok",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				k8sClient:            k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
 				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim},
 				updated:              []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim, "3Gi")},
 				validateStorageClass: true,
@@ -325,7 +325,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "storage increase but volume expansion not supported: error",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(&sampleStorageClass),
+				k8sClient:            k8s.NewFakeClient(&sampleStorageClass),
 				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim},
 				updated:              []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim, "3Gi")},
 				validateStorageClass: true,
@@ -335,7 +335,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "storage increase, volume expansion not supported, but no storage class check: ok",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(&sampleStorageClass),
+				k8sClient:            k8s.NewFakeClient(&sampleStorageClass),
 				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim},
 				updated:              []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim, "3Gi")},
 				validateStorageClass: false,
@@ -345,7 +345,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 		{
 			name: "storage decrease: error",
 			args: args{
-				k8sClient:            k8s.WrappedFakeClient(withVolumeExpansion(sampleStorageClass)),
+				k8sClient:            k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
 				initial:              []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim},
 				updated:              []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim, "0.5Gi")},
 				validateStorageClass: true,
@@ -389,7 +389,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
 				}),
-				k8sClient: k8s.WrappedFakeClient(
+				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -407,7 +407,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
 				}),
-				k8sClient:            k8s.WrappedFakeClient(),
+				k8sClient:            k8s.NewFakeClient(),
 				validateStorageClass: true,
 			},
 			wantErr: false,
@@ -421,7 +421,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
 				}),
-				k8sClient: k8s.WrappedFakeClient(),
+				k8sClient: k8s.NewFakeClient(),
 			},
 			wantErr: false,
 		},
@@ -434,7 +434,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
 				}),
-				k8sClient: k8s.WrappedFakeClient(
+				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -454,7 +454,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim}},
 				}),
-				k8sClient: k8s.WrappedFakeClient(
+				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -474,7 +474,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")}}, // decrease
 				}),
-				k8sClient: k8s.WrappedFakeClient(
+				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -494,7 +494,7 @@ func Test_validPVCModification(t *testing.T) {
 				proposed: es([]esv1.NodeSet{
 					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, withStorageReq(sampleClaim2, "0.5Gi")}}, // revert to previous size
 				}),
-				k8sClient: k8s.WrappedFakeClient(
+				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

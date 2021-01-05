@@ -245,14 +245,14 @@ func Test_newUpscaleState(t *testing.T) {
 		},
 		{
 			name: "bootstrapped, no master node joining",
-			args: args{ctx: upscaleCtx{k8sClient: k8s.WrappedFakeClient(), es: bootstrappedES}},
+			args: args{ctx: upscaleCtx{k8sClient: k8s.NewFakeClient(), es: bootstrappedES}},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
 		},
 		{
 			name: "bootstrapped, a master node is pending",
 			args: args{
 				ctx: upscaleCtx{
-					k8sClient: k8s.WrappedFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Phase: corev1.PodPending}.BuildPtr()),
+					k8sClient: k8s.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Phase: corev1.PodPending}.BuildPtr()),
 					es:        bootstrappedES,
 				},
 			},
@@ -262,7 +262,7 @@ func Test_newUpscaleState(t *testing.T) {
 			name: "bootstrapped, a data node is pending",
 			args: args{
 				ctx: upscaleCtx{
-					k8sClient: k8s.WrappedFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Phase: corev1.PodPending}.BuildPtr()),
+					k8sClient: k8s.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Phase: corev1.PodPending}.BuildPtr()),
 					es:        bootstrappedES,
 				},
 			},
@@ -331,7 +331,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 		return test{
 			name: args.name,
 			ctx: upscaleCtx{
-				k8sClient: k8s.WrappedFakeClient(),
+				k8sClient: k8s.NewFakeClient(),
 				es:        bootstrappedESWithChangeBudget(args.maxSurge, pointer.Int32(0)),
 			},
 			actual:   actualSsets,

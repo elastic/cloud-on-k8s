@@ -5,6 +5,7 @@
 package es
 
 import (
+	"context"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -58,9 +59,9 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			Test: func(t *testing.T) {
 				for _, s := range secureSettings {
 					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&s)
+					_ = k.Client.Delete(context.Background(), &s)
 					// and create a fresh one
-					err := k.Client.Create(&s)
+					err := k.Client.Create(context.Background(), &s)
 					require.NoError(t, err)
 
 				}
@@ -85,7 +86,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 					secureSettings2.Data = map[string][]byte{
 						secureBazUserSettingKey: []byte("baz"), // the actual value update cannot be checked :(
 					}
-					err := k.Client.Update(&secureSettings2)
+					err := k.Client.Update(context.Background(), &secureSettings2)
 					require.NoError(t, err)
 				},
 			},
@@ -98,7 +99,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Remove one of the source secrets",
 				Test: func(t *testing.T) {
-					require.NoError(t, k.Client.Delete(&secureSettings2))
+					require.NoError(t, k.Client.Delete(context.Background(), &secureSettings2))
 				},
 			},
 			// keystore should be updated accordingly
@@ -111,11 +112,11 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				Test: func(t *testing.T) {
 					// retrieve current Elasticsearch resource
 					var currentEs esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
 					require.NoError(t, err)
 					// set its secure settings to nil
 					currentEs.Spec.SecureSettings = nil
-					err = k.Client.Update(&currentEs)
+					err = k.Client.Update(context.Background(), &currentEs)
 					require.NoError(t, err)
 				},
 			},
@@ -127,7 +128,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: func(t *testing.T) {
-					err := k.Client.Delete(&secureSettings1) // we deleted the other one above already
+					err := k.Client.Delete(context.Background(), &secureSettings1) // we deleted the other one above already
 					require.NoError(t, err)
 				},
 			},

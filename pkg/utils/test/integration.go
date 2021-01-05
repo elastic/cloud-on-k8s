@@ -87,7 +87,7 @@ func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Para
 
 	mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	stopFunc := func() {
 		// stop the manager and wait until stopped
 		close(stopChan)

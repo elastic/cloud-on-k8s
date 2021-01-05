@@ -5,6 +5,7 @@
 package finalizer
 
 import (
+	"context"
 	"regexp"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -28,7 +29,7 @@ func RemoveAll(c k8s.Client, obj runtime.Object) error {
 		return err
 	}
 	accessor.SetFinalizers(filterFinalizers)
-	return c.Update(obj)
+	return c.Update(context.Background(), obj)
 }
 
 // filterFinalizers removes Elastic finalizers

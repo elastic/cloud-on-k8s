@@ -80,7 +80,7 @@ func (b Builder) CheckTransportCertificatesStep(k *test.K8sClient) test.Step {
 				Namespace: b.Elasticsearch.Namespace,
 				Name:      secretName,
 			}
-			if err := k.Client.Get(secretNSN, &secret); err != nil {
+			if err := k.Client.Get(context.Background(), secretNSN, &secret); err != nil {
 				return err
 			}
 			caCertsData, exists := secret.Data[certificates.CAFileName]

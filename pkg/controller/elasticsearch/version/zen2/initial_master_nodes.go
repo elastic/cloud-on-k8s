@@ -104,7 +104,7 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 	)
 	// remove the annotation to indicate we're done with zen2 bootstrapping
 	delete(es.Annotations, initialMasterNodesAnnotation)
-	return false, k8sClient.Update(&es)
+	return false, k8sClient.Update(context.Background(), &es)
 }
 
 // patchInitialMasterNodesConfig mutates the configuration of zen2-compatible master nodes
@@ -183,5 +183,5 @@ func setInitialMasterNodesAnnotation(k8sClient k8s.Client, es esv1.Elasticsearch
 		es.Annotations = map[string]string{}
 	}
 	es.Annotations[initialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
-	return k8sClient.Update(&es)
+	return k8sClient.Update(context.Background(), &es)
 }

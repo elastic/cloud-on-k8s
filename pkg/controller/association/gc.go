@@ -5,6 +5,11 @@
 package association
 
 import (
+	"context"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -12,10 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -52,7 +53,7 @@ func NewUsersGarbageCollector(cfg *rest.Config, managedNamespaces []string) (*Us
 		managedNamespaces = []string{AllNamespaces}
 	}
 	return &UsersGarbageCollector{
-		client:            k8s.WrapClient(cl),
+		client:            cl,
 		managedNamespaces: managedNamespaces,
 	}, nil
 }
@@ -87,7 +88,7 @@ func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
 func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, error) {
 	userSecrets := v1.SecretList{}
 	matchingLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.AssociatedUserType})
-	if err := c.List(&userSecrets, client.InNamespace(namespace), matchingLabels); err != nil {
+	if err := c.List(context.Background(), &userSecrets, client.InNamespace(namespace), matchingLabels); err != nil {
 		return nil, err
 	}
 	return userSecrets.Items, nil
@@ -126,7 +127,7 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 			_, found := parents[expectedParent]
 			if !found {
 				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-				err = ugc.client.Delete(&secret)
+				err = ugc.client.Delete(context.Background(), &secret)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
@@ -189,7 +190,7 @@ func (ugc *UsersGarbageCollector) getResourcesInNamespaces(apiType runtime.Objec
 	objects := make([]runtime.Object, 0)
 	for _, namespace := range ugc.managedNamespaces {
 		list := apiType.DeepCopyObject()
-		err := ugc.client.List(list, client.InNamespace(namespace))
+		err := ugc.client.List(context.Background(), list, client.InNamespace(namespace))
 		if err != nil {
 			return nil, err
 		}

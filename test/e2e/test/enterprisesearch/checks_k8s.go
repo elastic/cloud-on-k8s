@@ -5,18 +5,18 @@
 package enterprisesearch
 
 import (
+	"context"
 	"fmt"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -36,7 +36,7 @@ func CheckDeployment(b Builder, k *test.K8sClient) test.Step {
 		Name: "EnterpriseSearch deployment should be created",
 		Test: test.Eventually(func() error {
 			var dep appsv1.Deployment
-			err := k.Client.Get(types.NamespacedName{
+			err := k.Client.Get(context.Background(), types.NamespacedName{
 				Namespace: b.EnterpriseSearch.Namespace,
 				Name:      b.EnterpriseSearch.Name + "-ent",
 			}, &dep)
@@ -65,7 +65,7 @@ func CheckPods(b Builder, k *test.K8sClient) test.Step {
 		Name: "Enterprise Search Pods should eventually be ready",
 		Test: test.UntilSuccess(func() error {
 			var pods corev1.PodList
-			if err := k.Client.List(&pods, test.EnterpriseSearchPodListOptions(b.EnterpriseSearch.Namespace, b.EnterpriseSearch.Name)...); err != nil {
+			if err := k.Client.List(context.Background(), &pods, test.EnterpriseSearchPodListOptions(b.EnterpriseSearch.Namespace, b.EnterpriseSearch.Name)...); err != nil {
 				return err
 			}
 
@@ -219,7 +219,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 		Name: "EnterpriseSearch status should be updated",
 		Test: test.Eventually(func() error {
 			var ent v1beta1.EnterpriseSearch
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
 				return err
 			}
 			expected := v1beta1.EnterpriseSearchStatus{

@@ -6,6 +6,7 @@ package enterprisesearch
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -97,7 +98,7 @@ func Test_parseConfigRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.secrets...)
+			c := k8s.NewFakeClient(tt.secrets...)
 			w := watches.NewDynamicWatches()
 			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
 			got, err := parseConfigRef(driver, tt.ent)
@@ -130,7 +131,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		{
 			name: "Generate session key and encryption key when missing",
 			args: args{
-				c: k8s.WrappedFakeClient(
+				c: k8s.NewFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
 						Data: map[string][]byte{
@@ -154,7 +155,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		{
 			name: "Reuse existing session key, and first operator-managed encryption key",
 			args: args{
-				c: k8s.WrappedFakeClient(
+				c: k8s.NewFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
 						Data: map[string][]byte{
@@ -497,7 +498,7 @@ func TestReconcileConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
-				Client:         k8s.WrappedFakeClient(tt.runtimeObjs...),
+				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
@@ -522,7 +523,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			var updatedResource corev1.Secret
-			err = driver.K8sClient().Get(k8s.ExtractNamespacedName(&got), &updatedResource)
+			err = driver.K8sClient().Get(context.Background(), k8s.ExtractNamespacedName(&got), &updatedResource)
 			assert.NoError(t, err)
 			assert.Equal(t, got.Data, updatedResource.Data)
 		})
@@ -675,7 +676,7 @@ secret_session_key: alreadysetsessionkey
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
-				Client:         k8s.WrappedFakeClient(tt.runtimeObjs...),
+				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
@@ -809,7 +810,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
-				Client:         k8s.WrappedFakeClient(tt.runtimeObjs...),
+				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
@@ -820,7 +821,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)
 
 			var updatedResource corev1.Secret
-			err = driver.K8sClient().Get(k8s.ExtractNamespacedName(&got), &updatedResource)
+			err = driver.K8sClient().Get(context.Background(), k8s.ExtractNamespacedName(&got), &updatedResource)
 			assert.NoError(t, err)
 			assert.Equal(t, got.Data, updatedResource.Data)
 		})

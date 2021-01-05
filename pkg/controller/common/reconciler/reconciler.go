@@ -5,9 +5,11 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -19,8 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var (
@@ -109,7 +109,7 @@ func ReconcileResource(params Params) error {
 		expectedCopyValue := reflect.ValueOf(params.Expected.DeepCopyObject()).Elem()
 		reflect.ValueOf(params.Reconciled).Elem().Set(expectedCopyValue)
 		// Create the object, which modifies params.Reconciled in-place
-		err = params.Client.Create(params.Reconciled)
+		err = params.Client.Create(context.Background(), params.Reconciled)
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func ReconcileResource(params Params) error {
 	}
 
 	// Check if already exists
-	err = params.Client.Get(types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
+	err = params.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
 	if err != nil && apierrors.IsNotFound(err) {
 		return create()
 	} else if err != nil {
@@ -141,7 +141,7 @@ func ReconcileResource(params Params) error {
 			ResourceVersion: &resourceVersionToDelete,
 		}
 
-		err = params.Client.Delete(params.Expected, opt)
+		err = params.Client.Delete(context.Background(), params.Expected, opt)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
 		}
@@ -178,7 +178,7 @@ func ReconcileResource(params Params) error {
 			k8s.OverrideControllerReference(reconciledMeta, expectedOwners[0])
 		}
 
-		err = params.Client.Update(params.Reconciled)
+		err = params.Client.Update(context.Background(), params.Reconciled)
 		if err != nil {
 			return err
 		}

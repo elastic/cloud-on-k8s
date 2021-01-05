@@ -127,7 +127,7 @@ func Test_podsToUpgrade(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.args.pods...)
+			client := k8s.NewFakeClient(tt.args.pods...)
 			got, err := podsToUpgrade(client, tt.args.statefulSets)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("podsToUpgrade() error = %v, wantErr %v", err, tt.wantErr)
@@ -188,7 +188,7 @@ func Test_healthyPods(t *testing.T) {
 			esState := &testESState{
 				inCluster: tt.args.pods.podsInCluster(),
 			}
-			client := k8s.WrappedFakeClient(tt.args.pods.toRuntimeObjects("7.5.0", 0, nothing)...)
+			client := k8s.NewFakeClient(tt.args.pods.toRuntimeObjects("7.5.0", 0, nothing)...)
 			got, err := healthyPods(client, tt.args.statefulSets, esState)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("healthyPods() error = %v, wantErr %v", err, tt.wantErr)

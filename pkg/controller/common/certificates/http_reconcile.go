@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -80,7 +81,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 	}
 
 	shouldCreateSecret := false
-	if err := r.K8sClient.Get(k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.K8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		shouldCreateSecret = true
@@ -148,12 +149,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 	if needsUpdate {
 		if shouldCreateSecret {
 			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := r.K8sClient.Create(&secret); err != nil {
+			if err := r.K8sClient.Create(context.Background(), &secret); err != nil {
 				return nil, err
 			}
 		} else {
 			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := r.K8sClient.Update(&secret); err != nil {
+			if err := r.K8sClient.Update(context.Background(), &secret); err != nil {
 				return nil, err
 			}
 		}

@@ -61,7 +61,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
@@ -341,7 +341,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	if ent.Spec.HTTP.TLS.Enabled() {
 		var tlsCertSecret corev1.Secret
 		tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)}
-		if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
+		if err := c.Get(context.Background(), tlsSecretKey, &tlsCertSecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
@@ -353,7 +353,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	if ent.AssociationConf().CAIsConfigured() {
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: ent.Namespace, Name: ent.AssociationConf().GetCASecretName()}
-		if err := c.Get(key, &esPublicCASecret); err != nil {
+		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {

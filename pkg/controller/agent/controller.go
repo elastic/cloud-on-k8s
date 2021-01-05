@@ -49,7 +49,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAgent {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileAgent{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),

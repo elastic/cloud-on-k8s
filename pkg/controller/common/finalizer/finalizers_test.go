@@ -5,6 +5,7 @@
 package finalizer
 
 import (
+	"context"
 	"testing"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -46,7 +47,7 @@ func TestRemoveAll(t *testing.T) {
 		{
 			name: "No Finalizers",
 			args: args{
-				c: k8s.WrappedFakeClient(&kbv1.Kibana{
+				c: k8s.NewFakeClient(&kbv1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",
@@ -64,7 +65,7 @@ func TestRemoveAll(t *testing.T) {
 		{
 			name: "Only remove Elastic Finalizers",
 			args: args{
-				c:   k8s.WrappedFakeClient(sampleObject),
+				c:   k8s.NewFakeClient(sampleObject),
 				obj: sampleObject,
 			},
 			wantFinalizers: []string{
@@ -79,7 +80,7 @@ func TestRemoveAll(t *testing.T) {
 				t.Errorf("RemoveAll() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			savedObject := &kbv1.Kibana{}
-			err := tt.args.c.Get(types.NamespacedName{
+			err := tt.args.c.Get(context.Background(), types.NamespacedName{
 				Namespace: "bar",
 				Name:      "foo",
 			}, savedObject)

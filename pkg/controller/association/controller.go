@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -34,7 +33,7 @@ func AddAssociationController(
 	controllerName := associationInfo.AssociationName + "-association-controller"
 	r := &Reconciler{
 		AssociationInfo: associationInfo,
-		Client:          k8s.WrapClient(mgr.GetClient()),
+		Client:          mgr.GetClient(),
 		accessReviewer:  accessReviewer,
 		watches:         watches.NewDynamicWatches(),
 		recorder:        mgr.GetEventRecorderFor(controllerName),

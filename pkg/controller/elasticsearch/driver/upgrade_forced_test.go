@@ -5,15 +5,15 @@
 package driver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
@@ -161,7 +161,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			for i := range tt.actualPods {
 				runtimeObjs = append(runtimeObjs, &tt.actualPods[i])
 			}
-			k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
+			k8sClient := k8s.NewFakeClient(runtimeObjs...)
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client:       k8sClient,
@@ -173,7 +173,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var pods corev1.PodList
-			require.NoError(t, k8sClient.List(&pods))
+			require.NoError(t, k8sClient.List(context.Background(), &pods))
 			require.ElementsMatch(t, tt.wantRemainingPods, pods.Items)
 		})
 	}

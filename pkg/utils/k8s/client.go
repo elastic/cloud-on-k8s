@@ -7,139 +7,81 @@ package k8s
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-// WrapClient returns a Client that performs requests within DefaultTimeout.
-func WrapClient(client client.Client) Client {
-	return &clientWrapper{
-		crClient: client,
-	}
+func init() {
+	scheme.SetupScheme()
 }
 
-// Client wraps a controller-runtime client to use a
-// default context with a timeout if no context is passed.
-type Client interface {
-	// WithContext returns a client configured to use the provided context on
-	// subsequent requests, instead of one created from the preconfigured timeout.
-	WithContext(ctx context.Context) Client
-
-	// Get wraps a controller-runtime client.Get call with a context.
-	Get(key client.ObjectKey, obj runtime.Object) error
-	// List wraps a controller-runtime client.List call with a context.
-	List(list runtime.Object, opts ...client.ListOption) error
-	// Create wraps a controller-runtime client.Create call with a context.
-	Create(obj runtime.Object, opts ...client.CreateOption) error
-	// Delete wraps a controller-runtime client.Delete call with a context.
-	Delete(obj runtime.Object, opts ...client.DeleteOption) error
-	// Update wraps a controller-runtime client.Update call with a context.
-	Update(obj runtime.Object, opts ...client.UpdateOption) error
-	// Status wraps a controller-runtime client.Status call.
-	Status() StatusWriter
-	// Patch patches the given obj in the Kubernetes cluster. obj must be a
-	// struct pointer so that obj can be updated with the content returned by the Server.
-	Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
-	// DeleteAllOf deletes all objects of the given type matching the given options.
-	DeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) error
+func Scheme() *runtime.Scheme {
+	return clientgoscheme.Scheme
 }
 
-type clientWrapper struct {
-	crClient client.Client
-	ctx      context.Context // nil if not provided
+type Client = client.Client
+
+func NewFakeClient(initObjs ...runtime.Object) Client {
+	return fake.NewFakeClientWithScheme(clientgoscheme.Scheme, initObjs...)
 }
 
-// WithContext returns a client configured to use the provided context for subsequent calls.
-func (w *clientWrapper) WithContext(ctx context.Context) Client {
-	return &clientWrapper{
-		crClient: w.crClient,
-		ctx:      ctx,
-	}
+var (
+	_ Client              = failingClient{}
+	_ client.StatusWriter = failingStatusWriter{}
+)
+
+type failingClient struct {
+	err error
 }
 
-// callWithContext calls f with the user-provided context.
-// If no context is provided, defaults to the background context.
-func (w *clientWrapper) callWithContext(f func(context.Context) error) error {
-	if w.ctx != nil {
-		return f(w.ctx)
-	}
-
-	return f(context.Background())
+// NewFailingClient returns a client that always returns the provided error when called.
+func NewFailingClient(err error) Client {
+	return failingClient{err: err}
 }
 
-// Get wraps a controller-runtime client.Get call with a context.
-func (w *clientWrapper) Get(key client.ObjectKey, obj runtime.Object) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Get(ctx, key, obj)
-	})
+func (fc failingClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+	return fc.err
 }
 
-// List wraps a controller-runtime client.List call with a context.
-func (w *clientWrapper) List(list runtime.Object, opts ...client.ListOption) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.List(ctx, list, opts...)
-	})
+func (fc failingClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+	return fc.err
 }
 
-// Create wraps a controller-runtime client.Create call with a context.
-func (w *clientWrapper) Create(obj runtime.Object, opts ...client.CreateOption) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Create(ctx, obj, opts...)
-	})
+func (fc failingClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	return fc.err
 }
 
-// Update wraps a controller-runtime client.Update call with a context.
-func (w *clientWrapper) Update(obj runtime.Object, opts ...client.UpdateOption) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Update(ctx, obj, opts...)
-	})
+func (fc failingClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+	return fc.err
 }
 
-// Patch wraps a controller-runtime client.Patch call with a context.
-func (w *clientWrapper) Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Patch(ctx, obj, patch, opts...)
-	})
+func (fc failingClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return fc.err
 }
 
-// Delete wraps a controller-runtime client.Delete call with a context.
-func (w *clientWrapper) Delete(obj runtime.Object, opts ...client.DeleteOption) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Delete(ctx, obj, opts...)
-	})
+func (fc failingClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return fc.err
 }
 
-// DeleteAllOf wraps a controller-runtime client.DeleteAllOf call with a context.
-func (w *clientWrapper) DeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) error {
-	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.DeleteAllOf(ctx, obj, opts...)
-	})
+func (fc failingClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return fc.err
 }
 
-// StatusWriter wraps a client.StatusWrapper with a context.
-type StatusWriter struct {
-	client.StatusWriter
-	w *clientWrapper
+func (fc failingClient) Status() client.StatusWriter {
+	return failingStatusWriter{err: fc.err}
 }
 
-// Status wraps a controller-runtime client.Status call.
-func (w *clientWrapper) Status() StatusWriter {
-	return StatusWriter{
-		StatusWriter: w.crClient.Status(),
-		w:            w,
-	}
+type failingStatusWriter struct {
+	err error
 }
 
-// Update wraps a controller-runtime client.Status().Update call with a context.
-func (s StatusWriter) Update(obj runtime.Object) error {
-	return s.w.callWithContext(func(ctx context.Context) error {
-		return s.StatusWriter.Update(ctx, obj)
-	})
+func (fsw failingStatusWriter) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return fsw.err
 }
 
-// Patch wraps a controller-runtime client.Status().Patch call with a context.
-func (s StatusWriter) Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return s.w.callWithContext(func(ctx context.Context) error {
-		return s.StatusWriter.Patch(ctx, obj, patch, opts...)
-	})
+func (fsw failingStatusWriter) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return fsw.err
 }

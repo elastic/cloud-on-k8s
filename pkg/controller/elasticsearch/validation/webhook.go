@@ -30,7 +30,7 @@ var eslog = logf.Log.WithName("es-validation")
 
 func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool) {
 	wh := &validatingWebhook{
-		client:               k8s.WrapClient(mgr.GetClient()),
+		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
 	}
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)

@@ -74,7 +74,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "accept valid update (count++)",
 			fields: fields{
-				client: k8s.WrappedFakeClient(),
+				client: k8s.NewFakeClient(),
 			},
 			args: args{
 				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
@@ -98,7 +98,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "reject invalid update (version downgrade))",
 			fields: fields{
-				client: k8s.WrappedFakeClient(),
+				client: k8s.NewFakeClient(),
 			},
 			args: args{
 				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{

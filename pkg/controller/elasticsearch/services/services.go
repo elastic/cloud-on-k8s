@@ -5,6 +5,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -105,7 +106,7 @@ func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 	endpoints := corev1.Endpoints{}
 	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
 
-	if err := c.Get(namespacedName, &endpoints); err != nil {
+	if err := c.Get(context.Background(), namespacedName, &endpoints); err != nil {
 		return false, err
 	}
 	for _, subs := range endpoints.Subsets {
@@ -125,7 +126,7 @@ func GetExternalService(c k8s.Client, es esv1.Elasticsearch) (corev1.Service, er
 		Name:      ExternalServiceName(es.Name),
 	}
 
-	if err := c.Get(namespacedName, &svc); err != nil {
+	if err := c.Get(context.Background(), namespacedName, &svc); err != nil {
 		return corev1.Service{}, err
 	}
 

@@ -5,6 +5,7 @@
 package reconciler
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -138,7 +139,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner r
 // To be called once that owner gets deleted.
 func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedName, ownerKind string) error {
 	var secrets corev1.SecretList
-	if err := c.List(
+	if err := c.List(context.Background(),
 		&secrets,
 		// restrict to secrets in the parent namespace, we don't want to delete
 		// secrets users may have manually copied into other namespaces
@@ -157,7 +158,7 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 		log.Info("Garbage collecting secret",
 			"namespace", deletedOwner.Namespace, "secret_name", s.Name,
 			"owner_name", deletedOwner.Name, "owner_kind", ownerKind)
-		err := c.Delete(&s)
+		err := c.Delete(context.Background(), &s)
 		if apierrors.IsNotFound(err) {
 			// already deleted, all good
 			continue
@@ -177,7 +178,7 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]runtime.Object) error {
 	// retrieve all secrets that reference a soft owner
 	var secrets corev1.SecretList
-	if err := c.List(
+	if err := c.List(context.Background(),
 		&secrets,
 		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
 	); err != nil {
@@ -201,7 +202,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 			continue
 		}
 		owner = owner.DeepCopyObject()
-		err := c.Get(types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
+		err := c.Get(context.Background(), types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// owner doesn't exit anymore
@@ -209,7 +210,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 					"namespace", secret.Namespace, "secret_name", secret.Name,
 					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
 				)
-				if err := c.Delete(&secret); err != nil && !apierrors.IsNotFound(err) {
+				if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 				continue

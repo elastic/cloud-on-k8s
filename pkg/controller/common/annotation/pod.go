@@ -5,6 +5,7 @@
 package annotation
 
 import (
+	"context"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -35,7 +36,7 @@ func MarkPodsAsUpdated(
 ) {
 	// Get all pods
 	var podList corev1.PodList
-	err := c.List(&podList, podListOptions...)
+	err := c.List(context.Background(), &podList, podListOptions...)
 	if err != nil {
 		log.Error(err, "failed to list pods for annotation update")
 		return
@@ -65,7 +66,7 @@ func MarkPodAsUpdated(
 	}
 	pod.Annotations[UpdateAnnotation] =
 		time.Now().Format(time.RFC3339Nano) // nano should be enough to avoid collisions and keep it readable by a human.
-	if err := c.Update(&pod); err != nil {
+	if err := c.Update(context.Background(), &pod); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
 			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)

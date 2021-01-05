@@ -96,31 +96,31 @@ func TestAtLeastOneNodeCompatibleWithZen1(t *testing.T) {
 		{
 			name:         "no sset",
 			statefulSets: nil,
-			client:       k8s.WrappedFakeClient(),
+			client:       k8s.NewFakeClient(),
 			want:         false,
 		},
 		{
 			name:         "none compatible",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("7.0.0"), createStatefulSetWithVersion("7.1.0")},
-			client:       k8s.WrappedFakeClient(),
+			client:       k8s.NewFakeClient(),
 			want:         false,
 		},
 		{
 			name:         "one compatible",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("7.1.0")},
-			client:       k8s.WrappedFakeClient(),
+			client:       k8s.NewFakeClient(),
 			want:         true,
 		},
 		{
 			name:         "all compatible",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("6.9.0")},
-			client:       k8s.WrappedFakeClient(),
+			client:       k8s.NewFakeClient(),
 			want:         true,
 		},
 		{
 			name:         "Version in StatefulSet spec in 7.2.0 but there're still some 6.8.0 in flight",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("7.2.0")},
-			client:       k8s.WrappedFakeClient(createMasterPodsWithVersion("foo", "6.8.0", 5)...),
+			client:       k8s.NewFakeClient(createMasterPodsWithVersion("foo", "6.8.0", 5)...),
 			want:         true,
 		},
 	}

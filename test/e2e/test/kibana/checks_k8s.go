@@ -5,12 +5,8 @@
 package kibana
 
 import (
+	"context"
 	"fmt"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -18,6 +14,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -36,7 +36,7 @@ func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana deployment be rolled out",
 		Test: test.Eventually(func() error {
 			var dep appsv1.Deployment
-			err := k.Client.Get(types.NamespacedName{
+			err := k.Client.Get(context.Background(), types.NamespacedName{
 				Namespace: b.Kibana.Namespace,
 				Name:      kibana.Deployment(b.Kibana.Name),
 			}, &dep)
@@ -48,7 +48,7 @@ func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 			}
 
 			var pods corev1.PodList
-			if err := k.Client.List(&pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
+			if err := k.Client.List(context.Background(), &pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
 				return err
 			}
 
@@ -204,7 +204,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana status should be updated",
 		Test: test.Eventually(func() error {
 			var kb kbv1.Kibana
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
 				return err
 			}
 			// don't check the association status that may vary across tests

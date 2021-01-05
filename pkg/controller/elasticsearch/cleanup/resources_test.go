@@ -95,13 +95,13 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 	}{
 		{
 			name:                "nothing in the cache",
-			client:              k8s.WrappedFakeClient(),
+			client:              k8s.NewFakeClient(),
 			es:                  es,
 			secretsAfterCleanup: nil,
 		},
 		{
 			name: "nothing to delete, pod exists",
-			client: k8s.WrappedFakeClient(
+			client: k8s.NewFakeClient(
 				&pod,
 				secret("s", es.Name, pod.Name, whileAgo),
 			),
@@ -112,7 +112,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 		},
 		{
 			name: "2 secrets to cleanup but not old enough",
-			client: k8s.WrappedFakeClient(
+			client: k8s.NewFakeClient(
 				secret("s1", es.Name, pod.Name, now),
 				secret("s2", es.Name, pod.Name, now),
 			),
@@ -124,7 +124,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 		},
 		{
 			name: "2 secrets to cleanup for the same pod",
-			client: k8s.WrappedFakeClient(
+			client: k8s.NewFakeClient(
 				secret("s1", es.Name, pod.Name, whileAgo),
 				secret("s2", es.Name, pod.Name, whileAgo),
 			),
@@ -133,7 +133,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 		},
 		{
 			name: "2 secrets to cleanup for different pods",
-			client: k8s.WrappedFakeClient(
+			client: k8s.NewFakeClient(
 				secret("s1", es.Name, pod.Name, whileAgo),
 				secret("s2", es.Name, "pod2", whileAgo),
 			),
@@ -147,13 +147,13 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 			require.NoError(t, err)
 			// the correct number of secrets should remain in the cache
 			var secrets corev1.SecretList
-			err = tt.client.List(&secrets)
+			err = tt.client.List(context.Background(), &secrets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.secretsAfterCleanup), len(secrets.Items))
 			// remaining secret should be the expected ones
 			for _, expected := range tt.secretsAfterCleanup {
 				var actual corev1.Secret
-				err = tt.client.Get(k8s.ExtractNamespacedName(expected), &actual)
+				err = tt.client.Get(context.Background(), k8s.ExtractNamespacedName(expected), &actual)
 				require.NoError(t, err)
 			}
 		})

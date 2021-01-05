@@ -6,6 +6,7 @@ package helper
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -188,7 +189,7 @@ func makeObjectSteps(
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Create %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
 					Test: func(t *testing.T) {
-						err := k.Client.Create(objects[ii])
+						err := k.Client.Create(context.Background(), objects[ii])
 						if !k8serrors.IsAlreadyExists(err) {
 							require.NoError(t, err)
 						}
@@ -205,7 +206,7 @@ func makeObjectSteps(
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Delete %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
 					Test: func(t *testing.T) {
-						err := k.Client.Delete(objects[ii])
+						err := k.Client.Delete(context.Background(), objects[ii])
 						if !k8serrors.IsNotFound(err) {
 							require.NoError(t, err)
 						}

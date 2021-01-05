@@ -5,12 +5,20 @@
 package license
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,16 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -70,7 +68,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
-	c := k8s.WrapClient(mgr.GetClient())
+	c := mgr.GetClient()
 	return &ReconcileLicenses{
 		Client:  c,
 		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
@@ -202,7 +200,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 		// no license, delete cluster level licenses to revert to basic
 		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
 		secretName := esv1.LicenseSecretName(cluster.Name)
-		err := r.Client.Delete(&corev1.Secret{
+		err := r.Client.Delete(context.Background(), &corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
 				Namespace: cluster.Namespace,
 				Name:      secretName,
@@ -245,7 +243,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 
 	// Fetch the cluster to ensure it still exists
 	cluster := esv1.Elasticsearch{}
-	err := r.Get(request.NamespacedName, &cluster)
+	err := r.Get(context.Background(), request.NamespacedName, &cluster)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// nothing to do no cluster

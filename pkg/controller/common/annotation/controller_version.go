@@ -65,7 +65,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 		return err
 	}
 	log.V(1).Info("updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
-	return client.Update(obj)
+	return client.Update(context.Background(), obj)
 }
 
 // ReconcileCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation
@@ -148,7 +148,7 @@ func checkExistingResources(client k8s.Client, owner runtime.Object, labels map[
 	nsSelector := ctrlclient.InNamespace(metaOwner.GetNamespace())
 
 	var svcs corev1.ServiceList
-	err = client.List(&svcs, labelSelector, nsSelector)
+	err = client.List(context.Background(), &svcs, labelSelector, nsSelector)
 	if err != nil {
 		return false, err
 	}

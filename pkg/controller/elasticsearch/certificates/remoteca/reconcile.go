@@ -6,11 +6,8 @@ package remoteca
 
 import (
 	"bytes"
+	"context"
 	"sort"
-
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -18,6 +15,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -40,7 +40,7 @@ func Reconcile(
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
-	if err := c.List(
+	if err := c.List(context.Background(),
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		Labels(es.Name),

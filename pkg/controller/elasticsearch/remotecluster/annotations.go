@@ -5,6 +5,7 @@
 package remotecluster
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -42,7 +43,7 @@ func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remo
 		// if the annotation exists, delete it
 		if _, ok := es.Annotations[ManagedRemoteClustersAnnotationName]; ok {
 			delete(es.Annotations, ManagedRemoteClustersAnnotationName)
-			return c.Update(&es)
+			return c.Update(context.Background(), &es)
 		}
 
 		return nil
@@ -60,5 +61,5 @@ func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remo
 	sort.Strings(annotation)
 	es.Annotations[ManagedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
 
-	return c.Update(&es)
+	return c.Update(context.Background(), &es)
 }

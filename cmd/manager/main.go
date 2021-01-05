@@ -620,7 +620,7 @@ func asyncTasks(
 	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
 	// - soft-owned secrets
-	garbageCollectSoftOwnedSecrets(k8s.WrapClient(mgr.GetClient()))
+	garbageCollectSoftOwnedSecrets(mgr.GetClient())
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {

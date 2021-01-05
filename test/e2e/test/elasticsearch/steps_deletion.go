@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -28,7 +29,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Deleting Elasticsearch should return no error",
 			Test: func(t *testing.T) {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					require.NoError(t, err)
 
 				}
@@ -42,7 +43,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 					if err != nil {
 						return err
 					}
-					err = k.Client.Get(k8s.ExtractNamespacedName(m), obj.DeepCopyObject())
+					err = k.Client.Get(context.Background(), k8s.ExtractNamespacedName(m), obj.DeepCopyObject())
 					if err != nil {
 						if apierrors.IsNotFound(err) {
 							continue
@@ -68,7 +69,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				matchLabels := client.MatchingLabels(map[string]string{
 					label.ClusterNameLabelName: b.Elasticsearch.Name,
 				})
-				err := k.Client.List(&pvcs, ns, matchLabels)
+				err := k.Client.List(context.Background(), &pvcs, ns, matchLabels)
 				if err != nil {
 					return err
 				}

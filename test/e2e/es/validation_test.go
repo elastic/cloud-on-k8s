@@ -5,12 +5,12 @@
 package es
 
 import (
+	"context"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -21,6 +21,6 @@ func TestElasticsearchCRDOpenAPIValidation(t *testing.T) {
 	b := elasticsearch.NewBuilder("es-crd-validation")
 	k := test.NewK8sClientOrFatal()
 	// creation should be rejected
-	err := k.Client.Create(&b.Elasticsearch)
+	err := k.Client.Create(context.Background(), &b.Elasticsearch)
 	require.True(t, apierrors.IsInvalid(err))
 }

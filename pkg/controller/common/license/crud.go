@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -21,7 +22,7 @@ import (
 func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	licenseList := corev1.SecretList{}
 	matchingLabels := NewLicenseByScopeSelector(LicenseScopeOperator)
-	err := c.List(&licenseList, matchingLabels)
+	err := c.List(context.Background(), &licenseList, matchingLabels)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -47,7 +48,7 @@ func EnterpriseLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 // TrialLicense returns the trial license, its containing secret or an error
 func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, EnterpriseLicense, error) {
 	var secret corev1.Secret
-	err := c.Get(nsn, &secret)
+	err := c.Get(context.Background(), nsn, &secret)
 	if err != nil {
 		return corev1.Secret{}, EnterpriseLicense{}, err
 	}
@@ -72,7 +73,7 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 
 // CreateTrialLicense creates en empty secret with the correct meta data to start an enterprise trial
 func CreateTrialLicense(c k8s.Client, nsn types.NamespacedName) error {
-	return c.Create(&corev1.Secret{
+	return c.Create(context.Background(), &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
@@ -97,5 +98,5 @@ func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLic
 		FileName: bytes,
 	}
 	secret.Labels = maps.Merge(secret.Labels, LabelsForOperatorScope(l.License.Type))
-	return c.Update(&secret)
+	return c.Update(context.Background(), &secret)
 }

@@ -105,7 +105,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AllMastersCompatibleWithZen2(k8s.WrappedFakeClient(tt.pods...), es)
+			got, err := AllMastersCompatibleWithZen2(k8s.NewFakeClient(tt.pods...), es)
 			require.NoError(t, err)
 			if got != tt.want {
 				t.Errorf("AllMastersCompatibleWithZen2() got = %v, want %v", got, tt.want)

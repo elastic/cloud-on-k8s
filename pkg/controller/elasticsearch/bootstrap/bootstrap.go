@@ -94,5 +94,5 @@ func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid st
 		cluster.Annotations = make(map[string]string)
 	}
 	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
-	return k8sClient.Update(cluster)
+	return k8sClient.Update(context.Background(), cluster)
 }

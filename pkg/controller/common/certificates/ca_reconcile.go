@@ -5,18 +5,18 @@
 package certificates
 
 import (
+	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // CAType is a type of CA
@@ -55,7 +55,7 @@ func ReconcileCAForOwner(
 
 	// retrieve current CA secret
 	caInternalSecret := corev1.Secret{}
-	err := cl.Get(types.NamespacedName{
+	err := cl.Get(context.Background(), types.NamespacedName{
 		Namespace: owner.GetNamespace(),
 		Name:      CAInternalSecretName(namer, owner.GetName(), caType),
 	}, &caInternalSecret)

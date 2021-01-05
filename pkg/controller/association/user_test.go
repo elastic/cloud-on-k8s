@@ -89,7 +89,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var esUser corev1.Secret
-				assert.NoError(t, c.Get(types.NamespacedName{Name: userName, Namespace: "default"}, &esUser))
+				assert.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: userName, Namespace: "default"}, &esUser))
 				expectedLabels := map[string]string{
 					associationLabelName:       kibanaFixture.Name,
 					common.TypeLabelName:       esuser.AssociatedUserType,
@@ -112,12 +112,12 @@ func Test_reconcileEsUser(t *testing.T) {
 					Name:      userName,
 					Namespace: "default",
 				}
-				assert.NoError(t, c.Get(userKey, &corev1.Secret{}))
+				assert.NoError(t, c.Get(context.Background(), userKey, &corev1.Secret{}))
 				secretKey := types.NamespacedName{
 					Name:      userSecretName,
 					Namespace: "default",
 				}
-				assert.NoError(t, c.Get(secretKey, &corev1.Secret{}))
+				assert.NoError(t, c.Get(context.Background(), secretKey, &corev1.Secret{}))
 			},
 			wantErr: false,
 		},
@@ -135,7 +135,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				list := corev1.SecretList{}
-				assert.NoError(t, c.List(&list))
+				assert.NoError(t, c.List(context.Background(), &list))
 				assert.Equal(t, 3, len(list.Items))
 				s := GetSecret(list, types.NamespacedName{Namespace: "other", Name: userSecretName})
 				assert.NotNil(t, s)
@@ -163,7 +163,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var s corev1.Secret
-				assert.NoError(t, c.Get(types.NamespacedName{Name: userSecretName, Namespace: "default"}, &s))
+				assert.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: userSecretName, Namespace: "default"}, &s))
 				password, ok := s.Data[userName]
 				assert.True(t, ok)
 				assert.NotEmpty(t, password)
@@ -209,7 +209,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var userSecret corev1.Secret
-				assert.NoError(t, c.Get(types.NamespacedName{Name: userName, Namespace: "default"}, &userSecret))
+				assert.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: userName, Namespace: "default"}, &userSecret))
 				require.Equal(t, "$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e", string(userSecret.Data[esuser.PasswordHashField]))
 			},
 		},
@@ -233,13 +233,13 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				// user should be in ES namespace
-				assert.NoError(t, c.Get(types.NamespacedName{
+				assert.NoError(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: "default",
 					// name should include kibana namespace
 					Name: "ns-2-kibana-foo-kibana-user",
 				}, &corev1.Secret{}))
 				// secret should be in Kibana namespace
-				assert.NoError(t, c.Get(types.NamespacedName{
+				assert.NoError(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns-2",
 					Name:      userSecretName,
 				}, &corev1.Secret{}))
@@ -247,7 +247,7 @@ func Test_reconcileEsUser(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		c := k8s.WrappedFakeClient(tt.args.initialObjects...)
+		c := k8s.NewFakeClient(tt.args.initialObjects...)
 		t.Run(tt.name, func(t *testing.T) {
 			if err := ReconcileEsUser(
 				context.Background(),

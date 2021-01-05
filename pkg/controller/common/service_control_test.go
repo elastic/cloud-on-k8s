@@ -27,7 +27,7 @@ func TestReconcileService(t *testing.T) {
 	}
 
 	existingSvc := mkService(owner)
-	client := k8s.WrappedFakeClient(owner, existingSvc)
+	client := k8s.NewFakeClient(owner, existingSvc)
 
 	expectedSvc := mkService(owner)
 	delete(expectedSvc.Labels, "lbl2")

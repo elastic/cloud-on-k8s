@@ -39,7 +39,7 @@ func FetchWithAssociations(
 	span, _ := apm.StartSpan(ctx, "fetch_associations", tracing.SpanTypeApp)
 	defer span.End()
 
-	if err := client.Get(request.NamespacedName, associated); err != nil {
+	if err := client.Get(context.Background(), request.NamespacedName, associated); err != nil {
 		return err
 	}
 
@@ -96,7 +96,7 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 
 	secretObjKey := types.NamespacedName{Namespace: association.GetNamespace(), Name: assocConf.AuthSecretName}
 	var secret corev1.Secret
-	if err := c.Get(secretObjKey, &secret); err != nil {
+	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
 		return "", "", err
 	}
 
@@ -207,7 +207,7 @@ func RemoveObsoleteAssociationConfs(
 		return err
 	}
 
-	return client.Update(associated)
+	return client.Update(context.Background(), associated)
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
@@ -233,7 +233,7 @@ func RemoveAssociationConf(client k8s.Client, association commonv1.Association) 
 		return err
 	}
 
-	return client.Update(associated)
+	return client.Update(context.Background(), associated)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
@@ -267,7 +267,7 @@ func UpdateAssociationConf(
 	}
 
 	// persist the changes
-	return client.Update(obj)
+	return client.Update(context.Background(), obj)
 }
 
 // unsafeStringToBytes converts a string to a byte array without making extra allocations.

@@ -119,7 +119,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lc := &checker{
-				k8sClient:         k8s.WrappedFakeClient(tt.fields.initialObjects...),
+				k8sClient:         k8s.NewFakeClient(tt.fields.initialObjects...),
 				operatorNamespace: testNS,
 				publicKey:         tt.fields.publicKey,
 			}
@@ -222,7 +222,7 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lc := &checker{
-				k8sClient:         k8s.WrappedFakeClient(tt.fields.initialObjects...),
+				k8sClient:         k8s.NewFakeClient(tt.fields.initialObjects...),
 				operatorNamespace: tt.fields.operatorNamespace,
 				publicKey:         tt.fields.publicKey,
 			}

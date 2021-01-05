@@ -5,19 +5,18 @@
 package user
 
 import (
+	"context"
 	"testing"
-
-	"golang.org/x/crypto/bcrypt"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func Test_reconcileElasticUser(t *testing.T) {
@@ -104,7 +103,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.existingSecrets...)
+			c := k8s.NewFakeClient(tt.existingSecrets...)
 			got, err := reconcileElasticUser(c, es, tt.existingFileRealm)
 			require.NoError(t, err)
 			// check returned user
@@ -117,7 +116,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			require.NoError(t, bcrypt.CompareHashAndPassword(user.PasswordHash, user.Password))
 			// reconciled secret should have the updated password
 			var secret corev1.Secret
-			err = c.Get(types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
+			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
 			require.NoError(t, err)
 			require.Equal(t, user.Password, secret.Data[ElasticUserName])
 		})
@@ -215,7 +214,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.existingSecrets...)
+			c := k8s.NewFakeClient(tt.existingSecrets...)
 			got, err := reconcileInternalUsers(c, es, tt.existingFileRealm)
 			require.NoError(t, err)
 			// check returned users
@@ -232,7 +231,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			require.NoError(t, bcrypt.CompareHashAndPassword(probeUser.PasswordHash, probeUser.Password))
 			// reconciled secret should have the updated passwords
 			var secret corev1.Secret
-			err = c.Get(types.NamespacedName{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)}, &secret)
+			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)}, &secret)
 			require.NoError(t, err)
 			require.Equal(t, controllerUser.Password, secret.Data[ControllerUserName])
 			require.Equal(t, probeUser.Password, secret.Data[ProbeUserName])
