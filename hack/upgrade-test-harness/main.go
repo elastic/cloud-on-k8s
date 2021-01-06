@@ -172,9 +172,10 @@ func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) []*fixt
 	if from != nil {
 		fixtures = append(fixtures, fixture.TestStatusOfResources(*from))
 
-		// upgrade from alpha requires deleting the finalizers and the stack resources
+		// upgrade from alpha requires deleting the finalizers
 		if from.Name == "alpha" {
 			fixtures = append(fixtures, fixture.TestRemoveFinalizers(*from))
+			// delete the stack as alpha resources are no longer reconciled by later versions of the operator
 			fixtures = append(fixtures, fixture.TestRemoveResources(*from))
 		}
 	}

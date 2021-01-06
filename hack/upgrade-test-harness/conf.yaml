@@ -29,5 +29,5 @@ testParams:
     crdVersion: v1
   - name: v140
     operatorVersion: 1.4.0-bc1
-    stackVersion: 7.10.1
+    stackVersion: 7.11.0-SNAPSHOT
     crdVersion: v1
