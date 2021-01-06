@@ -102,7 +102,7 @@ func (k *Kibana) RequiresAssociation() bool {
 
 func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	if typ == commonv1.ElasticsearchAssociationType && k.Spec.ElasticsearchRef.IsDefined() {
-		return commonv1.NewAssociationStatusMap(k.Spec.ElasticsearchRef.WithDefaultNamespace(k.Namespace), k.Status.AssociationStatus)
+		return commonv1.NewSingleAssociationStatusMap(k.Status.AssociationStatus)
 	}
 
 	return commonv1.AssociationStatusMap{}

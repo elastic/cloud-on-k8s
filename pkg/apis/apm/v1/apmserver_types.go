@@ -143,11 +143,11 @@ func (as *ApmServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
 		if as.Spec.ElasticsearchRef.IsDefined() {
-			return commonv1.NewAssociationStatusMap(as.Spec.ElasticsearchRef.WithDefaultNamespace(as.Namespace), as.Status.ElasticsearchAssociationStatus)
+			return commonv1.NewSingleAssociationStatusMap(as.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
 		if as.Spec.KibanaRef.IsDefined() {
-			return commonv1.NewAssociationStatusMap(as.Spec.KibanaRef.WithDefaultNamespace(as.Namespace), as.Status.KibanaAssociationStatus)
+			return commonv1.NewSingleAssociationStatusMap(as.Status.KibanaAssociationStatus)
 		}
 	}
 
