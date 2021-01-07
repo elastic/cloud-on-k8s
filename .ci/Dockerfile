@@ -11,7 +11,7 @@ ENV DOCKER_BUILDX_VERSION=0.4.2
 ENV GOTESTSUM_VERSION=0.5.0
 ENV KIND_VERSION=0.8.1
 ENV OPENSHIFT_TOOLS_VERSION=4.3.19
-ENV EKSCTL_VERSION=0.21.0
+ENV EKSCTL_VERSION=0.34.0
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \

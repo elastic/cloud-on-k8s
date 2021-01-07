@@ -157,11 +157,11 @@ func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Assoc
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
 		if b.Spec.ElasticsearchRef.IsDefined() {
-			return commonv1.NewAssociationStatusMap(b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace), b.Status.ElasticsearchAssociationStatus)
+			return commonv1.NewSingleAssociationStatusMap(b.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
 		if b.Spec.KibanaRef.IsDefined() {
-			return commonv1.NewAssociationStatusMap(b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace), b.Status.KibanaAssociationStatus)
+			return commonv1.NewSingleAssociationStatusMap(b.Status.KibanaAssociationStatus)
 		}
 	}
 

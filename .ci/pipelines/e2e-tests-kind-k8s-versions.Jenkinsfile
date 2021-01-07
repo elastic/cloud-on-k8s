@@ -47,6 +47,39 @@ pipeline {
                         }
                     }
                 }
+                stage("1.13.12") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.13.12", "1.13", "ipv4")
+                        }
+                    }
+                }
+                stage("1.14.10") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.14.10", "1.14", "ipv4")
+                        }
+                    }
+                }
+                stage("1.15.11") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.15.11", "1.15", "ipv4")
+                        }
+                    }
+                }
                 stage("1.16.9") {
                     agent {
                         label 'eck'
@@ -69,14 +102,25 @@ pipeline {
                         }
                     }
                 }
-                stage("1.17.5 IPv6") {
+                stage("1.18.2 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.18.2", "1.18", "ipv4")
+                        }
+                    }
+                }
+                stage("1.18.2 IPv6") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.18.2", "1.18", "ipv6")
                         }
                     }
                 }

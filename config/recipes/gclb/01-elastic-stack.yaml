@@ -6,7 +6,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.9.2
+  version: 7.10.1
   http:
     service:
       metadata:
@@ -45,7 +45,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.9.2
+  version: 7.10.1
   count: 1
   http:
     service:
