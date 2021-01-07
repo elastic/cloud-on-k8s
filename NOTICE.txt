@@ -715,11 +715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/uuid
-Version : v1.1.2
-Time    : 2020-07-02T18:56:42Z
+Version : v1.1.4
+Time    : 2021-01-04T19:17:18Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.1.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.1.4/LICENSE:
 
 Copyright (c) 2009,2014 Google Inc. All rights reserved.
 
