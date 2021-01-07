@@ -16,11 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Builder to create a Pod. It can be used as a source of logging/metric data for Beat (deployed separately) to collect.
@@ -87,8 +86,8 @@ func (pb PodBuilder) WithLabel(key, value string) PodBuilder {
 	return pb
 }
 
-func (pb PodBuilder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&pb.Pod}
+func (pb PodBuilder) RuntimeObjects() []client.Object {
+	return []client.Object{&pb.Pod}
 }
 
 func (pb PodBuilder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -221,11 +220,8 @@ func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "The resources should not be there anymore",
 			Test: test.Eventually(func() error {
 				for _, obj := range pb.RuntimeObjects() {
-					m, err := meta.Accessor(obj)
-					if err != nil {
-						return err
-					}
-					err = k.Client.Get(context.Background(), k8s.ExtractNamespacedName(m), obj.DeepCopyObject())
+					objCopy := k8s.DeepCopyObject(obj)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(obj), objCopy)
 					if err != nil {
 						if apierrors.IsNotFound(err) {
 							continue

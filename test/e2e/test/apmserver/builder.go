@@ -11,8 +11,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Builder to create APM Servers
@@ -161,8 +161,8 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 // -- Helper functions
 
-func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.ServiceAccount, &b.ApmServer}
+func (b Builder) RuntimeObjects() []client.Object {
+	return []client.Object{&b.ServiceAccount, &b.ApmServer}
 }
 
 func (b Builder) RUMEnabled() bool {

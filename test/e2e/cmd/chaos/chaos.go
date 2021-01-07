@@ -51,10 +51,10 @@ func doRun(flags runFlags) error {
 	changeOperatorReplicasTicker := time.NewTicker(flags.changeOperatorReplicasDelay)
 
 	log.Info("Starting Chaos process", "settings", viper.AllSettings())
-	signalChan := signals.SetupSignalHandler()
+	signalCtx := signals.SetupSignalHandler()
 	for {
 		select {
-		case <-signalChan:
+		case <-signalCtx.Done():
 			log.Info("Signal received: shutting down")
 			return nil
 

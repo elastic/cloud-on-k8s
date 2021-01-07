@@ -19,6 +19,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// DeepCopyObject creates a deep copy of a client.Object.
+// This is to get around the limitation of the DeepCopyObject method which returns a runtime.Object.
+func DeepCopyObject(obj client.Object) client.Object {
+	if obj == nil {
+		return nil
+	}
+
+	if newObj := obj.DeepCopyObject(); newObj != nil {
+		return newObj.(client.Object)
+	}
+
+	return nil
+}
+
 // ToObjectMeta returns an ObjectMeta based on the given NamespacedName.
 func ToObjectMeta(namespacedName types.NamespacedName) metav1.ObjectMeta {
 	return metav1.ObjectMeta{

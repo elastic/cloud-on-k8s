@@ -201,7 +201,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 		if !managed {
 			continue
 		}
-		owner = owner.DeepCopyObject().(client.Object)
+		owner = k8s.DeepCopyObject(owner)
 		err := c.Get(context.Background(), types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
 		if err != nil {
 			if apierrors.IsNotFound(err) {

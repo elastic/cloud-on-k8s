@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type BuilderTransform func(test.Builder) test.Builder
@@ -143,7 +144,7 @@ func (yd *YAMLDecoder) ToObjects(reader *bufio.Reader) ([]runtime.Object, error)
 func RunFile(
 	t *testing.T,
 	filePath, namespace, suffix string,
-	additionalObjects []runtime.Object,
+	additionalObjects []client.Object,
 	transformations ...BuilderTransform) {
 	builders, objects, err := extractFromFile(t, filePath, namespace, suffix, MkTestName(t, filePath), transformations...)
 	if err != nil {
@@ -161,7 +162,7 @@ func extractFromFile(
 	t *testing.T,
 	filePath, namespace, suffix, fullTestName string,
 	transformations ...BuilderTransform,
-) ([]test.Builder, []runtime.Object, error) {
+) ([]test.Builder, []client.Object, error) {
 	f, err := os.Open(filePath)
 	require.NoError(t, err, "Failed to open file %s", filePath)
 	defer f.Close()
@@ -172,13 +173,20 @@ func extractFromFile(
 		return nil, nil, err
 	}
 
-	builders, objects := transformToE2E(namespace, fullTestName, suffix, transformations, objects)
-	return builders, objects, nil
+	castObjects := make([]client.Object, len(objects))
+	for i, obj := range objects {
+		castObj, ok := obj.(client.Object)
+		require.True(t, ok, "%T is not a client.Object", obj)
+		castObjects[i] = castObj
+	}
+
+	builders, castObjects := transformToE2E(namespace, fullTestName, suffix, transformations, castObjects)
+	return builders, castObjects, nil
 }
 
 func makeObjectSteps(
 	t *testing.T,
-	objects []runtime.Object,
+	objects []client.Object,
 ) (func(k *test.K8sClient) test.StepList, func(k *test.K8sClient) test.StepList) {
 	return func(k *test.K8sClient) test.StepList {
 			steps := test.StepList{}
@@ -217,9 +225,9 @@ func makeObjectSteps(
 		}
 }
 
-func transformToE2E(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []runtime.Object) ([]test.Builder, []runtime.Object) {
+func transformToE2E(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []client.Object) ([]test.Builder, []client.Object) {
 	var builders []test.Builder
-	var otherObjects []runtime.Object
+	var otherObjects []client.Object
 	for _, object := range objects {
 		var builder test.Builder
 		switch decodedObj := object.(type) {

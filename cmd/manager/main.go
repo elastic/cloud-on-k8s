@@ -598,8 +598,8 @@ func asyncTasks(
 	// Report this instance as elected through Prometheus
 	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
 
-	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-	mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
+	time.Sleep(10 * time.Second)                          // wait some arbitrary time for the manager to start
+	mgr.GetCache().WaitForCacheSync(context.Background()) // wait until k8s client cache is initialized
 
 	// Start the resource reporter
 	go func() {

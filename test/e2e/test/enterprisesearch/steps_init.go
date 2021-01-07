@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -40,13 +39,9 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "EnterpriseSearch CRDs should exist",
 			Test: test.Eventually(func() error {
-				crds := []runtime.Object{
-					&entv1beta1.EnterpriseSearchList{},
-				}
-				for _, crd := range crds {
-					if err := k.Client.List(context.Background(), crd); err != nil {
-						return err
-					}
+				crd := &entv1beta1.EnterpriseSearchList{}
+				if err := k.Client.List(context.Background(), crd); err != nil {
+					return err
 				}
 				return nil
 			}),
