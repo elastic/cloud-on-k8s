@@ -15,12 +15,12 @@ const customPadding = 20
 
 var (
 	// aesKey is effectively constant
-	// see https://github.com/elastic/elasticsearch/blob/master/x-pack/plugin/core/src/main/java/org/elasticsearch/license/CryptUtils.java#L162-L179
+	// see https://github.com/elastic/elasticsearch/blob/a4199af58b8c5ab4757a45248672e0233978b208/x-pack/plugin/core/src/main/java/org/elasticsearch/license/CryptUtils.java#L162-L179
 	aesKey = []byte("\x76\x7A\x57\x69\x68\x4A\x4A\x4B\x6E\x30\x72\x6B\x61\x69\x50\x2B")
 )
 
 // encryptWithAESECB should be identical to what is called v3 license key
-// encryption see https://github.com/elastic/elasticsearch/blob/master/x-pack/plugin/core/src/main/java/org/elasticsearch/license/CryptUtils.java
+// encryption see https://github.com/elastic/elasticsearch/blob/a4199af58b8c5ab4757a45248672e0233978b208/x-pack/plugin/core/src/main/java/org/elasticsearch/license/CryptUtils.java#L142-L180
 func encryptWithAESECB(plaintext []byte) ([]byte, error) {
 	padded := pkcs5Pad(customPad(plaintext))
 	ciphertext := make([]byte, len(padded))
@@ -43,7 +43,7 @@ func ecb(block cipher.Block, dst, src []byte) {
 	}
 }
 
-// customPad see https://github.com/elastic/elasticsearch/blob/master/x-pack/plugin/core/src/main/java/org/elasticsearch/license/CryptUtils.java#L212-L236
+// customPad see https://github.com/elastic/elasticsearch/blob/a4199af58b8c5ab4757a45248672e0233978b208/x-pack/plugin/core/src/main/java/org/elasticsearch/license/CryptUtils.java#L212-L236
 func customPad(data []byte) []byte {
 	if len(data) >= customPadding {
 		return append(data, 1)
