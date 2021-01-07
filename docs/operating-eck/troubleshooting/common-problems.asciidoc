@@ -85,6 +85,38 @@ type: Opaque
 
 Failure to do so can cause data loss.
 
+[id="{p}-{page_id}-scale-down"]
+== Scale down of Elasticsearch master-eligible Pods seems stuck
+
+If a master-eligible Elasticsarch Pod was never successfully scheduled and the Elasticsearch cluster is running version 7.8 or earlier, ECK may fail to scale down the Pod. To find out whether you are affected, check if the Pod in question is pending:
+[source,sh]
+----
+> kubectl get pods
+pod/<cluster-name>-es-<nodeset>-1                    0/1     Pending   0          26m    <none>        <none>
+----
+
+Check the <<{p}-get-eck-logs,operator logs>> for an error similar to:
+[source,sh]
+----
+"unable to add to voting_config_exclusions: 400 Bad Request: add voting config exclusions request for [<cluster-name>-es-<nodeset>-1] matched no master-eligible nodes",
+----
+
+To work around this issue, scale down the underlying StatefulSet manually. First, identify the affected StatefulSet and the number of Pods that are ready (symbolized by `m` in this example):
+
+[source,sh]
+----
+> kubectl get sts -l elasticsearch.k8s.elastic.co/cluster-name=<cluster-name>
+NAME                       READY   AGE
+<cluster-name>-es-<nodeset>   m/n     44h
+----
+Then, scale down the StatefulSet to the right size `m`, removing the pending Pod:
+[source,sh]
+----
+> kubectl scale --replicas=m  sts/<cluster-name>-es-<nodeset>
+----
+
+CAUTION: Do not use this method to scale down Pods that have already joined the Elasticsearch cluster, as additional data loss protection that ECK applies is sidestepped.
+
 [id="{p}-{page_id}-pod-updates"]
 == Pods are not replaced after a configuration update
 
