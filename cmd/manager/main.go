@@ -69,6 +69,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -445,11 +446,12 @@ func startOperator(ctx context.Context) error {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
-		Scheme:                  clientgoscheme.Scheme,
-		CertDir:                 viper.GetString(operator.WebhookCertDirFlag),
-		LeaderElection:          viper.GetBool(operator.EnableLeaderElection),
-		LeaderElectionID:        LeaderElectionConfigMapName,
-		LeaderElectionNamespace: operatorNamespace,
+		Scheme:                     clientgoscheme.Scheme,
+		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
+		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
+		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock, // TODO: Revert to ConfigMapsLeases when support for 1.13 is dropped
+		LeaderElectionID:           LeaderElectionConfigMapName,
+		LeaderElectionNamespace:    operatorNamespace,
 	}
 
 	// configure the manager cache based on the number of managed namespaces
