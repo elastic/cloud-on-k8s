@@ -26,7 +26,7 @@ func Scheme() *runtime.Scheme {
 type Client = client.Client
 
 func NewFakeClient(initObjs ...runtime.Object) Client {
-	return fake.NewFakeClientWithScheme(clientgoscheme.Scheme, initObjs...)
+	return fake.NewClientBuilder().WithRuntimeObjects(initObjs...).WithScheme(clientgoscheme.Scheme).Build()
 }
 
 var (
@@ -72,7 +72,7 @@ func (fc failingClient) DeleteAllOf(ctx context.Context, obj client.Object, opts
 }
 
 func (fc failingClient) Status() client.StatusWriter {
-	return failingStatusWriter{err: fc.err}
+	return failingStatusWriter{err: fc.err} //nolint:gosimple
 }
 
 func (fc failingClient) Scheme() *runtime.Scheme {
