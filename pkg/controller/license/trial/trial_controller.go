@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -57,7 +58,7 @@ type ReconcileTrials struct {
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
-func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
@@ -239,36 +240,35 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 func addWatches(c controller.Controller) error {
 
 	// Watch the trial status secret and the enterprise trial licenses as well
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			secret, ok := obj.Object.(*corev1.Secret)
-			if !ok {
-				log.Error(fmt.Errorf("object of type %T in secret watch", obj.Object), "dropping event due to type error")
-			}
-			if licensing.IsEnterpriseTrial(*secret) {
-				return []reconcile.Request{
-					{
-						NamespacedName: types.NamespacedName{
-							Namespace: obj.Meta.GetNamespace(),
-							Name:      obj.Meta.GetName(),
-						},
-					},
-				}
-			}
-
-			if obj.Meta.GetName() != licensing.TrialStatusSecretKey {
-				return nil
-			}
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		secret, ok := obj.(*corev1.Secret)
+		if !ok {
+			log.Error(fmt.Errorf("object of type %T in secret watch", obj), "dropping event due to type error")
+		}
+		if licensing.IsEnterpriseTrial(*secret) {
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
-						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
+						Namespace: obj.GetNamespace(),
+						Name:      obj.GetName(),
 					},
 				},
 			}
-		}),
-	}); err != nil {
+		}
+
+		if obj.GetName() != licensing.TrialStatusSecretKey {
+			return nil
+		}
+		return []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+					Name:      secret.Annotations[licensing.TrialLicenseSecretName],
+				},
+			},
+		}
+	}),
+	); err != nil {
 		return err
 	}
 	return nil

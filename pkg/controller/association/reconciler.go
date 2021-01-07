@@ -137,9 +137,9 @@ func (r *Reconciler) log(associatedNsName types.NamespacedName) logr.Logger {
 	)
 }
 
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(r.logger, request, fmt.Sprintf("%s_name", r.AssociatedShortName), &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, r.AssociationName)
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, r.AssociationName)
 	defer tracing.EndTransaction(tx)
 
 	associated := r.AssociatedObjTemplate()

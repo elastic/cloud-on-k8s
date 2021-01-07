@@ -38,7 +38,7 @@ type UsersGarbageCollector struct {
 }
 
 type registeredResource struct {
-	apiType                                         runtime.Object
+	apiType                                         client.ObjectList
 	associationNameLabel, associationNamespaceLabel string
 }
 
@@ -61,7 +61,7 @@ func NewUsersGarbageCollector(cfg *rest.Config, managedNamespaces []string) (*Us
 // For is used to register the associated resources and the annotation names needed to resolve the name
 // of the associated resource.
 func (ugc *UsersGarbageCollector) For(
-	apiType runtime.Object,
+	apiType client.ObjectList,
 	associationNamespaceLabel, associationNameLabel string,
 ) *UsersGarbageCollector {
 	ugc.registeredResources = append(ugc.registeredResources,
@@ -141,7 +141,7 @@ type resourcesByAPIType map[runtime.Object]map[types.NamespacedName]struct{}
 
 // getAssociationParent checks if a User secret belongs to an associated resource using the Secret's annotations.
 // If it matches then it returns the type (e.g. APM Server or Kibana) and the name of the associated resource.
-func (ugc *UsersGarbageCollector) getAssociationParent(secret v1.Secret) (*runtime.Object, types.NamespacedName, bool) {
+func (ugc *UsersGarbageCollector) getAssociationParent(secret v1.Secret) (*client.ObjectList, types.NamespacedName, bool) {
 	for _, resource := range ugc.registeredResources {
 		namespace, ok := secret.Labels[resource.associationNamespaceLabel]
 		if !ok {
@@ -186,10 +186,10 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 	return result, nil
 }
 
-func (ugc *UsersGarbageCollector) getResourcesInNamespaces(apiType runtime.Object) ([]runtime.Object, error) {
+func (ugc *UsersGarbageCollector) getResourcesInNamespaces(apiType client.ObjectList) ([]runtime.Object, error) {
 	objects := make([]runtime.Object, 0)
 	for _, namespace := range ugc.managedNamespaces {
-		list := apiType.DeepCopyObject()
+		list := apiType.DeepCopyObject().(client.ObjectList)
 		err := ugc.client.List(context.Background(), list, client.InNamespace(namespace))
 		if err != nil {
 			return nil, err

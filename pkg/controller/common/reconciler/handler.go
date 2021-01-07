@@ -19,8 +19,8 @@ func GenericEventHandler() handler.EventHandler {
 		GenericFunc: func(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 			q.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: evt.Meta.GetNamespace(),
-					Name:      evt.Meta.GetName(),
+					Namespace: evt.Object.GetNamespace(),
+					Name:      evt.Object.GetName(),
 				},
 			})
 		},

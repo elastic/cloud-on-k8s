@@ -19,8 +19,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -33,7 +33,7 @@ type Reconciler struct {
 	K8sClient      k8s.Client
 	DynamicWatches watches.DynamicWatches
 
-	Owner runtime.Object // owner for the TLS certificates (eg. Elasticsearch, Kibana)
+	Owner client.Object // owner for the TLS certificates (eg. Elasticsearch, Kibana)
 
 	TLSOptions    commonv1.TLSOptions               // TLS options of the object
 	ExtraHTTPSANs []commonv1.SubjectAlternativeName // SANs dynamically set by a controller, only used in the self signed cert
@@ -67,16 +67,11 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 		return nil, results.WithError(r.removeCAAndHTTPCertsSecrets())
 	}
 
-	ownerMeta, err := r.OwnerMeta()
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
 	// reconcile CA certs first
 	httpCa, err := ReconcileCAForOwner(
 		r.K8sClient,
 		r.Namer,
-		ownerMeta,
+		r.Owner,
 		r.Labels,
 		HTTPCAType,
 		r.CACertRotation,

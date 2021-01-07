@@ -117,8 +117,8 @@ type ReconcileAgent struct {
 
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
-func (r *ReconcileAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx := common.NewReconciliationContext(&r.iteration, r.Tracer, controllerName, "agent_name", request)
+func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 

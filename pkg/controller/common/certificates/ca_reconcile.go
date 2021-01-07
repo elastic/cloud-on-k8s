@@ -17,6 +17,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // CAType is a type of CA
@@ -47,7 +48,7 @@ func CAInternalSecretName(namer name.Namer, ownerName string, caType CAType) str
 func ReconcileCAForOwner(
 	cl k8s.Client,
 	namer name.Namer,
-	owner v1.Object,
+	owner client.Object,
 	labels map[string]string,
 	caType CAType,
 	rotationParams RotationParams,
@@ -89,7 +90,7 @@ func ReconcileCAForOwner(
 func renewCA(
 	client k8s.Client,
 	namer name.Namer,
-	owner v1.Object,
+	owner client.Object,
 	labels map[string]string,
 	expireIn time.Duration,
 	caType CAType,

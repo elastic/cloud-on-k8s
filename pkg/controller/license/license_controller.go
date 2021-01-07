@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -47,7 +48,7 @@ var log = logf.Log.WithName(name)
 // If there is none it assigns a new one.
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
 // This happens independently from any watch triggered reconcile request.
-func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
 	results := r.reconcileInternal(request)
 	current, err := results.Aggregate()
@@ -97,7 +98,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
-func addWatches(c controller.Controller, client k8s.Client) error {
+func addWatches(c controller.Controller, k8sClient k8s.Client) error {
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
 		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
@@ -105,30 +106,29 @@ func addWatches(c controller.Controller, client k8s.Client) error {
 		return err
 	}
 
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-			secret, ok := object.Object.(*corev1.Secret)
-			if !ok {
-				log.Error(
-					pkgerrors.Errorf("unexpected object type %T in watch handler, expected Secret", object.Object),
-					"dropping watch event due to error in handler")
-				return nil
-			}
-			if !license.IsOperatorLicense(*secret) {
-				return nil
-			}
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+		secret, ok := object.(*corev1.Secret)
+		if !ok {
+			log.Error(
+				pkgerrors.Errorf("unexpected object type %T in watch handler, expected Secret", object),
+				"dropping watch event due to error in handler")
+			return nil
+		}
+		if !license.IsOperatorLicense(*secret) {
+			return nil
+		}
 
-			// if a license is added/modified we want to update for potentially all clusters managed by this instance
-			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(client)
-			if err != nil {
-				// dropping the event(s) at this point
-				log.Error(err, "failed to list affected clusters in enterprise license watch")
-				return nil
-			}
-			return rs
-		}),
-	}); err != nil {
+		// if a license is added/modified we want to update for potentially all clusters managed by this instance
+		// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
+		rs, err := reconcileRequestsForAllClusters(k8sClient)
+		if err != nil {
+			// dropping the event(s) at this point
+			log.Error(err, "failed to list affected clusters in enterprise license watch")
+			return nil
+		}
+		return rs
+	}),
+	); err != nil {
 		return err
 	}
 	return nil

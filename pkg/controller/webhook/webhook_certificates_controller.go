@@ -48,9 +48,8 @@ type ReconcileWebhookResources struct {
 	clientset kubernetes.Interface
 }
 
-func (r *ReconcileWebhookResources) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
-	ctx := context.Background()
 	res := r.reconcileInternal(ctx)
 	return res.Aggregate()
 }

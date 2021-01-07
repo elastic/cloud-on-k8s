@@ -38,7 +38,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// create a controller that watches secrets and enqueues requests into a chan
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
-		reconcileFunc := reconcile.Func(func(req reconcile.Request) (reconcile.Result, error) {
+		reconcileFunc := reconcile.Func(func(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 			requests <- req
 			return reconcile.Result{}, nil
 		})

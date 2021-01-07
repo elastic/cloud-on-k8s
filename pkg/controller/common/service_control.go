@@ -16,9 +16,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"go.elastic.co/apm"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -28,7 +27,7 @@ func ReconcileService(
 	ctx context.Context,
 	c k8s.Client,
 	expected *corev1.Service,
-	owner metav1.Object,
+	owner client.Object,
 ) (*corev1.Service, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_service", tracing.SpanTypeApp)
 	defer span.End()
@@ -59,9 +58,17 @@ func needsRecreate(expected, reconciled *corev1.Service) bool {
 
 	shouldRecreate := false
 
-	// IPFamily is immutable
-	if expected.Spec.IPFamily != nil && expected.Spec.IPFamily != reconciled.Spec.IPFamily {
-		shouldRecreate = true
+	// IPFamilies is immutable
+	if expected.Spec.IPFamilies != nil {
+		if len(expected.Spec.IPFamilies) != len(reconciled.Spec.IPFamilies) {
+			shouldRecreate = true
+		} else {
+			for i := 0; i < len(expected.Spec.IPFamilies); i++ {
+				if expected.Spec.IPFamilies[i] != reconciled.Spec.IPFamilies[i] {
+					shouldRecreate = true
+				}
+			}
+		}
 	}
 
 	// ClusterIP is immutable
@@ -119,8 +126,8 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
 
 	// IPFamily is immutable and cannot be modified so we should retain the existing value from the server if there's no explicit override.
-	if expected.Spec.IPFamily == nil {
-		expected.Spec.IPFamily = reconciled.Spec.IPFamily
+	if expected.Spec.IPFamilies == nil {
+		expected.Spec.IPFamilies = reconciled.Spec.IPFamilies
 	}
 }
 

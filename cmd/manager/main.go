@@ -71,6 +71,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -296,12 +297,12 @@ func Command() *cobra.Command {
 }
 
 func doRun(_ *cobra.Command, _ []string) error {
-	signalChan := signals.SetupSignalHandler()
+	ctx := signals.SetupSignalHandler()
 	disableConfigWatch := viper.GetBool(operator.DisableConfigWatch)
 
 	// no config file to watch so start the operator directly
 	if configFile == "" || disableConfigWatch {
-		return startOperator(signalChan)
+		return startOperator(ctx)
 	}
 
 	// receive config file update events over a channel
@@ -315,10 +316,11 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 	// start the operator in a goroutine
 	errChan := make(chan error, 1)
-	stopChan := make(chan struct{})
+	ctx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
 
 	go func() {
-		err := startOperator(stopChan)
+		err := startOperator(ctx)
 		errChan <- err
 	}()
 
@@ -327,17 +329,14 @@ func doRun(_ *cobra.Command, _ []string) error {
 		select {
 		case err := <-errChan: // operator failed
 			log.Error(err, "Shutting down due to error")
-			close(stopChan)
 
 			return err
-		case <-signalChan: // signal received
-			log.Info("Signal received: shutting down")
-			close(stopChan)
+		case <-ctx.Done(): // signal received
+			log.Info("Shutting down due to signal")
 
-			return <-errChan
+			return nil
 		case <-confUpdateChan: // config file updated
 			log.Info("Shutting down to apply updated configuration")
-			close(stopChan)
 
 			if err := <-errChan; err != nil {
 				log.Error(err, "Encountered error from previous operator run")
@@ -349,7 +348,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	}
 }
 
-func startOperator(stopChan <-chan struct{}) error {
+func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 
 	// update GOMAXPROCS to container cpu limit if necessary
@@ -380,7 +379,7 @@ func startOperator(stopChan <-chan struct{}) error {
 
 		go func() {
 			go func() {
-				<-stopChan
+				<-ctx.Done()
 
 				ctx, cancelFunc := context.WithTimeout(context.Background(), debugHTTPShutdownTimeout)
 				defer cancelFunc()
@@ -576,7 +575,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	if err := mgr.Start(stopChan); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		log.Error(err, "Failed to start the controller manager")
 		return err
 	}
@@ -712,8 +711,8 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
-func garbageCollectSoftOwnedSecrets(client k8s.Client) {
-	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(client, map[string]runtime.Object{
+func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
+	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(k8sClient, map[string]client.Object{
 		esv1.Kind:          &esv1.Elasticsearch{},
 		apmv1.Kind:         &apmv1.ApmServer{},
 		kbv1.Kind:          &kbv1.Kibana{},

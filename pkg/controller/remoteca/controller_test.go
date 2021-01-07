@@ -440,7 +440,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 				licenseChecker: tt.fields.licenseChecker,
 				recorder:       record.NewFakeRecorder(10),
 			}
-			got, err := r.Reconcile(tt.args.request)
+			got, err := r.Reconcile(context.Background(), tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileRemoteCa.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return

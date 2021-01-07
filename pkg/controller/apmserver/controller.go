@@ -174,9 +174,9 @@ var _ driver.Interface = &ReconcileApmServer{}
 
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
-func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "apmserver")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "apmserver")
 	defer tracing.EndTransaction(tx)
 
 	var as apmv1.ApmServer

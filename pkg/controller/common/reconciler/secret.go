@@ -29,7 +29,7 @@ const (
 
 // ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
-func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) (corev1.Secret, error) {
+func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner client.Object) (corev1.Secret, error) {
 	var reconciled corev1.Secret
 	if err := ReconcileResource(Params{
 		Client:     c,
@@ -175,7 +175,7 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 // Should be called on operator startup, after cache warm-up, to cover cases where
 // the operator is down when the owner is deleted.
 // If the operator is up, garbage collection is already handled by GarbageCollectSoftOwnedSecrets on owner deletion.
-func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]runtime.Object) error {
+func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]client.Object) error {
 	// retrieve all secrets that reference a soft owner
 	var secrets corev1.SecretList
 	if err := c.List(context.Background(),
@@ -201,7 +201,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 		if !managed {
 			continue
 		}
-		owner = owner.DeepCopyObject()
+		owner = owner.DeepCopyObject().(client.Object)
 		err := c.Get(context.Background(), types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
 		if err != nil {
 			if apierrors.IsNotFound(err) {

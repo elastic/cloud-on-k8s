@@ -41,7 +41,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 	r := &ReconcileEnterpriseSearch{
 		Client: k8s.NewFakeClient(&sample),
 	}
-	result, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, result)
 }
@@ -59,7 +59,7 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.dynamicWatches, "sample-ent-http-certificate", []string{"user-tls-secret"}))
 	require.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())
 
-	result, err := r.Reconcile(reconcile.Request{NamespacedName: nsn})
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nsn})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, result)
 
@@ -83,7 +83,7 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 			},
 		},
 	}
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 
 	// resource should be annotated with controller version
@@ -108,7 +108,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       fakeRecorder,
 	}
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	// should just requeue until the resource is updated
 	require.Equal(t, reconcile.Result{}, res)
@@ -125,7 +125,7 @@ func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 		Client:   k8s.NewFakeClient(&sample),
 		recorder: fakeRecorder,
 	}
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	// should return an error
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "spec.version: Invalid value")
@@ -187,7 +187,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	}
 
 	// first call
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	// should requeue for cert expiration
 	require.NotZero(t, res.RequeueAfter)
@@ -195,7 +195,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	checkResources()
 
 	// call-again: no-op
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
@@ -231,7 +231,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	require.NoError(t, err)
 
 	// call again: all resources should be updated to revert our manual changes above
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same

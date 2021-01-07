@@ -14,7 +14,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,7 +48,7 @@ func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	if err := c.List(context.Background(), &secrets, ns, matchLabels); err != nil {
 		return err
 	}
-	resources := make([]runtime.Object, len(secrets.Items))
+	resources := make([]client.Object, len(secrets.Items))
 	for i := range secrets.Items {
 		resources[i] = &secrets.Items[i]
 	}
@@ -58,7 +57,7 @@ func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 
 // cleanupFromPodReference deletes objects having a reference to
 // a pod which does not exist anymore.
-func cleanupFromPodReference(c k8s.Client, namespace string, objects []runtime.Object) error {
+func cleanupFromPodReference(c k8s.Client, namespace string, objects []client.Object) error {
 	for _, runtimeObj := range objects {
 		obj, err := meta.Accessor(runtimeObj)
 		if err != nil {

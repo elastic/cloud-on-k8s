@@ -10,7 +10,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1,name=elastic-es-validation-v1.k8s.elastic.co,sideEffects=None
+// +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1,name=elastic-es-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
 const (
 	webhookPath = "/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch"
@@ -80,14 +80,14 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if req.Operation == v1beta1.Create {
+	if req.Operation == admissionv1.Create {
 		err = wh.validateCreate(*es)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
 	}
 
-	if req.Operation == v1beta1.Update {
+	if req.Operation == admissionv1.Update {
 		oldObj := &esv1.Elasticsearch{}
 		err = wh.decoder.DecodeRaw(req.OldObject, oldObj)
 		if err != nil {

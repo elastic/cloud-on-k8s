@@ -182,7 +182,7 @@ func TestHandleDownscale(t *testing.T) {
 	ssetData4ReplicasExpectedAfterDownscale := *ssetData4Replicas.DeepCopy()
 	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, pointer.Int32(3))
 
-	expectedAfterDownscale := []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
+	expectedAfterDownscale := []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
@@ -213,7 +213,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// one less master
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
-	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
+	expectedAfterDownscale = []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
@@ -230,7 +230,7 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
-	nodespec.UpdateReplicas(&expectedAfterDownscale[1], pointer.Int32(2))
+	nodespec.UpdateReplicas(&expectedAfterDownscale[0], pointer.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
@@ -720,7 +720,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	var ssets appsv1.StatefulSetList
 	err = k8sClient.List(context.Background(), &ssets)
 	require.NoError(t, err)
-	expectedSsets := []appsv1.StatefulSet{expectedSset1, sset2}
+	expectedSsets := []appsv1.StatefulSet{sset2, expectedSset1}
 	require.Equal(t, len(expectedSsets), len(ssets.Items))
 	for i := range expectedSsets {
 		comparison.AssertEqual(t, &expectedSsets[i], &ssets.Items[i])

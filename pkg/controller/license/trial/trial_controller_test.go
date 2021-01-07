@@ -302,7 +302,7 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 				trialState:        tt.fields.trialState,
 				operatorNamespace: testNs,
 			}
-			_, err := r.Reconcile(reconcile.Request{
+			_, err := r.Reconcile(context.Background(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Namespace: testNs,
 					Name:      trialLicenseName,

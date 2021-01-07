@@ -269,7 +269,7 @@ type fakeClient struct {
 	errors map[client.ObjectKey]error
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	err := f.errors[key]
 	if err != nil {
 		return err

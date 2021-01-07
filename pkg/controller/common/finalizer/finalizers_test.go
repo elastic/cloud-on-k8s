@@ -12,8 +12,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestRemoveAll(t *testing.T) {
@@ -36,7 +36,7 @@ func TestRemoveAll(t *testing.T) {
 	}
 	type args struct {
 		c   k8s.Client
-		obj runtime.Object
+		obj client.Object
 	}
 	tests := []struct {
 		name           string

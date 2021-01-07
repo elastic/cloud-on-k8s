@@ -189,16 +189,16 @@ func ClusterFromResourceLabels(metaObject metav1.Object) (types.NamespacedName, 
 
 // NewToRequestsFuncFromClusterNameLabel creates a watch handler function that creates reconcile requests based on the
 // the cluster name label on the watched resource.
-func NewToRequestsFuncFromClusterNameLabel() handler.ToRequestsFunc {
-	return handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-		labels := obj.Meta.GetLabels()
+func NewToRequestsFuncFromClusterNameLabel() handler.MapFunc {
+	return func(obj client.Object) []reconcile.Request {
+		labels := obj.GetLabels()
 		if clusterName, ok := labels[ClusterNameLabelName]; ok {
 			// we don't need to special case the handling of this label to support in-place changes to its value
 			// as controller-runtime will ask this func to map both the old and the new resources on updates.
 			return []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Namespace: obj.Meta.GetNamespace(), Name: clusterName}},
+				{NamespacedName: types.NamespacedName{Namespace: obj.GetNamespace(), Name: clusterName}},
 			}
 		}
 		return nil
-	})
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -48,11 +49,26 @@ func ValidationWebhookSucceeded(t *testing.T, response *admissionv1beta1.Admissi
 func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
 	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
 		require.False(t, response.Allowed)
-		reason := string(response.Result.Reason)
+
+		if len(causeRegexes) > 0 {
+			require.NotNil(t, response.Result.Details, "Response must include failure details")
+		}
+
 		for _, cr := range causeRegexes {
-			match, err := regexp.MatchString(cr, reason)
-			require.NoError(t, err, "Match '%s' returned error: %v", cr, err)
-			require.True(t, match, "[%s] is not present in [%s]", cr, reason)
+			found := false
+			t.Logf("Checking for existence of: %s", cr)
+			for _, cause := range response.Result.Details.Causes {
+				reason := fmt.Sprintf("%s: %s", cause.Field, cause.Message)
+				t.Logf("Reason: %s", reason)
+				match, err := regexp.MatchString(cr, reason)
+				require.NoError(t, err, "Match '%s' returned error: %v", cr, err)
+				if match {
+					found = true
+					break
+				}
+			}
+
+			require.True(t, found, "[%s] is not present in cause list", cr)
 		}
 	}
 }

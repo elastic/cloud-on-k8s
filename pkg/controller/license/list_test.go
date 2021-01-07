@@ -55,15 +55,16 @@ func Test_listAffectedLicenses(t *testing.T) {
 				{
 					NamespacedName: types.NamespacedName{
 						Namespace: "default",
-						Name:      "foo-cluster",
+						Name:      "bar-cluster",
 					},
 				},
 				{
 					NamespacedName: types.NamespacedName{
 						Namespace: "default",
-						Name:      "bar-cluster",
+						Name:      "foo-cluster",
 					},
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{

@@ -131,9 +131,9 @@ type ReconcileBeat struct {
 
 // Reconcile reads that state of the cluster for a Beat object and makes changes based on the state read
 // and what is in the Beat.Spec.
-func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "beat_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "beat")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "beat")
 	defer tracing.EndTransaction(tx)
 
 	var beat beatv1beta1.Beat

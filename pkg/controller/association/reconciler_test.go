@@ -233,7 +233,7 @@ func TestReconciler_Reconcile_resourceNotFound(t *testing.T) {
 	// no resource in the apiserver
 	r := testReconciler()
 	// should do nothing
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "ns", Name: "resource"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "ns", Name: "resource"}})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, res)
 }
@@ -241,7 +241,7 @@ func TestReconciler_Reconcile_resourceNotFound(t *testing.T) {
 func TestReconciler_Reconcile_resourceNotFound_OnDeletion(t *testing.T) {
 	// Kibana does not exist in the apiserver, but there is a leftover es user in es namespace
 	r := testReconciler(&kibanaUserInESNamespace)
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: kbNamespacedName})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: kbNamespacedName})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, res)
 	// es user secret should have been removed
@@ -255,7 +255,7 @@ func TestReconciler_Reconcile_Unmanaged(t *testing.T) {
 	kb := sampleKibanaWithESRef()
 	kb.Annotations = map[string]string{common.ManagedAnnotation: "false"}
 	r := testReconciler(&kb)
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// should do nothing
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, res)
@@ -266,7 +266,7 @@ func TestReconciler_Reconcile_DeletionTimestamp(t *testing.T) {
 	now := metav1.NewTime(time.Now())
 	kb.DeletionTimestamp = &now
 	r := testReconciler(&kb)
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// should do nothing
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, res)
@@ -279,7 +279,7 @@ func TestReconciler_Reconcile_NotCompatible(t *testing.T) {
 		annotation.ControllerVersionAnnotation: "0.9.0",
 	}
 	r := testReconciler(&kb)
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// should error out
 	require.Error(t, err)
 }
@@ -287,7 +287,7 @@ func TestReconciler_Reconcile_NotCompatible(t *testing.T) {
 func TestReconciler_Reconcile_SetsControllerVersion(t *testing.T) {
 	kb := sampleKibanaWithESRef()
 	r := testReconciler(&kb)
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// should update the controller version annotation on Kibana
 	var updatedKibana kbv1.Kibana
@@ -301,7 +301,7 @@ func TestReconciler_Reconcile_DeletesOrphanedResource(t *testing.T) {
 	// and the user in es namespace that should be garbage collected
 	kb := sampleKibanaNoEsRef()
 	r := testReconciler(&kb, &kibanaUserInESNamespace)
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// should delete the kibana user in es namespace
 	var secret corev1.Secret
@@ -322,7 +322,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
 	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
 
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// should delete the kibana user in es namespace
 	var secret corev1.Secret
@@ -352,7 +352,7 @@ func TestReconciler_Reconcile_NoES(t *testing.T) {
 	require.NotEmpty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
 	// es resource does not exist
 	r := testReconciler(&kb)
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// association status should become pending
 	var updatedKibana kbv1.Kibana
@@ -369,7 +369,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace)
 	// simulate rbac association disallowed
 	r.accessReviewer = denyAllAccessReviewer{}
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// association should be pending
 	var updatedKibana kbv1.Kibana
@@ -394,7 +394,7 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	require.Empty(t, r.watches.Secrets.Registrations())
 	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
 	// run the reconciliation
-	results, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// no requeue to trigger
 	require.Equal(t, reconcile.Result{}, results)
@@ -443,7 +443,7 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	kb := sampleAssociatedKibana()
 	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esHTTPPublicCertsSecret, &esCertsInKibanaNamespace)
 	// run the reconciliation
-	results, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
 	// no requeue to trigger
 	require.Equal(t, reconcile.Result{}, results)
@@ -746,7 +746,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	}
 
 	// initial reconciliation, all resources should be created
-	results, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
 	require.NoError(t, err)
 	// no requeue to trigger
 	require.Equal(t, reconcile.Result{}, results)
@@ -763,7 +763,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	require.NoError(t, r.Update(context.Background(), &agent))
 
 	// rerun reconciliation
-	results, err = r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, results)
 
@@ -782,7 +782,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	require.NoError(t, r.Delete(context.Background(), &agent))
 
 	// rerun reconciliation
-	results, err = r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, results)
 

@@ -13,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,12 +29,12 @@ var (
 type Params struct {
 	Client k8s.Client
 	// Owner will be set as the controller reference
-	Owner metav1.Object
+	Owner client.Object
 	// Expected the expected state of the resource going into reconciliation.
-	Expected runtime.Object
+	Expected client.Object
 	// Reconciled will contain the final state of the resource after reconciliation containing the
 	// unification of remote and expected state.
-	Reconciled runtime.Object
+	Reconciled client.Object
 	// NeedsUpdate returns true when the object to be reconciled has changes that are not persisted remotely.
 	NeedsUpdate func() bool
 	// NeedsRecreate returns true when the object to be reconciled needs to be deleted and re-created because it cannot be updated.
@@ -75,12 +73,8 @@ func ReconcileResource(params Params) error {
 	if err != nil {
 		return err
 	}
-	metaObj, err := meta.Accessor(params.Expected)
-	if err != nil {
-		return err
-	}
-	namespace := metaObj.GetNamespace()
-	name := metaObj.GetName()
+	namespace := params.Expected.GetNamespace()
+	name := params.Expected.GetName()
 	gvk, err := apiutil.GVKForObject(params.Expected, scheme.Scheme)
 	if err != nil {
 		return err
@@ -88,7 +82,7 @@ func ReconcileResource(params Params) error {
 	kind := gvk.Kind
 
 	if params.Owner != nil {
-		if err := controllerutil.SetControllerReference(params.Owner, metaObj, scheme.Scheme); err != nil {
+		if err := controllerutil.SetControllerReference(params.Owner, params.Expected, scheme.Scheme); err != nil {
 			return err
 		}
 	}

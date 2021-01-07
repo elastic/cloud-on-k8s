@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -529,7 +530,7 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 }
 
 func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
-	ownerKinds := map[string]runtime.Object{
+	ownerKinds := map[string]client.Object{
 		"Secret": &corev1.Secret{},
 	}
 	tests := []struct {

@@ -9,11 +9,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -23,7 +21,7 @@ func Test_objToReconcileRequest(t *testing.T) {
 
 	tests := []struct {
 		name string
-		obj  runtime.Object
+		obj  client.Object
 		want []reconcile.Request
 	}{
 		{
@@ -52,9 +50,7 @@ func Test_objToReconcileRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			objMeta, err := meta.Accessor(tt.obj)
-			require.NoError(t, err)
-			got := fn(handler.MapObject{Meta: objMeta, Object: tt.obj})
+			got := fn(tt.obj)
 			require.Equal(t, tt.want, got)
 		})
 	}
