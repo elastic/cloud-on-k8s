@@ -197,7 +197,7 @@ type NodeSet struct {
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// Count of Elasticsearch nodes to deploy.
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	Count int32 `json:"count"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.

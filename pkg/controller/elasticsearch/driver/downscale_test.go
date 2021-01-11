@@ -446,7 +446,7 @@ func Test_calculateDownscales(t *testing.T) {
 			wantDeletions: nil,
 		},
 		{
-			name: "delete actual statefulsets with 0 replicas",
+			name: "delete actual statefulsets with 0 replicas when not referenced by a nodeSet",
 			expectedStatefulSets: sset.StatefulSetList{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -514,6 +514,58 @@ func Test_calculateDownscales(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
 						Name:      "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+			},
+		},
+		{
+			name: "do not delete actual statefulsets with 0 replicas if referenced by a nodeSet",
+			expectedStatefulSets: sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-2"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(1)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+			},
+			actualStatefulSets: sset.StatefulSetList{
+				// statefulset with 0 replicas which has no corresponding expected statefulset and is not referenced through a nodeSet: should be deleted
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+				// statefulset with 0 replicas which has a corresponding expected statefulset with 0 replica but is used by a nodeSet: should be kept
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+			},
+			wantDownscales: nil, // No downscale expected
+			wantDeletions: sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
 					},
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: pointer.Int32(0)},
