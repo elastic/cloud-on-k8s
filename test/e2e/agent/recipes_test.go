@@ -47,6 +47,7 @@ func TestKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
 			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
+			// see https://github.com/elastic/cloud-on-k8s/issues/4092
 			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.container", "k8s")).
 			// Might not generate an event in time for this check to succeed in all environments
