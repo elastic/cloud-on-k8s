@@ -8,12 +8,12 @@ endif::[]
 [id="{p}-{page_id}"]
 = JVM heap size
 
+Starting from version 7.11, Elasticsearch automatically sizes JVM heap based on a node’s roles and total memory. For more information, see link:{ref}/important-settings.html#heap-size-settings[Heap size settings].
+
 These instructions apply if you are using:
 - Versions of Elasticsearch before 7.11
-- Elasticsearch 7.11 or later, and you want to change the default heap size. 
+- Elasticsearch 7.11 or later, and you want to override the default heap size. 
 
-To change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. It is also highly recommended to set the resource `requests` and `limits` at the same time to ensure that the Pod gets enough resources allocated within the Kubernetes cluster. See <<{p}-compute-resources-elasticsearch>> for an example and more information.
+To manually change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. Make sure you set the resource `requests` and `limits` at the same time so that the Pod gets enough resources allocated within the Kubernetes cluster. See <<{p}-compute-resources-elasticsearch>> for an example and more information.
 
 IMPORTANT: For versions of Elasticsearch before 7.11, the default heap size is 1Gi.
-
-For more information, see the entry for `heap size` in the link:{ref}/important-settings.html[Important Elasticsearch configuration] documentation.
