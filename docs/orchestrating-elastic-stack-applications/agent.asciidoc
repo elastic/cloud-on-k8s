@@ -215,7 +215,7 @@ stringData:
             period: 10s
 ----
 
-For more details especially on how to generate configuration for Elastic Agent in standalone mode, see the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[Elastic Agent standalone] documentation.
+You can use the Fleet application in Kibana to generate configuration for Elastic Agent even when running in standalone mode, see the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[Elastic Agent standalone] documentation.  Adding the corresponding integration package to Kibana also adds the related dashboards and visualizations.
 
 
 [id="{p}-elastic-agent-multi-output"]
@@ -223,7 +223,7 @@ For more details especially on how to generate configuration for Elastic Agent i
 
 Elastic Agent supports the use of multiple outputs. The `elasticsearchRefs` element accepts therefore multiple references to Elasticsearch clusters. ECK populates the outputs section of the Elastic Agent configuration based on those references. If you configure more than one output you also have to specify a unique `outputName` attribute.
 
-To send Elastic Agent's internal monitoring and log data to a different Elasticsearch cluster called `agent-monitoring` and the harvested metrics to our `quickstart` cluster define two `elasticsearchRefs` as follows (abbreviated example):
+To send Elastic Agent's internal monitoring and log data to a different Elasticsearch cluster called `agent-monitoring` in the `elastic-monitoring` namespace and the harvested metrics to our `quickstart` cluster, define two `elasticsearchRefs` as follows (abbreviated example):
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -232,12 +232,13 @@ kind: Agent
 metadata:
   name: quickstart
 spec:
-  version: 7.10.1
+  version: {version}
   daemonSet: {}
   elasticsearchRefs:
   - name: quickstart
     outputName: default
   - name: agent-monitoring
+    namespace: elastic-monitoring
     outputName: monitoring
   config:
     agent:
@@ -269,7 +270,7 @@ kind: Agent
 metadata:
   name: quickstart
 spec:
-  version: 7.10.1
+  version: {version}
   daemonSet: {}
   config:
     outputs:
@@ -296,7 +297,7 @@ kind: Agent
 metadata:
   name: quickstart
 spec:
-  version: 7.10.1
+  version: {version}
   daemonSet:
     strategy:
       type: RollingUpdate
@@ -318,7 +319,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 7.10.1
+  version: {version}
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -372,6 +373,11 @@ roleRef:
   name: elastic-agent
   apiGroup: rbac.authorization.k8s.io
 ----
+
+[id="{p}-elastic-agent-deploying-in-secured-clusters"]
+=== Deploying Elastic Agent in secured clusters
+
+To deploy Elastic Agent in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the Elastic Agent Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Elastic Agent integrations might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
 
 
 [id="{p}-elastic-agent-configuration-examples"]
