@@ -12,7 +12,7 @@ experimental[]
 
 This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode] with ECK.
 
-NOTE: Please note that using link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html in [Fleet] to manage your Elastic Agents is currently not supported.
+NOTE: Please note that using link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet] to manage your Elastic Agents is currently not supported.
 
 
 
