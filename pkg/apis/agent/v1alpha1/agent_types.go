@@ -78,7 +78,7 @@ type DaemonSetSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	Strategy appsv1.DaemonSetUpdateStrategy `json:"strategy,omitempty"`
+	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 type DeploymentSpec struct {

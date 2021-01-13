@@ -116,7 +116,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		Owner:       &rp.beat,
 		Labels:      NewLabels(rp.beat),
 		Selectors:   NewLabels(rp.beat),
-		Strategy:    rp.beat.Spec.DaemonSet.Strategy,
+		Strategy:    rp.beat.Spec.DaemonSet.UpdateStrategy,
 	})
 
 	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {
