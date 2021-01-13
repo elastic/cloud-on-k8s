@@ -1,0 +1,14 @@
+[[release-highlights-1.4.0]]
+== 1.4.0 release highlights
+
+[float]
+[id="{p}-140-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.4.0 of {n}. See <<release-notes-1.4.0>> for the full list of changes.
+
+[float]
+[id="{p}-140-agent-support"]
+==== Support for Elastic Agent
+
+link:https://www.elastic.co/guide/en/fleet/current/fleet-overview.html[Elastic Agent] is a single, unified way to add monitoring for logs, metrics, and other types of data to each Kubernetes node. A single agent makes it easier and faster to deploy monitoring across your infrastructure. There is no need with agent to deploy multiple instances of Beats for different kinds of data you want to monitor. ECK 1.4.0 introduces experimental support for Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode] as a technology preview.
