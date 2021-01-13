@@ -306,6 +306,7 @@ spec:
 ...
 ----
 
+See <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
 
 [id="{p}-elastic-agent-role-based-access-control"]
 === Role Based Access Control for Elastic Agent

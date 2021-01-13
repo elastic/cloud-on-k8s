@@ -93,6 +93,63 @@ spec:
 For the container name, you can use `apm-server` or `kibana` as appropriate.
 
 [float]
+[id="{p}-compute-resources-beats-agent"]
+=== Set compute resources for Beats and Elastic Agent
+
+For Beats or Elastic Agent objects, the `podTemplate` can be configured as follows, depending on the chosen deployment model.
+
+When deploying as a Kubernetes Deployment:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  type: filebeat
+  version: {version}
+  deployment:
+    podTemplate:
+      spec:
+        containers:
+        - name: filebeat
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 0.5
+            limits:
+              memory: 500Mi
+              cpu: 0.5
+----
+
+When deploying as a Kubernetes DaemonSet:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: {version}
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 0.5
+            limits:
+              memory: 300Mi
+              cpu: 0.5
+----
+
+For the container name, you have to use the name of the Beat in lower case e.g. `filebeat`, `metricbeat` or `heartbeat` or in case of Elastic Agent just `agent`.
+
+[float]
 [id="{p}-default-behavior"]
 == Default behavior
 
@@ -105,6 +162,8 @@ If `resources` is not defined in the specification of an object, then the operat
 |APM Server |512Mi |512Mi
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
+|Beat   |200Mi | 200Mi
+|Elastic Agent | 200Mi|200Mi
 |===
 
 If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator defaults and cause object creation to fail.
