@@ -11,10 +11,6 @@ spec:
       spec:
         containers:
         - name: agent
-          securityContext:
-            runAsUser: 0
-            # If using Red Hat OpenShift uncomment this:
-            #privileged: true
   config:
     id: 488e0b80-3634-11eb-8208-57893829af4e
     revision: 2
