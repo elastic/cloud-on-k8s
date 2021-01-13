@@ -13,10 +13,6 @@ spec:
         serviceAccountName: elastic-agent
         containers:
         - name: agent
-          securityContext:
-            runAsUser: 0
-            # If using Red Hat OpenShift uncomment this:
-            #privileged: true
           env:
           - name: NODE_NAME
             valueFrom:
