@@ -178,8 +178,6 @@ inputs:
     - mountPath: /var/log
       name: varlog
   dnsPolicy: ClusterFirstWithHostNet
-  securityContext:
-    runAsUser: 0
   serviceAccount: elastic-agent
   terminationGracePeriodSeconds: 30
   volumes:
