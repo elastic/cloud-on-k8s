@@ -502,8 +502,9 @@ validate-jenkins-pipelines:
 #########################
 # Kind specific targets #
 #########################
+export KIND_VERSION ?= 0.9.0
 KIND_NODES ?= 3
-KIND_NODE_IMAGE ?= kindest/node:v1.15.3
+KIND_NODE_IMAGE ?= kindest/node:v1.20.0
 KIND_CLUSTER_NAME ?= eck
 
 kind-node-variable-check:
@@ -555,5 +556,6 @@ kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
+delete-kind: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 delete-kind:
 	./hack/kind/kind.sh --stop

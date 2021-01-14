@@ -12,12 +12,17 @@
 ##################################################################################
 
 # Exit immediately for non zero status
-set -e
+set -ex
 
 KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-"1"}
+KIND_VERSION=${KIND_VERSION:-0.9.0}
+# version switching assumes binaries exists aliased/suffixed with their version e.g. kind-0.9.
+kind_binary=kind-$KIND_VERSION
+kind_api_version="kind.x-k8s.io/v1alpha4" && [[ $KIND_VERSION == 0.8.* ]] && kind_api_version="kind.sigs.k8s.io/v1alpha3"
+
 log_lvl=("-v" "$KIND_LOG_LEVEL")
 
-CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
+CLUSTER_NAME=${CLUSTER_NAME:-eck-e2e}
 NODES=3
 IP_FAMILY=ipv4
 MANIFEST=/tmp/cluster.yml
@@ -26,9 +31,9 @@ workers=
 
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
-function check_kind() {
+function check_kind_version() {
   echo "Check if Kind is installed..."
-  if ! command -v kind ; then
+  if ! command -v $kind_binary ; then
     echo "Looks like Kind is not installed."
     exit 1
   fi
@@ -37,7 +42,7 @@ function check_kind() {
 function create_manifest() {
 cat <<EOT > ${MANIFEST}
 kind: Cluster
-apiVersion: kind.sigs.k8s.io/v1alpha3
+apiVersion: ${kind_api_version}
 networking:
   ipFamily: ${IP_FAMILY}
 nodes:
@@ -62,8 +67,9 @@ EOT
 }
 
 function cleanup_kind_cluster() {
+  check_kind_version
   echo "Cleaning up kind cluster"
-  kind delete cluster --name="${CLUSTER_NAME}"
+  $kind_binary delete cluster --name="${CLUSTER_NAME}"
 }
 
 function setup_kind_cluster() {
@@ -72,15 +78,15 @@ function setup_kind_cluster() {
       exit 1
   fi
 
-  # Check that Kind is available
-  check_kind
+  # Check that Kind is available in the version we need
+  check_kind_version
 
   # Create the manifest according to the desired topology
   create_manifest
 
   # Delete any previous e2e Kind cluster
   echo "Deleting previous Kind cluster with name=${CLUSTER_NAME}"
-  if ! (kind delete cluster --name="${CLUSTER_NAME}") > /dev/null; then
+  if ! ($kind_binary delete cluster --name="${CLUSTER_NAME}") > /dev/null; then
     echo "No existing kind cluster with name ${CLUSTER_NAME}. Continue..."
   fi
 
@@ -89,18 +95,18 @@ function setup_kind_cluster() {
     config_opts+=("--config" "${MANIFEST}")
   fi
   # Create Kind cluster
-  if ! (kind "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
+  if ! ($kind_binary "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
 
   # persist kubeconfig for reliabililty in following kubectl commands
   TMPKUBECONFIG=$(mktemp)
-  kind --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
+  $kind_binary --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
 
   # setup storage
   kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true
-  kubectl --kubeconfig="${TMPKUBECONFIG}" apply -f "${scriptpath}/local-path-storage.yaml"
+  kubectl --kubeconfig="${TMPKUBECONFIG}" apply -f "${scriptpath}/storageclass.yaml"
 
   echo "Kind setup complete"
 }
@@ -146,7 +152,7 @@ fi
 if [[ -n "${LOAD_IMAGES}" ]]; then
   IFS=',' read -r -a IMAGES <<< "${LOAD_IMAGES}"
   for image in "${IMAGES[@]}"; do
-  kind "${log_lvl[@]}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
+  $kind_binary "${log_lvl[@]}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
   done
 fi
 
