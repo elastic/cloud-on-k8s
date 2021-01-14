@@ -70,7 +70,7 @@ func TestInstallOperator(param TestParam) *Fixture {
 		Name: param.Suffixed("TestInstallOperator"),
 		Steps: []*TestStep{
 			noRetry(param.Suffixed("InstallOperator"), applyManifests(param.Path("install.yaml"))),
-			pause(20 * time.Second),
+			pause(5 * time.Second),
 			retryRetriable("CheckOperatorIsReady", checkOperatorIsReady),
 		},
 	}

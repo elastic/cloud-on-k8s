@@ -21,8 +21,8 @@ import (
 
 const (
 	deleteTimeout   = 120 * time.Second
-	retryMultiplier = 2
-	retryJitter     = 0.5
+	retryMultiplier = 0
+	retryJitter     = 0
 )
 
 var ErrRetry = errors.New("retriable error")
