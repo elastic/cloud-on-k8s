@@ -10,7 +10,7 @@ endif::[]
 
 Starting from version 7.11, Elasticsearch automatically sizes JVM heap based on a node’s roles and total memory. For more information, see link:{ref}/important-settings.html#heap-size-settings[Heap size settings].
 
-These instructions apply if you are using:
+The following instructions apply if you are using:
 - Versions of Elasticsearch before 7.11
 - Elasticsearch 7.11 or later, and you want to override the default heap size. 
 
