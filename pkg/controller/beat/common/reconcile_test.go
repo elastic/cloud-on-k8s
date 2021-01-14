@@ -37,7 +37,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 				beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
 						DaemonSet: &beatv1beta1.DaemonSetSpec{
-							Strategy: appsv1.DaemonSetUpdateStrategy{
+							UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
 								Type: appsv1.RollingUpdateDaemonSetStrategyType,
 								RollingUpdate: &appsv1.RollingUpdateDaemonSet{
 									MaxUnavailable: &int10,
