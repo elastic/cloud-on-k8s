@@ -33,7 +33,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
 function check_kind_version() {
   echo "Check if Kind is installed..."
-  if ! command -v $kind_binary ; then
+  if ! command -v "${kind_binary}" ; then
     echo "Looks like Kind is not installed."
     exit 1
   fi
@@ -69,7 +69,7 @@ EOT
 function cleanup_kind_cluster() {
   check_kind_version
   echo "Cleaning up kind cluster"
-  $kind_binary delete cluster --name="${CLUSTER_NAME}"
+  ${kind_binary} delete cluster --name="${CLUSTER_NAME}"
 }
 
 function setup_kind_cluster() {
@@ -86,7 +86,7 @@ function setup_kind_cluster() {
 
   # Delete any previous e2e Kind cluster
   echo "Deleting previous Kind cluster with name=${CLUSTER_NAME}"
-  if ! ($kind_binary delete cluster --name="${CLUSTER_NAME}") > /dev/null; then
+  if ! (${kind_binary} delete cluster --name="${CLUSTER_NAME}") > /dev/null; then
     echo "No existing kind cluster with name ${CLUSTER_NAME}. Continue..."
   fi
 
@@ -95,14 +95,14 @@ function setup_kind_cluster() {
     config_opts+=("--config" "${MANIFEST}")
   fi
   # Create Kind cluster
-  if ! ($kind_binary "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
+  if ! (${kind_binary} "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
 
   # persist kubeconfig for reliabililty in following kubectl commands
   TMPKUBECONFIG=$(mktemp)
-  $kind_binary --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
+  ${kind_binary} --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
 
   # setup storage
   kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true
@@ -152,7 +152,7 @@ fi
 if [[ -n "${LOAD_IMAGES}" ]]; then
   IFS=',' read -r -a IMAGES <<< "${LOAD_IMAGES}"
   for image in "${IMAGES[@]}"; do
-  $kind_binary "${log_lvl[@]}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
+  ${kind_binary} "${log_lvl[@]}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
   done
 fi
 
