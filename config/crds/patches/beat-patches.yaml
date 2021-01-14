@@ -24,4 +24,4 @@
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/deployment/properties/strategy/properties/rollingUpdate/properties/maxUnavailable/x-kubernetes-int-or-string
 - op: remove
-  path: /spec/validation/openAPIV3Schema/properties/spec/properties/daemonSet/properties/strategy/properties/rollingUpdate/properties/maxUnavailable/x-kubernetes-int-or-string
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/daemonSet/properties/updateStrategy/properties/rollingUpdate/properties/maxUnavailable/x-kubernetes-int-or-string
