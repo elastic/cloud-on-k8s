@@ -12,11 +12,11 @@
 ##################################################################################
 
 # Exit immediately for non zero status
-set -ex
+set -e
 
 KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-"1"}
 KIND_VERSION=${KIND_VERSION:-0.9.0}
-# version switching assumes binaries exists aliased/suffixed with their version e.g. kind-0.9.
+# version switching assumes binaries exists suffixed with their version e.g. kind-0.9.
 kind_binary=kind-$KIND_VERSION
 kind_api_version="kind.x-k8s.io/v1alpha4" && [[ $KIND_VERSION == 0.8.* ]] && kind_api_version="kind.sigs.k8s.io/v1alpha3"
 
