@@ -8,8 +8,12 @@ endif::[]
 [id="{p}-{page_id}"]
 = JVM heap size
 
-To change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. It is also highly recommended to set the resource `requests` and `limits` at the same time to ensure that the pod gets enough resources allocated within the Kubernetes cluster. See <<{p}-compute-resources-elasticsearch>> for an example and more information.
+Starting from version 7.11, Elasticsearch automatically sizes JVM heap based on a node’s roles and total memory. For more information, see link:{ref}/important-settings.html#heap-size-settings[Heap size settings]. When running as a container within Kubernetes, the total available memory for Elasticsearch is determined by the link:https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits[resource limits defined for the container]. By default, ECK applies a memory resource limit of 2 GiB to the container,  which usually results in an adjusted heap size of 1 GiB. You can increase the total memory available to each Elasticsearch node by defining your own limits in the `podTemplate` section of the manifest. An example can be found in <<{p}-compute-resources-elasticsearch>>.
 
-If `ES_JAVA_OPTS` is not defined, the Elasticsearch default heap size of 1Gi will be in effect.
+IMPORTANT: If you define `resource.requests` but not `resource.limits`, it could result in the Elasticsearch container assuming that it has access to all the memory available in the Kubernetes node. This can result in bad performance or unexpected behaviour if other memory-consuming workloads gets scheduled to the same node. 
 
-For more information, see the entry for `heap size` in the link:{ref}/important-settings.html[Important Elasticsearch configuration] documentation.
+The following instructions apply if you are using:
+- Versions of Elasticsearch before 7.11
+- Elasticsearch 7.11 or later, and you want to override the default heap size. 
+
+To manually change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. Make sure you set the resource `requests` and `limits` at the same time so that the Pod gets enough resources allocated within the Kubernetes cluster. See <<{p}-compute-resources-elasticsearch>> for an example and more information.
