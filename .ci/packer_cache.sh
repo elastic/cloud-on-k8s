@@ -13,7 +13,6 @@ docker pull "$(make -C .ci --no-print-directory print-ci-image)"
 
 # Kind images (https://hub.docker.com/r/kindest/node/tags)
 # Pull exact images due to image incompatibility between kind 0.8 and 0.9 see https://github.com/kubernetes-sigs/kind/releases
-# Disabled given the size of these images it seems excessive to bake them into the jenkins worker?
 docker pull kindest/node:v1.12.10@sha256:faeb82453af2f9373447bb63f50bae02b8020968e0889c7fa308e19b348916cb
 docker pull kindest/node:v1.13.12@sha256:214476f1514e47fe3f6f54d0f9e24cfb1e4cda449529791286c7161b7f9c08e7
 docker pull kindest/node:v1.14.10@sha256:ce4355398a704fca68006f8a29f37aafb49f8fc2f64ede3ccd0d9198da910146
