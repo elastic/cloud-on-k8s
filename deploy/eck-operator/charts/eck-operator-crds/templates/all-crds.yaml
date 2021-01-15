@@ -81,7 +81,7 @@ spec:
               description: DaemonSet specifies the Agent should be deployed as a DaemonSet,
                 and allows providing its spec. Cannot be used along with `deployment`.
               properties:
-                strategy:
+                updateStrategy:
                   description: DaemonSetUpdateStrategy is a struct used to control
                     the update strategy for a DaemonSet.
                   properties:
@@ -947,7 +947,7 @@ spec:
                 and allows providing its spec. Cannot be used along with `deployment`.
                 If both are absent a default for the Type is used.
               properties:
-                strategy:
+                updateStrategy:
                   description: DaemonSetUpdateStrategy is a struct used to control
                     the update strategy for a DaemonSet.
                   properties:

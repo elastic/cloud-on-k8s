@@ -21,7 +21,7 @@ spec:
       maxSurge: 3
       maxUnavailable: 1
 ----
-`maxSurge`: Refers to the number of extra Pods that can be temporarily scheduled exceeding the number of Pods  defined in the specification. This setting is useful for controlling the resource usage of the Kubernetes cluster when new Pods need to be spun up to replace existing Pods. For example, when applying a configuration change to a Node Set, ECK creates a clone of the Node Set with the desired configuration and shuts down the old Pods. Without the `MaxSurge` restriction, the cluster would temporarily contain twice as many Pods as usual while this operation is in progress.
+`maxSurge`: Refers to the number of extra Pods that can be temporarily scheduled exceeding the number of Pods defined in the specification. This setting is useful for controlling the resource usage of the Kubernetes cluster when nodeSet configuration changes and new Pods need to be spun up to replace existing Pods. `MaxSurge` restricts the number of extra pods that can be running at any given point in time. If you have a large Elasticsearch cluster or a Kubernetes cluster running near capacity, not setting `maxSurge` could cause the newly created pods to temporarily use up all available spare resource capacity in the Kubernetes cluster and starve other workloads running there.
 
 `maxUnavailable`: Refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied specification. A Pod is defined unavailable when it is not ready from a Kubernetes perspective.
 

@@ -210,7 +210,7 @@ RBAC permissions
   resources:
   - elasticsearches
   - elasticsearches/status
-  - elasticsearches/finalizers
+  - elasticsearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   - enterpriselicenses
   - enterpriselicenses/status
   verbs:
@@ -226,7 +226,7 @@ RBAC permissions
   resources:
   - kibanas
   - kibanas/status
-  - kibanas/finalizers
+  - kibanas/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -240,7 +240,7 @@ RBAC permissions
   resources:
   - apmservers
   - apmservers/status
-  - apmservers/finalizers
+  - apmservers/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -254,7 +254,7 @@ RBAC permissions
   resources:
   - enterprisesearches
   - enterprisesearches/status
-  - enterprisesearches/finalizers
+  - enterprisesearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -268,7 +268,7 @@ RBAC permissions
   resources:
   - beats
   - beats/status
-  - beats/finalizers
+  - beats/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -282,6 +282,7 @@ RBAC permissions
   resources:
   - agents
   - agents/status
+  - agents/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list

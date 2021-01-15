@@ -70,7 +70,7 @@ func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpe
 			ConfigVolumeName,
 			ConfigMountPath,
 			ConfigFileName,
-			0600),
+			0440),
 		dataVolume,
 	}
 
