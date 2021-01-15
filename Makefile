@@ -397,6 +397,7 @@ E2E_JSON                   ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
+E2E_TEST_TAGS              ?= ""
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
@@ -432,7 +433,8 @@ e2e-run:
 		--clusterName=$(CLUSTER_NAME) \
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
-		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB)
+		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
+		--test-tags=$(E2E_TEST_TAGS)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
@@ -455,7 +457,8 @@ e2e-local:
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ignore-webhook-failures \
-		--test-timeout=$(TEST_TIMEOUT)
+		--test-timeout=$(TEST_TIMEOUT) \
+		--test-tags=$(E2E_TEST_TAGS)
 	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
