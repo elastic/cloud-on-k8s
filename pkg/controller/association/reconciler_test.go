@@ -476,7 +476,7 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 }
 
 func TestReconciler_getElasticsearch(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", ResourceVersion: "999"}}
 	associatedKibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
