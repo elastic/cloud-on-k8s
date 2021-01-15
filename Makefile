@@ -190,6 +190,7 @@ go-debug:
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
 		--namespaces=$(MANAGED_NAMESPACES) \
+		--enable-leader-election=false \
 		--manage-webhook-certs=false)
 
 build-operator-image:
