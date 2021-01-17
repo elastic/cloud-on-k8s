@@ -59,6 +59,7 @@ func doRun(flags runFlags) error {
 			helper.installCRDs,
 			helper.createRoles,
 			helper.createManagedNamespaces,
+			helper.deploySecurityConstraints,
 		}
 	} else {
 		// CI test run steps
@@ -72,6 +73,7 @@ func doRun(flags runFlags) error {
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployTestSecrets,
+			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
@@ -336,6 +338,14 @@ func (h *helper) waitForOperatorToBeReady() error {
 		}
 		return nil
 	}, operatorReadyTimeout, 10*time.Second)
+}
+
+func (h *helper) deploySecurityConstraints() error {
+	if !h.testContext.OcpCluster {
+		return nil
+	}
+	log.Info("Deploying SCC")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/scc.yaml", h.testContext)
 }
 
 func (h *helper) deployMonitoring() error {
