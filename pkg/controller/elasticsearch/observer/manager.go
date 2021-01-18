@@ -146,6 +146,7 @@ func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState St
 }
 
 func (m *Manager) StopObserving(key types.NamespacedName) {
+	log.Info("Stopping observer", "namespace", key.Namespace, "es_name", key.Name)
 	m.observerLock.Lock()
 	defer m.observerLock.Unlock()
 
