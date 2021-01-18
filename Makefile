@@ -395,10 +395,10 @@ TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=Test
 E2E_STACK_VERSION          ?= 7.10.1
 E2E_JSON                   ?= false
 TEST_TIMEOUT               ?= 30m
-E2E_TAGS                   ?= e2e  # go build constraints potentially restricting the tests to run
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
-E2E_TEST_ENV_TAGS          ?= ""  # tags conveying information about the test environment to the test runner
+E2E_TAGS                   ?= e2e  # go build constraints potentially restricting the tests to run
+E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test environment to the test runner
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
@@ -443,7 +443,7 @@ e2e-generate-xml:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e/... -run=dryrun $(TEST_OPTS) > /dev/null
+	go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
