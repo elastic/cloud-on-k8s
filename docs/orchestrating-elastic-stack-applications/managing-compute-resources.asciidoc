@@ -147,7 +147,7 @@ spec:
               cpu: 0.5
 ----
 
-For the container name, you have to use the name of the Beat in lower case e.g. `filebeat`, `metricbeat` or `heartbeat` or in case of Elastic Agent just `agent`.
+For the container name, use the name of the Beat in lower case. For example `filebeat`, `metricbeat`, or `heartbeat`. In case of Elastic Agent, use `agent`.
 
 [float]
 [id="{p}-default-behavior"]
