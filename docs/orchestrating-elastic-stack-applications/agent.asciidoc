@@ -12,7 +12,7 @@ experimental[]
 
 This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode] with ECK.
 
-NOTE: Please note that using link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet] to manage your Elastic Agents is currently not supported.
+NOTE: Using link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet] to manage your Elastic Agents is currently not supported.
 
 
 
@@ -127,7 +127,7 @@ experimental[]
 [id="{p}-elastic-agent-upgrade-specification"]
 === Upgrade the Elastic Agent specification
 
-You can upgrade the Elastic Agent version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set the <<{p}-elastic-agent-set-output,outputs>> part of the configuration or restart Elastic Agent on certificate rollover.
+You can upgrade the Elastic Agent version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set the <<{p}-elastic-agent-set-output,outputs>> part of the configuration, or restart Elastic Agent on certificate rollover.
 
 [id="{p}-elastic-agent-custom-configuration"]
 === Customize Elastic Agent configuration
@@ -221,9 +221,9 @@ You can use the Fleet application in Kibana to generate configuration for Elasti
 [id="{p}-elastic-agent-multi-output"]
 === Use multiple Elastic Agent outputs
 
-Elastic Agent supports the use of multiple outputs. The `elasticsearchRefs` element accepts therefore multiple references to Elasticsearch clusters. ECK populates the outputs section of the Elastic Agent configuration based on those references. If you configure more than one output you also have to specify a unique `outputName` attribute.
+Elastic Agent supports the use of multiple outputs. Therefore, the `elasticsearchRefs` element accepts multiple references to Elasticsearch clusters. ECK populates the outputs section of the Elastic Agent configuration based on those references. If you configure more than one output, you also have to specify a unique `outputName` attribute.
 
-To send Elastic Agent's internal monitoring and log data to a different Elasticsearch cluster called `agent-monitoring` in the `elastic-monitoring` namespace and the harvested metrics to our `quickstart` cluster, define two `elasticsearchRefs` as follows (abbreviated example):
+To send Elastic Agent's internal monitoring and log data to a different Elasticsearch cluster called `agent-monitoring` in the `elastic-monitoring` namespace, and the harvested metrics to our `quickstart` cluster, you have to define two `elasticsearchRefs` as shown in the following abbreviated example:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -261,7 +261,7 @@ spec:
 
 If the `elasticsearchRefs` element is specified, ECK populates the outputs section of the Elastic Agent configuration. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Agent Pods, and recreates Pods when this certificate changes.
 
-The outputs can also be set manually.  To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config` or indirectly via the `configRef` mechanism.
+The outputs can also be set manually. To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config`, or indirectly via the `configRef` mechanism.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -288,7 +288,7 @@ spec:
 
 Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how your Elastic Agents should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
 
-Similarily you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows for example to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
+Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows you to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -311,7 +311,7 @@ See <<{p}-compute-resources-beats-agent>> for more information on how to use the
 [id="{p}-elastic-agent-role-based-access-control"]
 === Role Based Access Control for Elastic Agent
 
-Some Elastic Agent features (such as the link:https://epr.elastic.co/package/kubernetes/0.2.8/[Kubernetes integration]) require that Agent Pods interact with Kubernetes APIs. Specific permissions are needed to allow this functionality. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow API interactions:
+Some Elastic Agent features, such as the link:https://epr.elastic.co/package/kubernetes/0.2.8/[Kubernetes integration], require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow API interactions:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -386,7 +386,7 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 
 experimental[]
 
-Below you can find manifests that illustrate  common use cases and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance. Add the corresponding integration package to Kibana to install the dashboards, visualisations and other assets for each of these examples as described in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[the Elastic Agent documentation].
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance. Add the corresponding integration package to Kibana to install the dashboards, visualizations and other assets for each of these examples as described in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[the Elastic Agent documentation].
 
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
