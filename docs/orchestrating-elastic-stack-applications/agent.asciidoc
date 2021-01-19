@@ -1,0 +1,410 @@
+:page_id: elastic-agent
+:agent_recipes: https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/config/recipes/elastic-agent
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run Elastic Agent on ECK
+
+experimental[]
+
+This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode] with ECK.
+
+NOTE: Using link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet] to manage your Elastic Agents is currently not supported.
+
+
+
+* <<{p}-elastic-agent-quickstart,Quickstart>>
+* <<{p}-elastic-agent-configuration,Configuration>>
+* <<{p}-elastic-agent-configuration-examples,Configuration Examples>>
+
+[id="{p}-elastic-agent-quickstart"]
+== Quickstart
+
+experimental[]
+
+. Apply the following specification to deploy Elastic Agent with the System metrics integration to harvest CPU metrics from the Agent Pods. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
++
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+  daemonSet: {}
+  config:
+    inputs:
+      - name: system-1
+        revision: 1
+        type: system/metrics
+        use_output: default
+        meta:
+          package:
+            name: system
+            version: 0.9.1
+        data_stream:
+          namespace: default
+        streams:
+          - id: system/metrics-system.cpu
+            data_stream:
+              dataset: system.cpu
+              type: metrics
+            metricsets:
+              - cpu
+            cpu.metrics:
+              - percentages
+              - normalized_percentages
+            period: 10s
+EOF
+----
++
+See <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
+
+. Monitor Elastic Agent.
++
+Retrieve the status of Elastic Agent.
++
+[source,sh]
+----
+kubectl get agent
+----
++
+[source,sh,subs="attributes"]
+----
+NAME            HEALTH   AVAILABLE   EXPECTED   VERSION   AGE
+quickstart      green    3           3          {version}    15s
+
+----
+
+. List all the Pods belonging to a given Elastic Agent specification.
++
+[source,sh]
+----
+kubectl get pods --selector='agent.k8s.elastic.co/name=quickstart'
+----
++
+[source,sh]
+----
+NAME                     READY   STATUS    RESTARTS   AGE
+quickstart-agent-6bcxr   1/1     Running   0          68s
+quickstart-agent-t49fd   1/1     Running   0          68s
+quickstart-agent-zqp55   1/1     Running   0          68s
+----
+
+. Access logs for one of the Pods.
++
+[source,sh]
+----
+kubectl logs -f quickstart-agent-6bcxr
+----
+
+. Access the CPU metrics ingested by Elastic Agent.
++
+You have two options:
++
+- Follow the Elasticsearch deployment <<{p}-deploy-elasticsearch,guide>> and run:
++
+[source,sh]
+----
+curl -u "elastic:$PASSWORD" -k "https://localhost:9200/metrics-system.cpu-*/_search"
+----
++
+- Follow the Kibana deployment <<{p}-deploy-kibana,guide>>, log in and go to *Kibana* > *Discover*.
+
+[id="{p}-elastic-agent-configuration"]
+== Configuration
+
+experimental[]
+
+
+[id="{p}-elastic-agent-upgrade-specification"]
+=== Upgrade the Elastic Agent specification
+
+You can upgrade the Elastic Agent version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set the <<{p}-elastic-agent-set-output,outputs>> part of the configuration, or restart Elastic Agent on certificate rollover.
+
+[id="{p}-elastic-agent-custom-configuration"]
+=== Customize Elastic Agent configuration
+
+The Elastic Agent configuration is defined in the `config` element:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+  daemonSet: {}
+  config:
+    inputs:
+      - name: system-1
+        revision: 1
+        type: system/metrics
+        use_output: default
+        meta:
+          package:
+            name: system
+            version: 0.9.1
+        data_stream:
+          namespace: default
+        streams:
+          - id: system/metrics-system.cpu
+            data_stream:
+              dataset: system.cpu
+              type: metrics
+            metricsets:
+              - cpu
+            cpu.metrics:
+              - percentages
+              - normalized_percentages
+            period: 10s
+----
+
+Alternatively, it can be provided via a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with the configuration:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+  daemonSet: {}
+  configRef:
+    secretName: system-cpu-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: system-cpu-config
+stringData:
+  agent.yml: |-
+    inputs:
+      - name: system-1
+        revision: 1
+        type: system/metrics
+        use_output: default
+        meta:
+          package:
+            name: system
+            version: 0.9.1
+        data_stream:
+          namespace: default
+        streams:
+          - id: system/metrics-system.cpu
+            data_stream:
+              dataset: system.cpu
+              type: metrics
+            metricsets:
+              - cpu
+            cpu.metrics:
+              - percentages
+              - normalized_percentages
+            period: 10s
+----
+
+You can use the Fleet application in Kibana to generate configuration for Elastic Agent even when running in standalone mode, see the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[Elastic Agent standalone] documentation.  Adding the corresponding integration package to Kibana also adds the related dashboards and visualizations.
+
+
+[id="{p}-elastic-agent-multi-output"]
+=== Use multiple Elastic Agent outputs
+
+Elastic Agent supports the use of multiple outputs. Therefore, the `elasticsearchRefs` element accepts multiple references to Elasticsearch clusters. ECK populates the outputs section of the Elastic Agent configuration based on those references. If you configure more than one output, you also have to specify a unique `outputName` attribute.
+
+To send Elastic Agent's internal monitoring and log data to a different Elasticsearch cluster called `agent-monitoring` in the `elastic-monitoring` namespace, and the harvested metrics to our `quickstart` cluster, you have to define two `elasticsearchRefs` as shown in the following abbreviated example:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  daemonSet: {}
+  elasticsearchRefs:
+  - name: quickstart
+    outputName: default
+  - name: agent-monitoring
+    namespace: elastic-monitoring
+    outputName: monitoring
+  config:
+    agent:
+      monitoring:
+        enabled: true
+        use_output: monitoring
+        logs: true
+        metrics: true
+    inputs:
+      - name: system-1
+        revision: 1
+        type: system/metrics
+        use_output: default
+...
+----
+
+
+[id="{p}-elastic-agent-set-output"]
+=== Manually set Elastic Agent outputs
+
+If the `elasticsearchRefs` element is specified, ECK populates the outputs section of the Elastic Agent configuration. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Agent Pods, and recreates Pods when this certificate changes.
+
+The outputs can also be set manually. To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config`, or indirectly via the `configRef` mechanism.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  daemonSet: {}
+  config:
+    outputs:
+      default:
+        type: elasticsearch
+        hosts:
+          - "https://my-custom-elasticsearch-cluster.cloud.elastic.co:9243"
+        password: ES_PASSWORD
+        username: ES_USER
+...
+----
+
+[id="{p}-elastic-agent-chose-the-deployment-model"]
+=== Choose the deployment model
+
+Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how your Elastic Agents should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+
+Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows you to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  daemonSet:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 3
+...
+----
+
+See <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
+
+[id="{p}-elastic-agent-role-based-access-control"]
+=== Role Based Access Control for Elastic Agent
+
+Some Elastic Agent features, such as the link:https://epr.elastic.co/package/kubernetes/0.2.8/[Kubernetes integration], require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow API interactions:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: elasticsearch
+  daemonSet:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        serviceAccountName: elastic-agent
+...
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  - nodes
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+----
+
+[id="{p}-elastic-agent-deploying-in-secured-clusters"]
+=== Deploying Elastic Agent in secured clusters
+
+To deploy Elastic Agent in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the Elastic Agent Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Elastic Agent integrations might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
+
+
+[id="{p}-elastic-agent-configuration-examples"]
+== Configuration Examples
+
+experimental[]
+
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance. Add the corresponding integration package to Kibana to install the dashboards, visualizations and other assets for each of these examples as described in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[the Elastic Agent documentation].
+
+CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+
+
+=== System integration
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/system-integration.yaml
+----
+
+Deploys Elastic Agent as a DaemonSet in standalone mode with system integration enabled. Collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others).
+
+=== Kubernetes integration
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/kubernetes-integration.yaml
+----
+
+Deploys Elastic Agent as a DaemonSet in standalone mode with Kubernetes integration enabled. Collects API server, Container, Event, Node, Pod, Volume and system metrics.
