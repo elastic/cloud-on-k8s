@@ -414,6 +414,7 @@ e2e-docker-multiarch-build: clean
 		--progress=plain \
 		--file test/e2e/Dockerfile \
 		--build-arg E2E_JSON=$(E2E_JSON) \
+		--build-arg GO_TAGS=$(E2E_TAGS) \
 		--platform linux/amd64,linux/arm64 \
 		--push \
 		-t $(E2E_IMG) .
