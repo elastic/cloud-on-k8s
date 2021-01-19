@@ -397,11 +397,13 @@ E2E_JSON                   ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
-E2E_TEST_TAGS              ?= ""
+E2E_TAGS                   ?= e2e  # go build constraints potentially restricting the tests to run
+E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test environment to the test runner
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
-	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) --build-arg GO_TAGS=$(E2E_TAGS) \
+       -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
 	@ hack/docker.sh -l -p $(E2E_IMG)
@@ -412,6 +414,7 @@ e2e-docker-multiarch-build: clean
 		--progress=plain \
 		--file test/e2e/Dockerfile \
 		--build-arg E2E_JSON=$(E2E_JSON) \
+		--build-arg GO_TAGS=$(E2E_TAGS) \
 		--platform linux/amd64,linux/arm64 \
 		--push \
 		-t $(E2E_IMG) .
@@ -434,14 +437,14 @@ e2e-run:
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
-		--test-tags=$(E2E_TEST_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e/... -run=dryrun $(TEST_OPTS) > /dev/null
+	go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
@@ -458,8 +461,8 @@ e2e-local:
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
-		--test-tags=$(E2E_TEST_TAGS)
-	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+	@E2E_JSON=$(E2E_JSON) GO_TAGS=$(E2E_TAGS) test/e2e/run.sh -run $(TESTS_MATCH) -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##

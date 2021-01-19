@@ -103,7 +103,7 @@ type Context struct {
 	Provider              string            `json:"provider"`
 	ClusterName           string            `json:"clusterName"`
 	KubernetesVersion     string            `json:"kubernetes_version"`
-	TestTags              []string          `json:"test_tags"`
+	TestEnvTags           []string          `json:"test_tags"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
@@ -113,7 +113,7 @@ func (c Context) ManagedNamespace(n int) string {
 
 // HasTag returns true if the test tags contain the specified value.
 func (c Context) HasTag(tag string) bool {
-	return stringsutil.StringInSlice(tag, c.TestTags)
+	return stringsutil.StringInSlice(tag, c.TestEnvTags)
 }
 
 // ClusterResource is a generic cluster resource.
