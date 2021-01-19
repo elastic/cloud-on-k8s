@@ -532,7 +532,7 @@ kind-cluster-%: kind-node-variable-check
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: kind-node-variable-check docker-build
 	go run ./hack/kind/main.go start \
-		--load-images $(OPERATOR_IMAGE) \
+		--load-image $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
 		--cluster-name $(KIND_CLUSTER_NAME) \
 		--node-image $(KIND_NODE_IMAGE) \
@@ -551,7 +551,8 @@ kind-e2e: export E2E_JSON := true
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 	go run ./hack/kind/main.go start \
-		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
+		--load-image $(OPERATOR_IMAGE) \
+		--load-image $(E2E_IMG) \
 		--ip-family ${IP_FAMILY} \
 		--nodes 3 \
 		--cluster-name $(KIND_CLUSTER_NAME) \
