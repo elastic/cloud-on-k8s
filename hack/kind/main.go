@@ -51,6 +51,8 @@ type startArgs struct {
 
 func (args startArgs) WorkerNames() []string {
 	var names []string
+	// kind has the following naming scheme <cluster-name>-worker, <cluster-name>-worker2 etc
+	// this is not configurable and thus explains the awkward name construction here
 	for i := 0; i < args.nodes; i++ {
 		suffix := ""
 		if i > 0 {
@@ -188,7 +190,7 @@ func (k kind) stop() error {
 }
 
 func (k kind) setup(args startArgs) error {
-	// write manifest to temporary file
+	// Write manifest to temporary file
 	tmpManifest, err := k.createTmpManifest(args)
 	if err != nil {
 		return err
