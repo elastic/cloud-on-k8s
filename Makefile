@@ -502,7 +502,7 @@ validate-jenkins-pipelines:
 #########################
 # Kind specific targets #
 #########################
-export KIND_VERSION ?= 0.9.0
+KIND_VERSION ?= 0.9.0
 KIND_NODES ?= 3
 KIND_NODE_IMAGE ?= kindest/node:v1.20.0
 KIND_CLUSTER_NAME ?= eck
@@ -521,21 +521,23 @@ bootstrap-kind:
 ## Start a Kind cluster with just the CRDs, e.g.:
 # "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-node cluster
 # "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-master 3-nodes cluster
-kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-cluster-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-cluster-%: kind-node-variable-check
-	./hack/kind/kind.sh \
+	go run ./hack/kind/main.go start \
 		--nodes "${*}" \
-		make install-crds
+		--cluster-name $(KIND_CLUSTER_NAME) \
+		--kind-version $(KIND_VERSION) \
+		--node-image $(KIND_NODE_IMAGE)
+	make install-crds
 
 ## Same as above but build and deploy the operator image
-kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-with-operator-%: kind-node-variable-check docker-build
-	./hack/kind/kind.sh \
+	go run ./hack/kind/main.go start \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
-		make install-crds apply-operator
+		--cluster-name $(KIND_CLUSTER_NAME) \
+		--node-image $(KIND_NODE_IMAGE) \
+		--kind-version $(KIND_VERSION)
+	make install-crds apply-operator
 
 ## Run all e2e tests in a Kind cluster
 set-kind-e2e-image:
@@ -547,15 +549,15 @@ endif
 
 kind-e2e: export E2E_JSON := true
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
-kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
-	./hack/kind/kind.sh \
+	go run ./hack/kind/main.go start \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--ip-family ${IP_FAMILY} \
 		--nodes 3 \
-		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
+		--cluster-name $(KIND_CLUSTER_NAME) \
+		--node-image $(KIND_NODE_IMAGE)
+	make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
-delete-kind: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 delete-kind:
-	./hack/kind/kind.sh --stop
+	go run ./hack/kind/main.go stop --cluster-name $(KIND_CLUSTER_NAME)
