@@ -70,14 +70,14 @@ func main() {
 	cmd.PersistentFlags().IntVarP(&k.logLevel, "verbosity", "v", 0, "Kind log verbosity")
 
 	cmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
+		// check that the kind executable is installed in the right version
 		binaryName := "kind-" + k.kindVersion
-		// check that kind is installed in the correct version
-		cmd := exec.Command("command", "-v", binaryName)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("%s does not exist or is not in path: %w", binaryName, err)
+		path, err := exec.LookPath(binaryName)
+		if err != nil {
+			return err
 		}
 		// populate the kind struct with version specific information
-		k.binary = binaryName
+		k.binary = path
 		k.apiVersion = "kind.sigs.k8s.io/v1alpha3"
 		if strings.HasPrefix(k.kindVersion, "0.9") {
 			k.apiVersion = "kind.x-k8s.io/v1alpha4"
