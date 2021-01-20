@@ -16,6 +16,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -41,8 +42,7 @@ nodes:
 var k kind
 
 type startArgs struct {
-	IPFamily string
-	//APIVersion   string
+	IPFamily     string
 	skipSetup    bool
 	imagesToLoad []string
 	nodes        int
@@ -83,7 +83,8 @@ func main() {
 		// populate the kind struct with version specific information
 		k.binary = path
 		k.apiVersion = "kind.sigs.k8s.io/v1alpha3"
-		if strings.HasPrefix(k.kindVersion, "0.9") {
+		v := semver.MustParse(k.kindVersion)
+		if v.GTE(semver.MustParse("0.9.0")) {
 			k.apiVersion = "kind.x-k8s.io/v1alpha4"
 		}
 		return nil
