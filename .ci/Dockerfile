@@ -9,7 +9,8 @@ ENV KUBECTL_VERSION=1.14.7
 ENV DOCKER_VERSION=19.03.13
 ENV DOCKER_BUILDX_VERSION=0.4.2
 ENV GOTESTSUM_VERSION=0.5.0
-ENV KIND_VERSION=0.8.1
+ENV KIND_VERSION_0_8=0.8.1
+ENV KIND_VERSION_0_9=0.9.0
 ENV OPENSHIFT_TOOLS_VERSION=4.3.19
 ENV EKSCTL_VERSION=0.34.0
 
@@ -77,9 +78,12 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
     mv gotestsum /usr/local/bin/gotestsum && chmod +x /usr/local/bin/gotestsum && \
     rm gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz
 
-# Kind to run k8s cluster locally in Docker
-RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64 && \
-    mv kind-linux-amd64 /usr/local/bin/kind && chmod +x /usr/local/bin/kind
+# Kind to run k8s cluster locally in Docker, we need to have both 0.8.x and 0.9.x to be able to test older k8s versions
+RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION_0_8}/kind-linux-amd64 && \
+    mv kind-linux-amd64 /usr/local/bin/kind-${KIND_VERSION_0_8} && chmod +x /usr/local/bin/kind-${KIND_VERSION_0_8}
+
+RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION_0_9}/kind-linux-amd64 && \
+    mv kind-linux-amd64 /usr/local/bin/kind-${KIND_VERSION_0_9} && chmod +x /usr/local/bin/kind-${KIND_VERSION_0_9}
 
 # OpenShift installer and CLI to provision OCP clusters
 RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
