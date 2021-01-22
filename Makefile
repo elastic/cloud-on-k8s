@@ -562,7 +562,8 @@ kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 		--ip-family ${IP_FAMILY} \
 		--nodes 3 \
 		--cluster-name $(KIND_CLUSTER_NAME) \
-		--node-image $(KIND_NODE_IMAGE)
+		--node-image $(KIND_NODE_IMAGE) \
+		--kind-version $(KIND_VERSION)
 	make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
