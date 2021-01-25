@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build agent e2e
+
 package agent
 
 import (
@@ -75,6 +77,11 @@ func runBeatRecipe(
 		agentBuilder, ok := builder.(agent.Builder)
 		if !ok {
 			return builder
+		}
+
+		// TODO: remove once https://github.com/elastic/cloud-on-k8s/issues/4092 is resolved
+		if test.Ctx().HasTag("ipv6") {
+			t.SkipNow()
 		}
 
 		if isStackIncompatible(agentBuilder.Agent) {

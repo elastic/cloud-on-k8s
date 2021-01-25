@@ -12,12 +12,12 @@ run_e2e_tests() {
 # Go's -failfast flag does not prevent tests from other packages from being executed if the package
 # list is specified using the "./..." form. This script works around that limitation so that CI jobs
 # fail faster.
-for PKG in $(go list github.com/elastic/cloud-on-k8s/test/e2e/...); do
+for PKG in $(go list -tags "$GO_TAGS" github.com/elastic/cloud-on-k8s/test/e2e/...); do
     if [ "${E2E_JSON}" == "true" ]
     then
-        go test -v -failfast -timeout=4h -tags=e2e -p=1 --json "$PKG" "$@"
+        go test -v -failfast -timeout=4h -tags="$GO_TAGS" -p=1 --json "$PKG" "$@"
     else
-        go test -v -failfast -timeout=4h -tags=e2e -p=1 "$PKG" "$@"
+        go test -v -failfast -timeout=4h -tags="$GO_TAGS" -p=1 "$PKG" "$@"
     fi
 done
 

@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: es
 spec:
-  version: 7.10.1
+  version: 7.11.0-SNAPSHOT
   nodeSets:
   - name: default
     count: 3
@@ -16,7 +16,7 @@ kind: Kibana
 metadata:
   name: kb
 spec:
-  version: 7.10.1
+  version: 7.11.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es
@@ -26,7 +26,7 @@ kind: ApmServer
 metadata:
   name: apm
 spec:
-  version: 7.10.1
+  version: 7.11.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es

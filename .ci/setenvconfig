@@ -106,9 +106,6 @@ CFG
   e2e/kind-k8s-versions)
 ######################################
 
-kindNodeImage=$2
-clusterVersion=$3
-
 write_env <<ENV
 IMG_SUFFIX = -ci
 E2E_REGISTRY_NAMESPACE = eck-ci
@@ -119,7 +116,8 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-KIND_NODE_IMAGE = ${kindNodeImage}
+KIND_NODE_IMAGE = $2
+KIND_VERSION=$3
 IP_FAMILY=$4
 
 PIPELINE=e2e/kind-k8s-versions
@@ -127,6 +125,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=kind
 CLUSTER_NAME=kind-$BUILD_NUMBER
 TEST_OPTS=-race
+E2E_TEST_ENV_TAGS="kind,$4"
 ENV
 ;;
 

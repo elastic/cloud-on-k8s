@@ -50,8 +50,8 @@ func main() {
 	cmd.Flags().StringVar(&opts.confFile, "conf-file", "conf.yaml", "Path to the file containing test params")
 	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "alpha", "Release to start with (alpha, beta, v101, v112, upcoming)")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", "INFO", "Log level (DEBUG, INFO, WARN, ERROR)")
-	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 5, "Number of retries")
-	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 30*time.Second, "Delay between retries")
+	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 60, "Number of retries")
+	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 5*time.Second, "Delay between retries")
 	cmd.Flags().DurationVar(&opts.retryTimeout, "retry-timeout", 300*time.Second, "Time limit for retries")
 	cmd.Flags().BoolVar(&opts.skipCleanup, "skip-cleanup", false, "Skip cleaning up after test run")
 	cmd.Flags().StringVar(&opts.toRelease, "to-release", "upcoming", "Release to finish with (alpha, beta, v101, v112, upcoming)")
@@ -175,9 +175,9 @@ func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) []*fixt
 		// upgrade from alpha requires deleting the finalizers
 		if from.Name == "alpha" {
 			fixtures = append(fixtures, fixture.TestRemoveFinalizers(*from))
+			// delete the stack as alpha resources are no longer reconciled by later versions of the operator
+			fixtures = append(fixtures, fixture.TestRemoveResources(*from))
 		}
-
-		fixtures = append(fixtures, fixture.TestRemoveResources(*from))
 	}
 
 	fixtures = append(fixtures, fixture.TestDeployResources(to), fixture.TestStatusOfResources(to))

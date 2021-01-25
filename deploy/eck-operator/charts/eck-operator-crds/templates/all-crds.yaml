@@ -1648,7 +1648,7 @@ spec:
                   count:
                     description: Count of Elasticsearch nodes to deploy.
                     format: int32
-                    minimum: 1
+                    minimum: 0
                     type: integer
                   name:
                     description: Name of this set of nodes. Becomes a part of the

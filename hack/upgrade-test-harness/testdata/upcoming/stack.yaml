@@ -2,7 +2,7 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: upcoming
+  name: es
 spec:
   version: 7.9.2
   nodeSets:
@@ -14,19 +14,19 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: upcoming
+  name: kb
 spec:
   version: 7.9.2
   count: 1
   elasticsearchRef:
-    name: upcoming
+    name: es
 ---
 apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
-  name: upcoming
+  name: apm
 spec:
   version: 7.9.2
   count: 1
   elasticsearchRef:
-    name: upcoming
+    name: es

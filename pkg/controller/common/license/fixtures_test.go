@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -53,6 +54,20 @@ var emptyTrialLicenseFixture = EnterpriseLicense{
 	License: LicenseSpec{
 		Type: LicenseTypeEnterpriseTrial,
 	},
+}
+
+func externallySignedLicenseFixture() (EnterpriseLicense, error) {
+	exptectedBytes, err := ioutil.ReadFile("testdata/externally-generated-lic.json")
+	if err != nil {
+		return EnterpriseLicense{}, err
+	}
+
+	var lic EnterpriseLicense
+	err = json.Unmarshal(exptectedBytes, &lic)
+	if err != nil {
+		return EnterpriseLicense{}, err
+	}
+	return lic, nil
 }
 
 func withSignature(l EnterpriseLicense, sig []byte) EnterpriseLicense {

@@ -43,7 +43,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.12.10", "1.12", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.12.10@sha256:faeb82453af2f9373447bb63f50bae02b8020968e0889c7fa308e19b348916cb", "0.8.1", "ipv4")
                         }
                     }
                 }
@@ -54,7 +54,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.13.12", "1.13", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.13.12@sha256:214476f1514e47fe3f6f54d0f9e24cfb1e4cda449529791286c7161b7f9c08e7", "0.8.1", "ipv4")
                         }
                     }
                 }
@@ -65,40 +65,40 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.14.10", "1.14", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.14.10@sha256:ce4355398a704fca68006f8a29f37aafb49f8fc2f64ede3ccd0d9198da910146", "0.9.0", "ipv4")
                         }
                     }
                 }
-                stage("1.15.11") {
+                stage("1.15.12") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.15.11", "1.15", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.15.12@sha256:d9b939055c1e852fe3d86955ee24976cab46cba518abcb8b13ba70917e6547a6", "0.9.0", "ipv4")
                         }
                     }
                 }
-                stage("1.16.9") {
+                stage("1.16.15") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.16.9", "1.16", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.16.15@sha256:a89c771f7de234e6547d43695c7ab047809ffc71a0c3b65aa54eda051c45ed20", "0.9.0", "ipv4")
                         }
                     }
                 }
-                stage("1.17.5") {
+                stage("1.17.11") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.17.11@sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555", "0.9.0", "ipv4")
                         }
                     }
                 }
@@ -109,18 +109,40 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.18.2", "1.18", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.18.8@sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb", "0.9.0", "ipv4")
                         }
                     }
                 }
-                stage("1.18.2 IPv6") {
+                stage("1.19.1") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.18.2", "1.18", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.19.1@sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600", "0.9.0", "ipv4")
+                        }
+                    }
+                }
+                stage("1.20.0 IPv4") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.20.0@sha256:b40ecf8bcb188f6a0d0f5d406089c48588b75edc112c6f635d26be5de1c89040", "0.9.0", "ipv4")
+                        }
+                    }
+                }
+                stage("1.20.0 IPv6") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.20.0@sha256:b40ecf8bcb188f6a0d0f5d406089c48588b75edc112c6f635d26be5de1c89040", "0.9.0", "ipv6")
                         }
                     }
                 }
@@ -154,8 +176,8 @@ pipeline {
 
 }
 
-def runTests(lib, failedTests, kindNodeImage, clusterVersion, ipFamily) {
-    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage $clusterVersion $ipFamily"
+def runTests(lib, failedTests, kindNodeImage, kindVersion, ipFamily) {
+    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage $kindVersion $ipFamily"
     script {
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=kind-e2e ci')
 
