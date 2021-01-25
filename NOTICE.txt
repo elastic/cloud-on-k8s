@@ -715,11 +715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/uuid
-Version : v1.1.5
-Time    : 2021-01-15T00:27:13Z
+Version : v1.2.0
+Time    : 2021-01-22T18:20:15Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.1.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.2.0/LICENSE:
 
 Copyright (c) 2009,2014 Google Inc. All rights reserved.
 
@@ -4194,11 +4194,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20210111153108
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.8.0
-Time    : 2021-01-14T17:57:04Z
+Version : v0.8.1
+Time    : 2021-01-22T14:07:27Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.8.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.8.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -37577,11 +37577,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.0.0-20201224014010-6772e930b67b
-Time    : 2020-12-24T01:40:10Z
+Version : v0.0.0-20210119194325-5f4716e94777
+Time    : 2021-01-19T19:43:25Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20201224014010-6772e930b67b/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20210119194325-5f4716e94777/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -37688,11 +37688,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.0.0-20210113181707-4bcb84eeeb78
-Time    : 2021-01-13T18:17:07Z
+Version : v0.0.0-20210124154548-22da62e12c0c
+Time    : 2021-01-24T15:45:48Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20210113181707-4bcb84eeeb78/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20210124154548-22da62e12c0c/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -39854,11 +39854,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.20.1
-Time    : 2020-12-18T18:00:16Z
+Version : v0.20.2
+Time    : 2021-01-13T21:59:55Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.20.2/LICENSE:
 
 
                                  Apache License
@@ -40066,11 +40066,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiserver
-Version : v0.20.1
-Time    : 2020-12-18T17:38:02Z
+Version : v0.20.2
+Time    : 2021-01-13T21:37:55Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiserver@v0.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiserver@v0.20.2/LICENSE:
 
 
                                  Apache License
@@ -40278,11 +40278,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiserver@v0.20.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/code-generator
-Version : v0.20.1
+Version : v0.20.2
 Time    : 2020-11-14T09:55:26Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/code-generator@v0.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/code-generator@v0.20.2/LICENSE:
 
 
                                  Apache License
@@ -40490,11 +40490,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/code-generator@v0.20.1/LICE
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.20.1
-Time    : 2020-12-18T17:24:48Z
+Version : v0.20.2
+Time    : 2021-01-13T21:24:56Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.20.2/LICENSE:
 
 
                                  Apache License

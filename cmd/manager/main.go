@@ -322,6 +322,9 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 	go func() {
 		err := startOperator(ctx)
+		if err != nil {
+			log.Error(err, "Operator stopped with error")
+		}
 		errChan <- err
 	}()
 
@@ -338,11 +341,6 @@ func doRun(_ *cobra.Command, _ []string) error {
 			return nil
 		case <-confUpdateChan: // config file updated
 			log.Info("Shutting down to apply updated configuration")
-
-			if err := <-errChan; err != nil {
-				log.Error(err, "Encountered error from previous operator run")
-				return err
-			}
 
 			return nil
 		}
