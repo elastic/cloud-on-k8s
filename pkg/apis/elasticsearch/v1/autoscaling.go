@@ -16,7 +16,7 @@ import (
 
 const ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
 
-var nodeRolesNotSetErr = errors.New("node.roles must be set")
+var errNodeRolesNotSet = errors.New("node.roles must be set")
 
 // -- Elasticsearch Autoscaling API structures
 
@@ -237,7 +237,7 @@ func getNodeSetRoles(es Elasticsearch, nodeSet NodeSet) ([]string, error) {
 		return nil, err
 	}
 	if cfg.Node == nil {
-		return nil, nodeRolesNotSetErr
+		return nil, errNodeRolesNotSet
 	}
 	return cfg.Node.Roles, nil
 }
