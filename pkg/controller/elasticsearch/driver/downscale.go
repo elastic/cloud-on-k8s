@@ -88,6 +88,7 @@ func calculateDownscales(
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
 ) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
+	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
 		expectedSset, shouldExist := expectedStatefulSets.GetByName(actualSset.Name)
@@ -97,7 +98,7 @@ func calculateDownscales(
 		}
 
 		switch {
-		case actualReplicas == 0 && expectedReplicas == 0:
+		case !expectedStatefulSetsNames.Has(actualSset.Name) && actualReplicas == 0 && expectedReplicas == 0:
 			// the StatefulSet should not exist, and currently has no replicas
 			// it is safe to delete
 			deletions = append(deletions, actualSset)
