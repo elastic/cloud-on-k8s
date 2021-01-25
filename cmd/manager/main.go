@@ -452,6 +452,7 @@ func startOperator(ctx context.Context) error {
 		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock, // TODO: Revert to ConfigMapsLeases when support for 1.13 is dropped
 		LeaderElectionID:           LeaderElectionConfigMapName,
 		LeaderElectionNamespace:    operatorNamespace,
+		Logger:                     log.WithName("eck-operator"),
 	}
 
 	// configure the manager cache based on the number of managed namespaces

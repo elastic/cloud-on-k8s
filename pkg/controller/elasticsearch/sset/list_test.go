@@ -47,15 +47,15 @@ func TestRetrieveActualStatefulSets(t *testing.T) {
 			name: "StatefulSet should be sorted by name",
 			args: args{
 				c: k8s.NewFakeClient(
-					TestSset{Name: "sset1"}.BuildPtr(),
-					TestSset{Name: "sset3"}.BuildPtr(),
-					TestSset{Name: "sset2"}.BuildPtr(),
+					TestSset{Name: "sset1", ResourceVersion: "999"}.BuildPtr(),
+					TestSset{Name: "sset3", ResourceVersion: "999"}.BuildPtr(),
+					TestSset{Name: "sset2", ResourceVersion: "999"}.BuildPtr(),
 				),
 			},
 			want: StatefulSetList{
-				TestSset{Name: "sset1"}.Build(),
-				TestSset{Name: "sset2"}.Build(),
-				TestSset{Name: "sset3"}.Build(),
+				TestSset{Name: "sset1", ResourceVersion: "999"}.Build(),
+				TestSset{Name: "sset2", ResourceVersion: "999"}.Build(),
+				TestSset{Name: "sset3", ResourceVersion: "999"}.Build(),
 			},
 		},
 	}

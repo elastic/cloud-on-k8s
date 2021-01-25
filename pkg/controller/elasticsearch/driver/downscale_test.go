@@ -1008,12 +1008,12 @@ func Test_deleteStatefulSets(t *testing.T) {
 			name:     "nothing to delete",
 			toDelete: nil,
 			objs: []runtime.Object{
-				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.BuildPtr(),
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
 			wantRemaining: sset.StatefulSetList{
-				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
@@ -1023,12 +1023,12 @@ func Test_deleteStatefulSets(t *testing.T) {
 				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.Build(),
 			},
 			objs: []runtime.Object{
-				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.BuildPtr(),
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.BuildPtr(),
-				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
 			wantRemaining: sset.StatefulSetList{
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{

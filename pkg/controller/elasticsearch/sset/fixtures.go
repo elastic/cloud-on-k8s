@@ -16,15 +16,16 @@ import (
 )
 
 type TestSset struct {
-	Namespace   string
-	Name        string
-	ClusterName string
-	Version     string
-	Replicas    int32
-	Master      bool
-	Data        bool
-	Ingest      bool
-	Status      appsv1.StatefulSetStatus
+	Namespace       string
+	Name            string
+	ClusterName     string
+	Version         string
+	Replicas        int32
+	Master          bool
+	Data            bool
+	Ingest          bool
+	Status          appsv1.StatefulSetStatus
+	ResourceVersion string
 }
 
 func (t TestSset) Pods() []runtime.Object {
@@ -60,6 +61,7 @@ func (t TestSset) Build() appsv1.StatefulSet {
 			Labels: map[string]string{
 				label.ClusterNameLabelName: t.ClusterName,
 			},
+			ResourceVersion: t.ResourceVersion,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &t.Replicas,
@@ -96,6 +98,7 @@ type TestPod struct {
 	Ready           bool
 	RestartCount    int32
 	Phase           corev1.PodPhase
+	ResourceVersion string
 }
 
 func (t TestPod) Build() corev1.Pod {
@@ -138,9 +141,10 @@ func (t TestPod) Build() corev1.Pod {
 	}
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: t.Namespace,
-			Name:      t.Name,
-			Labels:    labels,
+			Namespace:       t.Namespace,
+			Name:            t.Name,
+			Labels:          labels,
+			ResourceVersion: t.ResourceVersion,
 		},
 		Status: status,
 	}
