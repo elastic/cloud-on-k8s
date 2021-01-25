@@ -94,7 +94,7 @@ func setLogger(v *int) {
 
 	stackTraceLevel := zap.NewAtomicLevelAt(zapcore.ErrorLevel)
 	crlog.SetLogger(crzap.New(func(o *crzap.Options) {
-		o.DestWritter = os.Stderr
+		o.DestWriter = os.Stderr
 		o.Development = dev.Enabled
 		o.Level = &zapLevel
 		o.StacktraceLevel = &stackTraceLevel
