@@ -25,6 +25,17 @@ import (
 // Storage decrease is not supported if the corresponding StatefulSet has been resized already.
 func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	var errs field.ErrorList
+	if proposed.IsAutoscalingDefined() {
+		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
+		// will not be processed immediately by the Elasticsearch controller. When autoscaling is enabled it is fine to accept the
+		// manifest, and wait for the autoscaling controller to adjust the volume claim template size.
+		log.V(1).Info(
+			"Autoscaling is enabled in proposed, ignoring PVC modification validation",
+			"namespace", proposed.Namespace,
+			"es_name", proposed.Name,
+		)
+		return errs
+	}
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
 		if currentNodeSet == nil {
