@@ -311,6 +311,7 @@ IMG_SUFFIX = -ci
 E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
+E2E_TAGS = es
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
