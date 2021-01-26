@@ -353,7 +353,7 @@ oc adm policy add-scc-to-user hostaccess -z elastic-agent -n elastic
 +
 [source,yaml,subs="attributes"]
 ----
-aapiVersion: agent.k8s.elastic.co/v1alpha1
+apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: my-agent
