@@ -30,7 +30,18 @@ const (
 	SpanIDField        = "span.id"
 	TraceIDField       = "trace.id"
 	TransactionIDField = "transaction.id"
+
+	testLogLevelEnvVar = "ECK_TEST_LOG_LEVEL"
 )
+
+func init() {
+	// Introduced mainly as a workaround for a controller-runtime bug.
+	// https://github.com/kubernetes-sigs/controller-runtime/issues/1359#issuecomment-767413330
+	// However, it is still useful in general to adjust the log level during test runs.
+	if logLevel, err := strconv.Atoi(os.Getenv(testLogLevelEnvVar)); err == nil {
+		setLogger(&logLevel)
+	}
+}
 
 var verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
 
