@@ -60,11 +60,11 @@ func needsRecreate(expected, reconciled *corev1.Service) bool {
 	if expected.Spec.IPFamilies != nil {
 		if len(expected.Spec.IPFamilies) != len(reconciled.Spec.IPFamilies) {
 			return true
-		} else {
-			for i := 0; i < len(expected.Spec.IPFamilies); i++ {
-				if expected.Spec.IPFamilies[i] != reconciled.Spec.IPFamilies[i] {
-					return true
-				}
+		}
+
+		for i := 0; i < len(expected.Spec.IPFamilies); i++ {
+			if expected.Spec.IPFamilies[i] != reconciled.Spec.IPFamilies[i] {
+				return true
 			}
 		}
 	}
