@@ -476,6 +476,8 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 }
 
 func TestReconciler_getElasticsearch(t *testing.T) {
+	// ResourceVersion 999 has no specific meaning.
+	// It is the commonly used value in controller-runtime tests where some ResourceVersion needs to be set.
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", ResourceVersion: "999"}}
 	associatedKibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{

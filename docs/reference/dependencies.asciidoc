@@ -20,7 +20,7 @@ This page lists the third-party dependencies used to build {n}.
 | Name | Version | Licence
 
 | link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig/v3$$] | v3.2.0 | MIT
-| link:https://github.com/blang/semver[$$github.com/blang/semver$$] | v3.5.1+incompatible | MIT
+| link:https://github.com/blang/semver[$$github.com/blang/semver/v4$$] | v4.0.0 | MIT
 | link:https://github.com/davecgh/go-spew[$$github.com/davecgh/go-spew$$] | v1.1.1 | ISC
 | link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.8.3 | Apache-2.0
 | link:https://github.com/fsnotify/fsnotify[$$github.com/fsnotify/fsnotify$$] | v1.4.9 | BSD-3-Clause
@@ -113,6 +113,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/beorn7/perks[$$github.com/beorn7/perks$$] | v1.0.1 | MIT
 | link:https://github.com/bgentry/speakeasy[$$github.com/bgentry/speakeasy$$] | v0.1.0 | MIT
 | link:https://github.com/bketelsen/crypt[$$github.com/bketelsen/crypt$$] | v0.0.3-0.20200106085610-5cbc8cc4026c | MIT
+| link:https://github.com/blang/semver[$$github.com/blang/semver$$] | v3.5.1+incompatible | MIT
 | link:https://github.com/bmizerany/perks[$$github.com/bmizerany/perks$$] | v0.0.0-20141205001514-d9a9656a3a4b | MIT
 | link:https://github.com/casbin/casbin[$$github.com/casbin/casbin/v2$$] | v2.1.2 | Apache-2.0
 | link:https://github.com/cenkalti/backoff[$$github.com/cenkalti/backoff$$] | v2.2.1+incompatible | MIT
