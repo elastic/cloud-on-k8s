@@ -24,8 +24,7 @@ type ResourceReporter struct {
 }
 
 // NewResourceReporter returns a new ResourceReporter
-func NewResourceReporter(client client.Client, operatorNs string) ResourceReporter {
-	c := client
+func NewResourceReporter(c client.Client, operatorNs string) ResourceReporter {
 	return ResourceReporter{
 		aggregator: Aggregator{
 			client: c,

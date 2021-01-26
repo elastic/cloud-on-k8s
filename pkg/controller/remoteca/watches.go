@@ -32,7 +32,7 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 	}
 
 	// Watch Secrets that contain remote certificate authorities managed by this controller
-	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, handler.EnqueueRequestsFromMapFunc(newToRequestsFuncFromSecret())); err != nil {
+	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels())); err != nil {
 		return err
 	}
 
@@ -54,9 +54,9 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 	return nil
 }
 
-// newToRequestsFuncFromSecret creates a watch handler function that creates reconcile requests based on the
+// newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
 // labels set on a Secret which contains the remote CA.
-func newToRequestsFuncFromSecret() handler.MapFunc {
+func newRequestsFromMatchedLabels() handler.MapFunc {
 	return func(obj client.Object) []reconcile.Request {
 		labels := obj.GetLabels()
 		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, common.TypeLabelName) {

@@ -56,16 +56,14 @@ func ReconcileService(
 func needsRecreate(expected, reconciled *corev1.Service) bool {
 	applyServerSideValues(expected, reconciled)
 
-	shouldRecreate := false
-
 	// IPFamilies is immutable
 	if expected.Spec.IPFamilies != nil {
 		if len(expected.Spec.IPFamilies) != len(reconciled.Spec.IPFamilies) {
-			shouldRecreate = true
+			return true
 		} else {
 			for i := 0; i < len(expected.Spec.IPFamilies); i++ {
 				if expected.Spec.IPFamilies[i] != reconciled.Spec.IPFamilies[i] {
-					shouldRecreate = true
+					return true
 				}
 			}
 		}
@@ -73,10 +71,10 @@ func needsRecreate(expected, reconciled *corev1.Service) bool {
 
 	// ClusterIP is immutable
 	if expected.Spec.ClusterIP != reconciled.Spec.ClusterIP {
-		shouldRecreate = true
+		return true
 	}
 
-	return shouldRecreate
+	return false
 }
 
 func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
