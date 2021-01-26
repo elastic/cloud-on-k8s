@@ -388,9 +388,6 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	newStatus = associated.AssociationStatusMap(r.AssociationType)
 
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		if err := associated.SetAssociationStatusMap(r.AssociationType, newStatus); err != nil {
-			return err
-		}
 		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
 		}

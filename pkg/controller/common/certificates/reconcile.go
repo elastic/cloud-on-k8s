@@ -17,8 +17,6 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -46,10 +44,6 @@ type Reconciler struct {
 	CertRotation   RotationParams // to requeue a reconciliation before cert expiration
 
 	GarbageCollectSecrets bool // if true, delete secrets if TLS is disabled
-}
-
-func (r Reconciler) OwnerMeta() (metav1.Object, error) {
-	return meta.Accessor(r.Owner)
 }
 
 // ReconcileCAAndHTTPCerts reconciles 3 TLS-related secrets for the given object:
@@ -103,11 +97,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 }
 
 func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
-	ownerMeta, err := r.OwnerMeta()
-	if err != nil {
-		return err
-	}
-	owner := k8s.ExtractNamespacedName(ownerMeta)
+	owner := k8s.ExtractNamespacedName(r.Owner)
 	// remove public certs secret
 	if err := deleteIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: PublicCertsSecretName(r.Namer, owner.Name)},
@@ -128,7 +118,7 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	}
 
 	// remove watches on user-provided certs secret
-	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, ownerMeta.GetName()))
+	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, r.Owner.GetName()))
 
 	return nil
 }
