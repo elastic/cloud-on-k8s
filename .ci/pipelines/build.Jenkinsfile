@@ -118,6 +118,13 @@ pipeline {
                     ],
                     wait: false
 
+                build job: 'cloud-on-k8s-e2e-tests-eks-arm',
+                    parameters: [
+                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                        string(name: 'branch_specifier', value: GIT_COMMIT)
+                    ],
+                    wait: false
+
                 build job: 'cloud-on-k8s-e2e-tests-resilience',
                     parameters: [
                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
