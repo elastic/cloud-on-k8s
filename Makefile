@@ -58,6 +58,9 @@ GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
 # options for 'go test'. for instance, set to "-race" to enable the race checker
 TEST_OPTS ?=
 
+# Set to one of the accepted log verbosity values to change the log level during test runs.
+ECK_TEST_LOG_LEVEL ?=
+
 ## -- Namespaces
 
 # namespace in which the operator is deployed
@@ -131,14 +134,14 @@ reattach-pv:
 ## -- tests
 
 unit: clean
-	go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(ECK_TEST_LOG_LEVEL) go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 unit-xml: clean
 	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 integration: GO_TAGS += integration
 integration: clean generate-crds
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(ECK_TEST_LOG_LEVEL) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean generate-crds
@@ -447,7 +450,7 @@ e2e-generate-xml:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
+	ECK_TEST_LOG_LEVEL=$(ECK_TEST_LOG_LEVEL) go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
