@@ -15,6 +15,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.2
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -43,6 +44,7 @@ require (
 	go.elastic.co/apm v1.8.0
 	go.elastic.co/apm/module/apmelasticsearch v1.8.0
 	go.uber.org/automaxprocs v1.3.0
+	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
