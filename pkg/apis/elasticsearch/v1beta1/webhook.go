@@ -7,12 +7,12 @@ package v1beta1
 import (
 	"errors"
 
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -24,7 +24,7 @@ func (es *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-var eslog = logf.Log.WithName("es-validation")
+var eslog = ulog.Log.WithName("es-validation")
 
 var _ webhook.Validator = &Elasticsearch{}
 

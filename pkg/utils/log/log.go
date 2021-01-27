@@ -34,6 +34,8 @@ const (
 	testLogLevelEnvVar = "ECK_TEST_LOG_LEVEL"
 )
 
+var Log = crlog.Log
+
 func init() {
 	// Introduced mainly as a workaround for a controller-runtime bug.
 	// https://github.com/kubernetes-sigs/controller-runtime/issues/1359#issuecomment-767413330

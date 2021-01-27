@@ -4,9 +4,9 @@
 
 package license
 
-import logf "sigs.k8s.io/controller-runtime/pkg/log"
+import ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 
-var log = logf.Log.WithName("license")
+var log = ulog.Log.WithName("license")
 
 const (
 	// FileName is the name used in the license secret to point to the license data.

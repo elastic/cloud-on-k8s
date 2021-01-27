@@ -20,11 +20,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 	timestampFieldName = "timestamp"
 )
 
-var log = logf.Log.WithName("usage")
+var log = ulog.Log.WithName("usage")
 
 type ECKTelemetry struct {
 	ECK ECK `json:"eck"`

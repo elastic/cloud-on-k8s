@@ -10,12 +10,12 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -26,7 +26,7 @@ const (
 	webhookPath = "/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch"
 )
 
-var eslog = logf.Log.WithName("es-validation")
+var eslog = ulog.Log.WithName("es-validation")
 
 func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool) {
 	wh := &validatingWebhook{

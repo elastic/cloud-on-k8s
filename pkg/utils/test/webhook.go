@@ -18,6 +18,7 @@ import (
 	"time"
 
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,11 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-var log = logf.Log.WithName("test-webhook")
+var log = ulog.Log.WithName("test-webhook")
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook
 type ValidationWebhookTestCase struct {

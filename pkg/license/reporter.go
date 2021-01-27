@@ -7,14 +7,14 @@ package license
 import (
 	"time"
 
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ResourceReporterFrequency defines the reporting frequency of the resource reporter
 const ResourceReporterFrequency = 2 * time.Minute
 
-var log = logf.Log.WithName("resource")
+var log = ulog.Log.WithName("resource")
 
 // ResourceReporter aggregates resources of all Elastic components managed by the operator
 // and reports them in a config map in the form of licensing information
