@@ -21,7 +21,7 @@ var errNodeRolesNotSet = errors.New("node.roles must be set")
 
 // -- Elasticsearch Autoscaling API structures
 
-// DeciderSettings allows the user to tweak autoscaling deciders.
+// DeciderSettings allow the user to tweak autoscaling deciders.
 // The map data structure complies with the <key,value> format expected by Elasticsearch.
 // +kubebuilder:object:generate=false
 type DeciderSettings map[string]string
@@ -31,7 +31,7 @@ type DeciderSettings map[string]string
 type AutoscalingPolicy struct {
 	// An autoscaling policy must target a unique set of roles.
 	Roles []string `json:"roles,omitempty"`
-	// Deciders allows the user to override default settings for autoscaling deciders.
+	// Deciders allow the user to override default settings for autoscaling deciders.
 	Deciders map[string]DeciderSettings `json:"deciders,omitempty"`
 }
 
@@ -68,17 +68,19 @@ type AutoscalingPolicySpec struct {
 }
 
 // +kubebuilder:object:generate=false
-// AutoscalingResources models the limits, submitted by the user, for the supported resources in an autoscaling policy.
+// AutoscalingResources model the limits, submitted by the user, for the supported resources in an autoscaling policy.
 // Only the node count range is mandatory. For other resources, a limit range is required only
 // if the Elasticsearch autoscaling capacity API returns a requirement for a given resource.
 // For example, the memory limit range is only required if the autoscaling API response contains a memory requirement.
 // If there is no limit range for a resource, and if that resource is not mandatory, then the resources in the NodeSets
 // managed by the autoscaling policy are left untouched.
 type AutoscalingResources struct {
-	CPU       *QuantityRange `json:"cpu,omitempty"`
-	Memory    *QuantityRange `json:"memory,omitempty"`
-	Storage   *QuantityRange `json:"storage,omitempty"`
-	NodeCount CountRange     `json:"nodeCount"`
+	CPU     *QuantityRange `json:"cpu,omitempty"`
+	Memory  *QuantityRange `json:"memory,omitempty"`
+	Storage *QuantityRange `json:"storage,omitempty"`
+
+	// NodeCount is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
+	NodeCount CountRange `json:"nodeCount"`
 }
 
 // QuantityRange models a resource limit range for resources which can be expressed with resource.Quantity.
@@ -92,7 +94,6 @@ type QuantityRange struct {
 	RequestsToLimitsRatio *float64 `json:"requestsToLimitsRatio"`
 }
 
-// CountRange is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
 // +kubebuilder:object:generate=false
 type CountRange struct {
 	// Min represents the minimum number of nodes in a tier.
@@ -143,16 +144,16 @@ func rolesMatch(roles1, roles2 []string) bool {
 	if len(roles1) != len(roles2) {
 		return false
 	}
-	rolesInPolicy := set.Make(roles1...)
-	for _, role := range roles2 {
-		if !rolesInPolicy.Has(role) {
+	rolesInRoles1 := set.Make(roles1...)
+	for _, roleInRoles2 := range roles2 {
+		if !rolesInRoles1.Has(roleInRoles2) {
 			return false
 		}
 	}
 	return true
 }
 
-// AutoscaledNodeSets holds the nodeSets managed by an autoscaling policy, indexed by the autoscaling policy name.
+// AutoscaledNodeSets holds the node sets managed by an autoscaling policy, indexed by the autoscaling policy name.
 // +kubebuilder:object:generate=false
 type AutoscaledNodeSets map[string]NodeSetList
 
