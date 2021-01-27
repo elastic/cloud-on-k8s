@@ -31,7 +31,6 @@ pipeline {
                 }
                 stage('Run unit and integration tests') {
                     steps {
-                        sh '.ci/setenvconfig pr'
                         sh 'make -C .ci TARGET=ci ci'
                     }
                 }
