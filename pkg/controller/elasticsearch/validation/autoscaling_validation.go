@@ -100,7 +100,8 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 		}
 	}
 
-	// Only one volume claim is supported when a NodeSet is managed by the autoscaling controller.
+	// Data deciders do not support multiple data paths, as a consequence only one volume claim is supported when a NodeSet
+	// is managed by the autoscaling controller.
 	for i, nodeSet := range autoscalingSpecification.Elasticsearch.Spec.NodeSets {
 		if onlyOneVolumeClaimTemplate, _ := HasAtMostOnePersistentVolumeClaim(nodeSet); !onlyOneVolumeClaimTemplate {
 			errs = append(

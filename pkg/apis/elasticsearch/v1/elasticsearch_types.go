@@ -197,6 +197,7 @@ type NodeSet struct {
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// Count of Elasticsearch nodes to deploy.
+	// If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller.
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
