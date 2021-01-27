@@ -8,8 +8,102 @@ import (
 	"reflect"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
+
+func TestAutoscalingSpec_GetAutoscaledNodeSets(t *testing.T) {
+	type fields struct {
+		AutoscalingPolicySpecs AutoscalingPolicySpecs
+		Elasticsearch          Elasticsearch
+	}
+	tests := []struct {
+		name   string
+		fields fields
+
+		// policy name -> node sets
+		want map[string][]string
+		err  *NodeSetConfigError
+	}{
+		{
+			name: "Overlapping roles",
+			fields: fields{
+				AutoscalingPolicySpecs: []AutoscalingPolicySpec{
+					{
+						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data_hot_content", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data_hot", "data_content"}}},
+					},
+					{
+						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data_warm_content", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data_content", "data_warm"}}},
+					},
+					{
+						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"ml"}}},
+					},
+				},
+				Elasticsearch: Elasticsearch{
+					Spec: ElasticsearchSpec{
+						Version: "7.11.0",
+						NodeSets: []NodeSet{
+							{
+								Name: "nodeset-hot-content-1",
+								Config: &commonv1.Config{Data: map[string]interface{}{
+									"node.roles": []string{"data_hot", "data_content"},
+								}},
+							},
+							{
+								Name: "nodeset-warm-content",
+								Config: &commonv1.Config{Data: map[string]interface{}{
+									"node.roles": []string{"data_warm", "data_content"},
+								}},
+							},
+							{
+								Name: "nodeset-hot-content-2",
+								Config: &commonv1.Config{Data: map[string]interface{}{
+									"node.roles": []string{"data_hot", "data_content"},
+								}},
+							},
+							{
+								Name: "nodeset-ml",
+								Config: &commonv1.Config{Data: map[string]interface{}{
+									"node.roles": []string{"ml"},
+								}},
+							},
+							{
+								Name: "masters",
+								Config: &commonv1.Config{Data: map[string]interface{}{
+									"node.roles": []string{"master"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: map[string][]string{
+				"data_hot_content":  {"nodeset-hot-content-1", "nodeset-hot-content-2"},
+				"data_warm_content": {"nodeset-warm-content"},
+				"ml":                {"nodeset-ml"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			as := AutoscalingSpec{
+				AutoscalingPolicySpecs: tt.fields.AutoscalingPolicySpecs,
+				Elasticsearch:          tt.fields.Elasticsearch,
+			}
+			got, err := as.GetAutoscaledNodeSets()
+			assert.Equal(t, len(tt.want), len(got))
+			for wantPolicy, wantNodeSets := range tt.want {
+				gotNodeSets, hasNodeSets := got[wantPolicy]
+				assert.True(t, hasNodeSets, "node set list was expected")
+				assert.ElementsMatch(t, wantNodeSets, gotNodeSets.Names())
+			}
+			if !reflect.DeepEqual(err, tt.err) {
+				t.Errorf("AutoscalingSpec.GetAutoscaledNodeSets() err = %v, want %v", err, tt.err)
+			}
+		})
+	}
+}
 
 func TestAutoscalingSpec_GetMLNodesSettings(t *testing.T) {
 	type fields struct {

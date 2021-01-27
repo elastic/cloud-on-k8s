@@ -11,6 +11,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -128,11 +129,11 @@ func (aps AutoscalingPolicySpec) IsStorageDefined() bool {
 
 // findByRoles returns the autoscaling specification associated with a set of roles or nil if not found.
 func (as AutoscalingSpec) findByRoles(roles []string) *AutoscalingPolicySpec {
-	for _, rp := range as.AutoscalingPolicySpecs {
-		if !rolesMatch(rp.Roles, roles) {
+	for _, autoscalingPolicySpec := range as.AutoscalingPolicySpecs {
+		if !rolesMatch(autoscalingPolicySpec.Roles, roles) {
 			continue
 		}
-		return &rp
+		return &autoscalingPolicySpec
 	}
 	return nil
 }
@@ -210,7 +211,11 @@ func (as AutoscalingSpec) GetMLNodesSettings() (nodes int32, maxMemory string) {
 
 // GetAutoscalingSpecFor retrieves the autoscaling spec associated to a NodeSet or nil if none.
 func (as AutoscalingSpec) GetAutoscalingSpecFor(nodeSet NodeSet) (*AutoscalingPolicySpec, error) {
-	roles, err := getNodeSetRoles(as.Elasticsearch, nodeSet)
+	v, err := version.Parse(as.Elasticsearch.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	roles, err := getNodeSetRoles(*v, nodeSet)
 	if err != nil {
 		return nil, err
 	}
@@ -218,13 +223,9 @@ func (as AutoscalingSpec) GetAutoscalingSpecFor(nodeSet NodeSet) (*AutoscalingPo
 }
 
 // getNodeSetRoles attempts to parse the roles specified in the configuration of a given nodeSet.
-func getNodeSetRoles(es Elasticsearch, nodeSet NodeSet) ([]string, error) {
-	v, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
+func getNodeSetRoles(v version.Version, nodeSet NodeSet) ([]string, error) {
 	cfg := ElasticsearchSettings{}
-	if err := UnpackConfig(nodeSet.Config, *v, &cfg); err != nil {
+	if err := UnpackConfig(nodeSet.Config, v, &cfg); err != nil {
 		return nil, err
 	}
 	if cfg.Node == nil {
