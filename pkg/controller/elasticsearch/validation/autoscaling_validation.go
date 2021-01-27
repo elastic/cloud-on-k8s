@@ -95,7 +95,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 				errs,
 				field.Invalid(autoscalingSpecPath(i, "roles"),
 					policy.Roles,
-					"roles must be set in at least one nodeSet"),
+					"roles must be used in at least one nodeSet"),
 			)
 		}
 	}
@@ -228,7 +228,7 @@ func validateQuantities(
 		return errs
 	}
 
-	if !minQuantity.IsZero() && !(quantityRange.Min.Cmp(minQuantity) >= 0) {
+	if !minQuantity.IsZero() && quantityRange.Min.Cmp(minQuantity) < 0 {
 		quantityErrs = append(
 			quantityErrs,
 			field.Required(
@@ -238,7 +238,7 @@ func validateQuantities(
 	}
 
 	// A quantity must always be greater than 0.
-	if minQuantity.IsZero() && !(quantityRange.Min.Value() > 0) {
+	if !(quantityRange.Min.Value() > 0) {
 		quantityErrs = append(
 			quantityErrs,
 			field.Required(

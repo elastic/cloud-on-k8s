@@ -96,7 +96,7 @@ func TestResourcePolicies_Validate(t *testing.T) {
 		{
 			name:          "Autoscaling policy with no NodeSet",
 			wantError:     true,
-			expectedError: "Invalid value: []string{\"ml\"}: roles must be set in at least one nodeSet",
+			expectedError: "Invalid value: []string{\"ml\"}: roles must be used in at least one nodeSet",
 			nodeSets:      map[string][]string{"nodeset-data-1": {"data"}, "nodeset-data-2": {"data"}},
 			autoscalingSpec: `
 {
