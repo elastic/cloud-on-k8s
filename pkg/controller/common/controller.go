@@ -26,6 +26,7 @@ func NewController(mgr manager.Manager, name string, r reconcile.Reconciler, p o
 // NewReconciliationContext increments iteration, creates an apm transaction and initiates the logger. Returns context
 // with apm transaction metadata and configured logger.
 func NewReconciliationContext(
+	ctx context.Context,
 	iteration *uint64,
 	tracer *apm.Tracer,
 	controllerName, nameField string,
@@ -33,13 +34,14 @@ func NewReconciliationContext(
 ) context.Context {
 	it := atomic.AddUint64(iteration, 1)
 	itString := strconv.FormatUint(it, 10)
-	ctx := tracing.NewContextTransaction(
+	newCtx := tracing.NewContextTransaction(
+		ctx,
 		tracer,
 		controllerName,
 		request.String(),
 		map[string]string{"iteration": itString})
 	return logconf.InitInContext(
-		ctx,
+		newCtx,
 		controllerName,
 		"iteration", itString,
 		"namespace", request.Namespace,

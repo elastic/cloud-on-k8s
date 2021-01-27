@@ -5,15 +5,15 @@
 package driver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
@@ -27,27 +27,27 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 		{
 			name: "no pods to upgrade",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetB", Ready: true}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetB", Ready: true, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: nil,
 			wantAttempted: false,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetB", Ready: true}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetB", Ready: true, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "pods bootlooping in all StatefulSets, upgrade them all",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted:     true,
 			wantRemainingPods: nil,
@@ -55,31 +55,31 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 		{
 			name: "all pods bootlooping in StatefulSet B, upgrade them",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted: true,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "all pods pending in all StatefulSets, upgrade them all",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted:     true,
 			wantRemainingPods: nil,
@@ -87,71 +87,71 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 		{
 			name: "all pods pending in StatefulSet A, upgrade them",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning}.Build(),
+				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted: true,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning}.Build(),
+				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "1/2 pod to upgrade",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted: true,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "at least one pod ready, don't upgrade any",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true}.Build(),
-				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true}.Build(),
-				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted: false,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true}.Build(),
-				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "at least one pod not bootlooping, don't restart any",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0}.Build(),
-				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0}.Build(),
-				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 			wantAttempted: false,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
-				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0}.Build(),
-				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
 		},
 	}
@@ -161,7 +161,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			for i := range tt.actualPods {
 				runtimeObjs = append(runtimeObjs, &tt.actualPods[i])
 			}
-			k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
+			k8sClient := k8s.NewFakeClient(runtimeObjs...)
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client:       k8sClient,
@@ -173,7 +173,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var pods corev1.PodList
-			require.NoError(t, k8sClient.List(&pods))
+			require.NoError(t, k8sClient.List(context.Background(), &pods))
 			require.ElementsMatch(t, tt.wantRemainingPods, pods.Items)
 		})
 	}

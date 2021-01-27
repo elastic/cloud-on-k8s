@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -41,7 +41,7 @@ const (
 	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
 )
 
-var log = logf.Log.WithName(name)
+var log = ulog.Log.WithName(name)
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -56,7 +56,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileKibana{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
@@ -129,9 +129,9 @@ type ReconcileKibana struct {
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
-func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.params.Tracer, request.NamespacedName, "kibana")
+	tx, ctx := tracing.NewTransaction(ctx, r.params.Tracer, request.NamespacedName, "kibana")
 	defer tracing.EndTransaction(tx)
 
 	// retrieve the kibana object

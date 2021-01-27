@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -12,10 +13,6 @@ import (
 	"reflect"
 	"sort"
 	"time"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -26,6 +23,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -219,7 +219,7 @@ func getTransportCert(k *test.K8sClient, esNamespace, esName, statefulSetName, p
 		Namespace: esNamespace,
 		Name:      statefulSetName + "-es-transport-certs",
 	}
-	if err = k.Client.Get(key, &secret); err != nil {
+	if err = k.Client.Get(context.Background(), key, &secret); err != nil {
 		return nil, nil, err
 	}
 	caCertBytes, exists := secret.Data[certificates.CAFileName]
@@ -297,7 +297,7 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 			}
 			// check reported version in the resource status
 			var es esv1.Elasticsearch
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
 				return err
 			}
 			if es.Status.Version != b.Elasticsearch.Spec.Version {
@@ -320,7 +320,7 @@ func CheckClusterHealth(b Builder, k *test.K8sClient) test.Step {
 
 func clusterHealthGreen(b Builder, k *test.K8sClient) error {
 	var es esv1.Elasticsearch
-	err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+	err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 	if err != nil {
 		return err
 	}
@@ -410,7 +410,7 @@ func CheckClusterUUIDAnnotation(es esv1.Elasticsearch, k *test.K8sClient) test.S
 		Name: "Cluster should be annotated with its UUID once bootstrapped",
 		Test: test.Eventually(func() error {
 			var retrievedES esv1.Elasticsearch
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&es), &retrievedES); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&es), &retrievedES); err != nil {
 				return err
 			}
 			if !bootstrap.AnnotatedForBootstrap(retrievedES) {
@@ -442,7 +442,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 		// retrieve the corresponding StatefulSet
 		var statefulSet appsv1.StatefulSet
-		if err := k.Client.Get(
+		if err := k.Client.Get(context.Background(),
 			types.NamespacedName{
 				Namespace: b.Elasticsearch.Namespace,
 				Name:      esv1.StatefulSet(b.Elasticsearch.Name, nodeSet.Name),

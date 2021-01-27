@@ -103,19 +103,19 @@ func TestRetrieveActualPVCs(t *testing.T) {
 	}{
 		{
 			name:        "return expected PVCs for the StatefulSet",
-			k8sClient:   k8s.WrappedFakeClient(asRuntimeObjs(pvcs)...),
+			k8sClient:   k8s.NewFakeClient(asRuntimeObjs(pvcs)...),
 			statefulSet: sset,
 			want:        expected,
 		},
 		{
 			name:        "some PVCs are missing: return what can be returned",
-			k8sClient:   k8s.WrappedFakeClient(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}}),
+			k8sClient:   k8s.NewFakeClient(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}}),
 			statefulSet: sset,
 			want:        map[string][]corev1.PersistentVolumeClaim{"claim1": {{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}}}},
 		},
 		{
 			name:        "extra PVCs exist but are not expected: don't return them",
-			k8sClient:   k8s.WrappedFakeClient(asRuntimeObjs(append(pvcs, corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-3"}}))...),
+			k8sClient:   k8s.NewFakeClient(asRuntimeObjs(append(pvcs, corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-3"}}))...),
 			statefulSet: sset,
 			want:        expected,
 		},

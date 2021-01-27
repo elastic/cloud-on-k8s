@@ -6,7 +6,6 @@ package observer
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io/ioutil"
 	"net/http"
@@ -52,9 +51,9 @@ func TestObserver_retrieveState(t *testing.T) {
 		esClient:      fakeEsClient,
 		onObservation: onObservation,
 	}
-	observer.retrieveState(context.Background())
+	observer.retrieveState()
 	require.Equal(t, int32(1), atomic.LoadInt32(&counter))
-	observer.retrieveState(context.Background())
+	observer.retrieveState()
 	require.Equal(t, int32(2), atomic.LoadInt32(&counter))
 }
 
@@ -66,7 +65,7 @@ func TestObserver_retrieveState_nilFunction(t *testing.T) {
 		onObservation: nilFunc,
 	}
 	// should not panic
-	observer.retrieveState(context.Background())
+	observer.retrieveState()
 }
 
 func TestNewObserver(t *testing.T) {
@@ -89,7 +88,7 @@ func TestObserver_Stop(t *testing.T) {
 	}
 	observer := createAndRunTestObserver(onObservation)
 	// force at least one observation
-	observer.retrieveState(context.Background())
+	observer.retrieveState()
 	// stop the observer
 	observer.Stop()
 	// should be safe to call multiple times

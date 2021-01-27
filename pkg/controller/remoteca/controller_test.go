@@ -434,13 +434,13 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
 			r := &ReconcileRemoteCa{
-				Client:         k8s.WrappedFakeClient(tt.fields.clusters...),
+				Client:         k8s.NewFakeClient(tt.fields.clusters...),
 				accessReviewer: tt.fields.accessReviewer,
 				watches:        w,
 				licenseChecker: tt.fields.licenseChecker,
 				recorder:       record.NewFakeRecorder(10),
 			}
-			got, err := r.Reconcile(tt.args.request)
+			got, err := r.Reconcile(context.Background(), tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileRemoteCa.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -451,7 +451,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 			// Check that expected secrets are here
 			for _, expectedSecret := range tt.expectedSecrets {
 				var actualSecret corev1.Secret
-				assert.NoError(t, r.Client.Get(types.NamespacedName{Namespace: expectedSecret.Namespace, Name: expectedSecret.Name}, &actualSecret))
+				assert.NoError(t, r.Client.Get(context.Background(), types.NamespacedName{Namespace: expectedSecret.Namespace, Name: expectedSecret.Name}, &actualSecret))
 				// Compare content
 				actualCa, ok := actualSecret.Data[certificates.CAFileName]
 				assert.True(t, ok)
@@ -463,7 +463,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 			// Check that unexpected secrets does not exist
 			for _, unexpectedSecret := range tt.unexpectedSecrets {
 				var actualSecret corev1.Secret
-				err := r.Client.Get(types.NamespacedName{Namespace: unexpectedSecret.Namespace, Name: unexpectedSecret.Name}, &actualSecret)
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: unexpectedSecret.Namespace, Name: unexpectedSecret.Name}, &actualSecret)
 				assert.True(t, apierrors.IsNotFound(err))
 			}
 		})

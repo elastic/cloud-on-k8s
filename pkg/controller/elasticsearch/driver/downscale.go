@@ -153,7 +153,7 @@ func attemptDownscale(
 // headless service, configuration and transport certificates secret.
 func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
-	err := k8sClient.Delete(&headlessSvc)
+	err := k8sClient.Delete(context.Background(), &headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -169,7 +169,7 @@ func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, sta
 	}
 
 	ssetLogger(statefulSet).Info("Deleting statefulset")
-	return k8sClient.Delete(&statefulSet)
+	return k8sClient.Delete(context.Background(), &statefulSet)
 }
 
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes
@@ -228,7 +228,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 	}
 
 	nodespec.UpdateReplicas(&downscale.statefulSet, &downscale.targetReplicas)
-	if err := downscaleCtx.k8sClient.Update(&downscale.statefulSet); err != nil {
+	if err := downscaleCtx.k8sClient.Update(context.Background(), &downscale.statefulSet); err != nil {
 		return err
 	}
 

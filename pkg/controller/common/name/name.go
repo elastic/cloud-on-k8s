@@ -9,10 +9,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/util/validation"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 	MaxSuffixLength = validation.LabelValueMaxLength - MaxResourceNameLength
 )
 
-var log = logf.Log.WithName("name")
+var log = ulog.Log.WithName("name")
 
 // nameLengthError is an error type for names exceeding the allowed length.
 type nameLengthError struct {

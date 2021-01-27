@@ -5,8 +5,7 @@
 package transport
 
 import (
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -14,6 +13,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -73,7 +74,7 @@ func ReconcileOrRetrieveCA(
 	}
 
 	// Garbage collect the self-signed CA secret which might be left over from an earlier revision on a best effort basis.
-	err = driver.K8sClient().Delete(&corev1.Secret{
+	err = driver.K8sClient().Delete(context.Background(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
 			Namespace: esNSN.Namespace,

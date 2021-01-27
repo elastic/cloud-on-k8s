@@ -7,6 +7,7 @@
 package apm
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -130,9 +131,9 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
+					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
 					apm.Spec.ElasticsearchRef.Namespace = "xxxx"
-					require.NoError(t, k.Client.Update(&apm))
+					require.NoError(t, k.Client.Update(context.Background(), &apm))
 				},
 			},
 			test.Step{

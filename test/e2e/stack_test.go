@@ -7,10 +7,9 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"testing"
-
-	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -28,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // TestVersionUpgradeOrdering deploys the entire stack, with resources associated together.
@@ -178,7 +178,7 @@ func ref(ref types.NamespacedName) refVersion {
 
 func (s *StackResourceVersions) retrieveElasticsearch(c k8s.Client) error {
 	var es esv1.Elasticsearch
-	if err := c.Get(s.Elasticsearch.ref, &es); err != nil {
+	if err := c.Get(context.Background(), s.Elasticsearch.ref, &es); err != nil {
 		return err
 	}
 	s.Elasticsearch.version = es.Status.Version
@@ -187,7 +187,7 @@ func (s *StackResourceVersions) retrieveElasticsearch(c k8s.Client) error {
 
 func (s *StackResourceVersions) retrieveKibana(c k8s.Client) error {
 	var kb kbv1.Kibana
-	if err := c.Get(s.Kibana.ref, &kb); err != nil {
+	if err := c.Get(context.Background(), s.Kibana.ref, &kb); err != nil {
 		return err
 	}
 	s.Kibana.version = kb.Status.Version
@@ -196,7 +196,7 @@ func (s *StackResourceVersions) retrieveKibana(c k8s.Client) error {
 
 func (s *StackResourceVersions) retrieveApmServer(c k8s.Client) error {
 	var as apmv1.ApmServer
-	if err := c.Get(s.ApmServer.ref, &as); err != nil {
+	if err := c.Get(context.Background(), s.ApmServer.ref, &as); err != nil {
 		return err
 	}
 	s.ApmServer.version = as.Status.Version
@@ -205,7 +205,7 @@ func (s *StackResourceVersions) retrieveApmServer(c k8s.Client) error {
 
 func (s *StackResourceVersions) retrieveEnterpriseSearch(c k8s.Client) error {
 	var ent entv1beta1.EnterpriseSearch
-	if err := c.Get(s.EnterpriseSearch.ref, &ent); err != nil {
+	if err := c.Get(context.Background(), s.EnterpriseSearch.ref, &ent); err != nil {
 		return err
 	}
 	s.EnterpriseSearch.version = ent.Status.Version
@@ -214,7 +214,7 @@ func (s *StackResourceVersions) retrieveEnterpriseSearch(c k8s.Client) error {
 
 func (s *StackResourceVersions) retrieveBeat(c k8s.Client) error {
 	var beat beatv1beta1.Beat
-	if err := c.Get(s.Beat.ref, &beat); err != nil {
+	if err := c.Get(context.Background(), s.Beat.ref, &beat); err != nil {
 		return err
 	}
 	s.Beat.version = beat.Status.Version

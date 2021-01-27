@@ -17,8 +17,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -393,8 +393,8 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 // -- Helper functions
 
-func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.Elasticsearch}
+func (b Builder) RuntimeObjects() []client.Object {
+	return []client.Object{&b.Elasticsearch}
 }
 
 func (b Builder) TriggersRollingUpgrade() bool {

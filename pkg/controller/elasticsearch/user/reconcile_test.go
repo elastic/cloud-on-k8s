@@ -20,12 +20,12 @@ import (
 )
 
 func TestReconcileUsersAndRoles(t *testing.T) {
-	c := k8s.WrappedFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
+	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
 	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
-	err = c.Get(RolesFileRealmSecretKey(sampleEsWithAuth), &reconciledSecret)
+	err = c.Get(context.Background(), RolesFileRealmSecretKey(sampleEsWithAuth), &reconciledSecret)
 	require.NoError(t, err)
 	require.Len(t, reconciledSecret.Data, 3)
 	require.NotEmpty(t, reconciledSecret.Data[RolesFile])
@@ -34,7 +34,7 @@ func TestReconcileUsersAndRoles(t *testing.T) {
 }
 
 func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
-	c := k8s.WrappedFakeClient()
+	c := k8s.NewFakeClient()
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	roles := RolesFileContent{"click_admins": []byte(`run_as: [ 'clicks_watcher_1' ]
   cluster: [ 'monitor' ]
@@ -54,7 +54,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 	require.NoError(t, err)
 	// retrieve reconciled secret
 	var secret corev1.Secret
-	err = c.Get(types.NamespacedName{Namespace: es.Namespace, Name: esv1.RolesAndFileRealmSecret(es.Name)}, &secret)
+	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.RolesAndFileRealmSecret(es.Name)}, &secret)
 	require.NoError(t, err)
 	require.Len(t, secret.Data, 3)
 	require.Contains(t, string(secret.Data[RolesFile]), "click_admins")
@@ -63,7 +63,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 }
 
 func Test_aggregateFileRealm(t *testing.T) {
-	c := k8s.WrappedFakeClient(sampleUserProvidedFileRealmSecrets...)
+	c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
 	fileRealm, controllerUser, err := aggregateFileRealm(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
@@ -72,7 +72,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 }
 
 func Test_aggregateRoles(t *testing.T) {
-	c := k8s.WrappedFakeClient(sampleUserProvidedRolesSecret...)
+	c := k8s.NewFakeClient(sampleUserProvidedRolesSecret...)
 	roles, err := aggregateRoles(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.Len(t, roles, 49)

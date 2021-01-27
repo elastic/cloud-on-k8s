@@ -36,7 +36,7 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -70,7 +70,7 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -103,7 +103,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -122,7 +122,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -155,7 +155,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
 		require.NoError(t, err)
 		want := LicensingInfo{
 			TotalManagedMemory:      214.754,
@@ -184,7 +184,7 @@ func TestGet(t *testing.T) {
 				},
 			},
 		}
-		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
 		require.NoError(t, err)
 		want := LicensingInfo{
 			TotalManagedMemory:      204.804,
@@ -216,7 +216,7 @@ func Test_Start(t *testing.T) {
 		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 40}}}}
 	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
 	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
-	k8sClient := k8s.FakeClient(&es, &kb, &apm)
+	k8sClient := k8s.NewFakeClient(&es, &kb, &apm)
 	refreshPeriod := 1 * time.Second
 	waitFor := 10 * refreshPeriod
 	tick := refreshPeriod / 2
@@ -284,7 +284,7 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 	// start a trial
 	trialState, err := commonlicense.NewTrialState()
 	require.NoError(t, err)
-	wrappedClient := k8s.WrapClient(k8sClient)
+	wrappedClient := k8sClient
 	licenseNSN := types.NamespacedName{
 		Namespace: operatorNs,
 		Name:      "eck-trial",
@@ -299,7 +299,7 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 	status, err := commonlicense.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
 	require.NoError(t, err)
 	// persist status
-	require.NoError(t, wrappedClient.Create(&status))
+	require.NoError(t, wrappedClient.Create(context.Background(), &status))
 	// persist updated license
 	require.NoError(t, commonlicense.UpdateEnterpriseLicense(wrappedClient, licenseSecret, license))
 }

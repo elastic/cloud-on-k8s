@@ -119,7 +119,7 @@ func TestReconcileClusterUUID1(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(tt.args.cluster)
+			k8sClient := k8s.NewFakeClient(tt.args.cluster)
 			requeue, err := ReconcileClusterUUID(context.Background(), k8sClient, tt.args.cluster, tt.args.esClient, tt.args.esReachable)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -129,7 +129,7 @@ func TestReconcileClusterUUID1(t *testing.T) {
 			require.Equal(t, tt.wantRequeue, requeue)
 			// get back the cluster
 			var updatedCluster esv1.Elasticsearch
-			err = k8sClient.Get(k8s.ExtractNamespacedName(tt.args.cluster), &updatedCluster)
+			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(tt.args.cluster), &updatedCluster)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAnnotation, updatedCluster.Annotations[ClusterUUIDAnnotationName])
 		})

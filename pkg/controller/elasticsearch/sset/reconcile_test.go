@@ -5,8 +5,15 @@
 package sset
 
 import (
+	"context"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -15,14 +22,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
@@ -65,21 +64,21 @@ func TestReconcileStatefulSet(t *testing.T) {
 	}{
 		{
 			name:                    "create new sset",
-			client:                  func() k8s.Client { return k8s.WrappedFakeClient() },
+			client:                  func() k8s.Client { return k8s.NewFakeClient() },
 			expected:                func() appsv1.StatefulSet { return ssetSample },
 			want:                    func() appsv1.StatefulSet { return ssetSample },
 			wantExpectationsUpdated: false,
 		},
 		{
 			name:                    "no update when expected == actual",
-			client:                  func() k8s.Client { return k8s.WrappedFakeClient(&ssetSample) },
+			client:                  func() k8s.Client { return k8s.NewFakeClient(&ssetSample) },
 			expected:                func() appsv1.StatefulSet { return ssetSample },
 			want:                    func() appsv1.StatefulSet { return ssetSample },
 			wantExpectationsUpdated: false,
 		},
 		{
 			name:                    "update sset with different template hash",
-			client:                  func() k8s.Client { return k8s.WrappedFakeClient(&ssetSample) },
+			client:                  func() k8s.Client { return k8s.NewFakeClient(&ssetSample) },
 			expected:                func() appsv1.StatefulSet { return updatedSset },
 			want:                    func() appsv1.StatefulSet { return updatedSset },
 			wantExpectationsUpdated: true,
@@ -89,7 +88,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			client: func() k8s.Client {
 				ssetSampleWithMissingLabel := ssetSample.DeepCopy()
 				ssetSampleWithMissingLabel.Labels = map[string]string{}
-				return k8s.WrappedFakeClient(ssetSampleWithMissingLabel)
+				return k8s.NewFakeClient(ssetSampleWithMissingLabel)
 			},
 			expected:                func() appsv1.StatefulSet { return ssetSample },
 			want:                    func() appsv1.StatefulSet { return ssetSample },
@@ -102,7 +101,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 				// simulate annotations and labels manually set by the user
 				ssetSampleWithExtraMetadata.Annotations = map[string]string{"a": "b"}
 				ssetSampleWithExtraMetadata.Labels["a"] = "b"
-				return k8s.WrappedFakeClient(ssetSampleWithExtraMetadata)
+				return k8s.NewFakeClient(ssetSampleWithExtraMetadata)
 			},
 			expected: func() appsv1.StatefulSet { return updatedSset },
 			want: func() appsv1.StatefulSet {
@@ -129,7 +128,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			comparison.AssertEqual(t, &want, &returned)
 			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
-			err = client.Get(k8s.ExtractNamespacedName(&want), &retrieved)
+			err = client.Get(context.Background(), k8s.ExtractNamespacedName(&want), &retrieved)
 			require.NoError(t, err)
 			comparison.AssertEqual(t, &want, &retrieved)
 

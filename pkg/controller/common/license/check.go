@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -42,7 +43,7 @@ func (lc *checker) publicKeyFor(l EnterpriseLicense) ([]byte, error) {
 	}
 
 	var signatureSec corev1.Secret
-	err := lc.k8sClient.Get(types.NamespacedName{
+	err := lc.k8sClient.Get(context.Background(), types.NamespacedName{
 		Namespace: lc.operatorNamespace,
 		Name:      TrialStatusSecretKey,
 	}, &signatureSec)

@@ -5,6 +5,7 @@
 package reconciler
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -62,31 +64,31 @@ func TestReconcileSecret(t *testing.T) {
 	}{
 		{
 			name:     "actual object does not exist: create the expected one",
-			c:        k8s.WrappedFakeClient(),
+			c:        k8s.NewFakeClient(),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
 			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
 		},
 		{
 			name:     "actual matches expected: do nothing",
-			c:        k8s.WrappedFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
+			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
 			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
 		},
 		{
 			name:     "data should be updated",
-			c:        k8s.WrappedFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
+			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
 			expected: createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
 			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations)),
 		},
 		{
 			name:     "label and annotations should be updated",
-			c:        k8s.WrappedFakeClient(withOwnerRef(t, createSecret("s", sampleData, nil, nil))),
+			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, nil, nil))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
 			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
 		},
 		{
 			name: "preserve existing labels and annotations",
-			c: k8s.WrappedFakeClient(withOwnerRef(t, createSecret("s", sampleData,
+			c: k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData,
 				map[string]string{"existing": "existing"}, map[string]string{"existing": "existing"}),
 			)),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
@@ -107,7 +109,7 @@ func TestReconcileSecret(t *testing.T) {
 			require.NoError(t, err)
 
 			var retrieved corev1.Secret
-			err = tt.c.Get(k8s.ExtractNamespacedName(tt.expected), &retrieved)
+			err = tt.c.Get(context.Background(), k8s.ExtractNamespacedName(tt.expected), &retrieved)
 			require.NoError(t, err)
 
 			for _, secret := range []corev1.Secret{got, retrieved} {
@@ -152,35 +154,35 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 	}{
 		{
 			name:      "actual object does not exist: create the expected one",
-			c:         k8s.WrappedFakeClient(),
+			c:         k8s.NewFakeClient(),
 			expected:  sampleSecret,
 			softOwner: softOwner,
 			want:      sampleSecretWithSoftOwnerRef,
 		},
 		{
 			name:      "actual matches expected: do nothing",
-			c:         k8s.WrappedFakeClient(sampleSecretWithSoftOwnerRef),
+			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRef),
 			expected:  sampleSecret,
 			softOwner: softOwner,
 			want:      sampleSecretWithSoftOwnerRef,
 		},
 		{
 			name:      "data should be updated",
-			c:         k8s.WrappedFakeClient(sampleSecretWithSoftOwnerRef),
+			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRef),
 			expected:  createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
 			softOwner: softOwner,
 			want:      createSecret("s", sampleDataUpdated, sampleLabelsWithSoftOwnerRef, sampleAnnotations),
 		},
 		{
 			name:      "label and annotations should be updated",
-			c:         k8s.WrappedFakeClient(createSecret("s", sampleData, nil, nil)),
+			c:         k8s.NewFakeClient(createSecret("s", sampleData, nil, nil)),
 			expected:  sampleSecret,
 			softOwner: softOwner,
 			want:      sampleSecretWithSoftOwnerRef,
 		},
 		{
 			name: "preserve existing labels and annotations",
-			c: k8s.WrappedFakeClient(createSecret("s", sampleData,
+			c: k8s.NewFakeClient(createSecret("s", sampleData,
 				map[string]string{"existing": "existing"}, map[string]string{"existing": "existing"}),
 			),
 			expected:  createSecret("s", sampleData, sampleLabelsWithSoftOwnerRef, sampleAnnotations),
@@ -198,7 +200,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 		},
 		{
 			name:      "remove existing ownerRef, replace with soft owner labels, don't touch other owner regs",
-			c:         k8s.WrappedFakeClient(addOwner(addOwner(sampleSecret, softOwner.Name, softOwner.UID), "unrelated-owner", "unrelated-owner-id")),
+			c:         k8s.NewFakeClient(addOwner(addOwner(sampleSecret, softOwner.Name, softOwner.UID), "unrelated-owner", "unrelated-owner-id")),
 			expected:  sampleSecret,
 			softOwner: softOwner,
 			want:      addOwner(sampleSecretWithSoftOwnerRef, "unrelated-owner", "unrelated-owner-id"),
@@ -210,7 +212,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 			require.NoError(t, err)
 
 			var retrieved corev1.Secret
-			err = tt.c.Get(k8s.ExtractNamespacedName(tt.expected), &retrieved)
+			err = tt.c.Get(context.Background(), k8s.ExtractNamespacedName(tt.expected), &retrieved)
 			require.NoError(t, err)
 
 			for _, secret := range []corev1.Secret{got, retrieved} {
@@ -513,11 +515,11 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.existingSecrets...)
+			c := k8s.NewFakeClient(tt.existingSecrets...)
 			err := GarbageCollectSoftOwnedSecrets(c, tt.deletedOwner, kind)
 			require.NoError(t, err)
 			var retrievedSecrets corev1.SecretList
-			err = c.List(&retrievedSecrets)
+			err = c.List(context.Background(), &retrievedSecrets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantObjs), len(retrievedSecrets.Items))
 			for i := range tt.wantObjs {
@@ -528,7 +530,7 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 }
 
 func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
-	ownerKinds := map[string]runtime.Object{
+	ownerKinds := map[string]client.Object{
 		"Secret": &corev1.Secret{},
 	}
 	tests := []struct {
@@ -582,17 +584,17 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// configmap should still be there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "configmap-name"}, &corev1.ConfigMap{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "configmap-name"}, &corev1.ConfigMap{}))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.runtimeObjs...)
+			c := k8s.NewFakeClient(tt.runtimeObjs...)
 			err := GarbageCollectAllSoftOwnedOrphanSecrets(c, ownerKinds)
 			require.NoError(t, err)
 			var retrievedSecrets corev1.SecretList
-			err = c.List(&retrievedSecrets)
+			err = c.List(context.Background(), &retrievedSecrets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantObjs), len(retrievedSecrets.Items))
 			for i := range tt.wantObjs {

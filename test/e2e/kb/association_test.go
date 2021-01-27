@@ -7,6 +7,7 @@
 package kb
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -87,9 +88,9 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
 					var kb kbv1.Kibana
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb))
+					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb))
 					kb.Spec.ElasticsearchRef.Namespace = "xxxx"
-					require.NoError(t, k.Client.Update(&kb))
+					require.NoError(t, k.Client.Update(context.Background(), &kb))
 				},
 			},
 			test.Step{

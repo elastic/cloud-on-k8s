@@ -123,7 +123,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		r.ent.Annotations = map[string]string{}
 	}
 	r.ent.Annotations[ReadOnlyModeAnnotationName] = "true"
-	return r.k8sClient.Update(&r.ent)
+	return r.k8sClient.Update(context.Background(), &r.ent)
 }
 
 // disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
@@ -145,7 +145,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 	// remove the annotation to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
 	delete(r.ent.Annotations, ReadOnlyModeAnnotationName)
-	return r.k8sClient.Update(&r.ent)
+	return r.k8sClient.Update(context.Background(), &r.ent)
 }
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,
@@ -227,7 +227,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool, error) {
 	var deployment appsv1.Deployment
 	nsn := types.NamespacedName{Name: entName.Deployment(r.ent.Name), Namespace: r.ent.Namespace}
-	err := r.k8sClient.Get(nsn, &deployment)
+	err := r.k8sClient.Get(context.Background(), nsn, &deployment)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// first deployment, not an upgrade
@@ -265,7 +265,7 @@ func (r *VersionUpgrade) isPriorVersionStillRunning(expectedVersion version.Vers
 func (r *VersionUpgrade) getActualPods() ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	ns := client.InNamespace(r.ent.Namespace)
-	if err := r.k8sClient.List(&pods, client.MatchingLabels(Labels(r.ent.Name)), ns); err != nil {
+	if err := r.k8sClient.List(context.Background(), &pods, client.MatchingLabels(Labels(r.ent.Name)), ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
@@ -278,7 +278,7 @@ func (r *VersionUpgrade) retrieveTLSCerts() ([]*x509.Certificate, error) {
 		Namespace: r.ent.Namespace,
 		Name:      certificates.InternalCertsSecretName(entName.EntNamer, r.ent.Name),
 	}
-	if err := r.k8sClient.Get(nsn, &certsSecret); err != nil {
+	if err := r.k8sClient.Get(context.Background(), nsn, &certsSecret); err != nil {
 		return nil, err
 	}
 	certData, exists := certsSecret.Data[certificates.CertFileName]

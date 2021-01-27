@@ -126,7 +126,7 @@ func TestNewReporter(t *testing.T) {
 	kb2, s2 := createKbAndSecret("kb2", "ns2", 2)
 	kb3, s3 := createKbAndSecret("kb3", "ns3", 3)
 
-	client := k8s.FakeClient(
+	client := k8s.NewFakeClient(
 		&kb1,
 		&kb2,
 		&kb3,

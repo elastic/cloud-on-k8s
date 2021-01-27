@@ -39,7 +39,7 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		},
 		{
 			name:   "association secret missing",
-			client: k8s.WrappedFakeClient(),
+			client: k8s.NewFakeClient(),
 			assoc: associationFixture(&commonv1.AssociationConf{
 				AuthSecretName: "secret-name",
 				AuthSecretKey:  "secret-key",
@@ -49,7 +49,7 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		},
 		{
 			name: "association secret data missing",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-name",
 					Namespace: "test-ns",
@@ -64,7 +64,7 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		},
 		{
 			name: "association secret data present",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-name",
 					Namespace: "test-ns",
@@ -106,7 +106,7 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 		},
 		{
 			name:   "association ca secret missing",
-			client: k8s.WrappedFakeClient(),
+			client: k8s.NewFakeClient(),
 			assoc: associationFixture(&commonv1.AssociationConf{
 				CASecretName: "ca-secret-name",
 			}),
@@ -115,7 +115,7 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 		},
 		{
 			name: "association ca secret data missing",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-name",
 					Namespace: "test-ns",
@@ -129,7 +129,7 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 		},
 		{
 			name: "association ca secret data present",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "ca-secret-name",
 					Namespace: "test-ns",

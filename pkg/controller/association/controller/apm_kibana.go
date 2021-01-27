@@ -5,6 +5,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -75,7 +76,7 @@ func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (strin
 		return "", nil
 	}
 	kb := kbv1.Kibana{}
-	if err := c.Get(kibanaRef.NamespacedName(), &kb); err != nil {
+	if err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb); err != nil {
 		return "", err
 	}
 	return stringsutil.Concat(kb.Spec.HTTP.Protocol(), "://", kibana.HTTPService(kb.Name), ".", kb.Namespace, ".svc:", strconv.Itoa(kibana.HTTPPort)), nil
@@ -85,7 +86,7 @@ func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (strin
 // reported in its status.
 func referencedKibanaStatusVersion(c k8s.Client, kbRef types.NamespacedName) (string, error) {
 	var kb kbv1.Kibana
-	if err := c.Get(kbRef, &kb); err != nil {
+	if err := c.Get(context.Background(), kbRef, &kb); err != nil {
 		return "", err
 	}
 	return kb.Status.Version, nil
@@ -99,7 +100,7 @@ func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) 
 	}
 
 	kb := kbv1.Kibana{}
-	err := c.Get(kibanaRef.NamespacedName(), &kb)
+	err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb)
 	if errors.IsNotFound(err) {
 		return false, commonv1.ObjectSelector{}, nil
 	}

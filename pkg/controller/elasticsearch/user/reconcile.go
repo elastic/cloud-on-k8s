@@ -8,14 +8,6 @@ import (
 	"context"
 	"reflect"
 
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -24,10 +16,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 )
 
-var log = logf.Log.WithName("elasticsearch-user")
+var log = ulog.Log.WithName("elasticsearch-user")
 
 // ReconcileUsersAndRoles fetches all users and roles and aggregates them into a single
 // Kubernetes secret mounted in the Elasticsearch Pods.
@@ -70,7 +69,7 @@ func ReconcileUsersAndRoles(
 
 func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm, error) {
 	var secret corev1.Secret
-	if err := c.Get(RolesFileRealmSecretKey(es), &secret); err != nil {
+	if err := c.Get(context.Background(), RolesFileRealmSecretKey(es), &secret); err != nil {
 		return filerealm.Realm{}, err
 	}
 	return filerealm.FromSecret(secret)

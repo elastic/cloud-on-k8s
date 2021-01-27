@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"fmt"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -35,7 +36,7 @@ func CheckApmServerDeployment(b Builder, k *test.K8sClient) test.Step {
 		Name: "ApmServer deployment should be created",
 		Test: test.Eventually(func() error {
 			var dep appsv1.Deployment
-			err := k.Client.Get(types.NamespacedName{
+			err := k.Client.Get(context.Background(), types.NamespacedName{
 				Namespace: b.ApmServer.Namespace,
 				Name:      b.ApmServer.Name + "-apm-server",
 			}, &dep)
@@ -208,7 +209,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 		Name: "APMServer status should be updated",
 		Test: test.Eventually(func() error {
 			var as apmv1.ApmServer
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &as); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &as); err != nil {
 				return err
 			}
 			// don't check association statuses that may vary across tests

@@ -5,6 +5,7 @@
 package annotation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -35,7 +36,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 	}{
 		{
 			args: args{
-				c:   k8s.WrappedFakeClient(pod.DeepCopy()),
+				c:   k8s.NewFakeClient(pod.DeepCopy()),
 				pod: pod,
 			},
 		},
@@ -45,7 +46,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 			MarkPodAsUpdated(tt.args.c, tt.args.pod)
 			// Ensure the label is present
 			actualPod := &corev1.Pod{}
-			assert.NoError(t, tt.args.c.Get(key, actualPod))
+			assert.NoError(t, tt.args.c.Get(context.Background(), key, actualPod))
 			assert.NotNil(t, actualPod.Annotations)
 			previousValue, ok := actualPod.Annotations[UpdateAnnotation]
 			assert.True(t, ok)
@@ -53,7 +54,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 			MarkPodAsUpdated(tt.args.c, *actualPod)
 			// Ensure the label is updated
 			actualPod = &corev1.Pod{}
-			assert.NoError(t, tt.args.c.Get(key, actualPod))
+			assert.NoError(t, tt.args.c.Get(context.Background(), key, actualPod))
 			assert.NotNil(t, actualPod.Annotations)
 			newValue, ok := actualPod.Annotations[UpdateAnnotation]
 			assert.True(t, ok)

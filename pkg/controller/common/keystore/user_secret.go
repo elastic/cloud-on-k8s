@@ -5,14 +5,8 @@
 package keystore
 
 import (
+	"context"
 	"fmt"
-
-	pkgerrors "github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -22,6 +16,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 )
 
 const secureSettingsSecretSuffix = "secure-settings"
@@ -102,7 +102,7 @@ func reconcileSecureSettings(
 	}
 	if len(aggregatedData) == 0 {
 		// no secure settings specified, delete any existing operator-managed settings secret
-		err := c.Delete(&expected)
+		err := c.Delete(context.Background(), &expected)
 		if apierrors.IsNotFound(err) {
 			// swallow not found errors
 			return nil, nil
@@ -139,7 +139,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 	secretName := secretSrc.SecretName
 
 	var userSecret corev1.Secret
-	err := c.Get(types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
 		log.Info(msg, "namespace", namespace, "secret_name", secretName)

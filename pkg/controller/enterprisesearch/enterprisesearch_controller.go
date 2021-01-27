@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +35,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName(controllerName)
+	log = ulog.Log.WithName(controllerName)
 )
 
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
@@ -61,7 +61,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
@@ -146,9 +146,9 @@ var _ driver.Interface = &ReconcileEnterpriseSearch{}
 
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
-func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "ent_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "enterprisesearch")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "enterprisesearch")
 	defer tracing.EndTransaction(tx)
 
 	var ent entv1beta1.EnterpriseSearch
@@ -341,7 +341,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	if ent.Spec.HTTP.TLS.Enabled() {
 		var tlsCertSecret corev1.Secret
 		tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)}
-		if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
+		if err := c.Get(context.Background(), tlsSecretKey, &tlsCertSecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
@@ -353,7 +353,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	if ent.AssociationConf().CAIsConfigured() {
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: ent.Namespace, Name: ent.AssociationConf().GetCASecretName()}
-		if err := c.Get(key, &esPublicCASecret); err != nil {
+		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {

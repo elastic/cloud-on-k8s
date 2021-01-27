@@ -15,8 +15,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestSystemIntegrationRecipe(t *testing.T) {
@@ -67,7 +67,7 @@ func runBeatRecipe(
 	t *testing.T,
 	fileName string,
 	customize func(builder agent.Builder) agent.Builder,
-	additionalObjects ...runtime.Object,
+	additionalObjects ...client.Object,
 ) {
 	filePath := path.Join("../../../config/recipes/elastic-agent", fileName)
 	namespace := test.Ctx().ManagedNamespace(0)

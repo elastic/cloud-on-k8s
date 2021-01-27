@@ -5,19 +5,19 @@
 package driver
 
 import (
+	"context"
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.StatefulSet {
@@ -140,11 +140,11 @@ func TestGarbageCollectPVCs(t *testing.T) {
 	}
 	actualSsets := sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")}
 	expectedSsets := sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")}
-	k8sClient := k8s.WrappedFakeClient(existingPVCS...)
+	k8sClient := k8s.NewFakeClient(existingPVCS...)
 	err := GarbageCollectPVCs(k8sClient, es, actualSsets, expectedSsets)
 	require.NoError(t, err)
 
 	var retrievedPVCs corev1.PersistentVolumeClaimList
-	require.NoError(t, k8sClient.List(&retrievedPVCs))
+	require.NoError(t, k8sClient.List(context.Background(), &retrievedPVCs))
 	require.Equal(t, 1, len(retrievedPVCs.Items))
 }

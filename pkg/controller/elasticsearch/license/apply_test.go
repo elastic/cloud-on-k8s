@@ -213,7 +213,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &fakeClient{
-				Client: k8s.WrappedFakeClient(tt.initialObjs...),
+				Client: k8s.NewFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
 			updater := fakeLicenseUpdater{license: tt.currentLicense}
@@ -269,12 +269,12 @@ type fakeClient struct {
 	errors map[client.ObjectKey]error
 }
 
-func (f *fakeClient) Get(key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	err := f.errors[key]
 	if err != nil {
 		return err
 	}
-	return f.Client.Get(key, obj)
+	return f.Client.Get(context.Background(), key, obj)
 }
 
 var _ k8s.Client = &fakeClient{}

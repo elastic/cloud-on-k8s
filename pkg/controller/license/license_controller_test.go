@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -172,7 +173,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.k8sResources...)
+			client := k8s.NewFakeClient(tt.k8sResources...)
 			r := &ReconcileLicenses{
 				Client:  client,
 				checker: commonlicense.MockChecker{},
@@ -197,7 +198,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			licenseNsn := nsn
 			licenseNsn.Name = esv1.LicenseSecretName(licenseNsn.Name)
 			var license corev1.Secret
-			err = client.Get(licenseNsn, &license)
+			err = client.Get(context.Background(), licenseNsn, &license)
 			if !tt.wantNewLicense {
 				require.True(t, apierrors.IsNotFound(err))
 			} else {

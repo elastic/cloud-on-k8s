@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -75,8 +74,7 @@ func Test_reconcileReqForSoftOwner(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mapObject := handler.MapObject{Meta: &tt.secret, Object: &tt.secret}
-			requests := toRequestsFunc(mapObject)
+			requests := toRequestsFunc(&tt.secret)
 			require.Equal(t, tt.wantReconcileRequests, requests)
 		})
 	}

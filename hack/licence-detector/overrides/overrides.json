@@ -6,3 +6,7 @@
 {"name": "gonum.org/v1/netlib", "url": "https://github.com/gonum/netlib"}
 {"name": "howett.net/plist", "url": "https://gitlab.howett.net/go/plist"}
 {"name": "github.com/miekg/dns", "licenceTextOverrideFile": "licences/github.com/miekg/dns/LICENSE"}
+{"name": "github.com/chzyer/logex", "licenceTextOverrideFile": "licences/github.com/chzyer/logex/LICENSE"}
+{"name": "github.com/hudl/fargo", "licenceTextOverrideFile": "licences/github.com/hudl/fargo/LICENSE"}
+{"name": "github.com/lightstep/lightstep-tracer-common/golang/gogo", "licenceTextOverrideFile": "licences/github.com/lightstep/lightstep-tracer-common/golang/gogo/LICENSE"}
+{"name": "github.com/streadway/handy", "licenceTextOverrideFile": "licences/github.com/streadway/handy/LICENSE"}

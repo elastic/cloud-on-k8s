@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -189,7 +190,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(append(tt.runtimeObjs, &es)...)
+			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &es)...)
 			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
@@ -198,7 +199,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 
 			// all expected PVCs should exist in the apiserver
 			var pvcs corev1.PersistentVolumeClaimList
-			err = k8sClient.List(&pvcs)
+			err = k8sClient.List(context.Background(), &pvcs)
 			require.NoError(t, err)
 			require.Len(t, pvcs.Items, len(tt.expectedPVCs))
 			for i, expectedPVC := range tt.expectedPVCs {
@@ -207,7 +208,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 
 			// Elasticsearch should be annotated with the sset to recreate
 			var retrievedES esv1.Elasticsearch
-			err = k8sClient.Get(k8s.ExtractNamespacedName(&es), &retrievedES)
+			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es), &retrievedES)
 			require.NoError(t, err)
 			if tt.wantRecreate {
 				require.Len(t, retrievedES.Annotations, 1)
@@ -389,25 +390,25 @@ func Test_recreateStatefulSets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(append(tt.args.runtimeObjs, &tt.args.es)...)
+			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &tt.args.es)...)
 			got, err := recreateStatefulSets(k8sClient, tt.args.es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
 
 			var retrievedES esv1.Elasticsearch
-			err = k8sClient.Get(k8s.ExtractNamespacedName(&tt.args.es), &retrievedES)
+			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.args.es), &retrievedES)
 			require.NoError(t, err)
 			comparison.RequireEqual(t, &tt.wantES, &retrievedES)
 
 			var retrievedSsets appsv1.StatefulSetList
-			err = k8sClient.List(&retrievedSsets)
+			err = k8sClient.List(context.Background(), &retrievedSsets)
 			require.NoError(t, err)
 			for i := range tt.wantSsets {
 				comparison.RequireEqual(t, &tt.wantSsets[i], &retrievedSsets.Items[i])
 			}
 
 			var retrievedPods corev1.PodList
-			err = k8sClient.List(&retrievedPods)
+			err = k8sClient.List(context.Background(), &retrievedPods)
 			require.NoError(t, err)
 			for i := range tt.wantPods {
 				comparison.RequireEqual(t, &tt.wantPods[i], &retrievedPods.Items[i])
@@ -453,7 +454,7 @@ func Test_updatePodOwners(t *testing.T) {
 		{
 			name: "happy path: set an owner ref to the ES resource on all Pods for that StatefulSet",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(&pod1, &pod2),
+				k8sClient:   k8s.NewFakeClient(&pod1, &pod2),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -462,7 +463,7 @@ func Test_updatePodOwners(t *testing.T) {
 		{
 			name: "owner ref already set: the function is idempotent",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2WithOwnerRef),
+				k8sClient:   k8s.NewFakeClient(&pod1WithOwnerRef, &pod2WithOwnerRef),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -471,7 +472,7 @@ func Test_updatePodOwners(t *testing.T) {
 		{
 			name: "one owner ref already set, one missing",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2),
+				k8sClient:   k8s.NewFakeClient(&pod1WithOwnerRef, &pod2),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -480,7 +481,7 @@ func Test_updatePodOwners(t *testing.T) {
 		{
 			name: "no Pods: nothing to do",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(),
+				k8sClient:   k8s.NewFakeClient(),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -493,7 +494,7 @@ func Test_updatePodOwners(t *testing.T) {
 			require.NoError(t, err)
 
 			var retrievedPods corev1.PodList
-			err = tt.args.k8sClient.List(&retrievedPods)
+			err = tt.args.k8sClient.List(context.Background(), &retrievedPods)
 			require.NoError(t, err)
 			for i := range tt.wantPods {
 				comparison.RequireEqual(t, &tt.wantPods[i], &retrievedPods.Items[i])
@@ -522,7 +523,7 @@ func Test_removeESPodOwner(t *testing.T) {
 		{
 			name: "happy path: remove the owner ref from all Pods",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2WithOwnerRef),
+				k8sClient:   k8s.NewFakeClient(&pod1WithOwnerRef, &pod2WithOwnerRef),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -531,7 +532,7 @@ func Test_removeESPodOwner(t *testing.T) {
 		{
 			name: "owner refs already removed: function is idempotent",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(&pod1, &pod2),
+				k8sClient:   k8s.NewFakeClient(&pod1, &pod2),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -540,7 +541,7 @@ func Test_removeESPodOwner(t *testing.T) {
 		{
 			name: "one owner ref already removed, the other not yet removed",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(&pod1WithOwnerRef, &pod2),
+				k8sClient:   k8s.NewFakeClient(&pod1WithOwnerRef, &pod2),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -549,7 +550,7 @@ func Test_removeESPodOwner(t *testing.T) {
 		{
 			name: "no Pods: nothing to do",
 			args: args{
-				k8sClient:   k8s.WrappedFakeClient(),
+				k8sClient:   k8s.NewFakeClient(),
 				es:          sampleEs,
 				statefulSet: sset1,
 			},
@@ -558,7 +559,7 @@ func Test_removeESPodOwner(t *testing.T) {
 		{
 			name: "preserve existing unrelated owner refs",
 			args: args{
-				k8sClient: k8s.WrappedFakeClient(&pod1WithOwnerRef, withOwnerRef(pod2WithOwnerRef, metav1.OwnerReference{
+				k8sClient: k8s.NewFakeClient(&pod1WithOwnerRef, withOwnerRef(pod2WithOwnerRef, metav1.OwnerReference{
 					Kind: "kind",
 					Name: "name",
 					UID:  "uid",
@@ -579,7 +580,7 @@ func Test_removeESPodOwner(t *testing.T) {
 			require.NoError(t, err)
 
 			var retrievedPods corev1.PodList
-			err = tt.args.k8sClient.List(&retrievedPods)
+			err = tt.args.k8sClient.List(context.Background(), &retrievedPods)
 			require.NoError(t, err)
 			for i := range tt.wantPods {
 				comparison.RequireEqual(t, &tt.wantPods[i], &retrievedPods.Items[i])

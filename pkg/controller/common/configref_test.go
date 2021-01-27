@@ -164,7 +164,7 @@ func TestParseConfigRef(t *testing.T) {
 				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch{Name: existingWatch}))
 			}
 			d := fakeDriver{
-				client:   k8s.WrappedFakeClient(tt.runtimeObjs...),
+				client:   k8s.NewFakeClient(tt.runtimeObjs...),
 				watches:  w,
 				recorder: fakeRecorder,
 			}

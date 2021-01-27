@@ -5,6 +5,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -96,7 +97,7 @@ func AnnotatePodWithBuilderHash(k *K8sClient, pod corev1.Pod, hash string) error
 		pod.Annotations = make(map[string]string)
 	}
 	pod.Annotations[BuilderHashAnnotation] = hash
-	if err := k.Client.Update(&pod); err != nil {
+	if err := k.Client.Update(context.Background(), &pod); err != nil {
 		// may error out with a conflict if concurrently updated by the operator,
 		// which is why we retry with `test.Eventually`
 		return err
@@ -137,7 +138,7 @@ func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 	// find and label E2E test runner pod
 	podList := corev1.PodList{}
 	ns := client.InNamespace(ctx.E2ENamespace)
-	if err := c.List(&podList, ns); err != nil {
+	if err := c.List(context.Background(), &podList, ns); err != nil {
 		return err
 	}
 
@@ -158,7 +159,7 @@ func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 
 func labelPod(client k8s.Client, name, namespace, key, value string) error {
 	pod := corev1.Pod{}
-	if err := client.Get(types.NamespacedName{
+	if err := client.Get(context.Background(), types.NamespacedName{
 		Namespace: namespace,
 		Name:      name,
 	}, &pod); err != nil {
@@ -166,5 +167,5 @@ func labelPod(client k8s.Client, name, namespace, key, value string) error {
 	}
 
 	pod.Labels[key] = value
-	return client.Update(&pod)
+	return client.Update(context.Background(), &pod)
 }

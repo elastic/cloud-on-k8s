@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -124,7 +125,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
-		return k8s.WrappedFakeClient(objs...)
+		return k8s.NewFakeClient(objs...)
 	}
 
 	labels := map[string]string{
@@ -223,7 +224,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 			}
 
 			var gotSecret corev1.Secret
-			err = client.Get(namespacedSecretName, &gotSecret)
+			err = client.Get(context.Background(), namespacedSecretName, &gotSecret)
 			require.NoError(t, err, "Failed to get secret")
 
 			wantSecret := tt.wantSecret(t)
@@ -251,7 +252,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should generate new certificates if none exists",
 			args: args{
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: testES,
 				ca: testCA,
 			},
@@ -263,7 +264,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should NOT return a CA if none has been provided by the user",
 			args: args{
-				c: k8s.WrappedFakeClient(&corev1.Secret{
+				c: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
 						CertFileName: tls,
@@ -294,7 +295,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 
 				// Retrieve the Secret that contains the data for the internal HTTP certificate
 				internalSecret := &corev1.Secret{}
-				assert.NoError(t, c.Get(k8s.ExtractNamespacedName(cs), internalSecret))
+				assert.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(cs), internalSecret))
 				// We are still expecting a CA cert to exist in this Secret
 				assert.True(t, len(internalSecret.Data[CAFileName]) > 0)
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
@@ -303,7 +304,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should return an unknown private CA provided by the user",
 			args: args{
-				c: k8s.WrappedFakeClient(&corev1.Secret{
+				c: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
 						CAFileName:   EncodePEMCert(testCA.Cert.Raw),
@@ -332,7 +333,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 
 				// Retrieve the Secret that contains the data for the internal HTTP certificate
 				internalSecret := &corev1.Secret{}
-				assert.NoError(t, c.Get(k8s.ExtractNamespacedName(cs), internalSecret))
+				assert.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(cs), internalSecret))
 				assert.True(t, len(internalSecret.Data[CAFileName]) > 0)
 				// We expect the private, unknown, CA to be in the result
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))

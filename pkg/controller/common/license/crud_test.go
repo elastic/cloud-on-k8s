@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -33,7 +34,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 		{
 			name: "updates labels preserving existing ones",
 			args: args{
-				c: k8s.WrappedFakeClient(&v1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}),
+				c: k8s.NewFakeClient(&v1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}),
 				secret: v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      nsn.Name,
@@ -48,7 +49,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
-				err := client.Get(nsn, &sec)
+				err := client.Get(context.Background(), nsn, &sec)
 				require.NoError(t, err)
 				require.Equal(t, sec.Labels["my-label"], "value")
 				require.Contains(t, sec.Labels, LicenseLabelScope)
@@ -57,7 +58,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 		{
 			name: "basic update",
 			args: args{
-				c: k8s.WrappedFakeClient(&v1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}),
+				c: k8s.NewFakeClient(&v1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}),
 				secret: v1.Secret{
 					ObjectMeta: k8s.ToObjectMeta(nsn),
 				},
@@ -66,7 +67,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
-				err := client.Get(nsn, &sec)
+				err := client.Get(context.Background(), nsn, &sec)
 				require.NoError(t, err)
 				require.Equal(t, string(licenseFixtureV3.License.Type), sec.Labels[LicenseLabelType])
 				require.Equal(t, string(LicenseScopeOperator), sec.Labels[LicenseLabelScope])

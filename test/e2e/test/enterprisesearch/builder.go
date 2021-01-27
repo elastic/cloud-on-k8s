@@ -6,8 +6,8 @@ package enterprisesearch
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -166,6 +166,6 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 // -- Helper functions
 
-func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.EnterpriseSearch}
+func (b Builder) RuntimeObjects() []client.Object {
+	return []client.Object{&b.EnterpriseSearch}
 }

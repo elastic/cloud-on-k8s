@@ -82,7 +82,7 @@ func TestResources(t *testing.T) {
 	}{
 		{
 			name:           "no secure settings specified: no resources",
-			client:         k8s.WrappedFakeClient(),
+			client:         k8s.NewFakeClient(),
 			kb:             testKibana,
 			wantContainers: nil,
 			wantVersion:    "",
@@ -90,7 +90,7 @@ func TestResources(t *testing.T) {
 		},
 		{
 			name:   "secure settings specified: return volume, init container and (empty) version",
-			client: k8s.WrappedFakeClient(&testSecureSettingsSecret),
+			client: k8s.NewFakeClient(&testSecureSettingsSecret),
 			kb:     testKibanaWithSecureSettings,
 			wantContainers: &corev1.Container{
 				Command: []string{
@@ -152,7 +152,7 @@ echo "Keystore initialization successful."
 		},
 		{
 			name:           "secure settings specified but secret not there: no resources",
-			client:         k8s.WrappedFakeClient(),
+			client:         k8s.NewFakeClient(),
 			kb:             testKibanaWithSecureSettings,
 			wantContainers: nil,
 			wantVersion:    "",

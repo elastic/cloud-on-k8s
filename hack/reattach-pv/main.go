@@ -5,11 +5,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
@@ -19,11 +24,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -121,13 +121,13 @@ func createClient() (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return k8s.WrapClient(c), nil
+	return c, nil
 }
 
 // checkElasticsearchNotFound returns an error if the given Elasticsearch resource already exists.
 func checkElasticsearchNotFound(c k8s.Client, es esv1.Elasticsearch) error {
 	var retrieved esv1.Elasticsearch
-	err := c.Get(k8s.ExtractNamespacedName(&es), &retrieved)
+	err := c.Get(context.Background(), k8s.ExtractNamespacedName(&es), &retrieved)
 	if err == nil {
 		return fmt.Errorf("elasticsearch resource %s exists in the apiserver; this tool can only recover clusters that don't exist anymore", es.Name)
 	}
@@ -140,7 +140,7 @@ func checkElasticsearchNotFound(c k8s.Client, es esv1.Elasticsearch) error {
 // checkClaimsNotFound returns an error if the given PersistentVolumeClaims already exist.
 func checkClaimsNotFound(c k8s.Client, claims map[types.NamespacedName]v1.PersistentVolumeClaim) error {
 	for nsn := range claims {
-		err := c.Get(nsn, &v1.PersistentVolumeClaim{})
+		err := c.Get(context.Background(), nsn, &v1.PersistentVolumeClaim{})
 		if err == nil {
 			return fmt.Errorf("PersistentVolumeClaim %s seems to exist in the apiserver", nsn)
 		}
@@ -187,7 +187,7 @@ func expectedVolumeClaims(es esv1.Elasticsearch) map[types.NamespacedName]v1.Per
 // findReleasedPVs returns the list of Released PersistentVolumes.
 func findReleasedPVs(c k8s.Client) ([]v1.PersistentVolume, error) {
 	var pvs v1.PersistentVolumeList
-	if err := c.List(&pvs); err != nil {
+	if err := c.List(context.Background(), &pvs); err != nil {
 		return nil, err
 	}
 	var released []v1.PersistentVolume
@@ -235,7 +235,7 @@ func createAndBindClaims(c k8s.Client, volumeClaims []MatchingVolumeClaim, dryRu
 	for _, match := range volumeClaims {
 		fmt.Printf("Creating claim %s\n", match.claim.Name)
 		if !dryRun {
-			if err := c.Create(&match.claim); err != nil {
+			if err := c.Create(context.Background(), &match.claim); err != nil {
 				return err
 			}
 		}
@@ -245,7 +245,7 @@ func createAndBindClaims(c k8s.Client, volumeClaims []MatchingVolumeClaim, dryRu
 		match.volume.Spec.ClaimRef.UID = match.claim.UID
 		match.volume.Spec.ClaimRef.ResourceVersion = match.claim.ResourceVersion
 		if !dryRun {
-			if err := c.Update(&match.volume); err != nil {
+			if err := c.Update(context.Background(), &match.volume); err != nil {
 				return err
 			}
 		}
@@ -259,7 +259,7 @@ func createElasticsearch(c k8s.Client, es esv1.Elasticsearch, dryRun bool) error
 	if dryRun {
 		return nil
 	}
-	return c.Create(&es, &client.CreateOptions{})
+	return c.Create(context.Background(), &es, &client.CreateOptions{})
 }
 
 // exitOnErr prints the given error then exits with status code 1

@@ -5,23 +5,23 @@
 package sset
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
-var log = logf.Log.WithName("statefulset")
+var log = ulog.Log.WithName("statefulset")
 
 type StatefulSetList []appsv1.StatefulSet
 
@@ -31,7 +31,7 @@ func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (Stateful
 	var ssets appsv1.StatefulSetList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
-	err := c.List(&ssets, ns, matchLabels)
+	err := c.List(context.Background(), &ssets, ns, matchLabels)
 	sort.Slice(ssets.Items, func(i, j int) bool {
 		return ssets.Items[i].Name < ssets.Items[j].Name
 	})

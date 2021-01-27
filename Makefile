@@ -23,8 +23,8 @@ GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/nu
 
 # find or download controller-gen
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.4.0)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.4.1)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -96,7 +96,9 @@ go-generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
 generate-crds: go-generate controller-gen
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
+	# Generate webhook manifest
+	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
@@ -129,18 +131,18 @@ reattach-pv:
 ## -- tests
 
 unit: clean
-	go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 unit-xml: clean
-	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 integration: GO_TAGS += integration
 integration: clean generate-crds
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean generate-crds
-	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
 	golangci-lint run
@@ -190,6 +192,7 @@ go-debug:
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
 		--namespaces=$(MANAGED_NAMESPACES) \
+		--enable-leader-election=false \
 		--manage-webhook-certs=false)
 
 build-operator-image:
@@ -444,7 +447,7 @@ e2e-generate-xml:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.

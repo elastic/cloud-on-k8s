@@ -166,7 +166,7 @@ func (d *driver) Reconcile(
 func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
 	var labels client.MatchingLabels = map[string]string{KibanaNameLabelName: kb.Name}
-	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
+	if err := d.client.List(context.Background(), &pods, client.InNamespace(kb.Namespace), labels); err != nil {
 		return "", err
 	}
 
@@ -218,7 +218,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	if kb.Spec.HTTP.TLS.Enabled() {
 		// fetch the secret to calculate the checksum
 		var httpCerts corev1.Secret
-		err := d.client.Get(types.NamespacedName{
+		err := d.client.Get(context.Background(), types.NamespacedName{
 			Namespace: kb.Namespace,
 			Name:      certificates.InternalCertsSecretName(Namer, kb.Name),
 		}, &httpCerts)
@@ -232,7 +232,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
-	err = d.client.Get(types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	err = d.client.Get(context.Background(), types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
 		return deployment.Params{}, err
 	}

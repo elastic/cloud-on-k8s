@@ -15,25 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type clientWithError struct {
-	k8s.Client
-	error
-}
-
-func newClientWithError(err error) *clientWithError {
-	return &clientWithError{
-		Client: k8s.WrappedFakeClient(),
-		error:  err,
-	}
-}
-
-func (c *clientWithError) Create(_ runtime.Object, _ ...client.CreateOption) error {
-	return c.error
-}
 
 func Test_validatePodTemplate(t *testing.T) {
 	es := esv1.Elasticsearch{
@@ -61,7 +43,7 @@ func Test_validatePodTemplate(t *testing.T) {
 		{
 			name: "Client returns a validation error",
 			args: args{
-				c: newClientWithError(&errors.StatusError{
+				c: k8s.NewFailingClient(&errors.StatusError{
 					ErrStatus: metav1.Status{
 						Status:  metav1.StatusFailure,
 						Message: "Pod dummy is invalid",
@@ -97,7 +79,7 @@ func Test_validatePodTemplate(t *testing.T) {
 		{
 			name: "Skip BadRequest error from Openshift 3.11 or K8S 1.12",
 			args: args{
-				c:      newClientWithError(errors.NewBadRequest("not supported yet")),
+				c:      k8s.NewFailingClient(errors.NewBadRequest("not supported yet")),
 				parent: &es,
 				sset:   ssetSample,
 			},
@@ -106,7 +88,7 @@ func Test_validatePodTemplate(t *testing.T) {
 		{
 			name: "Client returns a Kubernetes error which is not a validation error",
 			args: args{
-				c: newClientWithError(&errors.StatusError{
+				c: k8s.NewFailingClient(&errors.StatusError{
 					ErrStatus: metav1.Status{
 						Status:  metav1.StatusFailure,
 						Message: "Pod dummy is invalid",
@@ -133,7 +115,7 @@ func Test_validatePodTemplate(t *testing.T) {
 		{
 			name: "Return non StatusError as is",
 			args: args{
-				c:      newClientWithError(fmt.Errorf("foo")),
+				c:      k8s.NewFailingClient(fmt.Errorf("foo")),
 				parent: &es,
 				sset:   ssetSample,
 			},

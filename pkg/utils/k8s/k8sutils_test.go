@@ -17,7 +17,33 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func TestDeepCopyObject(t *testing.T) {
+	testCases := []struct {
+		name string
+		obj  client.Object
+		want client.Object
+	}{
+		{
+			name: "nil input",
+		},
+		{
+			name: "valid object",
+			obj:  &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}},
+			want: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			have := DeepCopyObject(tc.obj)
+			require.Equal(t, tc.want, have)
+			require.True(t, &tc.want != &have, "Copied object has the same memory location")
+		})
+	}
+}
 
 func TestToObjectMeta(t *testing.T) {
 	assert.Equal(

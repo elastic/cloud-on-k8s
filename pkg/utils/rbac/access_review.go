@@ -8,6 +8,7 @@ import (
 	"context"
 	"strings"
 
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/gobuffalo/flect"
 	authorizationapi "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -16,14 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
 	ServiceAccountUsernamePrefix = "system:serviceaccount:"
 )
 
-var log = logf.Log.WithName("access-review")
+var log = ulog.Log.WithName("access-review")
 
 type AccessReviewer interface {
 	// AccessAllowed checks that the given ServiceAccount is allowed to get an other object.

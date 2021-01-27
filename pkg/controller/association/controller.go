@@ -5,23 +5,21 @@
 package association
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var (
-	log = logf.Log.WithName("association")
+	log = ulog.Log.WithName("association")
 )
 
 // AddAssociationController sets up and starts an association controller for the given associationInfo.
@@ -34,7 +32,7 @@ func AddAssociationController(
 	controllerName := associationInfo.AssociationName + "-association-controller"
 	r := &Reconciler{
 		AssociationInfo: associationInfo,
-		Client:          k8s.WrapClient(mgr.GetClient()),
+		Client:          mgr.GetClient(),
 		accessReviewer:  accessReviewer,
 		watches:         watches.NewDynamicWatches(),
 		recorder:        mgr.GetEventRecorderFor(controllerName),

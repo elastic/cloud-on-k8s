@@ -12,7 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
-	"k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -44,8 +44,8 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "accept valid creation",
 			args: args{
-				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
-					Operation: v1beta1.Create,
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
@@ -59,8 +59,8 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "reject invalid creation (no version provided)",
 			args: args{
-				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
-					Operation: v1beta1.Create,
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
@@ -74,11 +74,11 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "accept valid update (count++)",
 			fields: fields{
-				client: k8s.WrappedFakeClient(),
+				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
-					Operation: v1beta1.Update,
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
@@ -98,11 +98,11 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "reject invalid update (version downgrade))",
 			fields: fields{
-				client: k8s.WrappedFakeClient(),
+				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: v1beta1.AdmissionRequest{
-					Operation: v1beta1.Update,
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
