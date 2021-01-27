@@ -230,7 +230,7 @@ func TestResourcePolicies_Validate(t *testing.T) {
 		},
 		{
 		  "name": "my_policy2",
-		  "roles": [ "data_hot", "data_content" ],
+		  "roles": [ "data_content", "data_hot" ],
 		  "resources" : {
 			  "nodeCount" : { "min" : 1 , "max" : 2 },
 			  "cpu" : { "min" : 1 , "max" : 1 },

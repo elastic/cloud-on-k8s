@@ -7,7 +7,6 @@ package validation
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -69,6 +68,10 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 
 	// Validate the autoscaling policies
 	errs = append(errs, validAutoscalingPolicies(autoscalingSpecification.AutoscalingPolicySpecs)...)
+	if len(errs) > 0 {
+		// We may have policies with duplicated set of roles, it may make it hard to validate further the autoscaling spec.
+		return errs
+	}
 
 	// Get the list of NodeSets managed by an autoscaling policy. This requires to parse the `node.roles` field in the
 	// node configuration, which may raise an error.
@@ -140,7 +143,6 @@ func validAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs) f
 		if autoscalingSpec.Roles == nil {
 			errs = append(errs, field.Required(autoscalingSpecPath(i, "roles"), "roles field is mandatory"))
 		} else {
-			sort.Strings(autoscalingSpec.Roles)
 			if containsStringSlice(rolesSet, autoscalingSpec.Roles) {
 				//A set of roles must be unique across all the autoscaling policies.
 				errs = append(
@@ -258,10 +260,15 @@ func validateQuantities(
 	return append(errs, quantityErrs...)
 }
 
-// containsStringSlice returns true if an ordered slice is included in a slice of ordered slices.
+// containsStringSlice returns true if a slice of strings is included in a slice of slices of strings.
 func containsStringSlice(slices [][]string, slice []string) bool {
-	for _, s := range slices {
-		if reflect.DeepEqual(s, slice) {
+	set1 := set.Make(slice...)
+	for _, candidate := range slices {
+		set2 := set.Make(candidate...)
+		if len(set1) != len(set2) {
+			continue
+		}
+		if reflect.DeepEqual(set1, set2) {
 			return true
 		}
 	}
