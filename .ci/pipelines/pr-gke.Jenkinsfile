@@ -49,6 +49,7 @@ pipeline {
                         }
                     }
                     steps {
+                        sh '.ci/setenvconfig pr'
                         script {
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
 
