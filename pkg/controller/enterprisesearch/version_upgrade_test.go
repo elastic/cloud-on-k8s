@@ -201,7 +201,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 	for _, tt := range tests {
 		checks := roundTripChecks{returnStatusCode: tt.httpChecks.returnStatusCode}
 		httpClient := &http.Client{Transport: fakeRoundTrip{checks: &checks}}
-		k8sClient := k8s.WrappedFakeClient(append(append(tt.runtimeObjs, &esUserSecret), &tt.ent)...)
+		k8sClient := k8s.NewFakeClient(append(append(tt.runtimeObjs, &esUserSecret), &tt.ent)...)
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
 				k8sClient:  k8sClient,
@@ -290,7 +290,7 @@ func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		c := k8s.WrappedFakeClient(tt.pods...)
+		c := k8s.NewFakeClient(tt.pods...)
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
 				k8sClient: c,
@@ -321,7 +321,7 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(&ent, &esUserSecret)
+			c := k8s.NewFakeClient(&ent, &esUserSecret)
 			u := &VersionUpgrade{k8sClient: c, ent: ent}
 			req, err := u.readOnlyModeRequest(tt.enabled)
 			require.NoError(t, err)
@@ -373,7 +373,7 @@ func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
-				k8sClient: k8s.WrappedFakeClient(tt.runtimeObjs...),
+				k8sClient: k8s.NewFakeClient(tt.runtimeObjs...),
 				ent:       tt.ent,
 			}
 			got, err := r.isVersionUpgrade(tt.expectedVersion)

@@ -154,7 +154,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(10)
-			c := k8s.WrappedFakeClient(tt.secrets...)
+			c := k8s.NewFakeClient(tt.secrets...)
 			gotFileRealm, err := reconcileUserProvidedFileRealm(c, tt.es, tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantFileRealm, gotFileRealm)
@@ -233,7 +233,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(10)
-			c := k8s.WrappedFakeClient(tt.secrets...)
+			c := k8s.NewFakeClient(tt.secrets...)
 			gotRoles, err := reconcileUserProvidedRoles(c, tt.es, tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRoles, gotRoles)

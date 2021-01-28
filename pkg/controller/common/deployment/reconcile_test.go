@@ -5,11 +5,8 @@
 package deployment
 
 import (
+	"context"
 	"testing"
-
-	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
@@ -17,6 +14,9 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestWithTemplateHash(t *testing.T) {
@@ -49,7 +49,7 @@ func TestWithTemplateHash(t *testing.T) {
 
 func TestReconcile(t *testing.T) {
 	controllerscheme.SetupScheme()
-	k8sClient := k8s.WrappedFakeClient()
+	k8sClient := k8s.NewFakeClient()
 	expected := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dep",
@@ -73,7 +73,7 @@ func TestReconcile(t *testing.T) {
 	require.NotEmpty(t, reconciled.Labels[hash.TemplateHashLabelName])
 	// resource should exist in the apiserver
 	var retrieved appsv1.Deployment
-	err = k8sClient.Get(k8s.ExtractNamespacedName(&expected), &retrieved)
+	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &retrieved)
 
@@ -89,7 +89,7 @@ func TestReconcile(t *testing.T) {
 	// both returned and retrieved should match that new spec
 	require.Equal(t, 3, int(*reconciled.Spec.Replicas))
 	require.NotEqual(t, reconciled.Labels[hash.TemplateHashLabelName], reconciledAgain.Labels[hash.TemplateHashLabelName])
-	err = k8sClient.Get(k8s.ExtractNamespacedName(&expected), &retrieved)
+	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &retrieved)
 }

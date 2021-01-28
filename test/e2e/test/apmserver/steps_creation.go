@@ -25,7 +25,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Creating APM Server should succeed",
 			Test: func(t *testing.T) {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(obj)
+					err := k.Client.Create(context.Background(), obj)
 					require.NoError(t, err)
 				}
 			},
@@ -68,7 +68,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "APM Server should be created",
 			Test: func(t *testing.T) {
 				var createdApmServer apmv1.ApmServer
-				err := k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &createdApmServer)
+				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &createdApmServer)
 				require.NoError(t, err)
 				require.Equal(t, b.ApmServer.Spec.Version, createdApmServer.Spec.Version)
 				// TODO this is incomplete

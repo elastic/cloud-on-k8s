@@ -57,7 +57,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 	}{
 		{
 			name:        "no secure settings specified in Kibana spec: should return nothing",
-			c:           k8s.WrappedFakeClient(),
+			c:           k8s.NewFakeClient(),
 			w:           createWatches(""),
 			kb:          testKibana,
 			wantVolume:  nil,
@@ -66,7 +66,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 		},
 		{
 			name:       "valid secure settings specified: should add watch and return volume with version",
-			c:          k8s.WrappedFakeClient(&testSecureSettingsSecret),
+			c:          k8s.NewFakeClient(&testSecureSettingsSecret),
 			w:          createWatches(""),
 			kb:         testKibanaWithSecureSettings,
 			wantVolume: &expectedSecretVolume,
@@ -76,7 +76,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 		},
 		{
 			name:        "secure setting specified but no secret exists: should return nothing but watch the secret, and emit an event",
-			c:           k8s.WrappedFakeClient(),
+			c:           k8s.NewFakeClient(),
 			w:           createWatches(SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
 			kb:          testKibanaWithSecureSettings,
 			wantVolume:  nil,
@@ -86,7 +86,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 		},
 		{
 			name:        "secure settings removed (was set before): should remove watch",
-			c:           k8s.WrappedFakeClient(&testSecureSettingsSecret),
+			c:           k8s.NewFakeClient(&testSecureSettingsSecret),
 			w:           createWatches(SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
 			kb:          testKibana,
 			wantVolume:  nil,
@@ -160,7 +160,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "empty user secret",
 			args: args{
-				c:           k8s.WrappedFakeClient(),
+				c:           k8s.NewFakeClient(),
 				hasKeystore: kibanaFixture,
 				userSecrets: []corev1.Secret{
 					{},
@@ -173,7 +173,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "new user secret",
 			args: args{
-				c:           k8s.WrappedFakeClient(),
+				c:           k8s.NewFakeClient(),
 				hasKeystore: kibanaFixture,
 				userSecrets: []corev1.Secret{
 					{
@@ -193,7 +193,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "updated existing secret",
 			args: args{
-				c: k8s.WrappedFakeClient(&corev1.Secret{
+				c: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: expectedMeta,
 					Data: map[string][]byte{
 						"key1": []byte("old-value"),
@@ -219,7 +219,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "secure settings removed",
 			args: args{
-				c: k8s.WrappedFakeClient(&corev1.Secret{
+				c: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: expectedMeta,
 					Data: map[string][]byte{
 						"key1": []byte("value1"),
@@ -235,7 +235,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "no secure settings and no previous settings",
 			args: args{
-				c:           k8s.WrappedFakeClient(),
+				c:           k8s.NewFakeClient(),
 				hasKeystore: kibanaFixture,
 				userSecrets: nil,
 				namer:       kbNamer,
@@ -246,7 +246,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "multiple user secrets",
 			args: args{
-				c:           k8s.WrappedFakeClient(),
+				c:           k8s.NewFakeClient(),
 				hasKeystore: kibanaFixture,
 				userSecrets: []corev1.Secret{
 					{
@@ -274,7 +274,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		{
 			name: "multiple user secrets, key conflict, last in wins",
 			args: args{
-				c:           k8s.WrappedFakeClient(),
+				c:           k8s.NewFakeClient(),
 				hasKeystore: kibanaFixture,
 				userSecrets: []corev1.Secret{
 					{
@@ -421,7 +421,7 @@ func Test_retrieveUserSecrets(t *testing.T) {
 	}
 
 	recorder := record.NewFakeRecorder(100)
-	client := k8s.WrappedFakeClient(&testSecret)
+	client := k8s.NewFakeClient(&testSecret)
 	hasKeystore := testKibana
 
 	for _, tt := range tests {

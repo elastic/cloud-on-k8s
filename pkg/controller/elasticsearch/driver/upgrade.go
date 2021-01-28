@@ -193,7 +193,7 @@ func podsToUpgrade(
 			podRef := types.NamespacedName{Namespace: statefulSet.Namespace, Name: podName}
 			// retrieve pod to inspect its revision label
 			var pod corev1.Pod
-			err := client.Get(podRef, &pod)
+			err := client.Get(context.Background(), podRef, &pod)
 			if err != nil && !errors.IsNotFound(err) {
 				return toUpgrade, err
 			}

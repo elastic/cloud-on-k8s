@@ -49,13 +49,13 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Applying the Elasticsearch mutation should succeed",
 			Test: test.Eventually(func() error {
 				var curEs esv1.Elasticsearch
-				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs); err != nil {
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs); err != nil {
 					return err
 				}
 				curEs.Spec = b.Elasticsearch.Spec
 				// may error-out with a conflict if the resource is updated concurrently
 				// hence the usage of `test.Eventually`
-				return k.Client.Update(&curEs)
+				return k.Client.Update(context.Background(), &curEs)
 			}),
 		},
 	}

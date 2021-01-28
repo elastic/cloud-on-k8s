@@ -7,6 +7,7 @@
 package beat
 
 import (
+	"context"
 	"testing"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -28,7 +29,7 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	err := test.NewK8sClientOrFatal().Client.Create(&beat)
+	err := test.NewK8sClientOrFatal().Client.Create(context.Background(), &beat)
 
 	require.Error(t, err)
 	require.Contains(

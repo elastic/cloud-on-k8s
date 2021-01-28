@@ -84,7 +84,7 @@ func copyCertificateAuthority(
 	sourceKey := k8s.ExtractNamespacedName(source)
 	// Check if CA of the source cluster exists
 	sourceCA := &corev1.Secret{}
-	if err := r.Client.Get(transport.PublicCertsSecretRef(sourceKey), sourceCA); err != nil {
+	if err := r.Client.Get(context.Background(), transport.PublicCertsSecretRef(sourceKey), sourceCA); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func deleteCertificateAuthorities(
 	defer span.End()
 
 	// Delete local secret
-	if err := r.Client.Delete(&corev1.Secret{
+	if err := r.Client.Delete(context.Background(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: local.Namespace,
 			Name:      remoteCASecretName(local.Name, remote),
@@ -129,7 +129,7 @@ func deleteCertificateAuthorities(
 		return err
 	}
 	// Delete remote secret
-	if err := r.Client.Delete(&corev1.Secret{
+	if err := r.Client.Delete(context.Background(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: remote.Namespace,
 			Name:      remoteCASecretName(remote.Name, local),

@@ -102,7 +102,7 @@ func ReconcileEsUser(
 	var password []byte
 	// reuse the existing password if there's one
 	var existingSecret corev1.Secret
-	err := c.Get(k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
+	err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -140,7 +140,7 @@ func ReconcileEsUser(
 	}
 
 	var existingUserSecret corev1.Secret
-	if err := c.Get(k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 

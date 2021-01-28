@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
@@ -38,9 +39,9 @@ func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 		Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.0"},
 	}
 	r := &ReconcileEnterpriseSearch{
-		Client: k8s.WrappedFakeClient(&sample),
+		Client: k8s.NewFakeClient(&sample),
 	}
-	result, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, result)
 }
@@ -48,7 +49,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	// resource not found, should clear watches
 	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.WrappedFakeClient(),
+		Client:         k8s.NewFakeClient(),
 		dynamicWatches: watches.NewDynamicWatches(),
 	}
 	// simulate existing watches
@@ -58,7 +59,7 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.dynamicWatches, "sample-ent-http-certificate", []string{"user-tls-secret"}))
 	require.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())
 
-	result, err := r.Reconcile(reconcile.Request{NamespacedName: nsn})
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nsn})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, result)
 
@@ -72,7 +73,7 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 		Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.0"},
 	}
 	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.WrappedFakeClient(&sample),
+		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
@@ -82,12 +83,12 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 			},
 		},
 	}
-	_, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 
 	// resource should be annotated with controller version
 	var updated entv1beta1.EnterpriseSearch
-	err = r.Client.Get(k8s.ExtractNamespacedName(&sample), &updated)
+	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&sample), &updated)
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{annotation.ControllerVersionAnnotation: "operator-version"}, updated.Annotations)
 }
@@ -103,11 +104,11 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 	}
 	fakeRecorder := record.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.WrappedFakeClient(&sample),
+		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       fakeRecorder,
 	}
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	// should just requeue until the resource is updated
 	require.Equal(t, reconcile.Result{}, res)
@@ -121,10 +122,10 @@ func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 	sample := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"}}
 	fakeRecorder := record.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
-		Client:   k8s.WrappedFakeClient(&sample),
+		Client:   k8s.NewFakeClient(&sample),
 		recorder: fakeRecorder,
 	}
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	// should return an error
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "spec.version: Invalid value")
@@ -141,7 +142,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 			Count:   3,
 		}}
 	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.WrappedFakeClient(&sample),
+		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
@@ -150,35 +151,35 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	checkResources := func() {
 		// should create a service
 		var service corev1.Service
-		err := r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.HTTPService(sample.Name)}, &service)
+		err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: entName.HTTPService(sample.Name)}, &service)
 		require.NoError(t, err)
 		require.Equal(t, int32(3002), service.Spec.Ports[0].Port)
 
 		// should create internal ca, internal http certs secret, public http certs secret
 		var caSecret corev1.Secret
-		err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-ca-internal"}, &caSecret)
+		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-ca-internal"}, &caSecret)
 		require.NoError(t, err)
 		require.NotEmpty(t, caSecret.Data)
 
 		var httpInternalSecret corev1.Secret
-		err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-internal"}, &httpInternalSecret)
+		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-internal"}, &httpInternalSecret)
 		require.NoError(t, err)
 		require.NotEmpty(t, httpInternalSecret.Data)
 
 		var httpPublicSecret corev1.Secret
-		err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-public"}, &httpPublicSecret)
+		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-public"}, &httpPublicSecret)
 		require.NoError(t, err)
 		require.NotEmpty(t, httpPublicSecret.Data)
 
 		// should create a secret for the configuration
 		var config corev1.Secret
-		err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-config"}, &config)
+		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent-config"}, &config)
 		require.NoError(t, err)
 		require.Contains(t, string(config.Data["enterprise-search.yml"]), "external_url:")
 
 		// should create a 3-replicas deployment
 		var dep appsv1.Deployment
-		err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
+		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
 		require.NoError(t, err)
 		require.True(t, *dep.Spec.Replicas == 3)
 		// with the config hash label set
@@ -186,7 +187,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	}
 
 	// first call
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	// should requeue for cert expiration
 	require.NotZero(t, res.RequeueAfter)
@@ -194,7 +195,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	checkResources()
 
 	// call-again: no-op
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
@@ -202,35 +203,35 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 
 	// modify the deployment: 2 replicas instead of 3
 	var dep appsv1.Deployment
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
 	require.NoError(t, err)
 	replicas := int32(2)
 	dep.Spec.Replicas = &replicas
-	err = r.Client.Update(&dep)
+	err = r.Client.Update(context.Background(), &dep)
 	require.NoError(t, err)
 	// delete the http service
 	var service corev1.Service
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.HTTPService(sample.Name)}, &service)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: entName.HTTPService(sample.Name)}, &service)
 	require.NoError(t, err)
-	err = r.Client.Delete(&service)
+	err = r.Client.Delete(context.Background(), &service)
 	require.NoError(t, err)
 	// delete the configuration secret entry
 	var config corev1.Secret
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-config"}, &config)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent-config"}, &config)
 	require.NoError(t, err)
 	config.Data = nil
-	err = r.Client.Update(&config)
+	err = r.Client.Update(context.Background(), &config)
 	require.NoError(t, err)
 	// delete the http certs data
 	var httpInternalSecret corev1.Secret
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-internal"}, &httpInternalSecret)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-internal"}, &httpInternalSecret)
 	require.NoError(t, err)
 	httpInternalSecret.Data = nil
-	err = r.Client.Update(&httpInternalSecret)
+	err = r.Client.Update(context.Background(), &httpInternalSecret)
 	require.NoError(t, err)
 
 	// call again: all resources should be updated to revert our manual changes above
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
@@ -256,7 +257,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"})
 
 	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.WrappedFakeClient(&ent, &es, &esTLSCertsSecret),
+		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
@@ -265,24 +266,24 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	require.NoError(t, err)
 	// the Enterprise Search deployment should be created and specify version 7.7.0
 	var dep appsv1.Deployment
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
 	// retrieve the updated ent resource
-	require.NoError(t, r.Client.Get(k8s.ExtractNamespacedName(&ent), &ent))
+	require.NoError(t, r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&ent), &ent))
 
 	// update EnterpriseSearch to 7.8.0: the deployment should stay in version 7.7.0 since
 	// Elasticsearch still runs 7.7.0
 	ent.Spec.Version = "7.8.0"
-	err = r.Client.Update(&ent)
+	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
 	// retrieve the updated ent resource
-	require.NoError(t, r.Client.Get(k8s.ExtractNamespacedName(&ent), &ent))
+	require.NoError(t, r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&ent), &ent))
 
 	// update the associated Elasticsearch to 7.8.0: Enterprise Search should now be upgraded to 7.8.0
 	assocConf := ent.AssociationConf()
@@ -290,20 +291,20 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	ent.SetAssociationConf(assocConf)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.0", dep.Spec.Template.Labels[VersionLabelName])
 	// retrieve the updated ent resource
-	require.NoError(t, r.Client.Get(k8s.ExtractNamespacedName(&ent), &ent))
+	require.NoError(t, r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&ent), &ent))
 
 	// update EnterpriseSearch to 7.8.1: this should be allowed even though Elasticsearch
 	// is running 7.8.0 (different patch versions)
 	ent.Spec.Version = "7.8.1"
-	err = r.Client.Update(&ent)
+	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
-	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
+	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: entName.Deployment(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.1", dep.Spec.Template.Labels[VersionLabelName])
 }
@@ -313,7 +314,7 @@ type fakeClientStatusCall struct {
 	k8s.Client
 }
 
-func (f *fakeClientStatusCall) Status() k8s.StatusWriter {
+func (f *fakeClientStatusCall) Status() client.StatusWriter {
 	f.updateCalled = true // Status() has been requested for update
 	return f.Client.Status()
 }
@@ -496,7 +497,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &fakeClientStatusCall{Client: k8s.WrappedFakeClient(&tt.ent)}
+			c := &fakeClientStatusCall{Client: k8s.NewFakeClient(&tt.ent)}
 			fakeRecorder := record.NewFakeRecorder(10)
 			r := &ReconcileEnterpriseSearch{
 				Client:   c,
@@ -508,7 +509,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			require.Equal(t, tt.wantStatusUpdateCalled, c.updateCalled)
 
 			var updatedEnt entv1beta1.EnterpriseSearch
-			err = c.Get(k8s.ExtractNamespacedName(&tt.ent), &updatedEnt)
+			err = c.Get(context.Background(), k8s.ExtractNamespacedName(&tt.ent), &updatedEnt)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantStatus, updatedEnt.Status)
 
@@ -575,7 +576,7 @@ func Test_buildConfigHash(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				c:            k8s.WrappedFakeClient(&configSecret, &esTLSCertsSecret, &tlsCertsSecret),
+				c:            k8s.NewFakeClient(&configSecret, &esTLSCertsSecret, &tlsCertsSecret),
 				ent:          entWithAssociation,
 				configSecret: configSecret,
 			},
@@ -584,7 +585,7 @@ func Test_buildConfigHash(t *testing.T) {
 		{
 			name: "different config: different hash",
 			args: args{
-				c:            k8s.WrappedFakeClient(&configSecret2, &esTLSCertsSecret, &tlsCertsSecret),
+				c:            k8s.NewFakeClient(&configSecret2, &esTLSCertsSecret, &tlsCertsSecret),
 				ent:          ent,
 				configSecret: configSecret2,
 			},
@@ -593,7 +594,7 @@ func Test_buildConfigHash(t *testing.T) {
 		{
 			name: "no TLS configured: different hash",
 			args: args{
-				c:            k8s.WrappedFakeClient(&configSecret, &esTLSCertsSecret),
+				c:            k8s.NewFakeClient(&configSecret, &esTLSCertsSecret),
 				ent:          entWithoutTLS,
 				configSecret: configSecret,
 			},
@@ -602,7 +603,7 @@ func Test_buildConfigHash(t *testing.T) {
 		{
 			name: "no ES association: different hash",
 			args: args{
-				c:            k8s.WrappedFakeClient(&configSecret, &tlsCertsSecret),
+				c:            k8s.NewFakeClient(&configSecret, &tlsCertsSecret),
 				ent:          ent,
 				configSecret: configSecret,
 			},

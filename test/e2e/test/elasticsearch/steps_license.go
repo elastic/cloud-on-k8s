@@ -90,7 +90,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 					license.FileName: licenseBytes,
 				},
 			}
-			require.NoError(t, ltctx.k.Client.Create(&sec))
+			require.NoError(t, ltctx.k.Client.Create(context.Background(), &sec))
 		},
 	}
 }
@@ -147,7 +147,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 					},
 				},
 			}
-			require.NoError(t, ltctx.k.Client.Create(&sec))
+			require.NoError(t, ltctx.k.Client.Create(context.Background(), &sec))
 		},
 	}
 }
@@ -157,7 +157,7 @@ func (ltctx *LicenseTestContext) checkEnterpriseTrialLicenseValidation(secretNam
 		Name: "Check enterprise trial license is annotated as invalid",
 		Test: test.Eventually(func() error {
 			var licenseSecret corev1.Secret
-			err := ltctx.k.Client.Get(types.NamespacedName{
+			err := ltctx.k.Client.Get(context.Background(), types.NamespacedName{
 				Namespace: test.Ctx().ManagedNamespace(0),
 				Name:      secretName,
 			}, &licenseSecret)
@@ -192,7 +192,7 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 					Name:      licenseSecretName,
 				},
 			}
-			_ = ltctx.k.Client.Delete(&sec)
+			_ = ltctx.k.Client.Delete(context.Background(), &sec)
 		},
 	}
 }
@@ -203,12 +203,12 @@ func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
 		Test: func(t *testing.T) {
 			// Delete operator license secret
 			var licenseSecrets corev1.SecretList
-			err := ltctx.k.Client.List(&licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
+			err := ltctx.k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
 			if err != nil {
 				t.Log(err)
 			}
 			for _, s := range licenseSecrets.Items {
-				_ = ltctx.k.Client.Delete(&s)
+				_ = ltctx.k.Client.Delete(context.Background(), &s)
 			}
 		},
 	}

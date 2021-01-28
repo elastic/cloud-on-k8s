@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -97,7 +98,7 @@ func resizePVCs(
 				"old_value", pvc.Spec.Resources.Requests.Storage().String(), "new_value", newSize.String())
 
 			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
-			if err := k8sClient.Update(&pvc); err != nil {
+			if err := k8sClient.Update(context.Background(), &pvc); err != nil {
 				return err
 			}
 		}
@@ -126,7 +127,7 @@ func annotateForRecreation(
 	}
 	es.Annotations[RecreateStatefulSetAnnotationPrefix+actualSset.Name] = string(asJSON)
 
-	return k8sClient.Update(&es)
+	return k8sClient.Update(context.Background(), &es)
 }
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
@@ -162,7 +163,7 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 
 	for annotation, toRecreate := range toRecreate {
 		var existing appsv1.StatefulSet
-		err := k8sClient.Get(k8s.ExtractNamespacedName(&toRecreate), &existing)
+		err := k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&toRecreate), &existing)
 		switch {
 		// error case
 		case err != nil && !apierrors.IsNotFound(err):
@@ -196,7 +197,7 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 			}
 			// remove the annotation
 			delete(es.Annotations, annotation)
-			if err := k8sClient.Update(&es); err != nil {
+			if err := k8sClient.Update(context.Background(), &es); err != nil {
 				return recreations, err
 			}
 			// one less recreation
@@ -232,7 +233,7 @@ func deleteStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	orphanPolicy := metav1.DeletePropagationOrphan
 	opts.PropagationPolicy = &orphanPolicy
 
-	return k8sClient.Delete(&sset, &opts)
+	return k8sClient.Delete(context.Background(), &sset, &opts)
 }
 
 func recreateStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
@@ -246,7 +247,7 @@ func recreateStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 		Finalizers:      sset.Finalizers,
 	}
 	sset.ObjectMeta = newObjMeta
-	return k8sClient.Create(&sset)
+	return k8sClient.Create(context.Background(), &sset)
 }
 
 // updatePodOwners marks all Pods managed by the given StatefulSet as owned by the Elasticsearch resource.
@@ -288,7 +289,7 @@ func updatePods(k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc
 		if err := updateFunc(&pods[i]); err != nil {
 			return err
 		}
-		if err := k8sClient.Update(&pods[i]); err != nil {
+		if err := k8sClient.Update(context.Background(), &pods[i]); err != nil {
 			return err
 		}
 	}

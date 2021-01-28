@@ -5,15 +5,15 @@
 package association
 
 import (
+	"context"
 	"hash"
-
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // WriteAssocsToConfigHash dereferences auth and CA secrets (if any) to include it in the configHash.
@@ -39,7 +39,7 @@ func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, 
 		Name:      assocConf.GetAuthSecretName(),
 		Namespace: assoc.GetNamespace()}
 	var authSecret corev1.Secret
-	if err := client.Get(authSecretNsName, &authSecret); err != nil {
+	if err := client.Get(context.Background(), authSecretNsName, &authSecret); err != nil {
 		return err
 	}
 	authSecretData, ok := authSecret.Data[assocConf.GetAuthSecretKey()]
@@ -62,7 +62,7 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 		Namespace: assoc.GetNamespace(),
 		Name:      assocConf.GetCASecretName()}
 	var publicCASecret corev1.Secret
-	if err := client.Get(publicCASecretNsName, &publicCASecret); err != nil {
+	if err := client.Get(context.Background(), publicCASecretNsName, &publicCASecret); err != nil {
 		return err
 	}
 	certPem, ok := publicCASecret.Data[certificates.CertFileName]

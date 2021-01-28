@@ -5,6 +5,7 @@
 package enterprisesearch
 
 import (
+	"context"
 	"testing"
 
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -20,7 +21,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Creating Enterprise Search should succeed",
 			Test: func(t *testing.T) {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(obj)
+					err := k.Client.Create(context.Background(), obj)
 					require.NoError(t, err)
 				}
 			},
@@ -29,7 +30,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Enterprise Search should be created",
 			Test: func(t *testing.T) {
 				var createdEnt entv1beta1.EnterpriseSearch
-				err := k.Client.Get(k8s.ExtractNamespacedName(&b.EnterpriseSearch), &createdEnt)
+				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &createdEnt)
 				require.NoError(t, err)
 				require.Equal(t, b.EnterpriseSearch.Spec.Version, createdEnt.Spec.Version)
 			},

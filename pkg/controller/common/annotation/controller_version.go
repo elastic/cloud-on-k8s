@@ -29,7 +29,7 @@ const (
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
-func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime.Object, version string) error {
+func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlclient.Object, version string) error {
 	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -65,14 +65,14 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 		return err
 	}
 	log.V(1).Info("updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
-	return client.Update(obj)
+	return client.Update(context.Background(), obj)
 }
 
 // ReconcileCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation
 // controller versions 0.9.0+ cannot reconcile resources created with earlier controllers, so this lets our controller skip those resources until they can be manually recreated
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
-func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
+func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclient.Object, selector map[string]string, controllerVersion string) (bool, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -148,7 +148,7 @@ func checkExistingResources(client k8s.Client, owner runtime.Object, labels map[
 	nsSelector := ctrlclient.InNamespace(metaOwner.GetNamespace())
 
 	var svcs corev1.ServiceList
-	err = client.List(&svcs, labelSelector, nsSelector)
+	err = client.List(context.Background(), &svcs, labelSelector, nsSelector)
 	if err != nil {
 		return false, err
 	}

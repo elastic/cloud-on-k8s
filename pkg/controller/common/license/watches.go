@@ -7,31 +7,29 @@ package license
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func NewWatch(fn handler.Mapper) watches.HandlerRegistration {
+func NewWatch(fn handler.MapFunc) watches.HandlerRegistration {
 	return &watch{
-		EnqueueRequestsFromMapFunc: handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(
-				func(object handler.MapObject) []reconcile.Request {
-					labels := object.Meta.GetLabels()
-					if labels[common.TypeLabelName] == Type && labels[LicenseLabelType] == string(LicenseTypeEnterprise) {
-						return fn.Map(object)
-					}
-					return nil
-				}),
-		},
+		evtHandler: handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+			labels := object.GetLabels()
+			if labels[common.TypeLabelName] == Type && labels[LicenseLabelType] == string(LicenseTypeEnterprise) {
+				return fn(object)
+			}
+			return nil
+		}),
 	}
 }
 
 type watch struct {
-	handler.EnqueueRequestsFromMapFunc
+	evtHandler handler.EventHandler
 }
 
 func (w *watch) EventHandler() handler.EventHandler {
-	return w
+	return w.evtHandler
 }
 
 func (w *watch) Key() string {

@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -49,7 +50,7 @@ func RetrieveActualPVCs(k8sClient k8s.Client, statefulSet appsv1.StatefulSet) (m
 			}
 			pvcName := fmt.Sprintf("%s-%s", claim.Name, podName)
 			var pvc corev1.PersistentVolumeClaim
-			if err := k8sClient.Get(types.NamespacedName{Namespace: statefulSet.Namespace, Name: pvcName}, &pvc); err != nil {
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: statefulSet.Namespace, Name: pvcName}, &pvc); err != nil {
 				if apierrors.IsNotFound(err) {
 					continue // PVC does not exist (yet)
 				}

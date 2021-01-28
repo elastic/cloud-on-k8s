@@ -5,6 +5,7 @@
 package controller
 
 import (
+	"context"
 	"strings"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -65,7 +66,7 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}
-	if err := c.Get(esRef.NamespacedName(), &es); err != nil {
+	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
 	return services.ExternalServiceURL(es), nil
@@ -75,7 +76,7 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 // reported in its status.
 func referencedElasticsearchStatusVersion(c k8s.Client, esRef types.NamespacedName) (string, error) {
 	var es esv1.Elasticsearch
-	if err := c.Get(esRef, &es); err != nil {
+	if err := c.Get(context.Background(), esRef, &es); err != nil {
 		return "", err
 	}
 	return es.Status.Version, nil

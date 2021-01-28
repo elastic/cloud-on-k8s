@@ -26,3 +26,7 @@
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-map-keys
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-type
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/clusterIPs/x-kubernetes-list-type
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ipFamilies/x-kubernetes-list-type

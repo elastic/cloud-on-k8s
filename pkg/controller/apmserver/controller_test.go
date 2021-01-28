@@ -8,13 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -23,6 +16,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func TestReconcileApmServer_doReconcile(t *testing.T) {
@@ -96,7 +95,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileApmServer{
-				Client:         k8s.WrappedFakeClient(&tt.as),
+				Client:         k8s.NewFakeClient(&tt.as),
 				recorder:       tt.fields.recorder,
 				dynamicWatches: tt.fields.dynamicWatches,
 				Parameters:     tt.fields.Parameters,
@@ -129,11 +128,11 @@ func Test_reconcileApmServerToken(t *testing.T) {
 	}{
 		{
 			name: "no secret exists: create one",
-			c:    k8s.WrappedFakeClient(),
+			c:    k8s.NewFakeClient(),
 		},
 		{
 			name: "reuse token if it already exists",
-			c: k8s.WrappedFakeClient(&corev1.Secret{
+			c: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      SecretToken(apm.Name),

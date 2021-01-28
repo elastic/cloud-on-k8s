@@ -64,7 +64,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: es,
 			},
 			wantErr:         false,
@@ -77,7 +77,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: es,
 			},
 			wantErr:         false,
@@ -93,7 +93,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "10.0.9.3", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: es,
 			},
 			wantErr:         false,
@@ -109,7 +109,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: es,
 			},
 			wantErr:         false,
@@ -123,7 +123,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("master3", "10.0.3.3", true),
 					newPodWithIP("master1", "10.0.9.2", true),
 				},
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: es,
 			},
 			wantErr:         false,
@@ -137,7 +137,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("master3", "fd00:10:244:0:2::5", true),
 					newPodWithIP("master1", "fd00:10:244:0:2::2", true),
 				},
-				c:  k8s.WrappedFakeClient(),
+				c:  k8s.NewFakeClient(),
 				es: es,
 			},
 			wantErr:         false,
@@ -154,7 +154,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 
 			// Check the resulting confimap
 			file := &corev1.ConfigMap{}
-			if err := tt.args.c.Get(
+			if err := tt.args.c.Get(context.Background(),
 				types.NamespacedName{
 					Namespace: "ns1",
 					Name:      esv1.UnicastHostsConfigMap(es.Name),

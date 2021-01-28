@@ -30,6 +30,7 @@ type testPod struct {
 	ssetName                                                 string
 	master, data, healthy, toUpgrade, inCluster, terminating bool
 	uid                                                      types.UID
+	resourceVersion                                          string
 }
 
 func newTestPod(name string) testPod {
@@ -47,6 +48,7 @@ func (t testPod) needsUpgrade(v bool) testPod           { t.toUpgrade = v; retur
 func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; return t }
 func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
 func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t }
+func (t testPod) withResourceVersion(rv string) testPod { t.resourceVersion = rv; return t } //nolint:unparam
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
@@ -239,6 +241,7 @@ func (t testPod) toPod() corev1.Pod {
 			Namespace:         TestEsNamespace,
 			UID:               t.uid,
 			DeletionTimestamp: deletionTimestamp,
+			ResourceVersion:   t.resourceVersion,
 		},
 	}
 	labels := map[string]string{}

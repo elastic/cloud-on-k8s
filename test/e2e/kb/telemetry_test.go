@@ -7,6 +7,7 @@
 package kb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -41,7 +42,7 @@ func TestTelemetry(t *testing.T) {
 				Name: "Kibana config Secret should contain telemetry.yml key",
 				Test: test.Eventually(func() error {
 					var secret corev1.Secret
-					err := k.Client.Get(types.NamespacedName{
+					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: kbBuilder.Kibana.Namespace,
 						Name:      kibana2.SecretName(kbBuilder.Kibana),
 					}, &secret)

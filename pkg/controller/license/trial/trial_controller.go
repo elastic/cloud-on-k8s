@@ -6,6 +6,7 @@ package trial
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -16,14 +17,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -36,7 +38,7 @@ const (
 )
 
 var (
-	log              = logf.Log.WithName(name)
+	log              = ulog.Log.WithName(name)
 	userFriendlyMsgs = map[licensing.LicenseStatus]string{
 		licensing.LicenseStatusInvalid: "trial license signature invalid",
 		licensing.LicenseStatusExpired: "trial license expired",
@@ -56,7 +58,7 @@ type ReconcileTrials struct {
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
-func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
@@ -113,7 +115,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
 	var trialStatus corev1.Secret
-	err := r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	err := r.Get(context.Background(), types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		if r.trialState.IsEmpty() {
 			// we have no state in memory nor in the status secret: start the activation process
@@ -127,7 +129,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 		if err != nil {
 			return fmt.Errorf("while creating expected trial status %w", err)
 		}
-		return r.Create(&trialStatus)
+		return r.Create(context.Background(), &trialStatus)
 	}
 	if err != nil {
 		return fmt.Errorf("while fetching trial status %w", err)
@@ -153,7 +155,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 		return nil
 	}
 	trialStatus.Data = expected.Data
-	return r.Update(&trialStatus)
+	return r.Update(context.Background(), &trialStatus)
 }
 
 func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret) (licensing.TrialState, error) {
@@ -200,7 +202,7 @@ func (r *ReconcileTrials) initTrialLicense(secret corev1.Secret, license licensi
 
 func (r *ReconcileTrials) invalidOperation(secret corev1.Secret, msg string) (reconcile.Result, error) {
 	setValidationMsg(&secret, msg)
-	return reconcile.Result{}, r.Update(&secret)
+	return reconcile.Result{}, r.Update(context.Background(), &secret)
 }
 
 func validLicense(status licensing.LicenseStatus) bool {
@@ -229,7 +231,7 @@ func setValidationMsg(secret *corev1.Secret, violation string) {
 
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
-		Client:            k8s.WrapClient(mgr.GetClient()),
+		Client:            mgr.GetClient(),
 		recorder:          mgr.GetEventRecorderFor(name),
 		operatorNamespace: params.OperatorNamespace,
 	}
@@ -238,36 +240,35 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 func addWatches(c controller.Controller) error {
 
 	// Watch the trial status secret and the enterprise trial licenses as well
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			secret, ok := obj.Object.(*corev1.Secret)
-			if !ok {
-				log.Error(fmt.Errorf("object of type %T in secret watch", obj.Object), "dropping event due to type error")
-			}
-			if licensing.IsEnterpriseTrial(*secret) {
-				return []reconcile.Request{
-					{
-						NamespacedName: types.NamespacedName{
-							Namespace: obj.Meta.GetNamespace(),
-							Name:      obj.Meta.GetName(),
-						},
-					},
-				}
-			}
-
-			if obj.Meta.GetName() != licensing.TrialStatusSecretKey {
-				return nil
-			}
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		secret, ok := obj.(*corev1.Secret)
+		if !ok {
+			log.Error(fmt.Errorf("object of type %T in secret watch", obj), "dropping event due to type error")
+		}
+		if licensing.IsEnterpriseTrial(*secret) {
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
-						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
+						Namespace: obj.GetNamespace(),
+						Name:      obj.GetName(),
 					},
 				},
 			}
-		}),
-	}); err != nil {
+		}
+
+		if obj.GetName() != licensing.TrialStatusSecretKey {
+			return nil
+		}
+		return []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+					Name:      secret.Annotations[licensing.TrialLicenseSecretName],
+				},
+			},
+		}
+	}),
+	); err != nil {
 		return err
 	}
 	return nil

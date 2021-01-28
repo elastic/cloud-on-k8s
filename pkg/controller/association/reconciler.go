@@ -137,9 +137,9 @@ func (r *Reconciler) log(associatedNsName types.NamespacedName) logr.Logger {
 	)
 }
 
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(r.logger, request, fmt.Sprintf("%s_name", r.AssociatedShortName), &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, r.AssociationName)
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, r.AssociationName)
 	defer tracing.EndTransaction(tx)
 
 	associated := r.AssociatedObjTemplate()
@@ -317,7 +317,7 @@ func (r *Reconciler) getElasticsearch(
 	defer span.End()
 
 	var es esv1.Elasticsearch
-	err := r.Get(elasticsearchRef.NamespacedName(), &es)
+	err := r.Get(context.Background(), elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, association, events.EventAssociationError,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
@@ -388,7 +388,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	newStatus = associated.AssociationStatusMap(r.AssociationType)
 
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		if err := r.Status().Update(associated); err != nil {
+		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
 		}
 		annotations, err := annotation.ForAssociationStatusChange(oldStatus, newStatus)

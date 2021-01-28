@@ -5,6 +5,8 @@
 package association
 
 import (
+	"context"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -36,7 +38,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 
 	// retrieve the HTTP certificates from the associatedResource namespace
 	var associatedPublicHTTPCertificatesSecret corev1.Secret
-	if err := r.Get(associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
+	if err := r.Get(context.Background(), associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
 			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}

@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -54,7 +55,7 @@ func New(params Params) appsv1.Deployment {
 func Reconcile(
 	k8sClient k8s.Client,
 	expected appsv1.Deployment,
-	owner metav1.Object,
+	owner client.Object,
 ) (appsv1.Deployment, error) {
 	// label the deployment with a hash of itself
 	expected = WithTemplateHash(expected)

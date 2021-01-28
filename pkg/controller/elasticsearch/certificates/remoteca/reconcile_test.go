@@ -5,19 +5,19 @@
 package remoteca
 
 import (
+	"context"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestReconcile(t *testing.T) {
@@ -120,12 +120,12 @@ func TestReconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(tt.args.secrets...)
+			k8sClient := k8s.NewFakeClient(tt.args.secrets...)
 			if err := Reconcile(k8sClient, tt.args.es, tt.args.transportCA); (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			remoteCaList := v1.Secret{}
-			assert.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns1", Name: "es1-es-remote-ca"}, &remoteCaList))
+			assert.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns1", Name: "es1-es-remote-ca"}, &remoteCaList))
 			content, ok := remoteCaList.Data[certificates.CAFileName]
 			assert.True(t, ok)
 			assert.Equal(t, tt.want, content)

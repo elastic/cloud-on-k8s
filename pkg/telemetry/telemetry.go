@@ -5,6 +5,7 @@
 package telemetry
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -19,11 +20,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -33,7 +34,7 @@ const (
 	timestampFieldName = "timestamp"
 )
 
-var log = logf.Log.WithName("usage")
+var log = ulog.Log.WithName("usage")
 
 type ECKTelemetry struct {
 	ECK ECK `json:"eck"`
@@ -61,7 +62,7 @@ func NewReporter(
 
 	return Reporter{
 		operatorInfo:      info,
-		client:            k8s.WrapClient(client),
+		client:            client,
 		operatorNamespace: operatorNamespace,
 		managedNamespaces: managedNamespaces,
 		telemetryInterval: telemetryInterval,
@@ -134,14 +135,14 @@ func (r *Reporter) report() {
 
 	for _, ns := range r.managedNamespaces {
 		var kibanaList kbv1.KibanaList
-		if err := r.client.List(&kibanaList, client.InNamespace(ns)); err != nil {
+		if err := r.client.List(context.Background(), &kibanaList, client.InNamespace(ns)); err != nil {
 			log.Error(err, "failed to list Kibanas")
 			continue
 		}
 		for _, kb := range kibanaList.Items {
 			var secret corev1.Secret
 			nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
-			if err := r.client.Get(nsName, &secret); err != nil {
+			if err := r.client.Get(context.Background(), nsName, &secret); err != nil {
 				log.Error(err, "failed to get Kibana secret")
 				continue
 			}
@@ -168,7 +169,7 @@ func (r *Reporter) getLicenseInfo() (map[string]string, error) {
 	}
 
 	var licenseConfigMap corev1.ConfigMap
-	if err := r.client.Get(nsn, &licenseConfigMap); err != nil {
+	if err := r.client.Get(context.Background(), nsn, &licenseConfigMap); err != nil {
 		return nil, err
 	}
 
@@ -183,7 +184,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 
 	var esList esv1.ElasticsearchList
 	for _, ns := range managedNamespaces {
-		if err := k8sClient.List(&esList, client.InNamespace(ns)); err != nil {
+		if err := k8sClient.List(context.Background(), &esList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
 
@@ -200,7 +201,7 @@ func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 
 	var kbList kbv1.KibanaList
 	for _, ns := range managedNamespaces {
-		if err := k8sClient.List(&kbList, client.InNamespace(ns)); err != nil {
+		if err := k8sClient.List(context.Background(), &kbList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
 
@@ -217,7 +218,7 @@ func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 
 	var apmList apmv1.ApmServerList
 	for _, ns := range managedNamespaces {
-		if err := k8sClient.List(&apmList, client.InNamespace(ns)); err != nil {
+		if err := k8sClient.List(context.Background(), &apmList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
 
@@ -239,7 +240,7 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 
 	var beatList beatv1beta1.BeatList
 	for _, ns := range managedNamespaces {
-		if err := k8sClient.List(&beatList, client.InNamespace(ns)); err != nil {
+		if err := k8sClient.List(context.Background(), &beatList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
 
@@ -258,7 +259,7 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 
 	var entList entv1beta1.EnterpriseSearchList
 	for _, ns := range managedNamespaces {
-		if err := k8sClient.List(&entList, client.InNamespace(ns)); err != nil {
+		if err := k8sClient.List(context.Background(), &entList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
 
@@ -276,7 +277,7 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 
 	var agentList agentv1alpha1.AgentList
 	for _, ns := range managedNamespaces {
-		if err := k8sClient.List(&agentList, client.InNamespace(ns)); err != nil {
+		if err := k8sClient.List(context.Background(), &agentList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
 

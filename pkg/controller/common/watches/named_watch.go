@@ -27,28 +27,28 @@ type NamedWatch struct {
 var _ handler.EventHandler = &NamedWatch{}
 
 func (w NamedWatch) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
-	for _, req := range w.toReconcileRequest(evt.Meta) {
+	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
 func (w NamedWatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	for _, req := range w.toReconcileRequest(evt.MetaOld) {
+	for _, req := range w.toReconcileRequest(evt.ObjectOld) {
 		q.Add(req)
 	}
-	for _, req := range w.toReconcileRequest(evt.MetaNew) {
+	for _, req := range w.toReconcileRequest(evt.ObjectNew) {
 		q.Add(req)
 	}
 }
 
 func (w NamedWatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	for _, req := range w.toReconcileRequest(evt.Meta) {
+	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
 func (w NamedWatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
-	for _, req := range w.toReconcileRequest(evt.Meta) {
+	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }

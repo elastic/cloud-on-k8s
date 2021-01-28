@@ -5,6 +5,8 @@
 package apmserver
 
 import (
+	"context"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -18,7 +20,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "K8S should be accessible",
 			Test: test.Eventually(func() error {
 				pods := corev1.PodList{}
-				return k.Client.List(&pods)
+				return k.Client.List(context.Background(), &pods)
 			}),
 		},
 		{
@@ -37,7 +39,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "APM Server CRDs should exist",
 			Test: test.Eventually(func() error {
-				return k.Client.List(&apmv1.ApmServerList{})
+				return k.Client.List(context.Background(), &apmv1.ApmServerList{})
 			}),
 		},
 
@@ -45,7 +47,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Remove the resources if they already exist",
 			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

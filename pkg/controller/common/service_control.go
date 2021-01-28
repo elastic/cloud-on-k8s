@@ -13,22 +13,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"go.elastic.co/apm"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1 "k8s.io/api/core/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var log = logf.Log.WithName("common")
+var log = ulog.Log.WithName("common")
 
 func ReconcileService(
 	ctx context.Context,
 	c k8s.Client,
 	expected *corev1.Service,
-	owner metav1.Object,
+	owner client.Object,
 ) (*corev1.Service, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_service", tracing.SpanTypeApp)
 	defer span.End()
@@ -57,19 +55,25 @@ func ReconcileService(
 func needsRecreate(expected, reconciled *corev1.Service) bool {
 	applyServerSideValues(expected, reconciled)
 
-	shouldRecreate := false
+	// IPFamilies is immutable
+	if expected.Spec.IPFamilies != nil {
+		if len(expected.Spec.IPFamilies) != len(reconciled.Spec.IPFamilies) {
+			return true
+		}
 
-	// IPFamily is immutable
-	if expected.Spec.IPFamily != nil && expected.Spec.IPFamily != reconciled.Spec.IPFamily {
-		shouldRecreate = true
+		for i := 0; i < len(expected.Spec.IPFamilies); i++ {
+			if expected.Spec.IPFamilies[i] != reconciled.Spec.IPFamilies[i] {
+				return true
+			}
+		}
 	}
 
 	// ClusterIP is immutable
 	if expected.Spec.ClusterIP != reconciled.Spec.ClusterIP {
-		shouldRecreate = true
+		return true
 	}
 
-	return shouldRecreate
+	return false
 }
 
 func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
@@ -119,8 +123,8 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
 
 	// IPFamily is immutable and cannot be modified so we should retain the existing value from the server if there's no explicit override.
-	if expected.Spec.IPFamily == nil {
-		expected.Spec.IPFamily = reconciled.Spec.IPFamily
+	if expected.Spec.IPFamilies == nil {
+		expected.Spec.IPFamilies = reconciled.Spec.IPFamilies
 	}
 }
 

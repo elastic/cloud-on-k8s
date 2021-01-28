@@ -7,6 +7,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
@@ -26,7 +27,7 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	err := test.NewK8sClientOrFatal().Client.Create(&agent)
+	err := test.NewK8sClientOrFatal().Client.Create(context.Background(), &agent)
 
 	require.Error(t, err)
 	require.Contains(

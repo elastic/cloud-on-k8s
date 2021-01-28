@@ -76,7 +76,7 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.pods...)
+			client := k8s.NewFakeClient(tt.pods...)
 			err := SetupMinimumMasterNodesConfig(client, testES, tt.nodeSpecResources)
 			require.NoError(t, err)
 			for i := 0; i < len(tt.nodeSpecResources); i++ {
@@ -160,11 +160,11 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Namespace: ns, Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,
-			c:                  k8s.WrappedFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...),
+			c:                  k8s.NewFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...),
 		},
 		{
 			name:               "mmn should be updated",
-			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
+			c:                  k8s.NewFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         true,
@@ -172,7 +172,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		},
 		{
 			name:               "cannot update since not enough masters available",
-			c:                  k8s.WrappedFakeClient(&podsReady1[0], &podsReady1[1], &podsReady1[2]),
+			c:                  k8s.NewFakeClient(&podsReady1[0], &podsReady1[1], &podsReady1[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,
@@ -181,7 +181,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, tt.c.Create(&tt.es))
+			require.NoError(t, tt.c.Create(context.Background(), &tt.es))
 			esClient := &fakeESClient{}
 			requeue, err := UpdateMinimumMasterNodes(context.Background(), tt.c, tt.es, esClient, tt.actualStatefulSets)
 			require.NoError(t, err)

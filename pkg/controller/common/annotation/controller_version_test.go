@@ -8,16 +8,15 @@ import (
 	"context"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // Test UpdateControllerVersion updates annotation if there is an older version
@@ -32,7 +31,7 @@ func TestAnnotationUpdated(t *testing.T) {
 		},
 	}
 	obj := kibana.DeepCopy()
-	client := k8s.WrappedFakeClient(obj)
+	client := k8s.NewFakeClient(obj)
 	err := UpdateControllerVersion(context.Background(), client, obj, "newversion")
 	require.NoError(t, err)
 	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "newversion")
@@ -48,11 +47,11 @@ func TestAnnotationCreated(t *testing.T) {
 	}
 
 	obj := kibana.DeepCopy()
-	client := k8s.WrappedFakeClient(obj)
+	client := k8s.NewFakeClient(obj)
 	err := UpdateControllerVersion(context.Background(), client, obj, "newversion")
 	require.NoError(t, err)
 	actualKibana := &kbv1.Kibana{}
-	err = client.Get(types.NamespacedName{
+	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: obj.Namespace,
 		Name:      obj.Name,
 	}, actualKibana)
@@ -92,7 +91,7 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrappedFakeClient(es, svc)
+	client := k8s.NewFakeClient(es, svc)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -121,7 +120,7 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 		},
 	}
 
-	client := k8s.WrappedFakeClient(es, svc)
+	client := k8s.NewFakeClient(es, svc)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -143,7 +142,7 @@ func TestSameAnnotation(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrappedFakeClient(es)
+	client := k8s.NewFakeClient(es)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -161,7 +160,7 @@ func TestIncompatibleAnnotation(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrappedFakeClient(es)
+	client := k8s.NewFakeClient(es)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -180,7 +179,7 @@ func TestNewerAnnotation(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrappedFakeClient(es)
+	client := k8s.NewFakeClient(es)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	assert.NoError(t, err)
