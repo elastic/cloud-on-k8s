@@ -313,8 +313,8 @@ E2E_REGISTRY_NAMESPACE = eck-ci
 GO_TAGS = release
 E2E_TAGS = es
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+# TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
+# MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 
