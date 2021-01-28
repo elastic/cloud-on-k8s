@@ -78,29 +78,29 @@ type AutoscalingNodeInfo struct {
 
 // IsEmpty returns true if all the resource values are empty (no values in the API response).
 // 0 is considered as a value since deciders are allowed to return 0 to fully scale down a tier.
-func (rc AutoscalingCapacityInfo) IsEmpty() bool {
-	return rc.Node.IsEmpty() && rc.Total.IsEmpty()
+func (ac AutoscalingCapacityInfo) IsEmpty() bool {
+	return ac.Node.IsEmpty() && ac.Total.IsEmpty()
 }
 
 // AutoscalingCapacity models a capacity value as received by Elasticsearch.
 type AutoscalingCapacity int64
 
 // Value return the int64 value returned by Elasticsearch. It returns 0 if no value has been set by Elasticsearch.
-func (e *AutoscalingCapacity) Value() int64 {
-	if e == nil {
+func (ac *AutoscalingCapacity) Value() int64 {
+	if ac == nil {
 		return 0
 	}
-	return int64(*e)
+	return int64(*ac)
 }
 
 // IsEmpty returns true if the value is nil.
-func (e *AutoscalingCapacity) IsEmpty() bool {
-	return e == nil
+func (ac *AutoscalingCapacity) IsEmpty() bool {
+	return ac == nil
 }
 
 // IsZero returns true if the value is greater than 0.
-func (e *AutoscalingCapacity) IsZero() bool {
-	return e.Value() == 0
+func (ac *AutoscalingCapacity) IsZero() bool {
+	return ac.Value() == 0
 }
 
 type AutoscalingResources struct {
@@ -110,20 +110,20 @@ type AutoscalingResources struct {
 
 // IsEmpty returns true if all the resource values are empty (no values, 0 being considered as a value).
 // Expressed in a different way, it returns true if no resource as been returned in the autoscaling API response.
-func (c *AutoscalingResources) IsEmpty() bool {
-	if c == nil {
+func (ar *AutoscalingResources) IsEmpty() bool {
+	if ar == nil {
 		return true
 	}
-	return c.Memory.IsEmpty() && c.Storage.IsEmpty()
+	return ar.Memory.IsEmpty() && ar.Storage.IsEmpty()
 }
 
 // IsZero returns true if all the resource values are evaluated to 0.
 // It also returns true if no value has been set, to check if the value exists in the API response see IsEmpty().
-func (c *AutoscalingResources) IsZero() bool {
-	if c == nil {
+func (ar *AutoscalingResources) IsZero() bool {
+	if ar == nil {
 		return true
 	}
-	return c.Memory.IsZero() && c.Storage.IsZero()
+	return ar.Memory.IsZero() && ar.Storage.IsZero()
 }
 
 func (c *clientV7) GetAutoscalingCapacity(ctx context.Context) (AutoscalingCapacityResult, error) {
