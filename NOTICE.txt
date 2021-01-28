@@ -3781,11 +3781,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.20.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.4.0
-Time    : 2020-10-28T10:49:56Z
+Version : v2.5.0
+Time    : 2021-01-27T18:15:07Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.5.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
