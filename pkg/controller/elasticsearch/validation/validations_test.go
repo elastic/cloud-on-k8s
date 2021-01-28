@@ -447,6 +447,45 @@ func Test_noUnknownFields(t *testing.T) {
 	}
 }
 
+func Test_autoscalingValidation(t *testing.T) {
+	type args struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}
+	tests := []args{
+		{
+			name: "unsupported version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}"}},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.10.0",
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "supported version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}"}},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.11.0",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := validAutoscalingConfiguration(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validAutoscalingConfiguration(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.NodeSets)
+			}
+		})
+	}
+}
+
 // es returns an es fixture at a given version
 func es(v string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{

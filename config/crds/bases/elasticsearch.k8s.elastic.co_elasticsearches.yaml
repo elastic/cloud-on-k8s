@@ -490,9 +490,10 @@ spec:
                       description: Config holds the Elasticsearch configuration.
                       type: object
                     count:
-                      description: Count of Elasticsearch nodes to deploy.
+                      description: Count of Elasticsearch nodes to deploy. If the
+                        node set is managed by an autoscaling policy the initial value
+                        is automatically set by the autoscaling controller.
                       format: int32
-                      minimum: 0
                       type: integer
                     name:
                       description: Name of this set of nodes. Becomes a part of the
@@ -7412,7 +7413,6 @@ spec:
                         type: object
                       type: array
                   required:
-                  - count
                   - name
                   type: object
                 minItems: 1

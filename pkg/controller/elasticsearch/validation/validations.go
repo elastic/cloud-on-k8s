@@ -22,6 +22,7 @@ import (
 var log = ulog.Log.WithName("es-validation")
 
 const (
+	autoscalingVersionMsg    = "autoscaling is not available in this version of Elasticsearch"
 	cfgInvalidMsg            = "Configuration invalid"
 	duplicateNodeSets        = "NodeSet names must be unique"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
@@ -47,6 +48,7 @@ var validations = []validation{
 	hasCorrectNodeRoles,
 	supportedVersion,
 	validSanIP,
+	validAutoscalingConfiguration,
 }
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
@@ -138,8 +140,8 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Forbidden(confField(i), fmt.Sprintf(mixedRoleConfigMsg, strings.Join(nodeRoleAttrs, ","))))
 		}
 
-		// check if this nodeSet has the master role
-		seenMaster = seenMaster || (cfg.Node.HasMasterRole() && !cfg.Node.HasVotingOnlyRole() && ns.Count > 0)
+		// Check if this nodeSet has the master role. If autoscaling is enabled the count value in the NodeSet might not be initially set.
+		seenMaster = seenMaster || (cfg.Node.HasMasterRole() && !cfg.Node.HasVotingOnlyRole() && ns.Count > 0) || es.IsAutoscalingDefined()
 	}
 
 	if !seenMaster {
