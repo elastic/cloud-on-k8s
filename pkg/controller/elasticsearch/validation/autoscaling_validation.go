@@ -67,7 +67,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 	}
 
 	// Validate the autoscaling policies
-	errs = append(errs, validAutoscalingPolicies(autoscalingSpecification.AutoscalingPolicySpecs)...)
+	errs = append(errs, validateAutoscalingPolicies(autoscalingSpecification.AutoscalingPolicySpecs)...)
 	if len(errs) > 0 {
 		// We may have policies with duplicated set of roles, it may make it hard to validate further the autoscaling spec.
 		return errs
@@ -121,7 +121,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func validAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs) field.ErrorList {
+func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs) field.ErrorList {
 	var errs field.ErrorList
 	policyNames := set.Make()
 	rolesSet := make([][]string, 0, len(autoscalingPolicies))
