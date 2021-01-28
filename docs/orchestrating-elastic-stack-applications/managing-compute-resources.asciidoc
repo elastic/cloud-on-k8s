@@ -19,8 +19,7 @@ You can set compute resource constraints in the `podTemplate` of objects managed
 [id="{p}-compute-resources-elasticsearch"]
 === Set compute resources for Elasticsearch
 
-For Elasticsearch objects, make sure to consider the heap size when you set resource requirements.
-A good rule of thumb is to size it to half the size of RAM allocated to the Pod.
+NOTE: Staring with Elasticsearch 7.11, unless manually overridden, heap size is automatically calculated based on the node roles and the available memory. In Kubernetes, the amount of memory available to an Elasticsearch node is determined by the `limits` defined for that container. See <<{p}-jvm-heap-size>> for more information.
 
 To minimize disruption caused by Pod evictions due to resource contention, you can run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
 
