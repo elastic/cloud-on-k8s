@@ -2,9 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build es e2e
+// +build e2e
 
-package es
+package e2e
 
 import (
 	"fmt"
