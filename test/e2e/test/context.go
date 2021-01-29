@@ -18,6 +18,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	// ArchARMTag is the test tag used to indicate a test run on an ARM-based cluster.
+	ArchARMTag = "arch:arm"
+)
+
 var defaultElasticStackVersion = LatestVersion7x
 
 var (
