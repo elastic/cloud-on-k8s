@@ -230,10 +230,11 @@ func (r *ReconcileLicenses) minVersion(cluster esv1.Elasticsearch) (*version.Ver
 		return nil, err
 	}
 	if minVersion == nil {
-		minVersion, err = version.Parse(cluster.Spec.Version)
+		v, err := version.Parse(cluster.Spec.Version)
 		if err != nil {
 			return nil, err
 		}
+		minVersion = &v
 	}
 	return minVersion, nil
 }

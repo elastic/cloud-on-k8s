@@ -93,8 +93,8 @@ func supportedVersion(es esv1.Elasticsearch) field.ErrorList {
 	if err != nil {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
 	}
-	if v := esversion.SupportedVersions(*ver); v != nil {
-		if err := v.Supports(*ver); err == nil {
+	if v := esversion.SupportedVersions(ver); v != nil {
+		if err := v.WithinRange(ver); err == nil {
 			return field.ErrorList{}
 		}
 	}
@@ -121,14 +121,14 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 
 	for i, ns := range es.Spec.NodeSets {
 		cfg := esv1.ElasticsearchSettings{}
-		if err := esv1.UnpackConfig(ns.Config, *v, &cfg); err != nil {
+		if err := esv1.UnpackConfig(ns.Config, v, &cfg); err != nil {
 			errs = append(errs, field.Invalid(confField(i), ns.Config, cfgInvalidMsg))
 
 			continue
 		}
 
 		// check that node.roles is not used with an older Elasticsearch version
-		if cfg.Node != nil && cfg.Node.Roles != nil && !v.IsSameOrAfter(version.From(7, 9, 0)) {
+		if cfg.Node != nil && cfg.Node.Roles != nil && !v.GTE(version.From(7, 9, 0)) {
 			errs = append(errs, field.Invalid(confField(i), ns.Config, nodeRolesInOldVersionMsg))
 
 			continue
@@ -234,7 +234,7 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 	if len(errs) != 0 {
 		return errs
 	}
-	if !proposedVer.IsSameOrAfter(*currentVer) {
+	if !proposedVer.GTE(currentVer) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, noDowngradesMsg))
 	}
 	return errs
@@ -255,13 +255,13 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 		return errs
 	}
 
-	v := esversion.SupportedVersions(*proposedVer)
+	v := esversion.SupportedVersions(proposedVer)
 	if v == nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedVersionMsg))
 		return errs
 	}
 
-	err = v.Supports(*currentVer)
+	err = v.WithinRange(currentVer)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedUpgradeMsg))
 	}

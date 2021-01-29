@@ -53,7 +53,7 @@ func atLeasOnePodCompatibleWithZen1(pods []corev1.Pod) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if versionCompatibleWithZen1(*version) {
+		if versionCompatibleWithZen1(version) {
 			return true, nil
 		}
 	}

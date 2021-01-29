@@ -129,11 +129,11 @@ type StackResourceVersions struct {
 
 func (s StackResourceVersions) IsValid() bool {
 	// ES >= Kibana >= (Beats, APM)
-	return s.Elasticsearch.IsSameOrAfter(s.Kibana) &&
-		s.Kibana.IsSameOrAfter(s.Beat) &&
-		s.Kibana.IsSameOrAfter(s.ApmServer) &&
+	return s.Elasticsearch.GTE(s.Kibana) &&
+		s.Kibana.GTE(s.Beat) &&
+		s.Kibana.GTE(s.ApmServer) &&
 		// ES >= EnterpriseSearch
-		s.Elasticsearch.IsSameOrAfter(s.EnterpriseSearch)
+		s.Elasticsearch.GTE(s.EnterpriseSearch)
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
@@ -162,14 +162,14 @@ type refVersion struct {
 	version string
 }
 
-func (r refVersion) IsSameOrAfter(r2 refVersion) bool {
+func (r refVersion) GTE(r2 refVersion) bool {
 	if r.version == "" || r2.version == "" {
 		// empty version, consider it's ok
 		return true
 	}
 	rVersion := version.MustParse(r.version)
 	r2Version := version.MustParse(r2.version)
-	return rVersion.IsSameOrAfter(r2Version)
+	return rVersion.GTE(r2Version)
 }
 
 func ref(ref types.NamespacedName) refVersion {

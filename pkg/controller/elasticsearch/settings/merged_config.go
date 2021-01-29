@@ -125,7 +125,7 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalCon
 		cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
 	}
 
-	if ver.IsSameOrAfter(version.MustParse("7.8.1")) {
+	if ver.GTE(version.MustParse("7.8.1")) {
 		cfg[esv1.XPackLicenseUploadTypes] = []string{
 			string(client.ElasticsearchLicenseTypeTrial), string(client.ElasticsearchLicenseTypeEnterprise),
 		}

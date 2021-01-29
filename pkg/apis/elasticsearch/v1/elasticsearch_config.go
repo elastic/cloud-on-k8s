@@ -187,7 +187,7 @@ func UnpackConfig(c *commonv1.Config, ver version.Version, out *ElasticsearchSet
 // configureTransformRole explicitly sets the transform role to false if the version is below 7.7.0
 func configureTransformRole(cfg *ElasticsearchSettings, ver version.Version) {
 	// nothing to do if the version is above 7.7.0 as the transform role is automatically applied to data nodes by the HasTransformRole method.
-	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
+	if ver.GTE(version.From(7, 7, 0)) {
 		return
 	}
 

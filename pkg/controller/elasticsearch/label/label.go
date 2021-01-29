@@ -89,7 +89,7 @@ func IsDataNode(pod corev1.Pod) bool {
 }
 
 // ExtractVersion extracts the Elasticsearch version from the given labels.
-func ExtractVersion(labels map[string]string) (*version.Version, error) {
+func ExtractVersion(labels map[string]string) (version.Version, error) {
 	return version.FromLabels(labels, VersionLabelName)
 }
 
@@ -121,12 +121,12 @@ func NewPodLabels(
 	NodeTypesIngestLabelName.Set(nodeRoles.HasIngestRole(), labels)
 	NodeTypesMLLabelName.Set(nodeRoles.HasMLRole(), labels)
 	// transform and remote_cluster_client roles were only added in 7.7.0 so we should not annotate previous versions with them
-	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
+	if ver.GTE(version.From(7, 7, 0)) {
 		NodeTypesTransformLabelName.Set(nodeRoles.HasTransformRole(), labels)
 		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRemoteClusterClientRole(), labels)
 	}
 	// voting_only master eligible nodes were added only in 7.3.0 so we don't want to label prior versions with it
-	if ver.IsSameOrAfter(version.From(7, 3, 0)) {
+	if ver.GTE(version.From(7, 3, 0)) {
 		NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasVotingOnlyRole(), labels)
 	}
 

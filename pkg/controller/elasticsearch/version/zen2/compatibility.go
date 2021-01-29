@@ -39,7 +39,7 @@ func AllMastersCompatibleWithZen2(c k8s.Client, es esv1.Elasticsearch) (bool, er
 		if err != nil {
 			return false, err
 		}
-		if !versionCompatibleWithZen2(*v) {
+		if !versionCompatibleWithZen2(v) {
 			return false, nil
 		}
 	}

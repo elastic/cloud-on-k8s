@@ -262,7 +262,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
-	if !association.AllowVersion(*asVersion, as, logger, r.recorder) {
+	if !association.AllowVersion(asVersion, as, logger, r.recorder) {
 		return reconcile.Result{}, nil // will eventually retry
 	}
 

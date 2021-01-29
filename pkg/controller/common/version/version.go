@@ -6,14 +6,16 @@ package version
 
 import (
 	"fmt"
-	"sort"
-	"strconv"
-	"strings"
 
+	semver "github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
+
+// Version is an alias for semver.Version.
+// It exists purely to avoid accidentally importing the old github.com/blang/semver instead of github.com/blang/semver/v4.
+type Version = semver.Version
 
 // GlobalMinStackVersion to additional restrict the allowed min version beyond the technical requirements expressed below.
 var GlobalMinStackVersion Version
@@ -30,6 +32,7 @@ var (
 )
 
 // MinMaxVersion holds the minimum and maximum supported versions.
+// Could be replaced with semver.Range if we didn't have to support GlobalMinStackVersion.
 type MinMaxVersion struct {
 	Min Version
 	Max Version
@@ -37,11 +40,11 @@ type MinMaxVersion struct {
 
 // WithinRange returns an error if the given version is not within the range of minimum and maximum versions.
 func (mmv MinMaxVersion) WithinRange(v Version) error {
-	if !v.IsSameOrAfter(mmv.Min) {
+	if v.LT(mmv.Min) {
 		return fmt.Errorf("version %s is lower than the lowest supported version of %s", v, mmv.Min)
 	}
 
-	if !mmv.Max.IsSameOrAfter(v) {
+	if v.GT(mmv.Max) {
 		return fmt.Errorf("version %s is higher than the highest supported version of %s", v, mmv.Max)
 	}
 
@@ -49,7 +52,7 @@ func (mmv MinMaxVersion) WithinRange(v Version) error {
 }
 
 func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
-	if min.IsAfter(mmv.Min) {
+	if min.GT(mmv.Min) {
 		return MinMaxVersion{
 			Min: min,
 			Max: mmv.Max,
@@ -58,160 +61,65 @@ func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
 	return mmv
 }
 
-// Version is a parsed version
-type Version struct {
-	Major int
-	Minor int
-	Patch int
-	Label string
+// Parse attempts to parse a version string.
+func Parse(v string) (Version, error) {
+	return semver.Parse(v)
 }
 
-// String formats the version into a string
-func (v Version) String() string {
-	vString := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
-	if v.Label != "" {
-		vString += "-" + v.Label
-	}
-	return vString
-}
-
-var (
-	// TooFewSegmentsErrorMessage is used as an error message when a version has too few dot-separated segments
-	TooFewSegmentsErrorMessage = "version string has too few segments: %s"
-	// TooManySegmentsErrorMessage is used as an error message when a version has too many dot-separated segments
-	TooManySegmentsErrorMessage = "version string has too many segments: %s"
-)
-
-// Parse returns a parsed version of a string from the format {major}.{minor}.{patch}[-{label}]
-func Parse(version string) (*Version, error) {
-	segments := strings.SplitN(version, ".", 3)
-	if len(segments) < 3 {
-		return nil, errors.Errorf(TooFewSegmentsErrorMessage, version)
-	}
-	if len(segments) > 4 {
-		return nil, errors.Errorf(TooManySegmentsErrorMessage, version)
-	}
-
-	major, err := strconv.Atoi(segments[0])
-	if err != nil {
-		return nil, errors.Wrapf(err, "invalid major format. version: %s", version)
-	}
-
-	minor, err := strconv.Atoi(segments[1])
-	if err != nil {
-		return nil, errors.Wrapf(err, "invalid minor format. version: %s", version)
-	}
-
-	patchSegments := strings.SplitN(segments[2], "-", 2)
-
-	patch, err := strconv.Atoi(patchSegments[0])
-	if err != nil {
-		return nil, errors.Wrapf(err, "invalid patch format. version: %s", version)
-	}
-
-	label := ""
-	if len(patchSegments) == 2 {
-		label = patchSegments[1]
-	}
-
-	return &Version{Major: major, Minor: minor, Patch: patch, Label: label}, nil
+// Parse attempts to parse a version string and panics if it fails.
+func MustParse(v string) Version {
+	return semver.MustParse(v)
 }
 
 // From creates a new version from the given major, minor, patch numbers.
 func From(major, minor, patch int) Version {
-	return Version{Major: major, Minor: minor, Patch: patch}
-}
-
-// MustParse is a variant of Parse that panics if the version is not valid
-func MustParse(version string) Version {
-	v, err := Parse(version)
-	if err != nil {
-		panic(err)
-	}
-	return *v
-}
-
-func (v *Version) Copy() *Version {
-	return &Version{
-		Major: v.Major,
-		Minor: v.Minor,
-		Patch: v.Patch,
-		Label: v.Label,
-	}
-}
-
-// IsSameOrAfter returns true if the receiver is the same version or newer than the argument. Labels are ignored.
-func (v *Version) IsSameOrAfter(other Version) bool {
-	return v.IsSame(other) || v.IsAfter(other)
-}
-
-// IsSameOrAfterIgnoringPatch returns true if the receiver is the same version or newer than the argument,
-// considering major and minor versions only (patch is ignored).
-func (v *Version) IsSameOrAfterIgnoringPatch(other Version) bool {
-	other.Patch = 0
-	vCopy := v.Copy()
-	vCopy.Patch = 0
-	return vCopy.IsSameOrAfter(other)
-}
-
-// IsSameOrAfter returns true if the receiver is the same version as the argument. Labels are ignored.
-func (v *Version) IsSame(other Version) bool {
-	return v.Major == other.Major && v.Minor == other.Minor && v.Patch == other.Patch
-}
-
-// IsAfter returns true if the receiver version is newer than the argument. Labels are ignored.
-func (v *Version) IsAfter(other Version) bool {
-	return v.Major > other.Major ||
-		(v.Major == other.Major && v.Minor > other.Minor) ||
-		(v.Major == other.Major && v.Minor == other.Minor && v.Patch > other.Patch)
+	return Version{Major: uint64(major), Minor: uint64(minor), Patch: uint64(patch)}
 }
 
 // MinInPods returns the lowest version parsed from labels in the given Pods.
 func MinInPods(pods []corev1.Pod, labelName string) (*Version, error) {
-	versions := make([]Version, 0, len(pods))
+	var min *Version
 	for _, p := range pods {
 		v, err := FromLabels(p.Labels, labelName)
 		if err != nil {
 			return nil, err
 		}
-		versions = append(versions, *v)
+
+		if min == nil || v.LT(*min) {
+			min = &v
+		}
 	}
-	return Min(versions), nil
+
+	return min, nil
 }
 
 // MinInStatefulSets returns the lowest version parsed from labels in the given StatefulSets template.
 func MinInStatefulSets(ssets []appsv1.StatefulSet, labelName string) (*Version, error) {
-	versions := make([]Version, 0, len(ssets))
+	var min *Version
 	for _, s := range ssets {
 		v, err := FromLabels(s.Spec.Template.Labels, labelName)
 		if err != nil {
 			return nil, err
 		}
-		versions = append(versions, *v)
+
+		if min == nil || v.LT(*min) {
+			min = &v
+		}
 	}
-	return Min(versions), nil
+
+	return min, nil
 }
 
-// Min returns the minimum version in vs or nil.
-func Min(vs []Version) *Version {
-	sort.SliceStable(vs, func(i, j int) bool {
-		return vs[j].IsSameOrAfter(vs[i])
-	})
-	var v *Version
-	if len(vs) > 0 {
-		v = &vs[0]
-	}
-	return v
-}
-
-func FromLabels(labels map[string]string, labelName string) (*Version, error) {
+func FromLabels(labels map[string]string, labelName string) (Version, error) {
 	labelValue, ok := labels[labelName]
 	if !ok {
-		return nil, errors.Errorf("version label %s is missing", labelName)
+		return Version{}, errors.Errorf("version label %s is missing", labelName)
 	}
-	v, err := Parse(labelValue)
+
+	v, err := semver.Parse(labelValue)
 	if err != nil {
-		return nil, errors.Wrapf(err, "version label %s is invalid: %s", labelName, labelValue)
+		return Version{}, errors.Wrapf(err, "version label %s is invalid: %s", labelName, labelValue)
 	}
+
 	return v, nil
 }

@@ -233,7 +233,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
-	if !association.AllowVersion(*entVersion, ent.Associated(), logger, r.recorder) {
+	if !association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder) {
 		return reconcile.Result{}, nil // will eventually retry once updated
 	}
 
