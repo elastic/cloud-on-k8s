@@ -15,6 +15,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	// EventInvalidLicense describes an event fired when a license is not valid.
+	EventInvalidLicense = "InvalidLicense"
+)
+
 type Checker interface {
 	CurrentEnterpriseLicense() (*EnterpriseLicense, error)
 	EnterpriseFeaturesEnabled() (bool, error)
