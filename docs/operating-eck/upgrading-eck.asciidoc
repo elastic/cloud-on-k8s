@@ -23,7 +23,7 @@ Note that the release notes and highlights only list the changes since the last 
 
 CAUTION: The upgrade process results in an update to all the existing managed resources. This triggers a rolling restart of all Elasticsearch and Kibana pods. <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
 
-IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, skip to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
+IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
 Follow the instructions in <<{p}-deploy-eck>> to upgrade ECK to the latest version. This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
 
