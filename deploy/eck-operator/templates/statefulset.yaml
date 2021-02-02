@@ -60,6 +60,9 @@ spec:
             - name: WEBHOOK_SECRET
               value: {{ include "eck-operator.webhookSecretName" . }}
             {{- end }}
+            {{- if .Values.env }}
+              {{- toYaml .Values.env | nindent 12 }}
+            {{- end }}
             {{- if .Values.tracing.enabled -}}
             {{- range $name, $value :=  .Values.tracing.config }}
             - name: {{ $name }}
