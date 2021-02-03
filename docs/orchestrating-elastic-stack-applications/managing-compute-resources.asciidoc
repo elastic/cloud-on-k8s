@@ -66,8 +66,7 @@ spec:
 [id="{p}-compute-resources-kibana-and-apm"]
 === Set compute resources for Kibana and APM Server
 
-For Kibana or APM Server objects, the `podTemplate` can be configured as follows:
-
+.Kibana
 [source,yaml,subs="attributes"]
 ----
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
@@ -80,6 +79,31 @@ spec:
     spec:
       containers:
       - name: kibana
+        env:
+          - name: NODE_OPTIONS
+            value: "--max-old-space-size=2048"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 0.5
+          limits:
+            memory: 2.5Gi
+            cpu: 2
+----
+
+.APM Server
+[source,yaml,subs="attributes"]
+----
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
+kind: ApmServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  podTemplate:
+    spec:
+      containers:
+      - name: apm-server
         resources:
           requests:
             memory: 1Gi
