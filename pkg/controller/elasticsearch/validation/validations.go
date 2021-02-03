@@ -255,13 +255,13 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 		return errs
 	}
 
-	v := esversion.SupportedVersions(proposedVer)
-	if v == nil {
+	supportedVersions := esversion.SupportedVersions(proposedVer)
+	if supportedVersions == nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedVersionMsg))
 		return errs
 	}
 
-	err = v.WithinRange(currentVer)
+	err = supportedVersions.WithinRange(currentVer)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedUpgradeMsg))
 	}

@@ -7,7 +7,7 @@ package version
 import (
 	"fmt"
 
-	semver "github.com/blang/semver/v4"
+	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +17,8 @@ import (
 // It exists purely to avoid accidentally importing the old github.com/blang/semver instead of github.com/blang/semver/v4.
 type Version = semver.Version
 
-// GlobalMinStackVersion to additional restrict the allowed min version beyond the technical requirements expressed below.
+// GlobalMinStackVersion is an additional restriction on top of the technical requirements expressed below.
+// Used to support UBI images where compatible images are only available from a particular stack version onwards.
 var GlobalMinStackVersion Version
 
 // supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
