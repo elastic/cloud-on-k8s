@@ -56,7 +56,7 @@ tolerations: []
 # affinity defines the node affinity rules for the operator pod.
 affinity: {}
 
-# additional environment variables
+# additional environment variables for the operator container.
 env: []
 
 # createClusterScopedResources determines whether cluster-scoped resources (ClusterRoles, ClusterRoleBindings) should be created.
