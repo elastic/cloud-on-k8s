@@ -323,6 +323,7 @@ E2E_PROVIDER=eks
 CLUSTER_NAME=${BUILD_TAG}-arm
 KUBERNETES_VERSION=default
 TEST_OPTS=-race
+E2E_TEST_ENV_TAGS="arch:arm"
 ENV
 write_deployer_config <<CFG
 id: eks-arm-ci

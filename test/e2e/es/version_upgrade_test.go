@@ -15,6 +15,10 @@ import (
 )
 
 func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
+	if test.Ctx().HasTag(test.ArchARMTag) {
+		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
@@ -33,6 +37,10 @@ func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
 }
 
 func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
+	if test.Ctx().HasTag(test.ArchARMTag) {
+		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
@@ -52,6 +60,10 @@ func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
 }
 
 func TestVersionUpgrade3Nodes68xTo7x(t *testing.T) {
+	if test.Ctx().HasTag(test.ArchARMTag) {
+		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
@@ -70,6 +82,10 @@ func TestVersionUpgrade3Nodes68xTo7x(t *testing.T) {
 }
 
 func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
+	if test.Ctx().HasTag(test.ArchARMTag) {
+		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
@@ -97,6 +113,10 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 }
 
 func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
+	if test.Ctx().HasTag(test.ArchARMTag) {
+		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
