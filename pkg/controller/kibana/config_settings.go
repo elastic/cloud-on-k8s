@@ -30,8 +30,8 @@ import (
 const (
 	// SettingsFilename is the Kibana configuration settings file
 	SettingsFilename = "kibana.yml"
-	// EnvNodeOpts is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
-	EnvNodeOpts = "NODE_OPTS"
+	// EnvNodeOptions is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
+	EnvNodeOptions = "NODE_OPTIONS"
 
 	// esCertsVolumeMountPath is the directory containing Elasticsearch certificates.
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
