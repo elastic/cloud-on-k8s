@@ -23,7 +23,6 @@ func (ctx *Context) nodeResources(minNodesCount int64, currentStorage resource.Q
 	// Compute desired memory quantity for the nodes managed by this AutoscalingPolicySpec.
 	if !ctx.RequiredCapacity.Node.Memory.IsEmpty() {
 		memoryRequest := ctx.getResourceValue(
-			ctx.AutoscalingSpec.Name,
 			"memory",
 			ctx.RequiredCapacity.Node.Memory,
 			ctx.RequiredCapacity.Total.Memory,
@@ -37,7 +36,6 @@ func (ctx *Context) nodeResources(minNodesCount int64, currentStorage resource.Q
 	// Compute desired storage quantity for the nodes managed by this AutoscalingPolicySpec.
 	if !ctx.RequiredCapacity.Node.Storage.IsEmpty() {
 		storageRequest := ctx.getResourceValue(
-			ctx.AutoscalingSpec.Name,
 			"storage",
 			ctx.RequiredCapacity.Node.Storage,
 			ctx.RequiredCapacity.Total.Storage,
@@ -73,7 +71,7 @@ func (ctx *Context) nodeResources(minNodesCount int64, currentStorage resource.Q
 // calculated according to the required value from the Elasticsearch autoscaling API and the resource constraints (limits)
 // set by the user in the autoscaling specification.
 func (ctx *Context) getResourceValue(
-	autoscalingPolicyName, resourceType string,
+	resourceType string,
 	nodeRequired *client.AutoscalingCapacity, // node required capacity as returned by the Elasticsearch API
 	totalRequired *client.AutoscalingCapacity, // tier required capacity as returned by the Elasticsearch API, considered as optional
 	minNodesCount int64, // the minimum of nodes that will be deployed
@@ -91,13 +89,13 @@ func (ctx *Context) getResourceValue(
 		ctx.Log.Error(
 			err, err.Error(),
 			"scope", "node",
-			"policy", autoscalingPolicyName,
+			"policy", ctx.AutoscalingSpec.Name,
 			"required_"+resourceType, nodeRequired,
 			"max_allowed_memory", max.Value(),
 		)
 		// Also update the autoscaling status accordingly
 		ctx.StatusBuilder.
-			ForPolicy(autoscalingPolicyName).
+			ForPolicy(ctx.AutoscalingSpec.Name).
 			RecordEvent(
 				status.VerticalScalingLimitReached,
 				fmt.Sprintf("Node required %s %d is greater than max allowed: %d", resourceType, nodeRequired, max.Value()),
