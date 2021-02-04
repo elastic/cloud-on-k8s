@@ -17,6 +17,7 @@
 [float]
 === Enhancements
 
+* [Helm] Support additional environment variables {pull}4181[#4181]
 * Add support for a user-defined transport CA certificate and key {pull}4053[#4053] (issue: {issue}2812[#2812])
 * Add support for DaemonSetUpdateStrategy {pull}4049[#4049] (issue: {issue}3839[#3839])
 * [Helm] Use ValidatingWebhookConfiguration v1 on supported Kubernetes versions {pull}3963[#3963] (issues: {issue}3886[#3886], {issue}3958[#3958])
