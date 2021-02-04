@@ -281,11 +281,3 @@ func (cr ClusterResources) ByNodeSet() map[string]NodeSetResources {
 	}
 	return byNodeSet
 }
-
-func (cr ClusterResources) ByAutoscalingPolicy() map[string]NodeSetsResources {
-	byNamedTier := make(map[string]NodeSetsResources)
-	for _, namedTierResources := range cr {
-		byNamedTier[namedTierResources.Name] = namedTierResources
-	}
-	return byNamedTier
-}

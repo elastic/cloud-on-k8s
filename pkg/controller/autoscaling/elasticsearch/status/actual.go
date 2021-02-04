@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ImportExistingResources attempts to infer the resources to use in a tier if an autoscaling policy is not in the Status.
+// ImportExistingResources attempts to infer the resources to allocate to node sets if an autoscaling policy is not in the Status.
 // It can be the case if:
 //  * The cluster was manually managed and the user wants to manage resources with the autoscaling controller. In that case
 //    we want to be able to set some good default resources even if the autoscaling API is not responding.
@@ -28,7 +28,7 @@ func (s *Status) ImportExistingResources(
 	log logr.Logger,
 	c k8s.Client,
 	as esv1.AutoscalingSpec,
-	namedTiers esv1.AutoscaledNodeSets,
+	autoscaledNodeSets esv1.AutoscaledNodeSets,
 ) error {
 	for _, autoscalingPolicy := range as.AutoscalingPolicySpecs {
 		if _, inStatus := s.CurrentResourcesForPolicy(autoscalingPolicy.Name); inStatus {
@@ -36,17 +36,17 @@ func (s *Status) ImportExistingResources(
 			continue
 		}
 		// Get the nodeSets
-		nodeSetList, exists := namedTiers[autoscalingPolicy.Name]
+		nodeSetList, exists := autoscaledNodeSets[autoscalingPolicy.Name]
 		if !exists {
 			// Not supposed to happen with a proper validation in place, but we still want to report this error
 			return fmt.Errorf("no nodeSet associated to autoscaling policy %s", autoscalingPolicy.Name)
 		}
-		resources, err := namedTierResourcesFromStatefulSets(c, as.Elasticsearch, autoscalingPolicy, nodeSetList.Names())
+		resources, err := nodeSetsResourcesResourcesFromStatefulSets(c, as.Elasticsearch, autoscalingPolicy, nodeSetList.Names())
 		if err != nil {
 			return err
 		}
 		if resources == nil {
-			// No StatefulSet, the cluster or the tier might be a new one.
+			// No StatefulSet, the cluster or the autoscaling policy might be a new one.
 			continue
 		}
 		log.Info("Importing resources from existing StatefulSets",
@@ -66,14 +66,14 @@ func (s *Status) ImportExistingResources(
 	return nil
 }
 
-// namedTierResourcesFromStatefulSets creates NodeSetsResources from existing StatefulSets
-func namedTierResourcesFromStatefulSets(
+// nodeSetsResourcesResourcesFromStatefulSets creates NodeSetsResources from existing StatefulSets
+func nodeSetsResourcesResourcesFromStatefulSets(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	autoscalingPolicySpec esv1.AutoscalingPolicySpec,
 	nodeSets []string,
 ) (*resources.NodeSetsResources, error) {
-	namedTierResources := resources.NodeSetsResources{
+	nodeSetsResources := resources.NodeSetsResources{
 		Name: autoscalingPolicySpec.Name,
 	}
 	found := false
@@ -97,7 +97,7 @@ func namedTierResourcesFromStatefulSets(
 		}
 
 		found = true
-		namedTierResources.NodeSetNodeCount = append(namedTierResources.NodeSetNodeCount, resources.NodeSetNodeCount{
+		nodeSetsResources.NodeSetNodeCount = append(nodeSetsResources.NodeSetNodeCount, resources.NodeSetNodeCount{
 			Name:      nodeSetName,
 			NodeCount: getStatefulSetReplicas(statefulSet),
 		})
@@ -108,12 +108,12 @@ func namedTierResourcesFromStatefulSets(
 			return nil, err
 		}
 		if ssetStorageRequest != nil && autoscalingPolicySpec.IsStorageDefined() {
-			if namedTierResources.HasRequest(corev1.ResourceStorage) {
-				if ssetStorageRequest.Cmp(namedTierResources.GetRequest(corev1.ResourceStorage)) > 0 {
-					namedTierResources.SetRequest(corev1.ResourceStorage, *ssetStorageRequest)
+			if nodeSetsResources.HasRequest(corev1.ResourceStorage) {
+				if ssetStorageRequest.Cmp(nodeSetsResources.GetRequest(corev1.ResourceStorage)) > 0 {
+					nodeSetsResources.SetRequest(corev1.ResourceStorage, *ssetStorageRequest)
 				}
 			} else {
-				namedTierResources.SetRequest(corev1.ResourceStorage, *ssetStorageRequest)
+				nodeSetsResources.SetRequest(corev1.ResourceStorage, *ssetStorageRequest)
 			}
 		}
 
@@ -123,16 +123,16 @@ func namedTierResourcesFromStatefulSets(
 			continue
 		}
 		if autoscalingPolicySpec.IsMemoryDefined() {
-			namedTierResources.MaxMerge(container.Resources, corev1.ResourceMemory)
+			nodeSetsResources.MaxMerge(container.Resources, corev1.ResourceMemory)
 		}
 		if autoscalingPolicySpec.IsCPUDefined() {
-			namedTierResources.MaxMerge(container.Resources, corev1.ResourceCPU)
+			nodeSetsResources.MaxMerge(container.Resources, corev1.ResourceCPU)
 		}
 	}
 	if !found {
 		return nil, nil
 	}
-	return &namedTierResources, nil
+	return &nodeSetsResources, nil
 }
 
 // getElasticsearchDataVolumeQuantity returns the volume claim quantity for the esv1.ElasticsearchDataVolumeName volume

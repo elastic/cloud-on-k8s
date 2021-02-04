@@ -66,7 +66,7 @@ func (s *Status) LastModificationTime(policyName string) (metav1.Time, bool) {
 
 type AutoscalingPolicyStatusBuilder struct {
 	policyName           string
-	namedTierResources   resources.NodeSetsResources
+	nodeSetsResources    resources.NodeSetsResources
 	lastModificationTime metav1.Time
 	states               map[PolicyStateType]PolicyState
 }
@@ -90,16 +90,16 @@ func (psb *AutoscalingPolicyStatusBuilder) Build() AutoscalingPolicyStatus {
 	}
 	return AutoscalingPolicyStatus{
 		Name:                   psb.policyName,
-		NodeSetNodeCount:       psb.namedTierResources.NodeSetNodeCount,
-		ResourcesSpecification: psb.namedTierResources.NodeResources,
+		NodeSetNodeCount:       psb.nodeSetsResources.NodeSetNodeCount,
+		ResourcesSpecification: psb.nodeSetsResources.NodeResources,
 		LastModificationTime:   psb.lastModificationTime,
 		PolicyStates:           policyStates,
 	}
 }
 
-// SetNamedTierResources sets the compute resources associated to a tier.
-func (psb *AutoscalingPolicyStatusBuilder) SetNamedTierResources(namedTierResources resources.NodeSetsResources) *AutoscalingPolicyStatusBuilder {
-	psb.namedTierResources = namedTierResources
+// SetNodeSetsResources sets the compute resources associated to a tier.
+func (psb *AutoscalingPolicyStatusBuilder) SetNodeSetsResources(nodeSetsResources resources.NodeSetsResources) *AutoscalingPolicyStatusBuilder {
+	psb.nodeSetsResources = nodeSetsResources
 	return psb
 }
 
@@ -184,7 +184,7 @@ func UpdateAutoscalingStatus(
 	now := metav1.Now()
 	for _, nextNodeSetResources := range nextClusterResources {
 		// Save the resources in the status
-		statusBuilder.ForPolicy(nextNodeSetResources.Name).SetNamedTierResources(nextNodeSetResources)
+		statusBuilder.ForPolicy(nextNodeSetResources.Name).SetNodeSetsResources(nextNodeSetResources)
 
 		// Restore the previous timestamp
 		previousTimestamp, ok := currentAutoscalingStatus.LastModificationTime(nextNodeSetResources.Name)

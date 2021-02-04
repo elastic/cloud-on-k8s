@@ -113,7 +113,7 @@ func TestResourcesSpecification_MaxMerge(t *testing.T) {
 	}
 }
 
-func TestNamedTierResources_IsUsedBy(t *testing.T) {
+func TestNodeSetsResources_IsUsedBy(t *testing.T) {
 	type fields struct {
 		Name                   string
 		NodeSetNodeCount       NodeSetNodeCountList

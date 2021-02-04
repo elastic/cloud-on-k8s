@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
+func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 	type args struct {
 		statefulSets          []runtime.Object
 		es                    esv1.Elasticsearch
@@ -27,10 +27,10 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 		nodeSets              []string
 	}
 	tests := []struct {
-		name                   string
-		args                   args
-		wantNamedTierResources *resources.NodeSetsResources
-		wantErr                bool
+		name                  string
+		args                  args
+		wantNodeSetsResources *resources.NodeSetsResources
+		wantErr               bool
 	}{
 		{
 			name: "No existing StatefulSet",
@@ -42,7 +42,7 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 					AutoscalingResources:   esv1.AutoscalingResources{Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNamedTierResources: nil,
+			wantNodeSetsResources: nil,
 		},
 		{
 			name: "Has existing resources only with storage",
@@ -67,7 +67,7 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 					AutoscalingResources:   esv1.AutoscalingResources{Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNamedTierResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &resources.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
 				NodeResources: resources.NodeResources{
@@ -108,7 +108,7 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNamedTierResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &resources.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
 				NodeResources: resources.NodeResources{
@@ -150,7 +150,7 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNamedTierResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &resources.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
 				NodeResources: resources.NodeResources{
@@ -181,8 +181,8 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"}},
 				nodeSets:              []string{"nodeset-1", "nodeset-2"},
 			},
-			wantErr:                true,
-			wantNamedTierResources: nil,
+			wantErr:               true,
+			wantNodeSetsResources: nil,
 		},
 		{
 			name: "Not the default volume claims",
@@ -212,7 +212,7 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
 			wantErr: false,
-			wantNamedTierResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &resources.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
 				NodeResources: resources.NodeResources{
@@ -226,13 +226,13 @@ func TestNamedTierResourcesFromStatefulSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.args.statefulSets...)
-			got, err := namedTierResourcesFromStatefulSets(c, tt.args.es, tt.args.autoscalingPolicySpec, tt.args.nodeSets)
+			got, err := nodeSetsResourcesResourcesFromStatefulSets(c, tt.args.es, tt.args.autoscalingPolicySpec, tt.args.nodeSets)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("namedTierResourcesFromStatefulSets() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("nodeSetsResourcesResourcesFromStatefulSets() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.wantNamedTierResources) {
-				t.Errorf("namedTierResourcesFromStatefulSets() got = %v, want %v", got, tt.wantNamedTierResources)
+			if !reflect.DeepEqual(got, tt.wantNodeSetsResources) {
+				t.Errorf("nodeSetsResourcesResourcesFromStatefulSets() got = %v, want %v", got, tt.wantNodeSetsResources)
 			}
 		})
 	}
