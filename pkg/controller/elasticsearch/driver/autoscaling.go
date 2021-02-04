@@ -21,7 +21,7 @@ func autoscaledResourcesSynced(es esv1.Elasticsearch) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	autoscalingStatus, err := status.GetStatus(es)
+	autoscalingStatus, err := status.From(es)
 	if err != nil {
 		return false, err
 	}
@@ -37,7 +37,7 @@ func autoscaledResourcesSynced(es esv1.Elasticsearch) (bool, error) {
 			continue
 		}
 
-		s, ok := autoscalingStatus.GetNamedTierResources(nodeSetAutoscalingSpec.Name)
+		s, ok := autoscalingStatus.CurrentResourcesForPolicy(nodeSetAutoscalingSpec.Name)
 		if !ok {
 			log.Info("NodeSet managed by the autoscaling controller but not found in status",
 				"nodeset", nodeSet.Name,

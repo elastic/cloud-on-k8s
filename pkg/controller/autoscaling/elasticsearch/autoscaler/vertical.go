@@ -98,7 +98,7 @@ func (ctx *Context) getResourceValue(
 		// Also update the autoscaling status accordingly
 		ctx.StatusBuilder.
 			ForPolicy(autoscalingPolicyName).
-			WithEvent(
+			RecordEvent(
 				status.VerticalScalingLimitReached,
 				fmt.Sprintf("Node required %s %d is greater than max allowed: %d", resourceType, nodeRequired, max.Value()),
 			)

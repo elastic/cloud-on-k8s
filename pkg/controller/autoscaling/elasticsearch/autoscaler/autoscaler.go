@@ -31,14 +31,14 @@ func (ctx *Context) GetResources() resources.NodeSetsResources {
 	return ctx.scaleHorizontally(desiredNodeResources)
 }
 
-// scaleVertically calculates the desired resources for all the nodes managed a same autoscaling policy, given the requested
+// scaleVertically calculates the desired resources for all the nodes managed by the same autoscaling policy, given the requested
 // capacity returned by the Elasticsearch autoscaling API and the AutoscalingSpec specified by the user.
 // It attempts to scale all the resources vertically until the required resources are provided or the limits set by the user are reached.
 func (ctx *Context) scaleVertically() resources.NodeResources {
 	// All resources can be computed "from scratch", without knowing the previous values.
 	// This is however not true for storage. Storage can't be scaled down, current storage capacity must be considered
-	// as an hard min. limit. This storage limit must be taken into consideration when computing the desired resources.
-	currentStorage := getStorage(ctx.AutoscalingSpec, ctx.ActualAutoscalingStatus)
+	// as a hard min. limit. This storage limit must be taken into consideration when computing the desired resources.
+	currentStorage := getStorage(ctx.AutoscalingSpec, ctx.CurrentAutoscalingStatus)
 	return ctx.nodeResources(
 		int64(ctx.AutoscalingSpec.NodeCount.Min),
 		currentStorage,
@@ -49,7 +49,7 @@ func (ctx *Context) scaleVertically() resources.NodeResources {
 // The value is the max. value of either:
 // * the current value in the status
 // * the min. value set by the user in the autoscaling spec.
-func getStorage(autoscalingSpec esv1.AutoscalingPolicySpec, actualAutoscalingStatus status.Status) resource.Quantity {
+func getStorage(autoscalingSpec esv1.AutoscalingPolicySpec, currentAutoscalingStatus status.Status) resource.Quantity {
 	// If no storage spec is defined in the autoscaling status we return the default volume size.
 	storage := volume.DefaultPersistentVolumeSize.DeepCopy()
 	// Always adjust to the min value specified by the user in the limits.
@@ -57,8 +57,8 @@ func getStorage(autoscalingSpec esv1.AutoscalingPolicySpec, actualAutoscalingSta
 		storage = autoscalingSpec.Storage.Min
 	}
 	// If a storage value is stored in the status then reuse it.
-	if actualResources, exists := actualAutoscalingStatus.GetNamedTierResources(autoscalingSpec.Name); exists && actualResources.HasRequest(corev1.ResourceStorage) {
-		storageInStatus := actualResources.GetRequest(corev1.ResourceStorage)
+	if currentResourcesInStatus, exists := currentAutoscalingStatus.CurrentResourcesForPolicy(autoscalingSpec.Name); exists && currentResourcesInStatus.HasRequest(corev1.ResourceStorage) {
+		storageInStatus := currentResourcesInStatus.GetRequest(corev1.ResourceStorage)
 		if storageInStatus.Cmp(storage) > 0 {
 			storage = storageInStatus
 		}

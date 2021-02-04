@@ -21,20 +21,20 @@ func GetOfflineNodeSetsResources(
 	log logr.Logger,
 	nodeSets []string,
 	autoscalingSpec esv1.AutoscalingPolicySpec,
-	actualAutoscalingStatus status.Status,
+	currentAutoscalingStatus status.Status,
 ) resources.NodeSetsResources {
-	actualNamedTierResources, hasNamedTierResources := actualAutoscalingStatus.GetNamedTierResources(autoscalingSpec.Name)
+	currentNamedTierResources, hasNamedTierResources := currentAutoscalingStatus.CurrentResourcesForPolicy(autoscalingSpec.Name)
 
-	var namedTierResources resources.NodeSetsResources
+	var nodeSetsResources resources.NodeSetsResources
 	var expectedNodeCount int32
 	if !hasNamedTierResources {
 		// There's no current status for this nodeSet, this happens when the Elasticsearch cluster does not exist.
 		// In that case we create a new one from the minimum values provided by the user.
-		namedTierResources = newMinNodeSetResources(autoscalingSpec, nodeSets)
+		nodeSetsResources = newMinNodeSetResources(autoscalingSpec, nodeSets)
 	} else {
 		// The status contains some resource values for the NodeSets managed by this autoscaling policy, let's reuse them.
-		namedTierResources = nodeSetResourcesFromStatus(actualAutoscalingStatus, actualNamedTierResources, autoscalingSpec, nodeSets)
-		for _, nodeSet := range actualNamedTierResources.NodeSetNodeCount {
+		nodeSetsResources = nodeSetResourcesFromStatus(currentAutoscalingStatus, currentNamedTierResources, autoscalingSpec, nodeSets)
+		for _, nodeSet := range currentNamedTierResources.NodeSetNodeCount {
 			expectedNodeCount += nodeSet.NodeCount
 		}
 	}
@@ -48,7 +48,7 @@ func GetOfflineNodeSetsResources(
 
 	// User may have added or removed some NodeSets while the autoscaling API is not available.
 	// We distribute the nodes to reflect that change.
-	fnm := NewFairNodesManager(log, namedTierResources.NodeSetNodeCount)
+	fnm := NewFairNodesManager(log, nodeSetsResources.NodeSetNodeCount)
 	for expectedNodeCount > 0 {
 		fnm.AddNode()
 		expectedNodeCount--
@@ -58,28 +58,28 @@ func GetOfflineNodeSetsResources(
 		"Offline autoscaling",
 		"state", "offline",
 		"policy", autoscalingSpec.Name,
-		"nodeset", namedTierResources.NodeSetNodeCount,
-		"count", namedTierResources.NodeSetNodeCount.TotalNodeCount(),
-		"resources", namedTierResources.ToInt64(),
+		"nodeset", nodeSetsResources.NodeSetNodeCount,
+		"count", nodeSetsResources.NodeSetNodeCount.TotalNodeCount(),
+		"resources", nodeSetsResources.ToInt64(),
 	)
-	return namedTierResources
+	return nodeSetsResources
 }
 
 // nodeSetResourcesFromStatus restores NodeSetResources from the status.
 // If user removed the limits while offline we are assuming that it wants to take back control on the resources.
 func nodeSetResourcesFromStatus(
-	actualAutoscalingStatus status.Status,
-	actualNamedTierResources resources.NodeSetsResources,
+	currentAutoscalingStatus status.Status,
+	currentNamedTierResources resources.NodeSetsResources,
 	autoscalingSpec esv1.AutoscalingPolicySpec,
 	nodeSets []string,
 ) resources.NodeSetsResources {
 	namedTierResources := resources.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
 	// Ensure memory settings are in the allowed limit range.
 	if autoscalingSpec.IsMemoryDefined() {
-		if actualNamedTierResources.HasRequest(corev1.ResourceMemory) {
+		if currentNamedTierResources.HasRequest(corev1.ResourceMemory) {
 			namedTierResources.SetRequest(
 				corev1.ResourceMemory,
-				adjustQuantity(actualNamedTierResources.GetRequest(corev1.ResourceMemory), autoscalingSpec.Memory.Min, autoscalingSpec.Memory.Max),
+				adjustQuantity(currentNamedTierResources.GetRequest(corev1.ResourceMemory), autoscalingSpec.Memory.Min, autoscalingSpec.Memory.Max),
 			)
 		} else {
 			namedTierResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.Memory.Min.DeepCopy())
@@ -88,10 +88,10 @@ func nodeSetResourcesFromStatus(
 
 	// Ensure CPU settings are in the allowed limit range.
 	if autoscalingSpec.IsCPUDefined() {
-		if actualNamedTierResources.HasRequest(corev1.ResourceCPU) {
+		if currentNamedTierResources.HasRequest(corev1.ResourceCPU) {
 			namedTierResources.SetRequest(
 				corev1.ResourceCPU,
-				adjustQuantity(actualNamedTierResources.GetRequest(corev1.ResourceCPU), autoscalingSpec.CPU.Min, autoscalingSpec.CPU.Max),
+				adjustQuantity(currentNamedTierResources.GetRequest(corev1.ResourceCPU), autoscalingSpec.CPU.Min, autoscalingSpec.CPU.Max),
 			)
 		} else {
 			namedTierResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPU.Min.DeepCopy())
@@ -99,7 +99,7 @@ func nodeSetResourcesFromStatus(
 	}
 
 	// Ensure storage capacity is set
-	namedTierResources.SetRequest(corev1.ResourceStorage, getStorage(autoscalingSpec, actualAutoscalingStatus))
+	namedTierResources.SetRequest(corev1.ResourceStorage, getStorage(autoscalingSpec, currentAutoscalingStatus))
 	return namedTierResources
 }
 

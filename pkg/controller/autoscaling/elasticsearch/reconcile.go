@@ -31,7 +31,7 @@ func reconcileElasticsearch(
 	es *esv1.Elasticsearch,
 	statusBuilder *status.AutoscalingStatusBuilder,
 	nextClusterResources resources.ClusterResources,
-	actualAutoscalingStatus status.Status,
+	currentAutoscalingStatus status.Status,
 ) error {
 	nextResourcesByNodeSet := nextClusterResources.ByNodeSet()
 	for i := range es.Spec.NodeSets {
@@ -45,7 +45,7 @@ func reconcileElasticsearch(
 
 		container, containers := removeContainer(esv1.ElasticsearchContainerName, es.Spec.NodeSets[i].PodTemplate.Spec.Containers)
 		// Create a copy to compare if some changes have been made.
-		actualContainer := container.DeepCopy()
+		currentContainer := container.DeepCopy()
 		if container == nil {
 			container = &corev1.Container{
 				Name: esv1.ElasticsearchContainerName,
@@ -84,13 +84,13 @@ func reconcileElasticsearch(
 		// Update the NodeSet
 		es.Spec.NodeSets[i].PodTemplate.Spec.Containers = containers
 
-		if !apiequality.Semantic.DeepEqual(actualContainer, container) {
+		if !apiequality.Semantic.DeepEqual(currentContainer, container) {
 			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
 		}
 	}
 
 	// Update autoscaling status
-	return status.UpdateAutoscalingStatus(es, statusBuilder, nextClusterResources, actualAutoscalingStatus)
+	return status.UpdateAutoscalingStatus(es, statusBuilder, nextClusterResources, currentAutoscalingStatus)
 }
 
 func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.NodeSet) ([]corev1.PersistentVolumeClaim, error) {

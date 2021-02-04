@@ -196,7 +196,7 @@ func TestReconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient()
 			if tt.args.esManifest != "" {
-				// Load the actual Elasticsearch resource from the sample files.
+				// Load the current Elasticsearch resource from the sample files.
 				es := esv1.Elasticsearch{}
 				bytes, err := ioutil.ReadFile(filepath.Join("testdata", tt.args.esManifest, "elasticsearch.yml"))
 				require.NoError(t, err)
@@ -257,9 +257,9 @@ func TestReconcile(t *testing.T) {
 }
 
 func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
-	gotStatus, err := status.GetStatus(got)
+	gotStatus, err := status.From(got)
 	require.NoError(t, err)
-	wantStatus, err := status.GetStatus(want)
+	wantStatus, err := status.From(want)
 	require.NoError(t, err)
 	require.Equal(t, len(gotStatus.AutoscalingPolicyStatuses), len(wantStatus.AutoscalingPolicyStatuses))
 	for _, wantPolicyStatus := range wantStatus.AutoscalingPolicyStatuses {

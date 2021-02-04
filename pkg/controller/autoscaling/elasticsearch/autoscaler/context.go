@@ -18,8 +18,8 @@ type Context struct {
 	AutoscalingSpec esv1.AutoscalingPolicySpec
 	// NodeSets is the list of the NodeSets managed by the autoscaling specification.
 	NodeSets esv1.NodeSetList
-	// ActualAutoscalingStatus is the current resources status as stored in the Elasticsearch resource.
-	ActualAutoscalingStatus status.Status
+	// CurrentAutoscalingStatus is the current resources status as stored in the Elasticsearch resource.
+	CurrentAutoscalingStatus status.Status
 	// RequiredCapacity contains the Elasticsearch Autoscaling API result.
 	RequiredCapacity client.AutoscalingCapacityInfo
 	// StatusBuilder is used to track any event that should be surfaced to the user.

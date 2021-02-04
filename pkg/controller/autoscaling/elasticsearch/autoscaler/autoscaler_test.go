@@ -143,12 +143,12 @@ func Test_applyScaleDecision(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := Context{
-				Log:                     logTest,
-				AutoscalingSpec:         tt.args.policy,
-				NodeSets:                tt.args.currentNodeSets,
-				ActualAutoscalingStatus: tt.args.nodeSetsStatus,
-				RequiredCapacity:        tt.args.requiredCapacity,
-				StatusBuilder:           status.NewAutoscalingStatusBuilder(),
+				Log:                      logTest,
+				AutoscalingSpec:          tt.args.policy,
+				NodeSets:                 tt.args.currentNodeSets,
+				CurrentAutoscalingStatus: tt.args.nodeSetsStatus,
+				RequiredCapacity:         tt.args.requiredCapacity,
+				StatusBuilder:            status.NewAutoscalingStatusBuilder(),
 			}
 			if got := ctx.GetResources(); !equality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("autoscaler.GetResources() = %v, want %v", got, tt.want)

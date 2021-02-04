@@ -24,7 +24,7 @@ const (
 )
 
 type Status struct {
-	// PolicyStatus is used to expose state messages to user or external system
+	// AutoscalingPolicyStatuses is used to expose state messages to user or external system
 	AutoscalingPolicyStatuses []AutoscalingPolicyStatus `json:"policies"`
 }
 
@@ -33,7 +33,7 @@ type AutoscalingPolicyStatus struct {
 	Name string `json:"name"`
 	// NodeSetNodeCount holds the number of nodes for each nodeSet.
 	NodeSetNodeCount resources.NodeSetNodeCountList `json:"nodeSets"`
-	// ResourcesSpecification holds the resource values common to all the nodeSet managed by a same autoscaling policy.
+	// ResourcesSpecification holds the resource values common to all the nodeSets managed by a same autoscaling policy.
 	// Only the resources managed by the autoscaling controller are saved in the Status.
 	ResourcesSpecification resources.NodeResources `json:"resources"`
 	// PolicyStates may contain various messages regarding the current state of this autoscaling policy.
@@ -42,7 +42,7 @@ type AutoscalingPolicyStatus struct {
 	LastModificationTime metav1.Time `json:"lastModificationTime"`
 }
 
-func (s *Status) GetNamedTierResources(policyName string) (resources.NodeSetsResources, bool) {
+func (s *Status) CurrentResourcesForPolicy(policyName string) (resources.NodeSetsResources, bool) {
 	for _, policyStatus := range s.AutoscalingPolicyStatuses {
 		if policyStatus.Name == policyName {
 			return resources.NodeSetsResources{
@@ -55,7 +55,7 @@ func (s *Status) GetNamedTierResources(policyName string) (resources.NodeSetsRes
 	return resources.NodeSetsResources{}, false
 }
 
-func (s *Status) GetLastModificationTime(policyName string) (metav1.Time, bool) {
+func (s *Status) LastModificationTime(policyName string) (metav1.Time, bool) {
 	for _, policyState := range s.AutoscalingPolicyStatuses {
 		if policyState.Name == policyName {
 			return policyState.LastModificationTime, true
@@ -108,8 +108,8 @@ func (psb *AutoscalingPolicyStatusBuilder) SetLastModificationTime(lastModificat
 	return psb
 }
 
-// WithEvent records a new event (type + message) for the tier.
-func (psb *AutoscalingPolicyStatusBuilder) WithEvent(stateType PolicyStateType, message string) *AutoscalingPolicyStatusBuilder {
+// RecordEvent records a new event (type + message) for the tier.
+func (psb *AutoscalingPolicyStatusBuilder) RecordEvent(stateType PolicyStateType, message string) *AutoscalingPolicyStatusBuilder {
 	if policyState, ok := psb.states[stateType]; ok {
 		policyState.Messages = append(policyState.Messages, message)
 		psb.states[stateType] = policyState
@@ -130,28 +130,28 @@ type PolicyState struct {
 }
 
 type AutoscalingStatusBuilder struct {
-	policyStatesBuilder map[string]*AutoscalingPolicyStatusBuilder
+	policyStatusBuilder map[string]*AutoscalingPolicyStatusBuilder
 }
 
 func NewAutoscalingStatusBuilder() *AutoscalingStatusBuilder {
 	return &AutoscalingStatusBuilder{
-		policyStatesBuilder: make(map[string]*AutoscalingPolicyStatusBuilder),
+		policyStatusBuilder: make(map[string]*AutoscalingPolicyStatusBuilder),
 	}
 }
 
 func (psb *AutoscalingStatusBuilder) ForPolicy(policyName string) *AutoscalingPolicyStatusBuilder {
-	if value, ok := psb.policyStatesBuilder[policyName]; ok {
+	if value, ok := psb.policyStatusBuilder[policyName]; ok {
 		return value
 	}
 	policyStatusBuilder := NewAutoscalingPolicyStatusBuilder(policyName)
-	psb.policyStatesBuilder[policyName] = policyStatusBuilder
+	psb.policyStatusBuilder[policyName] = policyStatusBuilder
 	return policyStatusBuilder
 }
 
 func (psb *AutoscalingStatusBuilder) Build() Status {
-	policyStates := make([]AutoscalingPolicyStatus, len(psb.policyStatesBuilder))
+	policyStates := make([]AutoscalingPolicyStatus, len(psb.policyStatusBuilder))
 	i := 0
-	for _, policyStateBuilder := range psb.policyStatesBuilder {
+	for _, policyStateBuilder := range psb.policyStatusBuilder {
 		policyStates[i] = policyStateBuilder.Build()
 		i++
 	}
@@ -161,7 +161,7 @@ func (psb *AutoscalingStatusBuilder) Build() Status {
 	}
 }
 
-func GetStatus(es esv1.Elasticsearch) (Status, error) {
+func From(es esv1.Elasticsearch) (Status, error) {
 	status := Status{}
 	if es.Annotations == nil {
 		return status, nil
@@ -178,23 +178,23 @@ func UpdateAutoscalingStatus(
 	es *esv1.Elasticsearch,
 	statusBuilder *AutoscalingStatusBuilder,
 	nextClusterResources resources.ClusterResources,
-	actualAutoscalingStatus Status,
+	currentAutoscalingStatus Status,
 ) error {
 	// Update the timestamp on tiers resources
 	now := metav1.Now()
-	for _, nextNodeSetResource := range nextClusterResources {
+	for _, nextNodeSetResources := range nextClusterResources {
 		// Save the resources in the status
-		statusBuilder.ForPolicy(nextNodeSetResource.Name).SetNamedTierResources(nextNodeSetResource)
+		statusBuilder.ForPolicy(nextNodeSetResources.Name).SetNamedTierResources(nextNodeSetResources)
 
 		// Restore the previous timestamp
-		previousTimestamp, ok := actualAutoscalingStatus.GetLastModificationTime(nextNodeSetResource.Name)
+		previousTimestamp, ok := currentAutoscalingStatus.LastModificationTime(nextNodeSetResources.Name)
 		if ok {
-			statusBuilder.ForPolicy(nextNodeSetResource.Name).SetLastModificationTime(previousTimestamp)
+			statusBuilder.ForPolicy(nextNodeSetResources.Name).SetLastModificationTime(previousTimestamp)
 		}
 
-		actualNodeSetResource, ok := actualAutoscalingStatus.GetNamedTierResources(nextNodeSetResource.Name)
-		if !ok || !actualNodeSetResource.SameResources(nextNodeSetResource) {
-			statusBuilder.ForPolicy(nextNodeSetResource.Name).SetLastModificationTime(now)
+		currentNodeSetResources, ok := currentAutoscalingStatus.CurrentResourcesForPolicy(nextNodeSetResources.Name)
+		if !ok || !currentNodeSetResources.SameResources(nextNodeSetResources) {
+			statusBuilder.ForPolicy(nextNodeSetResources.Name).SetLastModificationTime(now)
 		}
 	}
 

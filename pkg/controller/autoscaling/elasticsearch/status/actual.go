@@ -19,11 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ImportExistingResources attempts to infer the resources to use in a tier if an autoscaling policy  is not in the Status.
+// ImportExistingResources attempts to infer the resources to use in a tier if an autoscaling policy is not in the Status.
 // It can be the case if:
 //  * The cluster was manually managed and the user wants to manage resources with the autoscaling controller. In that case
 //    we want to be able to set some good default resources even if the autoscaling API is not responding.
-// * The Elasticsearch has been replaced and the status annotation has been lost.
+// * The Elasticsearch resource has been replaced and the status annotation has been lost in the process.
 func (s *Status) ImportExistingResources(
 	log logr.Logger,
 	c k8s.Client,
@@ -31,7 +31,7 @@ func (s *Status) ImportExistingResources(
 	namedTiers esv1.AutoscaledNodeSets,
 ) error {
 	for _, autoscalingPolicy := range as.AutoscalingPolicySpecs {
-		if _, inStatus := s.GetNamedTierResources(autoscalingPolicy.Name); inStatus {
+		if _, inStatus := s.CurrentResourcesForPolicy(autoscalingPolicy.Name); inStatus {
 			// This autoscaling policy is already managed and we have some resources in the Status.
 			continue
 		}

@@ -139,7 +139,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	}
 
 	// Build status from annotation or existing resources
-	autoscalingStatus, err := status.GetStatus(es)
+	autoscalingStatus, err := status.From(es)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -149,21 +149,21 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, nil
 	}
 
-	// Compute named tiers
-	namedTiers, nodeSetErr := autoscalingSpecification.GetAutoscaledNodeSets()
+	// Get autoscaling policies and the associated node sets.
+	autoscaledNodeSets, nodeSetErr := autoscalingSpecification.GetAutoscaledNodeSets()
 	if nodeSetErr != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, nodeSetErr)
 	}
-	log.V(1).Info("Named tiers", "named_tiers", namedTiers)
+	log.V(1).Info("Autoscaling policies and node sets", "policies", autoscaledNodeSets)
 
-	// Import existing resources in the actual Status if the cluster is managed by some autoscaling policies but
+	// Import existing resources in the current Status if the cluster is managed by some autoscaling policies but
 	// the status annotation does not exist.
-	if err := autoscalingStatus.ImportExistingResources(log, r.Client, autoscalingSpecification, namedTiers); err != nil {
+	if err := autoscalingStatus.ImportExistingResources(log, r.Client, autoscalingSpecification, autoscaledNodeSets); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Call the main function
-	current, err := r.reconcileInternal(ctx, autoscalingStatus, namedTiers, autoscalingSpecification, es)
+	current, err := r.reconcileInternal(ctx, autoscalingStatus, autoscaledNodeSets, autoscalingSpecification, es)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}

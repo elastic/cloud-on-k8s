@@ -81,7 +81,7 @@ func (ctx *Context) getNodesToAdd(
 		// Also surface this situation in the status.
 		ctx.StatusBuilder.
 			ForPolicy(ctx.AutoscalingSpec.Name).
-			WithEvent(
+			RecordEvent(
 				status.HorizontalScalingLimitReached,
 				fmt.Sprintf("Can't provide total required %s %d, max number of nodes is %d, requires %d nodes", resourceName, totalRequiredCapacity, maxNodes, minNodes+nodeToAdd),
 			)

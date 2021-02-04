@@ -249,7 +249,7 @@ type NodeSetResources struct {
 	*NodeSetsResources
 }
 
-// SameResources compares the resources allocated to the nodes in a named tier and returns true
+// SameResources compares the resources allocated to 2 set of node sets in an autoscaling policy and returns true
 // if they are equal.
 func (ntr NodeSetsResources) SameResources(other NodeSetsResources) bool {
 	thisByName := ntr.NodeSetNodeCount.ByNodeSet()
