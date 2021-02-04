@@ -291,8 +291,7 @@ type fakeEsClient struct {
 	t *testing.T
 	esclient.Client
 
-	autoscalingPolicies AutoscalingCapacityResult
-
+	autoscalingPolicies                         esclient.AutoscalingCapacityResult
 	policiesCleaned                             bool
 	errorOnDeleteAutoscalingAutoscalingPolicies bool
 	updatedPolicies                             map[string]esv1.AutoscalingPolicy
