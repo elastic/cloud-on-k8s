@@ -126,7 +126,7 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 	}
 
 	// if the current version is gte the minimum version then they are compatible
-	if currentVersion.IsSameOrAfter(*minVersion) {
+	if currentVersion.GTE(minVersion) {
 		return true, nil
 	}
 

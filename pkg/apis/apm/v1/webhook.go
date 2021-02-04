@@ -118,7 +118,7 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 	if err != nil {
 		return err
 	}
-	if !apmVersion.IsSameOrAfter(ApmAgentConfigurationMinVersion) {
+	if !apmVersion.GTE(ApmAgentConfigurationMinVersion) {
 		return field.ErrorList{field.Forbidden(
 			field.NewPath("spec").Child("kibanaRef"),
 			fmt.Sprintf(

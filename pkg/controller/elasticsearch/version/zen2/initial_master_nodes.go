@@ -64,7 +64,7 @@ func SetupInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSp
 }
 
 func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) (bool, error) {
-	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(*v) {
+	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(v) {
 		// we only care about zen2-compatible clusters here
 		return false, err
 	}
@@ -80,7 +80,7 @@ func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, no
 // RemoveZen2BootstrapAnnotation removes the initialMasterNodesAnnotation (if set) once zen2 is bootstrapped
 // on the corresponding cluster.
 func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, esClient client.Client) (bool, error) {
-	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(*v) {
+	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(v) {
 		// we only care about zen2-compatible clusters here
 		return false, err
 	}
@@ -139,7 +139,7 @@ func singleZen1MasterUpgrade(c k8s.Client, es esv1.Elasticsearch, nodeSpecResour
 	if err != nil {
 		return false, err
 	}
-	if versionCompatibleWithZen2(*v) {
+	if versionCompatibleWithZen2(v) {
 		return false, nil
 	}
 	// ...that will be replaced

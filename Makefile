@@ -128,6 +128,11 @@ reattach-pv:
 	# just check that reattach-pv still compiles
 	go build -o /dev/null hack/reattach-pv/main.go
 
+compile-all: 
+	@ go build ./...
+	@ go test -run=dryrun ./cmd/... ./pkg/... > /dev/null
+	@ $(MAKE) e2e-compile
+
 ## -- tests
 
 unit: clean
@@ -447,7 +452,7 @@ e2e-generate-xml:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
+	@go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.

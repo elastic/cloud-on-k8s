@@ -87,7 +87,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 	// Docs are the same for all Beats. For a specific version docs change "current" to major.minor, eg:
 	// https://www.elastic.co/guide/en/beats/filebeat/7.1/feature-roles.html
 	switch {
-	case v.IsSameOrAfter(version.From(7, 7, 0)):
+	case v.GTE(version.From(7, 7, 0)):
 		return strings.Join([]string{
 			"kibana_admin",
 			"ingest_admin",
@@ -95,7 +95,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V77, beat.Spec.Type),
 		}, ","), nil
-	case v.IsSameOrAfter(version.From(7, 5, 0)):
+	case v.GTE(version.From(7, 5, 0)):
 		return strings.Join([]string{
 			"kibana_user",
 			"ingest_admin",
@@ -103,7 +103,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V75, beat.Spec.Type),
 		}, ","), nil
-	case v.IsSameOrAfter(version.From(7, 3, 0)):
+	case v.GTE(version.From(7, 3, 0)):
 		return strings.Join([]string{
 			"kibana_user",
 			"ingest_admin",

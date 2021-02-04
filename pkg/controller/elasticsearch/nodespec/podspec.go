@@ -67,7 +67,7 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	if ver.IsSameOrAfter(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
+	if ver.GTE(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			FSGroup: pointer.Int64(defaultFsGroup),
 		})
@@ -121,7 +121,7 @@ func buildLabels(
 	}
 
 	// label with a hash of the config to rotate the pod on config changes
-	unpackedCfg, err := cfg.Unpack(*ver)
+	unpackedCfg, err := cfg.Unpack(ver)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func buildLabels(
 	podLabels := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
 		esv1.StatefulSet(es.Name, nodeSet.Name),
-		*ver, node, cfgHash, es.Spec.HTTP.Protocol(),
+		ver, node, cfgHash, es.Spec.HTTP.Protocol(),
 	)
 
 	if keystoreResources != nil {

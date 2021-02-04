@@ -26,7 +26,7 @@ func GetReplicas(statefulSet appsv1.StatefulSet) int32 {
 }
 
 // GetESVersion returns the ES version from the StatefulSet labels.
-func GetESVersion(statefulSet appsv1.StatefulSet) (*version.Version, error) {
+func GetESVersion(statefulSet appsv1.StatefulSet) (version.Version, error) {
 	return label.ExtractVersion(statefulSet.Spec.Template.Labels)
 }
 

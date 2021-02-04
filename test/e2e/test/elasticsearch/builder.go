@@ -208,7 +208,7 @@ func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequ
 	cfg := map[string]interface{}{}
 	v := version.MustParse(b.Elasticsearch.Spec.Version)
 
-	if v.IsSameOrAfter(version.From(7, 9, 0)) {
+	if v.GTE(version.From(7, 9, 0)) {
 		cfg[esv1.NodeRoles] = []string{}
 	} else {
 		cfg[esv1.NodeMaster] = false
@@ -216,11 +216,11 @@ func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequ
 		cfg[esv1.NodeIngest] = false
 		cfg[esv1.NodeML] = false
 
-		if v.IsSameOrAfter(version.From(7, 3, 0)) {
+		if v.GTE(version.From(7, 3, 0)) {
 			cfg[esv1.NodeVotingOnly] = false
 		}
 
-		if v.IsSameOrAfter(version.From(7, 7, 0)) {
+		if v.GTE(version.From(7, 7, 0)) {
 			cfg[esv1.NodeTransform] = false
 			cfg[esv1.NodeRemoteClusterClient] = false
 		}

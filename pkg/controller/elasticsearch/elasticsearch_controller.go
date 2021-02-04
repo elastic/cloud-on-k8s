@@ -270,7 +270,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	supported := esversion.SupportedVersions(*ver)
+	supported := esversion.SupportedVersions(ver)
 	if supported == nil {
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
@@ -281,7 +281,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
 		Recorder:           r.recorder,
-		Version:            *ver,
+		Version:            ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
