@@ -66,8 +66,8 @@ func memoryFromStorage(requiredStorageCapacity resource.Quantity, storageRange, 
 	requiredMemoryCapacity := memoryRange.Min.Value() + requiredAdditionalMemoryCapacity
 
 	// Round up memory to the next GB
-	requiredMemoryCapacity = roundUp(requiredMemoryCapacity, giga)
-	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/giga))
+	requiredMemoryCapacity = roundUp(requiredMemoryCapacity, gibi)
+	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/gibi))
 
 	if resourceMemoryAsGiga.Cmp(memoryRange.Max) > 0 {
 		resourceMemoryAsGiga = memoryRange.Max.DeepCopy()

@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-var giga = int64(1024 * 1024 * 1024)
+const gibi = int64(1024 * 1024 * 1024)
 
 // nodeResources computes the desired amount of memory and storage for a node managed by a given AutoscalingPolicySpec.
 func (ctx *Context) nodeResources(minNodesCount int64, currentStorage resource.Quantity) resources.NodeResources {
@@ -116,7 +116,7 @@ func (ctx *Context) getResourceValue(
 	}
 
 	// Try to round up the Gb value
-	nodeResource = roundUp(nodeResource, giga)
+	nodeResource = roundUp(nodeResource, gibi)
 
 	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
 	if nodeResource < min.Value() {
@@ -135,9 +135,9 @@ func (ctx *Context) getResourceValue(
 // resourceToQuantity attempts to convert a raw integer value into a human readable quantity.
 func resourceToQuantity(nodeResource int64) resource.Quantity {
 	var nodeQuantity resource.Quantity
-	if nodeResource >= giga && nodeResource%giga == 0 {
+	if nodeResource >= gibi && nodeResource%gibi == 0 {
 		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
-		nodeQuantity = resource.MustParse(fmt.Sprintf("%dGi", nodeResource/giga))
+		nodeQuantity = resource.MustParse(fmt.Sprintf("%dGi", nodeResource/gibi))
 	} else {
 		nodeQuantity = resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
 	}

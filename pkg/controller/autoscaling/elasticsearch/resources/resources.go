@@ -36,9 +36,9 @@ func NewNodeSetsResources(name string, nodeSetNames []string) NodeSetsResources 
 // ClusterResources models the desired resources (CPU, memory, storage and number of nodes) for all the autoscaling policies in a cluster.
 type ClusterResources []NodeSetsResources
 
-// IsUsedBy returns true if the resources assigned to a container in a NodeSet matches the one specified in the NodeSetsResources.
+// Match returns true if the resources assigned to a container in a NodeSet matches the one specified in the NodeSetsResources.
 // It returns false if the container is not found in the NodeSet.
-func (ntr NodeSetsResources) IsUsedBy(containerName string, nodeSet v1.NodeSet) (bool, error) {
+func (ntr NodeSetsResources) Match(containerName string, nodeSet v1.NodeSet) (bool, error) {
 	for _, nodeSetNodeCount := range ntr.NodeSetNodeCount {
 		if nodeSetNodeCount.Name != nodeSet.Name {
 			continue

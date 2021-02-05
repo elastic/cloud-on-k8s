@@ -269,13 +269,13 @@ func TestNodeSetsResources_IsUsedBy(t *testing.T) {
 				NodeSetNodeCount: tt.fields.NodeSetNodeCount,
 				NodeResources:    tt.fields.ResourcesSpecification,
 			}
-			got, err := ntr.IsUsedBy(esv1.ElasticsearchContainerName, tt.args.nodeSet)
+			got, err := ntr.Match(esv1.ElasticsearchContainerName, tt.args.nodeSet)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetsResources.IsUsedBy() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NodeSetsResources.Match() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("NodeSetsResources.IsUsedBy() = %v, want %v", got, tt.want)
+				t.Errorf("NodeSetsResources.Match() = %v, want %v", got, tt.want)
 			}
 		})
 	}

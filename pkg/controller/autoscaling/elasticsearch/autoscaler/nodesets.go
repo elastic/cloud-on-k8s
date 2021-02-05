@@ -18,7 +18,7 @@ type FairNodesManager struct {
 	nodeSetNodeCountList resources.NodeSetNodeCountList
 }
 
-// sort sorts node sets by the value of the Count field, giving priority to node sets with less nodes.
+// sort sorts node sets by the value of the Count field, giving priority to node sets with fewer nodes.
 // If several node sets have the same number of nodes they are sorted alphabetically.
 func (fnm *FairNodesManager) sort() {
 	sort.SliceStable(fnm.nodeSetNodeCountList, func(i, j int) bool {
@@ -42,7 +42,7 @@ func NewFairNodesManager(log logr.Logger, nodeSetNodeCount []resources.NodeSetNo
 // Priority is defined as the nodeSet with the lowest NodeCount value, or the first nodeSet in the alphabetical order if
 // several node sets have the same NodeCount value.
 func (fnm *FairNodesManager) AddNode() {
-	// Peak the first element, this is the one with the less nodes
+	// Peak the first element, this is the one with fewer nodes
 	fnm.nodeSetNodeCountList[0].NodeCount++
 	// Ensure the set is sorted
 	fnm.sort()

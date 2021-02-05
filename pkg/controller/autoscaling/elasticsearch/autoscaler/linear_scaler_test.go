@@ -53,7 +53,7 @@ func Test_memoryFromStorage(t *testing.T) {
 				requiredStorageCapacity: q("2Gi"),
 				autoscalingSpec:         NewAutoscalingSpecBuilder("my-autoscaling-policy").WithMemory("1Gi", "1500Mi").WithStorage("1Gi", "2Gi").Build(),
 			},
-			wantMemory: qPtr("1500Mi"), // keep the min. value
+			wantMemory: qPtr("1500Mi"), // keep the max. value
 		},
 		{
 			name: "Do not allocate more memory than max allowed II",
@@ -61,7 +61,7 @@ func Test_memoryFromStorage(t *testing.T) {
 				requiredStorageCapacity: q("1800Mi"),
 				autoscalingSpec:         NewAutoscalingSpecBuilder("my-autoscaling-policy").WithMemory("1Gi", "1500Mi").WithStorage("1Gi", "2Gi").Build(),
 			},
-			wantMemory: qPtr("1500Mi"), // keep the min. value
+			wantMemory: qPtr("1500Mi"), // keep the max. value
 		},
 		{
 			name: "Allocate max of memory when it's possible",
@@ -69,7 +69,7 @@ func Test_memoryFromStorage(t *testing.T) {
 				requiredStorageCapacity: q("2Gi"),
 				autoscalingSpec:         NewAutoscalingSpecBuilder("my-autoscaling-policy").WithMemory("1Gi", "2256Mi").WithStorage("1Gi", "2Gi").Build(),
 			},
-			wantMemory: qPtr("2256Mi"), // keep the min. value
+			wantMemory: qPtr("2256Mi"), // keep the max. value
 		},
 		{
 			name: "Half of the storage range should be translated to rounded value of half of the memory range",

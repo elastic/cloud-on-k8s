@@ -37,21 +37,21 @@ func autoscaledResourcesSynced(es esv1.Elasticsearch) (bool, error) {
 			continue
 		}
 
-		s, ok := autoscalingStatus.CurrentResourcesForPolicy(nodeSetAutoscalingSpec.Name)
+		expectedNodeSetsResources, ok := autoscalingStatus.CurrentResourcesForPolicy(nodeSetAutoscalingSpec.Name)
 		if !ok {
 			log.Info("NodeSet managed by the autoscaling controller but not found in status",
 				"nodeset", nodeSet.Name,
 			)
 			return false, nil
 		}
-		inSync, err := s.IsUsedBy(esv1.ElasticsearchContainerName, nodeSet)
+		inSync, err := expectedNodeSetsResources.Match(esv1.ElasticsearchContainerName, nodeSet)
 		if err != nil {
 			return false, err
 		}
 		if !inSync {
 			log.Info("NodeSet managed by the autoscaling controller but not in sync",
 				"nodeset", nodeSet.Name,
-				"expected", s.NodeResources,
+				"expected", expectedNodeSetsResources.NodeResources,
 			)
 			return false, nil
 		}
