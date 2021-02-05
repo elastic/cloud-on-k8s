@@ -6,6 +6,10 @@ managedNamespaces: [{{ .Operator.ManagedNamespaces | join "," }}]
 
 replicaCount: {{ .Operator.Replicas }}
 
+image:
+  repository: {{ .OperatorImageRepo }}
+  tag: {{ .OperatorImageTag }}
+
 podAnnotations:
   co.elastic.metrics/metricsets: collector
   co.elastic.metrics/module: prometheus
