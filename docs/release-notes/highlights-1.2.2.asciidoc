@@ -1,0 +1,16 @@
+[[release-highlights-1.2.2]]
+== 1.2.2 release highlights
+
+This is a patch release to address some issues found after the 1.2.0 release. See <<release-highlights-1.2.0>> for the full highlights of the 1.2.x series.
+
+
+
+[float]
+[id="{p}-122-fixes"]
+=== Fixes
+
+[float]
+[id="{p}-122-711-support"]
+==== Add support for Elastic Stack 7.11
+
+This patch release adds support for running the Elastic Stack in version 7.11 and later.
