@@ -96,7 +96,7 @@ func TestReconcile(t *testing.T) {
 				esManifest: "ml",
 				isOnline:   true,
 			},
-			want:       defaultReconcile,
+			want:       defaultRequeue,
 			wantErr:    false,
 			wantEvents: []string{},
 		},
@@ -128,7 +128,7 @@ func TestReconcile(t *testing.T) {
 				esManifest: "empty-autoscaling-api-response",
 				isOnline:   true,
 			},
-			want: defaultReconcile,
+			want: defaultRequeue,
 		},
 		{
 			name: "Cluster has just been created, initialize resources",
@@ -142,7 +142,7 @@ func TestReconcile(t *testing.T) {
 				esManifest: "cluster-creation",
 				isOnline:   false,
 			},
-			want: defaultReconcile,
+			want: defaultRequeue,
 		},
 		{
 			name: "Cluster is online, data tier has reached max. capacity",
@@ -156,7 +156,7 @@ func TestReconcile(t *testing.T) {
 				esManifest: "max-storage-reached",
 				isOnline:   true,
 			},
-			want:       defaultReconcile,
+			want:       defaultRequeue,
 			wantEvents: []string{"Warning HorizontalScalingLimitReached Can't provide total required storage 37106614256, max number of nodes is 8, requires 9 nodes"},
 		},
 		{
@@ -171,7 +171,7 @@ func TestReconcile(t *testing.T) {
 				esManifest: "storage-scaled-horizontally",
 				isOnline:   true,
 			},
-			want: defaultReconcile,
+			want: defaultRequeue,
 		},
 		{
 			name: "Cluster does not exit",

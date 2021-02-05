@@ -14,7 +14,7 @@ import (
 )
 
 // GetOfflineNodeSetsResources attempts to create or restore resources.NodeSetsResources without an actual autoscaling
-// decision from Elasticsearch. It ensures that even if no decision has been returned by the autoscaling API then
+// response from Elasticsearch. It ensures that even if no response has been returned by the autoscaling API then
 // the NodeSets still respect the min. and max. resource requirements specified by the user.
 // If resources are within the min. and max. boundaries then they are left untouched.
 func GetOfflineNodeSetsResources(
@@ -33,7 +33,7 @@ func GetOfflineNodeSetsResources(
 		nodeSetsResources = newMinNodeSetResources(autoscalingSpec, nodeSets)
 	} else {
 		// The status contains some resource values for the NodeSets managed by this autoscaling policy, let's reuse them.
-		nodeSetsResources = nodeSetResourcesFromStatus(currentAutoscalingStatus, currentNodeSetsResources, autoscalingSpec, nodeSets)
+		nodeSetsResources = nodeSetResourcesFromStatus(currentNodeSetsResources, autoscalingSpec, nodeSets)
 		for _, nodeSet := range currentNodeSetsResources.NodeSetNodeCount {
 			expectedNodeCount += nodeSet.NodeCount
 		}
@@ -62,40 +62,54 @@ func GetOfflineNodeSetsResources(
 }
 
 // nodeSetResourcesFromStatus restores NodeSetResources from the status.
-// If user removed the limits while offline we are assuming that it wants to take back control on the resources.
+// Resources are adjusted to respect min and max in the autoscaling specification, except for storage.
+// If a resource is expected but not present in the status then the min. value in the autoscaling specification is used.
+// If user removed the limits while offline we are assuming that they want to take back control of the resources.
 func nodeSetResourcesFromStatus(
-	currentAutoscalingStatus status.Status,
 	currentNodeSetsResources resources.NodeSetsResources,
 	autoscalingSpec esv1.AutoscalingPolicySpec,
 	nodeSets []string,
 ) resources.NodeSetsResources {
 	nodeSetsResources := resources.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
-	// Ensure memory settings are in the allowed limit range.
 	if autoscalingSpec.IsMemoryDefined() {
+		// Attempt to get memory value from the status.
 		if currentNodeSetsResources.HasRequest(corev1.ResourceMemory) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceMemory,
 				adjustQuantity(currentNodeSetsResources.GetRequest(corev1.ResourceMemory), autoscalingSpec.Memory.Min, autoscalingSpec.Memory.Max),
 			)
 		} else {
+			// Can't restore memory from status, use the min. from the autoscaling specification.
 			nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.Memory.Min.DeepCopy())
 		}
 	}
 
-	// Ensure CPU settings are in the allowed limit range.
 	if autoscalingSpec.IsCPUDefined() {
+		// Attempt to get CPU value from the status.
 		if currentNodeSetsResources.HasRequest(corev1.ResourceCPU) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceCPU,
 				adjustQuantity(currentNodeSetsResources.GetRequest(corev1.ResourceCPU), autoscalingSpec.CPU.Min, autoscalingSpec.CPU.Max),
 			)
 		} else {
+			// Can't restore CPU from status, use the min. from the autoscaling specification.
 			nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPU.Min.DeepCopy())
 		}
 	}
 
-	// Ensure storage capacity is set
-	nodeSetsResources.SetRequest(corev1.ResourceStorage, getStorage(autoscalingSpec, currentAutoscalingStatus))
+	if autoscalingSpec.IsStorageDefined() {
+		storage := autoscalingSpec.Storage.Min
+		// Attempt to get storage value from the status.
+		if currentNodeSetsResources.HasRequest(corev1.ResourceStorage) {
+			storageInStatus := currentNodeSetsResources.GetRequest(corev1.ResourceStorage)
+			// Only use storage in status if it is greater than min value to respect user specification.
+			// We do not adjust storage re. to the max value specified by the user since we don't want to decrease the storage capacity.
+			if storageInStatus.Cmp(storage) > 0 {
+				storage = storageInStatus
+			}
+		}
+		nodeSetsResources.SetRequest(corev1.ResourceStorage, storage)
+	}
 	return nodeSetsResources
 }
 
@@ -114,7 +128,7 @@ func newMinNodeSetResources(autoscalingSpec esv1.AutoscalingPolicySpec, nodeSets
 	return nodeSetsResources
 }
 
-// adjustQuantity ensures that a quantity is comprised between a min and a max.
+// adjustQuantity ensures that the Quantity in value is between min and max.
 func adjustQuantity(value, min, max resource.Quantity) resource.Quantity {
 	if value.Cmp(min) < 0 {
 		return min

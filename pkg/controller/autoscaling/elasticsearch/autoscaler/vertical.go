@@ -17,7 +17,7 @@ import (
 const gibi = int64(1024 * 1024 * 1024)
 
 // nodeResources computes the desired amount of memory and storage for a node managed by a given AutoscalingPolicySpec.
-func (ctx *Context) nodeResources(minNodesCount int64, currentStorage resource.Quantity) resources.NodeResources {
+func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quantity) resources.NodeResources {
 	nodeResources := resources.NodeResources{}
 
 	// Compute desired memory quantity for the nodes managed by this AutoscalingPolicySpec.
@@ -43,9 +43,9 @@ func (ctx *Context) nodeResources(minNodesCount int64, currentStorage resource.Q
 			ctx.AutoscalingSpec.Storage.Min,
 			ctx.AutoscalingSpec.Storage.Max,
 		)
-		if storageRequest.Cmp(currentStorage) < 0 {
+		if storageRequest.Cmp(minStorage) < 0 {
 			// Do not decrease storage capacity
-			storageRequest = currentStorage
+			storageRequest = minStorage
 		}
 		nodeResources.SetRequest(corev1.ResourceStorage, storageRequest)
 	}

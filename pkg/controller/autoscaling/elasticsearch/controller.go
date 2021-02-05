@@ -43,7 +43,7 @@ const (
 	enterpriseFeaturesDisabledMsg = "Autoscaling is an enterprise feature. Enterprise features are disabled"
 )
 
-var defaultReconcile = reconcile.Result{
+var defaultRequeue = reconcile.Result{
 	Requeue:      true,
 	RequeueAfter: 60 * time.Second,
 }
@@ -101,7 +101,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		log.Info(enterpriseFeaturesDisabledMsg)
 		r.recorder.Eventf(&es, corev1.EventTypeWarning, license.EventInvalidLicense, enterpriseFeaturesDisabledMsg)
 		// We still schedule a reconciliation in case a valid license is applied later
-		return defaultReconcile, nil
+		return defaultRequeue, nil
 	}
 
 	if common.IsUnmanaged(&es) {
@@ -168,7 +168,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 	results := &reconciler.Results{}
-	return results.WithResult(defaultReconcile).WithResult(current).Aggregate()
+	return results.WithResult(defaultRequeue).WithResult(current).Aggregate()
 }
 
 func newElasticsearchClient(

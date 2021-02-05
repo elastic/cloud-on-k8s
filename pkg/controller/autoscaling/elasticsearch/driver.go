@@ -248,5 +248,5 @@ func (r *ReconcileElasticsearch) doOfflineReconciliation(
 		}
 		return results.WithError(err).Aggregate()
 	}
-	return results.WithResult(defaultReconcile).Aggregate()
+	return results.WithResult(defaultRequeue).Aggregate()
 }

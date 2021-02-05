@@ -46,6 +46,22 @@ func TestGetOfflineNodeSetsResources(t *testing.T) {
 			},
 		},
 		{
+			name: "Max. value has been decreased by the user, scale down memory",
+			args: args{
+				nodeSets:        []string{"region-a", "region-b"},
+				autoscalingSpec: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(1, 6).WithMemory("2Gi", "8Gi").WithStorage("10Gi", "20Gi").Build(),
+				currentAutoscalingStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "region-a", NodeCount: 3}, {Name: "region-b", NodeCount: 3}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("10Gi"), corev1.ResourceStorage: q("20Gi")}}}}},
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "region-a", NodeCount: 3}, {Name: "region-b", NodeCount: 3}},
+				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8Gi"), corev1.ResourceStorage: q("20Gi")}},
+			},
+		},
+		{
 			name: "Min. value has been increased by user",
 			args: args{
 				nodeSets:        []string{"region-a", "region-b"},

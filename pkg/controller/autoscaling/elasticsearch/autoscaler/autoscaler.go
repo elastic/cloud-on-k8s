@@ -38,18 +38,18 @@ func (ctx *Context) scaleVertically() resources.NodeResources {
 	// All resources can be computed "from scratch", without knowing the previous values.
 	// This is however not true for storage. Storage can't be scaled down, current storage capacity must be considered
 	// as a hard min. limit. This storage limit must be taken into consideration when computing the desired resources.
-	currentStorage := getStorage(ctx.AutoscalingSpec, ctx.CurrentAutoscalingStatus)
+	minStorage := getMinStorageQuantity(ctx.AutoscalingSpec, ctx.CurrentAutoscalingStatus)
 	return ctx.nodeResources(
 		int64(ctx.AutoscalingSpec.NodeCount.Min),
-		currentStorage,
+		minStorage,
 	)
 }
 
-// getStorage returns the min. storage capacity that should be used by the autoscaling algorithm.
+// getMinStorageQuantity returns the min. storage quantity that should be used by the autoscaling algorithm.
 // The value is the max. value of either:
 // * the current value in the status
 // * the min. value set by the user in the autoscaling spec.
-func getStorage(autoscalingSpec esv1.AutoscalingPolicySpec, currentAutoscalingStatus status.Status) resource.Quantity {
+func getMinStorageQuantity(autoscalingSpec esv1.AutoscalingPolicySpec, currentAutoscalingStatus status.Status) resource.Quantity {
 	// If no storage spec is defined in the autoscaling status we return the default volume size.
 	storage := volume.DefaultPersistentVolumeSize.DeepCopy()
 	// Always adjust to the min value specified by the user in the limits.
