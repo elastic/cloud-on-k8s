@@ -6,7 +6,6 @@ package initcontainer
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -57,13 +56,6 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 
 	set -eu
-
-	# the operator only works with the default ES distribution
-	license=/usr/share/elasticsearch/LICENSE.txt
-	if [[ ! -f $license || $(grep -Fxc "ELASTIC LICENSE AGREEMENT" $license) -ne 1 ]]; then
-		>&2 echo "unsupported_distribution"
-		exit ` + fmt.Sprintf("%d", UnsupportedDistroExitCode) + `
-	fi
 
 	# compute time in seconds since the given start time
 	function duration() {
