@@ -48,11 +48,7 @@ func GetOfflineNodeSetsResources(
 
 	// User may have added or removed some NodeSets while the autoscaling API is not available.
 	// We distribute the nodes to reflect that change.
-	fnm := NewFairNodesManager(log, nodeSetsResources.NodeSetNodeCount)
-	for expectedNodeCount > 0 {
-		fnm.AddNode()
-		expectedNodeCount--
-	}
+	distributeFairly(nodeSetsResources.NodeSetNodeCount, expectedNodeCount)
 
 	log.Info(
 		"Offline autoscaling",

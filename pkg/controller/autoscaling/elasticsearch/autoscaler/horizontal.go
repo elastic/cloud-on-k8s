@@ -16,24 +16,22 @@ import (
 func (ctx *Context) scaleHorizontally(
 	nodeCapacity resources.NodeResources, // resources for each node in the tier/policy, as computed by the vertical autoscaler.
 ) resources.NodeSetsResources {
-	minNodes := int(ctx.AutoscalingSpec.NodeCount.Min)
-	maxNodes := int(ctx.AutoscalingSpec.NodeCount.Max)
 	totalRequiredCapacity := ctx.RequiredCapacity.Total // total required resources, at the tier level.
-	nodeToAdd := 0
+	var nodeToAdd int32
 
 	// Scale horizontally to match memory requirements
 	if !totalRequiredCapacity.Memory.IsZero() {
 		nodeMemory := nodeCapacity.GetRequest(corev1.ResourceMemory)
-		nodeToAdd = ctx.getNodesToAdd(nodeMemory.Value(), totalRequiredCapacity.Memory.Value(), minNodes, maxNodes, string(corev1.ResourceMemory))
+		nodeToAdd = ctx.getNodesToAdd(nodeMemory.Value(), totalRequiredCapacity.Memory.Value(), ctx.AutoscalingSpec.NodeCount.Min, ctx.AutoscalingSpec.NodeCount.Max, string(corev1.ResourceMemory))
 	}
 
 	// Scale horizontally to match storage requirements
 	if !totalRequiredCapacity.Storage.IsZero() {
 		nodeStorage := nodeCapacity.GetRequest(corev1.ResourceStorage)
-		nodeToAdd = max(nodeToAdd, ctx.getNodesToAdd(nodeStorage.Value(), totalRequiredCapacity.Storage.Value(), minNodes, maxNodes, string(corev1.ResourceStorage)))
+		nodeToAdd = max(nodeToAdd, ctx.getNodesToAdd(nodeStorage.Value(), totalRequiredCapacity.Storage.Value(), ctx.AutoscalingSpec.NodeCount.Min, ctx.AutoscalingSpec.NodeCount.Max, string(corev1.ResourceStorage)))
 	}
 
-	totalNodes := nodeToAdd + minNodes
+	totalNodes := nodeToAdd + ctx.AutoscalingSpec.NodeCount.Min
 	ctx.Log.Info("Horizontal autoscaler", "policy", ctx.AutoscalingSpec.Name,
 		"scope", "tier",
 		"count", totalNodes,
@@ -42,11 +40,7 @@ func (ctx *Context) scaleHorizontally(
 
 	nodeSetsResources := resources.NewNodeSetsResources(ctx.AutoscalingSpec.Name, ctx.NodeSets.Names())
 	nodeSetsResources.NodeResources = nodeCapacity
-	fnm := NewFairNodesManager(ctx.Log, nodeSetsResources.NodeSetNodeCount)
-	for totalNodes > 0 {
-		fnm.AddNode()
-		totalNodes--
-	}
+	distributeFairly(nodeSetsResources.NodeSetNodeCount, totalNodes)
 
 	return nodeSetsResources
 }
@@ -55,9 +49,9 @@ func (ctx *Context) scaleHorizontally(
 func (ctx *Context) getNodesToAdd(
 	nodeResourceCapacity int64, // resource capacity of a single node, for example the memory of a node in the tier
 	totalRequiredCapacity int64, // required capacity at the tier level
-	minNodes, maxNodes int, // min and max number of nodes in this tier, as specified by the user the autoscaling spec.
+	minNodes, maxNodes int32, // min and max number of nodes in this tier, as specified by the user the autoscaling spec.
 	resourceName string, // used for logging and in events
-) int {
+) int32 {
 	// minResourceQuantity is the resource quantity in the tier before scaling horizontally.
 	minResourceQuantity := int64(minNodes) * nodeResourceCapacity
 	// resourceDelta holds the resource needed to comply with what is requested by Elasticsearch.
@@ -93,8 +87,8 @@ func (ctx *Context) getNodesToAdd(
 
 // getNodeDelta computes the nodes to be added given a delta (the additional amount of resource needed)
 // and the individual capacity a single node.
-func getNodeDelta(delta, nodeCapacity int64) int {
-	nodeToAdd := 0
+func getNodeDelta(delta, nodeCapacity int64) int32 {
+	var nodeToAdd int32
 	if delta < 0 {
 		return 0
 	}
@@ -107,7 +101,7 @@ func getNodeDelta(delta, nodeCapacity int64) int {
 	return nodeToAdd
 }
 
-func max(a, b int) int {
+func max(a, b int32) int32 {
 	if a > b {
 		return a
 	}

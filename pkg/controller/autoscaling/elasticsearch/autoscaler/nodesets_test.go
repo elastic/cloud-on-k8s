@@ -11,57 +11,53 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFairNodesManager_AddNode(t *testing.T) {
-	type fields struct {
-		nodeSetNodeCountList []resources.NodeSetNodeCount
+func Test_distributeFairly(t *testing.T) {
+	type args struct {
+		nodeSets          resources.NodeSetNodeCountList
+		expectedNodeCount int32
 	}
 	tests := []struct {
-		name       string
-		fields     fields
-		assertFunc func(t *testing.T, fnm FairNodesManager)
+		name             string
+		args             args
+		expectedNodeSets resources.NodeSetNodeCountList
 	}{
 		{
-			name: "One nodeSet",
-			fields: fields{
-				nodeSetNodeCountList: []resources.NodeSetNodeCount{{Name: "nodeset-1"}},
+			name: "nodeSet is nil, no panic",
+			args: args{
+				nodeSets:          nil,
+				expectedNodeCount: 2,
 			},
-			assertFunc: func(t *testing.T, fnm FairNodesManager) {
-				assert.Equal(t, 1, len(fnm.nodeSetNodeCountList))
-				assert.Equal(t, int32(0), fnm.nodeSetNodeCountList[0].NodeCount)
-				fnm.AddNode()
-				assert.Equal(t, int32(1), fnm.nodeSetNodeCountList[0].NodeCount)
-				fnm.AddNode()
-				assert.Equal(t, int32(2), fnm.nodeSetNodeCountList[0].NodeCount)
-			},
+			expectedNodeSets: nil,
 		},
 		{
-			name: "Several NodeSets",
-			fields: fields{
-				nodeSetNodeCountList: []resources.NodeSetNodeCount{{Name: "nodeset-1"}, {Name: "nodeset-2"}},
+			name: "nodeSet is empty, no panic",
+			args: args{
+				nodeSets:          []resources.NodeSetNodeCount{},
+				expectedNodeCount: 2,
 			},
-			assertFunc: func(t *testing.T, fnm FairNodesManager) {
-				assert.Equal(t, 2, len(fnm.nodeSetNodeCountList))
-				assert.Equal(t, int32(0), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-1"])
-				assert.Equal(t, int32(0), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-2"])
-
-				fnm.AddNode()
-				assert.Equal(t, int32(1), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-1"])
-				assert.Equal(t, int32(0), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-2"])
-
-				fnm.AddNode()
-				assert.Equal(t, int32(1), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-1"])
-				assert.Equal(t, int32(1), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-2"])
-
-				fnm.AddNode()
-				assert.Equal(t, int32(2), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-1"])
-				assert.Equal(t, int32(1), fnm.nodeSetNodeCountList.ByNodeSet()["nodeset-2"])
+			expectedNodeSets: []resources.NodeSetNodeCount{},
+		},
+		{
+			name: "One nodeSet",
+			args: args{
+				nodeSets:          []resources.NodeSetNodeCount{{Name: "nodeset-1"}},
+				expectedNodeCount: 2,
 			},
+			expectedNodeSets: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 2}},
+		},
+		{
+			name: "Two nodeSet",
+			args: args{
+				nodeSets:          []resources.NodeSetNodeCount{{Name: "nodeset-1"}, {Name: "nodeset-2"}},
+				expectedNodeCount: 3,
+			},
+			expectedNodeSets: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 2}, {Name: "nodeset-2", NodeCount: 1}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fnm := NewFairNodesManager(logTest, tt.fields.nodeSetNodeCountList)
-			tt.assertFunc(t, fnm)
+			distributeFairly(tt.args.nodeSets, tt.args.expectedNodeCount)
+			assert.ElementsMatch(t, tt.args.nodeSets, tt.expectedNodeSets)
 		})
 	}
 }
