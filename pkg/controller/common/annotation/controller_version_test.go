@@ -101,7 +101,7 @@ func TestCheckCompatibility(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRequeue, gotSupported, err := CheckCompatibility(context.Background(), tt.args.obj, tt.args.controllerVersion)
+			gotRequeue, gotSupported, err := CheckCompatibility(tt.args.obj, tt.args.controllerVersion)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckCompatibility() error = %v, wantErr %v", err, tt.wantErr)
 				return

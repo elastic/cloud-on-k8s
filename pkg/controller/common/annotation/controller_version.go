@@ -56,10 +56,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlcli
 // can be used by auxiliary controllers to check if they can process a resource.
 // First boolean is true if the compatibility cannot be determined at the moment, mostly because the main controller did not reconcile the resource yet. In that case the
 // auxiliary controller must try again later.
-func CheckCompatibility(ctx context.Context, obj ctrlclient.Object, controllerVersion string) (requeue bool, supported bool, err error) {
-	span, ctx := apm.StartSpan(ctx, "check_compatibility", tracing.SpanTypeApp)
-	defer span.End()
-
+func CheckCompatibility(obj ctrlclient.Object, controllerVersion string) (requeue bool, supported bool, err error) {
 	annotatedVersion := obj.GetAnnotations()[ControllerVersionAnnotation]
 	if annotatedVersion == "" {
 		return true, false, nil
