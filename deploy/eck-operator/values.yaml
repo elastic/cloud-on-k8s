@@ -59,6 +59,12 @@ affinity: {}
 # additional environment variables for the operator container.
 env: []
 
+# additional volume mounts for the operator container.
+volumeMounts: []
+
+# additional volumes to add to the operator pod.
+volumes: []
+
 # createClusterScopedResources determines whether cluster-scoped resources (ClusterRoles, ClusterRoleBindings) should be created.
 createClusterScopedResources: true
 

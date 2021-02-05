@@ -1,0 +1,53 @@
+nameOverride: "{{ .Operator.Name }}"
+
+fullnameOverride: "{{ .Operator.Name }}"
+
+managedNamespaces: [{{ .Operator.ManagedNamespaces | join "," }}]
+
+replicaCount: {{ .Operator.Replicas }}
+
+podAnnotations:
+  co.elastic.metrics/metricsets: collector
+  co.elastic.metrics/module: prometheus
+  co.elastic.metrics/hosts: '${data.host}:9090'
+  co.elastic.metrics/period: 10s
+    
+{{ if .MonitoringSecrets }}
+tracing:
+  enabled: true
+  config:
+    ELASTIC_APM_SERVER_CERT: "/mnt/elastic/apm.crt"
+    ELASTIC_APM_ENVIRONMENT: "{{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}"
+
+env:
+  - name: ELASTIC_APM_SERVER_URL
+    valueFrom:
+      secretKeyRef:
+        name: "eck-{{ .TestRun }}"
+        key: apm_server_url
+  - name: ELASTIC_APM_SECRET_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: "eck-{{ .TestRun }}"
+        key: apm_secret_token
+
+volumeMounts:
+  - name: apm-cert
+    mountPath: /mnt/elastic/apm.crt
+    subPath: "apm_server_cert"
+    readOnly: true
+
+volumes:
+  - name: apm-cert
+    secret:
+      secretName: "eck-{{ .TestRun }}"
+{{ end }}
+  
+
+telemetry:
+  disabled: true
+
+config:
+  logVerbosity: "1"
+  metricsPort: "9090"
+

@@ -69,13 +69,12 @@ func doRun(flags runFlags) error {
 			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
-			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
-			helper.deployOperator,
+			helper.installOperator,
 			helper.waitForOperatorToBeReady,
 			helper.runTestJob,
 		}
@@ -291,6 +290,33 @@ func (h *helper) createRoles() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
 }
 
+func (h *helper) installOperator() error {
+	log.Info("Installing the operator")
+	values, err := h.renderTemplate("config/e2e/helm-values.yaml", h.testContext)
+	if err != nil {
+		return fmt.Errorf("failed to generate Helm values: %w", err)
+	}
+
+	cmd := command.New("hack/manifest-gen/manifest-gen.sh", "-g", "-n", h.testContext.Operator.Namespace, fmt.Sprintf("--values=%s", values)).Build()
+	manifestBytes, err := cmd.Execute(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to generate operator manifest: %w", err)
+	}
+
+	manifestPath := filepath.Join(h.scratchDir, "all-in-one.yaml")
+	if err := ioutil.WriteFile(manifestPath, manifestBytes, 0600); err != nil {
+		return fmt.Errorf("failed to write operator manifest: %w", err)
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestPath); err != nil {
+		return fmt.Errorf("failed to apply operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestPath))
+
+	return nil
+}
+
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
 	_, err := h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
@@ -311,11 +337,6 @@ func (h *helper) createManagedNamespaces() error {
 	}
 
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
-}
-
-func (h *helper) deployOperator() error {
-	log.Info("Deploying operator")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator.yaml", h.testContext)
 }
 
 func (h *helper) waitForOperatorToBeReady() error {
