@@ -9,4 +9,4 @@ version: 0.0.1
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 1.2.1
+appVersion: 1.2.2
