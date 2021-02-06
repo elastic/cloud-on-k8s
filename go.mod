@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s
 go 1.13
 
 require (
-	github.com/Masterminds/sprig/v3 v3.2.0
+	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/davecgh/go-spew v1.1.1
