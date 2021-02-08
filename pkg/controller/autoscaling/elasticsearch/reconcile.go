@@ -94,30 +94,29 @@ func reconcileElasticsearch(
 }
 
 func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.NodeSet) ([]corev1.PersistentVolumeClaim, error) {
-	onlyOneVolumeClaimTemplate, volumeClaimTemplateName := validation.HasAtMostOnePersistentVolumeClaim(nodeSet)
+	onlyOneVolumeClaimTemplate, volumeClaimTemplate := validation.HasAtMostOnePersistentVolumeClaim(nodeSet)
 	if !onlyOneVolumeClaimTemplate {
 		return nil, fmt.Errorf(validation.UnexpectedVolumeClaimError)
 	}
-	if volumeClaimTemplateName == "" {
-		volumeClaimTemplateName = volume.ElasticsearchDataVolumeName
-	}
-	return []corev1.PersistentVolumeClaim{
-		{
+	if volumeClaimTemplate == nil {
+		// Init a new volume claim template
+		volumeClaimTemplate = &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: volumeClaimTemplateName,
+				Name: volume.ElasticsearchDataVolumeName,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: storageQuantity,
-					},
-				},
 			},
-		},
-	}, nil
+		}
+	}
+	// Adjust the size
+	if volumeClaimTemplate.Spec.Resources.Requests == nil {
+		volumeClaimTemplate.Spec.Resources.Requests = make(corev1.ResourceList)
+	}
+	volumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage] = storageQuantity
+	return []corev1.PersistentVolumeClaim{*volumeClaimTemplate}, nil
 }
 
 func (r *ReconcileElasticsearch) fetchElasticsearch(

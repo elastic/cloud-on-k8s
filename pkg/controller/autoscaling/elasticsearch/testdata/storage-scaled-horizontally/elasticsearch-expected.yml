@@ -37,6 +37,7 @@ spec:
     - metadata:
         name: elasticsearch-data
       spec:
+        storageClassName: fast
         accessModes:
         - ReadWriteOnce
         resources:
