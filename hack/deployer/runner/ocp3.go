@@ -22,7 +22,7 @@ const (
 	Ocp3GCloudPublicSSHKeyFieldName  = "gcloud-ssh-public-key"
 
 	// Ansible Docker image to manage OCP3 environments
-	AnsibleDockerImage = "eu.gcr.io/elastic-cloud-dev/ansible:439897e"
+	AnsibleDockerImage = "eu.gcr.io/elastic-cloud-dev/ansible:d4910de"
 	AnsibleUser        = "jenkins"
 	// Ansible user home where some files (GCP credentials, Ansible vars and output) are mounted from the CI container
 	AnsibleHomePath           = "/home/ansible"
