@@ -17,6 +17,10 @@ func (ctx *Context) scaleHorizontally(
 	nodeCapacity resources.NodeResources, // resources for each node in the tier/policy, as computed by the vertical autoscaler.
 ) resources.NodeSetsResources {
 	totalRequiredCapacity := ctx.RequiredCapacity.Total // total required resources, at the tier level.
+
+	// The vertical autoscaler computed the expected capacity for each node in the autoscaling policy. The minimum number of nodes, specified by the user
+	// in AutoscalingSpec.NodeCount.Min, can then be used to know what amount of resources we already have (AutoscalingSpec.NodeCount.Min * nodeCapacity).
+	// nodeToAdd is the number of nodes to be added to that min. amount of resources to match the required capacity.
 	var nodeToAdd int32
 
 	// Scale horizontally to match memory requirements
