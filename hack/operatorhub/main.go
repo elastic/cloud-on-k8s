@@ -20,7 +20,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	rbacv1 "k8s.io/api/rbac/v1"
