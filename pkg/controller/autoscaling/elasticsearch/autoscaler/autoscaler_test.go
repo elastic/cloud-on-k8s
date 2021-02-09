@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func Test_applyScaleDecision(t *testing.T) {
+func Test_GetResources(t *testing.T) {
 	defaultNodeSets := esv1.NodeSetList{{
 		Name: "default",
 	}}

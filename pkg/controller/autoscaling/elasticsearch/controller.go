@@ -48,7 +48,8 @@ var defaultRequeue = reconcile.Result{
 	RequeueAfter: 60 * time.Second,
 }
 
-// ReconcileElasticsearch reconciles autoscaling policies and Elasticsearch resources specifications based on autoscaling decisions.
+// ReconcileElasticsearch reconciles autoscaling policies and Elasticsearch resources specifications based on
+// Elasticsearch autoscaling API response.
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters

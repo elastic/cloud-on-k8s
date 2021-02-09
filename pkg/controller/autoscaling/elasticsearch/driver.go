@@ -130,19 +130,11 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 			continue
 		}
 
-		// Get the decision from the Elasticsearch API
+		// Get the required capacity for this autoscaling policy from the Elasticsearch API
 		var nodeSetsResources resources.NodeSetsResources
-		switch capacity, hasCapacity := requiredCapacity.Policies[autoscalingPolicy.Name]; hasCapacity && !capacity.RequiredCapacity.IsEmpty() {
-		case false:
-			// We didn't receive a decision for this tier, or the decision is empty. We can only ensure that resources are within the allowed ranges.
-			log.V(1).Info(
-				"No decision received from Elasticsearch, ensure resources limits are respected",
-				"policy", autoscalingPolicy.Name,
-			)
-			statusBuilder.ForPolicy(autoscalingPolicy.Name).RecordEvent(status.EmptyResponse, "No required capacity from Elasticsearch")
-			nodeSetsResources = autoscaler.GetOfflineNodeSetsResources(log, nodeSetList.Names(), autoscalingPolicy, currentAutoscalingStatus)
-		case true:
-			// We received a capacity decision from Elasticsearch for this policy.
+		capacity, hasCapacity := requiredCapacity.Policies[autoscalingPolicy.Name]
+		if hasCapacity && !capacity.RequiredCapacity.IsEmpty() {
+			// We received a required capacity from Elasticsearch for this policy.
 			log.Info(
 				"Required capacity for policy",
 				"policy", autoscalingPolicy.Name,
@@ -163,6 +155,14 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 				StatusBuilder:            statusBuilder,
 			}
 			nodeSetsResources = ctx.GetResources()
+		} else {
+			// We didn't receive a required capacity for this tier, or the response is empty. We can only ensure that resources are within the allowed ranges.
+			log.V(1).Info(
+				"No required capacity received from Elasticsearch, ensure resources limits are respected",
+				"policy", autoscalingPolicy.Name,
+			)
+			statusBuilder.ForPolicy(autoscalingPolicy.Name).RecordEvent(status.EmptyResponse, "No required capacity from Elasticsearch")
+			nodeSetsResources = autoscaler.GetOfflineNodeSetsResources(log, nodeSetList.Names(), autoscalingPolicy, currentAutoscalingStatus)
 		}
 		// Add the result to the list of the next resources
 		nextClusterResources = append(nextClusterResources, nodeSetsResources)
@@ -190,7 +190,7 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 	return reconcile.Result{}, nil
 }
 
-// canDecide ensures that the user has provided resource ranges to apply Elasticsearch autoscaling decision.
+// canDecide ensures that the user has provided resource ranges to process the Elasticsearch API autoscaling response.
 // Expected ranges are not consistent across all deciders. For example ml may only require memory limits, while processing
 // data deciders response may require storage limits.
 // Only memory and storage are supported since CPU is not part of the autoscaling API specification.
