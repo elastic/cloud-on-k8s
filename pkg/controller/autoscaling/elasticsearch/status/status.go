@@ -15,12 +15,12 @@ import (
 const (
 	ElasticsearchAutoscalingStatusAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-status"
 
-	VerticalScalingLimitReached   PolicyStateType = "VerticalScalingLimitReached"
-	HorizontalScalingLimitReached PolicyStateType = "HorizontalScalingLimitReached"
-	MemoryRequired                PolicyStateType = "MemoryRequired"
-	EmptyResponse                 PolicyStateType = "EmptyResponse"
-	StorageRequired               PolicyStateType = "StorageRequired"
-	NoNodeSet                     PolicyStateType = "NoNodeSet"
+	VerticalScalingLimitReached   AutoscalingEventType = "VerticalScalingLimitReached"
+	HorizontalScalingLimitReached AutoscalingEventType = "HorizontalScalingLimitReached"
+	MemoryRequired                AutoscalingEventType = "MemoryRequired"
+	EmptyResponse                 AutoscalingEventType = "EmptyResponse"
+	StorageRequired               AutoscalingEventType = "StorageRequired"
+	NoNodeSet                     AutoscalingEventType = "NoNodeSet"
 )
 
 type Status struct {
@@ -68,13 +68,13 @@ type AutoscalingPolicyStatusBuilder struct {
 	policyName           string
 	nodeSetsResources    resources.NodeSetsResources
 	lastModificationTime metav1.Time
-	states               map[PolicyStateType]PolicyState
+	states               map[AutoscalingEventType]PolicyState
 }
 
 func NewAutoscalingPolicyStatusBuilder(name string) *AutoscalingPolicyStatusBuilder {
 	return &AutoscalingPolicyStatusBuilder{
 		policyName: name,
-		states:     make(map[PolicyStateType]PolicyState),
+		states:     make(map[AutoscalingEventType]PolicyState),
 	}
 }
 
@@ -109,7 +109,7 @@ func (psb *AutoscalingPolicyStatusBuilder) SetLastModificationTime(lastModificat
 }
 
 // RecordEvent records a new event (type + message) for the tier.
-func (psb *AutoscalingPolicyStatusBuilder) RecordEvent(stateType PolicyStateType, message string) *AutoscalingPolicyStatusBuilder {
+func (psb *AutoscalingPolicyStatusBuilder) RecordEvent(stateType AutoscalingEventType, message string) *AutoscalingPolicyStatusBuilder {
 	if policyState, ok := psb.states[stateType]; ok {
 		policyState.Messages = append(policyState.Messages, message)
 		psb.states[stateType] = policyState
@@ -122,11 +122,11 @@ func (psb *AutoscalingPolicyStatusBuilder) RecordEvent(stateType PolicyStateType
 	return psb
 }
 
-type PolicyStateType string
+type AutoscalingEventType string
 
 type PolicyState struct {
-	Type     PolicyStateType `json:"type"`
-	Messages []string        `json:"messages"`
+	Type     AutoscalingEventType `json:"type"`
+	Messages []string             `json:"messages"`
 }
 
 type AutoscalingStatusBuilder struct {
