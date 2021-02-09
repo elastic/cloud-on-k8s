@@ -60,8 +60,7 @@ func (r *ReconcileElasticsearch) reconcileInternal(
 
 // Check if the Service is available.
 func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
-	span, _ := apm.StartSpan(ctx, "is_es_reachable", tracing.SpanTypeApp)
-	defer span.End()
+	defer tracing.Span(&ctx)()
 	externalService, err := services.GetExternalService(r.Client, es)
 	if apierrors.IsNotFound(err) {
 		return false, nil
