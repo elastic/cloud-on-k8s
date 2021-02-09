@@ -55,6 +55,7 @@ type Role struct {
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client interface {
 	AllocationSetter
+	AutoscalingClient
 	ShardLister
 	LicenseClient
 	// Close idle connections in the underlying http client.
