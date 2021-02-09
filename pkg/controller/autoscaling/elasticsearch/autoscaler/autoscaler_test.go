@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,10 +28,11 @@ func Test_GetResources(t *testing.T) {
 		policy           esv1.AutoscalingPolicySpec
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    resources.NodeSetsResources
-		wantErr bool
+		name            string
+		args            args
+		want            resources.NodeSetsResources
+		wantPolicyState []status.PolicyState
+		wantErr         bool
 	}{
 		{
 			name: "Scale both vertically and horizontally to fulfil storage capacity request",
@@ -139,6 +141,64 @@ func Test_GetResources(t *testing.T) {
 				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")}},
 			},
 		},
+		{
+			name: "Do not exceed node count specified by the user",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
+				},
+				requiredCapacity: newRequiredCapacityBuilder().
+					nodeMemory("6G").
+					tierMemory("48G"). // would require 6 nodes, user set a node count limit to 5
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 5).WithMemory("5G", "8G").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
+				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")}},
+			},
+			wantPolicyState: []status.PolicyState{
+				{
+					Type:     "HorizontalScalingLimitReached",
+					Messages: []string{"Can't provide total required memory 48000000000, max number of nodes is 5, requires 6 nodes"},
+				},
+			},
+		},
+		{
+			name: "Do not exceed horizontal and vertical limits specified by the user",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
+				},
+				requiredCapacity: newRequiredCapacityBuilder().
+					nodeMemory("8G").  // user set a limit to 5G / node
+					tierMemory("48G"). // would require 10
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "7G").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")}},
+			},
+			wantPolicyState: []status.PolicyState{
+				{
+					Type:     "VerticalScalingLimitReached",
+					Messages: []string{"Node required memory 8000000000 is greater than max allowed: 7000000000"},
+				},
+				{
+					Type:     "HorizontalScalingLimitReached",
+					Messages: []string{"Can't provide total required memory 48000000000, max number of nodes is 6, requires 7 nodes"},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -153,8 +213,19 @@ func Test_GetResources(t *testing.T) {
 			if got := ctx.GetResources(); !equality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("autoscaler.GetResources() = %v, want %v", got, tt.want)
 			}
+			gotStatus := ctx.StatusBuilder.Build()
+			assert.ElementsMatch(t, getPolicyStates(gotStatus, "my-autoscaling-policy"), tt.wantPolicyState)
 		})
 	}
+}
+
+func getPolicyStates(status status.Status, policyName string) []status.PolicyState {
+	for _, state := range status.AutoscalingPolicyStatuses {
+		if state.Name == policyName {
+			return state.PolicyStates
+		}
+	}
+	return nil
 }
 
 // - AutoscalingSpec builder
