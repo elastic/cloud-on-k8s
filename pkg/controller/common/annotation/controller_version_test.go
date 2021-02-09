@@ -28,7 +28,6 @@ func TestCheckCompatibility(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          args
-		wantRequeue   bool
 		wantSupported bool
 		wantErr       bool
 	}{
@@ -43,7 +42,6 @@ func TestCheckCompatibility(t *testing.T) {
 					},
 				},
 			},
-			wantRequeue:   true,
 			wantSupported: false,
 			wantErr:       false,
 		},
@@ -58,7 +56,6 @@ func TestCheckCompatibility(t *testing.T) {
 					},
 				},
 			},
-			wantRequeue:   true,
 			wantSupported: false,
 			wantErr:       false,
 		},
@@ -76,7 +73,6 @@ func TestCheckCompatibility(t *testing.T) {
 				},
 				controllerVersion: "1.5.0",
 			},
-			wantRequeue:   false,
 			wantSupported: false,
 			wantErr:       false,
 		},
@@ -94,20 +90,16 @@ func TestCheckCompatibility(t *testing.T) {
 				},
 				controllerVersion: "1.5.0",
 			},
-			wantRequeue:   false,
 			wantSupported: true,
 			wantErr:       false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRequeue, gotSupported, err := CheckCompatibility(tt.args.obj, tt.args.controllerVersion)
+			gotSupported, err := CheckCompatibility(tt.args.obj, tt.args.controllerVersion)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckCompatibility() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if gotRequeue != tt.wantRequeue {
-				t.Errorf("CheckCompatibility() gotRequeue = %v, want %v", gotRequeue, tt.wantRequeue)
 			}
 			if gotSupported != tt.wantSupported {
 				t.Errorf("CheckCompatibility() gotSupported = %v, want %v", gotSupported, tt.wantSupported)

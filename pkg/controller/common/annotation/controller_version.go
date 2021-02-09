@@ -54,15 +54,13 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlcli
 
 // CheckCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation. It has no side effect and
 // can be used by auxiliary controllers to check if they can process a resource.
-// First boolean is true if the compatibility cannot be determined at the moment, mostly because the main controller did not reconcile the resource yet. In that case the
-// auxiliary controller must try again later.
-func CheckCompatibility(obj ctrlclient.Object, controllerVersion string) (requeue bool, supported bool, err error) {
+// The auxiliary controller must watch the resource to check the compatibility if the resource is updated.
+func CheckCompatibility(obj ctrlclient.Object, controllerVersion string) (supported bool, err error) {
 	annotatedVersion := obj.GetAnnotations()[ControllerVersionAnnotation]
 	if annotatedVersion == "" {
-		return true, false, nil
+		return false, nil
 	}
-	supported, err = isAnnotatedVersionSupported(annotatedVersion, controllerVersion, obj)
-	return false, supported, err
+	return isAnnotatedVersionSupported(annotatedVersion, controllerVersion, obj)
 }
 
 // ReconcileCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation
