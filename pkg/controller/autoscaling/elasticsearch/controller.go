@@ -222,7 +222,7 @@ func newElasticsearchClient(
 			Name:     user.ControllerUserName,
 			Password: string(password),
 		},
-		*v,
+		v,
 		caCerts,
 		esclient.Timeout(es),
 	), nil
