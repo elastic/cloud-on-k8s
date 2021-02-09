@@ -44,7 +44,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 	}
 
 	var errs field.ErrorList
-	if !proposedVer.IsSameOrAfter(ElasticsearchMinAutoscalingVersion) {
+	if !proposedVer.GTE(ElasticsearchMinAutoscalingVersion) {
 		errs = append(
 			errs,
 			field.Invalid(

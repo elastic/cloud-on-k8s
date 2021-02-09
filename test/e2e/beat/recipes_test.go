@@ -263,7 +263,7 @@ func runBeatRecipe(
 func isStackIncompatible(beat beatv1beta1.Beat) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	beatVersion := version.MustParse(beat.Spec.Version)
-	return beatVersion.IsAfter(stackVersion)
+	return beatVersion.GT(stackVersion)
 }
 
 func loggingTestPod(name string) (*corev1.Pod, string) {

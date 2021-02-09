@@ -159,8 +159,8 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 					return err
 				}
 				for i, topoElem := range expectedTopology {
-					cfg := esv1.DefaultCfg(*v)
-					if err := esv1.UnpackConfig(topoElem.Config, *v, &cfg); err != nil {
+					cfg := esv1.DefaultCfg(v)
+					if err := esv1.UnpackConfig(topoElem.Config, v, &cfg); err != nil {
 						return err
 					}
 					if compareRoles(cfg.Node, node.Roles) &&

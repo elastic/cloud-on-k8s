@@ -65,7 +65,7 @@ func internalReconcile(params Params) *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	if !association.AllowVersion(*agentVersion, &params.Agent, params.Logger(), params.EventRecorder) {
+	if !association.AllowVersion(agentVersion, &params.Agent, params.Logger(), params.EventRecorder) {
 		return results // will eventually retry
 	}
 

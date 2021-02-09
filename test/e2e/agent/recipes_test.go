@@ -110,5 +110,5 @@ func runBeatRecipe(
 func isStackIncompatible(agent agentv1alpha1.Agent) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	agentVersion := version.MustParse(agent.Spec.Version)
-	return agentVersion.IsAfter(stackVersion)
+	return agentVersion.GT(stackVersion)
 }

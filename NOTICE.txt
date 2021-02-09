@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/sprig/v3
-Version : v3.2.0
-Time    : 2020-12-14T15:53:51Z
+Version : v3.2.2
+Time    : 2021-02-04T20:32:52Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.2/LICENSE.txt:
 
 Copyright (C) 2013-2020 Masterminds
 
@@ -2780,11 +2780,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasti
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/automaxprocs
-Version : v1.3.0
-Time    : 2020-01-23T19:41:49Z
+Version : v1.4.0
+Time    : 2021-02-02T17:51:55Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/automaxprocs@v1.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.uber.org/automaxprocs@v1.4.0/LICENSE:
 
 Copyright (c) 2017 Uber Technologies, Inc.
 
@@ -7483,11 +7483,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/goutils
-Version : v1.1.0
-Time    : 2018-12-03T09:12:26Z
+Version : v1.1.1
+Time    : 2021-02-04T20:06:53Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1.1.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1.1.1/LICENSE.txt:
 
 
                                  Apache License

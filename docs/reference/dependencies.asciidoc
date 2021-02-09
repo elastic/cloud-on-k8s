@@ -19,7 +19,7 @@ This page lists the third-party dependencies used to build {n}.
 |===
 | Name | Version | Licence
 
-| link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig/v3$$] | v3.2.0 | MIT
+| link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig/v3$$] | v3.2.2 | MIT
 | link:https://github.com/blang/semver[$$github.com/blang/semver/v4$$] | v4.0.0 | MIT
 | link:https://github.com/davecgh/go-spew[$$github.com/davecgh/go-spew$$] | v1.1.1 | ISC
 | link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.8.3 | Apache-2.0
@@ -45,7 +45,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
 | link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.8.0 | Apache-2.0
 | link:https://go.elastic.co/apm/module/apmelasticsearch[$$go.elastic.co/apm/module/apmelasticsearch$$] | v1.8.0 | Apache-2.0
-| link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.3.0 | MIT
+| link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.4.0 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.16.0 | MIT
 | link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20201221181555-eec23a3978ad | BSD-3-Clause
 | link:https://gopkg.in/yaml.v2[$$gopkg.in/yaml.v2$$] | v2.4.0 | Apache-2.0
@@ -86,7 +86,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/BurntSushi/toml[$$github.com/BurntSushi/toml$$] | v0.3.1 | MIT
 | link:https://github.com/BurntSushi/xgb[$$github.com/BurntSushi/xgb$$] | v0.0.0-20160522181843-27f122750802 | BSD-3-Clause
 | link:https://github.com/Knetic/govaluate[$$github.com/Knetic/govaluate$$] | v3.0.1-0.20171022003610-9aa49832a739+incompatible | MIT
-| link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.0 | Apache-2.0
+| link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.1 | Apache-2.0
 | link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver/v3$$] | v3.1.1 | MIT
 | link:https://github.com/NYTimes/gziphandler[$$github.com/NYTimes/gziphandler$$] | v0.0.0-20170623195520-56545f4a5d46 | Apache-2.0
 | link:https://github.com/OneOfOne/xxhash[$$github.com/OneOfOne/xxhash$$] | v1.2.2 | Apache-2.0

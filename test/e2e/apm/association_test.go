@@ -51,7 +51,7 @@ func TestCrossNSAssociation(t *testing.T) {
 // TestAPMKibanaAssociation tests associating an APM Server with Kibana.
 func TestAPMKibanaAssociation(t *testing.T) {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.IsSameOrAfter(apmv1.ApmAgentConfigurationMinVersion) {
+	if !stackVersion.GTE(apmv1.ApmAgentConfigurationMinVersion) {
 		t.SkipNow()
 	}
 

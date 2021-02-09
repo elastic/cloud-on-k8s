@@ -176,7 +176,7 @@ func TestGet(t *testing.T) {
 							{
 								Name: kbv1.KibanaContainerName,
 								Env: []corev1.EnvVar{{
-									Name: kibana.EnvNodeOpts, Value: "--max-old-space-size=2048",
+									Name: kibana.EnvNodeOptions, Value: "--max-old-space-size=2048",
 								}},
 							},
 						},

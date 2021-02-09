@@ -17,7 +17,7 @@ func (d *defaultDriver) verifySupportsExistingPods(pods []corev1.Pod) error {
 		if err != nil {
 			return err
 		}
-		if err := d.SupportedVersions.Supports(*v); err != nil {
+		if err := d.SupportedVersions.WithinRange(v); err != nil {
 			return errors.Wrapf(err, "%s has incompatible version", pod.Name)
 		}
 	}

@@ -81,8 +81,8 @@ func supportedVersion(es *Elasticsearch) field.ErrorList {
 	if err != nil {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
 	}
-	if v := esversion.SupportedVersions(*ver); v != nil {
-		if err := v.Supports(*ver); err == nil {
+	if v := esversion.SupportedVersions(ver); v != nil {
+		if err := v.WithinRange(ver); err == nil {
 			return field.ErrorList{}
 		}
 	}
@@ -178,7 +178,7 @@ func noDowngrades(current, proposed *Elasticsearch) field.ErrorList {
 	if len(errs) != 0 {
 		return errs
 	}
-	if !currVer.IsSameOrAfter(*currentVer) {
+	if !currVer.GTE(currentVer) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, noDowngradesMsg))
 	}
 	return errs
@@ -202,13 +202,13 @@ func validUpgradePath(current, proposed *Elasticsearch) field.ErrorList {
 		return errs
 	}
 
-	v := esversion.SupportedVersions(*currVer)
+	v := esversion.SupportedVersions(currVer)
 	if v == nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedVersionMsg))
 		return errs
 	}
 
-	err = v.Supports(*currentVer)
+	err = v.WithinRange(currentVer)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedUpgradeMsg))
 	}

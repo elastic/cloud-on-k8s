@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,8 +28,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		}
 	}
 	type fields struct {
-		lowestSupportedVersion  version.Version
-		highestSupportedVersion version.Version
+		min version.Version
+		max version.Version
 	}
 	type args struct {
 		pods []corev1.Pod
@@ -50,8 +49,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		{
 			name: "pod with version label at higher bound",
 			fields: fields{
-				lowestSupportedVersion:  version.Version{Major: 6},
-				highestSupportedVersion: version.Version{Major: 7},
+				min: version.Version{Major: 6},
+				max: version.Version{Major: 7},
 			},
 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 7})}},
 			wantErr: false,
@@ -59,8 +58,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		{
 			name: "pod with version label at lower bound",
 			fields: fields{
-				lowestSupportedVersion:  version.Version{Major: 6},
-				highestSupportedVersion: version.Version{Major: 7},
+				min: version.Version{Major: 6},
+				max: version.Version{Major: 7},
 			},
 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 6})}},
 			wantErr: false,
@@ -68,8 +67,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		{
 			name: "pod with version label within bounds",
 			fields: fields{
-				lowestSupportedVersion:  version.Version{Major: 6},
-				highestSupportedVersion: version.Version{Major: 7},
+				min: version.Version{Major: 6},
+				max: version.Version{Major: 7},
 			},
 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 6, Minor: 4, Patch: 2})}},
 			wantErr: false,
@@ -83,8 +82,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		{
 			name: "pod with too low version label",
 			fields: fields{
-				lowestSupportedVersion:  version.Version{Major: 6},
-				highestSupportedVersion: version.Version{Major: 7},
+				min: version.Version{Major: 6},
+				max: version.Version{Major: 7},
 			},
 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 5})}},
 			wantErr: true,
@@ -92,8 +91,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		{
 			name: "pod with too high version label",
 			fields: fields{
-				lowestSupportedVersion:  version.Version{Major: 6},
-				highestSupportedVersion: version.Version{Major: 7},
+				min: version.Version{Major: 6},
+				max: version.Version{Major: 7},
 			},
 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 8})}},
 			wantErr: true,
@@ -101,9 +100,9 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lh := esversion.LowestHighestSupportedVersions{
-				LowestSupportedVersion:  tt.fields.lowestSupportedVersion,
-				HighestSupportedVersion: tt.fields.highestSupportedVersion,
+			lh := version.MinMaxVersion{
+				Min: tt.fields.min,
+				Max: tt.fields.max,
 			}
 			d := defaultDriver{
 				DefaultDriverParameters{

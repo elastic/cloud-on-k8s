@@ -33,7 +33,7 @@ func clusterUnavailabilityThreshold(b Builder) time.Duration {
 		cluster = b.MutatedFrom.Elasticsearch
 	}
 	v := version.MustParse(cluster.Spec.Version)
-	if (&v).IsSameOrAfter(version.MustParse("7.2.0")) {
+	if (&v).GTE(version.MustParse("7.2.0")) {
 		// in version 7.2 and above, there is usually close to zero unavailability when a master node is killed
 		// we still keep an arbitrary safety margin
 		return 20 * time.Second
