@@ -42,5 +42,5 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	}
 	// major digits must be equal or differ by only 1
 	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
-	return validMajorDigit && !srcVer.IsSameOrAfter(*dstVer), nil
+	return validMajorDigit && !srcVer.GTE(dstVer), nil
 }

@@ -215,7 +215,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := NewMergedESConfig(
 				"clusterName",
-				*ver,
+				ver,
 				tt.ipFamily,
 				commonv1.HTTPConfig{},
 				commonv1.Config{Data: tt.cfgData},

@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-ANN_KEY=${ANN_KEY:-"common.k8s.elastic.co/pause"}
+ANN_KEY=${ANN_KEY:-"eck.k8s.elastic.co/managed"}
 ANN_VAL=${ANN_VAL:-"true"}
 PAUSE_SECS=${PAUSE_SECS:-"900"}
 

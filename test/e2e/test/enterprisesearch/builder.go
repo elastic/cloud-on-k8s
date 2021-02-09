@@ -35,7 +35,7 @@ var _ test.Builder = Builder{}
 func (b Builder) SkipTest() bool {
 	v := version.MustParse(b.EnterpriseSearch.Spec.Version)
 	// skip if not at least 7.0
-	return !v.IsSameOrAfter(minVersion) ||
+	return !v.GTE(minVersion) ||
 		// or if incompatible with Openshift
 		isIncompatibleWithOcp(v)
 }
@@ -44,7 +44,7 @@ func isIncompatibleWithOcp(v version.Version) bool {
 	if !test.Ctx().OcpCluster {
 		return false
 	}
-	if v.IsSameOrAfter(ocpFirstIncompatibleVersion) {
+	if v.GTE(ocpFirstIncompatibleVersion) {
 		return true
 	}
 

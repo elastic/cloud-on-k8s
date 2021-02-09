@@ -47,13 +47,12 @@ func TestExtractVersion(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    map[string]string
-		want    *version.Version
+		want    version.Version
 		wantErr bool
 	}{
 		{
 			name:    "no version",
 			args:    nil,
-			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -61,7 +60,6 @@ func TestExtractVersion(t *testing.T) {
 			args: map[string]string{
 				VersionLabelName: "not a version",
 			},
-			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -69,12 +67,7 @@ func TestExtractVersion(t *testing.T) {
 			args: map[string]string{
 				VersionLabelName: "1.0.0",
 			},
-			want: &version.Version{
-				Major: 1,
-				Minor: 0,
-				Patch: 0,
-				Label: "",
-			},
+			want:    version.MustParse("1.0.0"),
 			wantErr: false,
 		},
 	}

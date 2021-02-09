@@ -216,7 +216,7 @@ func (as AutoscalingSpec) GetAutoscalingSpecFor(nodeSet NodeSet) (*AutoscalingPo
 	if err != nil {
 		return nil, err
 	}
-	roles, err := getNodeSetRoles(*v, nodeSet)
+	roles, err := getNodeSetRoles(v, nodeSet)
 	if err != nil {
 		return nil, err
 	}

@@ -105,7 +105,7 @@ spec:
       containers:
         - name: kibana
           env:
-            - name: NODE_OPTS
+            - name: NODE_OPTIONS
               value: "--max-old-space-size=2048"
 ---
 apiVersion: apm.k8s.elastic.co/v1

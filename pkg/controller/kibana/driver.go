@@ -74,7 +74,7 @@ func newDriver(
 		return nil, err
 	}
 
-	if !ver.IsSameOrAfter(minSupportedVersion) {
+	if !ver.GTE(minSupportedVersion) {
 		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
 		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
 		return nil, err
@@ -84,7 +84,7 @@ func newDriver(
 		client:         client,
 		dynamicWatches: watches,
 		recorder:       recorder,
-		version:        *ver,
+		version:        ver,
 		ipFamily:       ipFamily,
 	}, nil
 }
