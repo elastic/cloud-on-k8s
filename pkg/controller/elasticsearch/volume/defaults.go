@@ -11,6 +11,8 @@ import (
 )
 
 var (
+	DefaultPersistentVolumeSize = resource.MustParse("1Gi")
+
 	// DefaultDataVolumeClaim is the default data volume claim for Elasticsearch pods.
 	// We default to a 1GB persistent volume, using the default storage class.
 	DefaultDataVolumeClaim = corev1.PersistentVolumeClaim{
@@ -23,7 +25,7 @@ var (
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("1Gi"),
+					corev1.ResourceStorage: DefaultPersistentVolumeSize,
 				},
 			},
 		},

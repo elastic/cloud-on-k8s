@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -276,14 +277,13 @@ func containsStringSlice(slices [][]string, slice []string) bool {
 }
 
 // HasAtMostOnePersistentVolumeClaim returns true if the NodeSet has only one volume claim template. It also returns
-// the name of the volume claim template in that case.
-func HasAtMostOnePersistentVolumeClaim(nodeSet esv1.NodeSet) (bool, string) {
-	//volumeClaimTemplates := len(nodeSet.VolumeClaimTemplates)
+// a copy of the volume claim template in that case.
+func HasAtMostOnePersistentVolumeClaim(nodeSet esv1.NodeSet) (bool, *corev1.PersistentVolumeClaim) {
 	switch len(nodeSet.VolumeClaimTemplates) {
 	case 0:
-		return true, ""
+		return true, nil
 	case 1:
-		return true, nodeSet.VolumeClaimTemplates[0].Name
+		return true, nodeSet.VolumeClaimTemplates[0].DeepCopy()
 	}
-	return false, ""
+	return false, nil
 }

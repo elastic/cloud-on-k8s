@@ -42,6 +42,13 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	results := &reconciler.Results{}
 
+	// If some nodeSets are managed by the autoscaler, wait for them to be updated.
+	if ok, err := autoscaledResourcesSynced(d.ES); err != nil {
+		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
+	} else if !ok {
+		return results.WithResult(defaultRequeue)
+	}
+
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
 	ok, err := d.expectationsSatisfied()
 	if err != nil {

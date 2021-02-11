@@ -157,6 +157,15 @@ func rolesMatch(roles1, roles2 []string) bool {
 // +kubebuilder:object:generate=false
 type AutoscaledNodeSets map[string]NodeSetList
 
+// Names returns the names of the node sets indexed by the autoscaling policy name.
+func (n AutoscaledNodeSets) Names() map[string][]string {
+	autoscalingPolicies := make(map[string][]string)
+	for policy, nodeSetList := range n {
+		autoscalingPolicies[policy] = nodeSetList.Names()
+	}
+	return autoscalingPolicies
+}
+
 // AutoscalingPolicies returns the list of autoscaling policies names from the named tiers.
 func (n AutoscaledNodeSets) AutoscalingPolicies() set.StringSet {
 	autoscalingPolicies := set.Make()
