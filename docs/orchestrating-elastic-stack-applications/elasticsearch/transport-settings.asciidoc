@@ -32,12 +32,12 @@ NOTE: When you change the `clusterIP` setting of the service, ECK deletes and re
 
 == Configure a custom Certificate Authority
 
-Elasticsearch uses X.509 certificates to establish encrypted and authenticated connections between the nodes in the cluster. By default ECK will create a self-signed CA certificate to issue a X.509 certificate link:https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-tls.html#node-certificates[for each node in the cluster].
+Elasticsearch uses X.509 certificates to establish encrypted and authenticated connections between the nodes in the cluster. By default ECK will create a self-signed CA certificate to issue a certificate link:https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-tls.html#node-certificates[for each node in the cluster].
 
-You can use a Kubernetes secret to provide your own CA  instead of the self-signed certificate that ECK will then use to create node certificates for transport connections.
+You can use a Kubernetes secret to provide your own CA instead of the self-signed certificate that ECK will then use to create node certificates for transport connections.
 The CA certificate must be stored in the secret under `tls.crt` and the private key must be stored under `tls.key`.
 
-You need to reference the name of a secret that contains a TLS private key and a CA certificate, in the `spec.transport.tls.certificate` section as shown in this shortened example:
+You need to reference the name of a secret that contains the TLS private key and the CA certificate, in the `spec.transport.tls.certificate` section as shown in this shortened example:
 
 [source,yaml]
 ----
