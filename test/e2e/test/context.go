@@ -90,7 +90,8 @@ type Context struct {
 	E2EServiceAccount     string            `json:"e2e_service_account"`
 	ElasticStackVersion   string            `json:"elastic_stack_version"`
 	LogVerbosity          int               `json:"log_verbosity"`
-	OperatorImage         string            `json:"operator_image"`
+	OperatorImageRepo     string            `json:"operator_image_repo"`
+	OperatorImageTag      string            `json:"operator_image_tag"`
 	TestLicense           string            `json:"test_license"`
 	TestLicensePKeyPath   string            `json:"test_license_pkey_path"`
 	TestRegex             string            `json:"test_regex"`

@@ -20,6 +20,9 @@ data:
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
+    {{- if .Values.telemetry.interval }}
+    telemetry-interval: {{ .Values.telemetry.interval }}
+    {{- end }}
     validate-storage-class: {{ .Values.config.validateStorageClass }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
