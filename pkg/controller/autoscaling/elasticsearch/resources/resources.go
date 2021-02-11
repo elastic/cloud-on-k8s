@@ -37,7 +37,7 @@ func NewNodeSetsResources(name string, nodeSetNames []string) NodeSetsResources 
 type ClusterResources []NodeSetsResources
 
 // Match returns true if the resources assigned to a container in a NodeSet matches the one specified in the NodeSetsResources.
-// It returns false if the container is not found in the NodeSet.
+// It also returns false if the container is not found in the NodeSet.
 func (ntr NodeSetsResources) Match(containerName string, nodeSet v1.NodeSet) (bool, error) {
 	for _, nodeSetNodeCount := range ntr.NodeSetNodeCount {
 		if nodeSetNodeCount.Name != nodeSet.Name {
