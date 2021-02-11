@@ -153,7 +153,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	if nodeSetErr != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, nodeSetErr)
 	}
-	log.V(1).Info("Autoscaling policies and node sets", "policies", autoscaledNodeSets)
+	log.V(1).Info("Autoscaling policies and node sets", "policies", autoscaledNodeSets.Names())
 
 	// Import existing resources in the current Status if the cluster is managed by some autoscaling policies but
 	// the status annotation does not exist.
