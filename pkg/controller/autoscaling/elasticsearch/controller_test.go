@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/about"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
@@ -68,7 +69,6 @@ var (
 func TestReconcile(t *testing.T) {
 	type fields struct {
 		EsClient       *fakeEsClient
-		Parameters     operator.Parameters
 		recorder       *record.FakeRecorder
 		licenseChecker license.Checker
 	}
@@ -88,7 +88,6 @@ func TestReconcile(t *testing.T) {
 			name: "ML case where tier total memory was lower than node memory",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("ml"),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -104,7 +103,6 @@ func TestReconcile(t *testing.T) {
 			name: "Simulate an error while updating the autoscaling policies, we still want to respect min nodes count set by user",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingAutoscalingPolicies(),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -120,7 +118,6 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, but answer from the API is empty, do not touch anything",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("empty-autoscaling-api-response"),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -134,7 +131,6 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster has just been created, initialize resources",
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -148,7 +144,6 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, data tier has reached max. capacity",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("max-storage-reached"),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -163,7 +158,6 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, data tier needs to be scaled up from 8 to 9 nodes",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("storage-scaled-horizontally"),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -177,7 +171,6 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster does not exit",
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
-				Parameters:     operator.Parameters{},
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &fakeLicenceChecker{},
 			},
@@ -213,9 +206,15 @@ func TestReconcile(t *testing.T) {
 			r := &ReconcileElasticsearch{
 				Client:           k8sClient,
 				esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
-				Parameters:       tt.fields.Parameters,
-				recorder:         tt.fields.recorder,
-				licenseChecker:   tt.fields.licenseChecker,
+				Parameters: operator.Parameters{
+					OperatorInfo: about.OperatorInfo{
+						BuildInfo: about.BuildInfo{
+							Version: "1.5.0",
+						},
+					},
+				},
+				recorder:       tt.fields.recorder,
+				licenseChecker: tt.fields.licenseChecker,
 			}
 			got, err := r.Reconcile(
 				context.Background(),

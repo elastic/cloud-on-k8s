@@ -2,6 +2,7 @@ apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   annotations:
+    common.k8s.elastic.co/controller-version: 1.4.0
     elasticsearch.alpha.elastic.co/autoscaling-spec: '{
                                                       	"policies": [{
                                                       		"name": "di",

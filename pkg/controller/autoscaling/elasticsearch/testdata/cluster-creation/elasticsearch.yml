@@ -5,6 +5,7 @@ metadata:
   name: testes
   namespace: testns
   annotations:
+    common.k8s.elastic.co/controller-version: 1.4.0
     elasticsearch.alpha.elastic.co/autoscaling-spec: '{
                                                       	"policies": [{
                                                       		"name": "di",
