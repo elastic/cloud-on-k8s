@@ -39,6 +39,9 @@ func GetOfflineNodeSetsResources(
 		}
 	}
 
+	// Adjust limits
+	nodeSetsResources.NodeResources = nodeSetsResources.UpdateLimits(autoscalingSpec.AutoscalingResources)
+
 	// Ensure that the min. number of nodes is in the allowed range.
 	if expectedNodeCount < autoscalingSpec.NodeCount.Min {
 		expectedNodeCount = autoscalingSpec.NodeCount.Min

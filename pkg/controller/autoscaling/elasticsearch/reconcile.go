@@ -55,22 +55,10 @@ func reconcileElasticsearch(
 		// Update desired count
 		es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
 
-		if container.Resources.Requests == nil {
-			container.Resources.Requests = corev1.ResourceList{}
-		}
-		if container.Resources.Limits == nil {
-			container.Resources.Limits = corev1.ResourceList{}
-		}
+		// Update CPU and Memory requirements
+		container.Resources = nodeSetResources.ToContainerResourcesWith(container.Resources)
 
-		// Update memory requests and limits
-		if nodeSetResources.HasRequest(corev1.ResourceMemory) {
-			container.Resources.Requests[corev1.ResourceMemory] = nodeSetResources.GetRequest(corev1.ResourceMemory)
-			container.Resources.Limits[corev1.ResourceMemory] = nodeSetResources.GetRequest(corev1.ResourceMemory)
-		}
-		if nodeSetResources.HasRequest(corev1.ResourceCPU) {
-			container.Resources.Requests[corev1.ResourceCPU] = nodeSetResources.GetRequest(corev1.ResourceCPU)
-		}
-
+		// Update storage
 		if nodeSetResources.HasRequest(corev1.ResourceStorage) {
 			nextStorage, err := newVolumeClaimTemplate(nodeSetResources.GetRequest(corev1.ResourceStorage), es.Spec.NodeSets[i])
 			if err != nil {

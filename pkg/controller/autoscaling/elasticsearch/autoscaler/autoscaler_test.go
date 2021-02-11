@@ -52,7 +52,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("10Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("10Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi")},
+				},
 			},
 		},
 		{
@@ -73,7 +76,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
+				},
 			},
 		},
 		{
@@ -96,7 +102,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi"), corev1.ResourceStorage: q("10G")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi"), corev1.ResourceStorage: q("10G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
+				},
 			},
 		},
 		{
@@ -117,7 +126,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7Gi")},
+				},
 			},
 		},
 		{
@@ -138,7 +150,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
+				},
 			},
 		},
 		{
@@ -159,7 +174,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
+				},
 			},
 			wantPolicyState: []status.PolicyState{
 				{
@@ -186,7 +204,10 @@ func Test_GetResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
+				},
 			},
 			wantPolicyState: []status.PolicyState{
 				{
@@ -196,6 +217,45 @@ func Test_GetResources(t *testing.T) {
 				{
 					Type:     "HorizontalScalingLimitReached",
 					Messages: []string{"Can't provide total required memory 48000000000, max number of nodes is 6, requires 7 nodes"},
+				},
+			},
+		},
+		{
+			name: "Adjust limits",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				requiredCapacity: newRequiredCapacityBuilder().
+					nodeMemory("6G").tierMemory("15G").
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").
+					WithNodeCounts(3, 6).
+					WithMemoryAndRatio("5G", "8G", 2.0).
+					Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("12Gi")},
+				},
+			},
+		},
+		{
+			name: "Remove memory limit",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				requiredCapacity: newRequiredCapacityBuilder().
+					nodeMemory("6G").
+					tierMemory("15G").
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemoryAndRatio("5G", "8G", 0.0).Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
 				},
 			},
 		},
@@ -231,9 +291,10 @@ func getPolicyStates(status status.Status, policyName string) []status.PolicySta
 // - AutoscalingSpec builder
 
 type AutoscalingSpecBuilder struct {
-	name                       string
-	nodeCountMin, nodeCountMax int32
-	cpu, memory, storage       *esv1.QuantityRange
+	name                                           string
+	nodeCountMin, nodeCountMax                     int32
+	cpu, memory, storage                           *esv1.QuantityRange
+	memRequestToLimitRatio, cpuRequestToLimitRatio *float64
 }
 
 func NewAutoscalingSpecBuilder(name string) *AutoscalingSpecBuilder {
@@ -254,6 +315,15 @@ func (asb *AutoscalingSpecBuilder) WithMemory(min, max string) *AutoscalingSpecB
 	return asb
 }
 
+func (asb *AutoscalingSpecBuilder) WithMemoryAndRatio(min, max string, ratio float64) *AutoscalingSpecBuilder {
+	asb.memory = &esv1.QuantityRange{
+		Min:                   resource.MustParse(min),
+		Max:                   resource.MustParse(max),
+		RequestsToLimitsRatio: &ratio,
+	}
+	return asb
+}
+
 func (asb *AutoscalingSpecBuilder) WithStorage(min, max string) *AutoscalingSpecBuilder {
 	asb.storage = &esv1.QuantityRange{
 		Min: resource.MustParse(min),
@@ -266,6 +336,15 @@ func (asb *AutoscalingSpecBuilder) WithCPU(min, max string) *AutoscalingSpecBuil
 	asb.cpu = &esv1.QuantityRange{
 		Min: resource.MustParse(min),
 		Max: resource.MustParse(max),
+	}
+	return asb
+}
+
+func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(min, max string, ratio float64) *AutoscalingSpecBuilder {
+	asb.cpu = &esv1.QuantityRange{
+		Min:                   resource.MustParse(min),
+		Max:                   resource.MustParse(max),
+		RequestsToLimitsRatio: &ratio,
 	}
 	return asb
 }
