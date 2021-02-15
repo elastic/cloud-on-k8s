@@ -25,8 +25,7 @@ type runFlags struct {
 	e2eImage              string
 	elasticStackVersion   string
 	kubeConfig            string
-	operatorImageRepo     string
-	operatorImageTag      string
+	operatorImage         string
 	testLicensePKeyPath   string
 	testContextOutPath    string
 	testLicense           string
@@ -85,8 +84,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.kubeConfig, "kubeconfig", "", "Path to kubeconfig")
 	cmd.Flags().BoolVar(&flags.local, "local", false, "Create the environment for running tests locally")
 	cmd.Flags().StringSliceVar(&flags.managedNamespaces, "managed-namespaces", []string{"mercury", "venus"}, "List of managed namespaces")
-	cmd.Flags().StringVar(&flags.operatorImageRepo, "operator-image-repo", "", "Operator image repo")
-	cmd.Flags().StringVar(&flags.operatorImageTag, "operator-image-tag", "", "Operator image tag")
+	cmd.Flags().StringVar(&flags.operatorImage, "operator-image", "", "Operator image")
 	cmd.Flags().IntVar(&flags.operatorReplicas, "operator-replicas", 1, "Operator replicas")
 	cmd.Flags().BoolVar(&flags.skipCleanup, "skip-cleanup", false, "Do not run cleanup actions after test run")
 	cmd.Flags().StringVar(&flags.testContextOutPath, "test-context-out", "", "Write the test context to the given path")

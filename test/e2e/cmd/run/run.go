@@ -131,6 +131,11 @@ func (h *helper) createScratchDir() error {
 }
 
 func (h *helper) initTestContext() error {
+	imageParts := strings.Split(h.operatorImage, ":")
+	if len(imageParts) != 2 {
+		return fmt.Errorf("invalid operator image: %s", h.operatorImage)
+	}
+
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
@@ -147,8 +152,9 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 			Replicas:          h.operatorReplicas,
 		},
-		OperatorImageRepo:     h.operatorImageRepo,
-		OperatorImageTag:      h.operatorImageTag,
+		OperatorImage:         h.operatorImage,
+		OperatorImageRepo:     imageParts[0],
+		OperatorImageTag:      imageParts[1],
 		TestLicense:           h.testLicense,
 		TestLicensePKeyPath:   h.testLicensePKeyPath,
 		MonitoringSecrets:     h.monitoringSecrets,
