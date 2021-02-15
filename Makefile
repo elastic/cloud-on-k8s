@@ -126,7 +126,7 @@ clean:
 
 reattach-pv:
 	# just check that reattach-pv still compiles
-	go build -o /dev/null hack/reattach-pv/main.go
+	go build -o /dev/null support/reattach-pv/main.go
 
 compile-all: 
 	@ go build ./...
