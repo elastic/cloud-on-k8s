@@ -429,8 +429,7 @@ e2e-docker-multiarch-build: clean
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
-		--operator-image-repo=$(BASE_IMG) \
-		--operator-image-tag=$(IMG_VERSION) \
+		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
