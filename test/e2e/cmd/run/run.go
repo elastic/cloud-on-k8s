@@ -74,7 +74,7 @@ func doRun(flags runFlags) error {
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
-			helper.installOperator,
+			helper.installE2EOperator,
 			helper.waitForOperatorToBeReady,
 			helper.runTestJob,
 		}
@@ -297,29 +297,71 @@ func (h *helper) createRoles() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
 }
 
-func (h *helper) installOperator() error {
-	log.Info("Installing the operator")
-	values, err := h.renderTemplate("config/e2e/helm-values.yaml", h.testContext)
-	if err != nil {
-		return fmt.Errorf("failed to generate Helm values: %w", err)
+func (h *helper) installE2EOperator() error {
+	log.Info("Installing the E2E operator")
+
+	installCRDs := false
+	if h.monitoringSecrets == "" {
+		installCRDs = true
 	}
 
-	cmd := command.New("hack/manifest-gen/manifest-gen.sh", "-g", "-n", h.testContext.Operator.Namespace, fmt.Sprintf("--values=%s", values)).Build()
+	manifestFile := filepath.Join(h.scratchDir, "e2e-operator.yaml")
+
+	if err := h.renderManifestFromHelm("config/e2e/helm-e2e-operator.yaml",
+		h.testContext.Operator.Namespace, installCRDs, manifestFile); err != nil {
+		return err
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply E2E operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestFile))
+
+	return nil
+}
+
+func (h *helper) installMonitoringOperator() error {
+	log.Info("Installing the Monitoring operator")
+
+	installCRDs := true
+	manifestFile := filepath.Join(h.scratchDir, "monitoring-operator.yaml")
+
+	if err := h.renderManifestFromHelm("config/e2e/helm-monitoring-operator.yaml",
+		h.testContext.E2ENamespace, installCRDs, manifestFile); err != nil {
+		return err
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply monitoring operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestFile))
+
+	return nil
+}
+
+func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRDs bool, manifestFile string) error {
+	values, err := h.renderTemplate(valuesFile, h.testContext)
+	if err != nil {
+		return fmt.Errorf("failed to generate Helm values from %s: %w", valuesFile, err)
+	}
+
+	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
+		"-g",
+		"-n", namespace,
+		fmt.Sprintf("--set=installCRDs=%t", installCRDs),
+		fmt.Sprintf("--values=%s", values),
+	).Build()
+
 	manifestBytes, err := cmd.Execute(context.Background())
 	if err != nil {
-		return fmt.Errorf("failed to generate operator manifest: %w", err)
+		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
 	}
 
-	manifestPath := filepath.Join(h.scratchDir, "all-in-one.yaml")
-	if err := ioutil.WriteFile(manifestPath, manifestBytes, 0600); err != nil {
-		return fmt.Errorf("failed to write operator manifest: %w", err)
+	if err := ioutil.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
+		return fmt.Errorf("failed to write manifest %s: %w", manifestFile, err)
 	}
-
-	if _, err := h.kubectl("apply", "-f", manifestPath); err != nil {
-		return fmt.Errorf("failed to apply operator manifest: %w", err)
-	}
-
-	h.addCleanupFunc(h.deleteResources(manifestPath))
 
 	return nil
 }
@@ -380,6 +422,10 @@ func (h *helper) deployMonitoring() error {
 	if h.monitoringSecrets == "" {
 		log.Info("No monitoring secrets provided, monitoring is not deployed")
 		return nil
+	}
+
+	if err := h.installMonitoringOperator(); err != nil {
+		return err
 	}
 
 	log.Info("Deploying monitoring")
