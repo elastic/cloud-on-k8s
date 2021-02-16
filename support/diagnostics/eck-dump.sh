@@ -129,6 +129,8 @@ main() {
     get_logs "$ns" common.k8s.elastic.co/type=enterprise-search
     get_resources "$ns" beat
     get_logs "$ns" common.k8s.elastic.co/type=beat
+    get_resources "$ns" agent
+    get_logs "$ns" common.k8s.elastic.co/type=agent
   done
 
   if [[ -n $OUTPUT_DIR ]]; then

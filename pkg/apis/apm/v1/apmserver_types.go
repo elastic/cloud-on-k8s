@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -122,9 +123,52 @@ func (as *ApmServer) EffectiveVersion() string {
 }
 
 func (as *ApmServer) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{
-		&ApmEsAssociation{ApmServer: as},
-		&ApmKibanaAssociation{ApmServer: as},
+	associations := make([]commonv1.Association, 0)
+
+	if as.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, &ApmEsAssociation{
+			ApmServer: as,
+		})
+	}
+	if as.Spec.KibanaRef.IsDefined() {
+		associations = append(associations, &ApmKibanaAssociation{
+			ApmServer: as,
+		})
+	}
+
+	return associations
+}
+
+func (as *ApmServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		if as.Spec.ElasticsearchRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(as.Status.ElasticsearchAssociationStatus)
+		}
+	case commonv1.KibanaAssociationType:
+		if as.Spec.KibanaRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(as.Status.KibanaAssociationStatus)
+		}
+	}
+
+	return commonv1.AssociationStatusMap{}
+}
+
+func (as *ApmServer) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		as.Status.ElasticsearchAssociationStatus = single
+		return nil
+	case commonv1.KibanaAssociationType:
+		as.Status.KibanaAssociationStatus = single
+		return nil
+	default:
+		return fmt.Errorf("association type %s not known", typ)
 	}
 }
 
@@ -150,10 +194,10 @@ func (aes *ApmEsAssociation) Associated() commonv1.Associated {
 }
 
 func (aes *ApmEsAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (aes *ApmEsAssociation) AssociatedType() string {
+func (aes *ApmEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -169,12 +213,8 @@ func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationC
 	aes.esAssocConf = assocConf
 }
 
-func (aes *ApmEsAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return aes.Status.ElasticsearchAssociationStatus
-}
-
-func (aes *ApmEsAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	aes.Status.ElasticsearchAssociationStatus = status
+func (aes *ApmEsAssociation) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }
 
 var _ commonv1.Association = &ApmKibanaAssociation{}
@@ -199,10 +239,10 @@ func (akb *ApmKibanaAssociation) Associated() commonv1.Associated {
 }
 
 func (akb *ApmKibanaAssociation) AssociationConfAnnotationName() string {
-	return commonv1.KibanaConfigAnnotationName
+	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", akb.AssociationID())
 }
 
-func (akb *ApmKibanaAssociation) AssociatedType() string {
+func (akb *ApmKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
@@ -222,12 +262,8 @@ func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.Associat
 	akb.kibanaAssocConf = assocConf
 }
 
-func (akb *ApmKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return akb.Status.KibanaAssociationStatus
-}
-
-func (akb *ApmKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	akb.Status.KibanaAssociationStatus = status
+func (akb *ApmKibanaAssociation) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }
 
 var _ commonv1.Associated = &ApmServer{}

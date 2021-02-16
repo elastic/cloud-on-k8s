@@ -5,10 +5,7 @@
 package settings
 
 import (
-	pkgerrors "github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -16,6 +13,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // Constants to use for the `elasticsearch.yml` config file in an ES pod.
@@ -64,7 +65,7 @@ func GetESConfigContent(client k8s.Client, namespace string, ssetName string) (C
 // GetESConfigSecret returns the secret holding the ES configuration for the given pod
 func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (corev1.Secret, error) {
 	var secret corev1.Secret
-	if err := client.Get(types.NamespacedName{
+	if err := client.Get(context.Background(), types.NamespacedName{
 		Namespace: namespace,
 		Name:      ConfigSecretName(ssetName),
 	}, &secret); err != nil {
@@ -88,7 +89,7 @@ func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte) cor
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
 func ReconcileConfig(client k8s.Client, es esv1.Elasticsearch, ssetName string, config CanonicalConfig) error {
-	rendered, err := config.Render()
+	rendered, err := config.Render(replaceNilNodeRoles)
 	if err != nil {
 		return err
 	}
@@ -107,5 +108,5 @@ func DeleteConfig(client k8s.Client, namespace string, ssetName string) error {
 			Name:      ConfigSecretName(ssetName),
 		},
 	}
-	return client.Delete(&cfgSecret)
+	return client.Delete(context.Background(), &cfgSecret)
 }

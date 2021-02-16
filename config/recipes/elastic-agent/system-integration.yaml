@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 7.10.0
+  version: 7.11.0
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -11,10 +11,6 @@ spec:
       spec:
         containers:
         - name: agent
-          securityContext:
-            runAsUser: 0
-            # If using Red Hat OpenShift uncomment this:
-            #privileged: true
   config:
     id: 488e0b80-3634-11eb-8208-57893829af4e
     revision: 2
@@ -33,7 +29,7 @@ spec:
       meta:
         package:
           name: system
-          version: 0.9.1
+          version: 7.11.0
       data_stream:
         namespace: default
       streams:
@@ -138,7 +134,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.10.0
+  version: 7.11.0
   nodeSets:
   - name: default
     count: 3
@@ -150,7 +146,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.10.0
+  version: 7.11.0
   count: 1
   elasticsearchRef:
     name: elasticsearch

@@ -61,7 +61,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 	}{
 		{
 			name: "no v7 nodes",
-			c:    k8s.WrappedFakeClient(&es),
+			c:    k8s.NewFakeClient(&es),
 			es:   &es,
 			actualStatefulSets: sset.StatefulSetList{
 				createStatefulSetWithESVersion("6.8.0"),
@@ -71,7 +71,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		},
 		{
 			name:               "3/3 nodes there, should clear",
-			c:                  k8s.WrappedFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
+			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
 			es:                 &es,
 			actualStatefulSets: sset.StatefulSetList{statefulSet3rep},
 			wantCall:           true,
@@ -79,7 +79,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		},
 		{
 			name:               "2/3 nodes there: cannot clear, should requeue",
-			c:                  k8s.WrappedFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1]),
+			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1]),
 			es:                 &es,
 			actualStatefulSets: sset.StatefulSetList{statefulSet3rep},
 			wantCall:           false,
@@ -88,7 +88,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		{
 			name:               "3/2 nodes there: cannot clear, should requeue",
 			es:                 &es,
-			c:                  k8s.WrappedFakeClient(&es, &statefulSet2rep, &pods[0], &pods[1], &pods[2]),
+			c:                  k8s.NewFakeClient(&es, &statefulSet2rep, &pods[0], &pods[1], &pods[2]),
 			actualStatefulSets: sset.StatefulSetList{statefulSet2rep},
 			wantCall:           false,
 			wantRequeue:        true,
@@ -102,7 +102,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			require.Equal(t, tt.wantRequeue, requeue)
 			require.Equal(t, tt.wantCall, clientMock.called)
 			var retrievedES esv1.Elasticsearch
-			err = tt.c.Get(k8s.ExtractNamespacedName(tt.es), &retrievedES)
+			err = tt.c.Get(context.Background(), k8s.ExtractNamespacedName(tt.es), &retrievedES)
 			require.NoError(t, err)
 		})
 	}
@@ -128,7 +128,7 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		{
 			name: "some zen1 masters: do nothing",
 			es:   &es,
-			c: k8s.WrappedFakeClient(&es, sset.TestPod{
+			c: k8s.NewFakeClient(&es, sset.TestPod{
 				Namespace:   "ns",
 				Name:        "pod-name",
 				ClusterName: "es",
@@ -141,7 +141,7 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		{
 			name:              "set voting config exclusions",
 			es:                &es,
-			c:                 k8s.WrappedFakeClient(&es, masterPod),
+			c:                 k8s.NewFakeClient(&es, masterPod),
 			excludeNodes:      []string{"node1", "node2"},
 			wantAPICalled:     true,
 			wantAPICalledWith: []string{"node1", "node2"},
@@ -155,7 +155,7 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 			require.Equal(t, tt.wantAPICalled, clientMock.called)
 			require.Equal(t, tt.wantAPICalledWith, clientMock.excludedNodes)
 			var retrievedES esv1.Elasticsearch
-			err = tt.c.Get(k8s.ExtractNamespacedName(tt.es), &retrievedES)
+			err = tt.c.Get(context.Background(), k8s.ExtractNamespacedName(tt.es), &retrievedES)
 			require.NoError(t, err)
 		})
 	}

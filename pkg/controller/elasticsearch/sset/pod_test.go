@@ -81,7 +81,7 @@ func TestGetActualPodsForStatefulSet(t *testing.T) {
 		getPodSample("pod2", "ns0", "sset1", "clus1", "0"),
 		getPodSample("pod3", "ns0", "sset1", "clus0", "0"),
 	}
-	c := k8s.WrappedFakeClient(objs...)
+	c := k8s.NewFakeClient(objs...)
 	sset0 := getSsetSample("sset0", "ns0", "clus0")
 	pods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&sset0))
 	require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 		getPodSample("pod3", "ns0", "sset1", "clus1", "0"),
 		getPodSample("pod4", "ns0", "sset1", "clus0", "0"),
 	}
-	c := k8s.WrappedFakeClient(objs...)
+	c := k8s.NewFakeClient(objs...)
 
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{

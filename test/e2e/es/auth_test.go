@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
@@ -99,9 +101,9 @@ func TestESUserProvidedAuth(t *testing.T) {
 			Test: func(t *testing.T) {
 				for _, s := range authSecrets {
 					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&s)
+					_ = k.Client.Delete(context.Background(), &s)
 					// and create a fresh one
-					err := k.Client.Create(&s)
+					err := k.Client.Create(context.Background(), &s)
 					require.NoError(t, err)
 				}
 			},
@@ -136,25 +138,25 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "Update password in the file realm secret",
 				Test: func(t *testing.T) {
 					var existingSecret corev1.Secret
-					err := k.Client.Get(k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret)
 					require.NoError(t, err)
 					existingSecret.StringData = map[string]string{
 						filerealm.UsersFile:      sampleUsersFileUpdated,
 						filerealm.UsersRolesFile: sampleUsersRolesFile,
 					}
-					require.NoError(t, k.Client.Update(&existingSecret))
+					require.NoError(t, k.Client.Update(context.Background(), &existingSecret))
 				},
 			},
 			test.Step{
 				Name: "Update role in the roles secret",
 				Test: func(t *testing.T) {
 					var existingSecret corev1.Secret
-					err := k.Client.Get(k8s.ExtractNamespacedName(&rolesSecret), &existingSecret)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&rolesSecret), &existingSecret)
 					require.NoError(t, err)
 					existingSecret.StringData = map[string]string{
 						user.RolesFile: sampleRolesFile(writeIndexUpdated),
 					}
-					require.NoError(t, k.Client.Update(&existingSecret))
+					require.NoError(t, k.Client.Update(context.Background(), &existingSecret))
 				},
 			},
 			test.Step{
@@ -169,10 +171,10 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "Remove secrets ref in the ES spec",
 				Test: func(t *testing.T) {
 					var es esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 					require.NoError(t, err)
 					es.Spec.Auth = esv1.Auth{}
-					err = k.Client.Update(&es)
+					err = k.Client.Update(context.Background(), &es)
 					require.NoError(t, err)
 				},
 			},
@@ -188,7 +190,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "Delete auth secrets",
 				Test: func(t *testing.T) {
 					for _, s := range authSecrets {
-						require.NoError(t, k.Client.Delete(&s))
+						require.NoError(t, k.Client.Delete(context.Background(), &s))
 					}
 				},
 			},

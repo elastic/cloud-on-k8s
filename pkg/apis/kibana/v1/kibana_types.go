@@ -5,6 +5,8 @@
 package v1
 
 import (
+	"fmt"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,10 +68,10 @@ func (k *Kibana) Associated() commonv1.Associated {
 }
 
 func (k *Kibana) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (k *Kibana) AssociatedType() string {
+func (k *Kibana) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -98,16 +100,38 @@ func (k *Kibana) RequiresAssociation() bool {
 	return k.Spec.ElasticsearchRef.Name != ""
 }
 
-func (k *Kibana) AssociationStatus() commonv1.AssociationStatus {
-	return k.Status.AssociationStatus
+func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	if typ == commonv1.ElasticsearchAssociationType && k.Spec.ElasticsearchRef.IsDefined() {
+		return commonv1.NewSingleAssociationStatusMap(k.Status.AssociationStatus)
+	}
+
+	return commonv1.AssociationStatusMap{}
 }
 
-func (k *Kibana) SetAssociationStatus(status commonv1.AssociationStatus) {
-	k.Status.AssociationStatus = status
+func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+
+	if typ != commonv1.ElasticsearchAssociationType {
+		return fmt.Errorf("association type %s not known", typ)
+	}
+
+	k.Status.AssociationStatus = single
+	return nil
 }
 
 func (k *Kibana) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{k}
+	associations := make([]commonv1.Association, 0)
+	if k.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, k)
+	}
+	return associations
+}
+
+func (k *Kibana) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }
 
 var _ commonv1.Associated = &Kibana{}

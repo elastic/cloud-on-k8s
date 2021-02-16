@@ -39,7 +39,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -67,7 +66,7 @@ type DefaultDriverParameters struct {
 	// ES is the Elasticsearch resource to reconcile
 	ES esv1.Elasticsearch
 	// SupportedVersions verifies whether we can support upgrading from the current pods.
-	SupportedVersions esversion.LowestHighestSupportedVersions
+	SupportedVersions version.MinMaxVersion
 
 	// Version is the version of Elasticsearch we want to reconcile towards.
 	Version version.Version

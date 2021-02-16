@@ -105,7 +105,7 @@ func (r *ReconcileApmServer) deploymentParams(
 
 			var publicCASecret corev1.Secret
 			key := types.NamespacedName{Namespace: as.Namespace, Name: caSecretName}
-			if err := r.Get(key, &publicCASecret); err != nil {
+			if err := r.Get(context.Background(), key, &publicCASecret); err != nil {
 				return deployment.Params{}, err
 			}
 			if certPem, ok := publicCASecret.Data[certificates.CertFileName]; ok {
@@ -114,8 +114,8 @@ func (r *ReconcileApmServer) deploymentParams(
 
 			caVolume := volume.NewSecretVolumeWithMountPath(
 				caSecretName,
-				association.AssociatedType()+"-certs",
-				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedType())),
+				fmt.Sprintf("%s-certs", association.AssociationType()),
+				filepath.Join(ApmBaseDir, certificatesDir(association.AssociationType())),
 			)
 			podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, caVolume.Volume())
 
@@ -132,7 +132,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	if as.Spec.HTTP.TLS.Enabled() {
 		// fetch the secret to calculate the checksum
 		var httpCerts corev1.Secret
-		err := r.Get(types.NamespacedName{
+		err := r.Get(context.Background(), types.NamespacedName{
 			Namespace: as.Namespace,
 			Name:      certificates.InternalCertsSecretName(Namer, as.Name),
 		}, &httpCerts)

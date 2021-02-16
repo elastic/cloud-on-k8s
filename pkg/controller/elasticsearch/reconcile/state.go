@@ -7,18 +7,17 @@ package reconcile
 import (
 	"reflect"
 
-	corev1 "k8s.io/api/core/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	corev1 "k8s.io/api/core/v1"
 )
 
-var log = logf.Log.WithName("elasticsearch-controller")
+var log = ulog.Log.WithName("elasticsearch-controller")
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
@@ -62,7 +61,12 @@ func (s *State) fetchMinRunningVersion(resourcesState ResourcesState) (*version.
 	if minSsetVersion == nil {
 		return minPodVersion, nil
 	}
-	return version.Min([]version.Version{*minPodVersion, *minSsetVersion}), nil
+
+	if minPodVersion.GT(*minSsetVersion) {
+		return minSsetVersion, nil
+	}
+
+	return minPodVersion, nil
 }
 
 func (s *State) updateWithPhase(

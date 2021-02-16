@@ -28,7 +28,7 @@ ent_search:
 var existingConfigWithReusableSettings = existingConfig +
 	`secret_management:
   encryption_keys:
-  - alreadysetencryptionkey1
-  - alreadysetencryptionkey2
+  - operator-managed-encryption-key
+  - user-provided-encryption-key
 secret_session_key: alreadysetsessionkey
 `

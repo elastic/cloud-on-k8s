@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -37,7 +38,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
-		return k8s.WrappedFakeClient(objs...)
+		return k8s.NewFakeClient(objs...)
 	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
@@ -132,7 +133,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 			}
 
 			var gotSecret corev1.Secret
-			err = client.Get(namespacedSecretName, &gotSecret)
+			err = client.Get(context.Background(), namespacedSecretName, &gotSecret)
 			require.NoError(t, err, "Failed to get secret")
 
 			wantSecret := tt.wantSecret(t)

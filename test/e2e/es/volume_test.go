@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -141,11 +144,11 @@ func TestVolumeExpansion(t *testing.T) {
 				Name: "Update the Elasticsearch spec with increased storage requests",
 				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
-					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
 						return err
 					}
 					patchStorageSize(&es, resizedStorage)
-					return k.Client.Update(&es)
+					return k.Client.Update(context.Background(), &es)
 				}),
 			},
 			{
@@ -153,7 +156,7 @@ func TestVolumeExpansion(t *testing.T) {
 				Test: test.Eventually(func() error {
 					for _, pvcName := range pvcNames {
 						var pvc corev1.PersistentVolumeClaim
-						if err := k.Client.Get(types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: pvcName}, &pvc); err != nil {
+						if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: pvcName}, &pvc); err != nil {
 							return err
 						}
 						reportedStorage := pvc.Status.Capacity.Storage()
@@ -172,7 +175,7 @@ func TestVolumeExpansion(t *testing.T) {
 				Test: test.Eventually(func() error {
 					for _, ssetName := range []string{masterSset, dataSset} {
 						var sset appsv1.StatefulSet
-						if err := k.Client.Get(types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: ssetName}, &sset); err != nil {
+						if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: ssetName}, &sset); err != nil {
 							return err
 						}
 						if !sset.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage().Equal(resizedStorage) {
@@ -189,7 +192,7 @@ func TestVolumeExpansion(t *testing.T) {
 
 func getResizeableStorageClass(k8sClient k8s.Client) (string, error) {
 	var scs storagev1.StorageClassList
-	if err := k8sClient.List(&scs); err != nil {
+	if err := k8sClient.List(context.Background(), &scs); err != nil {
 		return "", err
 	}
 	for _, sc := range scs.Items {

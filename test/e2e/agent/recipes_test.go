@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build agent e2e
+
 package agent
 
 import (
@@ -13,8 +15,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestSystemIntegrationRecipe(t *testing.T) {
@@ -46,9 +48,12 @@ func TestKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
+			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
+			// see https://github.com/elastic/cloud-on-k8s/issues/4092
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.container", "k8s")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.event", "k8s")).
+			// Might not generate an event in time for this check to succeed in all environments
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.event", "k8s")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.node", "k8s")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.pod", "k8s")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.system", "k8s")).
@@ -62,7 +67,7 @@ func runBeatRecipe(
 	t *testing.T,
 	fileName string,
 	customize func(builder agent.Builder) agent.Builder,
-	additionalObjects ...runtime.Object,
+	additionalObjects ...client.Object,
 ) {
 	filePath := path.Join("../../../config/recipes/elastic-agent", fileName)
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -72,6 +77,11 @@ func runBeatRecipe(
 		agentBuilder, ok := builder.(agent.Builder)
 		if !ok {
 			return builder
+		}
+
+		// TODO: remove once https://github.com/elastic/cloud-on-k8s/issues/4092 is resolved
+		if test.Ctx().HasTag("ipv6") {
+			t.SkipNow()
 		}
 
 		if isStackIncompatible(agentBuilder.Agent) {
@@ -100,5 +110,5 @@ func runBeatRecipe(
 func isStackIncompatible(agent agentv1alpha1.Agent) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	agentVersion := version.MustParse(agent.Spec.Version)
-	return agentVersion.IsAfter(stackVersion)
+	return agentVersion.GT(stackVersion)
 }

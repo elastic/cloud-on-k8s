@@ -5,6 +5,7 @@
 package manager
 
 import (
+	"context"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -47,7 +48,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// secret still there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},
 		{
@@ -61,8 +62,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// es + the secret are still there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "es"}, &esv1.Elasticsearch{}))
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &esv1.Elasticsearch{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},
 		{
@@ -73,7 +74,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// secret has been removed
-				require.True(t, apierrors.IsNotFound(c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
+				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
 		},
 		{
@@ -87,8 +88,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// kibana + the secret are still there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "es"}, &kbv1.Kibana{}))
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &kbv1.Kibana{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},
 		{
@@ -99,7 +100,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// secret has been removed
-				require.True(t, apierrors.IsNotFound(c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
+				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
 		},
 		{
@@ -113,8 +114,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// ApmServer + the secret are still there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "es"}, &apmv1.ApmServer{}))
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &apmv1.ApmServer{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},
 		{
@@ -125,7 +126,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// secret has been removed
-				require.True(t, apierrors.IsNotFound(c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
+				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
 		},
 		{
@@ -139,8 +140,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// EnterpriseSearch + the secret are still there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "es"}, &entv1beta1.EnterpriseSearch{}))
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &entv1beta1.EnterpriseSearch{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},
 		{
@@ -151,7 +152,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// secret has been removed
-				require.True(t, apierrors.IsNotFound(c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
+				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
 		},
 		{
@@ -165,8 +166,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// Beat + the secret are still there
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "es"}, &beatv1beta1.Beat{}))
-				require.NoError(t, c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &beatv1beta1.Beat{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},
 		{
@@ -177,13 +178,13 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// secret has been removed
-				require.True(t, apierrors.IsNotFound(c.Get(types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
+				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.runtimeObjs...)
+			c := k8s.NewFakeClient(tt.runtimeObjs...)
 			garbageCollectSoftOwnedSecrets(c)
 			tt.assert(c, t)
 		})

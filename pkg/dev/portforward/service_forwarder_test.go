@@ -80,7 +80,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			fields: fields{
 				network: "tcp",
 				addr:    "foo.bar.svc:9200",
-				client: k8s.FakeClient(
+				client: k8s.NewFakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
@@ -133,7 +133,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			fields: fields{
 				network: "tcp",
 				addr:    "foo.bar.svc:1234",
-				client: k8s.FakeClient(
+				client: k8s.NewFakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",

@@ -5,21 +5,21 @@
 package reconciler
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func withoutControllerRef(obj runtime.Object) runtime.Object {
@@ -30,18 +30,6 @@ func withoutControllerRef(obj runtime.Object) runtime.Object {
 
 func noopModifier() {}
 
-type wrong struct{}
-
-func (w wrong) GetObjectKind() schema.ObjectKind {
-	return nil
-}
-
-func (w wrong) DeepCopyObject() runtime.Object {
-	return w
-}
-
-var _ runtime.Object = wrong{}
-
 func TestReconcileResource(t *testing.T) {
 	true := true
 
@@ -49,9 +37,9 @@ func TestReconcileResource(t *testing.T) {
 	obj := &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(objectKey)}
 
 	type args struct {
-		Expected         runtime.Object
-		Reconciled       runtime.Object
-		Owner            metav1.Object
+		Expected         client.Object
+		Reconciled       client.Object
+		Owner            client.Object
 		NeedsUpdate      func() bool
 		UpdateReconciled func()
 	}
@@ -108,20 +96,6 @@ func TestReconcileResource(t *testing.T) {
 				}
 			},
 			exptectedErrorMsg: "UpdateReconciled must not be nil",
-		},
-		{
-			name: "Error: Expected needs to implement runtime.Object and meta.Object",
-			args: func() args {
-				return args{
-					Expected:         &wrong{},
-					Reconciled:       &corev1.Secret{},
-					UpdateReconciled: noopModifier,
-					NeedsUpdate: func() bool {
-						return false
-					},
-				}
-			},
-			exptectedErrorMsg: "object does not implement the Object interfaces",
 		},
 		{
 			name: "Create resource if not found",
@@ -287,7 +261,7 @@ func TestReconcileResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			client := k8s.WrappedFakeClient(tt.initialObjects...)
+			client := k8s.NewFakeClient(tt.initialObjects...)
 			args := tt.args()
 			p := Params{
 				Client:           client,
@@ -308,7 +282,7 @@ func TestReconcileResource(t *testing.T) {
 			}
 			if tt.serverStateAssertion != nil {
 				var serverState corev1.Secret
-				require.NoError(t, client.Get(objectKey, &serverState))
+				require.NoError(t, client.Get(context.Background(), objectKey, &serverState))
 				tt.serverStateAssertion(serverState)
 			}
 			if tt.argAssertion != nil {

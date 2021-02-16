@@ -5,24 +5,107 @@
 package v1
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	singleStatusKey = ""
+)
+
+// AssociationType is the type of an association resource, eg. for Kibana-ES association, AssociationType identifies ES.
+type AssociationType string
+
 // AssociationStatus is the status of an association resource.
 type AssociationStatus string
 
-const (
-	ElasticsearchConfigAnnotationName = "association.k8s.elastic.co/es-conf"
-	ElasticsearchAssociationType      = "elasticsearch"
+// AssociationStatusMap is the map of association's namespaced name string to its AssociationStatus. For resources that
+// have a single Association of a given type (eg. single ES reference), this map will contain a single entry.
+type AssociationStatusMap map[string]AssociationStatus
 
-	KibanaAssociationType      = "kibana"
-	KibanaConfigAnnotationName = "association.k8s.elastic.co/kb-conf"
+// NewSingleAssociationStatusMap creates an AssociationStatusMap that expects only a single Association. Using a
+// well-known key allows to keep serialization of the map backwards compatible.
+func NewSingleAssociationStatusMap(status AssociationStatus) AssociationStatusMap {
+	return map[string]AssociationStatus{
+		singleStatusKey: status,
+	}
+}
+
+func (asm AssociationStatusMap) String() string {
+	// check if it's single status map and return only status string if yes
+	// this allows to keep serialization backwards compatible
+	if len(asm) == 1 {
+		for key, value := range asm {
+			if key == singleStatusKey {
+				return string(value)
+			}
+		}
+	}
+
+	// sort by keys to make String() stable
+	keys := make([]string, 0, len(asm))
+	for key := range asm {
+		keys = append(keys, key)
+	}
+	sort.StringSlice(keys).Sort()
+
+	var i int
+	var sb strings.Builder
+	for _, key := range keys {
+		value := asm[key]
+		i++
+		sb.WriteString(key + ": " + string(value))
+		if len(asm) != i {
+			sb.WriteString(", ")
+		}
+	}
+	return sb.String()
+}
+
+func (asm AssociationStatusMap) Single() (AssociationStatus, error) {
+	if len(asm) > 1 {
+		return "", fmt.Errorf("expected at most one AssociationStatus in map, but found %d: %s", len(asm), asm)
+	}
+
+	// returns the only AssociationStatus present or zero value if none are
+	var result AssociationStatus
+	for _, status := range asm {
+		result = status
+	}
+	return result, nil
+}
+
+// AllEstablished returns true iff all Associations have AssociationEstablished status, false otherwise.
+func (asm AssociationStatusMap) AllEstablished() bool {
+	for _, status := range asm {
+		if status != AssociationEstablished {
+			return false
+		}
+	}
+	return true
+}
+
+const (
+	ElasticsearchConfigAnnotationNameBase = "association.k8s.elastic.co/es-conf"
+	ElasticsearchAssociationType          = "elasticsearch"
+
+	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
+	KibanaAssociationType          = "kibana"
 
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
 	AssociationFailed      AssociationStatus = "Failed"
+
+	// SingletonAssociationID is an `AssociationID` used for Associations for resources that can have only a single
+	// Association of each type. For example, Kibana can only have a single ES Association, so Kibana-ES Associations
+	// should use `SingletonAssociationID` as their `AssociationID`. On the contrary, Agent can have unbounded number
+	// of Associations so Agent-ES Associations should _not_ use `SingletonAssociationID`.
+	SingletonAssociationID = ""
 )
 
 // Associated represents an Elastic stack resource that is associated with other stack resources.
@@ -30,12 +113,16 @@ const (
 // - Kibana can be associated with Elasticsearch
 // - APMServer can be associated with Elasticsearch and Kibana
 // - EnterpriseSearch can be associated with Elasticsearch
+// - Beat can be associated with Elasticsearch and Kibana
+// - Agent can be associated with multiple Elasticsearches
 // +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
 	runtime.Object
 	ServiceAccountName() string
 	GetAssociations() []Association
+	AssociationStatusMap(typ AssociationType) AssociationStatusMap
+	SetAssociationStatusMap(typ AssociationType, statusMap AssociationStatusMap) error
 }
 
 // Association interface helps to manage the Spec fields involved in an association.
@@ -46,11 +133,12 @@ type Association interface {
 	// Associated can be used to retrieve the associated object
 	Associated() Associated
 
-	// AssociatedType returns a string describing the type of the target resource (elasticsearch most of the time)
+	// AssociationType returns a string describing the type of the target resource (elasticsearch most of the time)
 	// It is mostly used to build some other strings depending on the type of the targeted resource.
-	AssociatedType() string
+	AssociationType() AssociationType
 
-	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
+	// AssociationRef is a reference to the associated resource. If defined with a Name then the Namespace is expected
+	// to be set in the returned object.
 	AssociationRef() ObjectSelector
 
 	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.
@@ -58,13 +146,30 @@ type Association interface {
 	// managing the associated resource to build the appropriate configuration.
 	AssociationConfAnnotationName() string
 
-	// Configuration
+	// AssociationConf is the configuration of the Association allowing to connect to the Association resource.
 	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
 
-	// Status
-	AssociationStatus() AssociationStatus
-	SetAssociationStatus(status AssociationStatus)
+	// AssociationID uniquely identifies this Association among all Associations of the same type belonging to Associated()
+	AssociationID() string
+}
+
+// FormatNameWithID conditionally formats `template`. `template` is expected to have a single %s verb.
+// If `id` is empty, the %s verb will be formatted with empty string. Otherwise %s verb will be replaced with `-id`.
+// Eg:
+// FormatNameWithID("name%s", "") returns "name"
+// FormatNameWithID("name%s", "ns1-es1") returns "name-ns1-es1"
+// FormatNameWithID("name%s", "ns2-es2") returns "name-ns2-es2"
+// This function exists to abstract this conditional logic away from the callers. It can be used to format names
+// for objects differing only by id, that would otherwise collide. In addition, it allows to preserve current naming
+// for object types with a single association and introduce object types with unbounded number of associations.
+func FormatNameWithID(template string, id string) string {
+	if id != SingletonAssociationID {
+		// we want names to be changed for any id but SingletonAssociationID
+		id = fmt.Sprintf("-%s", id)
+	}
+
+	return fmt.Sprintf(template, id)
 }
 
 // AssociationConf holds the association configuration of a referenced resource in an association.

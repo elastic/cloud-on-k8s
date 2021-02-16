@@ -68,6 +68,17 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Determine effective Kubernetes version
+*/}}
+{{- define "eck-operator.effectiveKubeVersion" -}}
+{{- if .Values.internal.manifestGen -}}
+{{- semver .Values.internal.kubeVersion -}}
+{{- else -}}
+{{- .Capabilities.KubeVersion.Version -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Determine the name for the webhook 
 */}}
 {{- define "eck-operator.webhookName" -}}
@@ -107,13 +118,37 @@ elastic-webhook-server
 Add the webhook sideEffects field on supported Kubernetes versions
 */}}
 {{- define "eck-operator.webhookSideEffects" -}}
-{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
 {{- $kubeVersionSupported := semverCompare ">=1.13.0-0" $kubeVersion -}}
-{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) }}
+{{- if $kubeVersionSupported }}
 sideEffects: "None"
 {{- end }}
 {{- end }}
 
+{{/*
+Use v1 of ValidatingWebhookConfiguration on supported Kubernetes versions
+*/}}
+{{- define "eck-operator.webhookAPIVersion" -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if $kubeVersionSupported -}}
+admissionregistration.k8s.io/v1
+{{- else -}}
+admissionregistration.k8s.io/v1beta1
+{{- end -}}
+{{- end }}
+
+
+{{/*
+Define admissionReviewVersions based on Kubernetes version
+*/}}
+{{- define "eck-operator.webhookAdmissionReviewVersions" -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if $kubeVersionSupported  }}
+admissionReviewVersions: [v1beta1]
+{{- end }}
+{{- end }}
 
 {{/*
 RBAC permissions
@@ -175,7 +210,7 @@ RBAC permissions
   resources:
   - elasticsearches
   - elasticsearches/status
-  - elasticsearches/finalizers
+  - elasticsearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   - enterpriselicenses
   - enterpriselicenses/status
   verbs:
@@ -191,7 +226,7 @@ RBAC permissions
   resources:
   - kibanas
   - kibanas/status
-  - kibanas/finalizers
+  - kibanas/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -205,7 +240,7 @@ RBAC permissions
   resources:
   - apmservers
   - apmservers/status
-  - apmservers/finalizers
+  - apmservers/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -219,7 +254,7 @@ RBAC permissions
   resources:
   - enterprisesearches
   - enterprisesearches/status
-  - enterprisesearches/finalizers
+  - enterprisesearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -233,7 +268,7 @@ RBAC permissions
   resources:
   - beats
   - beats/status
-  - beats/finalizers
+  - beats/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -247,6 +282,7 @@ RBAC permissions
   resources:
   - agents
   - agents/status
+  - agents/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list

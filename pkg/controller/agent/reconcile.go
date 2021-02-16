@@ -5,15 +5,7 @@
 package agent
 
 import (
-	v1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"context"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -23,6 +15,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *reconciler.Results {
@@ -32,7 +33,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *rec
 	spec := params.Agent.Spec
 	name := Name(params.Agent.Name)
 
-	var toDelete runtime.Object
+	var toDelete client.Object
 	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
@@ -64,11 +65,11 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) *rec
 	}
 
 	// clean up the other one
-	if err := params.Client.Get(types.NamespacedName{
+	if err := params.Client.Get(context.Background(), types.NamespacedName{
 		Namespace: params.Agent.Namespace,
 		Name:      name,
 	}, toDelete); err == nil {
-		results.WithError(params.Client.Delete(toDelete))
+		results.WithError(params.Client.Delete(context.Background(), toDelete))
 	} else if !apierrors.IsNotFound(err) {
 		results.WithError(err)
 	}
@@ -111,7 +112,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		Owner:       &rp.agent,
 		Labels:      NewLabels(rp.agent),
 		Selectors:   NewLabels(rp.agent),
-		Strategy:    rp.agent.Spec.DaemonSet.Strategy,
+		Strategy:    rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})
 
 	if err := controllerutil.SetControllerReference(&rp.agent, &ds, scheme.Scheme); err != nil {
@@ -144,5 +145,5 @@ func updateStatus(params Params, ready, desired int32) error {
 	agent.Status.Health = CalculateHealth(agent.GetAssociations(), ready, desired)
 	agent.Status.Version = common.LowestVersionFromPods(agent.Status.Version, pods, VersionLabelName)
 
-	return params.Client.Status().Update(&agent)
+	return params.Client.Status().Update(context.Background(), &agent)
 }

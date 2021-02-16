@@ -6,8 +6,7 @@ package reconciler
 
 import (
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -15,14 +14,11 @@ import (
 // GenericEventHandler returns an EventHandler that enqueues a reconciliation request
 // from the generic event NamespacedName.
 func GenericEventHandler() handler.EventHandler {
-	return handler.Funcs{
-		GenericFunc: func(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
-			q.Add(reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: evt.Meta.GetNamespace(),
-					Name:      evt.Meta.GetName(),
-				},
-			})
-		},
-	}
+	return handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		return []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()},
+			},
+		}
+	})
 }

@@ -5,12 +5,13 @@
 package kibana
 
 import (
+	"context"
+
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -19,7 +20,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "K8S should be accessible",
 			Test: test.Eventually(func() error {
 				pods := corev1.PodList{}
-				return k.Client.List(&pods)
+				return k.Client.List(context.Background(), &pods)
 			}),
 		},
 		{
@@ -38,13 +39,9 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Kibana CRDs should exist",
 			Test: test.Eventually(func() error {
-				crds := []runtime.Object{
-					&kbv1.KibanaList{},
-				}
-				for _, crd := range crds {
-					if err := k.Client.List(crd); err != nil {
-						return err
-					}
+				crd := &kbv1.KibanaList{}
+				if err := k.Client.List(context.Background(), crd); err != nil {
+					return err
 				}
 				return nil
 			}),
@@ -53,7 +50,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Remove Kibana if it already exists",
 			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

@@ -22,17 +22,17 @@ const (
 
 // Manager for a set of observers
 type Manager struct {
-	observers map[types.NamespacedName]*Observer
-	listeners []OnObservation // invoked on each observation event
-	lock      sync.RWMutex
-	tracer    *apm.Tracer
+	observerLock sync.RWMutex
+	observers    map[types.NamespacedName]*Observer
+	listenerLock sync.RWMutex
+	listeners    []OnObservation // invoked on each observation event
+	tracer       *apm.Tracer
 }
 
 // NewManager returns a new manager
 func NewManager(tracer *apm.Tracer) *Manager {
 	return &Manager{
 		observers: make(map[types.NamespacedName]*Observer),
-		lock:      sync.RWMutex{},
 		tracer:    tracer,
 	}
 }
@@ -43,23 +43,27 @@ func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient cli
 	return m.Observe(cluster, esClient).LastState()
 }
 
+func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
+	m.observerLock.RLock()
+	defer m.observerLock.RUnlock()
+
+	observer, ok := m.observers[key]
+	return observer, ok
+}
+
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
 func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *Observer {
 	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(cluster)
 
-	m.lock.RLock()
-	observer, exists := m.observers[nsName]
-	m.lock.RUnlock()
+	observer, exists := m.getObserver(nsName)
 
 	switch {
 	case !exists:
-		return m.createObserver(nsName, settings, esClient)
+		return m.createOrReplaceObserver(nsName, settings, esClient)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
-		log.Info("Replacing observer HTTP client", "namespace", cluster.Namespace, "es_name", cluster.Name)
-		m.StopObserving(nsName)
-		return m.createObserver(nsName, settings, esClient)
+		return m.createOrReplaceObserver(nsName, settings, esClient)
 	default:
 		esClient.Close()
 		return observer
@@ -74,36 +78,31 @@ func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
 	}
 }
 
-// createObserver creates a new observer according to the given arguments,
-// and create/replace its entry in the observers map
-func (m *Manager) createObserver(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
-	observer := NewObserver(cluster, esClient, settings, m.notifyListeners)
-	observer.Start()
-	m.lock.Lock()
-	m.observers[cluster] = observer
-	m.lock.Unlock()
-	return observer
-}
+// createOrReplaceObserver creates a new observer and adds it to the observers map, replacing existing observers if necessary.
+func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+	m.observerLock.Lock()
+	defer m.observerLock.Unlock()
 
-// StopObserving stops and deletes the observer for the given cluster
-// aimed to be called when an Elasticsearch resource is deleted.
-func (m *Manager) StopObserving(cluster types.NamespacedName) {
-	m.lock.RLock()
 	observer, exists := m.observers[cluster]
-	m.lock.RUnlock()
-	if !exists {
-		return
+	if exists {
+		log.Info("Replacing observer", "namespace", cluster.Namespace, "es_name", cluster.Name)
+		observer.Stop()
+		delete(m.observers, cluster)
 	}
-	observer.Stop()
-	m.lock.Lock()
-	delete(m.observers, cluster)
-	m.lock.Unlock()
+
+	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
+	observer.Start()
+
+	m.observers[cluster] = observer
+
+	return observer
 }
 
 // List returns the names of clusters currently observed
 func (m *Manager) List() []types.NamespacedName {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
+	m.observerLock.RLock()
+	defer m.observerLock.RUnlock()
+
 	names := make([]types.NamespacedName, len(m.observers))
 	i := 0
 	for name := range m.observers {
@@ -116,25 +115,43 @@ func (m *Manager) List() []types.NamespacedName {
 // AddObservationListener adds the given listener to the list of listeners notified
 // on every observation.
 func (m *Manager) AddObservationListener(listener OnObservation) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.listenerLock.Lock()
+	defer m.listenerLock.Unlock()
 	m.listeners = append(m.listeners, listener)
 }
 
 // notifyListeners notifies all listeners that an observation occurred.
 func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState State, newState State) {
-	wg := sync.WaitGroup{}
-	m.lock.Lock()
-	wg.Add(len(m.listeners))
-	// run all listeners in parallel
-	for _, l := range m.listeners {
-		go func(f OnObservation) {
-			defer wg.Done()
-			f(cluster, previousState, newState)
-		}(l)
+	m.listenerLock.RLock()
+	switch len(m.listeners) {
+	case 0:
+		m.listenerLock.RUnlock()
+		return
+	case 1:
+		m.listeners[0](cluster, previousState, newState)
+		m.listenerLock.RUnlock()
+		return
+	default:
+		var wg sync.WaitGroup
+		for _, l := range m.listeners {
+			wg.Add(1)
+			go func(f OnObservation) {
+				f(cluster, previousState, newState)
+				wg.Done()
+			}(l)
+		}
+		m.listenerLock.RUnlock()
+		wg.Wait()
 	}
-	// release the lock asap
-	m.lock.Unlock()
-	// wait for all listeners to be done
-	wg.Wait()
+}
+
+func (m *Manager) StopObserving(key types.NamespacedName) {
+	log.Info("Stopping observer", "namespace", key.Namespace, "es_name", key.Name)
+	m.observerLock.Lock()
+	defer m.observerLock.Unlock()
+
+	if observer, ok := m.observers[key]; ok {
+		observer.Stop()
+		delete(m.observers, key)
+	}
 }

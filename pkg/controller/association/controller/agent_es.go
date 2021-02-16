@@ -29,7 +29,8 @@ const (
 
 func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociationObjTemplate: func() commonv1.Association { return &agentv1alpha1.AgentESAssociation{} },
+		AssociationType:       commonv1.ElasticsearchAssociationType,
+		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 			return true, association.AssociationRef(), nil
 		},
@@ -38,17 +39,19 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "agent-es",
 		AssociatedShortName:       "agent",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				AgentAssociationLabelName:      associated.Name,
 				AgentAssociationLabelNamespace: associated.Namespace,
 				AgentAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix:  "agent-user",
-		CASecretLabelName: eslabel.ClusterNameLabelName,
+		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                  "agent-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return "superuser", nil
 		},
+		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
+		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 	})
 }

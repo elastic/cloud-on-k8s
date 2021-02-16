@@ -27,7 +27,7 @@ func TestReconcileService(t *testing.T) {
 	}
 
 	existingSvc := mkService(owner)
-	client := k8s.WrappedFakeClient(owner, existingSvc)
+	client := k8s.NewFakeClient(owner, existingSvc)
 
 	expectedSvc := mkService(owner)
 	delete(expectedSvc.Labels, "lbl2")
@@ -72,8 +72,6 @@ func mkService(owner *kbv1.Kibana) *corev1.Service {
 }
 
 func Test_needsUpdate(t *testing.T) {
-	ipv4Family := corev1.IPv4Protocol
-
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -135,9 +133,9 @@ func Test_needsUpdate(t *testing.T) {
 						Annotations: map[string]string{"annotation1": "annotation1val", "annotation2": "annotation2val"},
 					},
 					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeClusterIP,
-						ClusterIP: "1.2.3.4",
-						IPFamily:  &ipv4Family,
+						Type:       corev1.ServiceTypeClusterIP,
+						ClusterIP:  "1.2.3.4",
+						IPFamilies: []corev1.IPFamily{corev1.IPv4Protocol},
 					}},
 			},
 			want: false,
@@ -153,9 +151,6 @@ func Test_needsUpdate(t *testing.T) {
 }
 
 func Test_needsDelete(t *testing.T) {
-	ipv4Family := corev1.IPv4Protocol
-	ipv6Family := corev1.IPv6Protocol
-
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -197,12 +192,12 @@ func Test_needsDelete(t *testing.T) {
 			name: "Needs delete if ipFamily changes",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:     corev1.ServiceTypeClusterIP,
-					IPFamily: &ipv4Family,
+					Type:       corev1.ServiceTypeClusterIP,
+					IPFamilies: []corev1.IPFamily{corev1.IPv4Protocol},
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:     corev1.ServiceTypeClusterIP,
-					IPFamily: &ipv6Family,
+					Type:       corev1.ServiceTypeClusterIP,
+					IPFamilies: []corev1.IPFamily{corev1.IPv6Protocol},
 				}},
 			},
 			want: true,
@@ -214,8 +209,8 @@ func Test_needsDelete(t *testing.T) {
 					Type: corev1.ServiceTypeClusterIP,
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:     corev1.ServiceTypeClusterIP,
-					IPFamily: &ipv6Family,
+					Type:       corev1.ServiceTypeClusterIP,
+					IPFamilies: []corev1.IPFamily{corev1.IPv6Protocol},
 				}},
 			},
 			want: false,
@@ -258,8 +253,6 @@ func Test_needsDelete(t *testing.T) {
 }
 
 func Test_applyServerSideValues(t *testing.T) {
-	ipv6Family := corev1.IPv6Protocol
-
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -482,21 +475,21 @@ func Test_applyServerSideValues(t *testing.T) {
 					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: corev1.ServiceAffinityClientIP,
-					IPFamily:        &ipv6Family,
+					IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "1.2.3.4",
 				SessionAffinity: corev1.ServiceAffinityClientIP,
-				IPFamily:        &ipv6Family,
+				IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
 			}},
 		},
 		{
 			name: "Provided IPFamily is used if not empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					IPFamily: &ipv6Family,
+					IPFamilies: []corev1.IPFamily{corev1.IPv6Protocol},
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:            corev1.ServiceTypeClusterIP,
@@ -508,7 +501,7 @@ func Test_applyServerSideValues(t *testing.T) {
 				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "1.2.3.4",
 				SessionAffinity: corev1.ServiceAffinityClientIP,
-				IPFamily:        &ipv6Family,
+				IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
 			}},
 		},
 	}

@@ -2,19 +2,21 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
+	"context"
 	"testing"
-
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestKillOneDataNode(t *testing.T) {
@@ -71,7 +73,7 @@ func TestDeleteServices(t *testing.T) {
 				Test: func(t *testing.T) {
 					s, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
 					require.NoError(t, err)
-					err = k.Client.Delete(s)
+					err = k.Client.Delete(context.Background(), s)
 					require.NoError(t, err)
 				},
 			},
@@ -104,9 +106,9 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 						Name:      b.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
-					err := k.Client.Get(key, &secret)
+					err := k.Client.Get(context.Background(), key, &secret)
 					require.NoError(t, err)
-					err = k.Client.Delete(&secret)
+					err = k.Client.Delete(context.Background(), &secret)
 					require.NoError(t, err)
 				},
 			},
@@ -128,9 +130,9 @@ func TestDeleteCACert(t *testing.T) {
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
-					err := k.Client.Get(key, &secret)
+					err := k.Client.Get(context.Background(), key, &secret)
 					require.NoError(t, err)
-					err = k.Client.Delete(&secret)
+					err = k.Client.Delete(context.Background(), &secret)
 					require.NoError(t, err)
 				},
 			},

@@ -88,6 +88,7 @@ func calculateDownscales(
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
 ) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
+	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
 		expectedSset, shouldExist := expectedStatefulSets.GetByName(actualSset.Name)
@@ -97,7 +98,7 @@ func calculateDownscales(
 		}
 
 		switch {
-		case actualReplicas == 0 && expectedReplicas == 0:
+		case !expectedStatefulSetsNames.Has(actualSset.Name) && actualReplicas == 0 && expectedReplicas == 0:
 			// the StatefulSet should not exist, and currently has no replicas
 			// it is safe to delete
 			deletions = append(deletions, actualSset)
@@ -152,7 +153,7 @@ func attemptDownscale(
 // headless service, configuration and transport certificates secret.
 func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
-	err := k8sClient.Delete(&headlessSvc)
+	err := k8sClient.Delete(context.Background(), &headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -168,7 +169,7 @@ func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, sta
 	}
 
 	ssetLogger(statefulSet).Info("Deleting statefulset")
-	return k8sClient.Delete(&statefulSet)
+	return k8sClient.Delete(context.Background(), &statefulSet)
 }
 
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes
@@ -227,7 +228,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 	}
 
 	nodespec.UpdateReplicas(&downscale.statefulSet, &downscale.targetReplicas)
-	if err := downscaleCtx.k8sClient.Update(&downscale.statefulSet); err != nil {
+	if err := downscaleCtx.k8sClient.Update(context.Background(), &downscale.statefulSet); err != nil {
 		return err
 	}
 

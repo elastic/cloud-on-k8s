@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build kb e2e
+
 package kb
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -85,9 +88,9 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
 					var kb kbv1.Kibana
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb))
+					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb))
 					kb.Spec.ElasticsearchRef.Namespace = "xxxx"
-					require.NoError(t, k.Client.Update(&kb))
+					require.NoError(t, k.Client.Update(context.Background(), &kb))
 				},
 			},
 			test.Step{
@@ -105,12 +108,15 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 					for _, evt := range eventList {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
-							prevStatus, currStatus := annotation.ExtractAssociationStatus(evt.ObjectMeta)
-							if prevStatus == commonv1.AssociationEstablished && currStatus != prevStatus {
+							// build expected string and use it for comparisons with actual
+							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
+							prevStatus, currStatus := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
+
+							if prevStatus == establishedString && currStatus != prevStatus {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == commonv1.AssociationEstablished {
+							if currStatus == establishedString {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

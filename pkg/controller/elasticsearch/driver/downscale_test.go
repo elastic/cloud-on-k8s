@@ -140,7 +140,7 @@ func TestHandleDownscale(t *testing.T) {
 	// We want to downscale 2 StatefulSets (masters 3 -> 1 and data 4 -> 2) in version 7.X,
 	// but should only be allowed a partial downscale (3 -> 2 and 4 -> 3).
 
-	k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
+	k8sClient := k8s.NewFakeClient(runtimeObjs...)
 	esClient := &fakeESClient{}
 	actualStatefulSets := sset.StatefulSetList{ssetMaster3Replicas, ssetData4Replicas}
 	downscaleCtx := downscaleContext{
@@ -182,7 +182,7 @@ func TestHandleDownscale(t *testing.T) {
 	ssetData4ReplicasExpectedAfterDownscale := *ssetData4Replicas.DeepCopy()
 	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, pointer.Int32(3))
 
-	expectedAfterDownscale := []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
+	expectedAfterDownscale := []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
@@ -194,7 +194,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// compare what has been updated in the apiserver with what we would expect
 	var actual appsv1.StatefulSetList
-	err := k8sClient.List(&actual)
+	err := k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
 	for i := range expectedAfterDownscale {
@@ -202,8 +202,8 @@ func TestHandleDownscale(t *testing.T) {
 	}
 
 	// simulate pods deletion that would be done by the StatefulSet controller
-	require.NoError(t, k8sClient.Delete(&podsSsetMaster3Replicas[2]))
-	require.NoError(t, k8sClient.Delete(&podsSsetData4Replicas[3]))
+	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster3Replicas[2]))
+	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetData4Replicas[3]))
 
 	// running the downscale again should remove the next master,
 	// and also requeue since data migration is still not over for data nodes
@@ -213,8 +213,8 @@ func TestHandleDownscale(t *testing.T) {
 
 	// one less master
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
-	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
-	err = k8sClient.List(&actual)
+	expectedAfterDownscale = []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
+	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
 	for i := range expectedAfterDownscale {
@@ -222,7 +222,7 @@ func TestHandleDownscale(t *testing.T) {
 	}
 
 	// simulate master pod deletion
-	require.NoError(t, k8sClient.Delete(&podsSsetMaster3Replicas[1]))
+	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster3Replicas[1]))
 
 	// once data migration is over the downscale should continue for next data nodes
 	downscaleCtx.shardLister = migration.NewFakeShardLister(
@@ -230,11 +230,11 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
-	nodespec.UpdateReplicas(&expectedAfterDownscale[1], pointer.Int32(2))
+	nodespec.UpdateReplicas(&expectedAfterDownscale[0], pointer.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
-	err = k8sClient.List(&actual)
+	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
 	for i := range expectedAfterDownscale {
@@ -246,13 +246,13 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, "ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
 
 	// simulate pod deletion
-	require.NoError(t, k8sClient.Delete(&podsSsetData4Replicas[2]))
+	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetData4Replicas[2]))
 
 	// running the downscale again should not remove any new node
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
-	err = k8sClient.List(&actual)
+	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
 	for i := range expectedAfterDownscale {
@@ -273,22 +273,22 @@ func TestHandleDownscale(t *testing.T) {
 		Master:    false,
 		Data:      true,
 	}.Build()
-	require.NoError(t, k8sClient.Create(&ssetToRemove))
+	require.NoError(t, k8sClient.Create(context.Background(), &ssetToRemove))
 	// do the downscale, that third StatefulSet is not part of the expected ones
-	err = k8sClient.List(&actual)
+	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	// the StatefulSet replicas should be decreased to 0, but StatefulSet should still be around
-	err = k8sClient.Get(k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
+	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
 	require.NoError(t, err)
 	require.Equal(t, int32(0), sset.GetReplicas(ssetToRemove))
 	// run downscale again: this time the StatefulSet should be removed
-	err = k8sClient.List(&actual)
+	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
-	err = k8sClient.Get(k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
+	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
 	require.True(t, apierrors.IsNotFound(err))
 }
 
@@ -446,7 +446,7 @@ func Test_calculateDownscales(t *testing.T) {
 			wantDeletions: nil,
 		},
 		{
-			name: "delete actual statefulsets with 0 replicas",
+			name: "delete actual statefulsets with 0 replicas when not referenced by a nodeSet",
 			expectedStatefulSets: sset.StatefulSetList{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -514,6 +514,58 @@ func Test_calculateDownscales(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
 						Name:      "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+			},
+		},
+		{
+			name: "do not delete actual statefulsets with 0 replicas if referenced by a nodeSet",
+			expectedStatefulSets: sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-2"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(1)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+			},
+			actualStatefulSets: sset.StatefulSetList{
+				// statefulset with 0 replicas which has no corresponding expected statefulset and is not referenced through a nodeSet: should be deleted
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+				// statefulset with 0 replicas which has a corresponding expected statefulset with 0 replica but is used by a nodeSet: should be kept
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+			},
+			wantDownscales: nil, // No downscale expected
+			wantDeletions: sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
 					},
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: pointer.Int32(0)},
@@ -662,7 +714,7 @@ func Test_attemptDownscale(t *testing.T) {
 			for i := range tt.statefulSets {
 				runtimeObjs = append(runtimeObjs, &tt.statefulSets[i])
 			}
-			k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
+			k8sClient := k8s.NewFakeClient(runtimeObjs...)
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
@@ -675,7 +727,7 @@ func Test_attemptDownscale(t *testing.T) {
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
-			err = k8sClient.List(&ssets)
+			err = k8sClient.List(context.Background(), &ssets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.expectedStatefulSets), len(ssets.Items))
 			for i := range tt.expectedStatefulSets {
@@ -690,7 +742,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	sset1.Generation = 1
 	sset2 := ssetData4Replicas
 	sset2.Generation = 1
-	k8sClient := k8s.WrappedFakeClient(&sset1, &sset2)
+	k8sClient := k8s.NewFakeClient(&sset1, &sset2)
 	downscaleCtx := downscaleContext{
 		k8sClient:    k8sClient,
 		expectations: expectations.NewExpectations(k8sClient),
@@ -718,9 +770,9 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 
 	// sset resource should be updated
 	var ssets appsv1.StatefulSetList
-	err = k8sClient.List(&ssets)
+	err = k8sClient.List(context.Background(), &ssets)
 	require.NoError(t, err)
-	expectedSsets := []appsv1.StatefulSet{expectedSset1, sset2}
+	expectedSsets := []appsv1.StatefulSet{sset2, expectedSset1}
 	require.Equal(t, len(expectedSsets), len(ssets.Items))
 	for i := range expectedSsets {
 		comparison.AssertEqual(t, &expectedSsets[i], &ssets.Items[i])
@@ -790,7 +842,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 					},
 				},
 			}
-			k8sClient := k8s.WrappedFakeClient(es.DeepCopy(), &ssetMasters, &ssetData, &v7Pod)
+			k8sClient := k8s.NewFakeClient(es.DeepCopy(), &ssetMasters, &ssetData, &v7Pod)
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
@@ -889,7 +941,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(tt.apiserverResources...)
+			k8sClient := k8s.NewFakeClient(tt.apiserverResources...)
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
@@ -932,13 +984,13 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(tt.resources...)
+			k8sClient := k8s.NewFakeClient(tt.resources...)
 			err := deleteStatefulSetResources(k8sClient, es, sset)
 			require.NoError(t, err)
 			// sset, cfg and headless services should not be there anymore
-			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&sset), &sset)))
-			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&cfg), &cfg)))
-			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&svc), &svc)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&sset), &sset)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&cfg), &cfg)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&svc), &svc)))
 		})
 	}
 }
@@ -956,12 +1008,12 @@ func Test_deleteStatefulSets(t *testing.T) {
 			name:     "nothing to delete",
 			toDelete: nil,
 			objs: []runtime.Object{
-				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.BuildPtr(),
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
 			wantRemaining: sset.StatefulSetList{
-				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
@@ -971,12 +1023,12 @@ func Test_deleteStatefulSets(t *testing.T) {
 				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.Build(),
 			},
 			objs: []runtime.Object{
-				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.BuildPtr(),
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.BuildPtr(),
-				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
 			wantRemaining: sset.StatefulSetList{
-				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
@@ -991,7 +1043,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.objs...)
+			client := k8s.NewFakeClient(tt.objs...)
 			err := deleteStatefulSets(tt.toDelete, client, es)
 			if tt.wantErr != nil {
 				require.True(t, tt.wantErr(err))
@@ -999,7 +1051,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 				require.NoError(t, err)
 			}
 			var remainingSsets appsv1.StatefulSetList
-			require.NoError(t, client.List(&remainingSsets))
+			require.NoError(t, client.List(context.Background(), &remainingSsets))
 			require.Equal(t, tt.wantRemaining, sset.StatefulSetList(remainingSsets.Items))
 		})
 	}

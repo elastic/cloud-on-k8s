@@ -13,8 +13,14 @@ import (
 	"time"
 
 	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/go-logr/logr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+	// ArchARMTag is the test tag used to indicate a test run on an ARM-based cluster.
+	ArchARMTag = "arch:arm"
 )
 
 var defaultElasticStackVersion = LatestVersion7x
@@ -85,6 +91,8 @@ type Context struct {
 	ElasticStackVersion   string            `json:"elastic_stack_version"`
 	LogVerbosity          int               `json:"log_verbosity"`
 	OperatorImage         string            `json:"operator_image"`
+	OperatorImageRepo     string            `json:"operator_image_repo"`
+	OperatorImageTag      string            `json:"operator_image_tag"`
 	TestLicense           string            `json:"test_license"`
 	TestLicensePKeyPath   string            `json:"test_license_pkey_path"`
 	TestRegex             string            `json:"test_regex"`
@@ -102,11 +110,17 @@ type Context struct {
 	Provider              string            `json:"provider"`
 	ClusterName           string            `json:"clusterName"`
 	KubernetesVersion     string            `json:"kubernetes_version"`
+	TestEnvTags           []string          `json:"test_tags"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
 func (c Context) ManagedNamespace(n int) string {
 	return c.Operator.ManagedNamespaces[n]
+}
+
+// HasTag returns true if the test tags contain the specified value.
+func (c Context) HasTag(tag string) bool {
+	return stringsutil.StringInSlice(tag, c.TestEnvTags)
 }
 
 // ClusterResource is a generic cluster resource.

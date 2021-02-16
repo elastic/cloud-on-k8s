@@ -11,10 +11,8 @@
 // Note: It is intended for development use only.
 package portforward
 
-import (
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-)
+import ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 
 var (
-	log = logf.Log.WithName("dev-portforward")
+	log = ulog.Log.WithName("dev-portforward")
 )

@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build apm e2e
+
 package apm
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -48,7 +51,7 @@ func TestCrossNSAssociation(t *testing.T) {
 // TestAPMKibanaAssociation tests associating an APM Server with Kibana.
 func TestAPMKibanaAssociation(t *testing.T) {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.IsSameOrAfter(apmv1.ApmAgentConfigurationMinVersion) {
+	if !stackVersion.GTE(apmv1.ApmAgentConfigurationMinVersion) {
 		t.SkipNow()
 	}
 
@@ -128,9 +131,9 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
+					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
 					apm.Spec.ElasticsearchRef.Namespace = "xxxx"
-					require.NoError(t, k.Client.Update(&apm))
+					require.NoError(t, k.Client.Update(context.Background(), &apm))
 				},
 			},
 			test.Step{
@@ -148,12 +151,15 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 					for _, evt := range eventList {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
-							prevStatus, currStatus := annotation.ExtractAssociationStatus(evt.ObjectMeta)
-							if prevStatus == commonv1.AssociationEstablished && currStatus != prevStatus {
+							// build expected string and use it for comparisons with actual
+							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
+							prevStatusString, currStatusString := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
+
+							if prevStatusString == establishedString && currStatusString != prevStatusString {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == commonv1.AssociationEstablished {
+							if currStatusString == establishedString {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

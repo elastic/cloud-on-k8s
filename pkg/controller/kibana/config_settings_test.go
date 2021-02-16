@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var defaultConfig = []byte(`
@@ -74,7 +73,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		{
 			name: "Do not override existing encryption keys",
 			args: args{
-				c: k8s.WrappedFakeClient(
+				c: k8s.NewFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
 						Data: map[string][]byte{
@@ -96,7 +95,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		{
 			name: "Create new encryption keys",
 			args: args{
-				c: k8s.WrappedFakeClient(
+				c: k8s.NewFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
 						Data: map[string][]byte{
@@ -119,7 +118,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 		{
 			name: "Create new encryption keys pre-7.6.0",
 			args: args{
-				c: k8s.WrappedFakeClient(
+				c: k8s.NewFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
 						Data: map[string][]byte{
@@ -176,7 +175,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "default config IPv4",
 			args: args{
-				client:   k8s.WrappedFakeClient(existingSecret),
+				client:   k8s.NewFakeClient(existingSecret),
 				kb:       mkKibana,
 				ipFamily: corev1.IPv4Protocol,
 			},
@@ -185,7 +184,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "default config IPv6",
 			args: args{
-				client:   k8s.WrappedFakeClient(existingSecret),
+				client:   k8s.NewFakeClient(existingSecret),
 				kb:       mkKibana,
 				ipFamily: corev1.IPv6Protocol,
 			},
@@ -202,7 +201,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "without TLS",
 			args: args{
-				client: k8s.WrappedFakeClient(existingSecret),
+				client: k8s.NewFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.HTTP = commonv1.HTTPConfig{
@@ -243,7 +242,7 @@ func TestNewConfigSettings(t *testing.T) {
 					})
 					return kb
 				},
-				client: k8s.WrapClient(fake.NewFakeClient(
+				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -262,7 +261,7 @@ func TestNewConfigSettings(t *testing.T) {
 							"ca.crt": []byte("certificate"),
 						},
 					},
-				)),
+				),
 				ipFamily: corev1.IPv4Protocol,
 			},
 			want: func() []byte {
@@ -280,7 +279,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "with user config",
 			args: args{
-				client: k8s.WrappedFakeClient(existingSecret),
+				client: k8s.NewFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.Config = &commonv1.Config{
@@ -297,7 +296,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "test existing secret does not prevent updates to config, e.g. spec takes precedence even if there is a secret indicating otherwise",
 			args: args{
-				client: k8s.WrappedFakeClient(&corev1.Secret{
+				client: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      SecretName(defaultKb),
 						Namespace: defaultKb.Namespace,
@@ -322,7 +321,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "test existing secret does not prevent removing items from config in spec",
 			args: args{
-				client: k8s.WrappedFakeClient(&corev1.Secret{
+				client: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      SecretName(defaultKb),
 						Namespace: defaultKb.Namespace,
@@ -367,7 +366,7 @@ func TestNewConfigSettings(t *testing.T) {
 
 // TestNewConfigSettingsCreateEncryptionKeys checks that we generate new keys if none are specified
 func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
-	client := k8s.WrapClient(fake.NewFakeClient())
+	client := k8s.NewFakeClient()
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
@@ -395,7 +394,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 			SettingsFilename: []byte(fmt.Sprintf("%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey)),
 		},
 	}
-	client := k8s.WrapClient(fake.NewFakeClient(existingSecret))
+	client := k8s.NewFakeClient(existingSecret)
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
@@ -424,7 +423,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 		XpackSecurityEncryptionKey: key,
 	})
 	kb.Spec.Config = &cfg
-	client := k8s.WrapClient(fake.NewFakeClient())
+	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
@@ -437,7 +436,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 func TestNewConfigSettingsPre760(t *testing.T) {
 	kb := mkKibana()
 	kb.Spec.Version = "7.5.0"
-	client := k8s.WrapClient(fake.NewFakeClient())
+	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
 	require.NoError(t, err)
@@ -534,7 +533,7 @@ func Test_getExistingConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(&tc.secret))
+			client := k8s.NewFakeClient(&tc.secret)
 			result, err := getExistingConfig(client, tc.kb)
 			if tc.expectErr {
 				require.Error(t, err)

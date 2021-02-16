@@ -12,8 +12,11 @@ import (
 // CalculateHealth returns health of the Agent based on association status, desired count and ready count.
 func CalculateHealth(associations []v1.Association, ready, desired int32) agentv1alpha1.AgentHealth {
 	for _, assoc := range associations {
-		if assoc.AssociationConf().IsConfigured() && assoc.AssociationStatus() != v1.AssociationEstablished {
-			return agentv1alpha1.AgentRedHealth
+		if assoc.AssociationConf().IsConfigured() {
+			statusMap := assoc.AssociationStatusMap(assoc.AssociationType())
+			if !statusMap.AllEstablished() {
+				return agentv1alpha1.AgentRedHealth
+			}
 		}
 	}
 

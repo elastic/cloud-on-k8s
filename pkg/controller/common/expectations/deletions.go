@@ -5,11 +5,12 @@
 package expectations
 
 import (
+	"context"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // ExpectedPodDeletions stores UID of Pods that we did delete, but whose deletion may not be
@@ -57,7 +58,7 @@ func (e *ExpectedPodDeletions) DeletionsSatisfied() (bool, error) {
 // podDeleted returns true if the pod with the given UID does not exist anymore.
 func podDeleted(client k8s.Client, pod types.NamespacedName, uid types.UID) (bool, error) {
 	var podInCache corev1.Pod
-	err := client.Get(pod, &podInCache)
+	err := client.Get(context.Background(), pod, &podInCache)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// pod is removed

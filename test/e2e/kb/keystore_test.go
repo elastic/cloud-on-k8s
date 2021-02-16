@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build kb e2e
+
 package kb
 
 import (
+	"context"
 	"testing"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -54,9 +57,9 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 				Name: "Create secure settings secret",
 				Test: func(t *testing.T) {
 					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&secureSettings)
+					_ = k.Client.Delete(context.Background(), &secureSettings)
 					// and create a fresh one
-					require.NoError(t, k.Client.Create(&secureSettings))
+					require.NoError(t, k.Client.Create(context.Background(), &secureSettings))
 				},
 			},
 		}
@@ -74,7 +77,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 						"logging.json":    []byte("true"),
 						"logging.verbose": []byte("true"),
 					}
-					err := k.Client.Update(&secureSettings)
+					err := k.Client.Update(context.Background(), &secureSettings)
 					require.NoError(t, err)
 				},
 			},
@@ -88,11 +91,11 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 				Test: func(t *testing.T) {
 					// retrieve current Kibana resource
 					var currentKb kbv1.Kibana
-					err := k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb)
 					require.NoError(t, err)
 					// set its secure settings to nil
 					currentKb.Spec.SecureSettings = nil
-					err = k.Client.Update(&currentKb)
+					err = k.Client.Update(context.Background(), &currentKb)
 					require.NoError(t, err)
 				},
 			},
@@ -104,7 +107,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: func(t *testing.T) {
-					err := k.Client.Delete(&secureSettings)
+					err := k.Client.Delete(context.Background(), &secureSettings)
 					require.NoError(t, err)
 				},
 			},

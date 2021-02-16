@@ -6,24 +6,10 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
-	"k8s.io/client-go/tools/remotecommand"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -41,6 +27,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
+	"k8s.io/client-go/tools/remotecommand"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 type K8sClient struct {
@@ -93,7 +93,7 @@ func CreateClient() (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return k8s.WrapClient(client), nil
+	return client, nil
 }
 
 func ServerVersion() (*version.Info, error) {
@@ -110,7 +110,7 @@ func ServerVersion() (*version.Info, error) {
 
 func (k *K8sClient) GetPods(opts ...k8sclient.ListOption) ([]corev1.Pod, error) {
 	var podList corev1.PodList
-	if err := k.Client.List(&podList, opts...); err != nil {
+	if err := k.Client.List(context.Background(), &podList, opts...); err != nil {
 		return nil, err
 	}
 	return podList.Items, nil
@@ -118,7 +118,7 @@ func (k *K8sClient) GetPods(opts ...k8sclient.ListOption) ([]corev1.Pod, error) 
 
 func (k *K8sClient) GetPod(namespace, name string) (corev1.Pod, error) {
 	var pod corev1.Pod
-	if err := k.Client.Get(types.NamespacedName{Namespace: namespace, Name: name}, &pod); err != nil {
+	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: name}, &pod); err != nil {
 		return corev1.Pod{}, err
 	}
 	return pod, nil
@@ -126,7 +126,7 @@ func (k *K8sClient) GetPod(namespace, name string) (corev1.Pod, error) {
 
 func (k *K8sClient) GetESStatefulSets(namespace string, esName string) ([]appsv1.StatefulSet, error) {
 	var ssetList appsv1.StatefulSetList
-	if err := k.Client.List(&ssetList,
+	if err := k.Client.List(context.Background(), &ssetList,
 		k8sclient.InNamespace(namespace),
 		k8sclient.MatchingLabels{
 			label.ClusterNameLabelName: esName,
@@ -137,7 +137,7 @@ func (k *K8sClient) GetESStatefulSets(namespace string, esName string) ([]appsv1
 }
 
 func (k *K8sClient) DeletePod(pod corev1.Pod) error {
-	return k.Client.Delete(&pod)
+	return k.Client.Delete(context.Background(), &pod)
 }
 
 func (k *K8sClient) CheckPodCount(expectedCount int, opts ...k8sclient.ListOption) error {
@@ -158,7 +158,7 @@ func (k *K8sClient) GetService(namespace, name string) (*corev1.Service, error) 
 		Namespace: namespace,
 		Name:      name,
 	}
-	if err := k.Client.Get(key, &service); err != nil {
+	if err := k.Client.Get(context.Background(), key, &service); err != nil {
 		return nil, err
 	}
 	return &service, nil
@@ -170,7 +170,7 @@ func (k *K8sClient) GetEndpoints(namespace, name string) (*corev1.Endpoints, err
 		Namespace: namespace,
 		Name:      name,
 	}
-	if err := k.Client.Get(key, &endpoints); err != nil {
+	if err := k.Client.Get(context.Background(), key, &endpoints); err != nil {
 		return nil, err
 	}
 	return &endpoints, nil
@@ -178,7 +178,7 @@ func (k *K8sClient) GetEndpoints(namespace, name string) (*corev1.Endpoints, err
 
 func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, error) {
 	var eventList corev1.EventList
-	if err := k.Client.List(&eventList, opts...); err != nil {
+	if err := k.Client.List(context.Background(), &eventList, opts...); err != nil {
 		return nil, err
 	}
 	return eventList.Items, nil
@@ -192,7 +192,7 @@ func (k *K8sClient) GetElasticPassword(nsn types.NamespacedName) (string, error)
 		Namespace: nsn.Namespace,
 		Name:      secretName,
 	}
-	if err := k.Client.Get(key, &secret); err != nil {
+	if err := k.Client.Get(context.Background(), key, &secret); err != nil {
 		return "", err
 	}
 	password, exists := secret.Data[elasticUserKey]
@@ -212,7 +212,7 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName str
 		},
 	)
 
-	if err := k.Client.Get(
+	if err := k.Client.Get(context.Background(),
 		secretNSN,
 		&secret,
 	); err != nil {
@@ -233,7 +233,7 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 		Namespace: ownerNamespace,
 		Name:      certificates.CAInternalSecretName(esv1.ESNamer, ownerName, caType),
 	}
-	if err := k.Client.Get(key, &secret); err != nil {
+	if err := k.Client.Get(context.Background(), key, &secret); err != nil {
 		return nil, err
 	}
 
@@ -306,7 +306,7 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 
 func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error {
 	for _, ref := range secretRefs {
-		err := k.Client.Get(ref, &corev1.Secret{})
+		err := k.Client.Get(context.Background(), ref, &corev1.Secret{})
 		if apierrors.IsNotFound(err) {
 			// secret removed, all good
 			continue

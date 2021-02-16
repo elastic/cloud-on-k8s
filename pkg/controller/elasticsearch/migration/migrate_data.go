@@ -10,10 +10,10 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
-var log = logf.Log.WithName("migrate-data")
+var log = ulog.Log.WithName("migrate-data")
 
 // NodeMayHaveShard returns true if one of those condition is met:
 // - the given ES Pod is holding at least one shard (primary or replica)

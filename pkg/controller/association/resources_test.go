@@ -51,25 +51,34 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	associationLabels := map[string]string{
 		"kibanaassociation.k8s.elastic.co/name":      kibanaFixtureObjectMeta.Name,
 		"kibanaassociation.k8s.elastic.co/namespace": kibanaFixtureObjectMeta.Namespace,
+		"kibana.k8s.elastic.co/name":                 esFixture.Name,
+		"kibana.k8s.elastic.co/namespace":            esFixture.Namespace,
 	}
+
 	userSecretLabels := maps.Merge(map[string]string{common.TypeLabelName: esuser.AssociatedUserType}, associationLabels)
 
 	assertExpectObjectsExist := func(t *testing.T, c k8s.Client) {
 		// user secret should be in ES namespace
-		assert.NoError(t, c.Get(types.NamespacedName{
+		assert.NoError(t, c.Get(context.Background(), types.NamespacedName{
 			Namespace: esFixture.Namespace,
 			Name:      userInEsNamespace,
 		}, &corev1.Secret{}))
 		// user secret should be in Kibana namespace
-		assert.NoError(t, c.Get(types.NamespacedName{
+		assert.NoError(t, c.Get(context.Background(), types.NamespacedName{
 			Namespace: kibanaFixture.Namespace,
 			Name:      userInKibanaNamespace,
 		}, &corev1.Secret{}))
 		// ca secret should be in Kibana namespace
-		assert.NoError(t, c.Get(types.NamespacedName{
+		assert.NoError(t, c.Get(context.Background(), types.NamespacedName{
 			Namespace: kibanaFixture.Namespace,
 			Name:      CACertSecretName(&kibanaFixture, kibanaESAssociationName),
 		}, &corev1.Secret{}))
+	}
+
+	info := AssociationInfo{
+		Labels:                                func(associated types.NamespacedName) map[string]string { return associationLabels },
+		AssociationResourceNameLabelName:      "kibana.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "kibana.k8s.elastic.co/namespace",
 	}
 
 	tests := []struct {
@@ -155,7 +164,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			},
 			postCondition: func(c k8s.Client) {
 				// user CR should be in ES namespace
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: esFixture.Namespace,
 					Name:      userInEsNamespace,
 				}, &corev1.Secret{}),
@@ -228,15 +237,15 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			},
 			postCondition: func(c k8s.Client) {
 				// This works even without labels because mock client currently ignores labels
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: kibanaFixture.Namespace,
 					Name:      userInEsNamespace,
 				}, &corev1.Secret{}))
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
 					Name:      userInKibanaNamespace,
 				}, &corev1.Secret{}))
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
 					Name:      CACertSecretName(&kibanaFixture, kibanaESAssociationName),
 				}, &corev1.Secret{}))
@@ -281,15 +290,15 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 			},
 			postCondition: func(c k8s.Client) {
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns2",
 					Name:      "kibana-foo-kibana-user",
 				}, &corev1.Secret{}))
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns1",
 					Name:      "ns2-kibana-foo-kibana-user",
 				}, &corev1.Secret{}))
-				assert.Error(t, c.Get(types.NamespacedName{
+				assert.Error(t, c.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns2",
 					Name:      "kibana-foo-kb-es-ca",
 				}, &corev1.Secret{}))
@@ -299,8 +308,8 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(tt.initialObjects...)
-			if err := deleteOrphanedResources(context.Background(), c, tt.kibana.AssociationRef().WithDefaultNamespace(tt.kibana.Namespace), &tt.kibana, associationLabels); (err != nil) != tt.wantErr {
+			c := k8s.NewFakeClient(tt.initialObjects...)
+			if err := deleteOrphanedResources(context.Background(), c, info, tt.kibana.AssociationRef().WithDefaultNamespace(tt.kibana.Namespace).NamespacedName(), tt.kibana.GetAssociations()); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

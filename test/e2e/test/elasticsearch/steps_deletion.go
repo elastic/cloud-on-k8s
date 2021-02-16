@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,7 +28,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Deleting Elasticsearch should return no error",
 			Test: func(t *testing.T) {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					require.NoError(t, err)
 
 				}
@@ -38,11 +38,8 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Elasticsearch should not be there anymore",
 			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
-					m, err := meta.Accessor(obj)
-					if err != nil {
-						return err
-					}
-					err = k.Client.Get(k8s.ExtractNamespacedName(m), obj.DeepCopyObject())
+					objCopy := k8s.DeepCopyObject(obj)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(obj), objCopy)
 					if err != nil {
 						if apierrors.IsNotFound(err) {
 							continue
@@ -68,7 +65,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				matchLabels := client.MatchingLabels(map[string]string{
 					label.ClusterNameLabelName: b.Elasticsearch.Name,
 				})
-				err := k.Client.List(&pvcs, ns, matchLabels)
+				err := k.Client.List(context.Background(), &pvcs, ns, matchLabels)
 				if err != nil {
 					return err
 				}

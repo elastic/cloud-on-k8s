@@ -42,7 +42,7 @@ type ApmClient struct {
 func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, error) {
 	var secretTokenSecret v1.Secret
 	secretTokenNamespacedName := types.NamespacedName{Namespace: as.Namespace, Name: as.Status.SecretTokenSecretName}
-	if err := k.Client.Get(secretTokenNamespacedName, &secretTokenSecret); err != nil {
+	if err := k.Client.Get(context.Background(), secretTokenNamespacedName, &secretTokenSecret); err != nil {
 		return nil, err
 	}
 

@@ -5,6 +5,8 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,6 +82,8 @@ type BeatSpec struct {
 
 type DaemonSetSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	// +kubebuilder:validation:Optional
+	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 type DeploymentSpec struct {
@@ -149,13 +153,56 @@ type Beat struct {
 	kbAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
+func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		if b.Spec.ElasticsearchRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(b.Status.ElasticsearchAssociationStatus)
+		}
+	case commonv1.KibanaAssociationType:
+		if b.Spec.KibanaRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(b.Status.KibanaAssociationStatus)
+		}
+	}
+
+	return commonv1.AssociationStatusMap{}
+}
+
+func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		b.Status.ElasticsearchAssociationStatus = single
+		return nil
+	case commonv1.KibanaAssociationType:
+		b.Status.KibanaAssociationStatus = single
+		return nil
+	default:
+		return fmt.Errorf("association type %s not known", typ)
+	}
+}
+
 var _ commonv1.Associated = &Beat{}
 
 func (b *Beat) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{
-		&BeatESAssociation{Beat: b},
-		&BeatKibanaAssociation{Beat: b},
+	associations := make([]commonv1.Association, 0)
+
+	if b.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, &BeatESAssociation{
+			Beat: b,
+		})
 	}
+	if b.Spec.KibanaRef.IsDefined() {
+		associations = append(associations, &BeatKibanaAssociation{
+			Beat: b,
+		})
+	}
+
+	return associations
 }
 
 func (b *Beat) ServiceAccountName() string {
@@ -187,7 +234,7 @@ func (b *BeatESAssociation) Associated() commonv1.Associated {
 	return b.Beat
 }
 
-func (b *BeatESAssociation) AssociatedType() string {
+func (b *BeatESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -196,7 +243,7 @@ func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (b *BeatESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
 func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
@@ -207,12 +254,8 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	b.esAssocConf = conf
 }
 
-func (b *BeatESAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return b.Status.ElasticsearchAssociationStatus
-}
-
-func (b *BeatESAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	b.Status.ElasticsearchAssociationStatus = status
+func (b *BeatESAssociation) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }
 
 type BeatKibanaAssociation struct {
@@ -229,14 +272,6 @@ func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationCon
 	b.kbAssocConf = conf
 }
 
-func (b *BeatKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return b.Status.KibanaAssociationStatus
-}
-
-func (b *BeatKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	b.Status.KibanaAssociationStatus = status
-}
-
 func (b *BeatKibanaAssociation) Associated() commonv1.Associated {
 	if b == nil {
 		return nil
@@ -247,7 +282,7 @@ func (b *BeatKibanaAssociation) Associated() commonv1.Associated {
 	return b.Beat
 }
 
-func (b *BeatKibanaAssociation) AssociatedType() string {
+func (b *BeatKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
@@ -256,7 +291,11 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
-	return commonv1.KibanaConfigAnnotationName
+	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", b.AssociationID())
+}
+
+func (b *BeatKibanaAssociation) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }
 
 func (b *Beat) SecureSettings() []commonv1.SecretSource {

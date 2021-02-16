@@ -47,7 +47,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.17.11
+  kubernetesVersion: 1.19.6
   machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
@@ -59,7 +59,7 @@ plans:
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.17.11
+  kubernetesVersion: 1.19.6
   machineType: Standard_D8s_v3
   serviceAccount: false
   psp: false
@@ -108,9 +108,21 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.14
+  kubernetesVersion: 1.17
   eks:
     region: eu-central-1
+    nodeCount: 3
+    nodeAMI: auto
+    diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
+- id: eks-arm-ci
+  operation: create
+  clusterName: arm-ci
+  provider: eks
+  machineType: m6gd.2xlarge
+  serviceAccount: false
+  kubernetesVersion: 1.18
+  eks:
+    region: eu-west-1
     nodeCount: 3
     nodeAMI: auto
     diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
@@ -120,7 +132,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.14
+  kubernetesVersion: 1.17
   eks:
     region: eu-west-2
     nodeCount: 3

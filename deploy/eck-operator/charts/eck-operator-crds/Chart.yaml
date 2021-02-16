@@ -1,13 +1,17 @@
 apiVersion: v2
+  
 name: eck-operator-crds
+
+icon: https://helm.elastic.co/icons/eck.png
+
 description: |-
   A Helm chart for installing the ECK operator Custom Resource Definitions (CRD). 
 
 type: application
 
-version: 1.4.0-SNAPSHOT
+version: 1.5.0-SNAPSHOT
 
-appVersion: 1.4.0-SNAPSHOT
+appVersion: 1.5.0-SNAPSHOT
 
 home: https://github.com/elastic/cloud-on-k8s
 

@@ -105,9 +105,6 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			outputName = "default"
 		}
 		outputs[outputName] = output
-
-		// only one association is currently supported, hence breaking
-		break //nolint:staticcheck
 	}
 
 	return settings.NewCanonicalConfigFrom(map[string]interface{}{

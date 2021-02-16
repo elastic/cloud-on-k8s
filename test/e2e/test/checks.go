@@ -5,6 +5,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +32,7 @@ type ExpectedSecret struct {
 func (e ExpectedSecret) MatchesActualSecret(k *K8sClient, namespace string) error {
 	// secret should exist
 	var s corev1.Secret
-	if err := k.Client.Get(types.NamespacedName{Namespace: namespace, Name: e.Name}, &s); err != nil {
+	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: e.Name}, &s); err != nil {
 		return err
 	}
 

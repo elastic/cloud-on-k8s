@@ -2,28 +2,179 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
+
+func TestCustomTransportCA(t *testing.T) {
+	caSecretName := "my-custom-ca"
+	esName := "test-custom-ca"
+	esNamespace := test.Ctx().ManagedNamespace(0)
+
+	mkTestSecret := func(cert, key []byte) corev1.Secret {
+		return corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: esNamespace,
+				Name:      caSecretName,
+			},
+			Data: map[string][]byte{
+				certificates.CertFileName: cert,
+				certificates.KeyFileName:  key,
+			},
+		}
+	}
+
+	// Create a multi-node cluster so we have inter-node communication
+	initialCluster := elasticsearch.NewBuilder(esName).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	// start with the operator provided transport CA
+	withBuiltinCA := test.WrappedBuilder{
+		BuildingThis: initialCluster,
+		PreDeletionSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Clean up custom CA secret",
+					Test: func(t *testing.T) {
+						// This is counter-intuitive but deletion steps run on the initial builder
+						// let's clean up the CA secret here.
+						toDelete := mkTestSecret(nil, nil)
+						_ = k.Client.Delete(context.Background(), &toDelete)
+					},
+					Skip:      nil,
+					OnFailure: nil,
+				},
+			}
+		},
+	}
+
+	// The initial Cluster builder should result in a healthy cluster as verified by the standard check steps
+	// Now modify cluster to use custom transport certs but simulate a user error by populating the secret with
+	// garbage and verify this is bubbled up through an event
+	withBogusCert := test.WrappedBuilder{
+		BuildingThis: initialCluster.
+			WithCustomTransportCA(caSecretName).
+			WithMutatedFrom(&initialCluster),
+
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Create an invalid CA secret",
+					Test: test.Eventually(func() error {
+						bogusSecret := mkTestSecret([]byte("garbage"), []byte("more garbage"))
+						_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
+						return err
+					}),
+				},
+			}
+
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Invalid CA secret should create events",
+					Test: test.Eventually(func() error {
+						eventList, err := k.GetEvents(test.EventListOptions(esNamespace, initialCluster.Elasticsearch.Name)...)
+						if err != nil {
+							return err
+						}
+						for _, evt := range eventList {
+							if evt.Type == corev1.EventTypeWarning &&
+								evt.Reason == events.EventReasonValidation &&
+								strings.Contains(evt.Message, "can't parse") {
+								return nil
+							}
+						}
+						return fmt.Errorf("expected validation event but could not observe it")
+					}),
+				},
+			}
+		},
+	}
+
+	var ca *certificates.CA
+
+	// A NOOP mutation but set up the CA secret correctly now (using the existing CA generation code in the operator)
+	withCustomCert := test.WrappedBuilder{
+		BuildingThis: initialCluster.
+			WithCustomTransportCA(caSecretName).
+			WithMutatedFrom(&initialCluster),
+
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Create custom CA secret",
+					Test: test.Eventually(func() error {
+						var err error
+						ca, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+							Subject: pkix.Name{
+								CommonName:         "eck-e2e-test-custom-ca",
+								OrganizationalUnit: []string{"eck-e2e"},
+							},
+						})
+						if err != nil {
+							return err
+						}
+
+						caSecret := mkTestSecret(
+							certificates.EncodePEMCert(ca.Cert.Raw),
+							certificates.EncodePEMPrivateKey(*ca.PrivateKey),
+						)
+						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
+						return err
+					}),
+				},
+			}
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Check TLS certs are the expected custom certs",
+					Test: test.Eventually(func() error {
+						// transport certs are checked as part of stack checks now but let's run this step explicitly once more
+						// with the defined CA as a parameter to catch the case where both CA cert in the secret and presented
+						// certs on the nodes are not the ones defined by the user
+						return elasticsearch.CheckTransportCACertificate(initialCluster.Elasticsearch, ca.Cert)
+					}),
+				},
+			}
+		},
+	}
+
+	// tests the following sequence:
+	// 1. healthy cluster with self-signed operator provided CA
+	// 2. reconfigure to use custom certs but simulate user error on certificate setup: cluster to stay healthy
+	// 3. reconfigure with correct custom certificates
+	// 4. reconfigure back to self-signed operator provided CA
+	test.RunMutations(t, []test.Builder{withBuiltinCA}, []test.Builder{withBogusCert, withCustomCert, withBuiltinCA})
+
+}
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-http-cert-san").
@@ -62,12 +213,12 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				Name: "Add load balancer IP to the SAN",
 				Test: func(t *testing.T) {
 					var currentEs esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
 					require.NoError(t, err)
 
 					b.Elasticsearch = currentEs
 					b = b.WithHTTPSAN(podIP)
-					require.NoError(t, k.Client.Update(&b.Elasticsearch))
+					require.NoError(t, k.Client.Update(context.Background(), &b.Elasticsearch))
 				},
 			},
 			{
@@ -96,7 +247,7 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 		Namespace: ns,
 		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, esName),
 	}
-	if err := k.Client.Get(key, &secret); err != nil {
+	if err := k.Client.Get(context.Background(), key, &secret); err != nil {
 		return nil, err
 	}
 	certBytes, exists := secret.Data[certificates.CertFileName]

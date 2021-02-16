@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,11 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-var log = logf.Log.WithName("test-webhook")
+var log = ulog.Log.WithName("test-webhook")
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook
 type ValidationWebhookTestCase struct {
@@ -48,11 +49,26 @@ func ValidationWebhookSucceeded(t *testing.T, response *admissionv1beta1.Admissi
 func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
 	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
 		require.False(t, response.Allowed)
-		reason := string(response.Result.Reason)
+
+		if len(causeRegexes) > 0 {
+			require.NotNil(t, response.Result.Details, "Response must include failure details")
+		}
+
 		for _, cr := range causeRegexes {
-			match, err := regexp.MatchString(cr, reason)
-			require.NoError(t, err, "Match '%s' returned error: %v", cr, err)
-			require.True(t, match, "[%s] is not present in [%s]", cr, reason)
+			found := false
+			t.Logf("Checking for existence of: %s", cr)
+			for _, cause := range response.Result.Details.Causes {
+				reason := fmt.Sprintf("%s: %s", cause.Field, cause.Message)
+				t.Logf("Reason: %s", reason)
+				match, err := regexp.MatchString(cr, reason)
+				require.NoError(t, err, "Match '%s' returned error: %v", cr, err)
+				if match {
+					found = true
+					break
+				}
+			}
+
+			require.True(t, found, "[%s] is not present in cause list", cr)
 		}
 	}
 }

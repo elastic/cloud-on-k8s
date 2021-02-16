@@ -2,7 +2,7 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  name: alpha
+  name: es
 spec:
   version: 7.2.0
   nodes:
@@ -17,19 +17,19 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  name: alpha
+  name: kb
 spec:
   version: 7.2.0
   nodeCount: 1
   elasticsearchRef:
-    name: alpha
+    name: es
 ---
 apiVersion: apm.k8s.elastic.co/v1alpha1
 kind: ApmServer
 metadata:
-  name: alpha
+  name: apm
 spec:
   version: 7.2.0
   nodeCount: 1
   elasticsearchRef:
-    name: alpha
+    name: es

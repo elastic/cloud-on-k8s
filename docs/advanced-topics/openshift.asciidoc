@@ -15,6 +15,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-deploy-kibana>>
 * <<{p}-openshift-anyuid-workaround>>
 * <<{p}-openshift-beats>>
+* <<{p}-openshift-agent>>
 
 WARNING: Some Docker images are incompatible with the `restricted` SCC. This is the case for the *APM Server before 7.9* and for *Enterprise Search 7.9 and 7.10*. You can use this <<{p}-openshift-anyuid-workaround,workaround>> to run those images with the `anyuid` SCC.
 
@@ -324,3 +325,43 @@ spec:
 ----
 
 See the complete examples in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory].
+
+
+[id="{p}-openshift-agent"]
+== Grant host access permission to Elastic Agent
+
+Deploying Elastic Agent on Openshift may require additional permissions depending on the type of link:https://www.elastic.co/guide/en/fleet/current/index.html[intergration] Elastic Agent is supposed to run. In any case, Elastic Agent uses a link:https://kubernetes.io/docs/concepts/storage/volumes/#hostpath[hostPath] volume as its data directory on OpenShift to maintain a stable identity. Therefore, the Service Account used for Elastic Agent needs permissions to use hostPath volumes.
+
+
+The following example assumes that Elastic Agent is deployed in the Namespace `elastic` with the ServiceAccount `elastic-agent`. You can replace these values according to your environment.
+
+NOTE: If you used the examples from the link:{eck_github}/tree/{eck_release_branch}/config/recipes/elastic-agent[recipes directory], the ServiceAccount may already exist.
+
+. Create a dedicated ServiceAccount:
++
+[source,shell]
+----
+oc create serviceaccount elastic-agent -n elastic
+----
+. Add the ServiceAccount to the required SCC:
++
+[source,shell]
+----
+oc adm policy add-scc-to-user hostaccess -z elastic-agent -n elastic
+----
+. Update the Elastic Agent manifest to use the new ServiceAccount, for example:
++
+[source,yaml,subs="attributes"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: my-agent
+spec:
+  version: {version}
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+----
+

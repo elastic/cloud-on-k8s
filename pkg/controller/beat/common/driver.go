@@ -79,7 +79,7 @@ func Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	if !association.AllowVersion(*beatVersion, &params.Beat, params.Logger, params.Recorder()) {
+	if !association.AllowVersion(beatVersion, &params.Beat, params.Logger, params.Recorder()) {
 		return results // will eventually retry
 	}
 

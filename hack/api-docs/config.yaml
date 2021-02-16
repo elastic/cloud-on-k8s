@@ -6,9 +6,11 @@ processor:
     - "ElasticsearchSettings$"
     - "Associa(ted|tion|tionStatus|tionConf)$"
     - "APM(Es|Kibana)Association"
+    - "NodeSet(List|ConfigError)$"
+    - "Autoscaling*"
   ignoreFields:
     - "status$"
     - "TypeMeta$"
 
 render:
-  kubernetesVersion: 1.18
+  kubernetesVersion: "1.20"

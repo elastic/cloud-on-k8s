@@ -7,14 +7,6 @@ package apmserver
 import (
 	"testing"
 
-	"github.com/go-test/deep"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -23,6 +15,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/go-test/deep"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/tools/record"
 )
 
 var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint:gosec
@@ -194,6 +193,15 @@ func expectedDeploymentParams() testParams {
 func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.AssociationConf) *apmv1.ApmServer {
 	apmv1.NewApmEsAssociation(as).SetAssociationConf(esAssocConf)
 	apmv1.NewApmKibanaAssociation(as).SetAssociationConf(kbAssocConf)
+
+	if esAssocConf != nil {
+		as.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "es"}
+	}
+
+	if kbAssocConf != nil {
+		as.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kb"}
+	}
+
 	return as
 }
 
@@ -474,7 +482,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.args.initialObjects...)
+			client := k8s.NewFakeClient(tt.args.initialObjects...)
 			w := watches.NewDynamicWatches()
 			r := &ReconcileApmServer{
 				Client:         client,

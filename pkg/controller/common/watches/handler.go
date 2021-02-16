@@ -7,17 +7,17 @@ package watches
 import (
 	"sync"
 
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 var (
-	log = logf.Log.WithName("dynamic-enqueue-request")
+	log = ulog.Log.WithName("dynamic-enqueue-request")
 )
 
 // HandlerRegistration is the event handler registration that can be added or removed

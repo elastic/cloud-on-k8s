@@ -30,8 +30,8 @@ import (
 const (
 	// SettingsFilename is the Kibana configuration settings file
 	SettingsFilename = "kibana.yml"
-	// EnvNodeOpts is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
-	EnvNodeOpts = "NODE_OPTS"
+	// EnvNodeOptions is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
+	EnvNodeOptions = "NODE_OPTIONS"
 
 	// esCertsVolumeMountPath is the directory containing Elasticsearch certificates.
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
@@ -142,7 +142,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) (*setti
 	if err != nil {
 		return cfg, err
 	}
-	if !ver.IsSameOrAfter(version.From(7, 6, 0)) {
+	if !ver.GTE(version.From(7, 6, 0)) {
 		_, err = (*ucfg.Config)(cfg).Remove(XpackEncryptedSavedObjects, -1, settings.Options...)
 	}
 	return cfg, err
@@ -150,7 +150,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) (*setti
 
 // VersionDefaults generates any version specific settings that should exist by default.
 func VersionDefaults(kb *kbv1.Kibana, v version.Version) *settings.CanonicalConfig {
-	if v.IsSameOrAfter(version.From(7, 6, 0)) {
+	if v.GTE(version.From(7, 6, 0)) {
 		// setting exists only as of 7.6.0
 		return settings.MustCanonicalConfig(map[string]interface{}{XpackLicenseManagementUIEnabled: false})
 	}
@@ -168,7 +168,7 @@ type reusableSettings struct {
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
 func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
-	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
+	err := client.Get(context.Background(), types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		log.V(1).Info("Kibana config secret does not exist", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return nil, nil
@@ -216,7 +216,7 @@ func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.Canoni
 		return nil, err
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
-	if len(r.SavedObjectsKey) == 0 && kbVer.IsSameOrAfter(version.From(7, 6, 0)) {
+	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
 		r.SavedObjectsKey = string(common.RandomBytes(64))
 	}
 	return settings.MustCanonicalConfig(r), nil

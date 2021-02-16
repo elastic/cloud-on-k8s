@@ -52,7 +52,7 @@ func TestGetESConfigContent(t *testing.T) {
 	}{
 		{
 			name:      "valid config exists",
-			client:    k8s.WrappedFakeClient(&secret),
+			client:    k8s.NewFakeClient(&secret),
 			namespace: namespace,
 			ssetName:  ssetName,
 			want:      CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})},
@@ -60,7 +60,7 @@ func TestGetESConfigContent(t *testing.T) {
 		},
 		{
 			name:      "config does not exist",
-			client:    k8s.WrappedFakeClient(),
+			client:    k8s.NewFakeClient(),
 			namespace: namespace,
 			ssetName:  ssetName,
 			want:      CanonicalConfig{},
@@ -68,7 +68,7 @@ func TestGetESConfigContent(t *testing.T) {
 		},
 		{
 			name:      "stored config is invalid",
-			client:    k8s.WrappedFakeClient(&secretInvalid),
+			client:    k8s.NewFakeClient(&secretInvalid),
 			namespace: namespace,
 			ssetName:  ssetName,
 			want:      CanonicalConfig{},
@@ -123,7 +123,7 @@ func TestReconcileConfig(t *testing.T) {
 	}{
 		{
 			name:     "config does not exist",
-			client:   k8s.WrappedFakeClient(),
+			client:   k8s.NewFakeClient(),
 			es:       es,
 			ssetName: ssetName,
 			config:   config,
@@ -131,7 +131,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name:     "config already exists",
-			client:   k8s.WrappedFakeClient(&configSecret),
+			client:   k8s.NewFakeClient(&configSecret),
 			es:       es,
 			ssetName: ssetName,
 			config:   config,
@@ -139,7 +139,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name:     "config should be updated",
-			client:   k8s.WrappedFakeClient(&configSecret),
+			client:   k8s.NewFakeClient(&configSecret),
 			es:       es,
 			ssetName: ssetName,
 			config:   CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"})},

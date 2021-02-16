@@ -51,7 +51,7 @@ var (
 )
 
 func certificatesDir(association commonv1.Association) string {
-	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
+	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociationType())
 }
 
 // initContainerParameters generates parameters specific to Beats for an init container that will load the secure
@@ -98,7 +98,7 @@ func buildPodTemplate(
 		caSecretName := association.AssociationConf().GetCASecretName()
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			association.AssociatedType()+"-certs",
+			fmt.Sprintf("%s-certs", association.AssociationType()),
 			certificatesDir(association),
 		)
 		vols = append(vols, caVolume)

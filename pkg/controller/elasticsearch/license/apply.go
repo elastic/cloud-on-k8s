@@ -13,14 +13,14 @@ import (
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("elasticsearch-controller")
+var log = ulog.Log.WithName("elasticsearch-controller")
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l esclient.License) bool {
@@ -50,7 +50,7 @@ func applyLinkedLicense(
 	// namespace of this cluster following the cluster-license naming
 	// convention
 	var license corev1.Secret
-	err = c.Get(
+	err = c.Get(context.Background(),
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
 			Name:      esv1.LicenseSecretName(esCluster.Name),

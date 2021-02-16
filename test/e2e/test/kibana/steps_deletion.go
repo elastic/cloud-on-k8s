@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -14,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -24,7 +24,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Deleting Kibana should return no error",
 			Test: func(t *testing.T) {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					require.NoError(t, err)
 
 				}
@@ -34,11 +34,8 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana should not be there anymore",
 			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
-					m, err := meta.Accessor(obj)
-					if err != nil {
-						return err
-					}
-					err = k.Client.Get(k8s.ExtractNamespacedName(m), obj.DeepCopyObject())
+					objCopy := k8s.DeepCopyObject(obj)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(obj), objCopy)
 					if err != nil {
 						if apierrors.IsNotFound(err) {
 							continue

@@ -9,7 +9,7 @@ metadata:
     k8s-app: metricbeat
 spec:
   type: metricbeat
-  version: 7.9.2
+  version: 7.11.0
   config:
     metricbeat.modules:
     - module: kubernetes
@@ -234,7 +234,7 @@ metadata:
     k8s-app: filebeat
 spec:
   type: filebeat
-  version: 7.9.2
+  version: 7.11.0
   config:
     max_backoff: 1s # reduces worst case delay between log being written and picked up by Filebeat to 1s
     close_inactive: 1h # keep harvester open for 1h on inactive files as our test timeout is longer than default 5m
@@ -410,58 +410,6 @@ subjects:
 - kind: ServiceAccount
   name: filebeat
 ---
-  {{ if .OcpCluster }}
-apiVersion: security.openshift.io/v1
-kind: SecurityContextConstraints
-metadata:
-  name: beat
-allowHostDirVolumePlugin: true
-allowHostIPC: false
-allowHostNetwork: true
-allowHostPID: true # required for Auditbeat
-allowHostPorts: false
-allowPrivilegeEscalation: true
-allowPrivilegedContainer: true
-allowedCapabilities:
-- AUDIT_READ     # required for Auditbeat
-- AUDIT_WRITE
-- AUDIT_CONTROL
-- NET_ADMIN      # required for Packetbeat
-- KILL           # required for Journalbeat
-- CHOWN
-- FSETID
-- FOWNER
-- SETGID
-- SETUID
-- SETFCAP
-- SETPCAP
-- AUDIT_WRITE
-- NET_BIND_SERVICE
-defaultAddCapabilities: []
-fsGroup:
-  type: RunAsAny
-priority: 0
-readOnlyRootFilesystem: false
-requiredDropCapabilities: []
-runAsUser:
-  type: RunAsAny
-seLinuxContext:
-  type: RunAsAny
-seccompProfiles:
-- '*'
-supplementalGroups:
-  type: RunAsAny
-users:
-- system:serviceaccount:{{ .E2ENamespace }}:filebeat
-- system:serviceaccount:{{ .E2ENamespace }}:metricbeat
-groups:
-  {{- range .Operator.ManagedNamespaces }}
-- system:serviceaccounts:{{ . }}
-  {{- end }}
-volumes:
-- '*'
-  {{end}}
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -612,6 +560,7 @@ rules:
   resources:
   - agents
   - agents/status
+  - agents/finalizers
   verbs:
   - get
   - list

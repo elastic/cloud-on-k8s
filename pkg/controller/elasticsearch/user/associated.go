@@ -5,16 +5,16 @@
 package user
 
 import (
+	"context"
 	"fmt"
 	"strings"
-
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -51,7 +51,7 @@ func AssociatedUserLabels(es esv1.Elasticsearch) map[string]string {
 func retrieveAssociatedUsers(c k8s.Client, es esv1.Elasticsearch) (users, error) {
 	// list all associated user secrets
 	var associatedUserSecrets corev1.SecretList
-	if err := c.List(
+	if err := c.List(context.Background(),
 		&associatedUserSecrets,
 		client.InNamespace(es.Namespace),
 		client.MatchingLabels(AssociatedUserLabels(es)),

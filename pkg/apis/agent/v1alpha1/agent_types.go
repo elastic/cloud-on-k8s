@@ -5,9 +5,14 @@
 package v1alpha1
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
@@ -73,7 +78,7 @@ type DaemonSetSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	Strategy appsv1.DaemonSetUpdateStrategy `json:"strategy,omitempty"`
+	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 type DeploymentSpec struct {
@@ -100,7 +105,7 @@ type AgentStatus struct {
 	Health AgentHealth `json:"health,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+	ElasticsearchAssociationsStatus commonv1.AssociationStatusMap `json:"elasticsearchAssociationsStatus,omitempty"`
 }
 
 type AgentHealth string
@@ -135,9 +140,9 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec        AgentSpec                 `json:"spec,omitempty"`
-	Status      AgentStatus               `json:"status,omitempty"`
-	esAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
+	Spec       AgentSpec                                         `json:"spec,omitempty"`
+	Status     AgentStatus                                       `json:"status,omitempty"`
+	assocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -145,9 +150,15 @@ type Agent struct {
 var _ commonv1.Associated = &Agent{}
 
 func (a *Agent) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{
-		&AgentESAssociation{Agent: a},
+	associations := make([]commonv1.Association, 0)
+	for _, ref := range a.Spec.ElasticsearchRefs {
+		associations = append(associations, &AgentESAssociation{
+			Agent: a,
+			ref:   ref.WithDefaultNamespace(a.Namespace).NamespacedName(),
+		})
 	}
+
+	return associations
 }
 
 func (a *Agent) ServiceAccountName() string {
@@ -159,58 +170,97 @@ func (a *Agent) IsMarkedForDeletion() bool {
 	return !a.DeletionTimestamp.IsZero()
 }
 
-type AgentESAssociation struct {
-	*Agent
-}
-
-var _ commonv1.Association = &AgentESAssociation{}
-
-func (a *AgentESAssociation) Associated() commonv1.Associated {
-	if a == nil {
-		return nil
-	}
-	if a.Agent == nil {
-		a.Agent = &Agent{}
-	}
-	return a.Agent
-}
-
-func (a *AgentESAssociation) AssociatedType() string {
-	return commonv1.ElasticsearchAssociationType
-}
-
-func (a *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
-	selector := commonv1.ObjectSelector{}
-	if len(a.Spec.ElasticsearchRefs) > 0 {
-		// only first one is used as association controller doesn't support more right now
-		selector = a.Spec.ElasticsearchRefs[0].ObjectSelector
+func (a *Agent) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	if typ != commonv1.ElasticsearchAssociationType {
+		return commonv1.AssociationStatusMap{}
 	}
 
-	return selector.WithDefaultNamespace(a.Namespace)
+	return a.Status.ElasticsearchAssociationsStatus
 }
 
-func (a *AgentESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
-}
+func (a *Agent) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	if typ != commonv1.ElasticsearchAssociationType {
+		return fmt.Errorf("association type %s not known", typ)
+	}
 
-func (a *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	return a.esAssocConf
-}
-
-func (a *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
-	a.esAssocConf = conf
-}
-
-func (a *AgentESAssociation) AssociationStatus() commonv1.AssociationStatus {
-	return a.Status.ElasticsearchAssociationStatus
-}
-
-func (a *AgentESAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
-	a.Status.ElasticsearchAssociationStatus = status
+	a.Status.ElasticsearchAssociationsStatus = status
+	return nil
 }
 
 func (a *Agent) SecureSettings() []commonv1.SecretSource {
 	return a.Spec.SecureSettings
+}
+
+type AgentESAssociation struct {
+	*Agent
+	// ref is the namespaced name of the Elasticsearch used in Association
+	ref types.NamespacedName
+}
+
+func (aea *AgentESAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.Name)
+}
+
+var _ commonv1.Association = &AgentESAssociation{}
+
+func (aea *AgentESAssociation) Associated() commonv1.Associated {
+	if aea == nil {
+		return nil
+	}
+	if aea.Agent == nil {
+		aea.Agent = &Agent{}
+	}
+	return aea.Agent
+}
+
+func (aea *AgentESAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.ElasticsearchAssociationType
+}
+
+func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      aea.ref.Name,
+		Namespace: aea.ref.Namespace,
+	}
+}
+
+func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
+	// annotation key should be stable to allow Agent Controller only pick up the ones it expects,
+	// based on ElasticsearchRefs
+
+	nsNameHash := sha256.New224()
+	// concat with dot to avoid collisions, as namespace can't contain dots
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", aea.ref.Namespace, aea.ref.Name)))
+	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
+	// give too long output
+	// no padding to avoid illegal '=' character in the annotation name
+	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
+
+	return commonv1.FormatNameWithID(
+		commonv1.ElasticsearchConfigAnnotationNameBase+"%s",
+		hash,
+	)
+}
+
+func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
+	if aea.assocConfs == nil {
+		return nil
+	}
+	assocConf, found := aea.assocConfs[aea.ref]
+	if !found {
+		return nil
+	}
+
+	return &assocConf
+}
+
+func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	if aea.assocConfs == nil {
+		aea.assocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+	}
+	if conf != nil {
+		aea.assocConfs[aea.ref] = *conf
+	}
 }
 
 var _ commonv1.Associated = &Agent{}

@@ -5,22 +5,22 @@
 package enterprisesearch
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/rand"
-
+	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	minVersion = version.MustParse("7.7.0")
-	// Starting from 7.9.0, Enterprise Search is incompatible with Openshift default SCC due to file permission errors.
+	// Enterprise Search 7.9 and 7.10 are incompatible with Openshift default SCC due to file permission errors.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3656.
-	ocpFirstIncompatibleVersion = version.MustParse("7.9.0")
+	ocpIncompatibleVersions = semver.MustParseRange(">=7.9.0 <7.11.0")
 )
 
 // Builder to create Enterprise Search.
@@ -35,7 +35,7 @@ var _ test.Builder = Builder{}
 func (b Builder) SkipTest() bool {
 	v := version.MustParse(b.EnterpriseSearch.Spec.Version)
 	// skip if not at least 7.0
-	return !v.IsSameOrAfter(minVersion) ||
+	return !v.GTE(minVersion) ||
 		// or if incompatible with Openshift
 		isIncompatibleWithOcp(v)
 }
@@ -44,7 +44,7 @@ func isIncompatibleWithOcp(v version.Version) bool {
 	if !test.Ctx().OcpCluster {
 		return false
 	}
-	if v.IsSameOrAfter(ocpFirstIncompatibleVersion) {
+	if ocpIncompatibleVersions(v) {
 		return true
 	}
 
@@ -166,6 +166,6 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 // -- Helper functions
 
-func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.EnterpriseSearch}
+func (b Builder) RuntimeObjects() []client.Object {
+	return []client.Object{&b.EnterpriseSearch}
 }

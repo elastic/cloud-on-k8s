@@ -5,19 +5,19 @@
 package user
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 )
 
 // UserProvidedFileRealmWatchName returns the watch registered for user-provided file realm secrets.
@@ -97,7 +97,7 @@ func retrieveUserProvidedRoles(
 		}
 		var secret corev1.Secret
 		secretRef := types.NamespacedName{Namespace: es.Namespace, Name: roleSource.SecretName}
-		err := c.Get(secretRef, &secret)
+		err := c.Get(context.Background(), secretRef, &secret)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				handleSecretNotFound(recorder, es, roleSource.SecretName)
@@ -124,7 +124,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 			continue
 		}
 		var secret corev1.Secret
-		if err := c.Get(types.NamespacedName{Namespace: es.Namespace, Name: fileRealmSource.SecretName}, &secret); err != nil {
+		if err := c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: fileRealmSource.SecretName}, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				handleSecretNotFound(recorder, es, fileRealmSource.SecretName)
 				continue

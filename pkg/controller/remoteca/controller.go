@@ -54,7 +54,7 @@ func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operato
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa {
-	c := k8s.WrapClient(mgr.GetClient())
+	c := mgr.GetClient()
 	return &ReconcileRemoteCa{
 		Client:         c,
 		accessReviewer: accessReviewer,
@@ -82,14 +82,14 @@ type ReconcileRemoteCa struct {
 
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
-func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "remoteca")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "remoteca")
 	defer tracing.EndTransaction(tx)
 
 	// Fetch the local Elasticsearch spec
 	es := esv1.Elasticsearch{}
-	err := r.Get(request.NamespacedName, &es)
+	err := r.Get(context.Background(), request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
@@ -160,7 +160,7 @@ func doReconcile(
 	for remoteEsKey := range expectedRemoteClusters {
 		// Get the remote Elasticsearch cluster associated with this remote CA
 		remoteEs := &esv1.Elasticsearch{}
-		if err := r.Client.Get(remoteEsKey, remoteEs); err != nil {
+		if err := r.Client.Get(context.Background(), remoteEsKey, remoteEs); err != nil {
 			if errors.IsNotFound(err) {
 				// Remote cluster does not exist, skip it
 				continue
@@ -220,7 +220,7 @@ func getExpectedRemoteClusters(
 	}
 
 	var list esv1.ElasticsearchList
-	if err := c.List(&list, &client.ListOptions{}); err != nil {
+	if err := c.List(context.Background(), &list, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -259,7 +259,7 @@ func remoteClustersInvolvedWith(
 
 	// 1. Get clusters whose CA has been copied into the local namespace.
 	var remoteCAList corev1.SecretList
-	if err := c.List(
+	if err := c.List(context.Background(),
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		remoteca.Labels(es.Name),
@@ -276,7 +276,7 @@ func remoteClustersInvolvedWith(
 	}
 
 	// 2. Get clusters for which the CA of the local cluster has been copied.
-	if err := c.List(
+	if err := c.List(context.Background(),
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
 			common.TypeLabelName:            remoteca.TypeLabelValue,

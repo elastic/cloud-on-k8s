@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
@@ -12,7 +14,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/blang/semver/v4"
+	semver "github.com/blang/semver/v4"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -84,7 +86,7 @@ func TestPodTemplateValidation(t *testing.T) {
 				Name: "Phase should eventually be \"invalid\"",
 				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 					if err != nil {
 						return err
 					}
@@ -169,8 +171,8 @@ func TestCustomConfiguration(t *testing.T) {
 				Name: "Create dictionary config map",
 				Test: func(t *testing.T) {
 					// delete left over data from previous runs
-					_ = c.Client.Delete(&synonymMap)
-					require.NoError(t, c.Client.Create(&synonymMap))
+					_ = c.Client.Delete(context.Background(), &synonymMap)
+					require.NoError(t, c.Client.Create(context.Background(), &synonymMap))
 				},
 			},
 		}

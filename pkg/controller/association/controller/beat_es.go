@@ -35,7 +35,8 @@ const (
 
 func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociationObjTemplate: func() commonv1.Association { return &beatv1beta1.BeatESAssociation{} },
+		AssociatedObjTemplate: func() commonv1.Associated { return &beatv1beta1.Beat{} },
+		AssociationType:       commonv1.ElasticsearchAssociationType,
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 			return true, association.AssociationRef(), nil
 		},
@@ -44,16 +45,18 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "beat-es",
 		AssociatedShortName:       "beat",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				BeatAssociationLabelName:      associated.Name,
 				BeatAssociationLabelNamespace: associated.Namespace,
 				BeatAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix:  "beat-user",
-		CASecretLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole:        getBeatRoles,
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                      "beat-user",
+		ESUserRole:                            getBeatRoles,
+		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
+		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 	})
 }
 
@@ -84,7 +87,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 	// Docs are the same for all Beats. For a specific version docs change "current" to major.minor, eg:
 	// https://www.elastic.co/guide/en/beats/filebeat/7.1/feature-roles.html
 	switch {
-	case v.IsSameOrAfter(version.From(7, 7, 0)):
+	case v.GTE(version.From(7, 7, 0)):
 		return strings.Join([]string{
 			"kibana_admin",
 			"ingest_admin",
@@ -92,7 +95,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V77, beat.Spec.Type),
 		}, ","), nil
-	case v.IsSameOrAfter(version.From(7, 5, 0)):
+	case v.GTE(version.From(7, 5, 0)):
 		return strings.Join([]string{
 			"kibana_user",
 			"ingest_admin",
@@ -100,7 +103,7 @@ func getBeatRoles(assoc commonv1.Associated) (string, error) {
 			"remote_monitoring_agent",
 			esuser.BeatEsRoleName(esuser.V75, beat.Spec.Type),
 		}, ","), nil
-	case v.IsSameOrAfter(version.From(7, 3, 0)):
+	case v.GTE(version.From(7, 3, 0)):
 		return strings.Join([]string{
 			"kibana_user",
 			"ingest_admin",

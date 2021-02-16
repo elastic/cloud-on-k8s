@@ -6,20 +6,21 @@ package association
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestFetchWithAssociation(t *testing.T) {
@@ -79,7 +80,7 @@ func testFetchAPMServer(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tc.apmServer)
+			client := k8s.NewFakeClient(tc.apmServer)
 
 			var got apmv1.ApmServer
 			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
@@ -94,13 +95,13 @@ func testFetchAPMServer(t *testing.T) {
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
 			for _, assoc := range got.GetAssociations() {
-				switch assoc.AssociatedType() {
+				switch assoc.AssociationType() {
 				case "elasticsearch":
 					require.Equal(t, tc.wantEsAssocConf, assoc.AssociationConf())
 				case "kibana":
 					require.Equal(t, tc.wantKibanaAssocConf, assoc.AssociationConf())
 				default:
-					t.Fatalf("unknown association type: %s", assoc.AssociatedType())
+					t.Fatalf("unknown association type: %s", assoc.AssociationType())
 				}
 			}
 
@@ -142,7 +143,7 @@ func testFetchKibana(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tc.kibana)
+			client := k8s.NewFakeClient(tc.kibana)
 
 			var got kbv1.Kibana
 			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
@@ -176,6 +177,10 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 	if withAnnotations {
 		kb.ObjectMeta.Annotations = map[string]string{
 			kb.AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+		}
+		kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{
+			Name:      "es-test",
+			Namespace: "es-ns",
 		}
 	}
 
@@ -252,7 +257,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 	}{
 		{
 			name: "When auth details are defined",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
 					Namespace: "default",
@@ -270,7 +275,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		},
 		{
 			name: "When auth details are undefined",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
 					Namespace: "default",
@@ -284,7 +289,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		},
 		{
 			name: "When the auth secret does not exist",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-secret",
 					Namespace: "default",
@@ -301,7 +306,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		},
 		{
 			name: "When the auth secret key does not exist",
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
 					Namespace: "default",
@@ -339,7 +344,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 func TestUpdateAssociationConf(t *testing.T) {
 	kb := mkKibana(true)
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
-	client := k8s.WrappedFakeClient(kb)
+	client := k8s.NewFakeClient(kb)
 
 	assocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
@@ -366,7 +371,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err = UpdateAssociationConf(client, &got, newAssocConf, "association.k8s.elastic.co/es-conf")
+	err = UpdateAssociationConf(client, &got, newAssocConf)
 	require.NoError(t, err)
 
 	err = FetchWithAssociations(context.Background(), client, request, &got)
@@ -381,7 +386,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 func TestRemoveAssociationConf(t *testing.T) {
 	kb := mkKibana(true)
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
-	client := k8s.WrappedFakeClient(kb)
+	client := k8s.NewFakeClient(kb)
 
 	assocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
@@ -401,7 +406,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// remove and check the new values
-	err = RemoveAssociationConf(client, &got, "association.k8s.elastic.co/es-conf")
+	err = RemoveAssociationConf(client, &got)
 	require.NoError(t, err)
 
 	err = FetchWithAssociations(context.Background(), client, request, &got)
@@ -511,5 +516,101 @@ func TestAllowVersion(t *testing.T) {
 				// ok
 			}
 		}
+	}
+}
+
+func TestRemoveObsoleteAssociationConfs(t *testing.T) {
+	withAnnotations := func(annotationNames ...string) *v1alpha1.Agent {
+		result := &v1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "agent1",
+				Namespace:   "namespace1",
+				Annotations: make(map[string]string),
+			},
+		}
+		for _, annotationName := range annotationNames {
+			result.Annotations[annotationName] = annotationName
+		}
+		return result
+	}
+
+	withRefs := func(agent *v1alpha1.Agent, nsNames ...types.NamespacedName) *v1alpha1.Agent {
+		for i, nsName := range nsNames {
+			outputName := strconv.Itoa(i)
+			if i == 0 {
+				outputName = "default"
+			}
+			agent.Spec.ElasticsearchRefs = append(agent.Spec.ElasticsearchRefs, v1alpha1.Output{
+				ObjectSelector: commonv1.ObjectSelector{Name: nsName.Name, Namespace: nsName.Namespace},
+				OutputName:     outputName,
+			})
+		}
+		return agent
+	}
+
+	generateAnnotationName := func(namespace, name string) string {
+		agent := v1alpha1.Agent{
+			Spec: v1alpha1.AgentSpec{
+				ElasticsearchRefs: []v1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+			},
+		}
+		associations := agent.GetAssociations()
+		return associations[0].AssociationConfAnnotationName()
+	}
+
+	for _, tt := range []struct {
+		name              string
+		associated        commonv1.Associated
+		wantedAnnotations []string
+	}{
+		{
+			name:              "no annotations",
+			associated:        withAnnotations(),
+			wantedAnnotations: []string{},
+		},
+		{
+			name:              "not related annotation - should be preserved",
+			associated:        withAnnotations("not-related"),
+			wantedAnnotations: []string{"not-related"},
+		},
+		{
+			name: "related annotation with ref - should be preserved",
+			associated: withRefs(withAnnotations(generateAnnotationName("a", "b")), types.NamespacedName{
+				Namespace: "a",
+				Name:      "b",
+			},
+			),
+			wantedAnnotations: []string{generateAnnotationName("a", "b")},
+		},
+		{
+			name:              "related annotation without ref - should be removed",
+			associated:        withAnnotations(generateAnnotationName("a", "b")),
+			wantedAnnotations: []string{},
+		},
+		{
+			name: "mixed annotations - should be cleaned up",
+			associated: withRefs(withAnnotations(generateAnnotationName("a", "b"), generateAnnotationName("c", "d"), "not-related"), types.NamespacedName{
+				Namespace: "a",
+				Name:      "b",
+			},
+			),
+			wantedAnnotations: []string{generateAnnotationName("a", "b"), "not-related"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			client := k8s.NewFakeClient(tt.associated)
+
+			require.NoError(t, RemoveObsoleteAssociationConfs(client, tt.associated, "association.k8s.elastic.co/es-conf"))
+
+			var got v1alpha1.Agent
+			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(tt.associated), &got))
+
+			gotAnnotations := make([]string, 0)
+			for key := range got.Annotations {
+				gotAnnotations = append(gotAnnotations, key)
+			}
+
+			require.ElementsMatch(t, tt.wantedAnnotations, gotAnnotations)
+		})
 	}
 }

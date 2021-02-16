@@ -37,7 +37,6 @@ type runFlags struct {
 	buildNumber           string
 	provider              string
 	clusterName           string
-	kubernetesVersion     string
 	operatorReplicas      int
 	commandTimeout        time.Duration
 	logVerbosity          int
@@ -48,6 +47,7 @@ type runFlags struct {
 	logToFile             bool
 	ignoreWebhookFailures bool
 	deployChaosJob        bool
+	testEnvTags           []string
 }
 
 var log logr.Logger
@@ -99,10 +99,10 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.buildNumber, "build-number", "", "E2E test build number")
 	cmd.Flags().StringVar(&flags.provider, "provider", "", "E2E test infrastructure provider")
 	cmd.Flags().StringVar(&flags.clusterName, "clusterName", "", "E2E test Kubernetes cluster name")
-	cmd.Flags().StringVar(&flags.kubernetesVersion, "kubernetes-version", "", "Kubernetes version")
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
 	cmd.Flags().BoolVar(&flags.ignoreWebhookFailures, "ignore-webhook-failures", false, "Specifies if webhook errors should be ignored. Useful when running test locally. False by default")
 	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
+	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

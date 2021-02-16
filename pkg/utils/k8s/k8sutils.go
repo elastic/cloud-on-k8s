@@ -5,9 +5,11 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"net"
 
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,9 +17,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
+
+// DeepCopyObject creates a deep copy of a client.Object.
+// This is to get around the limitation of the DeepCopyObject method which returns a runtime.Object.
+func DeepCopyObject(obj client.Object) client.Object {
+	if obj == nil {
+		return nil
+	}
+
+	if newObj := obj.DeepCopyObject(); newObj != nil {
+		return newObj.(client.Object)
+	}
+
+	return nil
+}
 
 // ToObjectMeta returns an ObjectMeta based on the given NamespacedName.
 func ToObjectMeta(namespacedName types.NamespacedName) metav1.ObjectMeta {
@@ -128,11 +142,11 @@ func GetSecretEntry(secret corev1.Secret, key string) []byte {
 // DeleteSecretMatching deletes the Secret matching the provided selectors.
 func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 	var secrets corev1.SecretList
-	if err := c.List(&secrets, opts...); err != nil {
+	if err := c.List(context.Background(), &secrets, opts...); err != nil {
 		return err
 	}
 	for _, s := range secrets.Items {
-		if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
+		if err := c.Delete(context.Background(), &s); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
@@ -142,7 +156,7 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 // PodsMatchingLabels returns Pods from the given namespace matching the given labels.
 func PodsMatchingLabels(c Client, namespace string, labels map[string]string) ([]corev1.Pod, error) {
 	var pods corev1.PodList
-	if err := c.List(&pods, client.InNamespace(namespace), client.MatchingLabels(labels)); err != nil {
+	if err := c.List(context.Background(), &pods, client.InNamespace(namespace), client.MatchingLabels(labels)); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil

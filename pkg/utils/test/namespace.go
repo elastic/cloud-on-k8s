@@ -5,6 +5,8 @@
 package test
 
 import (
+	"context"
+
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,9 +21,9 @@ func EnsureNamespace(c k8s.Client, ns string) error {
 		},
 	}
 	existing := corev1.Namespace{}
-	err := c.Get(types.NamespacedName{Name: ns}, &existing)
+	err := c.Get(context.Background(), types.NamespacedName{Name: ns}, &existing)
 	if errors.IsNotFound(err) {
-		return c.Create(&expected)
+		return c.Create(context.Background(), &expected)
 	}
 	return err
 }

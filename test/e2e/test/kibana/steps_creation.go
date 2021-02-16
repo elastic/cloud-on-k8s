@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"testing"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -20,7 +21,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Creating Kibana should succeed",
 			Test: func(t *testing.T) {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(obj)
+					err := k.Client.Create(context.Background(), obj)
 					require.NoError(t, err)
 				}
 			},
@@ -29,7 +30,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana should be created",
 			Test: func(t *testing.T) {
 				var createdKb kbv1.Kibana
-				err := k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &createdKb)
+				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &createdKb)
 				require.NoError(t, err)
 				require.Equal(t, b.Kibana.Spec.Version, createdKb.Spec.Version)
 				// TODO this is incomplete

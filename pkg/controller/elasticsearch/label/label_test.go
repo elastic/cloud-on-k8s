@@ -47,13 +47,12 @@ func TestExtractVersion(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    map[string]string
-		want    *version.Version
+		want    version.Version
 		wantErr bool
 	}{
 		{
 			name:    "no version",
 			args:    nil,
-			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -61,7 +60,6 @@ func TestExtractVersion(t *testing.T) {
 			args: map[string]string{
 				VersionLabelName: "not a version",
 			},
-			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -69,12 +67,7 @@ func TestExtractVersion(t *testing.T) {
 			args: map[string]string{
 				VersionLabelName: "1.0.0",
 			},
-			want: &version.Version{
-				Major: 1,
-				Minor: 0,
-				Patch: 0,
-				Label: "",
-			},
+			want:    version.MustParse("1.0.0"),
 			wantErr: false,
 		},
 	}
@@ -112,7 +105,7 @@ func TestNewPodLabels(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "labels pre-7.7",
+			name: "labels pre-7.3",
 			args: args{
 				es:       nameFixture,
 				ssetName: "sset",
@@ -142,6 +135,38 @@ func TestNewPodLabels(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "labels post-7.3",
+			args: args{
+				es:       nameFixture,
+				ssetName: "sset",
+				ver:      version.From(7, 3, 0),
+				nodeRoles: &v1.Node{
+					Master:     pointer.BoolPtr(false),
+					Data:       pointer.BoolPtr(true),
+					Ingest:     pointer.BoolPtr(false),
+					ML:         pointer.BoolPtr(false),
+					Transform:  pointer.BoolPtr(true),
+					VotingOnly: pointer.BoolPtr(true),
+				},
+				configHash: "hash",
+				scheme:     "https",
+			},
+			want: map[string]string{
+				ClusterNameLabelName:                 "name",
+				common.TypeLabelName:                 "elasticsearch",
+				VersionLabelName:                     "7.3.0",
+				string(NodeTypesMasterLabelName):     "false",
+				string(NodeTypesDataLabelName):       "true",
+				string(NodeTypesIngestLabelName):     "false",
+				string(NodeTypesMLLabelName):         "false",
+				string(NodeTypesVotingOnlyLabelName): "true",
+				ConfigHashLabelName:                  "hash",
+				HTTPSchemeLabelName:                  "https",
+				StatefulSetNameLabelName:             "sset",
+			},
+			wantErr: false,
+		},
+		{
 			name: "labels post-7.7",
 			args: args{
 				es:       nameFixture,
@@ -158,17 +183,19 @@ func TestNewPodLabels(t *testing.T) {
 				scheme:     "https",
 			},
 			want: map[string]string{
-				ClusterNameLabelName:                "name",
-				common.TypeLabelName:                "elasticsearch",
-				VersionLabelName:                    "7.7.0",
-				string(NodeTypesMasterLabelName):    "false",
-				string(NodeTypesDataLabelName):      "true",
-				string(NodeTypesIngestLabelName):    "false",
-				string(NodeTypesMLLabelName):        "false",
-				string(NodeTypesTransformLabelName): "true",
-				ConfigHashLabelName:                 "hash",
-				HTTPSchemeLabelName:                 "https",
-				StatefulSetNameLabelName:            "sset",
+				ClusterNameLabelName:                          "name",
+				common.TypeLabelName:                          "elasticsearch",
+				VersionLabelName:                              "7.7.0",
+				string(NodeTypesMasterLabelName):              "false",
+				string(NodeTypesDataLabelName):                "true",
+				string(NodeTypesIngestLabelName):              "false",
+				string(NodeTypesMLLabelName):                  "false",
+				string(NodeTypesTransformLabelName):           "true",
+				string(NodeTypesRemoteClusterClientLabelName): "true",
+				string(NodeTypesVotingOnlyLabelName):          "false",
+				ConfigHashLabelName:                           "hash",
+				HTTPSchemeLabelName:                           "https",
+				StatefulSetNameLabelName:                      "sset",
 			},
 			wantErr: false,
 		},

@@ -6,12 +6,14 @@ package k8s
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,6 +97,20 @@ func (h *Kubectl) GetResources(namespace string, names ...string) *resource.Resu
 		Latest().
 		Flatten().
 		Do()
+}
+
+func (h *Kubectl) GetPods(namespace string, labelSelector string) ([]corev1.Pod, error) {
+	clientset, err := h.factory.KubernetesClientSet()
+	if err != nil {
+		return nil, err
+	}
+	podList, err := clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
 }
 
 // LoadResources loads manifests from the given file path.

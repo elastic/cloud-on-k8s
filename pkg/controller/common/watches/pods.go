@@ -7,6 +7,7 @@ package watches
 import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -18,14 +19,14 @@ import (
 func WatchPods(c controller.Controller, objNameLabel string) error {
 	return c.Watch(
 		&source.Kind{Type: &corev1.Pod{}},
-		&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(objToReconcileRequest(objNameLabel))},
+		handler.EnqueueRequestsFromMapFunc(objToReconcileRequest(objNameLabel)),
 	)
 }
 
 // objToReconcileRequest returns a function to enqueue reconcile requests for the resource name set at objNameLabel.
-func objToReconcileRequest(objNameLabel string) func(object handler.MapObject) []reconcile.Request {
-	return func(object handler.MapObject) []reconcile.Request {
-		labels := object.Meta.GetLabels()
+func objToReconcileRequest(objNameLabel string) func(object client.Object) []reconcile.Request {
+	return func(object client.Object) []reconcile.Request {
+		labels := object.GetLabels()
 		objectName, isSet := labels[objNameLabel]
 		if !isSet {
 			return nil
@@ -33,7 +34,7 @@ func objToReconcileRequest(objNameLabel string) func(object handler.MapObject) [
 		return []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
-					Namespace: object.Meta.GetNamespace(),
+					Namespace: object.GetNamespace(),
 					Name:      objectName,
 				},
 			},

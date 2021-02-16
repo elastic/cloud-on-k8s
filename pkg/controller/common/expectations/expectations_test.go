@@ -5,16 +5,16 @@
 package expectations
 
 import (
+	"context"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/uuid"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestExpectations_Satisfied(t *testing.T) {
-	client := k8s.WrappedFakeClient()
+	client := k8s.NewFakeClient()
 	e := NewExpectations(client)
 
 	// initially satisfied
@@ -24,7 +24,7 @@ func TestExpectations_Satisfied(t *testing.T) {
 
 	// expect a Pod to be deleted
 	pod := newPod("pod1", uuid.NewUUID())
-	require.NoError(t, client.Create(&pod))
+	require.NoError(t, client.Create(context.Background(), &pod))
 	e.ExpectDeletion(pod)
 
 	// expectations should not be satisfied
@@ -34,7 +34,7 @@ func TestExpectations_Satisfied(t *testing.T) {
 
 	// expect a StatefulSet generation
 	sset := newStatefulSet("sset1", uuid.NewUUID(), 1)
-	require.NoError(t, client.Create(&sset))
+	require.NoError(t, client.Create(context.Background(), &sset))
 	updatedSset := sset
 	updatedSset.Generation = 2
 	e.ExpectGeneration(updatedSset)
@@ -45,14 +45,14 @@ func TestExpectations_Satisfied(t *testing.T) {
 	require.False(t, satisfied)
 
 	// observe the StatefulSet with the updated generation
-	require.NoError(t, client.Update(&updatedSset))
+	require.NoError(t, client.Update(context.Background(), &updatedSset))
 	// expectations should not be satisfied (because of the deletions)
 	satisfied, err = e.Satisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
 
 	// delete the Pod
-	require.NoError(t, client.Delete(&pod))
+	require.NoError(t, client.Delete(context.Background(), &pod))
 	// expectations should be satisfied
 	satisfied, err = e.Satisfied()
 	require.NoError(t, err)

@@ -8,18 +8,17 @@ import (
 	"context"
 	"testing"
 
-	logrtesting "github.com/go-logr/logr/testing"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
@@ -32,7 +31,7 @@ func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
 }
 
 func Test_buildBeatConfig(t *testing.T) {
-	clientWithSecret := k8s.WrappedFakeClient(
+	clientWithSecret := k8s.NewFakeClient(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "secret",
@@ -176,7 +175,7 @@ func Test_buildBeatConfig(t *testing.T) {
 			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Logger:        logrtesting.NullLogger{},
+				Logger:        logr.DiscardLogger{},
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat,
@@ -258,7 +257,7 @@ setup.kibana:
 		{
 			name: "association: no auth-secret",
 			args: args{
-				client:     k8s.WrappedFakeClient(),
+				client:     k8s.NewFakeClient(),
 				associated: associationFixture(kibanaAssocConf),
 			},
 			wantErr: true,
@@ -266,7 +265,7 @@ setup.kibana:
 		{
 			name: "association: no ca",
 			args: args{
-				client:     k8s.WrappedFakeClient(secretFixture),
+				client:     k8s.NewFakeClient(secretFixture),
 				associated: associationFixture(kibanaAssocConf),
 			},
 			want:    expectedConfig,
@@ -275,7 +274,7 @@ setup.kibana:
 		{
 			name: "association: with ca",
 			args: args{
-				client:     k8s.WrappedFakeClient(secretFixture),
+				client:     k8s.NewFakeClient(secretFixture),
 				associated: associationFixture(kibanaAssocConfWithCA),
 			},
 			want:    merge(expectedConfig, expectedCAConfig),
@@ -320,7 +319,7 @@ func Test_getUserConfig(t *testing.T) {
 					SecretName: "my-secret-config",
 				},
 			},
-			client:  k8s.WrappedFakeClient(),
+			client:  k8s.NewFakeClient(),
 			wantErr: true,
 		},
 		{
@@ -330,7 +329,7 @@ func Test_getUserConfig(t *testing.T) {
 					SecretName: "my-secret-config",
 				},
 			},
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "my-secret-config",
 				},
@@ -344,7 +343,7 @@ func Test_getUserConfig(t *testing.T) {
 					SecretName: "my-secret-config-2",
 				},
 			},
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "my-secret-config-2",
 				},
@@ -359,7 +358,7 @@ func Test_getUserConfig(t *testing.T) {
 					SecretName: "my-secret-config-2",
 				},
 			},
-			client: k8s.WrappedFakeClient(&corev1.Secret{
+			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "my-secret-config-2",
 				},

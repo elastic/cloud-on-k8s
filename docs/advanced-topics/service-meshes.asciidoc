@@ -116,7 +116,7 @@ spec:
 
 <3> Optional. Only set `automountServiceAccountToken` to `true` if your Kubernetes cluster does not have support for issuing third-party security tokens.
 
-If you do not have link:https://istio.io/docs/tasks/security/authentication/auto-mtls/[automatic mutual TLS] enabled, you may need to create a link:https://istio.io/docs/reference/config/networking/destination-rule/[Destination Rule] to allow the operator to communicate with the Elasticsearch cluster. A communication issue between the operator and the managed Elasticsearch cluster can be detected by looking at the operator logs to see if there are any errors reported with the text `503 Service Unavailable`.
+If you do not have https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/[automatic mutual TLS] enabled, you may need to create a link:https://istio.io/docs/reference/config/networking/destination-rule/[Destination Rule] to allow the operator to communicate with the Elasticsearch cluster. A communication issue between the operator and the managed Elasticsearch cluster can be detected by looking at the operator logs to see if there are any errors reported with the text `503 Service Unavailable`.
 
 [source,sh]
 ----

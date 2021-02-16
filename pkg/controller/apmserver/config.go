@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -34,8 +35,8 @@ const (
 	ApmCfgSecretKey = "apm-server.yml" // nolint:gosec
 )
 
-func certificatesDir(associatedType string) string {
-	return fmt.Sprintf("config/%s-certs", associatedType)
+func certificatesDir(associationType commonv1.AssociationType) string {
+	return fmt.Sprintf("config/%s-certs", associationType)
 }
 
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
@@ -120,7 +121,7 @@ func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssoc
 		"output.elasticsearch.password": password,
 	}
 	if esAssociation.AssociationConf().GetCACertProvided() {
-		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociatedType()), certificates.CAFileName)}
+		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
@@ -144,7 +145,7 @@ func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAsso
 		"apm-server.kibana.password": password,
 	}
 	if kibanaAssociation.AssociationConf().GetCACertProvided() {
-		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociatedType()), certificates.CAFileName)}
+		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociationType()), certificates.CAFileName)}
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil

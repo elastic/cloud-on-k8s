@@ -126,7 +126,7 @@ func Test_newDownscaleState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(tt.initialResources...)
+			k8sClient := k8s.NewFakeClient(tt.initialResources...)
 			got, err := newDownscaleState(k8sClient, es)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {

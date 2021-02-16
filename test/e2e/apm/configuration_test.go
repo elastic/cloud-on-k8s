@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build apm e2e
+
 package apm
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -17,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -76,9 +79,9 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "Create secure settings secret",
 				Test: func(t *testing.T) {
 					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(&secureSettings)
+					_ = k.Client.Delete(context.Background(), &secureSettings)
 					// and create a fresh one
-					err := k.Client.Create(&secureSettings)
+					err := k.Client.Create(context.Background(), &secureSettings)
 					require.NoError(t, err)
 				},
 			},
@@ -111,11 +114,11 @@ func TestUpdateConfiguration(t *testing.T) {
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
+					require.NoError(t, k.Client.Get(context.Background(), apmNamespacedName, &apm))
 					apm.Spec.SecureSettings = []commonv1.SecretSource{
 						{SecretName: secureSettingsSecretName},
 					}
-					require.NoError(t, k.Client.Update(&apm))
+					require.NoError(t, k.Client.Update(context.Background(), &apm))
 				},
 			},
 			test.Step{
@@ -148,12 +151,12 @@ func TestUpdateConfiguration(t *testing.T) {
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
+					require.NoError(t, k.Client.Get(context.Background(), apmNamespacedName, &apm))
 					customConfig := commonv1.Config{
 						Data: map[string]interface{}{"output.elasticsearch.compression_level": 1},
 					}
 					apm.Spec.Config = &customConfig
-					require.NoError(t, k.Client.Update(&apm))
+					require.NoError(t, k.Client.Update(context.Background(), &apm))
 				},
 			},
 			test.Step{
@@ -187,7 +190,7 @@ func TestUpdateConfiguration(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: func(t *testing.T) {
-					err := k.Client.Delete(&secureSettings)
+					err := k.Client.Delete(context.Background(), &secureSettings)
 					require.NoError(t, err)
 				},
 			},

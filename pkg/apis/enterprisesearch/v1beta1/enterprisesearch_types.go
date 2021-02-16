@@ -5,6 +5,8 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,10 +81,10 @@ func (ent *EnterpriseSearch) Associated() commonv1.Associated {
 }
 
 func (ent *EnterpriseSearch) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName
+	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (ent *EnterpriseSearch) AssociatedType() string {
+func (ent *EnterpriseSearch) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
@@ -98,20 +100,42 @@ func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationC
 	ent.assocConf = assocConf
 }
 
-func (ent *EnterpriseSearch) AssociationStatus() commonv1.AssociationStatus {
-	return ent.Status.Association
-}
-
-func (ent *EnterpriseSearch) SetAssociationStatus(status commonv1.AssociationStatus) {
-	ent.Status.Association = status
-}
-
 func (ent *EnterpriseSearch) RequiresAssociation() bool {
 	return ent.Spec.ElasticsearchRef.Name != ""
 }
 
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{ent}
+	associations := make([]commonv1.Association, 0)
+	if ent.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, ent)
+	}
+	return associations
+}
+
+func (ent *EnterpriseSearch) AssociationID() string {
+	return commonv1.SingletonAssociationID
+}
+
+func (ent *EnterpriseSearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+
+	if typ != commonv1.ElasticsearchAssociationType {
+		return fmt.Errorf("association type %s not known", typ)
+	}
+
+	ent.Status.Association = single
+	return nil
+}
+
+func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	if typ == commonv1.ElasticsearchAssociationType && ent.Spec.ElasticsearchRef.IsDefined() {
+		return commonv1.NewSingleAssociationStatusMap(ent.Status.Association)
+	}
+
+	return commonv1.AssociationStatusMap{}
 }
 
 var _ commonv1.Associated = &EnterpriseSearch{}

@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -30,11 +31,7 @@ import (
 // ReconcilePublicHTTPCerts reconciles the Secret containing the HTTP Certificate currently in use, and the CA of
 // the certificate if available.
 func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) error {
-	ownerMeta, err := r.OwnerMeta()
-	if err != nil {
-		return err
-	}
-	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(ownerMeta))
+	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Owner))
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: nsn.Namespace,
@@ -51,23 +48,20 @@ func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) 
 
 	// Don't set an ownerRef for public http certs secrets, likely to be copied into different namespaces.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
-	_, err = reconciler.ReconcileSecretNoOwnerRef(r.K8sClient, expected, r.Owner)
+	_, err := reconciler.ReconcileSecretNoOwnerRef(r.K8sClient, expected, r.Owner)
 	return err
 }
 
 // ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
 func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, error) {
-	ownerMeta, err := r.OwnerMeta()
-	if err != nil {
-		return nil, err
-	}
-	ownerNSN := k8s.ExtractNamespacedName(ownerMeta)
-	customCertificates, err := GetCustomCertificates(r.K8sClient, ownerNSN, r.TLSOptions)
+	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
+	customCertificates, err := getCustomCertificates(r.K8sClient, ownerNSN, r.TLSOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := reconcileDynamicWatches(r.DynamicWatches, ownerNSN, r.Namer, r.TLSOptions); err != nil {
+	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
+	if err := ReconcileCustomCertWatch(r.DynamicWatches, watchKey, ownerNSN, r.TLSOptions.Certificate); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +73,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 	}
 
 	shouldCreateSecret := false
-	if err := r.K8sClient.Get(k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.K8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		shouldCreateSecret = true
@@ -100,7 +94,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		}
 	}
 
-	if err := controllerutil.SetControllerReference(ownerMeta, &secret, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(r.Owner, &secret, scheme.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -147,12 +141,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 	if needsUpdate {
 		if shouldCreateSecret {
 			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := r.K8sClient.Create(&secret); err != nil {
+			if err := r.K8sClient.Create(context.Background(), &secret); err != nil {
 				return nil, err
 			}
 		} else {
 			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := r.K8sClient.Update(&secret); err != nil {
+			if err := r.K8sClient.Update(context.Background(), &secret); err != nil {
 				return nil, err
 			}
 		}

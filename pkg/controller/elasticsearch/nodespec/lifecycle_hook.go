@@ -21,7 +21,7 @@ func NewPreStopHook() *v1.Handler {
 const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 const PreStopHookScript = `#!/usr/bin/env bash
 
-set -eux
+set -euo pipefail
 
 # This script will wait for up to $PRE_STOP_MAX_WAIT_SECONDS for $POD_IP to disappear from DNS record,
 # then it will wait additional $PRE_STOP_ADDITIONAL_WAIT_SECONDS and exit. This slows down the process shutdown

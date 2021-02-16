@@ -5,19 +5,17 @@
 package bootstrap
 
 import (
-	"go.elastic.co/apm"
+	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
-	"context"
-
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"go.elastic.co/apm"
 )
 
-var log = logf.Log.WithName("elasticsearch-uuid")
+var log = ulog.Log.WithName("elasticsearch-uuid")
 
 const (
 	// ClusterUUIDAnnotationName used to store the cluster UUID as an annotation when cluster has been bootstrapped.
@@ -94,5 +92,5 @@ func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid st
 		cluster.Annotations = make(map[string]string)
 	}
 	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
-	return k8sClient.Update(cluster)
+	return k8sClient.Update(context.Background(), cluster)
 }

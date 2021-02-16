@@ -32,3 +32,75 @@ type Builder interface {
 	// Skip the test if true.
 	SkipTest() bool
 }
+
+type WrappedBuilder struct {
+	BuildingThis      Builder
+	PreInitSteps      func(k *K8sClient) StepList
+	PreCreationSteps  func(k *K8sClient) StepList
+	PreUpgradeSteps   func(k *K8sClient) StepList
+	PreMutationSteps  func(k *K8sClient) StepList
+	PostMutationSteps func(k *K8sClient) StepList
+	PreDeletionSteps  func(k *K8sClient) StepList
+}
+
+func (w WrappedBuilder) InitTestSteps(k *K8sClient) StepList {
+	steps := w.BuildingThis.InitTestSteps(k)
+	if w.PreInitSteps != nil {
+		steps = append(w.PreInitSteps(k), steps...)
+	}
+	return steps
+}
+
+func (w WrappedBuilder) CreationTestSteps(k *K8sClient) StepList {
+	steps := w.BuildingThis.CreationTestSteps(k)
+	if w.PreCreationSteps != nil {
+		steps = append(w.PreCreationSteps(k), steps...)
+	}
+	return steps
+}
+
+func (w WrappedBuilder) CheckK8sTestSteps(k *K8sClient) StepList {
+	return w.BuildingThis.CheckK8sTestSteps(k)
+}
+
+func (w WrappedBuilder) CheckStackTestSteps(k *K8sClient) StepList {
+	return w.BuildingThis.CheckK8sTestSteps(k)
+}
+
+func (w WrappedBuilder) UpgradeTestSteps(k *K8sClient) StepList {
+	steps := w.BuildingThis.UpgradeTestSteps(k)
+	if w.PreUpgradeSteps != nil {
+		steps = append(w.PreUpgradeSteps(k), steps...)
+	}
+	return steps
+}
+
+func (w WrappedBuilder) DeletionTestSteps(k *K8sClient) StepList {
+	steps := w.BuildingThis.DeletionTestSteps(k)
+	if w.PreDeletionSteps != nil {
+		steps = append(w.PreDeletionSteps(k), steps...)
+	}
+	return steps
+}
+
+func (w WrappedBuilder) MutationTestSteps(k *K8sClient) StepList {
+	var steps StepList
+	if w.PreMutationSteps != nil {
+		steps = append(steps, w.PreMutationSteps(k)...)
+	}
+	steps = append(steps, w.BuildingThis.MutationTestSteps(k)...)
+	if w.PostMutationSteps != nil {
+		steps = append(steps, w.PostMutationSteps(k)...)
+	}
+	return steps
+}
+
+func (w WrappedBuilder) MutationReversalTestContext() ReversalTestContext {
+	return w.BuildingThis.MutationReversalTestContext()
+}
+
+func (w WrappedBuilder) SkipTest() bool {
+	return w.BuildingThis.SkipTest()
+}
+
+var _ Builder = &WrappedBuilder{}

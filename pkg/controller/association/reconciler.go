@@ -42,8 +42,11 @@ var (
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
 type AssociationInfo struct {
-	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{}).
-	AssociationObjTemplate func() commonv1.Association
+	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
+	// elasticsearch for Beat to Elasticsearch association)
+	AssociationType commonv1.AssociationType
+	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for Kibana to Elasticsearch association).
+	AssociatedObjTemplate func() commonv1.Associated
 	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
 	// In the case of a transitive reference this is used to create the Elasticsearch user.
 	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
@@ -55,28 +58,59 @@ type AssociationInfo struct {
 	AssociationName string
 	// AssociatedShortName is the short name of the associated resource type (eg. "kb").
 	AssociatedShortName string
-	// AssociationLabels are labels set on resources created for association purpose.
-	AssociationLabels func(associated types.NamespacedName) map[string]string
+	// Labels are labels set on all resources created for association purpose. Note that some resources will be also
+	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
+	// labels provided here.
+	Labels func(associated types.NamespacedName) map[string]string
+	// AssociationConfAnnotationNameBase is prefix of the name of the annotation used to define the config for the
+	// associated resource. The annotation is used by the association controller to store the configuration and by
+	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
+	// base is used to recognize annotations eligible for removal when association is removed.
+	AssociationConfAnnotationNameBase string
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
-	// CASecretLabelName is the name of the label added on the Secret that contains the CA of the remote service.
-	CASecretLabelName string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
 	ESUserRole func(commonv1.Associated) (string, error)
 	// SetDynamicWatches allows to set some specific watches.
-	SetDynamicWatches func(association commonv1.Association, watches watches.DynamicWatches) error
-	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for this association.
+	SetDynamicWatches func(associated types.NamespacedName, associations []commonv1.Association, watches watches.DynamicWatches) error
+	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for the associated resource.
 	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
 	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
+	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
+	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
+	// Beat resource).
+	AssociationResourceNameLabelName string
+	// AssociationResourceNamespaceLabelName is a label used on resources needed for an association. It identifies the
+	// namespace of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label
+	// pointing to the Beat resource).
+	AssociationResourceNamespaceLabelName string
+}
+
+// AssociationResourceLabels returns all labels required by a resource to allow identifying both its Associated resource
+// (ie. Kibana for Kibana-ES association) and its Association resource (ie. ES for APM-ES association).
+func (a AssociationInfo) AssociationResourceLabels(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
+	return maps.Merge(
+		map[string]string{
+			a.AssociationResourceNameLabelName:      association.Name,
+			a.AssociationResourceNamespaceLabelName: association.Namespace,
+		},
+		a.Labels(associated),
+	)
 }
 
 // userLabelSelector returns labels selecting the ES user secret, including association labels and user type label.
-func (a AssociationInfo) userLabelSelector(associated types.NamespacedName) client.MatchingLabels {
+func (a AssociationInfo) userLabelSelector(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
 	return maps.Merge(
 		map[string]string{common.TypeLabelName: user.AssociatedUserType},
-		a.AssociationLabels(associated),
+		a.AssociationResourceLabels(associated, association),
 	)
 }
 
@@ -96,99 +130,103 @@ type Reconciler struct {
 }
 
 // log with namespace and name fields set for the given association resource.
-func (r *Reconciler) log(associated commonv1.Associated) logr.Logger {
+func (r *Reconciler) log(associatedNsName types.NamespacedName) logr.Logger {
 	return r.logger.WithValues(
-		"namespace", associated.GetNamespace(),
-		fmt.Sprintf("%s_name", r.AssociatedShortName), associated.GetName(),
+		"namespace", associatedNsName.Namespace,
+		fmt.Sprintf("%s_name", r.AssociatedShortName), associatedNsName.Name,
 	)
 }
 
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(r.logger, request, fmt.Sprintf("%s_name", r.AssociatedShortName), &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, r.AssociationName)
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, r.AssociationName)
 	defer tracing.EndTransaction(tx)
 
-	association := r.AssociationObjTemplate()
-	if err := FetchWithAssociations(ctx, r.Client, request, association.Associated()); err != nil {
+	associated := r.AssociatedObjTemplate()
+	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+			r.onDelete(ctx, types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
+			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(association) {
-		r.log(association).Info("Object is currently not managed by this controller. Skipping reconciliation")
+	associatedKey := k8s.ExtractNamespacedName(associated)
+
+	if common.IsUnmanaged(associated) {
+		r.log(associatedKey).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
-	if !association.GetDeletionTimestamp().IsZero() {
+	if !associated.GetDeletionTimestamp().IsZero() {
 		// Object is being deleted, short-circuit reconciliation
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, association.Associated()); err != nil || !compatible {
+	if compatible, err := r.isCompatible(ctx, associated); err != nil || !compatible {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, association, r.OperatorInfo.BuildInfo.Version); err != nil {
+	if err := annotation.UpdateControllerVersion(ctx, r.Client, associated, r.OperatorInfo.BuildInfo.Version); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+
+	associations := associated.GetAssociations()
+
+	// garbage collect leftover resources that are not required anymore
+	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associatedKey, associations); err != nil {
+		r.log(associatedKey).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
+
+	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+
+	if err := r.reconcileWatches(associatedKey, associations); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	results := reconciler.NewResult(ctx)
-	newStatus, err := r.doReconcile(ctx, association)
-	if err != nil {
-		results.WithError(err)
+	newStatusMap := commonv1.AssociationStatusMap{}
+	for _, association := range associations {
+		if association.AssociationType() != r.AssociationType {
+			// some resources have more than one type of resource associations, making sure we are looking at the right
+			// one for this controller
+			continue
+		}
+
+		newStatus, err := r.reconcileAssociation(ctx, association)
+		if err != nil {
+			results.WithError(err)
+		}
+
+		newStatusMap[association.AssociationRef().NamespacedName().String()] = newStatus
 	}
 
 	// we want to attempt a status update even in the presence of errors
-	if err := r.updateStatus(ctx, association, newStatus); err != nil {
+	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil {
 		return defaultRequeue, tracing.CaptureError(ctx, err)
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).
-		WithResult(resultFromStatus(newStatus)).
+		WithResult(resultFromStatuses(newStatusMap)).
 		Aggregate()
 }
 
-func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	assocKey := k8s.ExtractNamespacedName(association)
-	assocLabels := r.AssociationLabels(assocKey)
-
+func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
 	// retrieve the Elasticsearch resource, since it can be a transitive reference we need to use the provided ElasticsearchRef function
 	associatedResourceFound, esRef, err := r.ElasticsearchRef(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
 
-	// garbage collect leftover resources that are not required anymore
-	if err := deleteOrphanedResources(ctx, r, esRef, association, assocLabels); err != nil {
-		r.log(association).Error(err, "Error while trying to delete orphaned resources. Continuing.")
-	}
-
-	associationRef := association.AssociationRef()
-	if !associationRef.IsDefined() {
-		// clean up watchers and remove artifacts related to the association
-		if err := r.onDelete(assocKey); err != nil {
-			return commonv1.AssociationFailed, err
-		}
-		// remove the configuration in the annotation, other leftover resources are already garbage-collected
-		return commonv1.AssociationUnknown, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
-	}
-
-	// set additional watches, in the case of a transitive Elasticsearch reference we must watch the intermediate resource
-	if r.SetDynamicWatches != nil {
-		if err := r.SetDynamicWatches(association, r.watches); err != nil {
-			return commonv1.AssociationFailed, err
-		}
-	}
-
 	// the associated resource does not exist yet, set status to Pending
 	if !associatedResourceFound {
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
+		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
 	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
@@ -203,21 +241,14 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		return commonv1.AssociationPending, err
 	}
 
-	// watch resources related to the referenced ES and the target service
-	if err := r.setUserAndCaWatches(
-		association,
-		associationRef.NamespacedName(),
-		esRef.NamespacedName(),
-		r.AssociationInfo.AssociatedNamer,
-	); err != nil {
-		return commonv1.AssociationFailed, err
-	}
+	associationRef := association.AssociationRef()
 
 	userRole, err := r.ESUserRole(association.Associated())
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
 
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
 	if err := ReconcileEsUser(
 		ctx,
 		r.Client,
@@ -234,7 +265,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		association,
 		r.AssociationInfo.AssociatedNamer,
 		associationRef.NamespacedName(),
-		r.CASecretLabelName)
+	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
 	}
@@ -268,7 +299,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 
 // isCompatible returns true if the given resource can be reconciled by the current controller.
 func (r *Reconciler) isCompatible(ctx context.Context, associated commonv1.Associated) (bool, error) {
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.AssociationLabels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
+	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.Labels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, associated, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
@@ -286,14 +317,14 @@ func (r *Reconciler) getElasticsearch(
 	defer span.End()
 
 	var es esv1.Elasticsearch
-	err := r.Get(elasticsearchRef.NamespacedName(), &es)
+	err := r.Get(context.Background(), elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, association, events.EventAssociationError,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName()); err != nil && !apierrors.IsConflict(err) {
-				r.log(association).Error(err, "Failed to remove Elasticsearch association configuration")
+			if err := RemoveAssociationConf(r.Client, association); err != nil && !apierrors.IsConflict(err) {
+				r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
 			return esv1.Elasticsearch{}, commonv1.AssociationPending, nil
@@ -306,11 +337,16 @@ func (r *Reconciler) getElasticsearch(
 // Unbind removes the association resources.
 func (r *Reconciler) Unbind(association commonv1.Association) error {
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := k8s.DeleteSecretMatching(r.Client, r.userLabelSelector(k8s.ExtractNamespacedName(association))); err != nil {
+	if err := k8s.DeleteSecretMatching(
+		r.Client,
+		r.userLabelSelector(
+			k8s.ExtractNamespacedName(association),
+			association.AssociationRef().NamespacedName(),
+		)); err != nil {
 		return err
 	}
 	// Also remove the association configuration
-	return RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
+	return RemoveAssociationConf(r.Client, association)
 }
 
 // updateAssocConf updates associated with the expected association conf.
@@ -323,12 +359,12 @@ func (r *Reconciler) updateAssocConf(
 	defer span.End()
 
 	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
-		r.log(association).Info("Updating association configuration")
-		if err := UpdateAssociationConf(r.Client, association.Associated(), expectedAssocConf, association.AssociationConfAnnotationName()); err != nil {
+		r.log(k8s.ExtractNamespacedName(association)).Info("Updating association configuration")
+		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}
-			r.log(association).Error(err, "Failed to update association configuration")
+			r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to update association configuration")
 			return commonv1.AssociationPending, err
 		}
 		association.SetAssociationConf(expectedAssocConf)
@@ -337,19 +373,31 @@ func (r *Reconciler) updateAssocConf(
 }
 
 // updateStatus updates the associated resource status.
-func (r *Reconciler) updateStatus(ctx context.Context, association commonv1.Association, newStatus commonv1.AssociationStatus) error {
+func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Associated, newStatus commonv1.AssociationStatusMap) error {
 	span, _ := apm.StartSpan(ctx, "update_association_status", tracing.SpanTypeApp)
 	defer span.End()
 
-	oldStatus := association.AssociationStatus()
+	oldStatus := associated.AssociationStatusMap(r.AssociationType)
+
+	// To correctly compare statuses without making the reconciler aware of singleton vs multiple associations status
+	// differences we: set new status, get it from associated and only then compare with the oldStatus. Setting the
+	// same status is harmless, setting a different status is fine as we have a copy of oldStatus above.
+	if err := associated.SetAssociationStatusMap(r.AssociationType, newStatus); err != nil {
+		return err
+	}
+	newStatus = associated.AssociationStatusMap(r.AssociationType)
+
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		association.SetAssociationStatus(newStatus)
-		if err := r.Status().Update(association.Associated()); err != nil {
+		if err := r.Status().Update(ctx, associated); err != nil {
+			return err
+		}
+		annotations, err := annotation.ForAssociationStatusChange(oldStatus, newStatus)
+		if err != nil {
 			return err
 		}
 		r.recorder.AnnotatedEventf(
-			association.Associated(),
-			annotation.ForAssociationStatusChange(oldStatus, newStatus),
+			associated,
+			annotations,
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
@@ -357,21 +405,26 @@ func (r *Reconciler) updateStatus(ctx context.Context, association commonv1.Asso
 	return nil
 }
 
-func resultFromStatus(status commonv1.AssociationStatus) reconcile.Result {
-	switch status {
-	case commonv1.AssociationPending:
-		return defaultRequeue // retry
-	default:
-		return reconcile.Result{} // we are done or there is not much we can do
+func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Result {
+	for _, status := range statusMap {
+		if status == commonv1.AssociationPending {
+			return defaultRequeue // retry
+		}
 	}
+
+	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler) onDelete(associated types.NamespacedName) error {
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
 	// remove dynamic watches
 	if r.SetDynamicWatches != nil {
 		r.ClearDynamicWatches(associated, r.watches)
 	}
+	// remove other watches
 	r.removeWatches(associated)
+
 	// delete user Secret in the Elasticsearch namespace
-	return k8s.DeleteSecretMatching(r.Client, r.userLabelSelector(associated))
+	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
+		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
 }

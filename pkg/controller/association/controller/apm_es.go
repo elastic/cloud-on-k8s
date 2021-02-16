@@ -5,6 +5,7 @@
 package controller
 
 import (
+	"context"
 	"strings"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -34,8 +35,9 @@ const (
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:    "apm",
-		AssociationObjTemplate: func() commonv1.Association { return &apmv1.ApmEsAssociation{} },
+		AssociatedShortName:   "apm",
+		AssociatedObjTemplate: func() commonv1.Associated { return &apmv1.ApmServer{} },
+		AssociationType:       commonv1.ElasticsearchAssociationType,
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 			return true, association.AssociationRef(), nil
 		},
@@ -43,16 +45,18 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "apm-es",
-		AssociationLabels: func(associated types.NamespacedName) map[string]string {
+		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,
 				ApmAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		UserSecretSuffix:  "apm-user",
-		CASecretLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole:        getAPMElasticsearchRoles,
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                      "apm-user",
+		ESUserRole:                            getAPMElasticsearchRoles,
+		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
+		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 	})
 }
 
@@ -62,7 +66,7 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}
-	if err := c.Get(esRef.NamespacedName(), &es); err != nil {
+	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
 	return services.ExternalServiceURL(es), nil
@@ -72,7 +76,7 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 // reported in its status.
 func referencedElasticsearchStatusVersion(c k8s.Client, esRef types.NamespacedName) (string, error) {
 	var es esv1.Elasticsearch
-	if err := c.Get(esRef, &es); err != nil {
+	if err := c.Get(context.Background(), esRef, &es); err != nil {
 		return "", err
 	}
 	return es.Status.Version, nil
@@ -95,7 +99,7 @@ func getAPMElasticsearchRoles(associated commonv1.Associated) (string, error) {
 	}
 
 	// 7.5.x and above
-	if v.IsSameOrAfter(version.From(7, 5, 0)) {
+	if v.GTE(version.From(7, 5, 0)) {
 		return strings.Join([]string{
 			user.ApmUserRoleV75, // Retrieve cluster details (e.g. version) and manage apm-* indices
 			"ingest_admin",      // Set up index templates
@@ -104,7 +108,7 @@ func getAPMElasticsearchRoles(associated commonv1.Associated) (string, error) {
 	}
 
 	// 7.1.x to 7.4.x
-	if v.IsSameOrAfter(version.From(7, 1, 0)) {
+	if v.GTE(version.From(7, 1, 0)) {
 		return strings.Join([]string{
 			user.ApmUserRoleV7, // Retrieve cluster details (e.g. version) and manage apm-* indices
 			"ingest_admin",     // Set up index templates

@@ -43,7 +43,7 @@ var (
 // this test just visits the main path of the certs reconciliation
 // inner functions are individually tested elsewhere
 func TestReconcileCAAndHTTPCerts(t *testing.T) {
-	c := k8s.WrappedFakeClient()
+	c := k8s.NewFakeClient()
 
 	r := Reconciler{
 		K8sClient:             c,
@@ -80,7 +80,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	// and have the expected labels and content generated
 	checkCertsSecrets := func() {
 		var caCerts corev1.Secret
-		err := c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: CAInternalSecretName(esv1.ESNamer, obj.Name, HTTPCAType)}, &caCerts)
+		err := c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: CAInternalSecretName(esv1.ESNamer, obj.Name, HTTPCAType)}, &caCerts)
 		require.NoError(t, err)
 		require.Len(t, caCerts.Data, 2)
 		require.NotEmpty(t, caCerts.Data[CertFileName])
@@ -88,7 +88,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Equal(t, labels, caCerts.Labels)
 
 		var internalCerts corev1.Secret
-		err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
+		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
 		require.NoError(t, err)
 		require.Len(t, internalCerts.Data, 3)
 		require.NotEmpty(t, internalCerts.Data[CAFileName])
@@ -97,7 +97,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Equal(t, labels, internalCerts.Labels)
 
 		var publicCerts corev1.Secret
-		err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)
+		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)
 		require.NoError(t, err)
 		require.Len(t, publicCerts.Data, 2)
 		require.NotEmpty(t, publicCerts.Data[CAFileName])
@@ -133,6 +133,6 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	}
 	for _, nsn := range removedSecrets {
 		var s corev1.Secret
-		require.True(t, apierrors.IsNotFound(c.Get(nsn, &s)))
+		require.True(t, apierrors.IsNotFound(c.Get(context.Background(), nsn, &s)))
 	}
 }

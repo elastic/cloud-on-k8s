@@ -127,7 +127,7 @@ func Test_podsToUpgrade(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.args.pods...)
+			client := k8s.NewFakeClient(tt.args.pods...)
 			got, err := podsToUpgrade(client, tt.args.statefulSets)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("podsToUpgrade() error = %v, wantErr %v", err, tt.wantErr)
@@ -152,9 +152,9 @@ func Test_healthyPods(t *testing.T) {
 			name: "All Pods are healthy",
 			args: args{
 				pods: newUpgradeTestPods(
-					newTestPod("masters-2").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-0").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
+					newTestPod("masters-1").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
+					newTestPod("masters-0").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
 				),
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
@@ -169,9 +169,9 @@ func Test_healthyPods(t *testing.T) {
 			name: "One Pod is terminating",
 			args: args{
 				pods: newUpgradeTestPods(
-					newTestPod("masters-2").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
-					newTestPod("masters-0").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
+					newTestPod("masters-1").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true).withResourceVersion("999"),
+					newTestPod("masters-0").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
 				),
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
@@ -188,7 +188,7 @@ func Test_healthyPods(t *testing.T) {
 			esState := &testESState{
 				inCluster: tt.args.pods.podsInCluster(),
 			}
-			client := k8s.WrappedFakeClient(tt.args.pods.toRuntimeObjects("7.5.0", 0, nothing)...)
+			client := k8s.NewFakeClient(tt.args.pods.toRuntimeObjects("7.5.0", 0, nothing)...)
 			got, err := healthyPods(client, tt.args.statefulSets, esState)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("healthyPods() error = %v, wantErr %v", err, tt.wantErr)

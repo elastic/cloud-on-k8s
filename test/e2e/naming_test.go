@@ -2,15 +2,21 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package es
+// +build e2e
+
+package e2e
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"strconv"
 	"strings"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -20,10 +26,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/validation"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestNameValidation(t *testing.T) {
@@ -103,7 +105,7 @@ func testRejectionOfLongName(t *testing.T) {
 			Name: "Creating an Elasticsearch object should fail validation",
 			Test: func(t *testing.T) {
 				for _, obj := range esBuilder.RuntimeObjects() {
-					err := k.Client.Create(obj)
+					err := k.Client.Create(context.Background(), obj)
 					if err != nil {
 						// validating webhook is active and rejected the request
 						require.Contains(t, err.Error(), `admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request`)
@@ -114,7 +116,7 @@ func testRejectionOfLongName(t *testing.T) {
 					objectCreated = true
 					test.Eventually(func() error {
 						var createdES esv1.Elasticsearch
-						if err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES); err != nil {
+						if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES); err != nil {
 							return err
 						}
 
@@ -135,13 +137,13 @@ func testRejectionOfLongName(t *testing.T) {
 				}
 
 				for _, obj := range esBuilder.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					require.NoError(t, err)
 				}
 
 				test.Eventually(func() error {
 					var createdES esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES)
 					if apierrors.IsNotFound(err) {
 						return nil
 					}

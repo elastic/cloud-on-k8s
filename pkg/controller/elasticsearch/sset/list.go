@@ -5,22 +5,23 @@
 package sset
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var log = logf.Log.WithName("statefulset")
+var log = ulog.Log.WithName("statefulset")
 
 type StatefulSetList []appsv1.StatefulSet
 
@@ -30,7 +31,7 @@ func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (Stateful
 	var ssets appsv1.StatefulSetList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
-	err := c.List(&ssets, ns, matchLabels)
+	err := c.List(context.Background(), &ssets, ns, matchLabels)
 	sort.Slice(ssets.Items, func(i, j int) bool {
 		return ssets.Items[i].Name < ssets.Items[j].Name
 	})
@@ -45,6 +46,15 @@ func (l StatefulSetList) GetByName(ssetName string) (appsv1.StatefulSet, bool) {
 		}
 	}
 	return appsv1.StatefulSet{}, false
+}
+
+// Names returns the set of StatefulSets names.
+func (l StatefulSetList) Names() set.StringSet {
+	names := set.Make()
+	for _, statefulSet := range l {
+		names.Add(statefulSet.Name)
+	}
+	return names
 }
 
 // ObjectMetas returns a list of MetaObject from the StatefulSetList.
@@ -204,11 +214,11 @@ func (l StatefulSetList) WithStatefulSet(statefulSet appsv1.StatefulSet) Statefu
 // ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.
 func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Version) bool) bool {
 	v, err := GetESVersion(statefulSet)
-	if err != nil || v == nil {
+	if err != nil {
 		log.Error(err, "cannot parse version from StatefulSet", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
 		return false
 	}
-	return condition(*v)
+	return condition(v)
 }
 
 // AtLeastOneESVersionMatch returns true if at least one StatefulSet's ES version matches the given condition.

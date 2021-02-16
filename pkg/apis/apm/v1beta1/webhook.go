@@ -9,18 +9,18 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
 	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "ApmServer"}
-	validationLog = logf.Log.WithName("apm-v1beta1-validation")
+	validationLog = ulog.Log.WithName("apm-v1beta1-validation")
 
 	defaultChecks = []func(*ApmServer) field.ErrorList{
 		checkNoUnknownFields,
@@ -33,7 +33,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1beta1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1beta1,name=elastic-apm-validation-v1beta1.k8s.elastic.co,sideEffects=None
+// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1beta1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1beta1,name=elastic-apm-validation-v1beta1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
 var _ webhook.Validator = &ApmServer{}
 

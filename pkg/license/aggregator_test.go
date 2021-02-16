@@ -137,7 +137,7 @@ func TestMemFromNodeOpts(t *testing.T) {
 
 func TestAggregator(t *testing.T) {
 	objects := readObjects(t, "testdata/stack.yaml")
-	client := k8s.WrappedFakeClient(objects...)
+	client := k8s.NewFakeClient(objects...)
 	aggregator := Aggregator{client: client}
 
 	val, err := aggregator.AggregateMemory()

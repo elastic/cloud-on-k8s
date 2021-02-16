@@ -9,11 +9,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
-	"io/ioutil"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/stretchr/testify/assert"
@@ -152,12 +152,42 @@ func TestNewLicenseVerifier(t *testing.T) {
 			want: func(v *Verifier) {
 				// license attributes contain <> and & which json.Marshal escapes by default leading to a signature
 				// mismatch unless handled explicitly
-				bytes, err := ioutil.ReadFile("testdata/externally-generated-lic.json")
-				require.NoError(t, err)
-				var lic EnterpriseLicense
-				err = json.Unmarshal(bytes, &lic)
+				lic, err := externallySignedLicenseFixture()
 				require.NoError(t, err)
 				require.NoError(t, v.ValidSignature(lic))
+			},
+		},
+		{
+			name: "Can produce same signature as external tooling",
+			want: func(v *Verifier) {
+				signer := NewSigner(privKey)
+				licenseSpec := EnterpriseLicense{
+					License: LicenseSpec{
+						UID:                "F983C1D2-1676-4427-8B6A-EF954AEEC174",
+						Type:               "enterprise",
+						IssueDateInMillis:  1606262400000,
+						ExpiryDateInMillis: 1640995199999,
+						MaxResourceUnits:   100,
+						IssuedTo:           "ECK Unit & test <>",
+						Issuer:             "ECK Unit tests",
+						StartDateInMillis:  1606262400000,
+						ClusterLicenses:    nil,
+						Version:            4,
+					},
+				}
+				sig, err := signer.Sign(licenseSpec)
+				require.NoError(t, err)
+				require.NoError(t, v.ValidSignature(withSignature(licenseSpec, sig)))
+
+				lic, err := externallySignedLicenseFixture()
+				require.NoError(t, err)
+
+				expectedBytes, err := base64.StdEncoding.DecodeString(lic.License.Signature)
+				require.NoError(t, err)
+				actualBytes, err := base64.StdEncoding.DecodeString(string(sig))
+				require.NoError(t, err)
+				// some jiggery-pokery with knowledge of signature internals here to remove the random bits to allow a stable comparison
+				require.Nil(t, deep.Equal(append(expectedBytes[:7], expectedBytes[21:]...), append(actualBytes[:7], actualBytes[21:]...)))
 			},
 		},
 	}
