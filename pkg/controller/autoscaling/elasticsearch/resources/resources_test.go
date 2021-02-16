@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -166,7 +165,7 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 		Requests corev1.ResourceList
 	}
 	type args struct {
-		autoscalingResources v1.AutoscalingResources
+		autoscalingResources esv1.AutoscalingResources
 	}
 	tests := []struct {
 		name   string
@@ -177,8 +176,8 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 		{
 			name: "CPU limit should be twice the request",
 			args: args{
-				autoscalingResources: v1.AutoscalingResources{
-					CPU: &v1.QuantityRange{
+				autoscalingResources: esv1.AutoscalingResources{
+					CPU: &esv1.QuantityRange{
 						RequestsToLimitsRatio: float64ptr(2.0),
 					},
 					Memory: nil, // no ratio, use default which is 1 for memory
@@ -204,8 +203,8 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 		{
 			name: "Memory limit should be twice the request",
 			args: args{
-				autoscalingResources: v1.AutoscalingResources{
-					Memory: &v1.QuantityRange{
+				autoscalingResources: esv1.AutoscalingResources{
+					Memory: &esv1.QuantityRange{
 						RequestsToLimitsRatio: float64ptr(2.0),
 					},
 					CPU: nil, // no ratio, use default which is 1 for memory
@@ -230,8 +229,8 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 		{
 			name: "No limit",
 			args: args{
-				autoscalingResources: v1.AutoscalingResources{
-					Memory: &v1.QuantityRange{
+				autoscalingResources: esv1.AutoscalingResources{
+					Memory: &esv1.QuantityRange{
 						RequestsToLimitsRatio: float64ptr(0.0),
 					},
 					CPU: nil,

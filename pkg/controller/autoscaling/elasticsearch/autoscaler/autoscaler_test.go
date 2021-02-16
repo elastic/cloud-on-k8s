@@ -291,10 +291,9 @@ func getPolicyStates(status status.Status, policyName string) []status.PolicySta
 // - AutoscalingSpec builder
 
 type AutoscalingSpecBuilder struct {
-	name                                           string
-	nodeCountMin, nodeCountMax                     int32
-	cpu, memory, storage                           *esv1.QuantityRange
-	memRequestToLimitRatio, cpuRequestToLimitRatio *float64
+	name                       string
+	nodeCountMin, nodeCountMax int32
+	cpu, memory, storage       *esv1.QuantityRange
 }
 
 func NewAutoscalingSpecBuilder(name string) *AutoscalingSpecBuilder {
