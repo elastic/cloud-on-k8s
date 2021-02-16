@@ -106,7 +106,7 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 	}
 
 	// Get capacity requirements from the Elasticsearch autoscaling capacity API
-	requiredCapacity, err := esClient.GetAutoscalingCapacity(ctx)
+	autoscalingCapacityResult, err := esClient.GetAutoscalingCapacity(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -132,18 +132,18 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 
 		// Get the required capacity for this autoscaling policy from the Elasticsearch API
 		var nodeSetsResources resources.NodeSetsResources
-		capacity, hasCapacity := requiredCapacity.Policies[autoscalingPolicy.Name]
-		if hasCapacity && !capacity.RequiredCapacity.IsEmpty() {
+		autoscalingPolicyResult, hasCapacity := autoscalingCapacityResult.Policies[autoscalingPolicy.Name]
+		if hasCapacity && !autoscalingPolicyResult.RequiredCapacity.IsEmpty() {
 			// We received a required capacity from Elasticsearch for this policy.
 			log.Info(
 				"Required capacity for policy",
 				"policy", autoscalingPolicy.Name,
-				"required_capacity", capacity.RequiredCapacity,
-				"current_capacity", capacity.CurrentCapacity,
-				"current_capacity.count", len(capacity.CurrentNodes),
-				"current_nodes", capacity.CurrentNodes)
+				"required_capacity", autoscalingPolicyResult.RequiredCapacity,
+				"current_capacity", autoscalingPolicyResult.CurrentCapacity,
+				"current_capacity.count", len(autoscalingPolicyResult.CurrentNodes),
+				"current_nodes", autoscalingPolicyResult.CurrentNodes)
 			// Ensure that the user provides the related resources policies
-			if !canDecide(log, capacity.RequiredCapacity, autoscalingPolicy, statusBuilder) {
+			if !canDecide(log, autoscalingPolicyResult.RequiredCapacity, autoscalingPolicy, statusBuilder) {
 				continue
 			}
 			ctx := autoscaler.Context{
@@ -151,7 +151,7 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 				AutoscalingSpec:          autoscalingPolicy,
 				NodeSets:                 nodeSetList,
 				CurrentAutoscalingStatus: currentAutoscalingStatus,
-				RequiredCapacity:         capacity.RequiredCapacity,
+				AutoscalingPolicyResult:  autoscalingPolicyResult,
 				StatusBuilder:            statusBuilder,
 			}
 			nodeSetsResources = ctx.GetResources()

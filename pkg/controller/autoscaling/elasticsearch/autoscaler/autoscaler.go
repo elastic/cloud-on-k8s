@@ -24,11 +24,11 @@ func (ctx *Context) GetResources() resources.NodeSetsResources {
 		"scope", "node",
 		"nodesets", ctx.NodeSets.Names(),
 		"resources", desiredNodeResources.ToInt64(),
-		"required_capacity", ctx.RequiredCapacity,
+		"required_capacity", ctx.AutoscalingPolicyResult.RequiredCapacity,
 	)
 
 	// 2. Scale horizontally by adding nodes to meet the resource requirements.
-	return ctx.scaleHorizontally(desiredNodeResources)
+	return ctx.stabilize(ctx.scaleHorizontally(desiredNodeResources))
 }
 
 // scaleVertically calculates the desired resources for all the nodes managed by the same autoscaling policy, given the requested
@@ -64,4 +64,58 @@ func getMinStorageQuantity(autoscalingSpec esv1.AutoscalingPolicySpec, currentAu
 		}
 	}
 	return storage
+}
+
+// stabilize filters scale down decisions for a policy if the number of nodes observed by Elasticsearch is less than the expected one.
+func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) resources.NodeSetsResources {
+	currentResources, hasCurrentResources := ctx.CurrentAutoscalingStatus.CurrentResourcesForPolicy(ctx.AutoscalingSpec.Name)
+	if !hasCurrentResources {
+		// Autoscaling policy does not have any resource yet, for example it might happen if it is a new tier.
+		return calculatedResources
+	}
+
+	currentNodeCount := currentResources.NodeSetNodeCount.TotalNodeCount()
+	scalingDown := calculatedResources.NodeSetNodeCount.TotalNodeCount() < currentNodeCount
+	if len(ctx.AutoscalingPolicyResult.CurrentNodes) < int(currentNodeCount) && scalingDown {
+		ctx.Log.Info(
+			"Number of nodes observed by Elasticsearch is less than expected, do not scale down",
+			"policy", ctx.AutoscalingSpec.Name,
+			"current_capacity.count", len(ctx.AutoscalingPolicyResult.CurrentNodes),
+			"expected_capacity.count", currentNodeCount,
+		)
+		// The number of nodes observed by Elasticsearch is less than the expected one, do not scale down, reuse previous resources.
+		// nextNodeSetNodeCountList is a copy of currentResources but resources are adjusted to respect limits set by the user in the spec.
+		nextNodeSetNodeCountList := make(resources.NodeSetNodeCountList, len(currentResources.NodeSetNodeCount))
+		for i := range currentResources.NodeSetNodeCount {
+			nextNodeSetNodeCountList[i] = resources.NodeSetNodeCount{Name: currentResources.NodeSetNodeCount[i].Name}
+		}
+		distributeFairly(nextNodeSetNodeCountList, ctx.AutoscalingSpec.NodeCount.Adjust(currentNodeCount))
+		nextResources := resources.NodeSetsResources{
+			Name:             currentResources.Name,
+			NodeSetNodeCount: nextNodeSetNodeCountList,
+			NodeResources: resources.NodeResources{
+				Requests: currentResources.Requests.DeepCopy(),
+			},
+		}
+		// Reuse and adjust memory
+		if ctx.AutoscalingSpec.IsMemoryDefined() && currentResources.HasRequest(corev1.ResourceMemory) {
+			nextResources.SetRequest(corev1.ResourceMemory, ctx.AutoscalingSpec.Memory.Adjust(currentResources.GetRequest(corev1.ResourceMemory)))
+		}
+		// Reuse and adjust CPU
+		if ctx.AutoscalingSpec.IsCPUDefined() && currentResources.HasRequest(corev1.ResourceCPU) {
+			nextResources.SetRequest(corev1.ResourceCPU, ctx.AutoscalingSpec.CPU.Adjust(currentResources.GetRequest(corev1.ResourceCPU)))
+		}
+		// Reuse and adjust storage
+		if ctx.AutoscalingSpec.IsStorageDefined() && currentResources.HasRequest(corev1.ResourceStorage) {
+			storage := currentResources.GetRequest(corev1.ResourceStorage)
+			// For storage we only ensure that we are greater than the min. value.
+			if storage.Cmp(ctx.AutoscalingSpec.Storage.Min) < 0 {
+				storage = ctx.AutoscalingSpec.Storage.Min.DeepCopy()
+			}
+			nextResources.SetRequest(corev1.ResourceStorage, storage)
+		}
+		return nextResources
+
+	}
+	return calculatedResources
 }

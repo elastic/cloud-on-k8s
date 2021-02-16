@@ -20,8 +20,8 @@ type Context struct {
 	NodeSets esv1.NodeSetList
 	// CurrentAutoscalingStatus is the current resources status as stored in the Elasticsearch resource.
 	CurrentAutoscalingStatus status.Status
-	// RequiredCapacity contains the Elasticsearch Autoscaling API result.
-	RequiredCapacity client.AutoscalingCapacityInfo
+	// AutoscalingPolicyResult contains the Elasticsearch Autoscaling API result.
+	AutoscalingPolicyResult client.AutoscalingPolicyResult
 	// StatusBuilder is used to track any event that should be surfaced to the user.
 	StatusBuilder *status.AutoscalingStatusBuilder
 }

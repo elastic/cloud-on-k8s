@@ -94,12 +94,36 @@ type QuantityRange struct {
 	RequestsToLimitsRatio *float64 `json:"requestsToLimitsRatio"`
 }
 
+// Adjust adjusts a proposed quantity to ensure it is within the quantity range.
+func (qr *QuantityRange) Adjust(proposed resource.Quantity) resource.Quantity {
+	if qr == nil {
+		return proposed.DeepCopy()
+	}
+	if qr.Min.Cmp(proposed) > 0 {
+		return qr.Min.DeepCopy()
+	}
+	if qr.Max.Cmp(proposed) < 0 {
+		return qr.Max.DeepCopy()
+	}
+	return proposed.DeepCopy()
+}
+
 // +kubebuilder:object:generate=false
 type CountRange struct {
 	// Min represents the minimum number of nodes in a tier.
 	Min int32 `json:"min"`
 	// Max represents the maximum number of nodes in a tier.
 	Max int32 `json:"max"`
+}
+
+// Adjust adjusts a node count to ensure that it is within the range.
+func (cr *CountRange) Adjust(count int32) int32 {
+	if count < cr.Min {
+		return cr.Min
+	} else if count > cr.Max {
+		return cr.Max
+	}
+	return count
 }
 
 // GetAutoscalingSpecification unmarshal autoscaling specifications from an Elasticsearch resource.

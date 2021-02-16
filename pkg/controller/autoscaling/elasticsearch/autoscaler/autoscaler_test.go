@@ -24,7 +24,7 @@ func Test_GetResources(t *testing.T) {
 	type args struct {
 		currentNodeSets  esv1.NodeSetList
 		nodeSetsStatus   status.Status
-		requiredCapacity client.AutoscalingCapacityInfo
+		requiredCapacity client.AutoscalingPolicyResult
 		policy           esv1.AutoscalingPolicySpec
 	}
 	tests := []struct {
@@ -43,7 +43,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("3Gi").nodeStorage("8Gi").
 					tierMemory("9Gi").tierStorage("50Gi").
 					build(),
@@ -64,7 +64,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("6G").
 					tierMemory("15G").
 					build(),
@@ -85,7 +85,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("10G")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("6G").
 					tierMemory("15G").
 					nodeStorage("1Gi").
@@ -108,7 +108,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("6G").
 					tierMemory("21G").
 					build(),
@@ -129,7 +129,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("6G").
 					tierMemory("48G").
 					build(),
@@ -150,7 +150,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("6G").
 					tierMemory("48G"). // would require 6 nodes, user set a node count limit to 5
 					build(),
@@ -177,7 +177,7 @@ func Test_GetResources(t *testing.T) {
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
-				requiredCapacity: newRequiredCapacityBuilder().
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeMemory("8G").  // user set a limit to 5G / node
 					tierMemory("48G"). // would require 10
 					build(),
@@ -199,6 +199,54 @@ func Test_GetResources(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Do not scale down if all nodes are not observed by Elasticsearch",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
+				},
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
+					nodeStorage("1G").  // biggest shard is 1G
+					tierStorage("30G"). // only 5 nodes with 6G of storage each are seen
+					observedNodes("default-0", "default-1", "default-2", "default-3").
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 9).WithMemory("5G", "7G").WithStorage("5G", "6G").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}}, // do not scale down to 5 nodes
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}},
+			},
+			wantPolicyState: []status.PolicyState{},
+		},
+		{
+			name: "Scale down if requested by users even if all nodes are not observed by Elasticsearch",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
+				},
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
+					nodeStorage("1G").  // biggest shard is 1G
+					tierStorage("30G"). // only 5 nodes with 6G of storage each are seen
+					observedNodes("default-0", "default-1", "default-2", "default-3").
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 5).WithMemory("5G", "7G").WithStorage("5G", "6G").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}}, // scale down to 5 nodes as requested by the user
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}},
+			},
+			wantPolicyState: []status.PolicyState{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -207,7 +255,7 @@ func Test_GetResources(t *testing.T) {
 				AutoscalingSpec:          tt.args.policy,
 				NodeSets:                 tt.args.currentNodeSets,
 				CurrentAutoscalingStatus: tt.args.nodeSetsStatus,
-				RequiredCapacity:         tt.args.requiredCapacity,
+				AutoscalingPolicyResult:  tt.args.requiredCapacity,
 				StatusBuilder:            status.NewAutoscalingStatusBuilder(),
 			}
 			if got := ctx.GetResources(); !equality.Semantic.DeepEqual(got, tt.want) {
@@ -289,41 +337,49 @@ func (asb *AutoscalingSpecBuilder) Build() esv1.AutoscalingPolicySpec {
 
 // - PolicyCapacityInfo builder
 
-type requiredCapacityBuilder struct {
-	client.AutoscalingCapacityInfo
+type autoscalingPolicyResultBuilder struct {
+	client.AutoscalingPolicyResult
 }
 
-func newRequiredCapacityBuilder() *requiredCapacityBuilder {
-	return &requiredCapacityBuilder{}
+func newAutoscalingPolicyResultBuilder() *autoscalingPolicyResultBuilder {
+	return &autoscalingPolicyResultBuilder{}
+}
+
+func (rcb *autoscalingPolicyResultBuilder) build() client.AutoscalingPolicyResult {
+	return rcb.AutoscalingPolicyResult
+}
+
+func (rcb *autoscalingPolicyResultBuilder) nodeMemory(m string) *autoscalingPolicyResultBuilder {
+	rcb.RequiredCapacity.Node.Memory = ptr(value(m))
+	return rcb
+}
+
+func (rcb *autoscalingPolicyResultBuilder) tierMemory(m string) *autoscalingPolicyResultBuilder {
+	rcb.RequiredCapacity.Total.Memory = ptr(value(m))
+	return rcb
+}
+
+func (rcb *autoscalingPolicyResultBuilder) nodeStorage(m string) *autoscalingPolicyResultBuilder {
+	rcb.RequiredCapacity.Node.Storage = ptr(value(m))
+	return rcb
+}
+
+func (rcb *autoscalingPolicyResultBuilder) tierStorage(m string) *autoscalingPolicyResultBuilder {
+	rcb.RequiredCapacity.Total.Storage = ptr(value(m))
+	return rcb
+}
+
+func (rcb *autoscalingPolicyResultBuilder) observedNodes(nodes ...string) *autoscalingPolicyResultBuilder {
+	rcb.CurrentNodes = make([]client.AutoscalingNodeInfo, len(nodes))
+	for i := range nodes {
+		rcb.CurrentNodes[i] = client.AutoscalingNodeInfo{Name: nodes[i]}
+	}
+	return rcb
 }
 
 func ptr(q int64) *client.AutoscalingCapacity {
 	v := client.AutoscalingCapacity(q)
 	return &v
-}
-
-func (rcb *requiredCapacityBuilder) build() client.AutoscalingCapacityInfo {
-	return rcb.AutoscalingCapacityInfo
-}
-
-func (rcb *requiredCapacityBuilder) nodeMemory(m string) *requiredCapacityBuilder {
-	rcb.Node.Memory = ptr(value(m))
-	return rcb
-}
-
-func (rcb *requiredCapacityBuilder) tierMemory(m string) *requiredCapacityBuilder {
-	rcb.Total.Memory = ptr(value(m))
-	return rcb
-}
-
-func (rcb *requiredCapacityBuilder) nodeStorage(m string) *requiredCapacityBuilder {
-	rcb.Node.Storage = ptr(value(m))
-	return rcb
-}
-
-func (rcb *requiredCapacityBuilder) tierStorage(m string) *requiredCapacityBuilder {
-	rcb.Total.Storage = ptr(value(m))
-	return rcb
 }
 
 func value(v string) int64 {

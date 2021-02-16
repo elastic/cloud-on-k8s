@@ -19,13 +19,13 @@ const gibi = int64(1024 * 1024 * 1024)
 // nodeResources computes the desired amount of memory and storage for a node managed by a given AutoscalingPolicySpec.
 func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quantity) resources.NodeResources {
 	nodeResources := resources.NodeResources{}
-
+	requiredCapacity := ctx.AutoscalingPolicyResult.RequiredCapacity
 	// Compute desired memory quantity for the nodes managed by this AutoscalingPolicySpec.
-	if !ctx.RequiredCapacity.Node.Memory.IsEmpty() {
+	if !requiredCapacity.Node.Memory.IsEmpty() {
 		memoryRequest := ctx.getResourceValue(
 			"memory",
-			ctx.RequiredCapacity.Node.Memory,
-			ctx.RequiredCapacity.Total.Memory,
+			requiredCapacity.Node.Memory,
+			requiredCapacity.Total.Memory,
 			minNodesCount,
 			ctx.AutoscalingSpec.Memory.Min,
 			ctx.AutoscalingSpec.Memory.Max,
@@ -34,11 +34,11 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 	}
 
 	// Compute desired storage quantity for the nodes managed by this AutoscalingPolicySpec.
-	if !ctx.RequiredCapacity.Node.Storage.IsEmpty() {
+	if !requiredCapacity.Node.Storage.IsEmpty() {
 		storageRequest := ctx.getResourceValue(
 			"storage",
-			ctx.RequiredCapacity.Node.Storage,
-			ctx.RequiredCapacity.Total.Storage,
+			requiredCapacity.Node.Storage,
+			requiredCapacity.Total.Storage,
 			minNodesCount,
 			ctx.AutoscalingSpec.Storage.Min,
 			ctx.AutoscalingSpec.Storage.Max,
