@@ -74,14 +74,21 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		return calculatedResources
 	}
 
+	// currentNodeCount is a the number of nodes as previously stored in the status
 	currentNodeCount := currentResources.NodeSetNodeCount.TotalNodeCount()
-	scalingDown := calculatedResources.NodeSetNodeCount.TotalNodeCount() < currentNodeCount
-	if len(ctx.AutoscalingPolicyResult.CurrentNodes) < int(currentNodeCount) && scalingDown {
+	// nextNodeCount is a the number of nodes as calculated in this reconciliation loop by the autoscaling algorithm
+	nextNodeCount := calculatedResources.NodeSetNodeCount.TotalNodeCount()
+	// scalingDown is the situation where the next number of nodes is less than the one in the status
+	scalingDown := nextNodeCount < currentNodeCount
+	// observedNodesByEs is the number of nodes used by Elasticsearch to compute its requirements
+	observedNodesByEs := len(ctx.AutoscalingPolicyResult.CurrentNodes)
+	if observedNodesByEs < int(currentNodeCount) && scalingDown {
 		ctx.Log.Info(
 			"Number of nodes observed by Elasticsearch is less than expected, do not scale down",
 			"policy", ctx.AutoscalingSpec.Name,
-			"current_capacity.count", len(ctx.AutoscalingPolicyResult.CurrentNodes),
-			"expected_capacity.count", currentNodeCount,
+			"observed.count", observedNodesByEs,
+			"current.count", currentNodeCount,
+			"next.count", nextNodeCount,
 		)
 		// The number of nodes observed by Elasticsearch is less than the expected one, do not scale down, reuse previous resources.
 		// nextNodeSetNodeCountList is a copy of currentResources but resources are adjusted to respect limits set by the user in the spec.
