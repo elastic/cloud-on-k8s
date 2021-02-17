@@ -101,7 +101,7 @@ inputs:
         period: 1m
         processors:
           - drop_event.when.regexp:
-              system.filesystem.mount_point: ^/(sy
+              system.filesystem.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
       - id: system/metrics-system.fsstat
         data_stream:
           dataset: system.fsstat
@@ -111,7 +111,7 @@ inputs:
         period: 1m
         processors:
           - drop_event.when.regexp:
-              system.fsstat.mount_point: ^/(sys|cg
+              system.fsstat.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
       - id: system/metrics-system.load
         data_stream:
           dataset: system.load
@@ -282,7 +282,7 @@ inputs:
         period: 1m
         processors:
           - drop_event.when.regexp:
-              system.filesystem.mount_point: ^/(sy
+              system.filesystem.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
       - id: system/metrics-system.fsstat
         data_stream:
           dataset: system.fsstat
@@ -292,7 +292,7 @@ inputs:
         period: 1m
         processors:
           - drop_event.when.regexp:
-              system.fsstat.mount_point: ^/(sys|cg
+              system.fsstat.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
       - id: system/metrics-system.load
         data_stream:
           dataset: system.load
