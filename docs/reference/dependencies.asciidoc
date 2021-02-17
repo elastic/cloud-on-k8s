@@ -154,7 +154,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/elastic/go-sysinfo[$$github.com/elastic/go-sysinfo$$] | v1.1.1 | Apache-2.0
 | link:https://github.com/elastic/go-windows[$$github.com/elastic/go-windows$$] | v1.0.0 | Apache-2.0
 | link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy$$] | v0.0.0-20190711103511-473e67f1d7d2 | BSD-3-Clause
-| link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy/ext$$] | v0.0.0-20190711103511-473e67f1d7d2 | BSD-3-Clause
 | link:https://github.com/emicklei/go-restful[$$github.com/emicklei/go-restful$$] | v2.9.5+incompatible | MIT
 | link:https://github.com/envoyproxy/go-control-plane[$$github.com/envoyproxy/go-control-plane$$] | v0.9.4 | Apache-2.0
 | link:https://github.com/envoyproxy/protoc-gen-validate[$$github.com/envoyproxy/protoc-gen-validate$$] | v0.1.0 | Apache-2.0
@@ -311,7 +310,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/prometheus/tsdb[$$github.com/prometheus/tsdb$$] | v0.7.1 | Apache-2.0
 | link:https://github.com/rcrowley/go-metrics[$$github.com/rcrowley/go-metrics$$] | v0.0.0-20181016184325-3113b8401b8a | BSD-2-Clause-FreeBSD
 | link:https://github.com/rogpeppe/fastuuid[$$github.com/rogpeppe/fastuuid$$] | v0.0.0-20150106093220-6724a57986af | BSD-3-Clause
-| link:https://github.com/rogpeppe/go-charset[$$github.com/rogpeppe/go-charset$$] | v0.0.0-20180617210344-2471d30d28b4 | BSD-2-Clause
 | link:https://github.com/rogpeppe/go-internal[$$github.com/rogpeppe/go-internal$$] | v1.3.0 | BSD-3-Clause
 | link:https://github.com/russross/blackfriday[$$github.com/russross/blackfriday$$] | v1.5.2 | BSD-2-Clause
 | link:https://github.com/russross/blackfriday[$$github.com/russross/blackfriday/v2$$] | v2.0.1 | BSD-2-Clause
