@@ -5,10 +5,10 @@
 package validation
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -17,35 +17,36 @@ import (
 // within the controller as well where we don't have the context of the previous version of the spec anymore.
 // But we can infer a policy change by checking the ownerReferences on the PVCs in the knowledge that a Retain policy
 // must mean no owner reference on the PVCs and vice versa for the Remove* policies
-func noIllegalVolumeClaimDeletePolicyChange(k8sClient k8s.Client, es esv1.Elasticsearch) field.ErrorList {
+func noIllegalVolumeClaimDeletePolicyChange(c k8s.Client, es esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
-	matchingLabels := label.NewLabelSelectorForElasticsearch(es)
-	var pvcs v1.PersistentVolumeClaimList
-	if err := k8sClient.List(&pvcs, matchingLabels); err != nil {
-		// fail or continue here? let's not fail admission here for now, but if we don't
+	sets, err := sset.RetrieveActualStatefulSets(c, k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		// interal error when fetching ssets should not lead to a failing validation.
 		return errs
 	}
-
-	// OK no PVCs probably a new cluster
-	if len(pvcs.Items) == 0 {
+	// OK no ssets probably a new cluster
+	if len(sets) == 0 {
 		return errs
 	}
 
 	var isOwnedByES bool
-	for _, pvc := range pvcs.Items {
-		if k8s.HasOwner(&pvc, &es) {
-			isOwnedByES = true
-			break
+	for _, sset := range sets {
+		for _, pvc := range sset.Spec.VolumeClaimTemplates {
+			if k8s.HasOwner(&pvc, &es) {
+				isOwnedByES = true
+				break
+			}
 		}
 	}
 
 	policy := es.Spec.VolumeClaimDeletePolicyOrDefault()
-	// this can be simplified ...
-	if policy == esv1.RetainPolicy && isOwnedByES {
-		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("volumeClaimDeletePolicy"), forbiddenPolicyChgMsg))
-	}
-	if policy != esv1.RetainPolicy && !isOwnedByES {
-		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("volumeClaimDeletePolicy"), forbiddenPolicyChgMsg))
+	for _, forbidden := range []bool{
+		policy == esv1.RetainPolicy && isOwnedByES,
+		policy != esv1.RetainPolicy && !isOwnedByES,
+	} {
+		if forbidden {
+			errs = append(errs, field.Forbidden(field.NewPath("spec").Child("volumeClaimDeletePolicy"), forbiddenPolicyChgMsg))
+		}
 	}
 
 	return errs

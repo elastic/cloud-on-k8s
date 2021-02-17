@@ -127,7 +127,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	}
 
 	// Validate Elasticsearch and Autoscaling spec
-	if err := validation.ValidateElasticsearch(es); err != nil {
+	if err := validation.ValidateElasticsearch(r, es); err != nil {
 		log.Error(
 			err,
 			"Elasticsearch manifest validation failed",

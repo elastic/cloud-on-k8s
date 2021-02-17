@@ -77,11 +77,11 @@ type ElasticsearchSpec struct {
 type VolumeClaimDeletePolicy string
 
 const (
-	//RemoveOnScaleDownPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is scaled down.
+	// RemoveOnScaleDownPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is removed.
 	RemoveOnScaleDownPolicy VolumeClaimDeletePolicy = "RemoveOnScaleDown"
-	//RemoveOnClusterDeletionPolicy remove all PersistentVolumeClaims when the corresponding Elasticsearch cluster is deleted.
+	// RemoveOnClusterDeletionPolicy remove all PersistentVolumeClaims when the corresponding Elasticsearch cluster is deleted.
 	RemoveOnClusterDeletionPolicy VolumeClaimDeletePolicy = "RemoveOnClusterDeletion"
-	//RetainPolicy retain all PersistenVolumeClaims even after the corresponding Elasticsearch cluster has been deleted.
+	// RetainPolicy retain all PersistenVolumeClaims even after the corresponding Elasticsearch cluster has been deleted.
 	RetainPolicy VolumeClaimDeletePolicy = "Retain"
 )
 
