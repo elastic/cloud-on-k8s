@@ -19534,7 +19534,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------------
 Module  : github.com/googleapis/gnostic
 Version : v0.5.3
-Time    : 2020-10-26T16:24:21Z
+Time    : 2020-10-23T23:28:20Z
 Licence : Apache-2.0
 
 Contents of probable licence file $GOMODCACHE/github.com/googleapis/gnostic@v0.5.3/LICENSE:
