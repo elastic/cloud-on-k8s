@@ -7,12 +7,11 @@ package nodespec
 import (
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 )
 
 func Test_setVolumeClaimsControllerReference(t *testing.T) {
@@ -32,12 +31,14 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	}
 	tests := []struct {
 		name                   string
+		es                     esv1.Elasticsearch
 		persistentVolumeClaims []corev1.PersistentVolumeClaim
 		existingClaims         []corev1.PersistentVolumeClaim
 		wantClaims             []corev1.PersistentVolumeClaim
 	}{
 		{
 			name: "should set the ownerRef when building a new StatefulSet",
+			es:   es,
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 			},
@@ -62,6 +63,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 		},
 		{
 			name: "should set the ownerRef on user-provided claims when building a new StatefulSet",
+			es:   es,
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "user-provided"}},
@@ -98,6 +100,17 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "should not set the ownerRef if volume claim delete policy is retain",
+			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{VolumeClaimDeletePolicy: esv1.RetainPolicy}},
+			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
+			},
+			existingClaims: nil,
+			wantClaims: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 			},
 		},
 		{
@@ -177,7 +190,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims, es)
+			got, err := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims, tt.es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantClaims, got)
 		})
