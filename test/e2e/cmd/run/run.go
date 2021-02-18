@@ -74,7 +74,7 @@ func doRun(flags runFlags) error {
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
-			helper.installE2EOperator,
+			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
 			helper.runTestJob,
 		}
@@ -297,23 +297,23 @@ func (h *helper) createRoles() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
 }
 
-func (h *helper) installE2EOperator() error {
-	log.Info("Installing the E2E operator")
+func (h *helper) installOperatorUnderTest() error {
+	log.Info("Installing the operator under test")
 
 	installCRDs := false
 	if h.monitoringSecrets == "" {
 		installCRDs = true
 	}
 
-	manifestFile := filepath.Join(h.scratchDir, "e2e-operator.yaml")
+	manifestFile := filepath.Join(h.scratchDir, "operator-under-test.yaml")
 
-	if err := h.renderManifestFromHelm("config/e2e/helm-e2e-operator.yaml",
+	if err := h.renderManifestFromHelm("config/e2e/helm-operator-under-test.yaml",
 		h.testContext.Operator.Namespace, installCRDs, manifestFile); err != nil {
 		return err
 	}
 
 	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
-		return fmt.Errorf("failed to apply E2E operator manifest: %w", err)
+		return fmt.Errorf("failed to apply operator manifest: %w", err)
 	}
 
 	h.addCleanupFunc(h.deleteResources(manifestFile))
@@ -324,6 +324,8 @@ func (h *helper) installE2EOperator() error {
 func (h *helper) installMonitoringOperator() error {
 	log.Info("Installing the Monitoring operator")
 
+	// Monitoring gets installed first so we need to install the CRDs.
+	// The CRDs are from the current version being tested.
 	installCRDs := true
 	manifestFile := filepath.Join(h.scratchDir, "monitoring-operator.yaml")
 
