@@ -6,7 +6,7 @@ This page explains you how to set up your development environment.
 
 Before you start, install the following tools and packages:
 
-* [go](https://golang.org/dl/) (>= 1.13)
+* [go](https://golang.org/dl/) (>= 1.16)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
