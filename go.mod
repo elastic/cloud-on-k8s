@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s
 
-go 1.13
+go 1.16
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
@@ -11,7 +11,6 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elastic/go-ucfg v0.8.3
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
-	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0

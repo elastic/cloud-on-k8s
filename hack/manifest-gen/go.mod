@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/hack/manifest-gen
 
-go 1.14
+go 1.16
 
 require (
 	github.com/evanphx/json-patch v4.5.0+incompatible // indirect

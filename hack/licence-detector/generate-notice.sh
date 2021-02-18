@@ -16,10 +16,7 @@ LICENCE_DETECTOR="go.elastic.co/go-licence-detector@v0.3.0"
 trap '[[ $TEMP_DIR ]] && rm -rf "$TEMP_DIR"' EXIT
 
 get_licence_detector() {
-    (
-        cd "$TEMP_DIR"
-        GOBIN="$TEMP_DIR" GO111MODULE=on go get "$LICENCE_DETECTOR"
-    )
+    GOBIN="$TEMP_DIR" go install "$LICENCE_DETECTOR"
 }
 
 generate_notice() {
