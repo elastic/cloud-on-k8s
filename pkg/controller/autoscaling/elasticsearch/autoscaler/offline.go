@@ -74,11 +74,11 @@ func nodeSetResourcesFromStatus(
 		if currentNodeSetsResources.HasRequest(corev1.ResourceMemory) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceMemory,
-				autoscalingSpec.Memory.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceMemory)),
+				autoscalingSpec.MemoryRange.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceMemory)),
 			)
 		} else {
 			// Can't restore memory from status, use the min. from the autoscaling specification.
-			nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.Memory.Min.DeepCopy())
+			nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.MemoryRange.Min.DeepCopy())
 		}
 	}
 
@@ -87,16 +87,16 @@ func nodeSetResourcesFromStatus(
 		if currentNodeSetsResources.HasRequest(corev1.ResourceCPU) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceCPU,
-				autoscalingSpec.CPU.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceCPU)),
+				autoscalingSpec.CPURange.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceCPU)),
 			)
 		} else {
 			// Can't restore CPU from status, use the min. from the autoscaling specification.
-			nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPU.Min.DeepCopy())
+			nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPURange.Min.DeepCopy())
 		}
 	}
 
 	if autoscalingSpec.IsStorageDefined() {
-		storage := autoscalingSpec.Storage.Min
+		storage := autoscalingSpec.StorageRange.Min
 		// Attempt to get storage value from the status.
 		if currentNodeSetsResources.HasRequest(corev1.ResourceStorage) {
 			storageInStatus := currentNodeSetsResources.GetRequest(corev1.ResourceStorage)
@@ -115,13 +115,13 @@ func nodeSetResourcesFromStatus(
 func newMinNodeSetResources(autoscalingSpec esv1.AutoscalingPolicySpec, nodeSets []string) resources.NodeSetsResources {
 	nodeSetsResources := resources.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
 	if autoscalingSpec.IsCPUDefined() {
-		nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPU.Min.DeepCopy())
+		nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPURange.Min.DeepCopy())
 	}
 	if autoscalingSpec.IsMemoryDefined() {
-		nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.Memory.Min.DeepCopy())
+		nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.MemoryRange.Min.DeepCopy())
 	}
 	if autoscalingSpec.IsStorageDefined() {
-		nodeSetsResources.SetRequest(corev1.ResourceStorage, autoscalingSpec.Storage.Min.DeepCopy())
+		nodeSetsResources.SetRequest(corev1.ResourceStorage, autoscalingSpec.StorageRange.Min.DeepCopy())
 	}
 	return nodeSetsResources
 }

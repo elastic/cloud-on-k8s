@@ -199,13 +199,13 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 		}
 
 		// Validate CPU
-		errs = validateQuantities(errs, autoscalingSpec.CPU, i, "cpu", minCPU)
+		errs = validateQuantities(errs, autoscalingSpec.CPURange, i, "cpu", minCPU)
 
 		// Validate Memory
-		errs = validateQuantities(errs, autoscalingSpec.Memory, i, "memory", minMemory)
+		errs = validateQuantities(errs, autoscalingSpec.MemoryRange, i, "memory", minMemory)
 
 		// Validate storage
-		errs = validateQuantities(errs, autoscalingSpec.Storage, i, "storage", minStorage)
+		errs = validateQuantities(errs, autoscalingSpec.StorageRange, i, "storage", minStorage)
 	}
 	return errs
 }

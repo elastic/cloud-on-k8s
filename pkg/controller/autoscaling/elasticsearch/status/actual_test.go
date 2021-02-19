@@ -39,7 +39,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
 				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
 					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources:   esv1.AutoscalingResources{Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
+					AutoscalingResources:   esv1.AutoscalingResources{StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
 			wantNodeSetsResources: nil,
@@ -64,7 +64,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
 				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
 					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources:   esv1.AutoscalingResources{Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
+					AutoscalingResources:   esv1.AutoscalingResources{StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
 			wantNodeSetsResources: &resources.NodeSetsResources{
@@ -102,8 +102,8 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
 					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
 					AutoscalingResources: esv1.AutoscalingResources{
-						Memory:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
-						Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
+						MemoryRange:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
+						StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
 					},
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
@@ -144,8 +144,8 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
 					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
 					AutoscalingResources: esv1.AutoscalingResources{
-						Memory:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
-						Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
+						MemoryRange:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
+						StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
 					},
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
@@ -205,8 +205,8 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
 					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
 					AutoscalingResources: esv1.AutoscalingResources{
-						Memory:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
-						Storage: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
+						MemoryRange:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
+						StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
 					},
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},

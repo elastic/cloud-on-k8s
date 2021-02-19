@@ -402,9 +402,9 @@ func (asb *AutoscalingSpecBuilder) Build() esv1.AutoscalingPolicySpec {
 			Name: asb.name,
 		},
 		AutoscalingResources: esv1.AutoscalingResources{
-			CPU:     asb.cpu,
-			Memory:  asb.memory,
-			Storage: asb.storage,
+			CPURange:     asb.cpu,
+			MemoryRange:  asb.memory,
+			StorageRange: asb.storage,
 			NodeCountRange: esv1.CountRange{
 				Min: asb.nodeCountMin,
 				Max: asb.nodeCountMax,

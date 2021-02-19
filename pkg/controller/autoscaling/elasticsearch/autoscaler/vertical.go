@@ -25,8 +25,8 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 			requiredCapacity.Node.Memory,
 			requiredCapacity.Total.Memory,
 			minNodesCount,
-			ctx.AutoscalingSpec.Memory.Min,
-			ctx.AutoscalingSpec.Memory.Max,
+			ctx.AutoscalingSpec.MemoryRange.Min,
+			ctx.AutoscalingSpec.MemoryRange.Max,
 		)
 		nodeResources.SetRequest(corev1.ResourceMemory, memoryRequest)
 	}
@@ -38,8 +38,8 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 			requiredCapacity.Node.Storage,
 			requiredCapacity.Total.Storage,
 			minNodesCount,
-			ctx.AutoscalingSpec.Storage.Min,
-			ctx.AutoscalingSpec.Storage.Max,
+			ctx.AutoscalingSpec.StorageRange.Min,
+			ctx.AutoscalingSpec.StorageRange.Max,
 		)
 		if storageRequest.Cmp(minStorage) < 0 {
 			// Do not decrease storage capacity
@@ -53,13 +53,13 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 	// See https://github.com/elastic/cloud-on-k8s/issues/4076
 	if !nodeResources.HasRequest(corev1.ResourceMemory) && ctx.AutoscalingSpec.IsMemoryDefined() &&
 		ctx.AutoscalingSpec.IsStorageDefined() && nodeResources.HasRequest(corev1.ResourceStorage) {
-		nodeResources.SetRequest(corev1.ResourceMemory, memoryFromStorage(nodeResources.GetRequest(corev1.ResourceStorage), *ctx.AutoscalingSpec.Storage, *ctx.AutoscalingSpec.Memory))
+		nodeResources.SetRequest(corev1.ResourceMemory, memoryFromStorage(nodeResources.GetRequest(corev1.ResourceStorage), *ctx.AutoscalingSpec.StorageRange, *ctx.AutoscalingSpec.MemoryRange))
 	}
 
 	// Same as above, if CPU limits have been expressed by the user in the autoscaling specification then we adjust CPU request according to the memory request.
 	// See https://github.com/elastic/cloud-on-k8s/issues/4021
 	if ctx.AutoscalingSpec.IsCPUDefined() && ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
-		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.Memory, *ctx.AutoscalingSpec.CPU))
+		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.MemoryRange, *ctx.AutoscalingSpec.CPURange))
 	}
 
 	return nodeResources.UpdateLimits(ctx.AutoscalingSpec.AutoscalingResources)

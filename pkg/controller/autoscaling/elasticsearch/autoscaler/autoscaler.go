@@ -54,7 +54,7 @@ func getMinStorageQuantity(autoscalingSpec esv1.AutoscalingPolicySpec, currentAu
 	storage := volume.DefaultPersistentVolumeSize.DeepCopy()
 	// Always adjust to the min value specified by the user in the limits.
 	if autoscalingSpec.IsStorageDefined() {
-		storage = autoscalingSpec.Storage.Min
+		storage = autoscalingSpec.StorageRange.Min
 	}
 	// If a storage value is stored in the status then reuse it.
 	if currentResourcesInStatus, exists := currentAutoscalingStatus.CurrentResourcesForPolicy(autoscalingSpec.Name); exists && currentResourcesInStatus.HasRequest(corev1.ResourceStorage) {
@@ -106,18 +106,18 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		}
 		// Reuse and adjust memory
 		if ctx.AutoscalingSpec.IsMemoryDefined() && currentResources.HasRequest(corev1.ResourceMemory) {
-			nextResources.SetRequest(corev1.ResourceMemory, ctx.AutoscalingSpec.Memory.Enforce(currentResources.GetRequest(corev1.ResourceMemory)))
+			nextResources.SetRequest(corev1.ResourceMemory, ctx.AutoscalingSpec.MemoryRange.Enforce(currentResources.GetRequest(corev1.ResourceMemory)))
 		}
 		// Reuse and adjust CPU
 		if ctx.AutoscalingSpec.IsCPUDefined() && currentResources.HasRequest(corev1.ResourceCPU) {
-			nextResources.SetRequest(corev1.ResourceCPU, ctx.AutoscalingSpec.CPU.Enforce(currentResources.GetRequest(corev1.ResourceCPU)))
+			nextResources.SetRequest(corev1.ResourceCPU, ctx.AutoscalingSpec.CPURange.Enforce(currentResources.GetRequest(corev1.ResourceCPU)))
 		}
 		// Reuse and adjust storage
 		if ctx.AutoscalingSpec.IsStorageDefined() && currentResources.HasRequest(corev1.ResourceStorage) {
 			storage := currentResources.GetRequest(corev1.ResourceStorage)
 			// For storage we only ensure that we are greater than the min. value.
-			if storage.Cmp(ctx.AutoscalingSpec.Storage.Min) < 0 {
-				storage = ctx.AutoscalingSpec.Storage.Min.DeepCopy()
+			if storage.Cmp(ctx.AutoscalingSpec.StorageRange.Min) < 0 {
+				storage = ctx.AutoscalingSpec.StorageRange.Min.DeepCopy()
 			}
 			nextResources.SetRequest(corev1.ResourceStorage, storage)
 		}
