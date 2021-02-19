@@ -41,6 +41,9 @@ func GetOfflineNodeSetsResources(
 	// Ensure that the number of nodes is in the allowed range.
 	expectedNodeCount = autoscalingSpec.NodeCount.Enforce(expectedNodeCount)
 
+	// Adjust limits
+	nodeSetsResources.NodeResources = nodeSetsResources.UpdateLimits(autoscalingSpec.AutoscalingResources)
+
 	// User may have added or removed some NodeSets while the autoscaling API is not available.
 	// We distribute the nodes to reflect that change.
 	distributeFairly(nodeSetsResources.NodeSetNodeCount, expectedNodeCount)

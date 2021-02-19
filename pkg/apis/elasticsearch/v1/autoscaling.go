@@ -17,7 +17,18 @@ import (
 
 const ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
 
-var errNodeRolesNotSet = errors.New("node.roles must be set")
+var (
+	errNodeRolesNotSet = errors.New("node.roles must be set")
+
+	// defaultMemoryRequestsToLimitsRatio is the default ratio used to convert a memory request to a memory limit in the
+	// Pod resources specification. By default we want to have the same value for both the memory request and the memory
+	// limit.
+	defaultMemoryRequestsToLimitsRatio = 1.0
+
+	// defaultCPURequestsToLimitsRatio is the default ratio used to convert a CPU request to a CPU limit in the Pod
+	// resources specification. By default we don't want a CPU limit, hence a default value of 0.0
+	defaultCPURequestsToLimitsRatio = 0.0
+)
 
 // -- Elasticsearch Autoscaling API structures
 
@@ -106,6 +117,24 @@ func (qr *QuantityRange) Enforce(proposed resource.Quantity) resource.Quantity {
 		return qr.Max.DeepCopy()
 	}
 	return proposed.DeepCopy()
+}
+
+// MemoryRequestsToLimitsRatio returns the ratio between the memory request, computed by the autoscaling algorithm, and
+// the limits. If no ratio has been specified by the user then a default value is returned.
+func (ar AutoscalingResources) MemoryRequestsToLimitsRatio() float64 {
+	if ar.Memory == nil || ar.Memory.RequestsToLimitsRatio == nil {
+		return defaultMemoryRequestsToLimitsRatio
+	}
+	return *ar.Memory.RequestsToLimitsRatio
+}
+
+// CPURequestsToLimitsRatio returns the ratio between the CPU request, computed by the autoscaling algorithm, and
+// the limits. If no ratio has been specified by the user then a default value is returned.
+func (ar AutoscalingResources) CPURequestsToLimitsRatio() float64 {
+	if ar.CPU == nil || ar.CPU.RequestsToLimitsRatio == nil {
+		return defaultCPURequestsToLimitsRatio
+	}
+	return *ar.CPU.RequestsToLimitsRatio
 }
 
 // +kubebuilder:object:generate=false

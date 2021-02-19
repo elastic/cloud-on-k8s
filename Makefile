@@ -126,7 +126,7 @@ clean:
 
 reattach-pv:
 	# just check that reattach-pv still compiles
-	go build -o /dev/null hack/reattach-pv/main.go
+	go build -o /dev/null support/reattach-pv/main.go
 
 compile-all: 
 	@ go build ./...
@@ -400,7 +400,7 @@ switch-registry-dev: # just use the default values of variables
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-E2E_STACK_VERSION          ?= 7.10.1
+E2E_STACK_VERSION          ?= 7.11.0
 E2E_JSON                   ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
@@ -429,8 +429,7 @@ e2e-docker-multiarch-build: clean
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
-		--operator-image-repo=$(BASE_IMG) \
-		--operator-image-tag=$(IMG_VERSION) \
+		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \

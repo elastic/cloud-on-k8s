@@ -24,7 +24,7 @@ func TestWebhook(t *testing.T) {
 		},
 		Spec: beatv1beta1.BeatSpec{
 			Type:    "filebeat",
-			Version: "7.8.0",
+			Version: "7.11.0",
 			// neither DaemonSet nor Deployment provided - this should result in an error like below
 		},
 	}
