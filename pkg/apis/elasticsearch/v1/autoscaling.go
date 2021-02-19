@@ -26,7 +26,7 @@ var (
 	defaultMemoryRequestsToLimitsRatio = 1.0
 
 	// defaultCPURequestsToLimitsRatio is the default ratio used to convert a CPU request to a CPU limit in the Pod
-	// resources specification. By default we don't want CPU limit, hence a default value of 0.0
+	// resources specification. By default we don't want a CPU limit, hence a default value of 0.0
 	defaultCPURequestsToLimitsRatio = 0.0
 )
 

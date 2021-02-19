@@ -161,7 +161,7 @@ type NodeResources struct {
 // ResourceRequirements with the values from the NodeResources.
 // If a value in the NodeResources is not present then the value in the result is removed.
 // Values for extended resources (e.g. GPU), are left untouched.
-// This function has no side effect and do not modify the original ResourceRequirements.
+// This function has no side effect and does not modify the original ResourceRequirements.
 func (nr *NodeResources) ToContainerResourcesWith(sourceRequirements corev1.ResourceRequirements) corev1.ResourceRequirements {
 	mergedResources := sourceRequirements.DeepCopy()
 
