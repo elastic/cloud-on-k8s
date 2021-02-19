@@ -94,8 +94,8 @@ type QuantityRange struct {
 	RequestsToLimitsRatio *float64 `json:"requestsToLimitsRatio"`
 }
 
-// Adjust adjusts a proposed quantity to ensure it is within the quantity range.
-func (qr *QuantityRange) Adjust(proposed resource.Quantity) resource.Quantity {
+// Enforce adjusts a proposed quantity to ensure it is within the quantity range.
+func (qr *QuantityRange) Enforce(proposed resource.Quantity) resource.Quantity {
 	if qr == nil {
 		return proposed.DeepCopy()
 	}
@@ -116,8 +116,8 @@ type CountRange struct {
 	Max int32 `json:"max"`
 }
 
-// Adjust adjusts a node count to ensure that it is within the range.
-func (cr *CountRange) Adjust(count int32) int32 {
+// Enforce adjusts a node count to ensure that it is within the range.
+func (cr *CountRange) Enforce(count int32) int32 {
 	if count < cr.Min {
 		return cr.Min
 	} else if count > cr.Max {

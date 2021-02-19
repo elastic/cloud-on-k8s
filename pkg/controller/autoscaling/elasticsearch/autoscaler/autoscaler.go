@@ -96,7 +96,7 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		for i := range currentResources.NodeSetNodeCount {
 			nextNodeSetNodeCountList[i] = resources.NodeSetNodeCount{Name: currentResources.NodeSetNodeCount[i].Name}
 		}
-		distributeFairly(nextNodeSetNodeCountList, ctx.AutoscalingSpec.NodeCount.Adjust(currentNodeCount))
+		distributeFairly(nextNodeSetNodeCountList, ctx.AutoscalingSpec.NodeCount.Enforce(currentNodeCount))
 		nextResources := resources.NodeSetsResources{
 			Name:             currentResources.Name,
 			NodeSetNodeCount: nextNodeSetNodeCountList,
@@ -106,11 +106,11 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		}
 		// Reuse and adjust memory
 		if ctx.AutoscalingSpec.IsMemoryDefined() && currentResources.HasRequest(corev1.ResourceMemory) {
-			nextResources.SetRequest(corev1.ResourceMemory, ctx.AutoscalingSpec.Memory.Adjust(currentResources.GetRequest(corev1.ResourceMemory)))
+			nextResources.SetRequest(corev1.ResourceMemory, ctx.AutoscalingSpec.Memory.Enforce(currentResources.GetRequest(corev1.ResourceMemory)))
 		}
 		// Reuse and adjust CPU
 		if ctx.AutoscalingSpec.IsCPUDefined() && currentResources.HasRequest(corev1.ResourceCPU) {
-			nextResources.SetRequest(corev1.ResourceCPU, ctx.AutoscalingSpec.CPU.Adjust(currentResources.GetRequest(corev1.ResourceCPU)))
+			nextResources.SetRequest(corev1.ResourceCPU, ctx.AutoscalingSpec.CPU.Enforce(currentResources.GetRequest(corev1.ResourceCPU)))
 		}
 		// Reuse and adjust storage
 		if ctx.AutoscalingSpec.IsStorageDefined() && currentResources.HasRequest(corev1.ResourceStorage) {

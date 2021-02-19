@@ -39,7 +39,7 @@ func GetOfflineNodeSetsResources(
 	}
 
 	// Ensure that the number of nodes is in the allowed range.
-	expectedNodeCount = autoscalingSpec.NodeCount.Adjust(expectedNodeCount)
+	expectedNodeCount = autoscalingSpec.NodeCount.Enforce(expectedNodeCount)
 
 	// User may have added or removed some NodeSets while the autoscaling API is not available.
 	// We distribute the nodes to reflect that change.
@@ -71,7 +71,7 @@ func nodeSetResourcesFromStatus(
 		if currentNodeSetsResources.HasRequest(corev1.ResourceMemory) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceMemory,
-				autoscalingSpec.Memory.Adjust(currentNodeSetsResources.GetRequest(corev1.ResourceMemory)),
+				autoscalingSpec.Memory.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceMemory)),
 			)
 		} else {
 			// Can't restore memory from status, use the min. from the autoscaling specification.
@@ -84,7 +84,7 @@ func nodeSetResourcesFromStatus(
 		if currentNodeSetsResources.HasRequest(corev1.ResourceCPU) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceCPU,
-				autoscalingSpec.CPU.Adjust(currentNodeSetsResources.GetRequest(corev1.ResourceCPU)),
+				autoscalingSpec.CPU.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceCPU)),
 			)
 		} else {
 			// Can't restore CPU from status, use the min. from the autoscaling specification.
