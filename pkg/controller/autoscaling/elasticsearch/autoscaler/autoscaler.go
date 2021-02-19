@@ -40,7 +40,7 @@ func (ctx *Context) scaleVertically() resources.NodeResources {
 	// as a hard min. limit. This storage limit must be taken into consideration when computing the desired resources.
 	minStorage := getMinStorageQuantity(ctx.AutoscalingSpec, ctx.CurrentAutoscalingStatus)
 	return ctx.nodeResources(
-		int64(ctx.AutoscalingSpec.NodeCount.Min),
+		int64(ctx.AutoscalingSpec.NodeCountRange.Min),
 		minStorage,
 	)
 }
@@ -96,7 +96,7 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		for i := range currentResources.NodeSetNodeCount {
 			nextNodeSetNodeCountList[i] = resources.NodeSetNodeCount{Name: currentResources.NodeSetNodeCount[i].Name}
 		}
-		distributeFairly(nextNodeSetNodeCountList, ctx.AutoscalingSpec.NodeCount.Enforce(currentNodeCount))
+		distributeFairly(nextNodeSetNodeCountList, ctx.AutoscalingSpec.NodeCountRange.Enforce(currentNodeCount))
 		nextResources := resources.NodeSetsResources{
 			Name:             currentResources.Name,
 			NodeSetNodeCount: nextNodeSetNodeCountList,

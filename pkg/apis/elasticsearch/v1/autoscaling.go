@@ -90,8 +90,8 @@ type AutoscalingResources struct {
 	Memory  *QuantityRange `json:"memory,omitempty"`
 	Storage *QuantityRange `json:"storage,omitempty"`
 
-	// NodeCount is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
-	NodeCount CountRange `json:"nodeCount"`
+	// NodeCountRange is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
+	NodeCountRange CountRange `json:"nodeCount"`
 }
 
 // QuantityRange models a resource limit range for resources which can be expressed with resource.Quantity.
@@ -266,7 +266,7 @@ func (as AutoscalingSpec) GetMLNodesSettings() (nodes int32, maxMemory string) {
 			autoscalingSpec.Memory.Max.Value() > maxMemoryAsInt {
 			maxMemoryAsInt = autoscalingSpec.Memory.Max.Value()
 		}
-		nodes += autoscalingSpec.NodeCount.Max
+		nodes += autoscalingSpec.NodeCountRange.Max
 	}
 	maxMemory = fmt.Sprintf("%db", maxMemoryAsInt)
 	return nodes, maxMemory

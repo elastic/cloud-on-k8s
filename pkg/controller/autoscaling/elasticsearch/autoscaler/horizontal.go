@@ -19,23 +19,23 @@ func (ctx *Context) scaleHorizontally(
 	totalRequiredCapacity := ctx.AutoscalingPolicyResult.RequiredCapacity.Total // total required resources, at the tier level.
 
 	// The vertical autoscaler computed the expected capacity for each node in the autoscaling policy. The minimum number of nodes, specified by the user
-	// in AutoscalingSpec.NodeCount.Min, can then be used to know what amount of resources we already have (AutoscalingSpec.NodeCount.Min * nodeCapacity).
+	// in AutoscalingSpec.NodeCountRange.Min, can then be used to know what amount of resources we already have (AutoscalingSpec.NodeCountRange.Min * nodeCapacity).
 	// nodesToAdd is the number of nodes to be added to that min. amount of resources to match the required capacity.
 	var nodesToAdd int32
 
 	// Scale horizontally to match memory requirements
 	if !totalRequiredCapacity.Memory.IsZero() {
 		nodeMemory := nodeCapacity.GetRequest(corev1.ResourceMemory)
-		nodesToAdd = ctx.getNodesToAdd(nodeMemory.Value(), totalRequiredCapacity.Memory.Value(), ctx.AutoscalingSpec.NodeCount.Min, ctx.AutoscalingSpec.NodeCount.Max, string(corev1.ResourceMemory))
+		nodesToAdd = ctx.getNodesToAdd(nodeMemory.Value(), totalRequiredCapacity.Memory.Value(), ctx.AutoscalingSpec.NodeCountRange.Min, ctx.AutoscalingSpec.NodeCountRange.Max, string(corev1.ResourceMemory))
 	}
 
 	// Scale horizontally to match storage requirements
 	if !totalRequiredCapacity.Storage.IsZero() {
 		nodeStorage := nodeCapacity.GetRequest(corev1.ResourceStorage)
-		nodesToAdd = max(nodesToAdd, ctx.getNodesToAdd(nodeStorage.Value(), totalRequiredCapacity.Storage.Value(), ctx.AutoscalingSpec.NodeCount.Min, ctx.AutoscalingSpec.NodeCount.Max, string(corev1.ResourceStorage)))
+		nodesToAdd = max(nodesToAdd, ctx.getNodesToAdd(nodeStorage.Value(), totalRequiredCapacity.Storage.Value(), ctx.AutoscalingSpec.NodeCountRange.Min, ctx.AutoscalingSpec.NodeCountRange.Max, string(corev1.ResourceStorage)))
 	}
 
-	totalNodes := nodesToAdd + ctx.AutoscalingSpec.NodeCount.Min
+	totalNodes := nodesToAdd + ctx.AutoscalingSpec.NodeCountRange.Min
 	ctx.Log.Info("Horizontal autoscaler", "policy", ctx.AutoscalingSpec.Name,
 		"scope", "tier",
 		"count", totalNodes,
