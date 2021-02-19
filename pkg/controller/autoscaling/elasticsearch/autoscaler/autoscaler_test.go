@@ -211,7 +211,7 @@ func Test_GetResources(t *testing.T) {
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeStorage("1G").  // biggest shard is 1G
 					tierStorage("30G"). // only 5 nodes with 6G of storage each are seen
-					observedNodes("default-0", "default-1", "default-2", "default-3").
+					observedNodes("default-0", "default-1", "default-2", "default-3", "default-4").
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 9).WithMemory("5G", "7G").WithStorage("5G", "6G").Build(),
 			},
@@ -235,7 +235,7 @@ func Test_GetResources(t *testing.T) {
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					nodeStorage("1G").  // biggest shard is 1G
 					tierStorage("30G"). // only 5 nodes with 6G of storage each are seen
-					observedNodes("default-0", "default-1", "default-2", "default-3").
+					observedNodes("default-0", "default-1", "default-2", "default-3", "default-4").
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 5).WithMemory("5G", "7G").WithStorage("5G", "6G").Build(),
 			},
