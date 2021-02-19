@@ -87,7 +87,7 @@ func buildPodTemplate(
 			ConfigVolumeName,
 			ConfigMountPath,
 			ConfigFileName,
-			0600),
+			0440),
 		dataVolume,
 	}
 
