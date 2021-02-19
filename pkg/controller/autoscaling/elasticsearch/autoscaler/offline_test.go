@@ -42,7 +42,10 @@ func TestGetOfflineNodeSetsResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "region-a", NodeCount: 3}, {Name: "region-b", NodeCount: 3}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("35Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("35Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi")},
+				},
 			},
 		},
 		{
@@ -58,7 +61,10 @@ func TestGetOfflineNodeSetsResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "region-a", NodeCount: 3}, {Name: "region-b", NodeCount: 3}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8Gi"), corev1.ResourceStorage: q("20Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8Gi"), corev1.ResourceStorage: q("20Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8Gi")},
+				},
 			},
 		},
 		{
@@ -74,7 +80,10 @@ func TestGetOfflineNodeSetsResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "region-a", NodeCount: 3}, {Name: "region-b", NodeCount: 3}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("50Gi" /* memory should be increased */), corev1.ResourceStorage: q("35Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("50Gi" /* memory should be increased */), corev1.ResourceStorage: q("35Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("50Gi")},
+				},
 			},
 		},
 		{
@@ -90,7 +99,10 @@ func TestGetOfflineNodeSetsResources(t *testing.T) {
 			want: resources.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "region-a", NodeCount: 2}, {Name: "region-b", NodeCount: 2}, {Name: "region-new", NodeCount: 2}},
-				NodeResources:    resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("35Gi")}},
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("35Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi")},
+				},
 			},
 		},
 	}
