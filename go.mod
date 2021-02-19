@@ -63,7 +63,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f // indirect
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	sigs.k8s.io/controller-runtime v0.8.2
-	sigs.k8s.io/controller-tools v0.4.1
+	sigs.k8s.io/controller-tools v0.5.0
 )
 
 // this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this
