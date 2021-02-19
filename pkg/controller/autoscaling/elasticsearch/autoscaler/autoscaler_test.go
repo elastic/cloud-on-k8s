@@ -240,7 +240,9 @@ func Test_GetResources(t *testing.T) {
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}}, // do not scale down to 5 nodes
 				NodeResources: resources.NodeResources{
-					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}},
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
+				},
 			},
 			wantPolicyState: []status.PolicyState{},
 		},
@@ -264,7 +266,9 @@ func Test_GetResources(t *testing.T) {
 				Name:             "my-autoscaling-policy",
 				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}}, // scale down to 5 nodes as requested by the user
 				NodeResources: resources.NodeResources{
-					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}},
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
+				},
 			},
 			wantPolicyState: []status.PolicyState{},
 		},

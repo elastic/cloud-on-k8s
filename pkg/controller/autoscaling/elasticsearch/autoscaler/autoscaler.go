@@ -121,6 +121,10 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 			}
 			nextResources.SetRequest(corev1.ResourceStorage, storage)
 		}
+
+		// Also update and adjust limits if user has updated the ratios
+		nextResources.NodeResources = nextResources.UpdateLimits(ctx.AutoscalingSpec.AutoscalingResources)
+
 		return nextResources
 
 	}
