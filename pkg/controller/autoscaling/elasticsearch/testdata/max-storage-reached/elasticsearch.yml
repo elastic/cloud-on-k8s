@@ -57,7 +57,8 @@ metadata:
                                                                       "max": "2Gi"
                                                                   }
                                                               }
-                                                          }]
+                                                          }],
+                                                          "syncPeriod": "42s"
                                                       }'
     elasticsearch.alpha.elastic.co/autoscaling-status: '{"policies":[{"name":"di","nodeSets":[{"name":"di","nodeCount":8}],"resources":{"requests":{"cpu":"6","memory":"8Gi","storage":"4Gi"}},"state":[{"type":"HorizontalScalingLimitReached","messages":["Can''t provide total required storage 37106614256, max number of nodes is 8, requires 9 nodes"]}],"lastModificationTime":"2021-01-17T05:59:22Z"},{"name":"ml","nodeSets":[{"name":"ml","nodeCount":1}],"resources":{"requests":{"cpu":"2","memory":"2Gi"}},"state":[],"lastModificationTime":"2021-01-17T13:25:18Z"}]}'
     elasticsearch.k8s.elastic.co/cluster-uuid: FghvC9XFS16wDXdAusm9yg

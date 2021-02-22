@@ -42,7 +42,9 @@ const (
 	enterpriseFeaturesDisabledMsg = "Autoscaling is an enterprise feature. Enterprise features are disabled"
 )
 
-var defaultRequeue = reconcile.Result{
+// licenseCheckRequeue is the default duration used to retry a licence check if the cluster is supposed to be managed by
+// the autoscaling controller and if the licence is not valid.
+var licenseCheckRequeue = reconcile.Result{
 	Requeue:      true,
 	RequeueAfter: 60 * time.Second,
 }
@@ -101,7 +103,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		log.Info(enterpriseFeaturesDisabledMsg)
 		r.recorder.Eventf(&es, corev1.EventTypeWarning, license.EventInvalidLicense, enterpriseFeaturesDisabledMsg)
 		// We still schedule a reconciliation in case a valid license is applied later
-		return defaultRequeue, nil
+		return licenseCheckRequeue, nil
 	}
 
 	if common.IsUnmanaged(&es) {
@@ -167,7 +169,14 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 	results := &reconciler.Results{}
-	return results.WithResult(defaultRequeue).WithResult(current).Aggregate()
+	return results.WithResult(defaultResult(autoscalingSpecification)).WithResult(current).Aggregate()
+}
+
+func defaultResult(autoscalingSpecification esv1.AutoscalingSpec) reconcile.Result {
+	return reconcile.Result{
+		Requeue:      true,
+		RequeueAfter: autoscalingSpecification.GetSyncPeriodOrDefault(),
+	}
 }
 
 func newElasticsearchClient(
