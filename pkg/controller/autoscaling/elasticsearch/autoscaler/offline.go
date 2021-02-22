@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // GetOfflineNodeSetsResources attempts to create or restore resources.NodeSetsResources without an actual autoscaling
@@ -39,15 +38,11 @@ func GetOfflineNodeSetsResources(
 		}
 	}
 
+	// Ensure that the number of nodes is in the allowed range.
+	expectedNodeCount = autoscalingSpec.NodeCountRange.Enforce(expectedNodeCount)
+
 	// Adjust limits
 	nodeSetsResources.NodeResources = nodeSetsResources.UpdateLimits(autoscalingSpec.AutoscalingResources)
-
-	// Ensure that the min. number of nodes is in the allowed range.
-	if expectedNodeCount < autoscalingSpec.NodeCount.Min {
-		expectedNodeCount = autoscalingSpec.NodeCount.Min
-	} else if expectedNodeCount > autoscalingSpec.NodeCount.Max {
-		expectedNodeCount = autoscalingSpec.NodeCount.Max
-	}
 
 	// User may have added or removed some NodeSets while the autoscaling API is not available.
 	// We distribute the nodes to reflect that change.
@@ -79,11 +74,11 @@ func nodeSetResourcesFromStatus(
 		if currentNodeSetsResources.HasRequest(corev1.ResourceMemory) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceMemory,
-				adjustQuantity(currentNodeSetsResources.GetRequest(corev1.ResourceMemory), autoscalingSpec.Memory.Min, autoscalingSpec.Memory.Max),
+				autoscalingSpec.MemoryRange.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceMemory)),
 			)
 		} else {
 			// Can't restore memory from status, use the min. from the autoscaling specification.
-			nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.Memory.Min.DeepCopy())
+			nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.MemoryRange.Min.DeepCopy())
 		}
 	}
 
@@ -92,16 +87,16 @@ func nodeSetResourcesFromStatus(
 		if currentNodeSetsResources.HasRequest(corev1.ResourceCPU) {
 			nodeSetsResources.SetRequest(
 				corev1.ResourceCPU,
-				adjustQuantity(currentNodeSetsResources.GetRequest(corev1.ResourceCPU), autoscalingSpec.CPU.Min, autoscalingSpec.CPU.Max),
+				autoscalingSpec.CPURange.Enforce(currentNodeSetsResources.GetRequest(corev1.ResourceCPU)),
 			)
 		} else {
 			// Can't restore CPU from status, use the min. from the autoscaling specification.
-			nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPU.Min.DeepCopy())
+			nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPURange.Min.DeepCopy())
 		}
 	}
 
 	if autoscalingSpec.IsStorageDefined() {
-		storage := autoscalingSpec.Storage.Min
+		storage := autoscalingSpec.StorageRange.Min
 		// Attempt to get storage value from the status.
 		if currentNodeSetsResources.HasRequest(corev1.ResourceStorage) {
 			storageInStatus := currentNodeSetsResources.GetRequest(corev1.ResourceStorage)
@@ -120,23 +115,13 @@ func nodeSetResourcesFromStatus(
 func newMinNodeSetResources(autoscalingSpec esv1.AutoscalingPolicySpec, nodeSets []string) resources.NodeSetsResources {
 	nodeSetsResources := resources.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
 	if autoscalingSpec.IsCPUDefined() {
-		nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPU.Min.DeepCopy())
+		nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPURange.Min.DeepCopy())
 	}
 	if autoscalingSpec.IsMemoryDefined() {
-		nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.Memory.Min.DeepCopy())
+		nodeSetsResources.SetRequest(corev1.ResourceMemory, autoscalingSpec.MemoryRange.Min.DeepCopy())
 	}
 	if autoscalingSpec.IsStorageDefined() {
-		nodeSetsResources.SetRequest(corev1.ResourceStorage, autoscalingSpec.Storage.Min.DeepCopy())
+		nodeSetsResources.SetRequest(corev1.ResourceStorage, autoscalingSpec.StorageRange.Min.DeepCopy())
 	}
 	return nodeSetsResources
-}
-
-// adjustQuantity ensures that the Quantity in value is between min and max.
-func adjustQuantity(value, min, max resource.Quantity) resource.Quantity {
-	if value.Cmp(min) < 0 {
-		return min
-	} else if value.Cmp(max) > 0 {
-		return max
-	}
-	return value
 }

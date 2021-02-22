@@ -82,7 +82,7 @@ func Test_memoryFromStorage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := memoryFromStorage(tt.args.requiredStorageCapacity, *tt.args.autoscalingSpec.Storage, *tt.args.autoscalingSpec.Memory); !got.Equal(*tt.wantMemory) {
+			if got := memoryFromStorage(tt.args.requiredStorageCapacity, *tt.args.autoscalingSpec.StorageRange, *tt.args.autoscalingSpec.MemoryRange); !got.Equal(*tt.wantMemory) {
 				t.Errorf("memoryFromStorage() = %v, want %v", got, tt.wantMemory)
 			}
 		})
@@ -134,7 +134,7 @@ func Test_cpuFromMemory(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := cpuFromMemory(tt.args.requiredMemoryCapacity, *tt.args.autoscalingSpec.Memory, *tt.args.autoscalingSpec.CPU); !got.Equal(*tt.wantCPU) {
+			if got := cpuFromMemory(tt.args.requiredMemoryCapacity, *tt.args.autoscalingSpec.MemoryRange, *tt.args.autoscalingSpec.CPURange); !got.Equal(*tt.wantCPU) {
 				t.Errorf("scaleResourceLinearly() = %v, want %v", got, tt.wantCPU)
 			}
 		})

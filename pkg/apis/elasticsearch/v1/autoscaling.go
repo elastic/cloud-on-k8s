@@ -86,12 +86,12 @@ type AutoscalingPolicySpec struct {
 // If there is no limit range for a resource, and if that resource is not mandatory, then the resources in the NodeSets
 // managed by the autoscaling policy are left untouched.
 type AutoscalingResources struct {
-	CPU     *QuantityRange `json:"cpu,omitempty"`
-	Memory  *QuantityRange `json:"memory,omitempty"`
-	Storage *QuantityRange `json:"storage,omitempty"`
+	CPURange     *QuantityRange `json:"cpu,omitempty"`
+	MemoryRange  *QuantityRange `json:"memory,omitempty"`
+	StorageRange *QuantityRange `json:"storage,omitempty"`
 
-	// NodeCount is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
-	NodeCount CountRange `json:"nodeCount"`
+	// NodeCountRange is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
+	NodeCountRange CountRange `json:"nodeCount"`
 }
 
 // QuantityRange models a resource limit range for resources which can be expressed with resource.Quantity.
@@ -105,22 +105,36 @@ type QuantityRange struct {
 	RequestsToLimitsRatio *float64 `json:"requestsToLimitsRatio"`
 }
 
+// Enforce adjusts a proposed quantity to ensure it is within the quantity range.
+func (qr *QuantityRange) Enforce(proposed resource.Quantity) resource.Quantity {
+	if qr == nil {
+		return proposed.DeepCopy()
+	}
+	if qr.Min.Cmp(proposed) > 0 {
+		return qr.Min.DeepCopy()
+	}
+	if qr.Max.Cmp(proposed) < 0 {
+		return qr.Max.DeepCopy()
+	}
+	return proposed.DeepCopy()
+}
+
 // MemoryRequestsToLimitsRatio returns the ratio between the memory request, computed by the autoscaling algorithm, and
 // the limits. If no ratio has been specified by the user then a default value is returned.
 func (ar AutoscalingResources) MemoryRequestsToLimitsRatio() float64 {
-	if ar.Memory == nil || ar.Memory.RequestsToLimitsRatio == nil {
+	if ar.MemoryRange == nil || ar.MemoryRange.RequestsToLimitsRatio == nil {
 		return defaultMemoryRequestsToLimitsRatio
 	}
-	return *ar.Memory.RequestsToLimitsRatio
+	return *ar.MemoryRange.RequestsToLimitsRatio
 }
 
 // CPURequestsToLimitsRatio returns the ratio between the CPU request, computed by the autoscaling algorithm, and
 // the limits. If no ratio has been specified by the user then a default value is returned.
 func (ar AutoscalingResources) CPURequestsToLimitsRatio() float64 {
-	if ar.CPU == nil || ar.CPU.RequestsToLimitsRatio == nil {
+	if ar.CPURange == nil || ar.CPURange.RequestsToLimitsRatio == nil {
 		return defaultCPURequestsToLimitsRatio
 	}
-	return *ar.CPU.RequestsToLimitsRatio
+	return *ar.CPURange.RequestsToLimitsRatio
 }
 
 // +kubebuilder:object:generate=false
@@ -129,6 +143,16 @@ type CountRange struct {
 	Min int32 `json:"min"`
 	// Max represents the maximum number of nodes in a tier.
 	Max int32 `json:"max"`
+}
+
+// Enforce adjusts a node count to ensure that it is within the range.
+func (cr *CountRange) Enforce(count int32) int32 {
+	if count < cr.Min {
+		return cr.Min
+	} else if count > cr.Max {
+		return cr.Max
+	}
+	return count
 }
 
 // GetAutoscalingSpecification unmarshal autoscaling specifications from an Elasticsearch resource.
@@ -144,17 +168,17 @@ func (es Elasticsearch) GetAutoscalingSpecification() (AutoscalingSpec, error) {
 
 // IsMemoryDefined returns true if the user specified memory limits.
 func (aps AutoscalingPolicySpec) IsMemoryDefined() bool {
-	return aps.Memory != nil
+	return aps.MemoryRange != nil
 }
 
 // IsCPUDefined returns true if the user specified cpu limits.
 func (aps AutoscalingPolicySpec) IsCPUDefined() bool {
-	return aps.CPU != nil
+	return aps.CPURange != nil
 }
 
 // IsStorageDefined returns true if the user specified storage limits.
 func (aps AutoscalingPolicySpec) IsStorageDefined() bool {
-	return aps.Storage != nil
+	return aps.StorageRange != nil
 }
 
 // findByRoles returns the autoscaling specification associated with a set of roles or nil if not found.
@@ -239,10 +263,10 @@ func (as AutoscalingSpec) GetMLNodesSettings() (nodes int32, maxMemory string) {
 	for _, autoscalingSpec := range as.AutoscalingPolicySpecs {
 		if autoscalingSpec.IsMemoryDefined() &&
 			stringsutil.StringInSlice(MLRole, autoscalingSpec.Roles) &&
-			autoscalingSpec.Memory.Max.Value() > maxMemoryAsInt {
-			maxMemoryAsInt = autoscalingSpec.Memory.Max.Value()
+			autoscalingSpec.MemoryRange.Max.Value() > maxMemoryAsInt {
+			maxMemoryAsInt = autoscalingSpec.MemoryRange.Max.Value()
 		}
-		nodes += autoscalingSpec.NodeCount.Max
+		nodes += autoscalingSpec.NodeCountRange.Max
 	}
 	maxMemory = fmt.Sprintf("%db", maxMemoryAsInt)
 	return nodes, maxMemory

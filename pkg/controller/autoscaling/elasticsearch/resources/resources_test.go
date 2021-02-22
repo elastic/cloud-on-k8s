@@ -177,10 +177,10 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 			name: "CPU limit should be twice the request",
 			args: args{
 				autoscalingResources: esv1.AutoscalingResources{
-					CPU: &esv1.QuantityRange{
+					CPURange: &esv1.QuantityRange{
 						RequestsToLimitsRatio: float64ptr(2.0),
 					},
-					Memory: nil, // no ratio, use default which is 1 for memory
+					MemoryRange: nil, // no ratio, use default which is 1 for memory
 				},
 			},
 			fields: fields{
@@ -204,10 +204,10 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 			name: "Memory limit should be twice the request",
 			args: args{
 				autoscalingResources: esv1.AutoscalingResources{
-					Memory: &esv1.QuantityRange{
+					MemoryRange: &esv1.QuantityRange{
 						RequestsToLimitsRatio: float64ptr(2.0),
 					},
-					CPU: nil, // no ratio, use default which is 1 for memory
+					CPURange: nil, // no ratio, use default which is 1 for memory
 				},
 			},
 			fields: fields{
@@ -230,10 +230,10 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 			name: "No limit",
 			args: args{
 				autoscalingResources: esv1.AutoscalingResources{
-					Memory: &esv1.QuantityRange{
+					MemoryRange: &esv1.QuantityRange{
 						RequestsToLimitsRatio: float64ptr(0.0),
 					},
-					CPU: nil,
+					CPURange: nil,
 				},
 			},
 			fields: fields{
