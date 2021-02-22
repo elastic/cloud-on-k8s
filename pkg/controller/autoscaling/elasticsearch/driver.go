@@ -7,6 +7,8 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/autoscaler"
@@ -33,6 +35,7 @@ func (r *ReconcileElasticsearch) reconcileInternal(
 	defer tracing.Span(&ctx)()
 	results := &reconciler.Results{}
 	log := logconf.FromContext(ctx)
+	statusBuilder := newStatusBuilder(log, autoscalingSpec)
 
 	if esReachable, err := r.isElasticsearchReachable(ctx, es); !esReachable || err != nil {
 		// Elasticsearch is not reachable, or we got an error while checking Elasticsearch availability, follow up with an offline reconciliation.
@@ -42,20 +45,49 @@ func (r *ReconcileElasticsearch) reconcileInternal(
 				"error.message", err.Error(),
 			)
 		}
-		return r.doOfflineReconciliation(ctx, autoscalingStatus, autoscaledNodeSets, autoscalingSpec, results)
+		return r.doOfflineReconciliation(ctx, statusBuilder, autoscalingStatus, autoscaledNodeSets, autoscalingSpec, results)
 	}
 
 	// Cluster is expected to be online and reachable, attempt a call to the autoscaling API.
 	// If an error occurs we still attempt an offline reconciliation to enforce limits set by the user.
-	result, err := r.attemptOnlineReconciliation(ctx, autoscalingStatus, autoscaledNodeSets, autoscalingSpec, results)
+	result, err := r.attemptOnlineReconciliation(ctx, statusBuilder, autoscalingStatus, autoscaledNodeSets, autoscalingSpec, results)
 	if err != nil {
 		log.Error(tracing.CaptureError(ctx, err), "autoscaling online reconciliation failed")
 		// Attempt an offline reconciliation
-		if _, err := r.doOfflineReconciliation(ctx, autoscalingStatus, autoscaledNodeSets, autoscalingSpec, results); err != nil {
+		if _, err := r.doOfflineReconciliation(ctx, statusBuilder, autoscalingStatus, autoscaledNodeSets, autoscalingSpec, results); err != nil {
 			log.Error(tracing.CaptureError(ctx, err), "autoscaling offline reconciliation failed")
 		}
 	}
 	return result, err
+}
+
+// newStatusBuilder creates a new status builder and initializes it with overlapping policies.
+func newStatusBuilder(log logr.Logger, autoscalingSpec esv1.AutoscalingSpec) *status.AutoscalingStatusBuilder {
+	statusBuilder := status.NewAutoscalingStatusBuilder()
+	policiesByRole := autoscalingSpec.AutoscalingPoliciesByRole()
+
+	// Roles are sorted for consistent comparison
+	roles := make([]string, 0, len(policiesByRole))
+	for k := range policiesByRole {
+		roles = append(roles, k)
+	}
+	sort.Strings(roles)
+
+	for _, role := range roles {
+		policies := policiesByRole[role]
+		if len(policies) < 2 {
+			// This role is declared in only one autoscaling policy
+			continue
+		}
+		// sort policies for consistent comparison
+		sort.Strings(policies)
+		for _, policy := range policies {
+			message := fmt.Sprintf("role %s is declared in autoscaling policies %s", role, strings.Join(policies, ","))
+			log.Info(message, "policy", policy)
+			statusBuilder.ForPolicy(policy).RecordEvent(status.OverlappingPolicies, message)
+		}
+	}
+	return statusBuilder
 }
 
 // Check if the Service is available.
@@ -78,6 +110,7 @@ func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, e
 // attemptOnlineReconciliation attempts an online autoscaling reconciliation with a call to the Elasticsearch autoscaling API.
 func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 	ctx context.Context,
+	statusBuilder *status.AutoscalingStatusBuilder,
 	currentAutoscalingStatus status.Status,
 	autoscaledNodeSets esv1.AutoscaledNodeSets,
 	autoscalingSpec esv1.AutoscalingSpec,
@@ -110,9 +143,6 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	// Init. a new autoscaling status.
-	statusBuilder := status.NewAutoscalingStatusBuilder()
 
 	// nextClusterResources holds the resources computed by the autoscaling algorithm for each nodeSet.
 	var nextClusterResources resources.ClusterResources
@@ -212,6 +242,7 @@ func canDecide(log logr.Logger, requiredCapacity esclient.AutoscalingCapacityInf
 // doOfflineReconciliation runs an autoscaling reconciliation if the autoscaling API is not ready (yet).
 func (r *ReconcileElasticsearch) doOfflineReconciliation(
 	ctx context.Context,
+	statusBuilder *status.AutoscalingStatusBuilder,
 	currentAutoscalingStatus status.Status,
 	autoscaledNodeSets esv1.AutoscaledNodeSets,
 	autoscalingSpec esv1.AutoscalingSpec,
@@ -220,7 +251,7 @@ func (r *ReconcileElasticsearch) doOfflineReconciliation(
 	defer tracing.Span(&ctx)()
 	log := logconf.FromContext(ctx)
 	log.V(1).Info("Starting offline autoscaling reconciliation")
-	statusBuilder := status.NewAutoscalingStatusBuilder()
+
 	var clusterNodeSetsResources resources.ClusterResources
 	// Elasticsearch is not reachable, we still want to ensure that min. requirements are set
 	for _, autoscalingSpec := range autoscalingSpec.AutoscalingPolicySpecs {

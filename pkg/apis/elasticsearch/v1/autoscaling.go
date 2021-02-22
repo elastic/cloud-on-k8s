@@ -192,6 +192,17 @@ func (as AutoscalingSpec) findByRoles(roles []string) *AutoscalingPolicySpec {
 	return nil
 }
 
+// AutoscalingPoliciesByRole returns the names of the autoscaling policies indexed by roles.
+func (as AutoscalingSpec) AutoscalingPoliciesByRole() map[string][]string {
+	policiesByRole := make(map[string][]string)
+	for _, policySpec := range as.AutoscalingPolicySpecs {
+		for _, role := range policySpec.Roles {
+			policiesByRole[role] = append(policiesByRole[role], policySpec.Name)
+		}
+	}
+	return policiesByRole
+}
+
 // rolesMatch compares two set of roles and returns true if both sets contain the exact same roles.
 func rolesMatch(roles1, roles2 []string) bool {
 	if len(roles1) != len(roles2) {
