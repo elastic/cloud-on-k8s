@@ -136,9 +136,22 @@ func TestNewReporter(t *testing.T) {
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
+				Name:      "autoscaled",
+				Annotations: map[string]string{
+					esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}",
+				},
 			},
 			Status: esv1.ElasticsearchStatus{
 				AvailableNodes: 3,
+			},
+		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+				Name:      "non-autoscaled",
+			},
+			Status: esv1.ElasticsearchStatus{
+				AvailableNodes: 6,
 			},
 		},
 		&apmv1.ApmServer{
@@ -268,8 +281,9 @@ func TestNewReporter(t *testing.T) {
       pod_count: 8
       resource_count: 2
     elasticsearches:
-      pod_count: 3
-      resource_count: 1
+      autoscaled_resource_count: 1
+      pod_count: 9
+      resource_count: 2
     enterprisesearches:
       pod_count: 3
       resource_count: 1

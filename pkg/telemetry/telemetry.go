@@ -28,8 +28,9 @@ import (
 )
 
 const (
-	resourceCount = "resource_count"
-	podCount      = "pod_count"
+	autoscaledResourceCount = "autoscaled_resource_count"
+	resourceCount           = "resource_count"
+	podCount                = "pod_count"
 
 	timestampFieldName = "timestamp"
 )
@@ -180,7 +181,7 @@ func (r *Reporter) getLicenseInfo() (map[string]string, error) {
 }
 
 func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0}
+	stats := map[string]int32{resourceCount: 0, podCount: 0, autoscaledResourceCount: 0}
 
 	var esList esv1.ElasticsearchList
 	for _, ns := range managedNamespaces {
@@ -191,6 +192,9 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		for _, es := range esList.Items {
 			stats[resourceCount]++
 			stats[podCount] += es.Status.AvailableNodes
+			if es.IsAutoscalingDefined() {
+				stats[autoscaledResourceCount]++
+			}
 		}
 	}
 	return "elasticsearches", stats, nil
