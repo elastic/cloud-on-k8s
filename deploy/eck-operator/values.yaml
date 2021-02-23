@@ -168,4 +168,5 @@ config:
 # Internal use only
 internal:
   manifestGen: false
+  createOperatorNamespace: true
   kubeVersion: 1.12.0

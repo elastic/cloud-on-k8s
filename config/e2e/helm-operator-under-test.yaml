@@ -56,3 +56,5 @@ config:
   logVerbosity: "1"
   metricsPort: "9090"
 
+internal:
+  createOperatorNamespace: false
