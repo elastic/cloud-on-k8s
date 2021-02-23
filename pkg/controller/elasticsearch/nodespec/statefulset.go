@@ -20,10 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var (
-	f = false
-)
-
 // HeadlessServiceName returns the name of the headless service for the given StatefulSet.
 func HeadlessServiceName(ssetName string) string {
 	// just use the sset name
@@ -95,10 +91,7 @@ func BuildStatefulSet(
 	if existingSset, exists := existingStatefulSets.GetByName(statefulSetName); exists {
 		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
-	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims, es)
-	if err != nil {
-		return appsv1.StatefulSet{}, err
-	}
+	claims := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims)
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -136,8 +129,7 @@ func BuildStatefulSet(
 func setVolumeClaimsControllerReference(
 	persistentVolumeClaims []corev1.PersistentVolumeClaim,
 	existingClaims []corev1.PersistentVolumeClaim,
-	es esv1.Elasticsearch,
-) ([]corev1.PersistentVolumeClaim, error) {
+) []corev1.PersistentVolumeClaim {
 	// set the owner reference of all volume claims to the ES resource,
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
@@ -156,7 +148,7 @@ func setVolumeClaimsControllerReference(
 		}
 		claims = append(claims, claim)
 	}
-	return claims, nil
+	return claims
 }
 
 // UpdateReplicas updates the given StatefulSet with the given replicas,

@@ -38,7 +38,6 @@ const (
 	unsupportedConfigErrMsg           = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedUpgradeMsg             = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg             = "Unsupported version"
-	forbiddenPolicyChgMsg             = "Changing from a Retain to a Remove* VolumeClaimDeletePolicy or vice versa is not allowed"
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
