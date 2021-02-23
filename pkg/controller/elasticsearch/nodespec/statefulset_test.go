@@ -38,7 +38,6 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	}{
 		{
 			name: "should not set the ownerRef when building a new StatefulSet",
-			es:   es,
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 			},
@@ -128,8 +127,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims, tt.es)
-			require.NoError(t, err)
+			got := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims)
 			require.Equal(t, tt.wantClaims, got)
 		})
 	}
