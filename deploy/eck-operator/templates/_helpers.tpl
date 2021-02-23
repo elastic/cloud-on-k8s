@@ -36,7 +36,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Common labels
 */}}
 {{- define "eck-operator.labels" -}}
-{{ include "eck-operator.selectorLabels" . }}
+{{- include "eck-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
