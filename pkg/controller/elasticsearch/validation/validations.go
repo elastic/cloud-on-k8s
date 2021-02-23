@@ -44,19 +44,14 @@ const (
 type validation func(esv1.Elasticsearch) field.ErrorList
 
 // createValidations are the validation funcs that apply to creates or updates
-func createValidations(k8sClient k8s.Client) []validation {
-	return []validation{
-		noUnknownFields,
-		validName,
-		hasCorrectNodeRoles,
-		supportedVersion,
-		validSanIP,
-		validAutoscalingConfiguration,
-		validVolumeClaimDeletePolicy,
-		func(es esv1.Elasticsearch) field.ErrorList {
-			return noIllegalVolumeClaimDeletePolicyChange(k8sClient, es)
-		},
-	}
+var validations = []validation{
+	noUnknownFields,
+	validName,
+	hasCorrectNodeRoles,
+	supportedVersion,
+	validSanIP,
+	validAutoscalingConfiguration,
+	validVolumeClaimDeletePolicy,
 }
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList

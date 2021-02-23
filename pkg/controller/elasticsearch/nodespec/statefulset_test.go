@@ -37,7 +37,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 		wantClaims             []corev1.PersistentVolumeClaim
 	}{
 		{
-			name: "should set the ownerRef when building a new StatefulSet",
+			name: "should not set the ownerRef when building a new StatefulSet",
 			es:   es,
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
@@ -47,70 +47,8 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-data",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         es.APIVersion,
-								Kind:               es.Kind,
-								Name:               es.Name,
-								UID:                es.UID,
-								Controller:         &varTrue,
-								BlockOwnerDeletion: &varFalse,
-							},
-						},
 					},
 				},
-			},
-		},
-		{
-			name: "should set the ownerRef on user-provided claims when building a new StatefulSet",
-			es:   es,
-			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "user-provided"}},
-			},
-			existingClaims: nil,
-			wantClaims: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "elasticsearch-data",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         es.APIVersion,
-								Kind:               es.Kind,
-								Name:               es.Name,
-								UID:                es.UID,
-								Controller:         &varTrue,
-								BlockOwnerDeletion: &varFalse,
-							},
-						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "user-provided",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         es.APIVersion,
-								Kind:               es.Kind,
-								Name:               es.Name,
-								UID:                es.UID,
-								Controller:         &varTrue,
-								BlockOwnerDeletion: &varFalse,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "should not set the ownerRef if volume claim delete policy is retain",
-			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{VolumeClaimDeletePolicy: esv1.RetainPolicy}},
-			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
-			},
-			existingClaims: nil,
-			wantClaims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 			},
 		},
 		{

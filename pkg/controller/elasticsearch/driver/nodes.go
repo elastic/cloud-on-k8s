@@ -124,6 +124,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
+	if err := reconcilePVCOwnerRefs(d.K8sClient(), d.ES); err != nil {
+		return results.WithError(err)
+	}
+
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
 	attempted, err := d.MaybeForceUpgrade(actualStatefulSets)
 	if err != nil || attempted {

@@ -5,12 +5,6 @@
 package nodespec
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
@@ -21,6 +15,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -141,7 +138,6 @@ func setVolumeClaimsControllerReference(
 	existingClaims []corev1.PersistentVolumeClaim,
 	es esv1.Elasticsearch,
 ) ([]corev1.PersistentVolumeClaim, error) {
-	deletePolicy := es.Spec.VolumeClaimDeletePolicyOrDefault()
 	// set the owner reference of all volume claims to the ES resource,
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
@@ -157,36 +153,6 @@ func setVolumeClaimsControllerReference(
 			// Having ownerReferences with a "deprecated" apiVersion is fine, and does not prevent resources
 			// from being garbage collected as expected.
 			claim.OwnerReferences = existingClaim.OwnerReferences
-
-			claims = append(claims, claim)
-			continue
-		}
-
-		// TODO we can skip the whole setting of ownerReferences for the retain case if we can make sure via validation
-		//  that there will be no policy change. Right now the code just above makes sure that no errors occur on policy
-		//  change caused by violations of the immutability of the podTemplate in ssets. But this hides a class of errors where
-		//  users think they switched to a Retain strategy but in fact their volumes will still be deleted.
-		// Do not set an owner reference if the volume claim delete policy instructs to retain the volume.
-		if deletePolicy == esv1.RetainPolicy {
-			claims = append(claims, claim)
-			continue
-		}
-
-		// Temporarily set the claim namespace to match the ES namespace, then set it back to empty.
-		// `SetControllerReference` does a safety check on object vs. owner namespace mismatch to cover common errors,
-		// but in this particular case we don't need to set a namespace in the claim template.
-		claim.Namespace = es.Namespace
-		if err := controllerutil.SetControllerReference(&es, &claim, scheme.Scheme); err != nil {
-			return nil, err
-		}
-		claim.Namespace = ""
-
-		// Set block owner deletion to false as the statefulset controller might not be able to do that if it cannot
-		// set finalizers on the resource.
-		// See https://github.com/elastic/cloud-on-k8s/issues/1884
-		refs := claim.OwnerReferences
-		for i := range refs {
-			refs[i].BlockOwnerDeletion = &f
 		}
 		claims = append(claims, claim)
 	}
