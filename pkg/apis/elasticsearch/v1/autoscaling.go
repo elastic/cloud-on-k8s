@@ -8,11 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
@@ -28,6 +30,9 @@ var (
 	// defaultCPURequestsToLimitsRatio is the default ratio used to convert a CPU request to a CPU limit in the Pod
 	// resources specification. By default we don't want a CPU limit, hence a default value of 0.0
 	defaultCPURequestsToLimitsRatio = 0.0
+
+	// defaultPollingPeriod is the default period between 2 Elasticsearch autoscaling API polls.
+	defaultPollingPeriod = 60 * time.Second
 )
 
 // -- Elasticsearch Autoscaling API structures
@@ -52,6 +57,10 @@ type AutoscalingPolicy struct {
 // +kubebuilder:object:generate=false
 type AutoscalingSpec struct {
 	AutoscalingPolicySpecs AutoscalingPolicySpecs `json:"policies"`
+
+	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+	PollingPeriod *metav1.Duration `json:"pollingPeriod"`
+
 	// Elasticsearch is stored in the autoscaling spec for convenience. It should be removed once the autoscaling spec is
 	// fully part of the Elasticsearch specification.
 	Elasticsearch Elasticsearch `json:"-"`
@@ -179,6 +188,14 @@ func (aps AutoscalingPolicySpec) IsCPUDefined() bool {
 // IsStorageDefined returns true if the user specified storage limits.
 func (aps AutoscalingPolicySpec) IsStorageDefined() bool {
 	return aps.StorageRange != nil
+}
+
+// GetPollingPeriodOrDefault returns the polling period as specified by the user in the autoscaling specification or the default value.
+func (as AutoscalingSpec) GetPollingPeriodOrDefault() time.Duration {
+	if as.PollingPeriod != nil {
+		return as.PollingPeriod.Duration
+	}
+	return defaultPollingPeriod
 }
 
 // findByRoles returns the autoscaling specification associated with a set of roles or nil if not found.

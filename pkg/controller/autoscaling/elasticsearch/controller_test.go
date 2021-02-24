@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -67,6 +68,10 @@ var (
 )
 
 func TestReconcile(t *testing.T) {
+	defaultRequeue := reconcile.Result{
+		Requeue:      true,
+		RequeueAfter: 60 * time.Second,
+	}
 	type fields struct {
 		EsClient       *fakeEsClient
 		recorder       *record.FakeRecorder
@@ -151,7 +156,10 @@ func TestReconcile(t *testing.T) {
 				esManifest: "max-storage-reached",
 				isOnline:   true,
 			},
-			want:       defaultRequeue,
+			want: reconcile.Result{
+				Requeue:      true,
+				RequeueAfter: 42 * time.Second,
+			},
 			wantEvents: []string{"Warning HorizontalScalingLimitReached Can't provide total required storage 37106614256, max number of nodes is 8, requires 9 nodes"},
 		},
 		{
