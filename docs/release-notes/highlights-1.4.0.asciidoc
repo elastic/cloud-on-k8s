@@ -18,7 +18,7 @@ link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation-co
 [id="{p}-140-known-issues"]
 === Known issues
 
-On Kubernetes versions 1.16 or higher, if the operator is installed using Helm and if the validating webhook is enabled, you may be prevented from <<{p}-volume-claim-templates,increasing the storage size>> of Elasticsearch `volumClaimTemplates` even if the underlying storage class allows expansion. This is due to a change in how `admissionregistration.k8s.io/v1` resources match update requests to validating webhook endpoints. You can work around this problem by patching the validating webhook as follows:
+On Kubernetes versions 1.16 or higher, if the operator is installed using Helm and if the validating webhook is enabled, you may be prevented from <<{p}-volume-claim-templates,increasing the storage size>> of Elasticsearch `volumeClaimTemplates` even if the underlying storage class allows expansion. This is due to a change in how `admissionregistration.k8s.io/v1` resources match update requests to validating webhook endpoints. You can work around this problem by patching the validating webhook as follows:
 
 
 [source,sh]
