@@ -42,7 +42,7 @@ const (
 
 type validation func(esv1.Elasticsearch) field.ErrorList
 
-// createValidations are the validation funcs that apply to creates or updates
+// validations are the validation funcs that apply to creates or updates
 var validations = []validation{
 	noUnknownFields,
 	validName,

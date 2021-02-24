@@ -8,21 +8,20 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/client-go/kubernetes/scheme"
-
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// reconcilePVCOwnerRefs sets an owner reference into each PVC for the given Elasticsearch cluster.
+// reconcilePVCOwnerRefs sets or removes an owner reference into each PVC for the given Elasticsearch cluster depending
+// on the VolumeClaimDeletePolicy.
 // The intent behind this approach is to allow users to specify per cluster whether they want to retain or remove
 // the related PVCs. We rely on Kubernetes garbage collection for the cleanup once a cluster has been deleted and
-// we manually delete PVCs on scale down (see GarbageCollectPVCs)
+// the operator separately deletes PVCs on scale down if so desired (see GarbageCollectPVCs)
 func reconcilePVCOwnerRefs(c k8s.Client, es esv1.Elasticsearch) error {
 	var pvcs corev1.PersistentVolumeClaimList
 	ns := client.InNamespace(es.Namespace)
