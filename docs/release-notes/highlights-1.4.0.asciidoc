@@ -12,3 +12,21 @@ New and notable changes in version 1.4.0 of {n}. See <<release-notes-1.4.0>> for
 ==== Support for Elastic Agent
 
 link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation-configuration.html[Elastic Agent] provides a unified way to monitor logs, metrics, and other types of data from your Kubernetes infrastructure quickly and easily. You can use a single Elastic Agent deployment to replace multiple Beats deployments that were previously required to collect the different types of data you want to monitor. ECK 1.4.0 introduces experimental support for Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode] as a technology preview.
+
+
+[float]
+[id="{p}-140-known-issues"]
+=== Known issues
+
+On Kubernetes versions 1.16 or higher, if the operator is installed using Helm and if the validating webhook is enabled, you may be prevented from <<{p}-volume-claim-templates,increasing the storage size>> of Elasticsearch `volumClaimTemplates` even if the underlying storage class allows expansion. This is due to a change in how `admissionregistration.k8s.io/v1` resources match update requests to validating webhook endpoints. You can work around this problem by patching the validating webhook as follows:
+
+
+[source,sh]
+----
+# If you installed using the Helm defaults, the name of the webhook would be elastic-operator.elastic-system.k8s.elastic.co
+# If the operator name or namespace was changed during the installation, the name would reflect those changes.
+WEBHOOK=$(kubectl get validatingwebhookconfiguration --no-headers -o custom-columns=NAME:.metadata.name | grep 'k8s.elastic.co')
+kubectl patch validatingwebhookconfiguration "$WEBHOOK" \
+    --patch='{"webhooks": [{"name": "elastic-es-validation-v1.k8s.elastic.co", "matchPolicy": "Exact"}, {"name": "elastic-es-validation-v1beta1.k8s.elastic.co", "matchPolicy": "Exact"}]}'
+----
+
