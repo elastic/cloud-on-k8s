@@ -167,6 +167,11 @@ config:
 
 # Internal use only
 internal:
+  # manifestGen specifies whether the chart is running under manifest generator. 
+  # This is used for tasks specific to generating the all-in-one.yaml file.
   manifestGen: false
+  # createOperatorNamespace defines whether the operator namespace manifest should be generated when in manifestGen mode.
+  # Usually we do want that to happen (e.g. all-in-one.yaml) but, sometimes we don't (e.g. E2E tests). 
   createOperatorNamespace: true
+  # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
   kubeVersion: 1.12.0
