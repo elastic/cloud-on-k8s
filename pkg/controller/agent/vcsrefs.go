@@ -45,13 +45,15 @@ func reconcileVCSRefs(params *Params, clientsetFactory func() (*kubernetes.Clien
 		return res
 	}
 
+	// TODO not all versions might result in valid pod names
 	podName := types.NamespacedName{Name: fmt.Sprintf("elastic-agent-%s", version), Namespace: params.Agent.Namespace}
+	containerName := "agent-inspector"
 	pod := corev1.Pod{
 		ObjectMeta: k8s.ToObjectMeta(podName),
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:    "agent-inspector",
+					Name:    containerName,
 					Image:   specImageOrDefault(params.Agent.Spec),
 					Command: []string{"ls", "/usr/share/elastic-agent/data"},
 				},
@@ -59,6 +61,7 @@ func reconcileVCSRefs(params *Params, clientsetFactory func() (*kubernetes.Clien
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
+
 	err := params.Client.Get(params.Context, podName, &pod)
 	if err != nil && apierrors.IsNotFound(err) {
 		params.Logger().V(1).Info("Creating agent inspector pod", "version", params.Agent.Spec.Version)
@@ -78,8 +81,9 @@ func reconcileVCSRefs(params *Params, clientsetFactory func() (*kubernetes.Clien
 		if err != nil {
 			return res.WithError(err)
 		}
+
 		logOptions := corev1.PodLogOptions{
-			Container: "agent-inspector",
+			Container: containerName,
 			Follow:    false,
 			Previous:  false,
 		}
@@ -87,22 +91,24 @@ func reconcileVCSRefs(params *Params, clientsetFactory func() (*kubernetes.Clien
 		if err != nil {
 			return res.WithError(err)
 		}
+
 		output := string(raw)
 		if !strings.HasPrefix(output, "elastic-agent-") {
-			return res.WithError(fmt.Errorf("unexpected result when inspecting agent docker image %s", output))
+			return res.WithError(fmt.Errorf("unexpected result when inspecting Elastic Agent container %s", output))
 		}
+
 		vcsRef := filepath.Base(strings.Trim(output, "\n"))
 		knownRefs[params.Agent.Spec.Version] = vcsRef
 		params.AgentVCSRef = vcsRef
 
-		params.Logger().V(1).Info("Agent container inspection pod succeeded", "vcs-ref", vcsRef)
+		params.Logger().V(1).Info("Elastic Agent container inspection pod succeeded", "vcs-ref", vcsRef)
 		err = params.Client.Delete(context.Background(), &pod)
 		return res.WithError(err)
 	case corev1.PodFailed:
-		err := fmt.Errorf("cannot pre-inspect agent pod, pod failed: %v", pod.Status)
+		err := fmt.Errorf("cannot inspect Elastic Agent container, pod failed: %v", pod.Status)
 		return res.WithError(err)
 	default:
-		params.Logger().V(1).Info("Waiting on agent pod inspection", "phase", pod.Status.Phase)
+		params.Logger().V(1).Info("Waiting on Elastic Agent container inspection", "phase", pod.Status.Phase)
 		return res.WithResult(requeueResult)
 	}
 }
