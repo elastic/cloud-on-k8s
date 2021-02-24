@@ -1,0 +1,25 @@
+nameOverride: "monitoring-elastic-operator"
+
+fullnameOverride: "monitoring-elastic-operator"
+
+managedNamespaces: [{{ .E2ENamespace }}]
+
+image:
+  repository: docker.elastic.co/eck/eck-operator
+  tag: 1.4.0
+
+podAnnotations:
+  co.elastic.metrics/metricsets: collector
+  co.elastic.metrics/module: prometheus
+  co.elastic.metrics/hosts: '${data.host}:9090'
+  co.elastic.metrics/period: 10s
+    
+telemetry:
+  disabled: true
+
+config:
+  logVerbosity: "1"
+  metricsPort: "9090"
+
+webhook:
+  enabled: false

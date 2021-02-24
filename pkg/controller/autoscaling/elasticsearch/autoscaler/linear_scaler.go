@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -66,8 +67,8 @@ func memoryFromStorage(requiredStorageCapacity resource.Quantity, storageRange, 
 	requiredMemoryCapacity := memoryRange.Min.Value() + requiredAdditionalMemoryCapacity
 
 	// Round up memory to the next GB
-	requiredMemoryCapacity = roundUp(requiredMemoryCapacity, gibi)
-	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/gibi))
+	requiredMemoryCapacity = roundUp(requiredMemoryCapacity, resources.GIB)
+	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/resources.GIB))
 
 	if resourceMemoryAsGiga.Cmp(memoryRange.Max) > 0 {
 		resourceMemoryAsGiga = memoryRange.Max.DeepCopy()

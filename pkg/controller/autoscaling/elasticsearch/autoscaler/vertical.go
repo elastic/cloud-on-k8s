@@ -14,34 +14,32 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-const gibi = int64(1024 * 1024 * 1024)
-
 // nodeResources computes the desired amount of memory and storage for a node managed by a given AutoscalingPolicySpec.
 func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quantity) resources.NodeResources {
 	nodeResources := resources.NodeResources{}
-
+	requiredCapacity := ctx.AutoscalingPolicyResult.RequiredCapacity
 	// Compute desired memory quantity for the nodes managed by this AutoscalingPolicySpec.
-	if !ctx.RequiredCapacity.Node.Memory.IsEmpty() {
+	if !requiredCapacity.Node.Memory.IsEmpty() {
 		memoryRequest := ctx.getResourceValue(
 			"memory",
-			ctx.RequiredCapacity.Node.Memory,
-			ctx.RequiredCapacity.Total.Memory,
+			requiredCapacity.Node.Memory,
+			requiredCapacity.Total.Memory,
 			minNodesCount,
-			ctx.AutoscalingSpec.Memory.Min,
-			ctx.AutoscalingSpec.Memory.Max,
+			ctx.AutoscalingSpec.MemoryRange.Min,
+			ctx.AutoscalingSpec.MemoryRange.Max,
 		)
 		nodeResources.SetRequest(corev1.ResourceMemory, memoryRequest)
 	}
 
 	// Compute desired storage quantity for the nodes managed by this AutoscalingPolicySpec.
-	if !ctx.RequiredCapacity.Node.Storage.IsEmpty() {
+	if !requiredCapacity.Node.Storage.IsEmpty() {
 		storageRequest := ctx.getResourceValue(
 			"storage",
-			ctx.RequiredCapacity.Node.Storage,
-			ctx.RequiredCapacity.Total.Storage,
+			requiredCapacity.Node.Storage,
+			requiredCapacity.Total.Storage,
 			minNodesCount,
-			ctx.AutoscalingSpec.Storage.Min,
-			ctx.AutoscalingSpec.Storage.Max,
+			ctx.AutoscalingSpec.StorageRange.Min,
+			ctx.AutoscalingSpec.StorageRange.Max,
 		)
 		if storageRequest.Cmp(minStorage) < 0 {
 			// Do not decrease storage capacity
@@ -55,16 +53,16 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 	// See https://github.com/elastic/cloud-on-k8s/issues/4076
 	if !nodeResources.HasRequest(corev1.ResourceMemory) && ctx.AutoscalingSpec.IsMemoryDefined() &&
 		ctx.AutoscalingSpec.IsStorageDefined() && nodeResources.HasRequest(corev1.ResourceStorage) {
-		nodeResources.SetRequest(corev1.ResourceMemory, memoryFromStorage(nodeResources.GetRequest(corev1.ResourceStorage), *ctx.AutoscalingSpec.Storage, *ctx.AutoscalingSpec.Memory))
+		nodeResources.SetRequest(corev1.ResourceMemory, memoryFromStorage(nodeResources.GetRequest(corev1.ResourceStorage), *ctx.AutoscalingSpec.StorageRange, *ctx.AutoscalingSpec.MemoryRange))
 	}
 
 	// Same as above, if CPU limits have been expressed by the user in the autoscaling specification then we adjust CPU request according to the memory request.
 	// See https://github.com/elastic/cloud-on-k8s/issues/4021
 	if ctx.AutoscalingSpec.IsCPUDefined() && ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
-		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.Memory, *ctx.AutoscalingSpec.CPU))
+		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.MemoryRange, *ctx.AutoscalingSpec.CPURange))
 	}
 
-	return nodeResources
+	return nodeResources.UpdateLimits(ctx.AutoscalingSpec.AutoscalingResources)
 }
 
 // getResourceValue calculates the desired quantity for a specific resource for a node in a tier. This value is
@@ -79,7 +77,7 @@ func (ctx *Context) getResourceValue(
 ) resource.Quantity {
 	if nodeRequired.IsZero() && totalRequired.IsZero() {
 		// Elasticsearch has returned 0 for both the node and the tier level. Scale down resources to minimum.
-		return resourceToQuantity(min.Value())
+		return resources.ResourceToQuantity(min.Value())
 	}
 
 	// Surface the situation where a resource is exhausted.
@@ -116,7 +114,7 @@ func (ctx *Context) getResourceValue(
 	}
 
 	// Try to round up the Gb value
-	nodeResource = roundUp(nodeResource, gibi)
+	nodeResource = roundUp(nodeResource, resources.GIB)
 
 	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
 	if nodeResource < min.Value() {
@@ -129,19 +127,7 @@ func (ctx *Context) getResourceValue(
 		nodeResource = max.Value()
 	}
 
-	return resourceToQuantity(nodeResource)
-}
-
-// resourceToQuantity attempts to convert a raw integer value into a human readable quantity.
-func resourceToQuantity(nodeResource int64) resource.Quantity {
-	var nodeQuantity resource.Quantity
-	if nodeResource >= gibi && nodeResource%gibi == 0 {
-		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
-		nodeQuantity = resource.MustParse(fmt.Sprintf("%dGi", nodeResource/gibi))
-	} else {
-		nodeQuantity = resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
-	}
-	return nodeQuantity
+	return resources.ResourceToQuantity(nodeResource)
 }
 
 func max64(x int64, others ...int64) int64 {

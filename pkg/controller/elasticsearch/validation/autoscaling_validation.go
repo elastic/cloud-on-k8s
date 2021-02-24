@@ -168,44 +168,44 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 			)
 		}
 
-		if !(autoscalingSpec.NodeCount.Min >= 0) {
+		if !(autoscalingSpec.NodeCountRange.Min >= 0) {
 			errs = append(
 				errs,
 				field.Invalid(
 					autoscalingSpecPath(i, "resources", "nodeCount", "min"),
-					autoscalingSpec.NodeCount.Min,
+					autoscalingSpec.NodeCountRange.Min,
 					"min count must be equal or greater than 0",
 				),
 			)
 		}
 
-		if !(autoscalingSpec.NodeCount.Max > 0) {
+		if !(autoscalingSpec.NodeCountRange.Max > 0) {
 			errs = append(
 				errs,
 				field.Invalid(
 					autoscalingSpecPath(i, "resources", "nodeCount", "max"),
-					autoscalingSpec.NodeCount.Max,
+					autoscalingSpec.NodeCountRange.Max,
 					"max count must be greater than 0"),
 			)
 		}
 
-		if !(autoscalingSpec.NodeCount.Max >= autoscalingSpec.NodeCount.Min) {
+		if !(autoscalingSpec.NodeCountRange.Max >= autoscalingSpec.NodeCountRange.Min) {
 			errs = append(
 				errs,
 				field.Invalid(autoscalingSpecPath(i, "resources", "nodeCount", "max"),
-					autoscalingSpec.NodeCount.Max,
+					autoscalingSpec.NodeCountRange.Max,
 					"max node count must be an integer greater or equal than the min node count"),
 			)
 		}
 
 		// Validate CPU
-		errs = validateQuantities(errs, autoscalingSpec.CPU, i, "cpu", minCPU)
+		errs = validateQuantities(errs, autoscalingSpec.CPURange, i, "cpu", minCPU)
 
 		// Validate Memory
-		errs = validateQuantities(errs, autoscalingSpec.Memory, i, "memory", minMemory)
+		errs = validateQuantities(errs, autoscalingSpec.MemoryRange, i, "memory", minMemory)
 
 		// Validate storage
-		errs = validateQuantities(errs, autoscalingSpec.Storage, i, "storage", minStorage)
+		errs = validateQuantities(errs, autoscalingSpec.StorageRange, i, "storage", minStorage)
 	}
 	return errs
 }
