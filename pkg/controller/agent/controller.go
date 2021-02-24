@@ -7,17 +7,6 @@ package agent
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -30,6 +19,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -51,7 +51,10 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAgent {
 	client := mgr.GetClient()
 	return &ReconcileAgent{
-		Client:         client,
+		Client: client,
+		clientsetFactory: func() (*kubernetes.Clientset, error) {
+			return kubernetes.NewForConfig(mgr.GetConfig())
+		},
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
@@ -108,8 +111,9 @@ var _ reconcile.Reconciler = &ReconcileAgent{}
 // ReconcileAgent reconciles an Agent object
 type ReconcileAgent struct {
 	k8s.Client
-	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches
+	clientsetFactory func() (*kubernetes.Clientset, error)
+	recorder         record.EventRecorder
+	dynamicWatches   watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -165,15 +169,21 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	if err := r.validate(ctx, agent); err != nil {
 		return results.WithError(err)
 	}
-
-	driverResults := internalReconcile(Params{
+	params := Params{
 		Context:       ctx,
 		Client:        r.Client,
 		EventRecorder: r.recorder,
 		Watches:       r.dynamicWatches,
 		Agent:         agent,
-	})
+	}
 
+	// workaround for https://github.com/elastic/beats/issues/24160
+	if res := reconcileVCSRefs(&params, r.clientsetFactory); res.HasError() || res.HasRequeue() {
+		return res
+	}
+
+	params.Logger().Info("Beginning Elastic Agent reconciliation")
+	driverResults := internalReconcile(params)
 	return results.WithResults(driverResults)
 }
 

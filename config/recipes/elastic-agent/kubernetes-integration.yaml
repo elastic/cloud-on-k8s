@@ -13,6 +13,8 @@ spec:
         serviceAccountName: elastic-agent
         containers:
         - name: agent
+          securityContext:
+            runAsUser: 0
           env:
           - name: NODE_NAME
             valueFrom:

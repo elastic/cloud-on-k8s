@@ -30,6 +30,9 @@ type Params struct {
 	EventRecorder record.EventRecorder
 	Watches       watches.DynamicWatches
 
+	// AgentVCSRef is elastic-agent-${hash} where hash is the VCS hash from which the Agent was built.
+	AgentVCSRef string
+
 	Agent agentv1alpha1.Agent
 }
 

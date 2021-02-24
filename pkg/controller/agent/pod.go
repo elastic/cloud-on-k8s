@@ -30,7 +30,7 @@ const (
 
 	DataVolumeName            = "agent-data"
 	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
-	DataMountPath             = "/usr/share/data"
+	DataMountPath             = "/usr/share/elastic-agent/data/%s/run"
 
 	// ConfigChecksumLabel is a label used to store Agent config checksum.
 	ConfigChecksumLabel = "agent.k8s.elastic.co/config-checksum"
@@ -115,7 +115,7 @@ func createDataVolume(params Params) volume.VolumeLike {
 	return volume.NewHostVolume(
 		DataVolumeName,
 		dataMountHostPath,
-		DataMountPath,
+		fmt.Sprintf(DataMountPath, params.AgentVCSRef),
 		false,
 		corev1.HostPathDirectoryOrCreate)
 }

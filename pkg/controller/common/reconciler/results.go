@@ -6,6 +6,7 @@ package reconciler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
@@ -49,6 +50,14 @@ func NewResult(ctx context.Context) *Results {
 // HasError returns true if Results contains one or more errors.
 func (r *Results) HasError() bool {
 	return len(r.errors) > 0
+}
+
+func (r *Results) HasRequeue() bool {
+	return r.currKind > noqueueKind
+}
+
+func (r *Results) String() string {
+	return fmt.Sprintf("%v err: %v", r.currResult, r.errors)
 }
 
 // WithResults appends the results and error from the other Results.
