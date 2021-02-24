@@ -1029,7 +1029,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy"]
 === VolumeClaimDeletePolicy (string) 
 
-
+VolumeClaimDeletePolicy describes the policy for handling PersistentVolumeClaims that hold Elasticsearch data.
 
 .Appears In:
 ****
