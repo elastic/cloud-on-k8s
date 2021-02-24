@@ -15,12 +15,13 @@ import (
 const (
 	ElasticsearchAutoscalingStatusAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-status"
 
-	VerticalScalingLimitReached   AutoscalingEventType = "VerticalScalingLimitReached"
+	EmptyResponse                 AutoscalingEventType = "EmptyResponse"
 	HorizontalScalingLimitReached AutoscalingEventType = "HorizontalScalingLimitReached"
 	MemoryRequired                AutoscalingEventType = "MemoryRequired"
-	EmptyResponse                 AutoscalingEventType = "EmptyResponse"
-	StorageRequired               AutoscalingEventType = "StorageRequired"
 	NoNodeSet                     AutoscalingEventType = "NoNodeSet"
+	OverlappingPolicies           AutoscalingEventType = "OverlappingPolicies"
+	StorageRequired               AutoscalingEventType = "StorageRequired"
+	VerticalScalingLimitReached   AutoscalingEventType = "VerticalScalingLimitReached"
 )
 
 type Status struct {
@@ -133,6 +134,7 @@ type AutoscalingStatusBuilder struct {
 	policyStatusBuilder map[string]*AutoscalingPolicyStatusBuilder
 }
 
+// NewAutoscalingStatusBuilder creates a new autoscaling status builder.
 func NewAutoscalingStatusBuilder() *AutoscalingStatusBuilder {
 	return &AutoscalingStatusBuilder{
 		policyStatusBuilder: make(map[string]*AutoscalingPolicyStatusBuilder),
