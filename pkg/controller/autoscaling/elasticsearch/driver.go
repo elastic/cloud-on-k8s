@@ -81,8 +81,8 @@ func newStatusBuilder(log logr.Logger, autoscalingSpec esv1.AutoscalingSpec) *st
 		}
 		// sort policies for consistent comparison
 		sort.Strings(policies)
+		message := fmt.Sprintf("role %s is declared in autoscaling policies %s", role, strings.Join(policies, ","))
 		for _, policy := range policies {
-			message := fmt.Sprintf("role %s is declared in autoscaling policies %s", role, strings.Join(policies, ","))
 			log.Info(message, "policy", policy)
 			statusBuilder.ForPolicy(policy).RecordEvent(status.OverlappingPolicies, message)
 		}
