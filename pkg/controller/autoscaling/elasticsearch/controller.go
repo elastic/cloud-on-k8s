@@ -175,7 +175,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 func defaultResult(autoscalingSpecification esv1.AutoscalingSpec) reconcile.Result {
 	return reconcile.Result{
 		Requeue:      true,
-		RequeueAfter: autoscalingSpecification.GetSyncPeriodOrDefault(),
+		RequeueAfter: autoscalingSpecification.GetPollingPeriodOrDefault(),
 	}
 }
 

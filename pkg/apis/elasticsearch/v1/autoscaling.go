@@ -31,8 +31,8 @@ var (
 	// resources specification. By default we don't want a CPU limit, hence a default value of 0.0
 	defaultCPURequestsToLimitsRatio = 0.0
 
-	// defaultSyncPeriod is the default period between 2 Elasticsearch autoscaling API polls.
-	defaultSyncPeriod = 60 * time.Second
+	// defaultPollingPeriod is the default period between 2 Elasticsearch autoscaling API polls.
+	defaultPollingPeriod = 60 * time.Second
 )
 
 // -- Elasticsearch Autoscaling API structures
@@ -58,8 +58,8 @@ type AutoscalingPolicy struct {
 type AutoscalingSpec struct {
 	AutoscalingPolicySpecs AutoscalingPolicySpecs `json:"policies"`
 
-	// SyncPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
-	SyncPeriod *metav1.Duration `json:"syncPeriod"`
+	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+	PollingPeriod *metav1.Duration `json:"pollingPeriod"`
 
 	// Elasticsearch is stored in the autoscaling spec for convenience. It should be removed once the autoscaling spec is
 	// fully part of the Elasticsearch specification.
@@ -166,12 +166,12 @@ func (aps AutoscalingPolicySpec) IsStorageDefined() bool {
 	return aps.Storage != nil
 }
 
-// GetSyncPeriodOrDefault returns the sync period as specified by the user in the autoscaling specification or the default value.
-func (as AutoscalingSpec) GetSyncPeriodOrDefault() time.Duration {
-	if as.SyncPeriod != nil {
-		return as.SyncPeriod.Duration
+// GetPollingPeriodOrDefault returns the polling period as specified by the user in the autoscaling specification or the default value.
+func (as AutoscalingSpec) GetPollingPeriodOrDefault() time.Duration {
+	if as.PollingPeriod != nil {
+		return as.PollingPeriod.Duration
 	}
-	return defaultSyncPeriod
+	return defaultPollingPeriod
 }
 
 // findByRoles returns the autoscaling specification associated with a set of roles or nil if not found.
