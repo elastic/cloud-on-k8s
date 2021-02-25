@@ -460,6 +460,7 @@ e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
 e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
+		--operator-image=$(OPERATOR_IMAGE) \
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \

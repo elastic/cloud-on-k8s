@@ -266,6 +266,11 @@ func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 	return b
 }
 
+func (b Builder) WithVolumeClaimDeletePolicy(policy esv1.VolumeClaimDeletePolicy) Builder {
+	b.Elasticsearch.Spec.VolumeClaimDeletePolicy = policy
+	return b
+}
+
 func (b Builder) WithEmptyDirVolumes() Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		// remove any default claim
