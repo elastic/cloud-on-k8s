@@ -130,8 +130,7 @@ func setVolumeClaimsControllerReference(
 	persistentVolumeClaims []corev1.PersistentVolumeClaim,
 	existingClaims []corev1.PersistentVolumeClaim,
 ) []corev1.PersistentVolumeClaim {
-	// set the owner reference of all volume claims to the ES resource,
-	// so PVC get deleted automatically upon Elasticsearch resource deletion
+	// keep existing ownerReferences for backwards compatibility but don't add new ones
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
 	for _, claim := range persistentVolumeClaims {
 		if existingClaim := sset.GetClaim(existingClaims, claim.Name); existingClaim != nil {

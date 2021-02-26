@@ -22,22 +22,21 @@ import (
 var log = ulog.Log.WithName("es-validation")
 
 const (
-	autoscalingVersionMsg             = "autoscaling is not available in this version of Elasticsearch"
-	cfgInvalidMsg                     = "Configuration invalid"
-	duplicateNodeSets                 = "NodeSet names must be unique"
-	invalidNamesErrMsg                = "Elasticsearch configuration would generate resources with invalid names"
-	invalidSanIPErrMsg                = "Invalid SAN IP address. Must be a valid IPv4 address"
-	invalidVolumeClaimDeletePolicyMsg = "Invalid VolumeClaimDeletePolicy. Must be one of Retain, RemoveOnScaleDown, RemoveOnClusterDeletion"
-	masterRequiredMsg                 = "Elasticsearch needs to have at least one master node"
-	mixedRoleConfigMsg                = "Detected a combination of node.roles and %s. Use only node.roles"
-	noDowngradesMsg                   = "Downgrades are not supported"
-	nodeRolesInOldVersionMsg          = "node.roles setting is not available in this version of Elasticsearch"
-	parseStoredVersionErrMsg          = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	parseVersionErrMsg                = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	pvcImmutableErrMsg                = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
-	unsupportedConfigErrMsg           = "Configuration setting is reserved for internal use. User-configured use is unsupported"
-	unsupportedUpgradeMsg             = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
-	unsupportedVersionMsg             = "Unsupported version"
+	autoscalingVersionMsg    = "autoscaling is not available in this version of Elasticsearch"
+	cfgInvalidMsg            = "Configuration invalid"
+	duplicateNodeSets        = "NodeSet names must be unique"
+	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
+	invalidSanIPErrMsg       = "Invalid SAN IP address. Must be a valid IPv4 address"
+	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
+	mixedRoleConfigMsg       = "Detected a combination of node.roles and %s. Use only node.roles"
+	noDowngradesMsg          = "Downgrades are not supported"
+	nodeRolesInOldVersionMsg = "node.roles setting is not available in this version of Elasticsearch"
+	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	pvcImmutableErrMsg       = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
+	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
+	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
+	unsupportedVersionMsg    = "Unsupported version"
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
@@ -50,7 +49,6 @@ var validations = []validation{
 	supportedVersion,
 	validSanIP,
 	validAutoscalingConfiguration,
-	validVolumeClaimDeletePolicy,
 }
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
@@ -218,14 +216,6 @@ func checkNodeSetNameUniqueness(es esv1.Elasticsearch) field.ErrorList {
 	}
 	for _, dupe := range duplicates {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), dupe, duplicateNodeSets))
-	}
-	return errs
-}
-
-func validVolumeClaimDeletePolicy(es esv1.Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	if _, ok := esv1.ValidVolumeClaimDeletePolicies[es.Spec.VolumeClaimDeletePolicy]; !ok {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("VolumeClaimDeletePolicy"), es.Spec.VolumeClaimDeletePolicy, invalidVolumeClaimDeletePolicyMsg))
 	}
 	return errs
 }

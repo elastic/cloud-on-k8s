@@ -51,7 +51,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 			},
 		},
 		{
-			name: "should inherit existing claim ownerRefs that may have a different apiVersion",
+			name: "should inherit existing claim ownerRefs for backwards compatibility (that may also have a different apiVersion)",
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "user-provided"}},

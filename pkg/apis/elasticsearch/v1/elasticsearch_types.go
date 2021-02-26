@@ -68,12 +68,14 @@ type ElasticsearchSpec struct {
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
 
 	// VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
-	// Defaults to RemoveOnScaleDownPolicy.
+	// Possible values are Retain, RemoveOnClusterDeletion and RemoveOnScaleDown. Defaults to RemoveOnScaleDown.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=Retain;RemoveOnScaleDown;RemoveOnClusterDeletion
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 }
 
-//VolumeClaimDeletePolicy describes the policy for handling PersistentVolumeClaims that hold Elasticsearch data.
+// VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
+// Inspired by https://github.com/kubernetes/enhancements/pull/2440
 type VolumeClaimDeletePolicy string
 
 const (
@@ -84,13 +86,6 @@ const (
 	// RetainPolicy retain all PersistenVolumeClaims even after the corresponding Elasticsearch cluster has been deleted.
 	RetainPolicy VolumeClaimDeletePolicy = "Retain"
 )
-
-var ValidVolumeClaimDeletePolicies = map[VolumeClaimDeletePolicy]struct{}{
-	RemoveOnScaleDownPolicy:       {},
-	RemoveOnClusterDeletionPolicy: {},
-	RetainPolicy:                  {},
-	VolumeClaimDeletePolicy(""):   {}, // empty value is valid and will be interpreted as default i.e RemoveOnScaleDown
-}
 
 // TransportConfig holds the transport layer settings for Elasticsearch.
 type TransportConfig struct {
