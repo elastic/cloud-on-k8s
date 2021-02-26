@@ -7969,9 +7969,8 @@ spec:
                   are Retain, RemoveOnClusterDeletion and RemoveOnScaleDown. Defaults
                   to RemoveOnScaleDown.
                 enum:
-                - Retain
+                - RetainOnClusterDeletion
                 - RemoveOnScaleDown
-                - RemoveOnClusterDeletion
                 type: string
             required:
             - nodeSets

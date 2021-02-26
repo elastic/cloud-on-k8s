@@ -41,7 +41,7 @@ func TestVolumeRetention(t *testing.T) {
 	var dataCheck *elasticsearch.DataIntegrityCheck
 	b := elasticsearch.NewBuilder("test-volume-retain-policy").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithVolumeClaimDeletePolicy(esv1.RetainPolicy)
+		WithVolumeClaimDeletePolicy(esv1.RetainOnClusterDeletionPolicy)
 
 	// create a cluster configured to retain its PVCs and ingest data
 	test.Sequence(nil, func(k *test.K8sClient) test.StepList {

@@ -148,7 +148,7 @@ func TestGarbageCollectPVCs(t *testing.T) {
 		wantPVCs int
 	}{
 		{
-			name: "Remove on scale down policy",
+			name: "Remove on default scale down policy",
 			args: args{
 				k8sClient:            k8s.NewFakeClient(existingPVCS...),
 				es:                   esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}},
@@ -159,19 +159,19 @@ func TestGarbageCollectPVCs(t *testing.T) {
 			wantPVCs: 1,
 		},
 		{
-			name: "Keep on any other policy",
+			name: "Remove on any other explicitly set policy",
 			args: args{
 				k8sClient: k8s.NewFakeClient(existingPVCS...),
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					Spec: esv1.ElasticsearchSpec{
-						VolumeClaimDeletePolicy: esv1.RetainPolicy,
+						VolumeClaimDeletePolicy: esv1.RetainOnClusterDeletionPolicy,
 					}},
 				actualStatefulSets:   sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")},
 				expectedStatefulSets: sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")},
 			},
 			wantErr:  false,
-			wantPVCs: 2,
+			wantPVCs: 1,
 		},
 	}
 	for _, tt := range tests {

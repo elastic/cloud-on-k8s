@@ -69,7 +69,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			name: "remove references on retain",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es")),
-				es: esFixture(esv1.RetainPolicy),
+				es: esFixture(esv1.RetainOnClusterDeletionPolicy),
 			},
 			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0"))},
 			wantErr: false,
@@ -78,7 +78,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			name: "add references for remove policies",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0")),
-				es: esFixture(esv1.RemoveOnClusterDeletionPolicy),
+				es: esFixture(esv1.RemoveOnScaleDownPolicy),
 			},
 			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0", "es"))},
 			wantErr: false,
@@ -87,7 +87,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			name: "keep references set by other controllers when retaining",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es", "some-other-ref")),
-				es: esFixture(esv1.RetainPolicy),
+				es: esFixture(esv1.RetainOnClusterDeletionPolicy),
 			},
 			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0", "some-other-ref"))},
 			wantErr: false,

@@ -75,7 +75,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 			Skip: func() bool {
-				return b.Elasticsearch.Spec.VolumeClaimDeletePolicy == esv1.RetainPolicy
+				return b.Elasticsearch.Spec.VolumeClaimDeletePolicy == esv1.RetainOnClusterDeletionPolicy
 			},
 		},
 		{
