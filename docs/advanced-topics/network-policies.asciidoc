@@ -149,7 +149,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          eck.k8s.elastic.co/operator-name: elastic-operator
+          control-plane: elastic-operator
       podSelector:
         matchLabels:
           control-plane: elastic-operator
