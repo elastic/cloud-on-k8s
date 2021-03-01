@@ -2932,8 +2932,11 @@ spec:
                 specifies the lowest version currently running.'
               type: string
           type: object
-  version: v1beta1
+  version: v1
   versions:
+  - name: v1
+    served: true
+    storage: true
   - name: v1beta1
     served: true
     storage: true
