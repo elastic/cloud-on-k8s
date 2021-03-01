@@ -16,6 +16,7 @@ webhooks:
       namespace: system
       path: /validate-agent-k8s-elastic-co-v1alpha1-agent
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-agent-validation-v1alpha1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -38,6 +39,7 @@ webhooks:
       namespace: system
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-apm-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -60,6 +62,7 @@ webhooks:
       namespace: system
       path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -82,6 +85,7 @@ webhooks:
       namespace: system
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-beat-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -104,6 +108,7 @@ webhooks:
       namespace: system
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-es-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -126,6 +131,7 @@ webhooks:
       namespace: system
       path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-ent-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -148,6 +154,7 @@ webhooks:
       namespace: system
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-kb-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
@@ -170,6 +177,7 @@ webhooks:
       namespace: system
       path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
   rules:
   - apiGroups:
