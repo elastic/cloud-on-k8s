@@ -67,7 +67,9 @@ while getopts "ug" OPT; do
             ARGS=("$@")
             (
                 cd "$SCRIPT_DIR"
-                go run main.go --source="$CHART_DIR" generate "${ARGS[@]}"
+                go build -o manifest-gen >/dev/null 2>&1 
+                ./manifest-gen --source="$CHART_DIR" generate "${ARGS[@]}"
+                rm manifest-gen
             )
             exit 0
             ;;
