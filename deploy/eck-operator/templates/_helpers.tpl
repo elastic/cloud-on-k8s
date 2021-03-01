@@ -150,6 +150,18 @@ admissionReviewVersions: [v1beta1]
 {{- end }}
 {{- end }}
 
+
+{{/*
+Define webhook match policy based on Kubernetes version
+*/}}
+{{- define "eck-operator.webhookMatchPolicy" -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if $kubeVersionSupported  }}
+matchPolicy: Exact
+{{- end }}
+{{- end }}
+
 {{/*
 RBAC permissions
 */}}
