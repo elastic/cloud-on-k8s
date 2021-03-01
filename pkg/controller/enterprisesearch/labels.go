@@ -5,7 +5,7 @@
 package enterprisesearch
 
 import (
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
 
@@ -26,7 +26,7 @@ func Labels(entName string) map[string]string {
 	}
 }
 
-func VersionLabels(ent entv1beta1.EnterpriseSearch) map[string]string {
+func VersionLabels(ent entv1.EnterpriseSearch) map[string]string {
 	return map[string]string{
 		VersionLabelName: ent.Spec.Version,
 	}

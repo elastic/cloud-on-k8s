@@ -7,7 +7,7 @@ package enterprisesearch
 import (
 	"context"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +39,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "EnterpriseSearch CRDs should exist",
 			Test: test.Eventually(func() error {
-				crd := &entv1beta1.EnterpriseSearchList{}
+				crd := &entv1.EnterpriseSearchList{}
 				if err := k.Client.List(context.Background(), crd); err != nil {
 					return err
 				}

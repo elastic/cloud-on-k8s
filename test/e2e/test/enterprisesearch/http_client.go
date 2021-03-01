@@ -16,7 +16,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -34,7 +34,7 @@ type EnterpriseSearchClient struct {
 	password   string
 }
 
-func NewEnterpriseSearchClient(ent entv1beta1.EnterpriseSearch, k *test.K8sClient) (EnterpriseSearchClient, error) {
+func NewEnterpriseSearchClient(ent entv1.EnterpriseSearch, k *test.K8sClient) (EnterpriseSearchClient, error) {
 	var caCerts []*x509.Certificate
 	scheme := "http"
 	if ent.Spec.HTTP.TLS.Enabled() {

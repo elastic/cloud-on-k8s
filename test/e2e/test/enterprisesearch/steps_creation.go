@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Enterprise Search should be created",
 			Test: func(t *testing.T) {
-				var createdEnt entv1beta1.EnterpriseSearch
+				var createdEnt entv1.EnterpriseSearch
 				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &createdEnt)
 				require.NoError(t, err)
 				require.Equal(t, b.EnterpriseSearch.Spec.Version, createdEnt.Spec.Version)

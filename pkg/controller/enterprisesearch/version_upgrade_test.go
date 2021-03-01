@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
@@ -45,9 +45,9 @@ var (
 	}
 )
 
-func entWithVersion(version string, annotations map[string]string) entv1beta1.EnterpriseSearch {
-	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
-		Spec: entv1beta1.EnterpriseSearchSpec{Version: version}}
+func entWithVersion(version string, annotations map[string]string) entv1.EnterpriseSearch {
+	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
+		Spec: entv1.EnterpriseSearchSpec{Version: version}}
 	ent.SetAssociationConf(&associationConf)
 	return ent
 }
@@ -103,10 +103,10 @@ func (f fakeRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) {
 func TestVersionUpgrade_Handle(t *testing.T) {
 	tests := []struct {
 		name           string
-		ent            entv1beta1.EnterpriseSearch
+		ent            entv1.EnterpriseSearch
 		runtimeObjs    []runtime.Object
 		httpChecks     roundTripChecks
-		wantUpdatedEnt entv1beta1.EnterpriseSearch
+		wantUpdatedEnt entv1.EnterpriseSearch
 		wantErr        string
 	}{
 		{
@@ -184,8 +184,8 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		},
 		{
 			name: "version upgrade requested, but no association configured : do nothing",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Spec: entv1.EnterpriseSearchSpec{Version: "7.7.1"}},
 			runtimeObjs: []runtime.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
@@ -194,8 +194,8 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			httpChecks: roundTripChecks{
 				called: false,
 			},
-			wantUpdatedEnt: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
+			wantUpdatedEnt: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Spec: entv1.EnterpriseSearchSpec{Version: "7.7.1"}},
 		},
 	}
 	for _, tt := range tests {
@@ -223,26 +223,26 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 	tests := []struct {
 		name string
-		ent  entv1beta1.EnterpriseSearch
+		ent  entv1.EnterpriseSearch
 		want bool
 	}{
 		{
 			name: "annotation set to true: true",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
 				Annotations: map[string]string{ReadOnlyModeAnnotationName: "true"},
 			}},
 			want: true,
 		},
 		{
 			name: "no annotation set: false",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
 				Annotations: nil,
 			}},
 			want: false,
 		},
 		{
 			name: "annotation set to anything else: false",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
 				Annotations: map[string]string{ReadOnlyModeAnnotationName: "anything-else"},
 			}},
 			want: false,
@@ -260,7 +260,7 @@ func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 	tests := []struct {
 		name string
-		ent  entv1beta1.EnterpriseSearch
+		ent  entv1.EnterpriseSearch
 		pods []runtime.Object
 		want bool
 	}{
@@ -351,7 +351,7 @@ func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 	tests := []struct {
 		name            string
 		runtimeObjs     []runtime.Object
-		ent             entv1beta1.EnterpriseSearch
+		ent             entv1.EnterpriseSearch
 		expectedVersion version.Version
 		want            bool
 	}{

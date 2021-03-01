@@ -22,6 +22,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
@@ -704,7 +705,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	err = ugc.
 		For(&apmv1.ApmServerList{}, associationctl.ApmAssociationLabelNamespace, associationctl.ApmAssociationLabelName).
 		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
-		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
+		For(&entv1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		DoGarbageCollection()
@@ -719,7 +720,7 @@ func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
 		esv1.Kind:          &esv1.Elasticsearch{},
 		apmv1.Kind:         &apmv1.ApmServer{},
 		kbv1.Kind:          &kbv1.Kibana{},
-		entv1beta1.Kind:    &entv1beta1.EnterpriseSearch{},
+		entv1.Kind:         &entv1.EnterpriseSearch{},
 		beatv1beta1.Kind:   &beatv1beta1.Beat{},
 		agentv1alpha1.Kind: &agentv1alpha1.Agent{},
 	}); err != nil {
@@ -762,6 +763,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},
+		&entv1.EnterpriseSearch{},
 		&entv1beta1.EnterpriseSearch{},
 		&esv1beta1.Elasticsearch{},
 		&kbv1.Kibana{},

@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -52,7 +52,7 @@ var (
 	}
 )
 
-func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
+func newPodSpec(ent entv1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	// ensure the Pod gets rotated on config change
 	labels := map[string]string{ConfigHashLabelName: configHash}
 
@@ -64,7 +64,7 @@ func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTe
 	readinessProbeVolume := ReadinessProbeSecretVolume(ent)
 	logsVolume := volume.NewEmptyDirVolume("logs", LogVolumeMountPath)
 
-	builder := defaults.NewPodTemplateBuilder(ent.Spec.PodTemplate, entv1beta1.EnterpriseSearchContainerName).
+	builder := defaults.NewPodTemplateBuilder(ent.Spec.PodTemplate, entv1.EnterpriseSearchContainerName).
 		WithLabels(labels).
 		WithResources(DefaultResources).
 		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ent.Spec.Version)).
@@ -81,7 +81,7 @@ func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTe
 	return builder.PodTemplate
 }
 
-func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
+func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.EnterpriseSearch) *defaults.PodTemplateBuilder {
 	if !ent.AssociationConf().CAIsConfigured() {
 		return builder
 	}
@@ -95,7 +95,7 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1beta1.Ente
 		WithVolumeMounts(vol.VolumeMount())
 }
 
-func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
+func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.EnterpriseSearch) *defaults.PodTemplateBuilder {
 	if !ent.Spec.HTTP.TLS.Enabled() {
 		return builder
 	}

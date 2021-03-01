@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -41,11 +41,11 @@ const (
 	EncryptionKeysSetting = "secret_management.encryption_keys"
 )
 
-func ConfigSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
+func ConfigSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
 	return volume.NewSecretVolume(name.Config(ent.Name), "config", ConfigMountPath, ConfigFilename, 0444)
 }
 
-func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
+func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
 	// reuse the config secret
 	return volume.NewSecretVolume(name.Config(ent.Name), "readiness-probe", ReadinessProbeMountPath, ReadinessProbeFilename, 0444)
 }
@@ -55,7 +55,7 @@ func ReadinessProbeSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVo
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+func ReconcileConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
 	cfg, err := newConfig(driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -96,7 +96,7 @@ type partialConfigWithESAuth struct {
 }
 
 // readinessProbeScript returns a bash script that requests the health endpoint.
-func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig, ipFamily corev1.IPFamily) ([]byte, error) {
+func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.CanonicalConfig, ipFamily corev1.IPFamily) ([]byte, error) {
 	url := fmt.Sprintf("%s://%s/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), netutil.LoopbackHostPort(ipFamily, HTTPPort))
 
 	// retrieve Elasticsearch user credentials from the aggregated config since it could be user-provided
@@ -144,7 +144,7 @@ func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.Cano
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ type reusableSettings struct {
 }
 
 // getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
-func getOrCreateReusableSettings(c k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(c, ent)
 	if err != nil {
 		return nil, err
@@ -218,7 +218,7 @@ func getOrCreateReusableSettings(c k8s.Client, ent entv1beta1.EnterpriseSearch) 
 }
 
 // getExistingConfig retrieves the canonical config, if one exists
-func getExistingConfig(client k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func getExistingConfig(client k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ent.Namespace,
@@ -242,7 +242,7 @@ func getExistingConfig(client k8s.Client, ent entv1beta1.EnterpriseSearch) (*set
 	return cfg, nil
 }
 
-func parseConfigRef(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func parseConfigRef(driver driver.Interface, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(driver, &ent, ent.Spec.ConfigRef, ConfigFilename)
 }
 
@@ -254,7 +254,7 @@ func inAddrAnyFor(ipFamily corev1.IPFamily) string {
 	return "0:0:0:0:0:0:0:0"
 }
 
-func defaultConfig(ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) *settings.CanonicalConfig {
+func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         inAddrAnyFor(ipFamily),
@@ -264,7 +264,7 @@ func defaultConfig(ent entv1beta1.EnterpriseSearch, ipFamily corev1.IPFamily) *s
 	})
 }
 
-func associationConfig(c k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	if !ent.AssociationConf().IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
@@ -307,7 +307,7 @@ func associationConfig(c k8s.Client, ent entv1beta1.EnterpriseSearch) (*settings
 	return cfg, nil
 }
 
-func tlsConfig(ent entv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
+func tlsConfig(ent entv1.EnterpriseSearch) *settings.CanonicalConfig {
 	if !ent.Spec.HTTP.TLS.Enabled() {
 		return settings.NewCanonicalConfig()
 	}
