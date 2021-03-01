@@ -2939,7 +2939,7 @@ spec:
     storage: true
   - name: v1beta1
     served: true
-    storage: true
+    storage: false
 status:
   acceptedNames:
     kind: ""
