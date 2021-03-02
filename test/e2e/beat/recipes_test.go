@@ -195,7 +195,7 @@ func TestAuditbeatHostsRecipe(t *testing.T) {
 
 func TestPacketbeatDnsHttpRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
-		if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesVersion == "1.12") {
+		if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesMajorMinor() == "1.12") {
 			// there are some issues with kind 1.12 and tracking http traffic
 			builder = builder.WithESValidations(beat.HasEvent("event.dataset:http"))
 		}

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/go-logr/logr"
@@ -109,7 +110,7 @@ type Context struct {
 	BuildNumber           string            `json:"build_number"`
 	Provider              string            `json:"provider"`
 	ClusterName           string            `json:"clusterName"`
-	KubernetesVersion     string            `json:"kubernetes_version"`
+	KubernetesVersion     version.Version   `json:"kubernetes_version"`
 	TestEnvTags           []string          `json:"test_tags"`
 }
 
@@ -121,6 +122,11 @@ func (c Context) ManagedNamespace(n int) string {
 // HasTag returns true if the test tags contain the specified value.
 func (c Context) HasTag(tag string) bool {
 	return stringsutil.StringInSlice(tag, c.TestEnvTags)
+}
+
+// KubernetesMajorMinor returns just the major and minor version numbers of the effective Kubernetes version.
+func (c Context) KubernetesMajorMinor() string {
+	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
 }
 
 // ClusterResource is a generic cluster resource.

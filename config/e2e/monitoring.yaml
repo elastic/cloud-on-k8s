@@ -59,9 +59,9 @@ spec:
           build_number: {{ .BuildNumber }}
           provider: {{ .Provider }}
           clusterName: {{ .ClusterName }}
-          kubernetes_version: {{ .KubernetesVersion }}
+          kubernetes_version: {{ .KubernetesMajorMinor }}
           stack_version: {{ .ElasticStackVersion }}
-          e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+          e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesMajorMinor }}-{{ .ElasticStackVersion }}
     setup.template.overwrite: true
     setup.template.append_fields:
     - name: stack_version
@@ -252,7 +252,7 @@ spec:
             build_number: {{ .BuildNumber }}
             provider: {{ .Provider }}
             clusterName: {{ .ClusterName }}
-            kubernetes_version: {{ .KubernetesVersion }}
+            kubernetes_version: {{ .KubernetesMajorMinor }}
             stack_version: {{ .ElasticStackVersion }}
             e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
         appenders:
