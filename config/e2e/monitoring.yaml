@@ -254,7 +254,7 @@ spec:
             clusterName: {{ .ClusterName }}
             kubernetes_version: {{ .KubernetesMajorMinor }}
             stack_version: {{ .ElasticStackVersion }}
-            e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+            e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesMajorMinor }}-{{ .ElasticStackVersion }}
         appenders:
         - type: config
           condition:
