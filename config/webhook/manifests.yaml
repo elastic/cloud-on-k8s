@@ -125,6 +125,7 @@ webhooks:
       namespace: system
       path: /validate-enterprisesearch-k8s-elastic-co-v1-enterprisesearch
   failurePolicy: Ignore
+  matchPolicy: Exact
   name: elastic-ent-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
