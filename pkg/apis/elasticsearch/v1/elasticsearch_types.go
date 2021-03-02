@@ -68,9 +68,9 @@ type ElasticsearchSpec struct {
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
 
 	// VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
-	// Possible values are RetainOnClusterDeletion and RemoveOnScaleDown. Defaults to RemoveOnScaleDown.
+	// Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=RetainOnClusterDeletion;RemoveOnScaleDown
+	// +kubebuilder:validation:Enum=DeleteOnScaledownOnly;DeleteOnScaledownAndClusterDeletion
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 }
 
@@ -79,10 +79,11 @@ type ElasticsearchSpec struct {
 type VolumeClaimDeletePolicy string
 
 const (
-	// RemoveOnScaleDownPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is removed.
-	RemoveOnScaleDownPolicy VolumeClaimDeletePolicy = "RemoveOnScaleDown"
-	// RetainOnClusterDeletionPolicy retain all PersistenVolumeClaims even after the corresponding Elasticsearch cluster has been deleted.
-	RetainOnClusterDeletionPolicy VolumeClaimDeletePolicy = "RetainOnClusterDeletion"
+	// DeleteOnScaledownAndClusterDeletionPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is removed.
+	DeleteOnScaledownAndClusterDeletionPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownAndClusterDeletion"
+	// DeleteOnScaledownOnlyPolicy removes PersistentVolumeClaims on scale down of Elasticsearch nodes but retains all
+	// current PersistenVolumeClaims when the Elasticsearch cluster has been deleted.
+	DeleteOnScaledownOnlyPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownOnly"
 )
 
 // TransportConfig holds the transport layer settings for Elasticsearch.
@@ -137,7 +138,7 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 
 func (es ElasticsearchSpec) VolumeClaimDeletePolicyOrDefault() VolumeClaimDeletePolicy {
 	if es.VolumeClaimDeletePolicy == "" {
-		return RemoveOnScaleDownPolicy
+		return DeleteOnScaledownAndClusterDeletionPolicy
 	}
 	return es.VolumeClaimDeletePolicy
 }

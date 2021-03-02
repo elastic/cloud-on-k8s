@@ -7966,10 +7966,11 @@ spec:
               volumeClaimDeletePolicy:
                 description: VolumeClaimDeletePolicy sets the policy for handling
                   deletion of PersistentVolumeClaims for all NodeSets. Possible values
-                  are RetainOnClusterDeletion and RemoveOnScaleDown. Defaults to RemoveOnScaleDown.
+                  are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
+                  Defaults to DeleteOnScaledownAndClusterDeletion.
                 enum:
-                - RetainOnClusterDeletion
-                - RemoveOnScaleDown
+                - DeleteOnScaledownOnly
+                - DeleteOnScaledownAndClusterDeletion
                 type: string
             required:
             - nodeSets

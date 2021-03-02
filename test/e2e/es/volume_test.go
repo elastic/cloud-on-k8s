@@ -41,9 +41,9 @@ func TestVolumeRetention(t *testing.T) {
 	var dataCheck *elasticsearch.DataIntegrityCheck
 	b := elasticsearch.NewBuilder("test-volume-retain-policy").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithVolumeClaimDeletePolicy(esv1.RetainOnClusterDeletionPolicy)
+		WithVolumeClaimDeletePolicy(esv1.DeleteOnScaledownOnlyPolicy)
 
-	// create a cluster configured to retain its PVCs and ingest data
+	// Create a cluster configured to retain its PVCs and ingest data
 	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
@@ -56,10 +56,10 @@ func TestVolumeRetention(t *testing.T) {
 		}
 	}, b).RunSequential(t)
 
-	// the cluster has now been deleted as part of our test step sequence, but PVCs have been retained
-	// recreate it just this time without retaining the PVCs
+	// The cluster has now been deleted as part of our usual test step sequence, but PVCs have been retained.
+	// Recreate it just this time without retaining the PVCs.
 
-	b2 := b.WithVolumeClaimDeletePolicy(esv1.RemoveOnScaleDownPolicy)
+	b2 := b.WithVolumeClaimDeletePolicy(esv1.DeleteOnScaledownAndClusterDeletionPolicy)
 	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
@@ -71,7 +71,7 @@ func TestVolumeRetention(t *testing.T) {
 		}
 	}, b2).RunSequential(t)
 
-	// the cluster has now been deleted including its PVCs as evidenced by our deletion test step sequence
+	// The cluster has now been deleted including its PVCs as evidenced by our usual deletion test step sequence.
 }
 
 func TestVolumeMultiDataPath(t *testing.T) {

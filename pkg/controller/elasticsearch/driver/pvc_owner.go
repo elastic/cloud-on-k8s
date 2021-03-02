@@ -32,9 +32,9 @@ func reconcilePVCOwnerRefs(c k8s.Client, es esv1.Elasticsearch) error {
 
 	for _, pvc := range pvcs.Items {
 		switch es.Spec.VolumeClaimDeletePolicyOrDefault() {
-		case esv1.RetainOnClusterDeletionPolicy:
+		case esv1.DeleteOnScaledownOnlyPolicy:
 			k8s.RemoveOwner(&pvc, &es)
-		case esv1.RemoveOnScaleDownPolicy:
+		case esv1.DeleteOnScaledownAndClusterDeletionPolicy:
 			if err := controllerutil.SetOwnerReference(&es, &pvc, scheme.Scheme); err != nil {
 				return fmt.Errorf("while setting owner during owner ref reconciliation: %w", err)
 			}

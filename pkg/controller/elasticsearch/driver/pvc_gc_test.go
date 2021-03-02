@@ -165,7 +165,7 @@ func TestGarbageCollectPVCs(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					Spec: esv1.ElasticsearchSpec{
-						VolumeClaimDeletePolicy: esv1.RetainOnClusterDeletionPolicy,
+						VolumeClaimDeletePolicy: esv1.DeleteOnScaledownOnlyPolicy,
 					}},
 				actualStatefulSets:   sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")},
 				expectedStatefulSets: sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")},
