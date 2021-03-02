@@ -123,14 +123,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
+      path: /validate-enterprisesearch-k8s-elastic-co-v1-enterprisesearch
   failurePolicy: Ignore
-  name: elastic-ent-validation-v1beta1.k8s.elastic.co
+  name: elastic-ent-validation-v1.k8s.elastic.co
   rules:
   - apiGroups:
     - enterprisesearch.k8s.elastic.co
     apiVersions:
-    - v1beta1
+    - v1
     operations:
     - CREATE
     - UPDATE
