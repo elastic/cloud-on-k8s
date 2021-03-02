@@ -162,19 +162,6 @@ func PodsMatchingLabels(c Client, namespace string, labels map[string]string) ([
 	return pods.Items, nil
 }
 
-// OverrideControllerReference overrides the controller owner reference with the given owner reference.
-func OverrideControllerReference(obj metav1.Object, newOwner metav1.OwnerReference) {
-	owners := obj.GetOwnerReferences()
-
-	ref := indexOfCtrlRef(owners)
-	if ref == -1 {
-		obj.SetOwnerReferences([]metav1.OwnerReference{newOwner})
-		return
-	}
-	owners[ref] = newOwner
-	obj.SetOwnerReferences(owners)
-}
-
 func indexOfCtrlRef(owners []metav1.OwnerReference) int {
 	for index, r := range owners {
 		if r.Controller != nil && *r.Controller {

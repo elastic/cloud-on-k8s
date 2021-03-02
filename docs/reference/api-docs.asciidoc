@@ -895,6 +895,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`remoteClusters`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-remotecluster[$$RemoteCluster$$] array__ | RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
+| *`volumeClaimDeletePolicy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy[$$VolumeClaimDeletePolicy$$]__ | VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets. Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
 |===
 
 
@@ -1028,6 +1029,18 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | Field | Description
 | *`changeBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-changebudget[$$ChangeBudget$$]__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy"]
+=== VolumeClaimDeletePolicy (string) 
+
+VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data. Inspired by https://github.com/kubernetes/enhancements/pull/2440
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
+
 
 
 

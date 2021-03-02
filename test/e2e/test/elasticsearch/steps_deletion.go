@@ -74,6 +74,9 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				}
 				return nil
 			}),
+			Skip: func() bool {
+				return b.Elasticsearch.Spec.VolumeClaimDeletePolicy == esv1.DeleteOnScaledownOnlyPolicy
+			},
 		},
 		{
 			Name: "Soft-owned secrets should eventually be removed",
