@@ -120,11 +120,11 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
+	if err := reconcilePVCOwnerRefs(d.K8sClient(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	if err := reconcilePVCOwnerRefs(d.K8sClient(), d.ES); err != nil {
+	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
 		return results.WithError(err)
 	}
 

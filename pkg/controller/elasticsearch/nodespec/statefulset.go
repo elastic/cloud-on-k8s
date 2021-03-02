@@ -91,7 +91,7 @@ func BuildStatefulSet(
 	if existingSset, exists := existingStatefulSets.GetByName(statefulSetName); exists {
 		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
-	claims := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims)
+	claims := preserveExistingVolumeClaimsOwnerRefs(nodeSet.VolumeClaimTemplates, existingClaims)
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,11 +126,12 @@ func BuildStatefulSet(
 	return sset, nil
 }
 
-func setVolumeClaimsControllerReference(
+func preserveExistingVolumeClaimsOwnerRefs(
 	persistentVolumeClaims []corev1.PersistentVolumeClaim,
 	existingClaims []corev1.PersistentVolumeClaim,
 ) []corev1.PersistentVolumeClaim {
-	// keep existing ownerReferences for backwards compatibility but don't add new ones
+	// before https://github.com/elastic/cloud-on-k8s/pull/4050, we used to set an ownerRef into all claims
+	// now keep existing ownerReferences for backwards compatibility but don't add new ones
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
 	for _, claim := range persistentVolumeClaims {
 		if existingClaim := sset.GetClaim(existingClaims, claim.Name); existingClaim != nil {

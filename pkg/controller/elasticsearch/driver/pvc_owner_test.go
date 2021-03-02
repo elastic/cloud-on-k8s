@@ -66,7 +66,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "remove references on retain",
+			name: "remove references on DeleteOnScaledownOnlyPolicy",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es")),
 				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
@@ -75,7 +75,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "add references for remove policies",
+			name: "add references for DeleteOnScaledownAndClusterDeletionPolicy",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
@@ -84,7 +84,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "keep references set by other controllers when retaining",
+			name: "keep references set by other controllers when removing owner ref",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es", "some-other-ref")),
 				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
@@ -93,7 +93,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "keep references set by other controllers when removing",
+			name: "keep references set by other controllers when setting owner ref",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "some-other-ref")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),

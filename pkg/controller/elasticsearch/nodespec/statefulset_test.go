@@ -127,7 +127,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims)
+			got := preserveExistingVolumeClaimsOwnerRefs(tt.persistentVolumeClaims, tt.existingClaims)
 			require.Equal(t, tt.wantClaims, got)
 		})
 	}
