@@ -56,14 +56,13 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/api v0.20.2
-	k8s.io/apiextensions-apiserver v0.20.2 // indirect
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
 	k8s.io/klog/v2 v2.5.0
 	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f // indirect
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	sigs.k8s.io/controller-runtime v0.8.2
-	sigs.k8s.io/controller-tools v0.4.1
+	sigs.k8s.io/controller-tools v0.5.0
 )
 
 // this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this
