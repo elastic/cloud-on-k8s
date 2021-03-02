@@ -13,7 +13,7 @@ spec:
         # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
         node.store.allow_mmap: false
 ---
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: ent-sample

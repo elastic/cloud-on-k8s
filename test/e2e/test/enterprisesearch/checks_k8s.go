@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -218,11 +218,11 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "EnterpriseSearch status should be updated",
 		Test: test.Eventually(func() error {
-			var ent v1beta1.EnterpriseSearch
+			var ent entv1.EnterpriseSearch
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
 				return err
 			}
-			expected := v1beta1.EnterpriseSearchStatus{
+			expected := entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: b.EnterpriseSearch.Spec.Count,
 					Version:        b.EnterpriseSearch.Spec.Version,

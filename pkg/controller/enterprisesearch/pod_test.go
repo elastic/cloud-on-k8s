@@ -9,20 +9,20 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_newPodSpec(t *testing.T) {
 	tests := []struct {
 		name       string
-		ent        entv1beta1.EnterpriseSearch
+		ent        entv1.EnterpriseSearch
 		assertions func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "user-provided init containers should inherit from the default main container image",
-			ent: entv1beta1.EnterpriseSearch{
-				Spec: entv1beta1.EnterpriseSearchSpec{
+			ent: entv1.EnterpriseSearch{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.8.0",
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{

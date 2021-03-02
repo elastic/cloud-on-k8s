@@ -20,7 +20,7 @@ This section describes how to deploy, configure and access Enterprise Search wit
 [source,yaml,subs="attributes,+macros"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: enterprise-search-quickstart
@@ -111,7 +111,7 @@ At a minimum, you must set `ent_search.external_url` to the desired URL.
 
 [source,yaml,subs="attributes"]
 ----
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: enterprise-search-quickstart
@@ -136,7 +136,7 @@ This example sets up a Secret with SMTP credentials:
 
 [source,yaml,subs="attributes"]
 ----
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: enterprise-search-quickstart
@@ -177,7 +177,7 @@ This example overrides the default 4Gi deployment to use 8Gi instead, and makes 
 
 [source,yaml,subs="attributes"]
 ----
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: enterprise-search-quickstart
@@ -219,7 +219,7 @@ Also, you can manually configure Enterprise Search to access any available Elast
 
 [source,yaml,subs="attributes,+macros"]
 ----
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: enterprise-search-quickstart

@@ -7,7 +7,7 @@ package enterprisesearch
 import (
 	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -25,7 +25,7 @@ var (
 
 // Builder to create Enterprise Search.
 type Builder struct {
-	EnterpriseSearch entv1beta1.EnterpriseSearch
+	EnterpriseSearch entv1.EnterpriseSearch
 	MutatedFrom      *Builder
 }
 
@@ -66,9 +66,9 @@ func newBuilder(name, randSuffix string) Builder {
 	}
 
 	return Builder{
-		EnterpriseSearch: entv1beta1.EnterpriseSearch{
+		EnterpriseSearch: entv1.EnterpriseSearch{
 			ObjectMeta: meta,
-			Spec: entv1beta1.EnterpriseSearchSpec{
+			Spec: entv1.EnterpriseSearchSpec{
 				Count:   1,
 				Version: test.Ctx().ElasticStackVersion,
 			},

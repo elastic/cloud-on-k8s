@@ -110,7 +110,7 @@ metadata:
               }
           },
           {
-              "apiVersion": "enterprisesearch.k8s.elastic.co/v1beta1",
+              "apiVersion": "enterprisesearch.k8s.elastic.co/v1",
               "kind": "EnterpriseSearch",
               "metadata": {
                   "name": "ent-sample"

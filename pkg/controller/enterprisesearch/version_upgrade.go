@@ -21,7 +21,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -46,7 +46,7 @@ const (
 type VersionUpgrade struct {
 	k8sClient  k8s.Client
 	recorder   record.EventRecorder
-	ent        entv1beta1.EnterpriseSearch
+	ent        entv1.EnterpriseSearch
 	dialer     net.Dialer   // optional custom dialer for the http client
 	httpClient *http.Client // custom http client, will be created if nil
 }
@@ -150,7 +150,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,
 // and false otherwise.
-func hasReadOnlyAnnotationTrue(ent entv1beta1.EnterpriseSearch) bool {
+func hasReadOnlyAnnotationTrue(ent entv1.EnterpriseSearch) bool {
 	value, exists := ent.Annotations[ReadOnlyModeAnnotationName]
 	return exists && value == "true"
 }

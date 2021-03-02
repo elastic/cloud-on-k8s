@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -54,7 +54,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Applying the Enterprise Search mutation should succeed",
 			Test: func(t *testing.T) {
-				var ent entv1beta1.EnterpriseSearch
+				var ent entv1.EnterpriseSearch
 				require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent))
 				ent.Spec = b.EnterpriseSearch.Spec
 				require.NoError(t, k.Client.Update(context.Background(), &ent))

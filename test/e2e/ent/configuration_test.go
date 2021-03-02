@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
@@ -120,7 +120,7 @@ email:
 }
 
 // CheckPartialConfig retrieves the configuration file from all Pods and compares it with the expected PartialConfig.
-func CheckPartialConfig(k *test.K8sClient, ent entv1beta1.EnterpriseSearch, expected PartialConfig) error {
+func CheckPartialConfig(k *test.K8sClient, ent entv1.EnterpriseSearch, expected PartialConfig) error {
 	var pods corev1.PodList
 	err := k.Client.List(context.Background(), &pods, test.EnterpriseSearchPodListOptions(ent.Namespace, ent.Name)...)
 	if err != nil {

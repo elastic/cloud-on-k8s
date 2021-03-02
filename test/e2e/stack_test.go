@@ -15,7 +15,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -204,7 +204,7 @@ func (s *StackResourceVersions) retrieveApmServer(c k8s.Client) error {
 }
 
 func (s *StackResourceVersions) retrieveEnterpriseSearch(c k8s.Client) error {
-	var ent entv1beta1.EnterpriseSearch
+	var ent entv1.EnterpriseSearch
 	if err := c.Get(context.Background(), s.EnterpriseSearch.ref, &ent); err != nil {
 		return err
 	}
