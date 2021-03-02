@@ -21,7 +21,7 @@ tracing:
   enabled: true
   config:
     ELASTIC_APM_SERVER_CERT: "/mnt/elastic/apm.crt"
-    ELASTIC_APM_ENVIRONMENT: "{{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}"
+    ELASTIC_APM_ENVIRONMENT: "{{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesMajorMinor }}-{{ .ElasticStackVersion }}"
 
 env:
   - name: ELASTIC_APM_SERVER_URL
@@ -58,3 +58,4 @@ config:
 
 internal:
   createOperatorNamespace: false
+  kubeVersion: {{ .KubernetesVersion }}

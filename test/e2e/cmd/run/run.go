@@ -195,7 +195,7 @@ func (h *helper) initTestContext() error {
 	return nil
 }
 
-func getKubernetesVersion(h *helper) string {
+func getKubernetesVersion(h *helper) version.Version {
 	out, err := h.kubectl("version", "--output=json")
 	if err != nil {
 		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
@@ -215,10 +215,7 @@ func getKubernetesVersion(h *helper) string {
 	}
 
 	serverVersion = strings.TrimPrefix(serverVersion, "v")
-	v := version.MustParse(serverVersion)
-
-	// we just want major and minor to aggregate test results
-	return fmt.Sprintf("%d.%d", v.Major, v.Minor)
+	return version.MustParse(serverVersion)
 }
 
 func isOcpCluster(h *helper) bool {
