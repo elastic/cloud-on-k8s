@@ -259,7 +259,7 @@ func TestPacketbeatConfig(t *testing.T) {
 			beat.HasEvent("event.dataset:dns"),
 		)
 
-	if test.Ctx().Provider != "kind" || test.Ctx().KubernetesMajorMinor() != "1.12" {
+	if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesMajorMinor() == "1.12") {
 		// there are some issues with kind 1.12 and tracking http traffic
 		pbBuilder = pbBuilder.WithESValidations(beat.HasEvent("event.dataset:http"))
 	}
