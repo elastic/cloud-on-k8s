@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -54,11 +55,6 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 		return &pvc
 	}
 
-	updated := func(pvc corev1.PersistentVolumeClaim) corev1.PersistentVolumeClaim {
-		pvc.ResourceVersion = "1000" // fake client starts at 999
-		return pvc
-	}
-
 	tests := []struct {
 		name    string
 		args    args
@@ -71,7 +67,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es")),
 				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0"))},
+			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0")},
 			wantErr: false,
 		},
 		{
@@ -80,7 +76,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0", "es"))},
+			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "es")},
 			wantErr: false,
 		},
 		{
@@ -89,7 +85,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es", "some-other-ref")),
 				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0", "some-other-ref"))},
+			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref")},
 			wantErr: false,
 		},
 		{
@@ -98,7 +94,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "some-other-ref")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{updated(pvcFixture("es-data-0", "some-other-ref", "es"))},
+			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref", "es")},
 			wantErr: false,
 		},
 	}
@@ -111,8 +107,9 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			if err := tt.args.c.List(context.Background(), &pvcs); err != nil {
 				t.Errorf("reconcilePVCOwnerRefs(), failed to list pvcs: %v", err)
 			}
-			if diff := deep.Equal(pvcs.Items, tt.want); diff != nil {
-				t.Errorf("reconcilePVCOwnerRefs(), diff %v", diff)
+			require.Equal(t, len(tt.want), len(pvcs.Items), "unexpected number of pvcs")
+			for i := 0; i < len(tt.want); i++ {
+				comparison.AssertEqual(t, &pvcs.Items[i], &tt.want[i])
 			}
 		})
 	}
