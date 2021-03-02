@@ -4419,10 +4419,7 @@ spec:
                 description: Version of Elasticsearch.
                 type: string
               volumeClaimDeletePolicy:
-                description: VolumeClaimDeletePolicy sets the policy for handling
-                  deletion of PersistentVolumeClaims for all NodeSets. Possible values
-                  are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
-                  Defaults to DeleteOnScaledownAndClusterDeletion.
+                description: VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets. Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
                 enum:
                 - DeleteOnScaledownOnly
                 - DeleteOnScaledownAndClusterDeletion
