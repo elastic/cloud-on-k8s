@@ -20,70 +20,65 @@ pipeline {
     }
 
     stages {
-        stage('Run checks and tests in parallel') {
+        stage('Run checks in parallel') {
             failFast true
             parallel {
-                stage('Run checks in parallel') {
-                    failFast true
-                    parallel {
-                        stage('Validate Jenkins pipelines') {
-                            when {
-                                expression {
-                                    notOnlyDocs()
-                                }
-                            }
-                            steps {
-                                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
-                            }
+                stage('Validate Jenkins pipelines') {
+                    when {
+                        expression {
+                            notOnlyDocs()
                         }
-                        stage('Run checks') {
-                            when {
-                                expression {
-                                    notOnlyDocs()
-                                }
-                            }
-                            steps {
-                                sh 'make -C .ci TARGET=ci-check ci'
-                            }
+                    }
+                    steps {
+                        sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
+                    }
+                }
+                stage('Run checks') {
+                    when {
+                        expression {
+                            notOnlyDocs()
+                        }
+                    }
+                    steps {
+                        sh 'make -C .ci TARGET=ci-check ci'
+                    }
+                }
+            }
+        }
+        stage('Run tests in parallel') {
+            parallel {
+                stage("Run unit and integration tests") {
+                    when {
+                        expression {
+                            notOnlyDocs()
+                        }
+                    }
+                    steps {
+                        script {
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
+
+                            junit "unit-tests.xml"
+                            junit "integration-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
                         }
                     }
                 }
-                stage('Run tests in parallel') {
-                    parallel {
-                        stage("Run unit and integration tests") {
-                            when {
-                                expression {
-                                    notOnlyDocs()
-                                }
-                            }
-                            steps {
-                                script {
-                                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
-
-                                    junit "unit-tests.xml"
-                                    junit "integration-tests.xml"
-
-                                    sh 'exit $SHELL_EXIT_CODE'
-                                }
-                            }
+                stage("Run smoke E2E tests") {
+                    when {
+                        expression {
+                            notOnlyDocs()
                         }
-                        stage("Run smoke E2E tests") {
-                            when {
-                                expression {
-                                    notOnlyDocs()
-                                }
-                            }
-                            steps {
-                                sh '.ci/setenvconfig pr'
-                                script {
-                                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci monitoring-secrets.json TARGET=ci-build-operator-e2e-run ci')
+                    }
+                    steps {
+                        sh '.ci/setenvconfig pr'
+                        script {
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci monitoring-secrets.json TARGET=ci-build-operator-e2e-run ci')
 
-                                    sh 'make -C .ci TARGET=e2e-generate-xml ci'
-                                    junit "e2e-tests.xml"
+                            sh 'make -C .ci TARGET=e2e-generate-xml ci'
+                            junit "e2e-tests.xml"
 
-                                    sh 'exit $SHELL_EXIT_CODE'
-                                }
-                            }
+                            sh 'exit $SHELL_EXIT_CODE'
                         }
                     }
                 }
