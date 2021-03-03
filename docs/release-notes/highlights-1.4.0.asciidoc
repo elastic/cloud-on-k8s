@@ -30,7 +30,7 @@ kubectl patch validatingwebhookconfiguration "$WEBHOOK" \
     --patch='{"webhooks": [{"name": "elastic-es-validation-v1.k8s.elastic.co", "matchPolicy": "Exact"}, {"name": "elastic-es-validation-v1beta1.k8s.elastic.co", "matchPolicy": "Exact"}]}'
 ----
 
-* Elastic Agent currently writes its runtime state into the filesystem of its container. A consequence of this behaviour is that the identities of the Elastic Agents change on container restarts and any internal state of applications run by Elastic Agent is lost.  A workaround exists in mounting the agent-data HostPath volume into the Elastic Agent container in the location where the proces writes its runtime state. You also have to run the Elastic Agent as the root user in order to be able to access the HostPath volume, as shown in the following abbreviated example:
+* Elastic Agent currently writes its runtime state into the filesystem of its container. A consequence of this behaviour is that the identities of the Elastic Agents change on container restarts and any internal state of applications run by Elastic Agent is lost.  A workaround exists in mounting the agent-data `hostPath` volume into the Elastic Agent container in the location where the process writes its runtime state. You also have to run the Elastic Agent as the root user in order to be able to access the `hostPath` volume, as shown in the following abbreviated example:
 [source,yaml]
 ----
 apiVersion: agent.k8s.elastic.co/v1alpha1
