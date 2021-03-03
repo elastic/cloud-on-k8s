@@ -21,7 +21,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -46,7 +46,7 @@ const (
 type VersionUpgrade struct {
 	k8sClient  k8s.Client
 	recorder   record.EventRecorder
-	ent        entv1beta1.EnterpriseSearch
+	ent        entv1.EnterpriseSearch
 	dialer     net.Dialer   // optional custom dialer for the http client
 	httpClient *http.Client // custom http client, will be created if nil
 }
@@ -58,7 +58,7 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return err
 	}
 
-	upgradeRequested, err := r.isVersionUpgrade(*expectedVersion)
+	upgradeRequested, err := r.isVersionUpgrade(expectedVersion)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 
 	// if the old version is still running, we cannot disable read-only mode yet
 	// we'll retry eventually once pod rotation is over
-	if oldVersionStillRunning, err := r.isPriorVersionStillRunning(*expectedVersion); err != nil || oldVersionStillRunning {
+	if oldVersionStillRunning, err := r.isPriorVersionStillRunning(expectedVersion); err != nil || oldVersionStillRunning {
 		return err
 	}
 
@@ -123,7 +123,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		r.ent.Annotations = map[string]string{}
 	}
 	r.ent.Annotations[ReadOnlyModeAnnotationName] = "true"
-	return r.k8sClient.Update(&r.ent)
+	return r.k8sClient.Update(context.Background(), &r.ent)
 }
 
 // disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
@@ -145,12 +145,12 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 	// remove the annotation to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
 	delete(r.ent.Annotations, ReadOnlyModeAnnotationName)
-	return r.k8sClient.Update(&r.ent)
+	return r.k8sClient.Update(context.Background(), &r.ent)
 }
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,
 // and false otherwise.
-func hasReadOnlyAnnotationTrue(ent entv1beta1.EnterpriseSearch) bool {
+func hasReadOnlyAnnotationTrue(ent entv1.EnterpriseSearch) bool {
 	value, exists := ent.Annotations[ReadOnlyModeAnnotationName]
 	return exists && value == "true"
 }
@@ -227,7 +227,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool, error) {
 	var deployment appsv1.Deployment
 	nsn := types.NamespacedName{Name: entName.Deployment(r.ent.Name), Namespace: r.ent.Namespace}
-	err := r.k8sClient.Get(nsn, &deployment)
+	err := r.k8sClient.Get(context.Background(), nsn, &deployment)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// first deployment, not an upgrade
@@ -240,7 +240,7 @@ func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool
 	if err != nil {
 		return false, err
 	}
-	return expectedVersion.IsAfter(*podVersion), nil
+	return expectedVersion.GT(podVersion), nil
 }
 
 // isPriorVersionStillRunning returns true if at least one Pod runs a version prior to the expected one.
@@ -254,7 +254,7 @@ func (r *VersionUpgrade) isPriorVersionStillRunning(expectedVersion version.Vers
 		if err != nil {
 			return false, err
 		}
-		if expectedVersion.IsAfter(*podVersion) {
+		if expectedVersion.GT(podVersion) {
 			return true, nil
 		}
 	}
@@ -265,7 +265,7 @@ func (r *VersionUpgrade) isPriorVersionStillRunning(expectedVersion version.Vers
 func (r *VersionUpgrade) getActualPods() ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	ns := client.InNamespace(r.ent.Namespace)
-	if err := r.k8sClient.List(&pods, client.MatchingLabels(Labels(r.ent.Name)), ns); err != nil {
+	if err := r.k8sClient.List(context.Background(), &pods, client.MatchingLabels(Labels(r.ent.Name)), ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
@@ -278,7 +278,7 @@ func (r *VersionUpgrade) retrieveTLSCerts() ([]*x509.Certificate, error) {
 		Namespace: r.ent.Namespace,
 		Name:      certificates.InternalCertsSecretName(entName.EntNamer, r.ent.Name),
 	}
-	if err := r.k8sClient.Get(nsn, &certsSecret); err != nil {
+	if err := r.k8sClient.Get(context.Background(), nsn, &certsSecret); err != nil {
 		return nil, err
 	}
 	certData, exists := certsSecret.Data[certificates.CertFileName]

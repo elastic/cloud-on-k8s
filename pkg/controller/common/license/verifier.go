@@ -143,7 +143,7 @@ func NewSigner(privKey *rsa.PrivateKey) *Signer {
 	}
 }
 
-// Sign signs the given Enterprise license.
+// Sign signs the given Signable. Returns the signature or an error.
 func (s *Signer) Sign(spec Signable) ([]byte, error) {
 	toSign, err := spec.SignableContentBytes()
 	if err != nil {
@@ -152,7 +152,6 @@ func (s *Signer) Sign(spec Signable) ([]byte, error) {
 	rng := rand.Reader
 	hashed := sha512.Sum512(toSign)
 
-	publicKeyBytes := x509.MarshalPKCS1PublicKey(s.PublicKey)
 	rsaSig, err := rsa.SignPKCS1v15(rng, s.privateKey, crypto.SHA512, hashed[:])
 	if err != nil {
 		return nil, err
@@ -163,8 +162,18 @@ func (s *Signer) Sign(spec Signable) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash := make([]byte, base64.StdEncoding.EncodedLen(len(publicKeyBytes)))
-	base64.StdEncoding.Encode(hash, publicKeyBytes)
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(s.PublicKey)
+	if err != nil {
+		return nil, errors2.Wrap(err, "while marshalling public key")
+	}
+
+	encPubKeyBytes, err := encryptWithAESECB(publicKeyBytes)
+	if err != nil {
+		return nil, errors2.Wrap(err, "while encrypting public key")
+	}
+
+	hash := make([]byte, base64.StdEncoding.EncodedLen(len(encPubKeyBytes)))
+	base64.StdEncoding.Encode(hash, encPubKeyBytes)
 	// version (uint32) + magic length (uint32) + magic + hash length (uint32) + hash + sig length (uint32) + sig
 	sig := make([]byte, 0, 4+4+magicLen+4+len(hash)+4+len(rsaSig))
 

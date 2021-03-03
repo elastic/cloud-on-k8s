@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -12,10 +13,6 @@ import (
 	"reflect"
 	"sort"
 	"time"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -26,6 +23,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -39,7 +39,8 @@ const (
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		CheckCertificateAuthority(b, k),
+		CheckHTTPCertificateAuthority(b, k),
+		CheckTransportCertificateAuthority(b, k),
 		CheckExpectedPodsEventuallyReady(b, k),
 		CheckESVersion(b, k),
 		CheckServices(b, k),
@@ -53,25 +54,37 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckCertificateAuthority checks that the CA is fully setup (CA cert + private key)
-func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
+// CheckHTTPCertificateAuthority checks that the CA is fully setup (CA cert + private key)
+func CheckHTTPCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
-		Name: "ES certificate authority should be set and deployed",
+		Name: "ES HTTP certificate authority should be set and deployed",
 		Test: test.Eventually(func() error {
-			// Check that the Transport CA may be loaded
-			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.TransportCAType)
-			if err != nil {
-				return err
-			}
-
 			// Check that the HTTP CA may be loaded
-			_, err = k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.HTTPCAType)
+			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.HTTPCAType)
 			if err != nil {
 				return err
 			}
 
 			return nil
 		}),
+	}
+}
+
+// CheckTransportCertificateAuthority checks that the CA is fully setup (CA cert + private key)
+func CheckTransportCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "ES transport certificate authority should be set and deployed",
+		Test: test.Eventually(func() error {
+			// Check that the Transport CA may be loaded
+			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.TransportCAType)
+			if err != nil {
+				return err
+			}
+			return nil
+		}),
+		Skip: func() bool {
+			return b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA()
+		},
 	}
 }
 
@@ -131,14 +144,6 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			},
 			{
-				Name: esName + "-es-transport-ca-internal",
-				Keys: []string{"tls.crt", "tls.key"},
-				Labels: map[string]string{
-					"common.k8s.elastic.co/type":                "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": esName,
-				},
-			},
-			{
 				Name: esName + "-es-transport-certs-public",
 				Keys: []string{"ca.crt"},
 				Labels: map[string]string{
@@ -156,6 +161,18 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			},
 			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
 		}
+		// check internal TLS CA if no user provided CA is spec'ed
+		if !b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() {
+			expected = append(expected, test.ExpectedSecret{
+				Name: esName + "-es-transport-ca-internal",
+				Keys: []string{"tls.crt", "tls.key"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			})
+		}
+
 		for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 			expected = append(expected, test.ExpectedSecret{
 				Name: esName + "-es-" + nodeSet.Name + "-es-config",
@@ -202,7 +219,7 @@ func getTransportCert(k *test.K8sClient, esNamespace, esName, statefulSetName, p
 		Namespace: esNamespace,
 		Name:      statefulSetName + "-es-transport-certs",
 	}
-	if err = k.Client.Get(key, &secret); err != nil {
+	if err = k.Client.Get(context.Background(), key, &secret); err != nil {
 		return nil, nil, err
 	}
 	caCertBytes, exists := secret.Data[certificates.CAFileName]
@@ -280,7 +297,7 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 			}
 			// check reported version in the resource status
 			var es esv1.Elasticsearch
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
 				return err
 			}
 			if es.Status.Version != b.Elasticsearch.Spec.Version {
@@ -303,7 +320,7 @@ func CheckClusterHealth(b Builder, k *test.K8sClient) test.Step {
 
 func clusterHealthGreen(b Builder, k *test.K8sClient) error {
 	var es esv1.Elasticsearch
-	err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+	err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 	if err != nil {
 		return err
 	}
@@ -393,7 +410,7 @@ func CheckClusterUUIDAnnotation(es esv1.Elasticsearch, k *test.K8sClient) test.S
 		Name: "Cluster should be annotated with its UUID once bootstrapped",
 		Test: test.Eventually(func() error {
 			var retrievedES esv1.Elasticsearch
-			if err := k.Client.Get(k8s.ExtractNamespacedName(&es), &retrievedES); err != nil {
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&es), &retrievedES); err != nil {
 				return err
 			}
 			if !bootstrap.AnnotatedForBootstrap(retrievedES) {
@@ -425,7 +442,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 		// retrieve the corresponding StatefulSet
 		var statefulSet appsv1.StatefulSet
-		if err := k.Client.Get(
+		if err := k.Client.Get(context.Background(),
 			types.NamespacedName{
 				Namespace: b.Elasticsearch.Namespace,
 				Name:      esv1.StatefulSet(b.Elasticsearch.Name, nodeSet.Name),

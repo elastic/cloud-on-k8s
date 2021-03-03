@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
+	"context"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -76,7 +79,7 @@ func TestDeleteServices(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					err = k.Client.Delete(s)
+					err = k.Client.Delete(context.Background(), s)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
@@ -112,7 +115,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 						Name:      b.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
-					err := k.Client.Get(key, &secret)
+					err := k.Client.Get(context.Background(), key, &secret)
 					if apierrors.IsNotFound(err) {
 						// already deleted
 						return nil
@@ -120,7 +123,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					err = k.Client.Delete(&secret)
+					err = k.Client.Delete(context.Background(), &secret)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
@@ -145,19 +148,10 @@ func TestDeleteCACert(t *testing.T) {
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
-					err := k.Client.Get(key, &secret)
-					if apierrors.IsNotFound(err) {
-						// already deleted
-						return nil
-					}
-					if err != nil {
+					if err := k.Client.Get(context.Background(), key, &secret); err != nil {
 						return err
 					}
-					err = k.Client.Delete(&secret)
-					if err != nil && !apierrors.IsNotFound(err) {
-						return err
-					}
-					return nil
+					return k.Client.Delete(context.Background(), &secret)
 				}),
 			},
 		}

@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build apm e2e
+
 package apm
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -17,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,13 +115,13 @@ func TestUpdateConfiguration(t *testing.T) {
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					if err := k.Client.Get(apmNamespacedName, &apm); err != nil {
+					if err := k.Client.Get(context.Background(), apmNamespacedName, &apm); err != nil {
 						return err
 					}
 					apm.Spec.SecureSettings = []commonv1.SecretSource{
 						{SecretName: secureSettingsSecretName},
 					}
-					return k.Client.Update(&apm)
+					return k.Client.Update(context.Background(), &apm)
 				}),
 			},
 			test.Step{
@@ -149,21 +152,20 @@ func TestUpdateConfiguration(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					require.NoError(t, err)
 					if len(pods) != 1 {
 						return fmt.Errorf("expected 1 APM Pod, got %d", len(pods))
 					}
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					if err := k.Client.Get(apmNamespacedName, &apm); err != nil {
+					if err := k.Client.Get(context.Background(), apmNamespacedName, &apm); err != nil {
 						return err
 					}
 					customConfig := commonv1.Config{
 						Data: map[string]interface{}{"output.elasticsearch.compression_level": 1},
 					}
 					apm.Spec.Config = &customConfig
-					return k.Client.Update(&apm)
+					return k.Client.Update(context.Background(), &apm)
 				}),
 			},
 			test.Step{
@@ -197,7 +199,7 @@ func TestUpdateConfiguration(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: test.Eventually(func() error {
-					err := k.Client.Delete(&secureSettings)
+					err := k.Client.Delete(context.Background(), &secureSettings)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

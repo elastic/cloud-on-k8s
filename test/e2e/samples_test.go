@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build e2e
+
 package e2e
 
 import (
@@ -11,11 +13,9 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
@@ -72,14 +72,6 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
-		case beat.Builder:
-			return b.WithNamespace(namespace).
-				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
-				WithLabel(run.TestNameLabel, testName).
-				WithPodLabel(run.TestNameLabel, testName).
-				WithRoles(beat.AutodiscoverClusterRoleName, beat.PSPClusterRoleName).
-				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type)))
 		case enterprisesearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).

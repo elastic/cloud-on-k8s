@@ -65,7 +65,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "APM Server should be created",
 			Test: test.Eventually(func() error {
 				var createdApmServer apmv1.ApmServer
-				err := k.Client.Get(k8s.ExtractNamespacedName(&b.ApmServer), &createdApmServer)
+				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &createdApmServer)
 				if err != nil {
 					return err
 				}
@@ -73,6 +73,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					return fmt.Errorf("expected version %s but got %s", b.ApmServer.Spec.Version, createdApmServer.Spec.Version)
 				}
 				return nil
+				// TODO this is incomplete
 			}),
 		},
 	}

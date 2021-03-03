@@ -9,13 +9,13 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("remotecluster-remoteca")
+var log = ulog.Log.WithName("remotecluster-remoteca")
 
 // isRemoteClusterAssociationAllowed checks if a bi-directional association is allowed between 2 clusters.
 func isRemoteClusterAssociationAllowed(

@@ -5,7 +5,9 @@
 package enterprisesearch
 
 import (
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"context"
+
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -25,7 +27,7 @@ func (b Builder) AnnotatePodsWithBuilderHash(k *test.K8sClient) test.StepList {
 			Name: "Annotate Pods with a hash of their Builder spec",
 			Test: test.Eventually(func() error {
 				var pods corev1.PodList
-				if err := k.Client.List(&pods, test.EnterpriseSearchPodListOptions(b.EnterpriseSearch.Namespace, b.EnterpriseSearch.Name)...); err != nil {
+				if err := k.Client.List(context.Background(), &pods, test.EnterpriseSearchPodListOptions(b.EnterpriseSearch.Namespace, b.EnterpriseSearch.Name)...); err != nil {
 					return err
 				}
 
@@ -50,12 +52,12 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Applying the Enterprise Search mutation should succeed",
 			Test: test.Eventually(func() error {
-				var ent entv1beta1.EnterpriseSearch
-				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
+				var ent entv1.EnterpriseSearch
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
 					return err
 				}
 				ent.Spec = b.EnterpriseSearch.Spec
-				return k.Client.Update(&ent)
+				return k.Client.Update(context.Background(), &ent)
 			}),
 		}}
 }

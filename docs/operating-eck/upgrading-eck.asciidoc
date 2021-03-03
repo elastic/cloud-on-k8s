@@ -23,7 +23,7 @@ Note that the release notes and highlights only list the changes since the last 
 
 CAUTION: The upgrade process results in an update to all the existing managed resources. This triggers a rolling restart of all Elasticsearch and Kibana pods. <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
 
-IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, skip to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
+IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
 Follow the instructions in <<{p}-deploy-eck>> to upgrade ECK to the latest version. This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
 
@@ -38,7 +38,7 @@ CAUTION: Once a resource is excluded from being managed by ECK, you will not be 
 [source,shell,subs="attributes,callouts"]
 .Exclude Elastic resources from being managed by the operator
 ----
-ANNOTATION='common.k8s.elastic.co/pause=true' <1>
+ANNOTATION='eck.k8s.elastic.co/managed=false' <1>
 
 # Exclude a single Elasticsearch resource named "quickstart"
 kubectl annotate --overwrite elasticsearch quickstart $ANNOTATION
@@ -50,7 +50,7 @@ kubectl annotate --overwrite elastic --all $ANNOTATION
 for NS in $(kubectl get ns -o=custom-columns='NAME:.metadata.name' --no-headers); do kubectl annotate --overwrite elastic --all $ANNOTATION -n $NS; done
 ----
 
-<1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed=false`.
+<1> Before ECK 1.1.0, the annotation used to exclude resources was `common.k8s.elastic.co/pause=true`.
 
 Once the operator has been upgraded and you are ready to let the resource become managed again (triggering a rolling restart of pods in the process), remove the annotation.
 
@@ -58,13 +58,13 @@ Once the operator has been upgraded and you are ready to let the resource become
 [source,shell,subs="attributes,callouts"]
 .Resume Elastic resource management by the operator
 ----
-RM_ANNOTATION='common.k8s.elastic.co/pause-' <1>
+RM_ANNOTATION='eck.k8s.elastic.co/managed-' <1>
 
 # Resume management of a single Elasticsearch cluster named "quickstart"
 kubectl annotate elasticsearch quickstart $RM_ANNOTATION
 ----
 
-<1> Since ECK 1.1.0, this annotation has been superseded by `eck.k8s.elastic.co/managed-`.
+<1> Before ECK 1.1.0, the annotation used to exclude resources was `common.k8s.elastic.co/pause=true`.
 
 NOTE: The ECK source repository contains a link:{eck_github}/tree/{eck_release_branch}/hack/annotator[shell script] to assist with mass addition/deletion of annotations.
 

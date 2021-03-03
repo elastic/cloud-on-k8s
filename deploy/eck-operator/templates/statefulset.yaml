@@ -58,7 +58,10 @@ spec:
                   fieldPath: status.podIP
             {{- if .Values.webhook.enabled }}
             - name: WEBHOOK_SECRET
-              value: "{{ .Values.webhook.certsSecret }}"
+              value: {{ include "eck-operator.webhookSecretName" . }}
+            {{- end }}
+            {{- with .Values.env }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
             {{- if .Values.tracing.enabled -}}
             {{- range $name, $value :=  .Values.tracing.config }}
@@ -85,6 +88,9 @@ spec:
               name: cert
               readOnly: true
             {{- end }}
+            {{- with .Values.volumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: conf
           configMap:
@@ -93,7 +99,10 @@ spec:
         - name: cert
           secret:
             defaultMode: 420
-            secretName: "{{ .Values.webhook.certsSecret }}"
+            secretName: {{ include "eck-operator.webhookSecretName" . }}
+        {{- end }}
+        {{- with .Values.volumes }}
+          {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

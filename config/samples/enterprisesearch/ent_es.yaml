@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.9.2
+  version: 7.11.0
   nodeSets:
     - name: default
       count: 1
@@ -13,12 +13,12 @@ spec:
         # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
         node.store.allow_mmap: false
 ---
-apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: ent-sample
 spec:
-  version: 7.9.2
+  version: 7.11.0
   count: 1
   elasticsearchRef:
     name: elasticsearch-sample

@@ -2,21 +2,22 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build kb e2e
+
 package kb
 
 import (
+	"context"
 	"testing"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	kibana2 "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestKillKibanaPod(t *testing.T) {
@@ -49,7 +50,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 				Name: "Delete Kibana deployment",
 				Test: test.Eventually(func() error {
 					var dep appsv1.Deployment
-					err := k.Client.Get(types.NamespacedName{
+					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      kibana2.Deployment(kbBuilder.Kibana.Name),
 					}, &dep)
@@ -57,7 +58,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 						// already deleted
 						return nil
 					}
-					err = k.Client.Delete(&dep)
+					err = k.Client.Delete(context.Background(), &dep)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

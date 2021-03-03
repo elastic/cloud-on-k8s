@@ -5,20 +5,19 @@
 package expectations
 
 import (
+	"context"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestClustersExpectation(t *testing.T) {
-	client := k8s.WrapClient(fake.NewFakeClient())
+	client := k8s.NewFakeClient()
 	e := NewClustersExpectations(client)
 
 	cluster := types.NamespacedName{Namespace: "ns", Name: "name"}
@@ -37,7 +36,7 @@ func TestClustersExpectation(t *testing.T) {
 			UID:       uuid.NewUUID(),
 		},
 	}
-	require.NoError(t, client.Create(&pod))
+	require.NoError(t, client.Create(context.Background(), &pod))
 	clusterExp.ExpectDeletion(pod)
 	satisfied, err = clusterExp.Satisfied()
 	require.NoError(t, err)

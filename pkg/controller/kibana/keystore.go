@@ -39,7 +39,7 @@ func newInitContainersParameters(kb *kbv1.Kibana) (keystore.InitContainerParamet
 		return parameters, err
 	}
 
-	if kbVersion.IsSameOrAfter(keystoreInConfigDirVersion) {
+	if kbVersion.GTE(keystoreInConfigDirVersion) {
 		parameters.KeystoreVolumePath = ConfigSharedVolume.ContainerMountPath
 	}
 

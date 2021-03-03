@@ -14,7 +14,7 @@ import (
 
 // Default values to be used for testing purpose.
 const (
-	Timeout       = time.Second * 5
+	Timeout       = time.Second * 10
 	RetryInterval = time.Millisecond * 100
 )
 

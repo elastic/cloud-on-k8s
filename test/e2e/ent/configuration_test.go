@@ -2,25 +2,27 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build ent e2e
+
 package ent
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // TestEnterpriseSearchConfigUpdate updates an existing EnterpriseSearch deployment twice:
@@ -114,9 +116,9 @@ email:
 }
 
 // CheckPartialConfig retrieves the configuration file from all Pods and compares it with the expected PartialConfig.
-func CheckPartialConfig(k *test.K8sClient, ent entv1beta1.EnterpriseSearch, expected PartialConfig) error {
+func CheckPartialConfig(k *test.K8sClient, ent entv1.EnterpriseSearch, expected PartialConfig) error {
 	var pods corev1.PodList
-	err := k.Client.List(&pods, test.EnterpriseSearchPodListOptions(ent.Namespace, ent.Name)...)
+	err := k.Client.List(context.Background(), &pods, test.EnterpriseSearchPodListOptions(ent.Namespace, ent.Name)...)
 	if err != nil {
 		return err
 	}

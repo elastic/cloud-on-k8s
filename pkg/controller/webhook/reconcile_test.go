@@ -44,8 +44,10 @@ func TestParams_ReconcileResources(t *testing.T) {
 				},
 				Webhooks: []v1beta1.ValidatingWebhook{
 					{
-						Name:         "elastic-es-validation-v1.k8s.elastic.co",
-						ClientConfig: v1beta1.WebhookClientConfig{},
+						Name: "elastic-es-validation-v1.k8s.elastic.co",
+						ClientConfig: v1beta1.WebhookClientConfig{
+							Service: &v1beta1.ServiceReference{Name: "elastic-webhook-server", Namespace: "elastic-system"},
+						},
 					},
 				},
 			},

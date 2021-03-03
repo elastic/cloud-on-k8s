@@ -5,16 +5,16 @@
 package certificates
 
 import (
+	"context"
 	"errors"
-
-	pkgerrors "github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -116,23 +116,32 @@ func (s CertificatesSecret) Validate() error {
 	return nil
 }
 
-// GetCustomCertificates returns the custom certificates to use or nil if there is none specified
-func GetCustomCertificates(
-	c k8s.Client,
-	owner types.NamespacedName,
-	tls commonv1.TLSOptions,
-) (*CertificatesSecret, error) {
-	secretName := tls.Certificate.SecretName
+func GetSecretFromRef(c k8s.Client, owner types.NamespacedName, secretRef commonv1.SecretRef) (*v1.Secret, error) {
+	secretName := secretRef.SecretName
 	if secretName == "" {
 		return nil, nil
 	}
 
 	var secret v1.Secret
-	if err := c.Get(types.NamespacedName{Name: secretName, Namespace: owner.Namespace}, &secret); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: owner.Namespace}, &secret); err != nil {
+		return nil, err
+	}
+	return &secret, nil
+}
+
+// getCustomCertificates returns the custom certificates to use or nil if there is none specified
+func getCustomCertificates(
+	c k8s.Client,
+	owner types.NamespacedName,
+	tls commonv1.TLSOptions,
+) (*CertificatesSecret, error) {
+
+	secret, err := GetSecretFromRef(c, owner, tls.Certificate)
+	if err != nil || secret == nil {
 		return nil, err
 	}
 
-	result := CertificatesSecret(secret)
+	result := CertificatesSecret(*secret)
 
 	return &result, nil
 }

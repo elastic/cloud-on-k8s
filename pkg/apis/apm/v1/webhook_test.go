@@ -65,7 +65,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.x": Invalid version: version string has too few segments: 7.x`,
+				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
 			),
 		},
 		{
@@ -150,7 +150,7 @@ func TestWebhook(t *testing.T) {
 	}
 
 	validator := &apmv1.ApmServer{}
-	gvk := metav1.GroupVersionKind{Group: apmv1.GroupVersion.Group, Version: apmv1.GroupVersion.Version, Kind: "ApmServer"}
+	gvk := metav1.GroupVersionKind{Group: apmv1.GroupVersion.Group, Version: apmv1.GroupVersion.Version, Kind: apmv1.Kind}
 	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
 }
 

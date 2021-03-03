@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/blang/semver/v4"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,6 +23,9 @@ import (
 const (
 	operatorNamespace      = "elastic-system"
 	operatorSTS            = "elastic-operator"
+	esName                 = "es"
+	kbName                 = "kb"
+	apmName                = "apm"
 	wantAPMServerNodes     = 1
 	wantElasticsearchNodes = 3
 	wantHealth             = "green"
@@ -65,7 +70,7 @@ func TestInstallOperator(param TestParam) *Fixture {
 		Name: param.Suffixed("TestInstallOperator"),
 		Steps: []*TestStep{
 			noRetry(param.Suffixed("InstallOperator"), applyManifests(param.Path("install.yaml"))),
-			pause(20 * time.Second),
+			pause(5 * time.Second),
 			retryRetriable("CheckOperatorIsReady", checkOperatorIsReady),
 		},
 	}
@@ -113,11 +118,11 @@ func TestStatusOfResources(param TestParam) *Fixture {
 		Name: param.Suffixed("TestStatusOfResources"),
 		Steps: []*TestStep{
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", param.Name, status{health: wantHealth, nodes: wantElasticsearchNodes, version: param.StackVersion})),
+				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: wantElasticsearchNodes, version: param.StackVersion})),
 			retryRetriable(param.Suffixed("CheckKibana"),
-				checkStatus("kibana", param.Name, status{health: wantHealth, nodes: wantKibanaNodes, version: param.StackVersion})),
+				checkStatus("kibana", kbName, status{health: wantHealth, nodes: wantKibanaNodes, version: param.StackVersion})),
 			retryRetriable(param.Suffixed("CheckAPMServer"),
-				checkStatus("apmserver", param.Name, status{health: wantHealth, nodes: wantAPMServerNodes, version: param.StackVersion})),
+				checkStatus("apmserver", apmName, status{health: wantHealth, nodes: wantAPMServerNodes, version: param.StackVersion})),
 		},
 	}
 }
@@ -130,17 +135,16 @@ type status struct {
 
 func checkStatus(kind, name string, want status) func(*TestContext) error {
 	return func(ctx *TestContext) error {
-		ctx.Debugw("Getting status", "kind", kind, "name", name)
-
 		have, err := getStatus(ctx, kind, name)
 		if err != nil {
 			return err
 		}
 
 		if have != want {
+			ctx.Debugf("Status mismatch: want=%+v have=%+v", want, have)
 			return fmt.Errorf("status mismatch: want=%+v have=%+v: %w", want, have, ErrRetry)
 		}
-
+		ctx.Debugf("Status match: want=%+v have=%+v", want, have)
 		return nil
 	}
 }
@@ -169,12 +173,61 @@ func getStatus(ctx *TestContext, kind, name string) (status, error) {
 		return s, fmt.Errorf("failed to get nodes from status: %w", err)
 	}
 
-	s.version, _, err = unstructured.NestedString(obj, "spec", "version")
-	if err != nil {
-		return s, fmt.Errorf("failed to get version from status: %w", err)
+	// version is tricky we cannot use spec.version as that does not necessarily reflect the actually deployed version
+	// .status.version is ideal but only exists since 1.3. Version labels on Pods were also not consistently used in earlier
+	// operator versions. Therefore we are just parsing the Docker image tag as a proxy of the running versions
+	minVersion, err := getMinVersionFromPods(ctx, kind)
+	if err != nil || minVersion == nil {
+		return s, err
 	}
+	s.version = minVersion.String()
 
 	return s, nil
+}
+
+func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, error) {
+	selector, err := labelSelectorFor(kind)
+	if err != nil {
+		return nil, err
+	}
+
+	pods, err := ctx.GetPods(ctx.Namespace(), selector)
+	if err != nil {
+		return nil, err
+	}
+
+	var minVersion *semver.Version
+	for _, p := range pods {
+		// inspect the image attribute of the first container, there should be only one
+		imageParts := strings.Split(p.Spec.Containers[0].Image, ":")
+		if len(imageParts) != 2 {
+			// when using default images as we do in this test this should never happen
+			return nil, fmt.Errorf("pod image did not have a tag")
+		}
+
+		v, err := semver.Parse(imageParts[1])
+		if err != nil {
+			return nil, err
+		}
+		ctx.Debugf("Pod %s is running %s", p.Name, v)
+		if minVersion == nil || v.Compare(*minVersion) < 0 {
+			minVersion = &v
+		}
+	}
+	return minVersion, nil
+}
+
+func labelSelectorFor(kind string) (string, error) {
+	switch kind {
+	case "elasticsearch":
+		return "elasticsearch.k8s.elastic.co/cluster-name=" + esName, nil
+	case "kibana":
+		return "kibana.k8s.elastic.co/name=" + kbName, nil
+	case "apmserver":
+		return "apm.k8s.elastic.co/name=" + apmName, nil
+	}
+
+	return "", fmt.Errorf("%s is not a supported kind", kind)
 }
 
 // TestRemoveResources is the fixture for removing a set of resources.
@@ -195,14 +248,14 @@ func TestScaleElasticsearch(param TestParam, count int) *Fixture {
 			retryRetriable(param.Suffixed("ScaleElasticsearch"), scaleElasticsearch(param, int64(count))),
 			pause(30 * time.Second),
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", param.Name, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
+				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
 		},
 	}
 }
 
 func scaleElasticsearch(param TestParam, count int64) func(*TestContext) error {
 	return func(ctx *TestContext) error {
-		resources := ctx.GetResources(ctx.Namespace(), "elasticsearch", param.Name)
+		resources := ctx.GetResources(ctx.Namespace(), "elasticsearch", esName)
 
 		dynamicClient, err := ctx.DynamicClient()
 		if err != nil {

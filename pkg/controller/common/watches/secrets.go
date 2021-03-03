@@ -5,7 +5,14 @@
 package watches
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // WatchUserProvidedSecrets registers a watch for user-provided secrets.
@@ -34,4 +41,27 @@ func WatchUserProvidedSecrets(
 		Watched: userSecretNsns,
 		Watcher: watcher,
 	})
+}
+
+// WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
+func WatchSoftOwnedSecrets(c controller.Controller, ownerKind string) error {
+	return c.Watch(
+		&source.Kind{Type: &corev1.Secret{}},
+		handler.EnqueueRequestsFromMapFunc(reconcileReqForSoftOwner(ownerKind)),
+	)
+}
+
+func reconcileReqForSoftOwner(kind string) handler.MapFunc {
+	return func(object client.Object) []reconcile.Request {
+		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
+		if !referenced {
+			return nil
+		}
+		if softOwner.Kind != kind {
+			return nil
+		}
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}},
+		}
+	}
 }

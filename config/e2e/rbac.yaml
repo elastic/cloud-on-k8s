@@ -87,7 +87,9 @@ rules:
       # to create resources defined in recipes
       - namespaces
       - nodes
+      - nodes/metrics
       - nodes/stats
+      - nodes/proxy
     verbs:
       - get
       - list
@@ -157,6 +159,8 @@ rules:
     - "/metrics"
     verbs:
     - get
+    - list
+    - watch
   - apiGroups:
       - elasticsearch.k8s.elastic.co
     resources:
@@ -214,6 +218,19 @@ rules:
     resources:
       - beats
       - beats/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - agent.k8s.elastic.co
+    resources:
+      - agents
+      - agents/status
     verbs:
       - get
       - list

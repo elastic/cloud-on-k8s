@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"fmt"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -25,12 +26,13 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana should be created",
 			Test: test.Eventually(func() error {
 				var createdKb kbv1.Kibana
-				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &createdKb); err != nil {
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &createdKb); err != nil {
 					return err
 				}
 				if b.Kibana.Spec.Version != createdKb.Spec.Version {
 					return fmt.Errorf("expected version %s but got %s", b.Kibana.Spec.Version, createdKb.Spec.Version)
 				}
+				// TODO this is incomplete
 				return nil
 			}),
 		},

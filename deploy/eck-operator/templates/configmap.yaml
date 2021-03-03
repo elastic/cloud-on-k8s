@@ -20,6 +20,9 @@ data:
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
+    {{- if .Values.telemetry.interval }}
+    telemetry-interval: {{ .Values.telemetry.interval }}
+    {{- end }}
     validate-storage-class: {{ .Values.config.validateStorageClass }}
     {{- if .Values.tracing.enabled }}
     enable-tracing: true
@@ -29,7 +32,7 @@ data:
     {{- end }}
     enable-webhook: {{ .Values.webhook.enabled }}
     {{- if .Values.webhook.enabled }}
-    webhook-name: {{ .Values.webhook.name }}
+    webhook-name: {{ include "eck-operator.webhookName" . }}
       {{- if not .Values.webhook.manageCerts }}
     manage-webhook-certs: false
     webhook-cert-dir: {{ .Values.webhook.certsDir }}

@@ -17,7 +17,33 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func TestDeepCopyObject(t *testing.T) {
+	testCases := []struct {
+		name string
+		obj  client.Object
+		want client.Object
+	}{
+		{
+			name: "nil input",
+		},
+		{
+			name: "valid object",
+			obj:  &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}},
+			want: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			have := DeepCopyObject(tc.obj)
+			require.Equal(t, tc.want, have)
+			require.True(t, &tc.want != &have, "Copied object has the same memory location")
+		})
+	}
+}
 
 func TestToObjectMeta(t *testing.T) {
 	assert.Equal(
@@ -117,81 +143,6 @@ func TestGetServiceIPAddresses(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			have := GetServiceIPAddresses(tc.svc)
 			require.Equal(t, tc.want, have)
-		})
-	}
-}
-
-func TestOverrideControllerReference(t *testing.T) {
-
-	ownerRefFixture := func(name string, controller bool) metav1.OwnerReference {
-		return metav1.OwnerReference{
-			APIVersion: "v1",
-			Kind:       "some",
-			Name:       name,
-			UID:        "uid",
-			Controller: &controller,
-		}
-	}
-	type args struct {
-		obj      metav1.Object
-		newOwner metav1.OwnerReference
-	}
-	tests := []struct {
-		name      string
-		args      args
-		assertion func(object metav1.Object)
-	}{
-		{
-			name: "no existing controller",
-			args: args{
-				obj:      &corev1.Secret{},
-				newOwner: ownerRefFixture("obj1", true),
-			},
-			assertion: func(object metav1.Object) {
-				require.Equal(t, object.GetOwnerReferences(), []metav1.OwnerReference{ownerRefFixture("obj1", true)})
-			},
-		},
-		{
-			name: "replace existing controller",
-			args: args{
-				obj: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture("obj1", true),
-						},
-					},
-				},
-				newOwner: ownerRefFixture("obj2", true),
-			},
-			assertion: func(object metav1.Object) {
-				require.Equal(t, object.GetOwnerReferences(), []metav1.OwnerReference{
-					ownerRefFixture("obj2", true)})
-			},
-		},
-		{
-			name: "replace existing controller preserving existing references",
-			args: args{
-				obj: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture("other", false),
-							ownerRefFixture("obj1", true),
-						},
-					},
-				},
-				newOwner: ownerRefFixture("obj2", true),
-			},
-			assertion: func(object metav1.Object) {
-				require.Equal(t, object.GetOwnerReferences(), []metav1.OwnerReference{
-					ownerRefFixture("other", false),
-					ownerRefFixture("obj2", true)})
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			OverrideControllerReference(tt.args.obj, tt.args.newOwner)
-			tt.assertion(tt.args.obj)
 		})
 	}
 }

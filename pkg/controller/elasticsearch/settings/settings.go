@@ -4,8 +4,6 @@
 
 package settings
 
-import (
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-)
+import ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 
-var log = logf.Log.WithName("settings")
+var log = ulog.Log.WithName("settings")

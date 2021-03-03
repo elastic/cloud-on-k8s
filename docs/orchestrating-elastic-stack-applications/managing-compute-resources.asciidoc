@@ -19,8 +19,7 @@ You can set compute resource constraints in the `podTemplate` of objects managed
 [id="{p}-compute-resources-elasticsearch"]
 === Set compute resources for Elasticsearch
 
-For Elasticsearch objects, make sure to consider the heap size when you set resource requirements.
-A good rule of thumb is to size it to half the size of RAM allocated to the Pod.
+NOTE: Staring with Elasticsearch 7.11, unless manually overridden, heap size is automatically calculated based on the node roles and the available memory. In Kubernetes, the amount of memory available to an Elasticsearch node is determined by the `limits` defined for that container. See <<{p}-jvm-heap-size>> for more information.
 
 To minimize disruption caused by Pod evictions due to resource contention, you can run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
 
@@ -67,8 +66,7 @@ spec:
 [id="{p}-compute-resources-kibana-and-apm"]
 === Set compute resources for Kibana and APM Server
 
-For Kibana or APM Server objects, the `podTemplate` can be configured as follows:
-
+.Kibana
 [source,yaml,subs="attributes"]
 ----
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
@@ -81,6 +79,31 @@ spec:
     spec:
       containers:
       - name: kibana
+        env:
+          - name: NODE_OPTIONS
+            value: "--max-old-space-size=2048"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 0.5
+          limits:
+            memory: 2.5Gi
+            cpu: 2
+----
+
+.APM Server
+[source,yaml,subs="attributes"]
+----
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
+kind: ApmServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  podTemplate:
+    spec:
+      containers:
+      - name: apm-server
         resources:
           requests:
             memory: 1Gi
@@ -91,6 +114,63 @@ spec:
 ----
 
 For the container name, you can use `apm-server` or `kibana` as appropriate.
+
+[float]
+[id="{p}-compute-resources-beats-agent"]
+=== Set compute resources for Beats and Elastic Agent
+
+For Beats or Elastic Agent objects, the `podTemplate` can be configured as follows, depending on the chosen deployment model.
+
+When deploying as a Kubernetes Deployment:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  type: filebeat
+  version: {version}
+  deployment:
+    podTemplate:
+      spec:
+        containers:
+        - name: filebeat
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 0.5
+            limits:
+              memory: 500Mi
+              cpu: 0.5
+----
+
+When deploying as a Kubernetes DaemonSet:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: {version}
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 0.5
+            limits:
+              memory: 300Mi
+              cpu: 0.5
+----
+
+For the container name, use the name of the Beat in lower case. For example `filebeat`, `metricbeat`, or `heartbeat`. In case of Elastic Agent, use `agent`.
 
 [float]
 [id="{p}-default-behavior"]
@@ -105,6 +185,8 @@ If `resources` is not defined in the specification of an object, then the operat
 |APM Server |512Mi |512Mi
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
+|Beat   |200Mi | 200Mi
+|Elastic Agent | 200Mi|200Mi
 |===
 
 If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator defaults and cause object creation to fail.

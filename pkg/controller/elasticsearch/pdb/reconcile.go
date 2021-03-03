@@ -5,12 +5,7 @@
 package pdb
 
 import (
-	"k8s.io/api/policy/v1beta1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"context"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -19,6 +14,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"k8s.io/api/policy/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
@@ -38,9 +39,9 @@ func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.St
 
 	// reconcile actual vs. expected
 	var actual v1beta1.PodDisruptionBudget
-	err = k8sClient.Get(k8s.ExtractNamespacedName(expected), &actual)
+	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(expected), &actual)
 	if err != nil && apierrors.IsNotFound(err) {
-		return k8sClient.Create(expected)
+		return k8sClient.Create(context.Background(), expected)
 	}
 
 	if hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(actual.Labels) {
@@ -51,7 +52,7 @@ func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.St
 		if err := deleteDefaultPDB(k8sClient, es); err != nil {
 			return err
 		}
-		return k8sClient.Create(expected)
+		return k8sClient.Create(context.Background(), expected)
 	}
 
 	return nil
@@ -67,13 +68,13 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
 		},
 	}
-	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
+	if err := k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	} else if apierrors.IsNotFound(err) {
 		// already deleted, which is fine
 		return nil
 	}
-	if err := k8sClient.Delete(&pdb); err != nil && !apierrors.IsNotFound(err) {
+	if err := k8sClient.Delete(context.Background(), &pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil

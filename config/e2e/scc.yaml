@@ -1,0 +1,49 @@
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: beat
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: true
+allowHostPID: true # required for Auditbeat
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: true
+allowedCapabilities:
+- AUDIT_READ     # required for Auditbeat
+- AUDIT_WRITE
+- AUDIT_CONTROL
+- NET_ADMIN      # required for Packetbeat
+- KILL           # required for Journalbeat
+- CHOWN
+- FSETID
+- FOWNER
+- SETGID
+- SETUID
+- SETFCAP
+- SETPCAP
+- AUDIT_WRITE
+- NET_BIND_SERVICE
+defaultAddCapabilities: []
+fsGroup:
+  type: RunAsAny
+priority: 0
+readOnlyRootFilesystem: false
+requiredDropCapabilities: []
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+- '*'
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:{{ .E2ENamespace }}:filebeat
+- system:serviceaccount:{{ .E2ENamespace }}:metricbeat
+groups:
+  {{- range .Operator.ManagedNamespaces }}
+- system:serviceaccounts:{{ . }}
+  {{- end }}
+volumes:
+- '*'

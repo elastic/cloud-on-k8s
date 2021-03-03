@@ -6,17 +6,10 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -25,11 +18,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var log = logf.Log.WithName("transport")
+var log = ulog.Log.WithName("transport")
 
 // ReconcileTransportCertificatesSecrets reconciles the secret containing transport certificates for all nodes in the
 // cluster.
@@ -73,7 +72,7 @@ func DeleteStatefulSetTransportCertificate(client k8s.Client, namespace string, 
 			Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
 		},
 	}
-	return client.Delete(&secret)
+	return client.Delete(context.Background(), &secret)
 }
 
 // DeleteLegacyTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
@@ -84,7 +83,7 @@ func DeleteLegacyTransportCertificate(client k8s.Client, es esv1.Elasticsearch) 
 			Name:      esv1.LegacyTransportCertsSecretSuffix(es.Name),
 		},
 	}
-	return client.Delete(&secret)
+	return client.Delete(context.Background(), &secret)
 }
 
 // reconcileNodeSetTransportCertificatesSecrets reconciles the secret which contains the transport certificates for
@@ -101,7 +100,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
 	ns := client.InNamespace(es.Namespace)
-	if err := c.List(&pods, matchLabels, ns); err != nil {
+	if err := c.List(context.Background(), &pods, matchLabels, ns); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -166,7 +165,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	}
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
-		if err := c.Update(secret); err != nil {
+		if err := c.Update(context.Background(), secret); err != nil {
 			return err
 		}
 		for _, pod := range pods.Items {

@@ -8,6 +8,7 @@ package trial
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -63,12 +64,12 @@ func TestReconcile(t *testing.T) {
 	}
 	// retry in case of edit conflict with reconciliation loop
 	test.RetryUntilSuccess(t, func() error {
-		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
+		require.NoError(t, c.Get(context.Background(), trialStatusKey, &trialStatus))
 		trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
-		return c.Update(&trialStatus)
+		return c.Update(context.Background(), &trialStatus)
 	})
 	test.RetryUntilSuccess(t, func() error {
-		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
+		require.NoError(t, c.Get(context.Background(), trialStatusKey, &trialStatus))
 		if bytes.Equal(trialStatus.Data[license.TrialPubkeyKey], []byte("foobar")) {
 			return errors.New("Manipulated secret has not been corrected")
 		}
@@ -107,8 +108,8 @@ func validateTrialDuration(t *testing.T, license license.EnterpriseLicense, now 
 
 func deleteTrial(c k8s.Client) error {
 	var trialLicense corev1.Secret
-	if err := c.Get(testLicenseNSN, &trialLicense); err != nil {
+	if err := c.Get(context.Background(), testLicenseNSN, &trialLicense); err != nil {
 		return err
 	}
-	return c.Delete(&trialLicense)
+	return c.Delete(context.Background(), &trialLicense)
 }

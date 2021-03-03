@@ -64,7 +64,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.x": Invalid version: version string has too few segments: 7.x`,
+				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
 			),
 		},
 		{
@@ -126,7 +126,7 @@ func TestWebhook(t *testing.T) {
 	}
 
 	validator := &kbv1.Kibana{}
-	gvk := metav1.GroupVersionKind{Group: kbv1.GroupVersion.Group, Version: kbv1.GroupVersion.Version, Kind: "Kibana"}
+	gvk := metav1.GroupVersionKind{Group: kbv1.GroupVersion.Group, Version: kbv1.GroupVersion.Version, Kind: kbv1.Kind}
 	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
 }
 

@@ -6,11 +6,11 @@ This page explains you how to set up your development environment.
 
 Before you start, install the following tools and packages:
 
-* [go](https://golang.org/dl/) (>= 1.13)
+* [go](https://golang.org/dl/) (>= 1.16)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
-* [docker](https://docs.docker.com/)
+* [docker](https://docs.docker.com/) (>= 19.0.0 with optional `buildx` extension for multi-arch builds)
 * Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine) or [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/)
 
 ### Get sources
@@ -36,6 +36,8 @@ Run `make check-requisites` to check that all dependencies are installed.
   ```
 
 * [Kind](https://kind.sigs.k8s.io/)
+
+  The Make target assumes that your local kind binaries are suffixed with their version. For example `kind-0.9.0` and `kind-0.8.1`. The purpose of this convention is to allow running both versions of kind next to each other. For older Kubernetes versions up to 1.13 use `kind-0.8.1` and for the newer versions of Kubernetes starting with 1.14 use `kind-0.9.0`.
 
   ```bash
   make bootstrap-kind

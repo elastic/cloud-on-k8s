@@ -10,18 +10,18 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "ApmServer"}
-	validationLog = logf.Log.WithName("apm-v1-validation")
+	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
+	validationLog = ulog.Log.WithName("apm-v1-validation")
 
 	// ApmAgentConfigurationMinVersion is the minimum required version to establish an association with Kibana
 	ApmAgentConfigurationMinVersion = version.MustParse("7.5.1")
@@ -38,7 +38,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1,name=elastic-apm-validation-v1.k8s.elastic.co,sideEffects=None
+// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1,name=elastic-apm-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
 var _ webhook.Validator = &ApmServer{}
 
@@ -118,7 +118,7 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 	if err != nil {
 		return err
 	}
-	if !apmVersion.IsSameOrAfter(ApmAgentConfigurationMinVersion) {
+	if !apmVersion.GTE(ApmAgentConfigurationMinVersion) {
 		return field.ErrorList{field.Forbidden(
 			field.NewPath("spec").Child("kibanaRef"),
 			fmt.Sprintf(

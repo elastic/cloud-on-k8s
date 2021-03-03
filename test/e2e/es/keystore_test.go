@@ -2,9 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
+	"context"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -78,7 +81,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 					secureSettings2.Data = map[string][]byte{
 						secureBazUserSettingKey: []byte("baz"), // the actual value update cannot be checked :(
 					}
-					return k.Client.Update(&secureSettings2)
+					return k.Client.Update(context.Background(), &secureSettings2)
 				}),
 			},
 			// keystore should be updated accordingly
@@ -90,7 +93,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Remove one of the source secrets",
 				Test: test.Eventually(func() error {
-					err := k.Client.Delete(&secureSettings2)
+					err := k.Client.Delete(context.Background(), &secureSettings2)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
@@ -107,12 +110,12 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				Test: test.Eventually(func() error {
 					// retrieve current Elasticsearch resource
 					var currentEs esv1.Elasticsearch
-					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs); err != nil {
 						return err
 					}
 					// set its secure settings to nil
 					currentEs.Spec.SecureSettings = nil
-					return k.Client.Update(&currentEs)
+					return k.Client.Update(context.Background(), &currentEs)
 				}),
 			},
 
@@ -123,7 +126,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: test.Eventually(func() error {
-					err := k.Client.Delete(&secureSettings1) // we deleted the other one above already
+					err := k.Client.Delete(context.Background(), &secureSettings1) // we deleted the other one above already
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

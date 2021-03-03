@@ -157,7 +157,7 @@ func (ltctx *LicenseTestContext) checkEnterpriseTrialLicenseValidation(secretNam
 		Name: "Check enterprise trial license is annotated as invalid",
 		Test: test.Eventually(func() error {
 			var licenseSecret corev1.Secret
-			err := ltctx.k.Client.Get(types.NamespacedName{
+			err := ltctx.k.Client.Get(context.Background(), types.NamespacedName{
 				Namespace: test.Ctx().ManagedNamespace(0),
 				Name:      secretName,
 			}, &licenseSecret)
@@ -192,7 +192,7 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 					Name:      licenseSecretName,
 				},
 			}
-			err := ltctx.k.Client.Delete(&sec)
+			err := ltctx.k.Client.Delete(context.Background(), &sec)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
@@ -207,12 +207,12 @@ func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
 		Test: test.Eventually(func() error {
 			// Delete operator license secret
 			var licenseSecrets corev1.SecretList
-			err := ltctx.k.Client.List(&licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
+			err := ltctx.k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
 			if err != nil {
 				return err
 			}
 			for _, s := range licenseSecrets.Items {
-				err = ltctx.k.Client.Delete(&s)
+				err = ltctx.k.Client.Delete(context.Background(), &s)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}

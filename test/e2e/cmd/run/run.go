@@ -19,6 +19,7 @@ import (
 	"time"
 
 	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -56,8 +57,9 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
-			helper.createBeatRoles,
+			helper.createRoles,
 			helper.createManagedNamespaces,
+			helper.deploySecurityConstraints,
 		}
 	} else {
 		// CI test run steps
@@ -66,13 +68,13 @@ func doRun(flags runFlags) error {
 			helper.initTestContext,
 			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
-			helper.createBeatRoles,
-			helper.installCRDs,
+			helper.createRoles,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployTestSecrets,
+			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
-			helper.deployOperator,
+			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
 			helper.runTestJob,
 		}
@@ -129,6 +131,11 @@ func (h *helper) createScratchDir() error {
 }
 
 func (h *helper) initTestContext() error {
+	imageParts := strings.Split(h.operatorImage, ":")
+	if len(imageParts) != 2 {
+		return fmt.Errorf("invalid operator image: %s", h.operatorImage)
+	}
+
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
@@ -146,6 +153,8 @@ func (h *helper) initTestContext() error {
 			Replicas:          h.operatorReplicas,
 		},
 		OperatorImage:         h.operatorImage,
+		OperatorImageRepo:     imageParts[0],
+		OperatorImageTag:      imageParts[1],
 		TestLicense:           h.testLicense,
 		TestLicensePKeyPath:   h.testLicensePKeyPath,
 		MonitoringSecrets:     h.monitoringSecrets,
@@ -156,11 +165,12 @@ func (h *helper) initTestContext() error {
 		BuildNumber:           h.buildNumber,
 		Provider:              h.provider,
 		ClusterName:           h.clusterName,
-		KubernetesVersion:     h.kubernetesVersion,
+		KubernetesVersion:     getKubernetesVersion(h),
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
 		Ocp3Cluster:           isOcp3Cluster(h),
 		DeployChaosJob:        h.deployChaosJob,
+		TestEnvTags:           h.testEnvTags,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -185,14 +195,39 @@ func (h *helper) initTestContext() error {
 	return nil
 }
 
+func getKubernetesVersion(h *helper) version.Version {
+	out, err := h.kubectl("version", "--output=json")
+	if err != nil {
+		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
+	}
+
+	kubectlVersionResponse := struct {
+		ServerVersion map[string]string `json:"serverVersion"`
+	}{}
+
+	if err := json.Unmarshal([]byte(out), &kubectlVersionResponse); err != nil {
+		panic(fmt.Sprintf("can't determine Kubernetes version, err %s", err))
+	}
+
+	serverVersion, ok := kubectlVersionResponse.ServerVersion["gitVersion"]
+	if !ok {
+		panic("can't determine Kubernetes version, gitVersion missing from kubectl response")
+	}
+
+	serverVersion = strings.TrimPrefix(serverVersion, "v")
+	return version.MustParse(serverVersion)
+}
+
 func isOcpCluster(h *helper) bool {
-	isOCP4 := h.kubectl("get", "clusterversion") == nil
+	_, err := h.kubectl("get", "clusterversion")
+	isOCP4 := err == nil
 	isOCP3 := isOcp3Cluster(h)
 	return isOCP4 || isOCP3
 }
 
 func isOcp3Cluster(h *helper) bool {
-	return h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver") == nil
+	_, err := h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver")
+	return err == nil
 }
 
 func (h *helper) initTestSecrets() error {
@@ -254,14 +289,86 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/rbac.yaml", h.testContext)
 }
 
-func (h *helper) createBeatRoles() error {
-	log.Info("Creating Beat roles")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/beat-roles.yaml", h.testContext)
+func (h *helper) createRoles() error {
+	log.Info("Creating Beat/Agent roles")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
+}
+
+func (h *helper) installOperatorUnderTest() error {
+	log.Info("Installing the operator under test")
+
+	installCRDs := false
+	if h.monitoringSecrets == "" {
+		installCRDs = true
+	}
+
+	manifestFile := filepath.Join(h.scratchDir, "operator-under-test.yaml")
+
+	if err := h.renderManifestFromHelm("config/e2e/helm-operator-under-test.yaml",
+		h.testContext.Operator.Namespace, installCRDs, manifestFile); err != nil {
+		return err
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestFile))
+
+	return nil
+}
+
+func (h *helper) installMonitoringOperator() error {
+	log.Info("Installing the Monitoring operator")
+
+	// Monitoring gets installed first so we need to install the CRDs.
+	// The CRDs are from the current version being tested.
+	installCRDs := true
+	manifestFile := filepath.Join(h.scratchDir, "monitoring-operator.yaml")
+
+	if err := h.renderManifestFromHelm("config/e2e/helm-monitoring-operator.yaml",
+		h.testContext.E2ENamespace, installCRDs, manifestFile); err != nil {
+		return err
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply monitoring operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestFile))
+
+	return nil
+}
+
+func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRDs bool, manifestFile string) error {
+	values, err := h.renderTemplate(valuesFile, h.testContext)
+	if err != nil {
+		return fmt.Errorf("failed to generate Helm values from %s: %w", valuesFile, err)
+	}
+
+	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
+		"-g",
+		"-n", namespace,
+		fmt.Sprintf("--set=installCRDs=%t", installCRDs),
+		fmt.Sprintf("--values=%s", values),
+	).Build()
+
+	manifestBytes, err := cmd.Execute(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
+	}
+
+	if err := ioutil.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
+		return fmt.Errorf("failed to write manifest %s: %w", manifestFile, err)
+	}
+
+	return nil
 }
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	return h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
+	_, err := h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
+	return err
 }
 
 func (h *helper) createOperatorNamespaces() error {
@@ -278,11 +385,6 @@ func (h *helper) createManagedNamespaces() error {
 	}
 
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
-}
-
-func (h *helper) deployOperator() error {
-	log.Info("Deploying operator")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator.yaml", h.testContext)
 }
 
 func (h *helper) waitForOperatorToBeReady() error {
@@ -307,10 +409,22 @@ func (h *helper) waitForOperatorToBeReady() error {
 	}, operatorReadyTimeout, 10*time.Second)
 }
 
+func (h *helper) deploySecurityConstraints() error {
+	if !h.testContext.OcpCluster {
+		return nil
+	}
+	log.Info("Deploying SCC")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/scc.yaml", h.testContext)
+}
+
 func (h *helper) deployMonitoring() error {
 	if h.monitoringSecrets == "" {
 		log.Info("No monitoring secrets provided, monitoring is not deployed")
 		return nil
+	}
+
+	if err := h.installMonitoringOperator(); err != nil {
+		return err
 	}
 
 	log.Info("Deploying monitoring")
@@ -543,7 +657,8 @@ func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interfa
 		return "", err
 	}
 
-	return outFilePath, h.kubectl("apply", "-f", outFilePath)
+	_, err = h.kubectl("apply", "-f", outFilePath)
+	return outFilePath, err
 }
 
 func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam interface{}) error {
@@ -556,16 +671,17 @@ func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templatePa
 	return nil
 }
 
-func (h *helper) kubectl(command string, args ...string) error {
+func (h *helper) kubectl(command string, args ...string) (string, error) {
 	return h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
-func (h *helper) exec(cmd *command.Command) error {
+func (h *helper) exec(cmd *command.Command) (string, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
 	defer cancelFunc()
 
 	log.V(1).Info("Executing command", "command", cmd)
 	out, err := cmd.Execute(ctx)
+	outString := string(out)
 	if err != nil {
 		// suppress the stacktrace when the command fails naturally
 		if _, ok := err.(*exec.ExitError); ok {
@@ -574,15 +690,15 @@ func (h *helper) exec(cmd *command.Command) error {
 			log.Error(err, "Command execution failed", "command", cmd)
 		}
 
-		fmt.Fprintln(os.Stderr, string(out))
-		return errors.Wrapf(err, "command failed: [%s]", cmd)
+		fmt.Fprintln(os.Stderr, outString)
+		return "", errors.Wrapf(err, "command failed: [%s]", cmd)
 	}
 
 	if log.V(1).Enabled() {
-		fmt.Println(string(out))
+		fmt.Println(outString)
 	}
 
-	return nil
+	return outString, nil
 }
 
 func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
@@ -610,7 +726,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 func (h *helper) deleteResources(file string) func() {
 	return func() {
 		log.Info("Deleting resources", "file", file)
-		if err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
+		if _, err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
 			log.Error(err, "Failed to delete resources", "file", file)
 		}
 	}
@@ -650,9 +766,9 @@ func (h *helper) dumpEventLog() {
 func (h *helper) dumpK8sData() {
 	operatorNs := h.testContext.Operator.Namespace
 	managedNs := strings.Join(h.testContext.Operator.ManagedNamespaces, ",")
-	cmd := exec.Command("hack/diagnostics/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
+	cmd := exec.Command("support/diagnostics/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
 	err := cmd.Run()
 	if err != nil {
-		log.Error(err, "Failed to run hack/diagnostics/eck-dump.sh")
+		log.Error(err, "Failed to run support/diagnostics/eck-dump.sh")
 	}
 }

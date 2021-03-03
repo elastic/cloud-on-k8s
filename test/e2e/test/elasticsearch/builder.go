@@ -7,18 +7,18 @@ package elasticsearch
 import (
 	"reflect"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -145,6 +145,11 @@ func (b Builder) WithHTTPSAN(ip string) Builder {
 	return b
 }
 
+func (b Builder) WithCustomTransportCA(name string) Builder {
+	b.Elasticsearch.Spec.Transport.TLS.Certificate.SecretName = name
+	return b
+}
+
 // -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {
@@ -199,6 +204,38 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 	})
 }
 
+func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequirements) Builder {
+	cfg := map[string]interface{}{}
+	v := version.MustParse(b.Elasticsearch.Spec.Version)
+
+	if v.GTE(version.From(7, 9, 0)) {
+		cfg[esv1.NodeRoles] = []string{}
+	} else {
+		cfg[esv1.NodeMaster] = false
+		cfg[esv1.NodeData] = false
+		cfg[esv1.NodeIngest] = false
+		cfg[esv1.NodeML] = false
+
+		if v.GTE(version.From(7, 3, 0)) {
+			cfg[esv1.NodeVotingOnly] = false
+		}
+
+		if v.GTE(version.From(7, 7, 0)) {
+			cfg[esv1.NodeTransform] = false
+			cfg[esv1.NodeRemoteClusterClient] = false
+		}
+	}
+
+	return b.WithNodeSet(esv1.NodeSet{
+		Name:  "coordinator",
+		Count: int32(count),
+		Config: &commonv1.Config{
+			Data: cfg,
+		},
+		PodTemplate: ESPodTemplate(resources),
+	})
+}
+
 func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	// Make sure the config specifies "node.store.allow_mmap: false".
 	// We disable mmap to avoid having to set the vm.max_map_count sysctl on test k8s nodes.
@@ -226,6 +263,11 @@ func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 		refs = append(refs, commonv1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Elasticsearch.Spec.SecureSettings = refs
+	return b
+}
+
+func (b Builder) WithVolumeClaimDeletePolicy(policy esv1.VolumeClaimDeletePolicy) Builder {
+	b.Elasticsearch.Spec.VolumeClaimDeletePolicy = policy
 	return b
 }
 
@@ -356,8 +398,8 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 // -- Helper functions
 
-func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.Elasticsearch}
+func (b Builder) RuntimeObjects() []client.Object {
+	return []client.Object{&b.Elasticsearch}
 }
 
 func (b Builder) TriggersRollingUpgrade() bool {

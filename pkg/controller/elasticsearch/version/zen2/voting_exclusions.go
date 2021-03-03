@@ -7,16 +7,15 @@ package zen2
 import (
 	"context"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var (
-	log = logf.Log.WithName("zen2")
+	log = ulog.Log.WithName("zen2")
 )
 
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.

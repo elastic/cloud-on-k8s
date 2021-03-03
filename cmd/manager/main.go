@@ -16,20 +16,26 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -47,6 +53,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -64,8 +71,10 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -291,12 +300,12 @@ func Command() *cobra.Command {
 }
 
 func doRun(_ *cobra.Command, _ []string) error {
-	signalChan := signals.SetupSignalHandler()
+	ctx := signals.SetupSignalHandler()
 	disableConfigWatch := viper.GetBool(operator.DisableConfigWatch)
 
 	// no config file to watch so start the operator directly
 	if configFile == "" || disableConfigWatch {
-		return startOperator(signalChan)
+		return startOperator(ctx)
 	}
 
 	// receive config file update events over a channel
@@ -310,10 +319,14 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 	// start the operator in a goroutine
 	errChan := make(chan error, 1)
-	stopChan := make(chan struct{})
+	ctx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
 
 	go func() {
-		err := startOperator(stopChan)
+		err := startOperator(ctx)
+		if err != nil {
+			log.Error(err, "Operator stopped with error")
+		}
 		errChan <- err
 	}()
 
@@ -322,29 +335,21 @@ func doRun(_ *cobra.Command, _ []string) error {
 		select {
 		case err := <-errChan: // operator failed
 			log.Error(err, "Shutting down due to error")
-			close(stopChan)
 
 			return err
-		case <-signalChan: // signal received
-			log.Info("Signal received: shutting down")
-			close(stopChan)
+		case <-ctx.Done(): // signal received
+			log.Info("Shutting down due to signal")
 
-			return <-errChan
+			return nil
 		case <-confUpdateChan: // config file updated
 			log.Info("Shutting down to apply updated configuration")
-			close(stopChan)
-
-			if err := <-errChan; err != nil {
-				log.Error(err, "Encountered error from previous operator run")
-				return err
-			}
 
 			return nil
 		}
 	}
 }
 
-func startOperator(stopChan <-chan struct{}) error {
+func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 
 	// update GOMAXPROCS to container cpu limit if necessary
@@ -375,7 +380,7 @@ func startOperator(stopChan <-chan struct{}) error {
 
 		go func() {
 			go func() {
-				<-stopChan
+				<-ctx.Done()
 
 				ctx, cancelFunc := context.WithTimeout(context.Background(), debugHTTPShutdownTimeout)
 				defer cancelFunc()
@@ -441,11 +446,13 @@ func startOperator(stopChan <-chan struct{}) error {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
-		Scheme:                  clientgoscheme.Scheme,
-		CertDir:                 viper.GetString(operator.WebhookCertDirFlag),
-		LeaderElection:          viper.GetBool(operator.EnableLeaderElection),
-		LeaderElectionID:        LeaderElectionConfigMapName,
-		LeaderElectionNamespace: operatorNamespace,
+		Scheme:                     clientgoscheme.Scheme,
+		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
+		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
+		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock, // TODO: Revert to ConfigMapsLeases when support for 1.13 is dropped
+		LeaderElectionID:           LeaderElectionConfigMapName,
+		LeaderElectionNamespace:    operatorNamespace,
+		Logger:                     log.WithName("eck-operator"),
 	}
 
 	// configure the manager cache based on the number of managed namespaces
@@ -571,7 +578,7 @@ func startOperator(stopChan <-chan struct{}) error {
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	if err := mgr.Start(stopChan); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		log.Error(err, "Failed to start the controller manager")
 		return err
 	}
@@ -594,8 +601,8 @@ func asyncTasks(
 	// Report this instance as elected through Prometheus
 	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
 
-	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-	mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
+	time.Sleep(10 * time.Second)                          // wait some arbitrary time for the manager to start
+	mgr.GetCache().WaitForCacheSync(context.Background()) // wait until k8s client cache is initialized
 
 	// Start the resource reporter
 	go func() {
@@ -611,8 +618,11 @@ func asyncTasks(
 		}()
 	}
 
-	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
+	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
+	// - soft-owned secrets
+	garbageCollectSoftOwnedSecrets(mgr.GetClient())
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -635,11 +645,13 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 	}{
 		{name: "APMServer", registerFunc: apmserver.Add},
 		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
+		{name: "ElasticsearchAutoscaling", registerFunc: autoscaling.Add},
 		{name: "Kibana", registerFunc: kibana.Add},
 		{name: "EnterpriseSearch", registerFunc: enterprisesearch.Add},
 		{name: "Beats", registerFunc: beat.Add},
 		{name: "License", registerFunc: license.Add},
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
+		{name: "Agent", registerFunc: agent.Add},
 	}
 
 	for _, c := range controllers {
@@ -660,6 +672,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
+		{name: "AGENT-ES", registerFunc: associationctl.AddAgentES},
 	}
 
 	for _, c := range assocControllers {
@@ -692,13 +705,29 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	err = ugc.
 		For(&apmv1.ApmServerList{}, associationctl.ApmAssociationLabelNamespace, associationctl.ApmAssociationLabelName).
 		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
-		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
+		For(&entv1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
+		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		DoGarbageCollection()
 	if err != nil {
 		log.Error(err, "user garbage collector failed")
 		os.Exit(1)
 	}
+}
+
+func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
+	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(k8sClient, map[string]client.Object{
+		esv1.Kind:          &esv1.Elasticsearch{},
+		apmv1.Kind:         &apmv1.ApmServer{},
+		kbv1.Kind:          &kbv1.Kibana{},
+		entv1.Kind:         &entv1.EnterpriseSearch{},
+		beatv1beta1.Kind:   &beatv1beta1.Beat{},
+		agentv1alpha1.Kind: &agentv1alpha1.Agent{},
+	}); err != nil {
+		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
+		return
+	}
+	log.Info("Orphan secrets garbage collection complete")
 }
 
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, validateStorageClass bool, clientset kubernetes.Interface) {
@@ -730,9 +759,11 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		runtime.Object
 		SetupWebhookWithManager(manager.Manager) error
 	}{
+		&agentv1alpha1.Agent{},
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
 		&beatv1beta1.Beat{},
+		&entv1.EnterpriseSearch{},
 		&entv1beta1.EnterpriseSearch{},
 		&esv1beta1.Elasticsearch{},
 		&kbv1.Kibana{},

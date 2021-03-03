@@ -49,7 +49,6 @@ PIPELINE=e2e/aks
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=aks
 CLUSTER_NAME=$BUILD_TAG
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -86,7 +85,6 @@ PIPELINE=e2e/gke-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
-KUBERNETES_VERSION="${clusterVersion}"
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -108,9 +106,6 @@ CFG
   e2e/kind-k8s-versions)
 ######################################
 
-kindNodeImage=$2
-clusterVersion=$3
-
 write_env <<ENV
 IMG_SUFFIX = -ci
 E2E_REGISTRY_NAMESPACE = eck-ci
@@ -121,15 +116,16 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
-KIND_NODE_IMAGE = ${kindNodeImage}
+KIND_NODE_IMAGE = $2
+KIND_VERSION=$3
 IP_FAMILY=$4
 
 PIPELINE=e2e/kind-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=kind
 CLUSTER_NAME=kind-$BUILD_NUMBER
-KUBERNETES_VERSION=${clusterVersion}
 TEST_OPTS=-race
+E2E_TEST_ENV_TAGS="kind,$4"
 ENV
 ;;
 
@@ -151,7 +147,6 @@ PIPELINE=e2e/master
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -190,7 +185,6 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 CLUSTER_NAME=${clusterName}
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -225,7 +219,6 @@ PIPELINE=e2e/ocp
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
 CLUSTER_NAME=$BUILD_TAG
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -260,7 +253,6 @@ PIPELINE=e2e/ocp3
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp3
 CLUSTER_NAME=eck-ocp3-$BUILD_NUMBER
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -295,13 +287,47 @@ PIPELINE=e2e/eks
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=eks
 CLUSTER_NAME=$BUILD_TAG
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: eks-ci
 overrides:
   clusterName: $BUILD_TAG
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+CFG
+;;
+
+######################################
+  e2e/eks-arm)
+######################################
+
+write_env <<ENV
+IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
+
+GO_TAGS = release
+E2E_TAGS = es
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+# TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
+# MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+
+PIPELINE=e2e/eks
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=eks
+CLUSTER_NAME=${BUILD_TAG}-arm
+KUBERNETES_VERSION=default
+TEST_OPTS=-race
+E2E_TEST_ENV_TAGS="arch:arm"
+ENV
+write_deployer_config <<CFG
+id: eks-arm-ci
+overrides:
+  clusterName: ${BUILD_TAG}-arm
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
@@ -335,7 +361,6 @@ PIPELINE=e2e/stack-versions
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -368,7 +393,6 @@ PIPELINE=pr
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=eck-pr-$BUILD_NUMBER
-KUBERNETES_VERSION=default
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
@@ -495,6 +519,22 @@ id: eks-ci
 overrides:
   operation: delete
   clusterName: $BUILD_TAG
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+CFG
+;;
+
+######################################
+  cleanup/eks-arm)
+######################################
+
+write_deployer_config <<CFG
+id: eks-arm-ci
+overrides:
+  operation: delete
+  clusterName: ${BUILD_TAG}-arm
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID

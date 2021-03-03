@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -25,6 +26,17 @@ import (
 // Storage decrease is not supported if the corresponding StatefulSet has been resized already.
 func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	var errs field.ErrorList
+	if proposed.IsAutoscalingDefined() {
+		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
+		// will not be processed immediately by the Elasticsearch controller. When autoscaling is enabled it is fine to accept the
+		// manifest, and wait for the autoscaling controller to adjust the volume claim template size.
+		log.V(1).Info(
+			"Autoscaling is enabled in proposed, ignoring PVC modification validation",
+			"namespace", proposed.Namespace,
+			"es_name", proposed.Name,
+		)
+		return errs
+	}
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
 		if currentNodeSet == nil {
@@ -53,7 +65,7 @@ func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearc
 		// Hence here we compare proposed claims with **current StatefulSet** claims.
 		matchingSsetName := esv1.StatefulSet(proposed.Name, proposedNodeSet.Name)
 		var matchingSset appsv1.StatefulSet
-		err := k8sClient.Get(types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
 		if err != nil && apierrors.IsNotFound(err) {
 			// matching StatefulSet does not exist, this is likely the initial creation
 			continue
@@ -161,7 +173,7 @@ func getStorageClass(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim) (
 		return getDefaultStorageClass(k8sClient)
 	}
 	var sc storagev1.StorageClass
-	if err := k8sClient.Get(types.NamespacedName{Name: *claim.Spec.StorageClassName}, &sc); err != nil {
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: *claim.Spec.StorageClassName}, &sc); err != nil {
 		return storagev1.StorageClass{}, fmt.Errorf("cannot retrieve storage class: %w", err)
 	}
 	return sc, nil
@@ -171,7 +183,7 @@ func getStorageClass(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim) (
 // or an error if there is none.
 func getDefaultStorageClass(k8sClient k8s.Client) (storagev1.StorageClass, error) {
 	var scs storagev1.StorageClassList
-	if err := k8sClient.List(&scs); err != nil {
+	if err := k8sClient.List(context.Background(), &scs); err != nil {
 		return storagev1.StorageClass{}, err
 	}
 	for _, sc := range scs.Items {

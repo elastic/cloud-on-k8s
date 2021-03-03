@@ -1,14 +1,16 @@
 processor:
   ignoreTypes:
-    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat)List$"
-    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat)Health$"
-    - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat)Status$"
+    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)List$"
+    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)Health$"
+    - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tion|tionStatus|tionConf)$"
     - "APM(Es|Kibana)Association"
+    - "NodeSet(List|ConfigError)$"
+    - "Autoscaling*"
   ignoreFields:
     - "status$"
     - "TypeMeta$"
 
 render:
-  kubernetesVersion: 1.18
+  kubernetesVersion: "1.20"

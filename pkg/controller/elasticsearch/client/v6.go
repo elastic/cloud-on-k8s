@@ -9,9 +9,12 @@ import (
 	"net/http"
 	"net/url"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 )
+
+var errNotSupportedInEs6x = errors.New("not supported in Elasticsearch 6.x")
 
 type clientV6 struct {
 	baseClient
@@ -141,11 +144,27 @@ func (c *clientV6) StartBasic(ctx context.Context) (StartBasicResponse, error) {
 }
 
 func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
-	return errors.New("Not supported in Elasticsearch 6.x")
+	return errNotSupportedInEs6x
 }
 
 func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
-	return errors.New("Not supported in Elasticsearch 6.x")
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) DeleteAutoscalingPolicies(_ context.Context) error {
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) CreateAutoscalingPolicy(_ context.Context, _ string, _ esv1.AutoscalingPolicy) error {
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) GetAutoscalingCapacity(_ context.Context) (AutoscalingCapacityResult, error) {
+	return AutoscalingCapacityResult{}, errNotSupportedInEs6x
+}
+
+func (c *clientV6) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) error {
+	return errNotSupportedInEs6x
 }
 
 func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error) {

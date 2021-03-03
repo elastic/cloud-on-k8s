@@ -7,14 +7,13 @@ package chaos
 import (
 	"time"
 
-	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
-	log = logf.Log.WithName("chaos")
+	log = ulog.Log.WithName("chaos")
 
 	// defaultDeleteOperatorPodDelay is the default delay between deletions. It is an arbitrary value which
 	// avoid to delete too often an operator and therefore inadvertently unlock some situations (e.g. election
@@ -66,7 +65,7 @@ func Command() *cobra.Command {
 
 	cmd.Flags().DurationVar(&flags.deleteOperatorPodDelay, "delete-operator-delay", defaultDeleteOperatorPodDelay, "Delay between two operator Pod deletions")
 	cmd.Flags().DurationVar(&flags.changeOperatorReplicasDelay, "update-operator-replicas-delay", defaultChangeOperatorReplicasDelay, "Delay between two operator replicas updates")
-	logutil.BindFlags(cmd.PersistentFlags())
+	ulog.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables
 	_ = viper.BindPFlags(cmd.Flags())

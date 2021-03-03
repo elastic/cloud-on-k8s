@@ -7,6 +7,7 @@
 package watches_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// create a controller that watches secrets and enqueues requests into a chan
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
-		reconcileFunc := reconcile.Func(func(req reconcile.Request) (reconcile.Result, error) {
+		reconcileFunc := reconcile.Func(func(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 			requests <- req
 			return reconcile.Result{}, nil
 		})
@@ -64,7 +65,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	}
 
 	// Create the object before registering any watches
-	assert.NoError(t, c.Create(testObj))
+	assert.NoError(t, c.Create(context.Background(), testObj))
 
 	// Add a named watch for the first object
 	assert.NoError(t, eventHandler.AddHandler(watches.NamedWatch{
@@ -76,6 +77,6 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// Update the first object and expect a reconcile request
 	testLabels := map[string]string{"test": "label"}
 	testObj.Labels = testLabels
-	require.NoError(t, c.Update(testObj))
+	require.NoError(t, c.Update(context.Background(), testObj))
 	require.Equal(t, watching, (<-requests).NamespacedName)
 }

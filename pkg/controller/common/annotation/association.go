@@ -5,9 +5,8 @@
 package annotation
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -18,20 +17,20 @@ const (
 )
 
 // ForAssociationStatusChange constructs the annotation map for an association status change event.
-func ForAssociationStatusChange(prevStatus, currStatus commonv1.AssociationStatus) map[string]string {
+func ForAssociationStatusChange(prevStatus, currStatus commonv1.AssociationStatusMap) (map[string]string, error) {
 	return map[string]string{
-		CurrAssocStatusAnnotation: string(currStatus),
-		PrevAssocStatusAnnotation: string(prevStatus),
-	}
+		PrevAssocStatusAnnotation: prevStatus.String(),
+		CurrAssocStatusAnnotation: currStatus.String(),
+	}, nil
 }
 
-// ExtractAssociationStatus extracts the association status values from the provided meta object.
-func ExtractAssociationStatus(obj metav1.ObjectMeta) (prevStatus, currStatus commonv1.AssociationStatus) {
+// ExtractAssociationStatusStrings extracts the association status strings from the provided meta object.
+func ExtractAssociationStatusStrings(obj metav1.ObjectMeta) (prevStatus, currStatus string) {
 	if obj.Annotations == nil {
-		return commonv1.AssociationUnknown, commonv1.AssociationUnknown
+		return "", ""
 	}
 
-	prevStatus = commonv1.AssociationStatus(obj.Annotations[PrevAssocStatusAnnotation])
-	currStatus = commonv1.AssociationStatus(obj.Annotations[CurrAssocStatusAnnotation])
+	prevStatus = obj.Annotations[PrevAssocStatusAnnotation]
+	currStatus = obj.Annotations[CurrAssocStatusAnnotation]
 	return
 }

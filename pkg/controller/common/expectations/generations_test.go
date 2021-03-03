@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func newStatefulSet(name string, uid types.UID, generation int64) appsv1.StatefulSet {
@@ -104,7 +103,7 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerscheme.SetupScheme()
-			client := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
+			client := k8s.NewFakeClient(tt.resources...)
 			e := NewExpectedStatefulSetUpdates(client)
 			for i := range tt.expectGenerations {
 				e.ExpectGeneration(tt.expectGenerations[i])

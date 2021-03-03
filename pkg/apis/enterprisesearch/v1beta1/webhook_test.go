@@ -64,7 +64,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.x": Invalid version: version string has too few segments: 7.x`,
+				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
 			),
 		},
 		{
@@ -126,7 +126,7 @@ func TestWebhook(t *testing.T) {
 	}
 
 	validator := &entv1beta1.EnterpriseSearch{}
-	gvk := metav1.GroupVersionKind{Group: entv1beta1.GroupVersion.Group, Version: entv1beta1.GroupVersion.Version, Kind: "EnterpriseSearch"}
+	gvk := metav1.GroupVersionKind{Group: entv1beta1.GroupVersion.Group, Version: entv1beta1.GroupVersion.Version, Kind: entv1beta1.Kind}
 	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
 }
 

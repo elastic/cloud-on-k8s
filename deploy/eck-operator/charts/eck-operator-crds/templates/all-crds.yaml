@@ -2,7 +2,293 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/instance: '{{ .Release.Name }}'
+    app.kubernetes.io/managed-by: '{{ .Release.Service }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
+    app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
+  name: agents.agent.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: available
+    type: integer
+  - JSONPath: .status.expectedNodes
+    description: Expected nodes
+    name: expected
+    type: integer
+  - JSONPath: .status.version
+    description: Agent version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: agent.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Agent
+    listKind: AgentList
+    plural: agents
+    shortNames:
+    - agent
+    singular: agent
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Agent is the Schema for the Agents API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AgentSpec defines the desired state of the Agent
+          properties:
+            config:
+              description: Config holds the Agent configuration. At most one of [`Config`,
+                `ConfigRef`] can be specified.
+              type: object
+            configRef:
+              description: ConfigRef contains a reference to an existing Kubernetes
+                Secret holding the Agent configuration. Agent settings must be specified
+                as yaml, under a single "agent.yml" entry. At most one of [`Config`,
+                `ConfigRef`] can be specified.
+              properties:
+                secretName:
+                  description: SecretName is the name of the secret.
+                  type: string
+              type: object
+            daemonSet:
+              description: DaemonSet specifies the Agent should be deployed as a DaemonSet,
+                and allows providing its spec. Cannot be used along with `deployment`.
+              properties:
+                updateStrategy:
+                  description: DaemonSetUpdateStrategy is a struct used to control
+                    the update strategy for a DaemonSet.
+                  properties:
+                    rollingUpdate:
+                      description: 'Rolling update config params. Present only if
+                        type = "RollingUpdate". --- TODO: Update this to follow our
+                        convention for oneOf, whatever we decide it to be. Same as
+                        Deployment `strategy.rollingUpdate`. See https://github.com/kubernetes/kubernetes/issues/35345'
+                      properties:
+                        maxUnavailable:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of DaemonSet pods that
+                            can be unavailable during the update. Value can be an
+                            absolute number (ex: 5) or a percentage of total number
+                            of DaemonSet pods at the start of the update (ex: 10%).
+                            Absolute number is calculated from percentage by rounding
+                            up. This cannot be 0. Default value is 1. Example: when
+                            this is set to 30%, at most 30% of the total number of
+                            nodes that should be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their pods stopped for an update at any given
+                            time. The update starts by stopping at most 30% of those
+                            DaemonSet pods and then brings up new DaemonSet pods in
+                            their place. Once the new pods are available, it then
+                            proceeds onto other DaemonSet pods, thus ensuring that
+                            at least 70% of original number of DaemonSet pods are
+                            available at all times during the update.'
+                      type: object
+                    type:
+                      description: Type of daemon set update. Can be "RollingUpdate"
+                        or "OnDelete". Default is RollingUpdate.
+                      type: string
+                  type: object
+              type: object
+            deployment:
+              description: Deployment specifies the Agent should be deployed as a
+                Deployment, and allows providing its spec. Cannot be used along with
+                `daemonSet`.
+              properties:
+                replicas:
+                  format: int32
+                  type: integer
+                strategy:
+                  description: DeploymentStrategy describes how to replace existing
+                    pods with new ones.
+                  properties:
+                    rollingUpdate:
+                      description: 'Rolling update config params. Present only if
+                        DeploymentStrategyType = RollingUpdate. --- TODO: Update this
+                        to follow our convention for oneOf, whatever we decide it
+                        to be.'
+                      properties:
+                        maxSurge:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of pods that can be scheduled
+                            above the desired number of pods. Value can be an absolute
+                            number (ex: 5) or a percentage of desired pods (ex: 10%).
+                            This can not be 0 if MaxUnavailable is 0. Absolute number
+                            is calculated from percentage by rounding up. Defaults
+                            to 25%. Example: when this is set to 30%, the new ReplicaSet
+                            can be scaled up immediately when the rolling update starts,
+                            such that the total number of old and new pods do not
+                            exceed 130% of desired pods. Once old pods have been killed,
+                            new ReplicaSet can be scaled up further, ensuring that
+                            total number of pods running at any time during the update
+                            is at most 130% of desired pods.'
+                        maxUnavailable:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of pods that can be unavailable
+                            during the update. Value can be an absolute number (ex:
+                            5) or a percentage of desired pods (ex: 10%). Absolute
+                            number is calculated from percentage by rounding down.
+                            This can not be 0 if MaxSurge is 0. Defaults to 25%. Example:
+                            when this is set to 30%, the old ReplicaSet can be scaled
+                            down to 70% of desired pods immediately when the rolling
+                            update starts. Once new pods are ready, old ReplicaSet
+                            can be scaled down further, followed by scaling up the
+                            new ReplicaSet, ensuring that the total number of pods
+                            available at all times during the update is at least 70%
+                            of desired pods.'
+                      type: object
+                    type:
+                      description: Type of deployment. Can be "Recreate" or "RollingUpdate".
+                        Default is RollingUpdate.
+                      type: string
+                  type: object
+              type: object
+            elasticsearchRefs:
+              description: ElasticsearchRefs is a reference to a list of Elasticsearch
+                clusters running in the same Kubernetes cluster. Due to existing limitations,
+                only a single ES cluster is currently supported.
+              items:
+                properties:
+                  name:
+                    description: Name of the Kubernetes object.
+                    type: string
+                  namespace:
+                    description: Namespace of the Kubernetes object. If empty, defaults
+                      to the current namespace.
+                    type: string
+                  outputName:
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            image:
+              description: Image is the Agent Docker image to deploy. Version has
+                to match the Agent in the image.
+              type: string
+            secureSettings:
+              description: SecureSettings is a list of references to Kubernetes Secrets
+                containing sensitive configuration options for the Agent. Secrets
+                data can be then referenced in the Agent config using the Secret's
+                keys or as specified in `Entries` field of each SecureSetting.
+              items:
+                description: SecretSource defines a data source based on a Kubernetes
+                  Secret.
+                properties:
+                  entries:
+                    description: Entries define how to project each key-value pair
+                      in the secret to filesystem paths. If not defined, all keys
+                      will be projected to similarly named paths in the filesystem.
+                      If defined, only the specified keys will be projected to the
+                      corresponding paths.
+                    items:
+                      description: KeyToPath defines how to map a key in a Secret
+                        object to a filesystem path.
+                      properties:
+                        key:
+                          description: Key is the key contained in the secret.
+                          type: string
+                        path:
+                          description: Path is the relative file path to map the key
+                            to. Path must not be an absolute file path and must not
+                            contain any ".." components.
+                          type: string
+                      required:
+                      - key
+                      type: object
+                    type: array
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                required:
+                - secretName
+                type: object
+              type: array
+            serviceAccountName:
+              description: ServiceAccountName is used to check access from the current
+                resource to a Elasticsearch resource in a different namespace. Can
+                only be used if ECK is enforcing RBAC on references.
+              type: string
+            version:
+              description: Version of the Agent.
+              type: string
+          required:
+          - version
+          type: object
+        status:
+          description: AgentStatus defines the observed state of the Agent
+          properties:
+            availableNodes:
+              format: int32
+              type: integer
+            elasticsearchAssociationsStatus:
+              additionalProperties:
+                description: AssociationStatus is the status of an association resource.
+                type: string
+              description: AssociationStatusMap is the map of association's namespaced
+                name string to its AssociationStatus. For resources that have a single
+                Association of a given type (eg. single ES reference), this map will
+                contain a single entry.
+              type: object
+            expectedNodes:
+              format: int32
+              type: integer
+            health:
+              type: string
+            version:
+              description: 'Version of the stack resource currently running. During
+                version upgrades, multiple versions may run in parallel: this value
+                specifies the lowest version currently running.'
+              type: string
+          type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -96,18 +382,70 @@ spec:
                     spec:
                       description: Spec is the specification of the service.
                       properties:
+                        allocateLoadBalancerNodePorts:
+                          description: allocateLoadBalancerNodePorts defines if NodePorts
+                            will be automatically allocated for services with type
+                            LoadBalancer.  Default is "true". It may be set to "false"
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
+                            with type LoadBalancer and will be cleared if the type
+                            is changed to any other type. This field is alpha-level
+                            and is only honored by servers that enable the ServiceLBNodePortControl
+                            feature.
+                          type: boolean
                         clusterIP:
                           description: 'clusterIP is the IP address of the service
-                            and is usually assigned randomly by the master. If an
-                            address is specified manually and is not in use by others,
-                            it will be allocated to the service; otherwise, creation
-                            of the service will fail. This field can not be changed
-                            through updates. Valid values are "None", empty string
-                            (""), or a valid IP address. "None" can be specified for
-                            headless services when proxying is not required. Only
-                            applies to types ClusterIP, NodePort, and LoadBalancer.
-                            Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            and is usually assigned randomly. If an address is specified
+                            manually, is in-range (as per system configuration), and
+                            is not in use, it will be allocated to the service; otherwise
+                            creation of the service will fail. This field may not
+                            be changed through updates unless the type field is also
+                            being changed to ExternalName (which requires this field
+                            to be blank) or the type field is being changed from ExternalName
+                            (in which case this field may optionally be specified,
+                            as describe above).  Valid values are "None", empty string
+                            (""), or a valid IP address. Setting this to "None" makes
+                            a "headless service" (no virtual IP), which is useful
+                            when direct endpoint connections are preferred and proxying
+                            is not required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
                           type: string
+                        clusterIPs:
+                          description: "ClusterIPs is a list of IP addresses assigned
+                            to this service, and are usually assigned randomly.  If
+                            an address is specified manually, is in-range (as per
+                            system configuration), and is not in use, it will be allocated
+                            to the service; otherwise creation of the service will
+                            fail. This field may not be changed through updates unless
+                            the type field is also being changed to ExternalName (which
+                            requires this field to be empty) or the type field is
+                            being changed from ExternalName (in which case this field
+                            may optionally be specified, as describe above).  Valid
+                            values are \"None\", empty string (\"\"), or a valid IP
+                            address.  Setting this to \"None\" makes a \"headless
+                            service\" (no virtual IP), which is useful when direct
+                            endpoint connections are preferred and proxying is not
+                            required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            \ If this field is not specified, it will be initialized
+                            from the clusterIP field.  If this field is specified,
+                            clients must ensure that clusterIPs[0] and clusterIP have
+                            the same value. \n Unless the \"IPv6DualStack\" feature
+                            gate is enabled, this field is limited to one value, which
+                            must be the same as the clusterIP field.  If the feature
+                            gate is enabled, this field may hold a maximum of two
+                            entries (dual-stack IPs, in either order).  These IPs
+                            must correspond to the values of the ipFamilies field.
+                            Both clusterIPs and ipFamilies are governed by the ipFamilyPolicy
+                            field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies"
+                          items:
+                            type: string
+                          type: array
                         externalIPs:
                           description: externalIPs is a list of IP addresses for which
                             nodes in the cluster will also accept traffic for this
@@ -120,10 +458,10 @@ spec:
                           type: array
                         externalName:
                           description: externalName is the external reference that
-                            kubedns or equivalent will return as a CNAME record for
-                            this service. No proxying will be involved. Must be a
-                            valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be ExternalName.
+                            discovery mechanisms will return as an alias for this
+                            service (e.g. a DNS CNAME record). No proxying will be
+                            involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                            and requires Type to be
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -137,27 +475,57 @@ spec:
                           type: string
                         healthCheckNodePort:
                           description: healthCheckNodePort specifies the healthcheck
-                            nodePort for the service. If not specified, HealthCheckNodePort
-                            is created by the service api backend with the allocated
-                            nodePort. Will use user-specified nodePort value if specified
-                            by the client. Only effects when Type is set to LoadBalancer
-                            and ExternalTrafficPolicy is set to Local.
+                            nodePort for the service. This only applies when type
+                            is set to LoadBalancer and externalTrafficPolicy is set
+                            to Local. If a value is specified, is in-range, and is
+                            not in use, it will be used.  If not specified, a value
+                            will be automatically allocated.  External systems (e.g.
+                            load-balancers) can use this port to determine if a given
+                            node holds endpoints for this service or not.  If this
+                            field is specified when creating a Service which does
+                            not need it, creation will fail. This field will be wiped
+                            when updating a Service to no longer need it (e.g. changing
+                            type).
                           format: int32
                           type: integer
-                        ipFamily:
-                          description: ipFamily specifies whether this Service has
-                            a preference for a particular IP family (e.g. IPv4 vs.
-                            IPv6).  If a specific IP family is requested, the clusterIP
-                            field will be allocated from that family, if it is available
-                            in the cluster.  If no IP family is requested, the cluster's
-                            primary IP family will be used. Other IP fields (loadBalancerIP,
-                            loadBalancerSourceRanges, externalIPs) and controllers
-                            which allocate external load-balancers should use the
-                            same IP family.  Endpoints for this Service will be of
-                            this family.  This field is immutable after creation.
-                            Assigning a ServiceIPFamily not available in the cluster
-                            (e.g. IPv6 in IPv4 only cluster) is an error condition
-                            and will fail during clusterIP assignment.
+                        ipFamilies:
+                          description: "IPFamilies is a list of IP families (e.g.
+                            IPv4, IPv6) assigned to this service, and is gated by
+                            the \"IPv6DualStack\" feature gate.  This field is usually
+                            assigned automatically based on cluster configuration
+                            and the ipFamilyPolicy field. If this field is specified
+                            manually, the requested family is available in the cluster,
+                            and ipFamilyPolicy allows it, it will be used; otherwise
+                            creation of the service will fail.  This field is conditionally
+                            mutable: it allows for adding or removing a secondary
+                            IP family, but it does not allow changing the primary
+                            IP family of the Service.  Valid values are \"IPv4\" and
+                            \"IPv6\".  This field only applies to Services of types
+                            ClusterIP, NodePort, and LoadBalancer, and does apply
+                            to \"headless\" services.  This field will be wiped when
+                            updating a Service to type ExternalName. \n This field
+                            may hold a maximum of two entries (dual-stack families,
+                            in either order).  These families must correspond to the
+                            values of the clusterIPs field, if specified. Both clusterIPs
+                            and ipFamilies are governed by the ipFamilyPolicy field."
+                          items:
+                            description: IPFamily represents the IP Family (IPv4 or
+                              IPv6). This type is used to express the family of an
+                              IP expressed by a type (e.g. service.spec.ipFamilies).
+                            type: string
+                          type: array
+                        ipFamilyPolicy:
+                          description: IPFamilyPolicy represents the dual-stack-ness
+                            requested or required by this Service, and is gated by
+                            the "IPv6DualStack" feature gate.  If there is no value
+                            provided, then this field will be set to SingleStack.
+                            Services can be "SingleStack" (a single IP family), "PreferDualStack"
+                            (two IP families on dual-stack configured clusters or
+                            a single IP family on single-stack clusters), or "RequireDualStack"
+                            (two IP families on dual-stack configured clusters, otherwise
+                            fail). The ipFamilies and clusterIPs fields depend on
+                            the value of this field.  This field will be wiped when
+                            updating a service to type ExternalName.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -189,8 +557,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol. Field
-                                  can be enabled with ServiceAppProtocol feature gate.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -202,12 +571,16 @@ spec:
                                 type: string
                               nodePort:
                                 description: 'The port on each node on which this
-                                  service is exposed when type=NodePort or LoadBalancer.
-                                  Usually assigned by the system. If specified, it
-                                  will be allocated to the service if unused or else
-                                  creation of the service will fail. Default is to
-                                  auto-allocate a port if the ServiceType of this
-                                  Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                  service is exposed when type is NodePort or LoadBalancer.  Usually
+                                  assigned by the system. If a value is specified,
+                                  in-range, and not in use it will be used, otherwise
+                                  the operation will fail.  If not specified, a port
+                                  will be allocated if this Service requires one.  If
+                                  this field is specified when creating a Service
+                                  which does not need it, creation will fail. This
+                                  field will be wiped when updating a Service to no
+                                  longer need it (e.g. changing type from NodePort
+                                  to ClusterIP). More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
                                 format: int32
                                 type: integer
                               port:
@@ -238,13 +611,18 @@ spec:
                             type: object
                           type: array
                         publishNotReadyAddresses:
-                          description: publishNotReadyAddresses, when set to true,
-                            indicates that DNS implementations must publish the notReadyAddresses
-                            of subsets for the Endpoints associated with the Service.
-                            The default value is false. The primary use case for setting
-                            this field is to use a StatefulSet's Headless Service
-                            to propagate SRV records for its Pods without respect
-                            to their readiness for purpose of peer discovery.
+                          description: publishNotReadyAddresses indicates that any
+                            agent which deals with endpoints for this Service should
+                            disregard any indications of ready/not-ready. The primary
+                            use case for setting this field is for a StatefulSet's
+                            Headless Service to propagate SRV DNS records for its
+                            Pods for the purpose of peer discovery. The Kubernetes
+                            controllers that generate Endpoints and EndpointSlice
+                            resources for Services interpret this to mean that all
+                            endpoints are considered "ready" even if the Pods themselves
+                            are not. Agents which consume only Kubernetes generated
+                            endpoints through the Endpoints or EndpointSlice resources
+                            can safely assume this behavior.
                           type: boolean
                         selector:
                           additionalProperties:
@@ -293,25 +671,30 @@ spec:
                             value "*" may be used to mean "any topology". This catch-all
                             value, if used, only makes sense as the last value in
                             the list. If this is not specified or empty, no topology
-                            constraints will be applied.
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature.
                           items:
                             type: string
                           type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
-                            ClusterIP, NodePort, and LoadBalancer. "ExternalName"
-                            maps to the specified externalName. "ClusterIP" allocates
+                            ClusterIP, NodePort, and LoadBalancer. "ClusterIP" allocates
                             a cluster-internal IP address for load-balancing to endpoints.
                             Endpoints are determined by the selector or if that is
                             not specified, by manual construction of an Endpoints
-                            object. If clusterIP is "None", no virtual IP is allocated
-                            and the endpoints are published as a set of endpoints
-                            rather than a stable IP. "NodePort" builds on ClusterIP
-                            and allocates a port on every node which routes to the
-                            clusterIP. "LoadBalancer" builds on NodePort and creates
-                            an external load-balancer (if supported in the current
-                            cloud) which routes to the clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                            object or EndpointSlice objects. If clusterIP is "None",
+                            no virtual IP is allocated and the endpoints are published
+                            as a set of endpoints rather than a virtual IP. "NodePort"
+                            builds on ClusterIP and allocates a port on every node
+                            which routes to the same endpoints as the clusterIP. "LoadBalancer"
+                            builds on NodePort and creates an external load-balancer
+                            (if supported in the current cloud) which routes to the
+                            same endpoints as the clusterIP. "ExternalName" aliases
+                            this service to the specified externalName. Several other
+                            fields do not apply to ExternalName services. More info:
+                            https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
                           type: string
                       type: object
                   type: object
@@ -480,7 +863,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -563,7 +946,42 @@ spec:
               description: DaemonSet specifies the Beat should be deployed as a DaemonSet,
                 and allows providing its spec. Cannot be used along with `deployment`.
                 If both are absent a default for the Type is used.
-              properties: {}
+              properties:
+                updateStrategy:
+                  description: DaemonSetUpdateStrategy is a struct used to control
+                    the update strategy for a DaemonSet.
+                  properties:
+                    rollingUpdate:
+                      description: 'Rolling update config params. Present only if
+                        type = "RollingUpdate". --- TODO: Update this to follow our
+                        convention for oneOf, whatever we decide it to be. Same as
+                        Deployment `strategy.rollingUpdate`. See https://github.com/kubernetes/kubernetes/issues/35345'
+                      properties:
+                        maxUnavailable:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of DaemonSet pods that
+                            can be unavailable during the update. Value can be an
+                            absolute number (ex: 5) or a percentage of total number
+                            of DaemonSet pods at the start of the update (ex: 10%).
+                            Absolute number is calculated from percentage by rounding
+                            up. This cannot be 0. Default value is 1. Example: when
+                            this is set to 30%, at most 30% of the total number of
+                            nodes that should be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their pods stopped for an update at any given
+                            time. The update starts by stopping at most 30% of those
+                            DaemonSet pods and then brings up new DaemonSet pods in
+                            their place. Once the new pods are available, it then
+                            proceeds onto other DaemonSet pods, thus ensuring that
+                            at least 70% of original number of DaemonSet pods are
+                            available at all times during the update.'
+                      type: object
+                    type:
+                      description: Type of daemon set update. Can be "RollingUpdate"
+                        or "OnDelete". Default is RollingUpdate.
+                      type: string
+                  type: object
               type: object
             deployment:
               description: Deployment specifies the Beat should be deployed as a Deployment,
@@ -753,7 +1171,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -857,18 +1275,70 @@ spec:
                     spec:
                       description: Spec is the specification of the service.
                       properties:
+                        allocateLoadBalancerNodePorts:
+                          description: allocateLoadBalancerNodePorts defines if NodePorts
+                            will be automatically allocated for services with type
+                            LoadBalancer.  Default is "true". It may be set to "false"
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
+                            with type LoadBalancer and will be cleared if the type
+                            is changed to any other type. This field is alpha-level
+                            and is only honored by servers that enable the ServiceLBNodePortControl
+                            feature.
+                          type: boolean
                         clusterIP:
                           description: 'clusterIP is the IP address of the service
-                            and is usually assigned randomly by the master. If an
-                            address is specified manually and is not in use by others,
-                            it will be allocated to the service; otherwise, creation
-                            of the service will fail. This field can not be changed
-                            through updates. Valid values are "None", empty string
-                            (""), or a valid IP address. "None" can be specified for
-                            headless services when proxying is not required. Only
-                            applies to types ClusterIP, NodePort, and LoadBalancer.
-                            Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            and is usually assigned randomly. If an address is specified
+                            manually, is in-range (as per system configuration), and
+                            is not in use, it will be allocated to the service; otherwise
+                            creation of the service will fail. This field may not
+                            be changed through updates unless the type field is also
+                            being changed to ExternalName (which requires this field
+                            to be blank) or the type field is being changed from ExternalName
+                            (in which case this field may optionally be specified,
+                            as describe above).  Valid values are "None", empty string
+                            (""), or a valid IP address. Setting this to "None" makes
+                            a "headless service" (no virtual IP), which is useful
+                            when direct endpoint connections are preferred and proxying
+                            is not required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
                           type: string
+                        clusterIPs:
+                          description: "ClusterIPs is a list of IP addresses assigned
+                            to this service, and are usually assigned randomly.  If
+                            an address is specified manually, is in-range (as per
+                            system configuration), and is not in use, it will be allocated
+                            to the service; otherwise creation of the service will
+                            fail. This field may not be changed through updates unless
+                            the type field is also being changed to ExternalName (which
+                            requires this field to be empty) or the type field is
+                            being changed from ExternalName (in which case this field
+                            may optionally be specified, as describe above).  Valid
+                            values are \"None\", empty string (\"\"), or a valid IP
+                            address.  Setting this to \"None\" makes a \"headless
+                            service\" (no virtual IP), which is useful when direct
+                            endpoint connections are preferred and proxying is not
+                            required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            \ If this field is not specified, it will be initialized
+                            from the clusterIP field.  If this field is specified,
+                            clients must ensure that clusterIPs[0] and clusterIP have
+                            the same value. \n Unless the \"IPv6DualStack\" feature
+                            gate is enabled, this field is limited to one value, which
+                            must be the same as the clusterIP field.  If the feature
+                            gate is enabled, this field may hold a maximum of two
+                            entries (dual-stack IPs, in either order).  These IPs
+                            must correspond to the values of the ipFamilies field.
+                            Both clusterIPs and ipFamilies are governed by the ipFamilyPolicy
+                            field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies"
+                          items:
+                            type: string
+                          type: array
                         externalIPs:
                           description: externalIPs is a list of IP addresses for which
                             nodes in the cluster will also accept traffic for this
@@ -881,10 +1351,10 @@ spec:
                           type: array
                         externalName:
                           description: externalName is the external reference that
-                            kubedns or equivalent will return as a CNAME record for
-                            this service. No proxying will be involved. Must be a
-                            valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be ExternalName.
+                            discovery mechanisms will return as an alias for this
+                            service (e.g. a DNS CNAME record). No proxying will be
+                            involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                            and requires Type to be
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -898,27 +1368,57 @@ spec:
                           type: string
                         healthCheckNodePort:
                           description: healthCheckNodePort specifies the healthcheck
-                            nodePort for the service. If not specified, HealthCheckNodePort
-                            is created by the service api backend with the allocated
-                            nodePort. Will use user-specified nodePort value if specified
-                            by the client. Only effects when Type is set to LoadBalancer
-                            and ExternalTrafficPolicy is set to Local.
+                            nodePort for the service. This only applies when type
+                            is set to LoadBalancer and externalTrafficPolicy is set
+                            to Local. If a value is specified, is in-range, and is
+                            not in use, it will be used.  If not specified, a value
+                            will be automatically allocated.  External systems (e.g.
+                            load-balancers) can use this port to determine if a given
+                            node holds endpoints for this service or not.  If this
+                            field is specified when creating a Service which does
+                            not need it, creation will fail. This field will be wiped
+                            when updating a Service to no longer need it (e.g. changing
+                            type).
                           format: int32
                           type: integer
-                        ipFamily:
-                          description: ipFamily specifies whether this Service has
-                            a preference for a particular IP family (e.g. IPv4 vs.
-                            IPv6).  If a specific IP family is requested, the clusterIP
-                            field will be allocated from that family, if it is available
-                            in the cluster.  If no IP family is requested, the cluster's
-                            primary IP family will be used. Other IP fields (loadBalancerIP,
-                            loadBalancerSourceRanges, externalIPs) and controllers
-                            which allocate external load-balancers should use the
-                            same IP family.  Endpoints for this Service will be of
-                            this family.  This field is immutable after creation.
-                            Assigning a ServiceIPFamily not available in the cluster
-                            (e.g. IPv6 in IPv4 only cluster) is an error condition
-                            and will fail during clusterIP assignment.
+                        ipFamilies:
+                          description: "IPFamilies is a list of IP families (e.g.
+                            IPv4, IPv6) assigned to this service, and is gated by
+                            the \"IPv6DualStack\" feature gate.  This field is usually
+                            assigned automatically based on cluster configuration
+                            and the ipFamilyPolicy field. If this field is specified
+                            manually, the requested family is available in the cluster,
+                            and ipFamilyPolicy allows it, it will be used; otherwise
+                            creation of the service will fail.  This field is conditionally
+                            mutable: it allows for adding or removing a secondary
+                            IP family, but it does not allow changing the primary
+                            IP family of the Service.  Valid values are \"IPv4\" and
+                            \"IPv6\".  This field only applies to Services of types
+                            ClusterIP, NodePort, and LoadBalancer, and does apply
+                            to \"headless\" services.  This field will be wiped when
+                            updating a Service to type ExternalName. \n This field
+                            may hold a maximum of two entries (dual-stack families,
+                            in either order).  These families must correspond to the
+                            values of the clusterIPs field, if specified. Both clusterIPs
+                            and ipFamilies are governed by the ipFamilyPolicy field."
+                          items:
+                            description: IPFamily represents the IP Family (IPv4 or
+                              IPv6). This type is used to express the family of an
+                              IP expressed by a type (e.g. service.spec.ipFamilies).
+                            type: string
+                          type: array
+                        ipFamilyPolicy:
+                          description: IPFamilyPolicy represents the dual-stack-ness
+                            requested or required by this Service, and is gated by
+                            the "IPv6DualStack" feature gate.  If there is no value
+                            provided, then this field will be set to SingleStack.
+                            Services can be "SingleStack" (a single IP family), "PreferDualStack"
+                            (two IP families on dual-stack configured clusters or
+                            a single IP family on single-stack clusters), or "RequireDualStack"
+                            (two IP families on dual-stack configured clusters, otherwise
+                            fail). The ipFamilies and clusterIPs fields depend on
+                            the value of this field.  This field will be wiped when
+                            updating a service to type ExternalName.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -950,8 +1450,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol. Field
-                                  can be enabled with ServiceAppProtocol feature gate.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -963,12 +1464,16 @@ spec:
                                 type: string
                               nodePort:
                                 description: 'The port on each node on which this
-                                  service is exposed when type=NodePort or LoadBalancer.
-                                  Usually assigned by the system. If specified, it
-                                  will be allocated to the service if unused or else
-                                  creation of the service will fail. Default is to
-                                  auto-allocate a port if the ServiceType of this
-                                  Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                  service is exposed when type is NodePort or LoadBalancer.  Usually
+                                  assigned by the system. If a value is specified,
+                                  in-range, and not in use it will be used, otherwise
+                                  the operation will fail.  If not specified, a port
+                                  will be allocated if this Service requires one.  If
+                                  this field is specified when creating a Service
+                                  which does not need it, creation will fail. This
+                                  field will be wiped when updating a Service to no
+                                  longer need it (e.g. changing type from NodePort
+                                  to ClusterIP). More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
                                 format: int32
                                 type: integer
                               port:
@@ -999,13 +1504,18 @@ spec:
                             type: object
                           type: array
                         publishNotReadyAddresses:
-                          description: publishNotReadyAddresses, when set to true,
-                            indicates that DNS implementations must publish the notReadyAddresses
-                            of subsets for the Endpoints associated with the Service.
-                            The default value is false. The primary use case for setting
-                            this field is to use a StatefulSet's Headless Service
-                            to propagate SRV records for its Pods without respect
-                            to their readiness for purpose of peer discovery.
+                          description: publishNotReadyAddresses indicates that any
+                            agent which deals with endpoints for this Service should
+                            disregard any indications of ready/not-ready. The primary
+                            use case for setting this field is for a StatefulSet's
+                            Headless Service to propagate SRV DNS records for its
+                            Pods for the purpose of peer discovery. The Kubernetes
+                            controllers that generate Endpoints and EndpointSlice
+                            resources for Services interpret this to mean that all
+                            endpoints are considered "ready" even if the Pods themselves
+                            are not. Agents which consume only Kubernetes generated
+                            endpoints through the Endpoints or EndpointSlice resources
+                            can safely assume this behavior.
                           type: boolean
                         selector:
                           additionalProperties:
@@ -1054,25 +1564,30 @@ spec:
                             value "*" may be used to mean "any topology". This catch-all
                             value, if used, only makes sense as the last value in
                             the list. If this is not specified or empty, no topology
-                            constraints will be applied.
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature.
                           items:
                             type: string
                           type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
-                            ClusterIP, NodePort, and LoadBalancer. "ExternalName"
-                            maps to the specified externalName. "ClusterIP" allocates
+                            ClusterIP, NodePort, and LoadBalancer. "ClusterIP" allocates
                             a cluster-internal IP address for load-balancing to endpoints.
                             Endpoints are determined by the selector or if that is
                             not specified, by manual construction of an Endpoints
-                            object. If clusterIP is "None", no virtual IP is allocated
-                            and the endpoints are published as a set of endpoints
-                            rather than a stable IP. "NodePort" builds on ClusterIP
-                            and allocates a port on every node which routes to the
-                            clusterIP. "LoadBalancer" builds on NodePort and creates
-                            an external load-balancer (if supported in the current
-                            cloud) which routes to the clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                            object or EndpointSlice objects. If clusterIP is "None",
+                            no virtual IP is allocated and the endpoints are published
+                            as a set of endpoints rather than a virtual IP. "NodePort"
+                            builds on ClusterIP and allocates a port on every node
+                            which routes to the same endpoints as the clusterIP. "LoadBalancer"
+                            builds on NodePort and creates an external load-balancer
+                            (if supported in the current cloud) which routes to the
+                            same endpoints as the clusterIP. "ExternalName" aliases
+                            this service to the specified externalName. Several other
+                            fields do not apply to ExternalName services. More info:
+                            https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
                           type: string
                       type: object
                   type: object
@@ -1131,9 +1646,10 @@ spec:
                     description: Config holds the Elasticsearch configuration.
                     type: object
                   count:
-                    description: Count of Elasticsearch nodes to deploy.
+                    description: Count of Elasticsearch nodes to deploy. If the node
+                      set is managed by an autoscaling policy the initial value is
+                      automatically set by the autoscaling controller.
                     format: int32
-                    minimum: 1
                     type: integer
                   name:
                     description: Name of this set of nodes. Becomes a part of the
@@ -1184,20 +1700,15 @@ spec:
                               type: array
                             dataSource:
                               description: 'This field can be used to specify either:
-                                * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot
-                                - Beta) * An existing PVC (PersistentVolumeClaim)
-                                * An existing custom resource/object that implements
-                                data population (Alpha) In order to use VolumeSnapshot
-                                object types, the appropriate feature gate must be
-                                enabled (VolumeSnapshotDataSource or AnyVolumeDataSource)
-                                If the provisioner or an external controller can support
-                                the specified data source, it will create a new volume
-                                based on the contents of the specified data source.
-                                If the specified data source is not supported, the
-                                volume will not be created and the failure will be
-                                reported as an event. In the future, we plan to support
-                                more data source types and the behavior of the provisioner
-                                may change.'
+                                * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                                * An existing PVC (PersistentVolumeClaim) * An existing
+                                custom resource that implements data population (Alpha)
+                                In order to use custom resource types that implement
+                                data population, the AnyVolumeDataSource feature gate
+                                must be enabled. If the provisioner or an external
+                                controller can support the specified data source,
+                                it will create a new volume based on the contents
+                                of the specified data source.'
                               properties:
                                 apiGroup:
                                   description: APIGroup is the group for the resource
@@ -1369,7 +1880,6 @@ spec:
                       type: object
                     type: array
                 required:
-                - count
                 - name
                 type: object
               minItems: 1
@@ -1539,18 +2049,70 @@ spec:
                     spec:
                       description: Spec is the specification of the service.
                       properties:
+                        allocateLoadBalancerNodePorts:
+                          description: allocateLoadBalancerNodePorts defines if NodePorts
+                            will be automatically allocated for services with type
+                            LoadBalancer.  Default is "true". It may be set to "false"
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
+                            with type LoadBalancer and will be cleared if the type
+                            is changed to any other type. This field is alpha-level
+                            and is only honored by servers that enable the ServiceLBNodePortControl
+                            feature.
+                          type: boolean
                         clusterIP:
                           description: 'clusterIP is the IP address of the service
-                            and is usually assigned randomly by the master. If an
-                            address is specified manually and is not in use by others,
-                            it will be allocated to the service; otherwise, creation
-                            of the service will fail. This field can not be changed
-                            through updates. Valid values are "None", empty string
-                            (""), or a valid IP address. "None" can be specified for
-                            headless services when proxying is not required. Only
-                            applies to types ClusterIP, NodePort, and LoadBalancer.
-                            Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            and is usually assigned randomly. If an address is specified
+                            manually, is in-range (as per system configuration), and
+                            is not in use, it will be allocated to the service; otherwise
+                            creation of the service will fail. This field may not
+                            be changed through updates unless the type field is also
+                            being changed to ExternalName (which requires this field
+                            to be blank) or the type field is being changed from ExternalName
+                            (in which case this field may optionally be specified,
+                            as describe above).  Valid values are "None", empty string
+                            (""), or a valid IP address. Setting this to "None" makes
+                            a "headless service" (no virtual IP), which is useful
+                            when direct endpoint connections are preferred and proxying
+                            is not required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
                           type: string
+                        clusterIPs:
+                          description: "ClusterIPs is a list of IP addresses assigned
+                            to this service, and are usually assigned randomly.  If
+                            an address is specified manually, is in-range (as per
+                            system configuration), and is not in use, it will be allocated
+                            to the service; otherwise creation of the service will
+                            fail. This field may not be changed through updates unless
+                            the type field is also being changed to ExternalName (which
+                            requires this field to be empty) or the type field is
+                            being changed from ExternalName (in which case this field
+                            may optionally be specified, as describe above).  Valid
+                            values are \"None\", empty string (\"\"), or a valid IP
+                            address.  Setting this to \"None\" makes a \"headless
+                            service\" (no virtual IP), which is useful when direct
+                            endpoint connections are preferred and proxying is not
+                            required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            \ If this field is not specified, it will be initialized
+                            from the clusterIP field.  If this field is specified,
+                            clients must ensure that clusterIPs[0] and clusterIP have
+                            the same value. \n Unless the \"IPv6DualStack\" feature
+                            gate is enabled, this field is limited to one value, which
+                            must be the same as the clusterIP field.  If the feature
+                            gate is enabled, this field may hold a maximum of two
+                            entries (dual-stack IPs, in either order).  These IPs
+                            must correspond to the values of the ipFamilies field.
+                            Both clusterIPs and ipFamilies are governed by the ipFamilyPolicy
+                            field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies"
+                          items:
+                            type: string
+                          type: array
                         externalIPs:
                           description: externalIPs is a list of IP addresses for which
                             nodes in the cluster will also accept traffic for this
@@ -1563,10 +2125,10 @@ spec:
                           type: array
                         externalName:
                           description: externalName is the external reference that
-                            kubedns or equivalent will return as a CNAME record for
-                            this service. No proxying will be involved. Must be a
-                            valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be ExternalName.
+                            discovery mechanisms will return as an alias for this
+                            service (e.g. a DNS CNAME record). No proxying will be
+                            involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                            and requires Type to be
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -1580,27 +2142,57 @@ spec:
                           type: string
                         healthCheckNodePort:
                           description: healthCheckNodePort specifies the healthcheck
-                            nodePort for the service. If not specified, HealthCheckNodePort
-                            is created by the service api backend with the allocated
-                            nodePort. Will use user-specified nodePort value if specified
-                            by the client. Only effects when Type is set to LoadBalancer
-                            and ExternalTrafficPolicy is set to Local.
+                            nodePort for the service. This only applies when type
+                            is set to LoadBalancer and externalTrafficPolicy is set
+                            to Local. If a value is specified, is in-range, and is
+                            not in use, it will be used.  If not specified, a value
+                            will be automatically allocated.  External systems (e.g.
+                            load-balancers) can use this port to determine if a given
+                            node holds endpoints for this service or not.  If this
+                            field is specified when creating a Service which does
+                            not need it, creation will fail. This field will be wiped
+                            when updating a Service to no longer need it (e.g. changing
+                            type).
                           format: int32
                           type: integer
-                        ipFamily:
-                          description: ipFamily specifies whether this Service has
-                            a preference for a particular IP family (e.g. IPv4 vs.
-                            IPv6).  If a specific IP family is requested, the clusterIP
-                            field will be allocated from that family, if it is available
-                            in the cluster.  If no IP family is requested, the cluster's
-                            primary IP family will be used. Other IP fields (loadBalancerIP,
-                            loadBalancerSourceRanges, externalIPs) and controllers
-                            which allocate external load-balancers should use the
-                            same IP family.  Endpoints for this Service will be of
-                            this family.  This field is immutable after creation.
-                            Assigning a ServiceIPFamily not available in the cluster
-                            (e.g. IPv6 in IPv4 only cluster) is an error condition
-                            and will fail during clusterIP assignment.
+                        ipFamilies:
+                          description: "IPFamilies is a list of IP families (e.g.
+                            IPv4, IPv6) assigned to this service, and is gated by
+                            the \"IPv6DualStack\" feature gate.  This field is usually
+                            assigned automatically based on cluster configuration
+                            and the ipFamilyPolicy field. If this field is specified
+                            manually, the requested family is available in the cluster,
+                            and ipFamilyPolicy allows it, it will be used; otherwise
+                            creation of the service will fail.  This field is conditionally
+                            mutable: it allows for adding or removing a secondary
+                            IP family, but it does not allow changing the primary
+                            IP family of the Service.  Valid values are \"IPv4\" and
+                            \"IPv6\".  This field only applies to Services of types
+                            ClusterIP, NodePort, and LoadBalancer, and does apply
+                            to \"headless\" services.  This field will be wiped when
+                            updating a Service to type ExternalName. \n This field
+                            may hold a maximum of two entries (dual-stack families,
+                            in either order).  These families must correspond to the
+                            values of the clusterIPs field, if specified. Both clusterIPs
+                            and ipFamilies are governed by the ipFamilyPolicy field."
+                          items:
+                            description: IPFamily represents the IP Family (IPv4 or
+                              IPv6). This type is used to express the family of an
+                              IP expressed by a type (e.g. service.spec.ipFamilies).
+                            type: string
+                          type: array
+                        ipFamilyPolicy:
+                          description: IPFamilyPolicy represents the dual-stack-ness
+                            requested or required by this Service, and is gated by
+                            the "IPv6DualStack" feature gate.  If there is no value
+                            provided, then this field will be set to SingleStack.
+                            Services can be "SingleStack" (a single IP family), "PreferDualStack"
+                            (two IP families on dual-stack configured clusters or
+                            a single IP family on single-stack clusters), or "RequireDualStack"
+                            (two IP families on dual-stack configured clusters, otherwise
+                            fail). The ipFamilies and clusterIPs fields depend on
+                            the value of this field.  This field will be wiped when
+                            updating a service to type ExternalName.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -1632,8 +2224,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol. Field
-                                  can be enabled with ServiceAppProtocol feature gate.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -1645,12 +2238,16 @@ spec:
                                 type: string
                               nodePort:
                                 description: 'The port on each node on which this
-                                  service is exposed when type=NodePort or LoadBalancer.
-                                  Usually assigned by the system. If specified, it
-                                  will be allocated to the service if unused or else
-                                  creation of the service will fail. Default is to
-                                  auto-allocate a port if the ServiceType of this
-                                  Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                  service is exposed when type is NodePort or LoadBalancer.  Usually
+                                  assigned by the system. If a value is specified,
+                                  in-range, and not in use it will be used, otherwise
+                                  the operation will fail.  If not specified, a port
+                                  will be allocated if this Service requires one.  If
+                                  this field is specified when creating a Service
+                                  which does not need it, creation will fail. This
+                                  field will be wiped when updating a Service to no
+                                  longer need it (e.g. changing type from NodePort
+                                  to ClusterIP). More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
                                 format: int32
                                 type: integer
                               port:
@@ -1681,13 +2278,18 @@ spec:
                             type: object
                           type: array
                         publishNotReadyAddresses:
-                          description: publishNotReadyAddresses, when set to true,
-                            indicates that DNS implementations must publish the notReadyAddresses
-                            of subsets for the Endpoints associated with the Service.
-                            The default value is false. The primary use case for setting
-                            this field is to use a StatefulSet's Headless Service
-                            to propagate SRV records for its Pods without respect
-                            to their readiness for purpose of peer discovery.
+                          description: publishNotReadyAddresses indicates that any
+                            agent which deals with endpoints for this Service should
+                            disregard any indications of ready/not-ready. The primary
+                            use case for setting this field is for a StatefulSet's
+                            Headless Service to propagate SRV DNS records for its
+                            Pods for the purpose of peer discovery. The Kubernetes
+                            controllers that generate Endpoints and EndpointSlice
+                            resources for Services interpret this to mean that all
+                            endpoints are considered "ready" even if the Pods themselves
+                            are not. Agents which consume only Kubernetes generated
+                            endpoints through the Endpoints or EndpointSlice resources
+                            can safely assume this behavior.
                           type: boolean
                         selector:
                           additionalProperties:
@@ -1736,25 +2338,47 @@ spec:
                             value "*" may be used to mean "any topology". This catch-all
                             value, if used, only makes sense as the last value in
                             the list. If this is not specified or empty, no topology
-                            constraints will be applied.
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature.
                           items:
                             type: string
                           type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
-                            ClusterIP, NodePort, and LoadBalancer. "ExternalName"
-                            maps to the specified externalName. "ClusterIP" allocates
+                            ClusterIP, NodePort, and LoadBalancer. "ClusterIP" allocates
                             a cluster-internal IP address for load-balancing to endpoints.
                             Endpoints are determined by the selector or if that is
                             not specified, by manual construction of an Endpoints
-                            object. If clusterIP is "None", no virtual IP is allocated
-                            and the endpoints are published as a set of endpoints
-                            rather than a stable IP. "NodePort" builds on ClusterIP
-                            and allocates a port on every node which routes to the
-                            clusterIP. "LoadBalancer" builds on NodePort and creates
-                            an external load-balancer (if supported in the current
-                            cloud) which routes to the clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                            object or EndpointSlice objects. If clusterIP is "None",
+                            no virtual IP is allocated and the endpoints are published
+                            as a set of endpoints rather than a virtual IP. "NodePort"
+                            builds on ClusterIP and allocates a port on every node
+                            which routes to the same endpoints as the clusterIP. "LoadBalancer"
+                            builds on NodePort and creates an external load-balancer
+                            (if supported in the current cloud) which routes to the
+                            same endpoints as the clusterIP. "ExternalName" aliases
+                            this service to the specified externalName. Several other
+                            fields do not apply to ExternalName services. More info:
+                            https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                          type: string
+                      type: object
+                  type: object
+                tls:
+                  description: TLS defines options for configuring TLS on the transport
+                    layer.
+                  properties:
+                    certificate:
+                      description: "Certificate is a reference to a Kubernetes secret
+                        that contains the CA certificate and private key for generating
+                        node certificates. The referenced secret should contain the
+                        following: \n - `tls.crt`: The CA certificate in PEM format.
+                        - `tls.key`: The private key for the CA certificate in PEM
+                        format."
+                      properties:
+                        secretName:
+                          description: SecretName is the name of the secret.
                           type: string
                       type: object
                   type: object
@@ -1786,6 +2410,14 @@ spec:
               type: object
             version:
               description: Version of Elasticsearch.
+              type: string
+            volumeClaimDeletePolicy:
+              description: VolumeClaimDeletePolicy sets the policy for handling deletion
+                of PersistentVolumeClaims for all NodeSets. Possible values are DeleteOnScaledownOnly
+                and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
+              enum:
+              - DeleteOnScaledownOnly
+              - DeleteOnScaledownAndClusterDeletion
               type: string
           required:
           - nodeSets
@@ -1834,7 +2466,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -1939,18 +2571,70 @@ spec:
                     spec:
                       description: Spec is the specification of the service.
                       properties:
+                        allocateLoadBalancerNodePorts:
+                          description: allocateLoadBalancerNodePorts defines if NodePorts
+                            will be automatically allocated for services with type
+                            LoadBalancer.  Default is "true". It may be set to "false"
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
+                            with type LoadBalancer and will be cleared if the type
+                            is changed to any other type. This field is alpha-level
+                            and is only honored by servers that enable the ServiceLBNodePortControl
+                            feature.
+                          type: boolean
                         clusterIP:
                           description: 'clusterIP is the IP address of the service
-                            and is usually assigned randomly by the master. If an
-                            address is specified manually and is not in use by others,
-                            it will be allocated to the service; otherwise, creation
-                            of the service will fail. This field can not be changed
-                            through updates. Valid values are "None", empty string
-                            (""), or a valid IP address. "None" can be specified for
-                            headless services when proxying is not required. Only
-                            applies to types ClusterIP, NodePort, and LoadBalancer.
-                            Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            and is usually assigned randomly. If an address is specified
+                            manually, is in-range (as per system configuration), and
+                            is not in use, it will be allocated to the service; otherwise
+                            creation of the service will fail. This field may not
+                            be changed through updates unless the type field is also
+                            being changed to ExternalName (which requires this field
+                            to be blank) or the type field is being changed from ExternalName
+                            (in which case this field may optionally be specified,
+                            as describe above).  Valid values are "None", empty string
+                            (""), or a valid IP address. Setting this to "None" makes
+                            a "headless service" (no virtual IP), which is useful
+                            when direct endpoint connections are preferred and proxying
+                            is not required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
                           type: string
+                        clusterIPs:
+                          description: "ClusterIPs is a list of IP addresses assigned
+                            to this service, and are usually assigned randomly.  If
+                            an address is specified manually, is in-range (as per
+                            system configuration), and is not in use, it will be allocated
+                            to the service; otherwise creation of the service will
+                            fail. This field may not be changed through updates unless
+                            the type field is also being changed to ExternalName (which
+                            requires this field to be empty) or the type field is
+                            being changed from ExternalName (in which case this field
+                            may optionally be specified, as describe above).  Valid
+                            values are \"None\", empty string (\"\"), or a valid IP
+                            address.  Setting this to \"None\" makes a \"headless
+                            service\" (no virtual IP), which is useful when direct
+                            endpoint connections are preferred and proxying is not
+                            required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            \ If this field is not specified, it will be initialized
+                            from the clusterIP field.  If this field is specified,
+                            clients must ensure that clusterIPs[0] and clusterIP have
+                            the same value. \n Unless the \"IPv6DualStack\" feature
+                            gate is enabled, this field is limited to one value, which
+                            must be the same as the clusterIP field.  If the feature
+                            gate is enabled, this field may hold a maximum of two
+                            entries (dual-stack IPs, in either order).  These IPs
+                            must correspond to the values of the ipFamilies field.
+                            Both clusterIPs and ipFamilies are governed by the ipFamilyPolicy
+                            field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies"
+                          items:
+                            type: string
+                          type: array
                         externalIPs:
                           description: externalIPs is a list of IP addresses for which
                             nodes in the cluster will also accept traffic for this
@@ -1963,10 +2647,10 @@ spec:
                           type: array
                         externalName:
                           description: externalName is the external reference that
-                            kubedns or equivalent will return as a CNAME record for
-                            this service. No proxying will be involved. Must be a
-                            valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be ExternalName.
+                            discovery mechanisms will return as an alias for this
+                            service (e.g. a DNS CNAME record). No proxying will be
+                            involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                            and requires Type to be
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -1980,27 +2664,57 @@ spec:
                           type: string
                         healthCheckNodePort:
                           description: healthCheckNodePort specifies the healthcheck
-                            nodePort for the service. If not specified, HealthCheckNodePort
-                            is created by the service api backend with the allocated
-                            nodePort. Will use user-specified nodePort value if specified
-                            by the client. Only effects when Type is set to LoadBalancer
-                            and ExternalTrafficPolicy is set to Local.
+                            nodePort for the service. This only applies when type
+                            is set to LoadBalancer and externalTrafficPolicy is set
+                            to Local. If a value is specified, is in-range, and is
+                            not in use, it will be used.  If not specified, a value
+                            will be automatically allocated.  External systems (e.g.
+                            load-balancers) can use this port to determine if a given
+                            node holds endpoints for this service or not.  If this
+                            field is specified when creating a Service which does
+                            not need it, creation will fail. This field will be wiped
+                            when updating a Service to no longer need it (e.g. changing
+                            type).
                           format: int32
                           type: integer
-                        ipFamily:
-                          description: ipFamily specifies whether this Service has
-                            a preference for a particular IP family (e.g. IPv4 vs.
-                            IPv6).  If a specific IP family is requested, the clusterIP
-                            field will be allocated from that family, if it is available
-                            in the cluster.  If no IP family is requested, the cluster's
-                            primary IP family will be used. Other IP fields (loadBalancerIP,
-                            loadBalancerSourceRanges, externalIPs) and controllers
-                            which allocate external load-balancers should use the
-                            same IP family.  Endpoints for this Service will be of
-                            this family.  This field is immutable after creation.
-                            Assigning a ServiceIPFamily not available in the cluster
-                            (e.g. IPv6 in IPv4 only cluster) is an error condition
-                            and will fail during clusterIP assignment.
+                        ipFamilies:
+                          description: "IPFamilies is a list of IP families (e.g.
+                            IPv4, IPv6) assigned to this service, and is gated by
+                            the \"IPv6DualStack\" feature gate.  This field is usually
+                            assigned automatically based on cluster configuration
+                            and the ipFamilyPolicy field. If this field is specified
+                            manually, the requested family is available in the cluster,
+                            and ipFamilyPolicy allows it, it will be used; otherwise
+                            creation of the service will fail.  This field is conditionally
+                            mutable: it allows for adding or removing a secondary
+                            IP family, but it does not allow changing the primary
+                            IP family of the Service.  Valid values are \"IPv4\" and
+                            \"IPv6\".  This field only applies to Services of types
+                            ClusterIP, NodePort, and LoadBalancer, and does apply
+                            to \"headless\" services.  This field will be wiped when
+                            updating a Service to type ExternalName. \n This field
+                            may hold a maximum of two entries (dual-stack families,
+                            in either order).  These families must correspond to the
+                            values of the clusterIPs field, if specified. Both clusterIPs
+                            and ipFamilies are governed by the ipFamilyPolicy field."
+                          items:
+                            description: IPFamily represents the IP Family (IPv4 or
+                              IPv6). This type is used to express the family of an
+                              IP expressed by a type (e.g. service.spec.ipFamilies).
+                            type: string
+                          type: array
+                        ipFamilyPolicy:
+                          description: IPFamilyPolicy represents the dual-stack-ness
+                            requested or required by this Service, and is gated by
+                            the "IPv6DualStack" feature gate.  If there is no value
+                            provided, then this field will be set to SingleStack.
+                            Services can be "SingleStack" (a single IP family), "PreferDualStack"
+                            (two IP families on dual-stack configured clusters or
+                            a single IP family on single-stack clusters), or "RequireDualStack"
+                            (two IP families on dual-stack configured clusters, otherwise
+                            fail). The ipFamilies and clusterIPs fields depend on
+                            the value of this field.  This field will be wiped when
+                            updating a service to type ExternalName.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -2032,8 +2746,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol. Field
-                                  can be enabled with ServiceAppProtocol feature gate.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -2045,12 +2760,16 @@ spec:
                                 type: string
                               nodePort:
                                 description: 'The port on each node on which this
-                                  service is exposed when type=NodePort or LoadBalancer.
-                                  Usually assigned by the system. If specified, it
-                                  will be allocated to the service if unused or else
-                                  creation of the service will fail. Default is to
-                                  auto-allocate a port if the ServiceType of this
-                                  Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                  service is exposed when type is NodePort or LoadBalancer.  Usually
+                                  assigned by the system. If a value is specified,
+                                  in-range, and not in use it will be used, otherwise
+                                  the operation will fail.  If not specified, a port
+                                  will be allocated if this Service requires one.  If
+                                  this field is specified when creating a Service
+                                  which does not need it, creation will fail. This
+                                  field will be wiped when updating a Service to no
+                                  longer need it (e.g. changing type from NodePort
+                                  to ClusterIP). More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
                                 format: int32
                                 type: integer
                               port:
@@ -2081,13 +2800,18 @@ spec:
                             type: object
                           type: array
                         publishNotReadyAddresses:
-                          description: publishNotReadyAddresses, when set to true,
-                            indicates that DNS implementations must publish the notReadyAddresses
-                            of subsets for the Endpoints associated with the Service.
-                            The default value is false. The primary use case for setting
-                            this field is to use a StatefulSet's Headless Service
-                            to propagate SRV records for its Pods without respect
-                            to their readiness for purpose of peer discovery.
+                          description: publishNotReadyAddresses indicates that any
+                            agent which deals with endpoints for this Service should
+                            disregard any indications of ready/not-ready. The primary
+                            use case for setting this field is for a StatefulSet's
+                            Headless Service to propagate SRV DNS records for its
+                            Pods for the purpose of peer discovery. The Kubernetes
+                            controllers that generate Endpoints and EndpointSlice
+                            resources for Services interpret this to mean that all
+                            endpoints are considered "ready" even if the Pods themselves
+                            are not. Agents which consume only Kubernetes generated
+                            endpoints through the Endpoints or EndpointSlice resources
+                            can safely assume this behavior.
                           type: boolean
                         selector:
                           additionalProperties:
@@ -2136,25 +2860,30 @@ spec:
                             value "*" may be used to mean "any topology". This catch-all
                             value, if used, only makes sense as the last value in
                             the list. If this is not specified or empty, no topology
-                            constraints will be applied.
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature.
                           items:
                             type: string
                           type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
-                            ClusterIP, NodePort, and LoadBalancer. "ExternalName"
-                            maps to the specified externalName. "ClusterIP" allocates
+                            ClusterIP, NodePort, and LoadBalancer. "ClusterIP" allocates
                             a cluster-internal IP address for load-balancing to endpoints.
                             Endpoints are determined by the selector or if that is
                             not specified, by manual construction of an Endpoints
-                            object. If clusterIP is "None", no virtual IP is allocated
-                            and the endpoints are published as a set of endpoints
-                            rather than a stable IP. "NodePort" builds on ClusterIP
-                            and allocates a port on every node which routes to the
-                            clusterIP. "LoadBalancer" builds on NodePort and creates
-                            an external load-balancer (if supported in the current
-                            cloud) which routes to the clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                            object or EndpointSlice objects. If clusterIP is "None",
+                            no virtual IP is allocated and the endpoints are published
+                            as a set of endpoints rather than a virtual IP. "NodePort"
+                            builds on ClusterIP and allocates a port on every node
+                            which routes to the same endpoints as the clusterIP. "LoadBalancer"
+                            builds on NodePort and creates an external load-balancer
+                            (if supported in the current cloud) which routes to the
+                            same endpoints as the clusterIP. "ExternalName" aliases
+                            this service to the specified externalName. Several other
+                            fields do not apply to ExternalName services. More info:
+                            https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
                           type: string
                       type: object
                   type: object
@@ -2241,11 +2970,14 @@ spec:
                 specifies the lowest version currently running.'
               type: string
           type: object
-  version: v1beta1
+  version: v1
   versions:
-  - name: v1beta1
+  - name: v1
     served: true
     storage: true
+  - name: v1beta1
+    served: true
+    storage: false
 status:
   acceptedNames:
     kind: ""
@@ -2257,7 +2989,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2350,18 +3082,70 @@ spec:
                     spec:
                       description: Spec is the specification of the service.
                       properties:
+                        allocateLoadBalancerNodePorts:
+                          description: allocateLoadBalancerNodePorts defines if NodePorts
+                            will be automatically allocated for services with type
+                            LoadBalancer.  Default is "true". It may be set to "false"
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
+                            with type LoadBalancer and will be cleared if the type
+                            is changed to any other type. This field is alpha-level
+                            and is only honored by servers that enable the ServiceLBNodePortControl
+                            feature.
+                          type: boolean
                         clusterIP:
                           description: 'clusterIP is the IP address of the service
-                            and is usually assigned randomly by the master. If an
-                            address is specified manually and is not in use by others,
-                            it will be allocated to the service; otherwise, creation
-                            of the service will fail. This field can not be changed
-                            through updates. Valid values are "None", empty string
-                            (""), or a valid IP address. "None" can be specified for
-                            headless services when proxying is not required. Only
-                            applies to types ClusterIP, NodePort, and LoadBalancer.
-                            Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            and is usually assigned randomly. If an address is specified
+                            manually, is in-range (as per system configuration), and
+                            is not in use, it will be allocated to the service; otherwise
+                            creation of the service will fail. This field may not
+                            be changed through updates unless the type field is also
+                            being changed to ExternalName (which requires this field
+                            to be blank) or the type field is being changed from ExternalName
+                            (in which case this field may optionally be specified,
+                            as describe above).  Valid values are "None", empty string
+                            (""), or a valid IP address. Setting this to "None" makes
+                            a "headless service" (no virtual IP), which is useful
+                            when direct endpoint connections are preferred and proxying
+                            is not required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
                           type: string
+                        clusterIPs:
+                          description: "ClusterIPs is a list of IP addresses assigned
+                            to this service, and are usually assigned randomly.  If
+                            an address is specified manually, is in-range (as per
+                            system configuration), and is not in use, it will be allocated
+                            to the service; otherwise creation of the service will
+                            fail. This field may not be changed through updates unless
+                            the type field is also being changed to ExternalName (which
+                            requires this field to be empty) or the type field is
+                            being changed from ExternalName (in which case this field
+                            may optionally be specified, as describe above).  Valid
+                            values are \"None\", empty string (\"\"), or a valid IP
+                            address.  Setting this to \"None\" makes a \"headless
+                            service\" (no virtual IP), which is useful when direct
+                            endpoint connections are preferred and proxying is not
+                            required.  Only applies to types ClusterIP, NodePort,
+                            and LoadBalancer. If this field is specified when creating
+                            a Service of type ExternalName, creation will fail. This
+                            field will be wiped when updating a Service to type ExternalName.
+                            \ If this field is not specified, it will be initialized
+                            from the clusterIP field.  If this field is specified,
+                            clients must ensure that clusterIPs[0] and clusterIP have
+                            the same value. \n Unless the \"IPv6DualStack\" feature
+                            gate is enabled, this field is limited to one value, which
+                            must be the same as the clusterIP field.  If the feature
+                            gate is enabled, this field may hold a maximum of two
+                            entries (dual-stack IPs, in either order).  These IPs
+                            must correspond to the values of the ipFamilies field.
+                            Both clusterIPs and ipFamilies are governed by the ipFamilyPolicy
+                            field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies"
+                          items:
+                            type: string
+                          type: array
                         externalIPs:
                           description: externalIPs is a list of IP addresses for which
                             nodes in the cluster will also accept traffic for this
@@ -2374,10 +3158,10 @@ spec:
                           type: array
                         externalName:
                           description: externalName is the external reference that
-                            kubedns or equivalent will return as a CNAME record for
-                            this service. No proxying will be involved. Must be a
-                            valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be ExternalName.
+                            discovery mechanisms will return as an alias for this
+                            service (e.g. a DNS CNAME record). No proxying will be
+                            involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                            and requires Type to be
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -2391,27 +3175,57 @@ spec:
                           type: string
                         healthCheckNodePort:
                           description: healthCheckNodePort specifies the healthcheck
-                            nodePort for the service. If not specified, HealthCheckNodePort
-                            is created by the service api backend with the allocated
-                            nodePort. Will use user-specified nodePort value if specified
-                            by the client. Only effects when Type is set to LoadBalancer
-                            and ExternalTrafficPolicy is set to Local.
+                            nodePort for the service. This only applies when type
+                            is set to LoadBalancer and externalTrafficPolicy is set
+                            to Local. If a value is specified, is in-range, and is
+                            not in use, it will be used.  If not specified, a value
+                            will be automatically allocated.  External systems (e.g.
+                            load-balancers) can use this port to determine if a given
+                            node holds endpoints for this service or not.  If this
+                            field is specified when creating a Service which does
+                            not need it, creation will fail. This field will be wiped
+                            when updating a Service to no longer need it (e.g. changing
+                            type).
                           format: int32
                           type: integer
-                        ipFamily:
-                          description: ipFamily specifies whether this Service has
-                            a preference for a particular IP family (e.g. IPv4 vs.
-                            IPv6).  If a specific IP family is requested, the clusterIP
-                            field will be allocated from that family, if it is available
-                            in the cluster.  If no IP family is requested, the cluster's
-                            primary IP family will be used. Other IP fields (loadBalancerIP,
-                            loadBalancerSourceRanges, externalIPs) and controllers
-                            which allocate external load-balancers should use the
-                            same IP family.  Endpoints for this Service will be of
-                            this family.  This field is immutable after creation.
-                            Assigning a ServiceIPFamily not available in the cluster
-                            (e.g. IPv6 in IPv4 only cluster) is an error condition
-                            and will fail during clusterIP assignment.
+                        ipFamilies:
+                          description: "IPFamilies is a list of IP families (e.g.
+                            IPv4, IPv6) assigned to this service, and is gated by
+                            the \"IPv6DualStack\" feature gate.  This field is usually
+                            assigned automatically based on cluster configuration
+                            and the ipFamilyPolicy field. If this field is specified
+                            manually, the requested family is available in the cluster,
+                            and ipFamilyPolicy allows it, it will be used; otherwise
+                            creation of the service will fail.  This field is conditionally
+                            mutable: it allows for adding or removing a secondary
+                            IP family, but it does not allow changing the primary
+                            IP family of the Service.  Valid values are \"IPv4\" and
+                            \"IPv6\".  This field only applies to Services of types
+                            ClusterIP, NodePort, and LoadBalancer, and does apply
+                            to \"headless\" services.  This field will be wiped when
+                            updating a Service to type ExternalName. \n This field
+                            may hold a maximum of two entries (dual-stack families,
+                            in either order).  These families must correspond to the
+                            values of the clusterIPs field, if specified. Both clusterIPs
+                            and ipFamilies are governed by the ipFamilyPolicy field."
+                          items:
+                            description: IPFamily represents the IP Family (IPv4 or
+                              IPv6). This type is used to express the family of an
+                              IP expressed by a type (e.g. service.spec.ipFamilies).
+                            type: string
+                          type: array
+                        ipFamilyPolicy:
+                          description: IPFamilyPolicy represents the dual-stack-ness
+                            requested or required by this Service, and is gated by
+                            the "IPv6DualStack" feature gate.  If there is no value
+                            provided, then this field will be set to SingleStack.
+                            Services can be "SingleStack" (a single IP family), "PreferDualStack"
+                            (two IP families on dual-stack configured clusters or
+                            a single IP family on single-stack clusters), or "RequireDualStack"
+                            (two IP families on dual-stack configured clusters, otherwise
+                            fail). The ipFamilies and clusterIPs fields depend on
+                            the value of this field.  This field will be wiped when
+                            updating a service to type ExternalName.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -2443,8 +3257,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol. Field
-                                  can be enabled with ServiceAppProtocol feature gate.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -2456,12 +3271,16 @@ spec:
                                 type: string
                               nodePort:
                                 description: 'The port on each node on which this
-                                  service is exposed when type=NodePort or LoadBalancer.
-                                  Usually assigned by the system. If specified, it
-                                  will be allocated to the service if unused or else
-                                  creation of the service will fail. Default is to
-                                  auto-allocate a port if the ServiceType of this
-                                  Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                  service is exposed when type is NodePort or LoadBalancer.  Usually
+                                  assigned by the system. If a value is specified,
+                                  in-range, and not in use it will be used, otherwise
+                                  the operation will fail.  If not specified, a port
+                                  will be allocated if this Service requires one.  If
+                                  this field is specified when creating a Service
+                                  which does not need it, creation will fail. This
+                                  field will be wiped when updating a Service to no
+                                  longer need it (e.g. changing type from NodePort
+                                  to ClusterIP). More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
                                 format: int32
                                 type: integer
                               port:
@@ -2492,13 +3311,18 @@ spec:
                             type: object
                           type: array
                         publishNotReadyAddresses:
-                          description: publishNotReadyAddresses, when set to true,
-                            indicates that DNS implementations must publish the notReadyAddresses
-                            of subsets for the Endpoints associated with the Service.
-                            The default value is false. The primary use case for setting
-                            this field is to use a StatefulSet's Headless Service
-                            to propagate SRV records for its Pods without respect
-                            to their readiness for purpose of peer discovery.
+                          description: publishNotReadyAddresses indicates that any
+                            agent which deals with endpoints for this Service should
+                            disregard any indications of ready/not-ready. The primary
+                            use case for setting this field is for a StatefulSet's
+                            Headless Service to propagate SRV DNS records for its
+                            Pods for the purpose of peer discovery. The Kubernetes
+                            controllers that generate Endpoints and EndpointSlice
+                            resources for Services interpret this to mean that all
+                            endpoints are considered "ready" even if the Pods themselves
+                            are not. Agents which consume only Kubernetes generated
+                            endpoints through the Endpoints or EndpointSlice resources
+                            can safely assume this behavior.
                           type: boolean
                         selector:
                           additionalProperties:
@@ -2547,25 +3371,30 @@ spec:
                             value "*" may be used to mean "any topology". This catch-all
                             value, if used, only makes sense as the last value in
                             the list. If this is not specified or empty, no topology
-                            constraints will be applied.
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature.
                           items:
                             type: string
                           type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
-                            ClusterIP, NodePort, and LoadBalancer. "ExternalName"
-                            maps to the specified externalName. "ClusterIP" allocates
+                            ClusterIP, NodePort, and LoadBalancer. "ClusterIP" allocates
                             a cluster-internal IP address for load-balancing to endpoints.
                             Endpoints are determined by the selector or if that is
                             not specified, by manual construction of an Endpoints
-                            object. If clusterIP is "None", no virtual IP is allocated
-                            and the endpoints are published as a set of endpoints
-                            rather than a stable IP. "NodePort" builds on ClusterIP
-                            and allocates a port on every node which routes to the
-                            clusterIP. "LoadBalancer" builds on NodePort and creates
-                            an external load-balancer (if supported in the current
-                            cloud) which routes to the clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                            object or EndpointSlice objects. If clusterIP is "None",
+                            no virtual IP is allocated and the endpoints are published
+                            as a set of endpoints rather than a virtual IP. "NodePort"
+                            builds on ClusterIP and allocates a port on every node
+                            which routes to the same endpoints as the clusterIP. "LoadBalancer"
+                            builds on NodePort and creates an external load-balancer
+                            (if supported in the current cloud) which routes to the
+                            same endpoints as the clusterIP. "ExternalName" aliases
+                            this service to the specified externalName. Several other
+                            fields do not apply to ExternalName services. More info:
+                            https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
                           type: string
                       type: object
                   type: object

@@ -5,12 +5,6 @@
 package nodespec
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
@@ -21,10 +15,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-)
-
-var (
-	f = false
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // HeadlessServiceName returns the name of the headless service for the given StatefulSet.
@@ -98,10 +91,7 @@ func BuildStatefulSet(
 	if existingSset, exists := existingStatefulSets.GetByName(statefulSetName); exists {
 		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
-	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims, es)
-	if err != nil {
-		return appsv1.StatefulSet{}, err
-	}
+	claims := preserveExistingVolumeClaimsOwnerRefs(nodeSet.VolumeClaimTemplates, existingClaims)
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -136,13 +126,12 @@ func BuildStatefulSet(
 	return sset, nil
 }
 
-func setVolumeClaimsControllerReference(
+func preserveExistingVolumeClaimsOwnerRefs(
 	persistentVolumeClaims []corev1.PersistentVolumeClaim,
 	existingClaims []corev1.PersistentVolumeClaim,
-	es esv1.Elasticsearch,
-) ([]corev1.PersistentVolumeClaim, error) {
-	// set the owner reference of all volume claims to the ES resource,
-	// so PVC get deleted automatically upon Elasticsearch resource deletion
+) []corev1.PersistentVolumeClaim {
+	// before https://github.com/elastic/cloud-on-k8s/pull/4050, we used to set an ownerRef into all claims
+	// now keep existing ownerReferences for backwards compatibility but don't add new ones
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
 	for _, claim := range persistentVolumeClaims {
 		if existingClaim := sset.GetClaim(existingClaims, claim.Name); existingClaim != nil {
@@ -156,30 +145,10 @@ func setVolumeClaimsControllerReference(
 			// Having ownerReferences with a "deprecated" apiVersion is fine, and does not prevent resources
 			// from being garbage collected as expected.
 			claim.OwnerReferences = existingClaim.OwnerReferences
-
-			claims = append(claims, claim)
-			continue
-		}
-
-		// Temporarily set the claim namespace to match the ES namespace, then set it back to empty.
-		// `SetControllerReference` does a safety check on object vs. owner namespace mismatch to cover common errors,
-		// but in this particular case we don't need to set a namespace in the claim template.
-		claim.Namespace = es.Namespace
-		if err := controllerutil.SetControllerReference(&es, &claim, scheme.Scheme); err != nil {
-			return nil, err
-		}
-		claim.Namespace = ""
-
-		// Set block owner deletion to false as the statefulset controller might not be able to do that if it cannot
-		// set finalizers on the resource.
-		// See https://github.com/elastic/cloud-on-k8s/issues/1884
-		refs := claim.OwnerReferences
-		for i := range refs {
-			refs[i].BlockOwnerDeletion = &f
 		}
 		claims = append(claims, claim)
 	}
-	return claims, nil
+	return claims
 }
 
 // UpdateReplicas updates the given StatefulSet with the given replicas,

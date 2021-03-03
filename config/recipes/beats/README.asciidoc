@@ -42,6 +42,10 @@ Deploys Auditbeat as a DaemonSet that checks file integrity and audits file oper
 
 Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
 
+==== OpenShift Stack Monitoring - `openshift_monitoring.yaml`
+
+Deploys Metricbeat configured for OpenShift monitoring and Filebeat using autodiscover. Deploys a monitoring Elasticsearch cluster to centralize the data.
+
 ==== Packetbeat monitoring DNS and HTTP traffic - `packetbeat_dns_http.yaml`
 
 Deploys Packetbeat as a DaemonSet that monitors DNS on port `53` and HTTP(S) traffic on ports `80`, `8000`, `8080` and `9200`.

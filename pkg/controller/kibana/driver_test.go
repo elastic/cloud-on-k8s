@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -34,14 +33,6 @@ import (
 
 var customResourceLimits = corev1.ResourceRequirements{
 	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
-}
-
-type failingClient struct {
-	k8s.Client
-}
-
-func (f *failingClient) List(list runtime.Object, opts ...client.ListOption) error {
-	return errors.New("client error")
 }
 
 func Test_getStrategyType(t *testing.T) {
@@ -183,9 +174,9 @@ func Test_getStrategyType(t *testing.T) {
 			kb.Name = tt.expectedKbName
 			kb.Spec.Version = tt.expectedVersion
 
-			client := k8s.WrappedFakeClient(tt.initialObjects...)
+			client := k8s.NewFakeClient(tt.initialObjects...)
 			if tt.clientError {
-				client = &failingClient{}
+				client = k8s.NewFailingClient(errors.New("client error"))
 			}
 
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
@@ -365,7 +356,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			kb := tt.args.kb()
 			initialObjects := tt.args.initialObjects()
 
-			client := k8s.WrappedFakeClient(initialObjects...)
+			client := k8s.NewFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
@@ -411,7 +402,7 @@ func TestMinSupportedVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := kibanaFixture()
 			kb.Spec.Version = tc.version
-			client := k8s.WrappedFakeClient(defaultInitialObjects()...)
+			client := k8s.NewFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
 
 			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
@@ -605,6 +596,9 @@ func kibanaFixture() *kbv1.Kibana {
 			Version: "7.0.0",
 			Image:   "my-image",
 			Count:   1,
+			ElasticsearchRef: commonv1.ObjectSelector{
+				Name: "es",
+			},
 		},
 	}
 

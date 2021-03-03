@@ -36,7 +36,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Common labels
 */}}
 {{- define "eck-operator.labels" -}}
-{{ include "eck-operator.selectorLabels" . }}
+{{- include "eck-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -68,13 +68,97 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Determine effective Kubernetes version
+*/}}
+{{- define "eck-operator.effectiveKubeVersion" -}}
+{{- if .Values.internal.manifestGen -}}
+{{- semver .Values.internal.kubeVersion -}}
+{{- else -}}
+{{- .Capabilities.KubeVersion.Version -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook 
+*/}}
+{{- define "eck-operator.webhookName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook.k8s.elastic.co
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s.%s.k8s.elastic.co" $name .Release.Namespace }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook secret 
+*/}}
+{{- define "eck-operator.webhookSecretName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook-server-cert
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s-webhook-cert" $name | trunc 63 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Determine the name for the webhook service 
+*/}}
+{{- define "eck-operator.webhookServiceName" -}}
+{{- if .Values.internal.manifestGen -}}
+elastic-webhook-server
+{{- else -}}
+{{- $name := include "eck-operator.name" . -}}
+{{ printf "%s-webhook" $name | trunc 63 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Add the webhook sideEffects field on supported Kubernetes versions
 */}}
 {{- define "eck-operator.webhookSideEffects" -}}
-{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
 {{- $kubeVersionSupported := semverCompare ">=1.13.0-0" $kubeVersion -}}
-{{- if and $kubeVersionSupported (not .Values.internal.manifestGen) }}
+{{- if $kubeVersionSupported }}
 sideEffects: "None"
+{{- end }}
+{{- end }}
+
+{{/*
+Use v1 of ValidatingWebhookConfiguration on supported Kubernetes versions
+*/}}
+{{- define "eck-operator.webhookAPIVersion" -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if $kubeVersionSupported -}}
+admissionregistration.k8s.io/v1
+{{- else -}}
+admissionregistration.k8s.io/v1beta1
+{{- end -}}
+{{- end }}
+
+
+{{/*
+Define admissionReviewVersions based on Kubernetes version
+*/}}
+{{- define "eck-operator.webhookAdmissionReviewVersions" -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if $kubeVersionSupported  }}
+admissionReviewVersions: [v1beta1]
+{{- end }}
+{{- end }}
+
+
+{{/*
+Define webhook match policy based on Kubernetes version
+*/}}
+{{- define "eck-operator.webhookMatchPolicy" -}}
+{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
+{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
+{{- if $kubeVersionSupported  }}
+matchPolicy: Exact
 {{- end }}
 {{- end }}
 
@@ -138,7 +222,7 @@ RBAC permissions
   resources:
   - elasticsearches
   - elasticsearches/status
-  - elasticsearches/finalizers
+  - elasticsearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   - enterpriselicenses
   - enterpriselicenses/status
   verbs:
@@ -154,7 +238,7 @@ RBAC permissions
   resources:
   - kibanas
   - kibanas/status
-  - kibanas/finalizers
+  - kibanas/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -168,7 +252,7 @@ RBAC permissions
   resources:
   - apmservers
   - apmservers/status
-  - apmservers/finalizers
+  - apmservers/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -182,7 +266,7 @@ RBAC permissions
   resources:
   - enterprisesearches
   - enterprisesearches/status
-  - enterprisesearches/finalizers
+  - enterprisesearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
@@ -196,7 +280,21 @@ RBAC permissions
   resources:
   - beats
   - beats/status
-  - beats/finalizers
+  - beats/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - agent.k8s.elastic.co
+  resources:
+  - agents
+  - agents/status
+  - agents/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list

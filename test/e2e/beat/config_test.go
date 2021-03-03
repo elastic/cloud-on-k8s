@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build beat e2e
+
 package beat
 
 import (
@@ -257,7 +259,7 @@ func TestPacketbeatConfig(t *testing.T) {
 			beat.HasEvent("event.dataset:dns"),
 		)
 
-	if test.Ctx().Provider != "kind" || test.Ctx().KubernetesVersion != "1.12" {
+	if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesMajorMinor() == "1.12") {
 		// there are some issues with kind 1.12 and tracking http traffic
 		pbBuilder = pbBuilder.WithESValidations(beat.HasEvent("event.dataset:http"))
 	}

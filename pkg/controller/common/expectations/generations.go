@@ -5,11 +5,12 @@
 package expectations
 
 import (
+	"context"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // ExpectedStatefulSetUpdates stores StatefulSets generations that are expected in the cache,
@@ -68,7 +69,7 @@ func (e *ExpectedStatefulSetUpdates) GenerationsSatisfied() (bool, error) {
 // generationSatisfied returns true if the generation of the cached StatefulSet matches what is expected.
 func (e *ExpectedStatefulSetUpdates) generationSatisfied(statefulSet types.NamespacedName, expected ResourceGeneration) (bool, error) {
 	var ssetInCache appsv1.StatefulSet
-	err := e.client.Get(statefulSet, &ssetInCache)
+	err := e.client.Get(context.Background(), statefulSet, &ssetInCache)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// StatefulSet does not exist anymore

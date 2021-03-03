@@ -42,7 +42,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
-	k8sClient := k8s.WrappedFakeClient(&es)
+	k8sClient := k8s.NewFakeClient(&es)
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
@@ -105,30 +105,30 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
 	require.Equal(t, pointer.Int32(3), sset1.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[0], &sset1)
 	var sset2 appsv1.StatefulSet
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, pointer.Int32(4), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// headless services should be created for both
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
 	// config should be created for both
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset1")}, &corev1.Secret{}))
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset1")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))
 
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(10)
 	// re-fetch es to simulate actual reconciliation behaviour
-	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
+	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	// update context with current version of Elasticsearch resource
 	ctx.es = es
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// expectations should have been set
@@ -139,7 +139,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 
@@ -151,7 +151,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, res.Requeue)
 	require.Len(t, res.ActualStatefulSets, 2)
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	// spec should be updated
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
@@ -242,9 +242,9 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 		},
 	}
 
-	k8sClient := k8s.WrappedFakeClient(&es, &storageClass, &actualStatefulSets[0], &actualStatefulSets[1])
+	k8sClient := k8s.NewFakeClient(&es, &storageClass, &actualStatefulSets[0], &actualStatefulSets[1])
 	// retrieve the created es with its resource version set
-	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
+	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
@@ -257,7 +257,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.True(t, res.Requeue)
-	require.NoError(t, k8sClient.Get(k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
+	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	require.Len(t, es.Annotations, 2) // initial master nodes + sset to recreate
 }
 
@@ -450,7 +450,7 @@ func Test_adjustZenConfig(t *testing.T) {
 			if pods == nil {
 				pods = tt.statefulSet.Pods()
 			}
-			client := k8s.WrappedFakeClient(append(pods, &tt.es)...)
+			client := k8s.NewFakeClient(append(pods, &tt.es)...)
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
@@ -525,7 +525,7 @@ func Test_adjustResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrappedFakeClient(&tt.args.es)
+			k8sClient := k8s.NewFakeClient(&tt.args.es)
 			ctx := upscaleCtx{
 				es:           tt.args.es,
 				k8sClient:    k8sClient,

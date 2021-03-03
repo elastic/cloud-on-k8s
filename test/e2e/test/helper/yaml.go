@@ -6,6 +6,7 @@ package helper
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -14,15 +15,17 @@ import (
 	"strings"
 	"testing"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -36,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type BuilderTransform func(test.Builder) test.Builder
@@ -51,7 +55,8 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(kbv1.GroupVersion, &kbv1.Kibana{}, &kbv1.KibanaList{})
 	scheme.AddKnownTypes(apmv1.GroupVersion, &apmv1.ApmServer{}, &apmv1.ApmServerList{})
 	scheme.AddKnownTypes(beatv1beta1.GroupVersion, &beatv1beta1.Beat{}, &beatv1beta1.BeatList{})
-	scheme.AddKnownTypes(entv1beta1.GroupVersion, &entv1beta1.EnterpriseSearch{}, &entv1beta1.EnterpriseSearchList{})
+	scheme.AddKnownTypes(entv1.GroupVersion, &entv1.EnterpriseSearch{}, &entv1.EnterpriseSearchList{})
+	scheme.AddKnownTypes(agentv1alpha1.GroupVersion, &agentv1alpha1.Agent{}, &agentv1alpha1.AgentList{})
 
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{}, &rbacv1.ClusterRoleBindingList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
@@ -96,7 +101,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *beatv1beta1.Beat:
 			b := beat.NewBuilderFromBeat(decodedObj)
 			builder = transform(b)
-		case *entv1beta1.EnterpriseSearch:
+		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.EnterpriseSearch = *decodedObj
 			builder = transform(b)
@@ -139,7 +144,7 @@ func (yd *YAMLDecoder) ToObjects(reader *bufio.Reader) ([]runtime.Object, error)
 func RunFile(
 	t *testing.T,
 	filePath, namespace, suffix string,
-	additionalObjects []runtime.Object,
+	additionalObjects []client.Object,
 	transformations ...BuilderTransform) {
 	builders, objects, err := extractFromFile(t, filePath, namespace, suffix, MkTestName(t, filePath), transformations...)
 	if err != nil {
@@ -157,7 +162,7 @@ func extractFromFile(
 	t *testing.T,
 	filePath, namespace, suffix, fullTestName string,
 	transformations ...BuilderTransform,
-) ([]test.Builder, []runtime.Object, error) {
+) ([]test.Builder, []client.Object, error) {
 	f, err := os.Open(filePath)
 	require.NoError(t, err, "Failed to open file %s", filePath)
 	defer f.Close()
@@ -168,13 +173,20 @@ func extractFromFile(
 		return nil, nil, err
 	}
 
-	builders, objects := transformToE2E(namespace, fullTestName, suffix, transformations, objects)
-	return builders, objects, nil
+	castObjects := make([]client.Object, len(objects))
+	for i, obj := range objects {
+		castObj, ok := obj.(client.Object)
+		require.True(t, ok, "%T is not a client.Object", obj)
+		castObjects[i] = castObj
+	}
+
+	builders, castObjects := transformToE2E(namespace, fullTestName, suffix, transformations, castObjects)
+	return builders, castObjects, nil
 }
 
 func makeObjectSteps(
 	t *testing.T,
-	objects []runtime.Object,
+	objects []client.Object,
 ) (func(k *test.K8sClient) test.StepList, func(k *test.K8sClient) test.StepList) {
 	return func(k *test.K8sClient) test.StepList {
 			steps := test.StepList{}
@@ -199,7 +211,7 @@ func makeObjectSteps(
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Delete %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
 					Test: test.Eventually(func() error {
-						err := k.Client.Delete(objects[ii])
+						err := k.Client.Delete(context.Background(), objects[ii])
 						if err != nil && !apierrors.IsNotFound(err) {
 							return err
 						}
@@ -211,9 +223,9 @@ func makeObjectSteps(
 		}
 }
 
-func transformToE2E(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []runtime.Object) ([]test.Builder, []runtime.Object) {
+func transformToE2E(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []client.Object) ([]test.Builder, []client.Object) {
 	var builders []test.Builder
-	var otherObjects []runtime.Object
+	var otherObjects []client.Object
 	for _, object := range objects {
 		var builder test.Builder
 		switch decodedObj := object.(type) {
@@ -259,7 +271,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
 				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
-		case *entv1beta1.EnterpriseSearch:
+		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.EnterpriseSearch = *decodedObj
 			builder = b.WithNamespace(namespace).
@@ -268,6 +280,19 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
+		case *agentv1alpha1.Agent:
+			b := agent.NewBuilderFromAgent(decodedObj)
+
+			builder = b.WithNamespace(namespace).
+				WithSuffix(suffix).
+				WithElasticsearchRefs(tweakOutputRefs(b.Agent.Spec.ElasticsearchRefs, suffix)...).
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName).
+				WithDefaultESValidation(agent.HasAnyDataStream())
+
+			if b.PodTemplate.Spec.ServiceAccountName != "" {
+				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
+			}
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
@@ -331,6 +356,18 @@ func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.Object
 	}
 
 	return ref
+}
+
+func tweakOutputRefs(outputs []agentv1alpha1.Output, suffix string) (results []agentv1alpha1.Output) {
+	for _, output := range outputs {
+		// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
+		// This necessitates changing the Elasticsearch reference to match the suffixed name.
+		ref := tweakServiceRef(output.ObjectSelector, suffix)
+		output.ObjectSelector = ref
+		results = append(results, output)
+	}
+
+	return results
 }
 
 func MkTestName(t *testing.T, path string) string {

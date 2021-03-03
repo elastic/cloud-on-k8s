@@ -1,6 +1,7 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
+// +build beat e2e
 
 package beat
 
@@ -24,8 +25,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -192,25 +193,23 @@ func TestAuditbeatHostsRecipe(t *testing.T) {
 	runBeatRecipe(t, "auditbeat_hosts.yaml", customize)
 }
 
-// TODO: flaky test, investigate then re-enable
-//  see https://github.com/elastic/cloud-on-k8s/issues/3884
-//func TestPacketbeatDnsHttpRecipe(t *testing.T) {
-//	customize := func(builder beat.Builder) beat.Builder {
-//		if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesVersion == "1.12") {
-//			// there are some issues with kind 1.12 and tracking http traffic
-//			builder = builder.WithESValidations(beat.HasEvent("event.dataset:http"))
-//		}
-//
-//		return builder.
-//			WithRoles(beat.PacketbeatPSPClusterRoleName).
-//			WithESValidations(
-//				beat.HasEvent("event.dataset:flow"),
-//				beat.HasEvent("event.dataset:dns"),
-//			)
-//	}
-//
-//	runBeatRecipe(t, "packetbeat_dns_http.yaml", customize)
-//}
+func TestPacketbeatDnsHttpRecipe(t *testing.T) {
+	customize := func(builder beat.Builder) beat.Builder {
+		if !(test.Ctx().Provider == "kind" && test.Ctx().KubernetesMajorMinor() == "1.12") {
+			// there are some issues with kind 1.12 and tracking http traffic
+			builder = builder.WithESValidations(beat.HasEvent("event.dataset:http"))
+		}
+
+		return builder.
+			WithRoles(beat.PacketbeatPSPClusterRoleName).
+			WithESValidations(
+				beat.HasEvent("event.dataset:flow"),
+				beat.HasEvent("event.dataset:dns"),
+			)
+	}
+
+	runBeatRecipe(t, "packetbeat_dns_http.yaml", customize)
+}
 
 func TestJournalbeatHostsRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
@@ -225,7 +224,7 @@ func runBeatRecipe(
 	t *testing.T,
 	fileName string,
 	customize func(builder beat.Builder) beat.Builder,
-	additionalObjects ...runtime.Object,
+	additionalObjects ...client.Object,
 ) {
 	filePath := path.Join("../../../config/recipes/beats", fileName)
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -264,7 +263,7 @@ func runBeatRecipe(
 func isStackIncompatible(beat beatv1beta1.Beat) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	beatVersion := version.MustParse(beat.Spec.Version)
-	return beatVersion.IsAfter(stackVersion)
+	return beatVersion.GT(stackVersion)
 }
 
 func loggingTestPod(name string) (*corev1.Pod, string) {

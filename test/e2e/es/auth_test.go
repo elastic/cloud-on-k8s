@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build es e2e
+
 package es
 
 import (
@@ -130,27 +132,27 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "Update password in the file realm secret",
 				Test: test.Eventually(func() error {
 					var existingSecret corev1.Secret
-					if err := k.Client.Get(k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret); err != nil {
 						return err
 					}
 					existingSecret.StringData = map[string]string{
 						filerealm.UsersFile:      sampleUsersFileUpdated,
 						filerealm.UsersRolesFile: sampleUsersRolesFile,
 					}
-					return k.Client.Update(&existingSecret)
+					return k.Client.Update(context.Background(), &existingSecret)
 				}),
 			},
 			test.Step{
 				Name: "Update role in the roles secret",
 				Test: test.Eventually(func() error {
 					var existingSecret corev1.Secret
-					if err := k.Client.Get(k8s.ExtractNamespacedName(&rolesSecret), &existingSecret); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&rolesSecret), &existingSecret); err != nil {
 						return err
 					}
 					existingSecret.StringData = map[string]string{
 						user.RolesFile: sampleRolesFile(writeIndexUpdated),
 					}
-					return k.Client.Update(&existingSecret)
+					return k.Client.Update(context.Background(), &existingSecret)
 				}),
 			},
 			test.Step{
@@ -165,11 +167,11 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "Remove secrets ref in the ES spec",
 				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
-					if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
 						return err
 					}
 					es.Spec.Auth = esv1.Auth{}
-					return k.Client.Update(&es)
+					return k.Client.Update(context.Background(), &es)
 				}),
 			},
 			test.Step{
@@ -184,7 +186,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "Delete auth secrets",
 				Test: test.Eventually(func() error {
 					for _, s := range authSecrets {
-						err := k.Client.Delete(&s)
+						err := k.Client.Delete(context.Background(), &s)
 						if err != nil && !apierrors.IsNotFound(err) {
 							return err
 						}

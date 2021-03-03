@@ -5,12 +5,15 @@
 package kibana
 
 import (
+	"context"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
@@ -19,7 +22,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Deleting Kibana should return no error",
 			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Delete(obj)
+					err := k.Client.Delete(context.Background(), obj)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
@@ -31,11 +34,8 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana should not be there anymore",
 			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
-					m, err := meta.Accessor(obj)
-					if err != nil {
-						return err
-					}
-					err = k.Client.Get(k8s.ExtractNamespacedName(m), obj.DeepCopyObject())
+					objCopy := k8s.DeepCopyObject(obj)
+					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(obj), objCopy)
 					if err != nil {
 						if apierrors.IsNotFound(err) {
 							continue
@@ -51,6 +51,15 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana pods should eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
+			}),
+		},
+		{
+			Name: "Soft-owned secrets should eventually be removed",
+			Test: test.Eventually(func() error {
+				namespace := b.Kibana.Namespace
+				return k.CheckSecretsRemoved([]types.NamespacedName{
+					{Namespace: namespace, Name: certificates.PublicCertsSecretName(name.EntNamer, b.Kibana.Name)},
+				})
 			}),
 		},
 	}

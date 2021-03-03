@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -25,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -41,7 +41,7 @@ const (
 type Builder struct {
 	Beat              beatv1beta1.Beat
 	Validations       []ValidationFunc
-	AdditionalObjects []runtime.Object
+	AdditionalObjects []k8sclient.Object
 
 	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
 	PodTemplate *corev1.PodTemplateSpec
@@ -287,12 +287,12 @@ func (b Builder) WithConfigRef(secretName string) Builder {
 	return b
 }
 
-func (b Builder) WithObjects(objs ...runtime.Object) Builder {
+func (b Builder) WithObjects(objs ...k8sclient.Object) Builder {
 	b.AdditionalObjects = append(b.AdditionalObjects, objs...)
 	return b
 }
 
-func (b Builder) RuntimeObjects() []runtime.Object {
+func (b Builder) RuntimeObjects() []k8sclient.Object {
 	return append(b.AdditionalObjects, &b.Beat)
 }
 

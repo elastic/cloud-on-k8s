@@ -14,14 +14,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("es-validation")
+var log = ulog.Log.WithName("es-validation")
 
 const (
+	autoscalingVersionMsg    = "autoscaling is not available in this version of Elasticsearch"
 	cfgInvalidMsg            = "Configuration invalid"
 	duplicateNodeSets        = "NodeSet names must be unique"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
@@ -47,6 +48,7 @@ var validations = []validation{
 	hasCorrectNodeRoles,
 	supportedVersion,
 	validSanIP,
+	validAutoscalingConfiguration,
 }
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
@@ -91,8 +93,8 @@ func supportedVersion(es esv1.Elasticsearch) field.ErrorList {
 	if err != nil {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
 	}
-	if v := esversion.SupportedVersions(*ver); v != nil {
-		if err := v.Supports(*ver); err == nil {
+	if v := esversion.SupportedVersions(ver); v != nil {
+		if err := v.WithinRange(ver); err == nil {
 			return field.ErrorList{}
 		}
 	}
@@ -119,14 +121,14 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 
 	for i, ns := range es.Spec.NodeSets {
 		cfg := esv1.ElasticsearchSettings{}
-		if err := esv1.UnpackConfig(ns.Config, *v, &cfg); err != nil {
+		if err := esv1.UnpackConfig(ns.Config, v, &cfg); err != nil {
 			errs = append(errs, field.Invalid(confField(i), ns.Config, cfgInvalidMsg))
 
 			continue
 		}
 
 		// check that node.roles is not used with an older Elasticsearch version
-		if cfg.Node != nil && cfg.Node.Roles != nil && !v.IsSameOrAfter(version.From(7, 9, 0)) {
+		if cfg.Node != nil && cfg.Node.Roles != nil && !v.GTE(version.From(7, 9, 0)) {
 			errs = append(errs, field.Invalid(confField(i), ns.Config, nodeRolesInOldVersionMsg))
 
 			continue
@@ -138,8 +140,8 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Forbidden(confField(i), fmt.Sprintf(mixedRoleConfigMsg, strings.Join(nodeRoleAttrs, ","))))
 		}
 
-		// check if this nodeSet has the master role
-		seenMaster = seenMaster || (cfg.Node.HasMasterRole() && !cfg.Node.HasVotingOnlyRole() && ns.Count > 0)
+		// Check if this nodeSet has the master role. If autoscaling is enabled the count value in the NodeSet might not be initially set.
+		seenMaster = seenMaster || (cfg.Node.HasMasterRole() && !cfg.Node.HasVotingOnlyRole() && ns.Count > 0) || es.IsAutoscalingDefined()
 	}
 
 	if !seenMaster {
@@ -167,6 +169,10 @@ func getNodeRoleAttrs(cfg esv1.ElasticsearchSettings) []string {
 
 		if cfg.Node.ML != nil {
 			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeML)
+		}
+
+		if cfg.Node.RemoteClusterClient != nil {
+			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeRemoteClusterClient)
 		}
 
 		if cfg.Node.Transform != nil {
@@ -228,7 +234,7 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 	if len(errs) != 0 {
 		return errs
 	}
-	if !proposedVer.IsSameOrAfter(*currentVer) {
+	if !proposedVer.GTE(currentVer) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, noDowngradesMsg))
 	}
 	return errs
@@ -249,13 +255,13 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 		return errs
 	}
 
-	v := esversion.SupportedVersions(*proposedVer)
-	if v == nil {
+	supportedVersions := esversion.SupportedVersions(proposedVer)
+	if supportedVersions == nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedVersionMsg))
 		return errs
 	}
 
-	err = v.Supports(*currentVer)
+	err = supportedVersions.WithinRange(currentVer)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedUpgradeMsg))
 	}

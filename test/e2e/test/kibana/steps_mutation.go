@@ -5,6 +5,8 @@
 package kibana
 
 import (
+	"context"
+
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -25,7 +27,7 @@ func (b Builder) AnnotatePodsWithBuilderHash(k *test.K8sClient) test.StepList {
 			Name: "Annotate Pods with a hash of their Builder spec",
 			Test: test.Eventually(func() error {
 				var pods corev1.PodList
-				if err := k.Client.List(&pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
+				if err := k.Client.List(context.Background(), &pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
 					return err
 				}
 
@@ -51,11 +53,11 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Applying the Kibana mutation should succeed",
 			Test: test.Eventually(func() error {
 				var kb kbv1.Kibana
-				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
 					return err
 				}
 				kb.Spec = b.Kibana.Spec
-				return k.Client.Update(&kb)
+				return k.Client.Update(context.Background(), &kb)
 			}),
 		}}
 }

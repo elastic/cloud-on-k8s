@@ -5,12 +5,8 @@
 package association
 
 import (
+	"context"
 	"testing"
-
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -19,6 +15,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const kibanaESAssociationName = "kibana-es"
@@ -123,7 +123,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	}{
 		{
 			name:               "create new CA in kibana namespace",
-			client:             k8s.WrappedFakeClient(&es, &esCA),
+			client:             k8s.NewFakeClient(&es, &esCA),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
 			want:               CACertSecretName(&kibanaFixture, kibanaESAssociationName),
@@ -132,7 +132,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		},
 		{
 			name:               "update existing CA in kibana namespace",
-			client:             k8s.WrappedFakeClient(&es, &updatedEsCA, &kibanaEsCA),
+			client:             k8s.NewFakeClient(&es, &updatedEsCA, &kibanaEsCA),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
 			want:               CACertSecretName(&kibanaFixture, kibanaESAssociationName),
@@ -141,7 +141,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		},
 		{
 			name:               "ES CA secret does not exist (yet)",
-			client:             k8s.WrappedFakeClient(&es),
+			client:             k8s.NewFakeClient(&es),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
 			want:               "",
@@ -151,7 +151,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		{
 			// See the use case described in https://github.com/elastic/cloud-on-k8s/issues/2136
 			name:               "ES CA secret exists but is empty",
-			client:             k8s.WrappedFakeClient(&es, &esEmptyCA),
+			client:             k8s.NewFakeClient(&es, &esEmptyCA),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
 			want:               CACertSecretName(&kibanaFixture, kibanaESAssociationName),
@@ -163,10 +163,12 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Reconciler{
 				AssociationInfo: AssociationInfo{
-					AssociationLabels: func(associated types.NamespacedName) map[string]string {
+					Labels: func(associated types.NamespacedName) map[string]string {
 						return map[string]string{}
 					},
-					AssociationName: "kibana-es",
+					AssociationName:                       "kibana-es",
+					AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
+					AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
 				},
 				Client:     tt.client,
 				watches:    watches.DynamicWatches{},
@@ -180,7 +182,6 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 				&tt.kibana,
 				esv1.ESNamer,
 				k8s.ExtractNamespacedName(&tt.es),
-				caSecretServiceLabelName,
 			)
 			require.NoError(t, err)
 
@@ -189,7 +190,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 
 			if tt.wantCA != nil {
 				var updatedKibanaCA corev1.Secret
-				err = tt.client.Get(types.NamespacedName{
+				err = tt.client.Get(context.Background(), types.NamespacedName{
 					Namespace: tt.kibana.Namespace,
 					Name:      CACertSecretName(&kibanaFixture, "kibana-es"),
 				}, &updatedKibanaCA)

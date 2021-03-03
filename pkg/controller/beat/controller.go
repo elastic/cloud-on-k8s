@@ -7,19 +7,6 @@ package beat
 import (
 	"context"
 
-	"go.elastic.co/apm"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
@@ -39,13 +26,25 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"go.elastic.co/apm"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
 	controllerName = "beat-controller"
 )
 
-var log = logf.Log.WithName(controllerName)
+var log = ulog.Log.WithName(controllerName)
 
 // Add creates a new Beat Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -60,7 +59,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBeat {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileBeat{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
@@ -98,11 +97,14 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 		return err
 	}
 
-	// Watch Secrets
+	// Watch owned and soft-owned Secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, beatv1beta1.Kind); err != nil {
 		return err
 	}
 
@@ -128,16 +130,15 @@ type ReconcileBeat struct {
 
 // Reconcile reads that state of the cluster for a Beat object and makes changes based on the state read
 // and what is in the Beat.Spec.
-func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "beat_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "beat")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "beat")
 	defer tracing.EndTransaction(tx)
 
 	var beat beatv1beta1.Beat
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &beat); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(request.NamespacedName)
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, r.onDelete(request.NamespacedName)
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -204,9 +205,10 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 	return compat, err
 }
 
-func (r *ReconcileBeat) onDelete(obj types.NamespacedName) {
+func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, beatv1beta1.Kind)
 }
 
 func newDriver(

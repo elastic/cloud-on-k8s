@@ -24,17 +24,20 @@ import (
 )
 
 // elasticsearchUserName identifies the associated user in Elasticsearch namespace.
-func elasticsearchUserName(associated commonv1.Associated, userSuffix string) string {
+func elasticsearchUserName(association commonv1.Association, userSuffix string) string {
 	// must be namespace-aware since we might have several associated instances running in
 	// different namespaces with the same name: we need one user for each
 	// in the Elasticsearch namespace
-	return associated.GetNamespace() + "-" + associated.GetName() + "-" + userSuffix
+
+	esUserNameTemplate := association.GetNamespace() + "-" + association.GetName() + "%s-" + userSuffix
+	return commonv1.FormatNameWithID(esUserNameTemplate, association.AssociationID())
 }
 
 // userSecretObjectName identifies the associated secret object.
-func userSecretObjectName(associated commonv1.Associated, userSuffix string) string {
+func userSecretObjectName(association commonv1.Association, userSuffix string) string {
 	// does not need to be namespace aware, since it lives in associated object namespace.
-	return associated.GetName() + "-" + userSuffix
+
+	return commonv1.FormatNameWithID(association.GetName()+"%s-"+userSuffix, association.AssociationID())
 }
 
 // UserKey is the namespaced name to identify the user resource created by the controller.
@@ -52,20 +55,20 @@ func UserKey(association commonv1.Association, esNamespace, userSuffix string) t
 
 // secretKey is the namespaced name to identify the secret containing the password for the user.
 // It uses the same resource name as the associated user.
-func secretKey(associated commonv1.Associated, userSuffix string) types.NamespacedName {
+func secretKey(association commonv1.Association, userSuffix string) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: associated.GetNamespace(),
-		Name:      userSecretObjectName(associated, userSuffix),
+		Namespace: association.GetNamespace(),
+		Name:      userSecretObjectName(association, userSuffix),
 	}
 }
 
 // UserSecretKeySelector creates a SecretKeySelector for the associated user secret.
-func UserSecretKeySelector(associated commonv1.Associated, userSuffix string) *corev1.SecretKeySelector {
+func UserSecretKeySelector(association commonv1.Association, userSuffix string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: userSecretObjectName(associated, userSuffix),
+			Name: userSecretObjectName(association, userSuffix),
 		},
-		Key: elasticsearchUserName(associated, userSuffix),
+		Key: elasticsearchUserName(association, userSuffix),
 	}
 }
 
@@ -99,7 +102,7 @@ func ReconcileEsUser(
 	var password []byte
 	// reuse the existing password if there's one
 	var existingSecret corev1.Secret
-	err := c.Get(k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
+	err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -137,7 +140,7 @@ func ReconcileEsUser(
 	}
 
 	var existingUserSecret corev1.Secret
-	if err := c.Get(k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 

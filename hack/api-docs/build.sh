@@ -26,14 +26,13 @@ build_docs() {
     local REPO_ROOT="${SCRIPT_DIR}/../.."
     local DOCS_DIR="${SCRIPT_DIR}/../../docs"
     local REFDOCS_REPO="${REFDOCS_REPO:-github.com/elastic/crd-ref-docs}"
-    local REFDOCS_VER="${REFDOCS_VER:-v0.0.5}"
+    local REFDOCS_VER="${REFDOCS_VER:-v0.0.7}"
     local BIN_DIR=${SCRATCH_DIR}/bin
 
     (
         echo "Installing crd-ref-docs $REFDOCS_VER to $BIN_DIR"
         mkdir -p "$BIN_DIR"
-        cd "$SCRATCH_DIR"
-        go mod init github.com/elastic/cloud-on-k8s-docs && GOBIN=$BIN_DIR go get -u "${REFDOCS_REPO}@${REFDOCS_VER}"
+        GOBIN=$BIN_DIR go install "${REFDOCS_REPO}@${REFDOCS_VER}"
 
         echo "Generating API reference documentation"
         "${BIN_DIR}"/crd-ref-docs --source-path="${REPO_ROOT}"/pkg/apis \

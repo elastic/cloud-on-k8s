@@ -5,11 +5,7 @@
 package user
 
 import (
-	"golang.org/x/crypto/bcrypt"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -17,6 +13,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"golang.org/x/crypto/bcrypt"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -39,6 +40,9 @@ func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm
 			{Name: ElasticUserName, Roles: []string{SuperUserBuiltinRole}},
 		},
 		esv1.ElasticUserSecret(es.Name),
+		// Don't set an ownerRef for the elastic user secret, likely to be copied into different namespaces.
+		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
+		false,
 	)
 }
 
@@ -52,7 +56,9 @@ func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRea
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 		},
-		esv1.InternalUsersSecret(es.Name))
+		esv1.InternalUsersSecret(es.Name),
+		true,
+	)
 }
 
 // reconcilePredefinedUsers reconciles a secret with the given name holding the given users.
@@ -63,6 +69,7 @@ func reconcilePredefinedUsers(
 	existingFileRealm filerealm.Realm,
 	users users,
 	secretName string,
+	setOwnerRef bool,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
@@ -92,7 +99,11 @@ func reconcilePredefinedUsers(
 		Data: secretData,
 	}
 
-	_, err = reconciler.ReconcileSecret(c, expected, &es)
+	if setOwnerRef {
+		_, err = reconciler.ReconcileSecret(c, expected, &es)
+	} else {
+		_, err = reconciler.ReconcileSecretNoOwnerRef(c, expected, &es)
+	}
 	return users, err
 }
 
@@ -100,7 +111,7 @@ func reconcilePredefinedUsers(
 // or generates new passwords.
 func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.NamespacedName) (users, error) {
 	var secret corev1.Secret
-	err := c.Get(secretRef, &secret)
+	err := c.Get(context.Background(), secretRef, &secret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}

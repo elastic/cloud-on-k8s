@@ -2,12 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build kb e2e
+
 package kb
 
 import (
+	"context"
 	"testing"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -15,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -72,7 +74,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 						"logging.json":    []byte("true"),
 						"logging.verbose": []byte("true"),
 					}
-					return k.Client.Update(&secureSettings)
+					return k.Client.Update(context.Background(), &secureSettings)
 				}),
 			},
 
@@ -85,12 +87,12 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 				Test: test.Eventually(func() error {
 					// retrieve current Kibana resource
 					var currentKb kbv1.Kibana
-					if err := k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb); err != nil {
 						return err
 					}
 					// set its secure settings to nil
 					currentKb.Spec.SecureSettings = nil
-					return k.Client.Update(&currentKb)
+					return k.Client.Update(context.Background(), &currentKb)
 				}),
 			},
 
@@ -101,7 +103,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: test.Eventually(func() error {
-					err := k.Client.Delete(&secureSettings)
+					err := k.Client.Delete(context.Background(), &secureSettings)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

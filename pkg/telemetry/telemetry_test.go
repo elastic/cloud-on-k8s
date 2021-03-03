@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -125,7 +126,7 @@ func TestNewReporter(t *testing.T) {
 	kb2, s2 := createKbAndSecret("kb2", "ns2", 2)
 	kb3, s3 := createKbAndSecret("kb3", "ns3", 3)
 
-	client := k8s.FakeClient(
+	client := k8s.NewFakeClient(
 		&kb1,
 		&kb2,
 		&kb3,
@@ -135,9 +136,22 @@ func TestNewReporter(t *testing.T) {
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
+				Name:      "autoscaled",
+				Annotations: map[string]string{
+					esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}",
+				},
 			},
 			Status: esv1.ElasticsearchStatus{
 				AvailableNodes: 3,
+			},
+		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+				Name:      "non-autoscaled",
+			},
+			Status: esv1.ElasticsearchStatus{
+				AvailableNodes: 6,
 			},
 		},
 		&apmv1.ApmServer{
@@ -150,11 +164,11 @@ func TestNewReporter(t *testing.T) {
 				},
 			},
 		},
-		&entv1beta1.EnterpriseSearch{
+		&entv1.EnterpriseSearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
 			},
-			Status: entv1beta1.EnterpriseSearchStatus{
+			Status: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 				},
@@ -196,6 +210,27 @@ func TestNewReporter(t *testing.T) {
 				AvailableNodes: 7,
 			},
 		},
+		&agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent1",
+				Namespace: "ns2",
+			},
+			Status: agentv1alpha1.AgentStatus{
+				AvailableNodes: 10,
+			},
+		},
+		&agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent2",
+				Namespace: "ns2",
+			},
+			Spec: agentv1alpha1.AgentSpec{
+				ElasticsearchRefs: []agentv1alpha1.Output{{}, {}}, // two outputs
+			},
+			Status: agentv1alpha1.AgentStatus{
+				AvailableNodes: 6,
+			},
+		},
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "elastic-licensing",
@@ -229,6 +264,10 @@ func TestNewReporter(t *testing.T) {
     total_managed_memory: 3.22GB
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
+    agents:
+      multiple_refs: 1
+      pod_count: 16
+      resource_count: 2
     apms:
       pod_count: 2
       resource_count: 1
@@ -242,8 +281,9 @@ func TestNewReporter(t *testing.T) {
       pod_count: 8
       resource_count: 2
     elasticsearches:
-      pod_count: 3
-      resource_count: 1
+      autoscaled_resource_count: 1
+      pod_count: 9
+      resource_count: 2
     enterprisesearches:
       pod_count: 3
       resource_count: 1

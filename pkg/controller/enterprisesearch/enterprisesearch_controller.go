@@ -11,20 +11,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"go.elastic.co/apm"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -33,11 +20,24 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"go.elastic.co/apm"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName(controllerName)
+	log = ulog.Log.WithName(controllerName)
 )
 
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
@@ -61,7 +61,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch {
-	client := k8s.WrapClient(mgr.GetClient())
+	client := mgr.GetClient()
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
@@ -72,7 +72,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(&source.Kind{Type: &entv1beta1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
+	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch Deployments
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &entv1beta1.EnterpriseSearch{},
+		OwnerType:    &entv1.EnterpriseSearch{},
 	}); err != nil {
 		return err
 	}
@@ -94,16 +94,19 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &entv1beta1.EnterpriseSearch{},
+		OwnerType:    &entv1.EnterpriseSearch{},
 	}); err != nil {
 		return err
 	}
 
-	// Watch secrets
+	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &entv1beta1.EnterpriseSearch{},
+		OwnerType:    &entv1.EnterpriseSearch{},
 	}); err != nil {
+		return err
+	}
+	if err := watches.WatchSoftOwnedSecrets(c, entv1.Kind); err != nil {
 		return err
 	}
 
@@ -143,19 +146,18 @@ var _ driver.Interface = &ReconcileEnterpriseSearch{}
 
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
-func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "ent_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "enterprisesearch")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "enterprisesearch")
 	defer tracing.EndTransaction(tx)
 
-	var ent entv1beta1.EnterpriseSearch
+	var ent entv1.EnterpriseSearch
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &ent); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -180,14 +182,15 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	return r.doReconcile(ctx, ent)
 }
 
-func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
+func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entName.EntNamer, obj.Name))
+	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1.Kind)
 }
 
-func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1beta1.EnterpriseSearch) (bool, error) {
+func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1.EnterpriseSearch) (bool, error) {
 	selector := map[string]string{EnterpriseSearchNameLabelName: ent.Name}
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, ent, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
@@ -196,7 +199,7 @@ func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1
 	return compat, err
 }
 
-func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1beta1.EnterpriseSearch) (reconcile.Result, error) {
+func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (reconcile.Result, error) {
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, &ent); err != nil {
 		return reconcile.Result{}, err
@@ -210,7 +213,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 	_, results := certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
-		Object:                &ent,
+		Owner:                 &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
 		Namer:                 entName.EntNamer,
 		Labels:                Labels(ent.Name),
@@ -230,7 +233,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
-	if !association.AllowVersion(*entVersion, ent.Associated(), logger, r.recorder) {
+	if !association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder) {
 		return reconcile.Result{}, nil // will eventually retry once updated
 	}
 
@@ -264,7 +267,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 	return results.Aggregate()
 }
 
-func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1beta1.EnterpriseSearch) error {
+func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.EnterpriseSearch) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -277,12 +280,12 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1beta
 	return nil
 }
 
-func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1beta1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) error {
+func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) error {
 	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ent.Namespace, map[string]string{EnterpriseSearchNameLabelName: ent.Name})
 	if err != nil {
 		return err
 	}
-	newStatus := entv1beta1.EnterpriseSearchStatus{
+	newStatus := entv1.EnterpriseSearchStatus{
 		DeploymentStatus: common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName),
 		ExternalService:  svcName,
 		Association:      ent.Status.Association,
@@ -304,7 +307,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1beta1.EnterpriseSearch
 	return common.UpdateStatus(r.Client, &ent)
 }
 
-func NewService(ent entv1beta1.EnterpriseSearch) *corev1.Service {
+func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: ent.Spec.HTTP.Service.ObjectMeta,
 		Spec:       ent.Spec.HTTP.Service.Spec,
@@ -325,7 +328,7 @@ func NewService(ent entv1beta1.EnterpriseSearch) *corev1.Service {
 	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
-func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {
+func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {
 	// build a hash of various settings to rotate the Pod on any change
 	configHash := sha256.New224()
 
@@ -338,7 +341,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	if ent.Spec.HTTP.TLS.Enabled() {
 		var tlsCertSecret corev1.Secret
 		tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)}
-		if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
+		if err := c.Get(context.Background(), tlsSecretKey, &tlsCertSecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
@@ -350,7 +353,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	if ent.AssociationConf().CAIsConfigured() {
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: ent.Namespace, Name: ent.AssociationConf().GetCASecretName()}
-		if err := c.Get(key, &esPublicCASecret); err != nil {
+		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {

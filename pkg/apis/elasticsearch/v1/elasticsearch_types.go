@@ -5,15 +5,20 @@
 package v1
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-const ElasticsearchContainerName = "elasticsearch"
+const (
+	ElasticsearchContainerName = "elasticsearch"
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "Elasticsearch"
+)
 
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 type ElasticsearchSpec struct {
@@ -61,12 +66,46 @@ type ElasticsearchSpec struct {
 	// RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 	// +optional
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
+
+	// VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
+	// Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=DeleteOnScaledownOnly;DeleteOnScaledownAndClusterDeletion
+	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 }
+
+// VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
+// Inspired by https://github.com/kubernetes/enhancements/pull/2440
+type VolumeClaimDeletePolicy string
+
+const (
+	// DeleteOnScaledownAndClusterDeletionPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is removed.
+	DeleteOnScaledownAndClusterDeletionPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownAndClusterDeletion"
+	// DeleteOnScaledownOnlyPolicy removes PersistentVolumeClaims on scale down of Elasticsearch nodes but retains all
+	// current PersistenVolumeClaims when the Elasticsearch cluster has been deleted.
+	DeleteOnScaledownOnlyPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownOnly"
+)
 
 // TransportConfig holds the transport layer settings for Elasticsearch.
 type TransportConfig struct {
 	// Service defines the template for the associated Kubernetes Service object.
 	Service commonv1.ServiceTemplate `json:"service,omitempty"`
+	// TLS defines options for configuring TLS on the transport layer.
+	TLS TransportTLSOptions `json:"tls,omitempty"`
+}
+
+type TransportTLSOptions struct {
+	// Certificate is a reference to a Kubernetes secret that contains the CA certificate
+	// and private key for generating node certificates.
+	// The referenced secret should contain the following:
+	//
+	// - `tls.crt`: The CA certificate in PEM format.
+	// - `tls.key`: The private key for the CA certificate in PEM format.
+	Certificate commonv1.SecretRef `json:"certificate,omitempty"`
+}
+
+func (tto TransportTLSOptions) UserDefinedCA() bool {
+	return tto.Certificate.SecretName != ""
 }
 
 // RemoteCluster declares a remote Elasticsearch cluster connection.
@@ -95,6 +134,13 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 		count += topoElem.Count
 	}
 	return count
+}
+
+func (es ElasticsearchSpec) VolumeClaimDeletePolicyOrDefault() VolumeClaimDeletePolicy {
+	if es.VolumeClaimDeletePolicy == "" {
+		return DeleteOnScaledownAndClusterDeletionPolicy
+	}
+	return es.VolumeClaimDeletePolicy
 }
 
 // Auth contains user authentication and authorization security settings for Elasticsearch.
@@ -176,7 +222,8 @@ type NodeSet struct {
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// Count of Elasticsearch nodes to deploy.
-	// +kubebuilder:validation:Minimum=1
+	// If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller.
+	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
@@ -188,6 +235,17 @@ type NodeSet struct {
 	// Items defined here take precedence over any default claims added by the operator with the same name.
 	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+}
+
+// +kubebuilder:object:generate=false
+type NodeSetList []NodeSet
+
+func (nsl NodeSetList) Names() []string {
+	names := make([]string, len(nsl))
+	for i := range nsl {
+		names[i] = nsl[i].Name
+	}
+	return names
 }
 
 // GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate
@@ -339,6 +397,17 @@ type Elasticsearch struct {
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted
 func (es Elasticsearch) IsMarkedForDeletion() bool {
 	return !es.DeletionTimestamp.IsZero()
+}
+
+// IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
+func (es Elasticsearch) IsAutoscalingDefined() bool {
+	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
+	return ok
+}
+
+// AutoscalingSpec returns the autoscaling spec in the Elasticsearch manifest.
+func (es Elasticsearch) AutoscalingSpec() string {
+	return es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
 }
 
 func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {

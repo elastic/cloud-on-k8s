@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -20,6 +21,7 @@ type Params struct {
 	Owner       metav1.Object
 	Labels      map[string]string
 	Selectors   map[string]string
+	Strategy    appsv1.DaemonSetUpdateStrategy
 }
 
 func New(params Params) appsv1.DaemonSet {
@@ -33,7 +35,8 @@ func New(params Params) appsv1.DaemonSet {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selectors,
 			},
-			Template: params.PodTemplate,
+			Template:       params.PodTemplate,
+			UpdateStrategy: params.Strategy,
 		},
 	}
 }
@@ -42,7 +45,7 @@ func New(params Params) appsv1.DaemonSet {
 func Reconcile(
 	k8sClient k8s.Client,
 	expected appsv1.DaemonSet,
-	owner metav1.Object,
+	owner client.Object,
 ) (appsv1.DaemonSet, error) {
 	// label the daemon set with a hash of itself
 	expected = WithTemplateHash(expected)

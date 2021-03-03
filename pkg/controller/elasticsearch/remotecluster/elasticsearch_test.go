@@ -466,7 +466,7 @@ func TestUpdateSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.args.es)
+			client := k8s.NewFakeClient(tt.args.es)
 			shouldRequeue, err := UpdateSettings(
 				context.Background(),
 				client,
@@ -480,7 +480,7 @@ func TestUpdateSettings(t *testing.T) {
 			}
 			// Check the annotation set on Elasticsearch
 			es := &esv1.Elasticsearch{}
-			assert.NoError(t, client.Get(k8s.ExtractNamespacedName(tt.args.es), es))
+			assert.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(tt.args.es), es))
 
 			gotAnnotation, annotationExists := es.Annotations["elasticsearch.k8s.elastic.co/managed-remote-clusters"]
 			if tt.wantAnnotation != "" {

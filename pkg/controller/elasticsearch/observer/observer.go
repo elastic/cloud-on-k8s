@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("observer")
+var log = ulog.Log.WithName("observer")
 
 // Settings for the Observer configuration
 type Settings struct {
@@ -63,17 +63,14 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 
 // Start the observer in a separate goroutine
 func (o *Observer) Start() {
-	go o.runUntilStopped()
+	go o.runPeriodically()
 }
 
 // Stop the observer loop
 func (o *Observer) Stop() {
-	// trigger an async stop, only once
 	o.stopOnce.Do(func() {
-		go func() {
-			close(o.stopChan)
-			o.esClient.Close()
-		}()
+		close(o.stopChan)
+		o.esClient.Close()
 	})
 }
 
@@ -84,26 +81,19 @@ func (o *Observer) LastState() State {
 	return o.lastState
 }
 
-// run the observer main loop, until stopped
-func (o *Observer) runUntilStopped() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go o.runPeriodically(ctx)
-	<-o.stopChan
-}
-
 // runPeriodically triggers a state retrieval every tick,
 // until the given context is cancelled
-func (o *Observer) runPeriodically(ctx context.Context) {
-	o.retrieveState(ctx)
+func (o *Observer) runPeriodically() {
+	o.retrieveState()
+
 	ticker := time.NewTicker(o.settings.ObservationInterval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
-			o.retrieveState(ctx)
-		case <-ctx.Done():
+			o.retrieveState()
+		case <-o.stopChan:
 			log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "es_name", o.cluster.Name)
 			return
 		}
@@ -112,18 +102,19 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 
 // retrieveState retrieves the current ES state, executes onObservation,
 // and stores the new state
-func (o *Observer) retrieveState(ctx context.Context) {
-	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
+func (o *Observer) retrieveState() {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), o.settings.ObservationInterval)
+	defer cancelFunc()
 
-	reqCtx := ctx
+	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	if o.settings.Tracer != nil {
 		tx := o.settings.Tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
 		defer tx.End()
-		reqCtx = apm.ContextWithTransaction(ctx, tx)
+		ctx = apm.ContextWithTransaction(ctx, tx)
 	}
 
-	newState := RetrieveState(reqCtx, o.cluster, o.esClient)
+	newState := RetrieveState(ctx, o.cluster, o.esClient)
 
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastState(), newState)

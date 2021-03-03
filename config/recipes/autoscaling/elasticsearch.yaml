@@ -1,0 +1,57 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: autoscaling-sample
+  annotations:
+    elasticsearch.alpha.elastic.co/autoscaling-spec: |
+      {
+          "policies": [{
+              "name": "di",
+              "roles": ["data", "ingest" , "transform"],
+              "deciders": {
+                "proactive_storage": {
+                    "forecast_window": "5m"
+                }
+              },
+              "resources": {
+                  "nodeCount": { "min": 3, "max": 8 },
+                  "cpu": { "min": 2, "max": 8 },
+                  "memory": { "min": "2Gi", "max": "16Gi" },
+                  "storage": { "min": "64Gi", "max": "512Gi" }
+              }
+          },
+          {
+              "name": "ml",
+              "roles": ["ml"],
+              "deciders": {
+                  "ml": {
+                      "down_scale_delay": "10m"
+                  }
+              },
+              "resources": {
+                  "nodeCount": { "min": 1, "max": 9 },
+                  "cpu": { "min": 1, "max": 4 },
+                  "memory": { "min": "2Gi", "max": "8Gi" }
+              }
+          }]
+      }
+spec:
+  version: 7.11.0
+  nodeSets:
+    - name: master
+      count: 1
+      config:
+        node:
+          roles: [ "master" ]
+          store.allow_mmap: false
+    - name: di
+      config:
+        node:
+          roles: [ "data", "ingest", "transform" ]
+          store.allow_mmap: false
+    - name: ml
+      config:
+        node:
+          roles: [ "ml" ]
+          store.allow_mmap: false

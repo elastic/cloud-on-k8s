@@ -23,8 +23,8 @@ GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/nu
 
 # find or download controller-gen
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.4.0)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.5.0)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -96,7 +96,9 @@ go-generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
 generate-crds: go-generate controller-gen
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
+	# Generate webhook manifest
+	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
@@ -124,23 +126,28 @@ clean:
 
 reattach-pv:
 	# just check that reattach-pv still compiles
-	go build -o /dev/null hack/reattach-pv/main.go
+	go build -o /dev/null support/reattach-pv/main.go
+
+compile-all: 
+	@ go build ./...
+	@ go test -run=dryrun ./cmd/... ./pkg/... > /dev/null
+	@ $(MAKE) e2e-compile
 
 ## -- tests
 
 unit: clean
-	go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 unit-xml: clean
-	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 integration: GO_TAGS += integration
 integration: clean generate-crds
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean generate-crds
-	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
+	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
 	golangci-lint run
@@ -190,12 +197,18 @@ go-debug:
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
 		--namespaces=$(MANAGED_NAMESPACES) \
+		--enable-leader-election=false \
 		--manage-webhook-certs=false)
 
 build-operator-image:
 	@ docker pull $(OPERATOR_IMAGE) \
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-build docker-push
+
+build-operator-multiarch-image:
+	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-multiarch-build
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
@@ -342,16 +355,27 @@ switch-eks:
 #################################
 ##  --    Docker images    --  ##
 #################################
+docker-multiarch-build: go-generate generate-config-file 
+	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		--push \
+		-t $(OPERATOR_IMAGE)
 
-docker-build: go-generate generate-config-file
-	docker build . \
+docker-build: go-generate generate-config-file 
+	DOCKER_BUILDKIT=1 docker build . \
+		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-	@ hack/docker-push.sh $(OPERATOR_IMAGE)
+	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -376,18 +400,32 @@ switch-registry-dev: # just use the default values of variables
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-E2E_STACK_VERSION          ?= 7.9.2
+E2E_STACK_VERSION          ?= 7.11.0
 E2E_JSON                   ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
+E2E_TAGS                   ?= e2e  # go build constraints potentially restricting the tests to run
+E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test environment to the test runner
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
-	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) --build-arg GO_TAGS=$(E2E_TAGS) \
+       -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
-	@ hack/docker-push.sh $(E2E_IMG)
+	@ hack/docker.sh -l -p $(E2E_IMG)
+
+e2e-docker-multiarch-build: clean
+	@ hack/docker.sh -l -m $(E2E_IMG)
+	docker buildx build \
+		--progress=plain \
+		--file test/e2e/Dockerfile \
+		--build-arg E2E_JSON=$(E2E_JSON) \
+		--build-arg GO_TAGS=$(E2E_TAGS) \
+		--platform linux/amd64,linux/arm64 \
+		--push \
+		-t $(E2E_IMG) .
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
@@ -404,17 +442,17 @@ e2e-run:
 		--build-number=$(BUILD_NUMBER) \
 		--provider=$(E2E_PROVIDER) \
 		--clusterName=$(CLUSTER_NAME) \
-		--kubernetes-version=$(KUBERNETES_VERSION) \
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
-		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB)
+		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
+		--test-env-tags=$(E2E_TEST_ENV_TAGS)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e/... -run=dryrun $(TEST_OPTS) > /dev/null
+	@go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
@@ -422,6 +460,7 @@ e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
 e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
+		--operator-image=$(OPERATOR_IMAGE) \
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
@@ -430,8 +469,9 @@ e2e-local:
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ignore-webhook-failures \
-		--test-timeout=$(TEST_TIMEOUT)
-	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
+		--test-timeout=$(TEST_TIMEOUT) \
+		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+	@E2E_JSON=$(E2E_JSON) GO_TAGS=$(E2E_TAGS) test/e2e/run.sh -run $(TESTS_MATCH) -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
@@ -441,7 +481,7 @@ ci-check: check-license-header lint shellcheck generate check-local-changes
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-build e2e-docker-push
+setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-multiarch-build
 
 ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run
@@ -452,7 +492,7 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean ci-check build-operator-image
+ci-release: clean ci-check build-operator-multiarch-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
@@ -477,8 +517,9 @@ validate-jenkins-pipelines:
 #########################
 # Kind specific targets #
 #########################
+KIND_VERSION ?= 0.9.0
 KIND_NODES ?= 3
-KIND_NODE_IMAGE ?= kindest/node:v1.15.3
+KIND_NODE_IMAGE ?= kindest/node:v1.20.0
 KIND_CLUSTER_NAME ?= eck
 
 kind-node-variable-check:
@@ -495,21 +536,23 @@ bootstrap-kind:
 ## Start a Kind cluster with just the CRDs, e.g.:
 # "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-node cluster
 # "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-master 3-nodes cluster
-kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-cluster-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-cluster-%: kind-node-variable-check
-	./hack/kind/kind.sh \
+	go run ./hack/kind/main.go start \
 		--nodes "${*}" \
-		make install-crds
+		--cluster-name $(KIND_CLUSTER_NAME) \
+		--kind-version $(KIND_VERSION) \
+		--node-image $(KIND_NODE_IMAGE)
+	make install-crds
 
 ## Same as above but build and deploy the operator image
-kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-with-operator-%: kind-node-variable-check docker-build
-	./hack/kind/kind.sh \
-		--load-images $(OPERATOR_IMAGE) \
+	go run ./hack/kind/main.go start \
+		--load-image $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
-		make install-crds apply-operator
+		--cluster-name $(KIND_CLUSTER_NAME) \
+		--node-image $(KIND_NODE_IMAGE) \
+		--kind-version $(KIND_VERSION)
+	make install-crds apply-operator
 
 ## Run all e2e tests in a Kind cluster
 set-kind-e2e-image:
@@ -521,14 +564,17 @@ endif
 
 kind-e2e: export E2E_JSON := true
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
-kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
-	./hack/kind/kind.sh \
-		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
+	go run ./hack/kind/main.go start \
+		--load-image $(OPERATOR_IMAGE) \
+		--load-image $(E2E_IMG) \
 		--ip-family ${IP_FAMILY} \
 		--nodes 3 \
-		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
+		--cluster-name $(KIND_CLUSTER_NAME) \
+		--node-image $(KIND_NODE_IMAGE) \
+		--kind-version $(KIND_VERSION)
+	make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
 delete-kind:
-	./hack/kind/kind.sh --stop
+	go run ./hack/kind/main.go stop --cluster-name $(KIND_CLUSTER_NAME)

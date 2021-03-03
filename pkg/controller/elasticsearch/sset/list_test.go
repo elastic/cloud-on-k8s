@@ -46,16 +46,16 @@ func TestRetrieveActualStatefulSets(t *testing.T) {
 		{
 			name: "StatefulSet should be sorted by name",
 			args: args{
-				c: k8s.WrappedFakeClient(
-					TestSset{Name: "sset1"}.BuildPtr(),
-					TestSset{Name: "sset3"}.BuildPtr(),
-					TestSset{Name: "sset2"}.BuildPtr(),
+				c: k8s.NewFakeClient(
+					TestSset{Name: "sset1", ResourceVersion: "999"}.BuildPtr(),
+					TestSset{Name: "sset3", ResourceVersion: "999"}.BuildPtr(),
+					TestSset{Name: "sset2", ResourceVersion: "999"}.BuildPtr(),
 				),
 			},
 			want: StatefulSetList{
-				TestSset{Name: "sset1"}.Build(),
-				TestSset{Name: "sset2"}.Build(),
-				TestSset{Name: "sset3"}.Build(),
+				TestSset{Name: "sset1", ResourceVersion: "999"}.Build(),
+				TestSset{Name: "sset2", ResourceVersion: "999"}.Build(),
+				TestSset{Name: "sset3", ResourceVersion: "999"}.Build(),
 			},
 		},
 	}
@@ -129,7 +129,7 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrappedFakeClient(&pod1, &pod2, &podNotInSset)
+	client := k8s.NewFakeClient(&pod1, &pod2, &podNotInSset)
 	pods, err := StatefulSetList{ssetv7}.GetActualPods(client)
 	require.NoError(t, err)
 	require.Equal(t, []corev1.Pod{pod1, pod2}, pods)
@@ -147,13 +147,13 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 		{
 			name: "no pods, no sset",
 			l:    nil,
-			c:    k8s.WrappedFakeClient(),
+			c:    k8s.NewFakeClient(),
 			want: true,
 		},
 		{
 			name: "some pods, no sset",
 			l:    nil,
-			c: k8s.WrappedFakeClient(
+			c: k8s.NewFakeClient(
 				TestPod{Namespace: "ns", Name: "sset-0", StatefulSetName: "sset", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: true,
@@ -161,7 +161,7 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 		{
 			name: "some statefulSets, no pod",
 			l:    StatefulSetList{TestSset{Name: "sset1", Replicas: 3}.Build()},
-			c:    k8s.WrappedFakeClient(TestSset{Name: "sset1", Replicas: 3}.BuildPtr()),
+			c:    k8s.NewFakeClient(TestSset{Name: "sset1", Replicas: 3}.BuildPtr()),
 			want: false,
 		},
 		{
@@ -169,7 +169,7 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 			l: StatefulSetList{
 				TestSset{Name: "sset1", Namespace: "ns", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
-			c: k8s.WrappedFakeClient(
+			c: k8s.NewFakeClient(
 				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 				TestPod{Namespace: "ns", Name: "sset2-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
@@ -182,7 +182,7 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 			l: StatefulSetList{
 				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
-			c: k8s.WrappedFakeClient(
+			c: k8s.NewFakeClient(
 				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: false,

@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -53,7 +54,7 @@ func validatePodTemplate(
 		},
 		Spec: template.Spec,
 	}
-	if err := c.Create(dummyPod, client.DryRunAll); err != nil {
+	if err := c.Create(context.Background(), dummyPod, client.DryRunAll); err != nil {
 		return toPodTemplateError(parent, sset, err)
 	}
 	return nil

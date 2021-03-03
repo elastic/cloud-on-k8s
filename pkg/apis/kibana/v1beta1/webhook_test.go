@@ -64,7 +64,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.x": Invalid version: version string has too few segments: 7.x`,
+				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
 			),
 		},
 		{
