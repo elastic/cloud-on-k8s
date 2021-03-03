@@ -18,7 +18,7 @@ link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation-co
 [id="{p}-140-known-issues"]
 === Known issues
 
-On Kubernetes versions 1.16 or higher, if the operator is installed using Helm and if the validating webhook is enabled, you may be prevented from <<{p}-volume-claim-templates,increasing the storage size>> of Elasticsearch `volumeClaimTemplates` even if the underlying storage class allows expansion. This is due to a change in how `admissionregistration.k8s.io/v1` resources match update requests to validating webhook endpoints. You can work around this problem by patching the validating webhook as follows:
+* On Kubernetes versions 1.16 or higher, if the operator is installed using Helm and if the validating webhook is enabled, you may be prevented from <<{p}-volume-claim-templates,increasing the storage size>> of Elasticsearch `volumeClaimTemplates` even if the underlying storage class allows expansion. This is due to a change in how `admissionregistration.k8s.io/v1` resources match update requests to validating webhook endpoints. You can work around this problem by patching the validating webhook as follows:
 
 
 [source,sh]
@@ -30,3 +30,28 @@ kubectl patch validatingwebhookconfiguration "$WEBHOOK" \
     --patch='{"webhooks": [{"name": "elastic-es-validation-v1.k8s.elastic.co", "matchPolicy": "Exact"}, {"name": "elastic-es-validation-v1beta1.k8s.elastic.co", "matchPolicy": "Exact"}]}'
 ----
 
+* Elastic Agent currently writes its runtime state into the filesystem of its container. A consequence of this behaviour is that the identities of the Elastic Agents change on container restarts and any internal state of applications run by Elastic Agent is lost.  A workaround exists in mounting the agent-data HostPath volume into the Elastic Agent container in the location where the proces writes its runtime state. You also have to run the Elastic Agent as the root user in order to be able to access the HostPath volume, as shown in the following abbreviated example:
+[source,yaml]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 7.11.1
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+          - name: agent-data
+            mountPath: /usr/share/elastic-agent/data/elastic-agent-9b2fec/run
+----
+The `mountPath` differs from version to version as it contains the hash of the version control system reference which was used to build Elastic Agent. You can find out which path to use by either inspecting the Docker image or by running a command against the container like so:
+[source,sh]
+----
+docker run -ti --entrypoint bash docker.elastic.co/beats/elastic-agent:7.11.1 -c "ls /usr/share/elastic-agent/data"
+----
