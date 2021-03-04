@@ -98,12 +98,11 @@ func TestUpdateConfiguration(t *testing.T) {
 					}
 
 					esHost := services.ExternalServiceURL(esBuilder.Elasticsearch)
-					if esHost != config.Output.Elasticsearch.Hosts[0] {
+					if config.Output.Elasticsearch.Hosts[0] != esHost {
 						return fmt.Errorf("expected es host %s but got %s", esHost, config.Output.Elasticsearch.Hosts[0])
 					}
-					expectedCompressionLevel := 0
-					if expectedCompressionLevel != config.Output.Elasticsearch.CompressionLevel { // CompressionLevel is not set by default
-						return fmt.Errorf("expected compression level %d but got %d", expectedCompressionLevel, config.Output.Elasticsearch.CompressionLevel)
+					if config.Output.Elasticsearch.CompressionLevel != 0{ // CompressionLevel is not set by default
+						return fmt.Errorf("expected compression level 0 but got %d", config.Output.Elasticsearch.CompressionLevel)
 					}
 					return nil
 				}),
@@ -117,7 +116,7 @@ func TestUpdateConfiguration(t *testing.T) {
 						return err
 					}
 					if len(pods) != 1 {
-						return errors.New("expected 1 APM Pod")
+						return fmt.Errorf("1 APM pod expected, got %d", len(pods))
 					}
 					previousPodUID = &pods[0].UID
 
@@ -200,9 +199,8 @@ func TestUpdateConfiguration(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					expectedCompressionLevel := 1
-					if expectedCompressionLevel != config.Output.Elasticsearch.CompressionLevel { // value should be updated to 1
-						return fmt.Errorf("expected compression level %d but got %d", expectedCompressionLevel, config.Output.Elasticsearch.CompressionLevel)
+					if config.Output.Elasticsearch.CompressionLevel != 1 { // value should be updated to 1
+						return fmt.Errorf("expected compression level 1 but got %d", config.Output.Elasticsearch.CompressionLevel)
 					}
 					return nil
 				}),

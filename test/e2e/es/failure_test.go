@@ -156,7 +156,7 @@ func TestDeleteCACert(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					err := k.Client.Delete(context.Background(), &secret)
+					err = k.Client.Delete(context.Background(), &secret)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
