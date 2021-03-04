@@ -33,9 +33,9 @@ spec:
 
 == Controlling volume claim deletion
 
-ECK automatically deletes PersistentVolumeClaim resources if the owning Elasticsearch nodes are scaled down. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
+ECK automatically deletes PersistentVolumeClaim resources if the owning Elasticsearch nodes are scaled down. The corresponding PersistentVolumes may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
-In addition,  you can control what ECK should do with the PersistentVolumeClaims if you delete the Elasticsearch cluster alltogether through the `volumeClaimDeletePolicy` attribute.
+In addition, you can control what ECK should do with the PersistentVolumeClaims if you delete the Elasticsearch cluster alltogether through the `volumeClaimDeletePolicy` attribute.
 
 [source,yaml,subs=attributes,+macros]
 ----
@@ -51,7 +51,7 @@ spec:
     count: 3
 ----
 
-The possible values are `DeleteOnScaledownAndClusterDeletion` and `DeleteOnScaledownOnly`. By default `DeleteOnScaledownAndClusterDeletion` is in effect which means that all PersistentVolumeClaims are deleted together with the Elasticsearch cluster. `DeleteOnScaledownOnly` however keeps the PersistentVolumeClaims when deleting the Elasticsearch cluster. If you recreate a deleted cluster with the same name and node sets as before, the existing PersistentVolumeClaims will be adopted by the new cluster.
+The possible values are `DeleteOnScaledownAndClusterDeletion` and `DeleteOnScaledownOnly`. By default `DeleteOnScaledownAndClusterDeletion` is in effect, which means that all PersistentVolumeClaims are deleted together with the Elasticsearch cluster. However, `DeleteOnScaledownOnly` keeps the PersistentVolumeClaims when deleting the Elasticsearch cluster. If you recreate a deleted cluster with the same name and node sets as before, the existing PersistentVolumeClaims will be adopted by the new cluster.
 
 [float]
 == Updating the volume claim settings
