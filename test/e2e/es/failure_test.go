@@ -148,10 +148,19 @@ func TestDeleteCACert(t *testing.T) {
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
-					if err := k.Client.Get(context.Background(), key, &secret); err != nil {
+					err := k.Client.Get(context.Background(), key, &secret)
+					if apierrors.IsNotFound(err) {
+						// already deleted
+						return nil
+					}
+					if err != nil {
 						return err
 					}
-					return k.Client.Delete(context.Background(), &secret)
+					err := k.Client.Delete(context.Background(), &secret)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
 				}),
 			},
 		}
