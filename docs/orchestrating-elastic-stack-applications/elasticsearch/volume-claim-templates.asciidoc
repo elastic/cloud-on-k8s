@@ -35,7 +35,7 @@ spec:
 
 ECK automatically deletes PersistentVolumeClaim resources if the owning Elasticsearch nodes are scaled down. The corresponding PersistentVolumes may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
-In addition, you can control what ECK should do with the PersistentVolumeClaims if you delete the Elasticsearch cluster alltogether through the `volumeClaimDeletePolicy` attribute.
+In addition, you can control what ECK should do with the PersistentVolumeClaims if you delete the Elasticsearch cluster altogether through the `volumeClaimDeletePolicy` attribute.
 
 [source,yaml,subs=attributes,+macros]
 ----
