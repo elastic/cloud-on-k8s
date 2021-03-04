@@ -308,7 +308,8 @@ metadata:
   name: quickstart
 spec:
   deployment:
-    strategy: Recreate
+    strategy:
+      type: Recreate
     podTemplate:
       spec:
         securityContext:
