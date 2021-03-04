@@ -26,7 +26,7 @@ pipeline {
                 stage('Validate Jenkins pipelines') {
                     when {
                         expression {
-                            notOnlyDocs()
+                            arePipelinesModified()
                         }
                     }
                     steps {
@@ -116,5 +116,13 @@ def notOnlyDocs() {
     return sh (
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
+    ) == 0
+}
+
+def arePipelinesModified() {
+    // grep succeeds if there is at least one line with .ci/jobs or .ci/pipelines
+    return sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -E '(.ci/jobs|.ci/pipelines)'",
+        returnStatus: true
     ) == 0
 }
