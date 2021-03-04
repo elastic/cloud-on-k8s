@@ -9,7 +9,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 45, unit: 'MINUTES')
+        timeout(time: 60, unit: 'MINUTES')
     }
 
     environment {
@@ -20,24 +20,29 @@ pipeline {
     }
 
     stages {
-        stage('Validate Jenkins pipelines') {
-            when {
-                expression {
-                    notOnlyDocs()
+        stage('Run checks in parallel') {
+            failFast true
+            parallel {
+                stage('Validate Jenkins pipelines') {
+                    when {
+                        expression {
+                            arePipelinesModified()
+                        }
+                    }
+                    steps {
+                        sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
+                    }
                 }
-            }
-            steps {
-                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
-            }
-        }
-        stage('Run checks') {
-            when {
-                expression {
-                    notOnlyDocs()
+                stage('Run checks') {
+                    when {
+                        expression {
+                            notOnlyDocs()
+                        }
+                    }
+                    steps {
+                        sh 'make -C .ci TARGET=ci-check ci'
+                    }
                 }
-            }
-            steps {
-                sh 'make -C .ci TARGET=ci-check ci'
             }
         }
         stage('Run tests in parallel') {
@@ -111,5 +116,13 @@ def notOnlyDocs() {
     return sh (
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
+    ) == 0
+}
+
+def arePipelinesModified() {
+    // grep succeeds if there is at least one line with .ci/jobs or .ci/pipelines
+    return sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -E '(.ci/jobs|.ci/pipelines)'",
+        returnStatus: true
     ) == 0
 }
