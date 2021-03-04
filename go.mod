@@ -18,7 +18,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.2
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/go-cmp v0.5.4
+	github.com/google/go-cmp v0.5.5
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/googleapis/gnostic v0.5.3 // indirect
