@@ -160,62 +160,55 @@ var expectedJSONized = commonv1.Config{
 }
 
 func TestConfig_HasRole(t *testing.T) {
+	// roles that are applied by default (everything except voting_only)
+	defaultRoles := []NodeRole{
+		DataColdRole,
+		DataContentRole,
+		DataHotRole,
+		DataRole,
+		DataWarmRole,
+		IngestRole,
+		MLRole,
+		MasterRole,
+		RemoteClusterClientRole,
+		TransformRole,
+	}
+
+	allRoles := append([]NodeRole(nil), defaultRoles...)
+	allRoles = append(allRoles, VotingOnlyRole)
+
 	testCases := []struct {
-		name           string
-		node           *Node
-		wantMaster     bool
-		wantData       bool
-		wantIngest     bool
-		wantML         bool
-		wantTransform  bool
-		wantVotingOnly bool
+		name      string
+		node      *Node
+		wantRoles []NodeRole
 	}{
 		{
-			name:           "nil node",
-			wantMaster:     true,
-			wantData:       true,
-			wantIngest:     true,
-			wantML:         true,
-			wantTransform:  true,
-			wantVotingOnly: false,
+			name:      "nil node",
+			wantRoles: defaultRoles,
 		},
 		{
-			name:           "empty node",
-			node:           &Node{},
-			wantMaster:     true,
-			wantData:       true,
-			wantIngest:     true,
-			wantML:         true,
-			wantTransform:  true,
-			wantVotingOnly: false,
+			name:      "empty node",
+			node:      &Node{},
+			wantRoles: defaultRoles,
 		},
 		{
 			name: "node role attributes (all)",
 			node: &Node{
-				Master:    pointer.BoolPtr(true),
-				Data:      pointer.BoolPtr(true),
-				Ingest:    pointer.BoolPtr(true),
-				ML:        pointer.BoolPtr(true),
-				Transform: pointer.BoolPtr(true),
+				Master:              pointer.BoolPtr(true),
+				Data:                pointer.BoolPtr(true),
+				Ingest:              pointer.BoolPtr(true),
+				ML:                  pointer.BoolPtr(true),
+				Transform:           pointer.BoolPtr(true),
+				RemoteClusterClient: pointer.BoolPtr(true),
 			},
-			wantMaster:     true,
-			wantData:       true,
-			wantIngest:     true,
-			wantML:         true,
-			wantTransform:  true,
-			wantVotingOnly: false,
+			wantRoles: defaultRoles,
 		},
 		{
 			name: "node role attributes (no data)",
 			node: &Node{
 				Data: pointer.BoolPtr(false),
 			},
-			wantMaster:     true,
-			wantData:       false,
-			wantIngest:     true,
-			wantML:         true,
-			wantTransform:  false,
-			wantVotingOnly: false,
+			wantRoles: []NodeRole{IngestRole, MLRole, MasterRole, RemoteClusterClientRole},
 		},
 		{
 			name: "node role attributes (ingest only)",
@@ -227,12 +220,7 @@ func TestConfig_HasRole(t *testing.T) {
 				Transform:  pointer.BoolPtr(false),
 				VotingOnly: pointer.BoolPtr(false),
 			},
-			wantMaster:     false,
-			wantData:       false,
-			wantIngest:     true,
-			wantML:         false,
-			wantTransform:  false,
-			wantVotingOnly: false,
+			wantRoles: []NodeRole{IngestRole, RemoteClusterClientRole},
 		},
 		{
 			name: "mixed node.roles and node role attributes",
@@ -245,63 +233,61 @@ func TestConfig_HasRole(t *testing.T) {
 				VotingOnly: pointer.BoolPtr(false),
 				Roles:      []string{"master"},
 			},
-			wantMaster:     true,
-			wantData:       false,
-			wantIngest:     false,
-			wantML:         false,
-			wantTransform:  false,
-			wantVotingOnly: false,
+			wantRoles: []NodeRole{MasterRole},
 		},
 		{
-			name:           "node.roles (all)",
-			node:           &Node{Roles: []string{"master", "data", "ingest", "ml", "transform"}},
-			wantMaster:     true,
-			wantData:       true,
-			wantIngest:     true,
-			wantML:         true,
-			wantTransform:  true,
-			wantVotingOnly: false,
+			name: "node.roles (all)",
+			node: &Node{
+				Roles: []string{
+					"master",
+					"data",
+					"data_cold",
+					"data_content",
+					"data_hot",
+					"data_warm",
+					"ingest",
+					"ml",
+					"remote_cluster_client",
+					"transform",
+				},
+			},
+			wantRoles: defaultRoles,
 		},
 		{
-			name:           "node.roles (master and data)",
-			node:           &Node{Roles: []string{"master", "data"}},
-			wantMaster:     true,
-			wantData:       true,
-			wantIngest:     false,
-			wantML:         false,
-			wantTransform:  false,
-			wantVotingOnly: false,
+			name:      "node.roles (master and data)",
+			node:      &Node{Roles: []string{"master", "data"}},
+			wantRoles: []NodeRole{MasterRole, DataRole},
 		},
 		{
-			name:           "node.roles (ingest only)",
-			node:           &Node{Roles: []string{"ingest"}},
-			wantMaster:     false,
-			wantData:       false,
-			wantIngest:     true,
-			wantML:         false,
-			wantTransform:  false,
-			wantVotingOnly: false,
+			name:      "node.roles (ingest only)",
+			node:      &Node{Roles: []string{"ingest"}},
+			wantRoles: []NodeRole{IngestRole},
 		},
 		{
-			name:           "node.roles (no roles)",
-			node:           &Node{Roles: []string{}},
-			wantMaster:     false,
-			wantData:       false,
-			wantIngest:     false,
-			wantML:         false,
-			wantTransform:  false,
-			wantVotingOnly: false,
+			name: "node.roles (no roles)",
+			node: &Node{Roles: []string{}},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.wantMaster, tc.node.HasMasterRole())
-			require.Equal(t, tc.wantData, tc.node.HasDataRole())
-			require.Equal(t, tc.wantIngest, tc.node.HasIngestRole())
-			require.Equal(t, tc.wantML, tc.node.HasMLRole())
-			require.Equal(t, tc.wantTransform, tc.node.HasTransformRole())
-			require.Equal(t, tc.wantVotingOnly, tc.node.HasVotingOnlyRole())
+			wantRolesSet := make(map[NodeRole]struct{}, len(tc.wantRoles))
+
+			// check that the node has the required roles
+			for _, r := range tc.wantRoles {
+				wantRolesSet[r] = struct{}{}
+
+				require.True(t, tc.node.HasRole(r), "Missing wanted role [%s]", r)
+			}
+
+			// check that the node does not have any other roles
+			for _, r := range allRoles {
+				if _, exists := wantRolesSet[r]; exists {
+					continue
+				}
+
+				require.False(t, tc.node.HasRole(r), "Unexpected role [%s]", r)
+			}
 		})
 	}
 }

@@ -159,7 +159,7 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 		}
 
 		// Machine learning nodes must be in a dedicated tier.
-		if stringsutil.StringInSlice(esv1.MLRole, autoscalingSpec.Roles) && len(autoscalingSpec.Roles) > 1 {
+		if stringsutil.StringInSlice(string(esv1.MLRole), autoscalingSpec.Roles) && len(autoscalingSpec.Roles) > 1 {
 			errs = append(
 				errs,
 				field.Invalid(

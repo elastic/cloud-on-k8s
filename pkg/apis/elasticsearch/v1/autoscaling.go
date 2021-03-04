@@ -290,7 +290,7 @@ func (as AutoscalingSpec) GetMLNodesSettings() (nodes int32, maxMemory string) {
 	var maxMemoryAsInt int64
 	for _, autoscalingSpec := range as.AutoscalingPolicySpecs {
 		if autoscalingSpec.IsMemoryDefined() &&
-			stringsutil.StringInSlice(MLRole, autoscalingSpec.Roles) &&
+			stringsutil.StringInSlice(string(MLRole), autoscalingSpec.Roles) &&
 			autoscalingSpec.MemoryRange.Max.Value() > maxMemoryAsInt {
 			maxMemoryAsInt = autoscalingSpec.MemoryRange.Max.Value()
 		}
