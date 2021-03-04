@@ -1,0 +1,18 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.4.1]]
+== {n} version 1.4.1
+
+
+
+
+
+[[bug-1.4.1]]
+[float]
+=== Bug fixes
+
+* Set webhook matchPolicy to Exact {pull}4271[#4271] (issue: {issue}4270[#4270])
+* [Helm] Unify role bindings {pull}4262[#4262]
+
+
