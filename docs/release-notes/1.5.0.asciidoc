@@ -1,0 +1,33 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.5.0]]
+== {n} version 1.5.0
+
+[[breaking-1.5.0]]
+[float]
+=== Breaking changes
+
+* Promote EnterpriseSearch Custom Resource Definition to v1 {pull}4284[#4284] (issue: {issue}4257[#4257])
+
+
+[[feature-1.5.0]]
+[float]
+=== New features
+
+* [Autoscaling] Report overlapping policies {pull}4265[#4265]
+* [Autoscaling] Add setting to customize autoscaling API polling frequency {pull}4264[#4264]
+* [Autoscaling] Add scale down stabilization {pull}4250[#4250]
+* [Autoscaling] Add support for request/limit ratio {pull}4239[#4239] (issue: {issue}4006[#4006])
+* [Autoscaling] Add Elasticsearch autoscaling controller {pull}4173[#4173]
+* [Autoscaling] Add Elasticsearch API client {pull}4158[#4158]
+* [Autoscaling] Add autoscaling resource definition {pull}4148[#4148] (issue: {issue}4006[#4006])
+
+[[enhancement-1.5.0]]
+[float]
+=== Enhancements
+
+* Add support for VolumeClaimDeletePolicies for Elasticsearch clusters {pull}4050[#4050] (issue: {issue}2328[#2328])
+
+
+
