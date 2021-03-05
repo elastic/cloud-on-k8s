@@ -13,7 +13,7 @@ New and notable changes in version 1.5.0 of {n}. See <<release-notes-1.5.0>> for
 
 ECK 1.5.0 introduces experimental support for link:https://www.elastic.co/guide/en/elasticsearch/reference/7.11/xpack-autoscaling.html[Autoscaling].
 
-In this initial release, Autoscaling monitors the storage utilization of your Elasticsearch data nodes and the available memory capacity for your machine learning jobs. As your data grows, whether you’re expanding to new use cases or simply storing data for longer, autoscaling automatically adjusts resource capacity to ensure you can store your data, and that your machine learning jobs can execute — so you don’t have to worry about whether your deployment can support your requirements. Future releases will include autoscaling based on additional metrics and stack components (such as Kibana).
+In this initial release, autoscaling monitors the storage usage of your Elasticsearch data nodes and the available memory capacity for your machine learning jobs. As your data grows, whether you’re expanding to new use cases or simply storing data for longer, autoscaling automatically adjusts resource capacity to ensure you can store your data, and that your machine learning jobs can execute — so you don’t have to worry about whether your deployment can support your requirements. Future releases will include autoscaling based on additional metrics and stack components (such as Kibana).
 
 [float]
 [id="{p}-150-controlling-volume-claim-deletion"]
