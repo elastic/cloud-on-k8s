@@ -29,7 +29,7 @@ The possible values are `DeleteOnScaledownAndClusterDeletion` and `DeleteOnScale
 [id="{p}-150-enterprisesearch-resource-version-promotion"]
 ==== EnterpriseSearch resource version promotion
 
-EnterpriseSearch resources have graduated to version `v1`. Old resources must be migrated to the new version to work with ECK 1.5.0. Resources created using an older version will continue to run but the operator will not manage them.
+EnterpriseSearch resources have graduated to version `v1`. Old resources must be migrated to the new version to work with ECK 1.5.0. Resources created using an older version continue to run but the operator will not manage them.
 
 [float]
 [id="{p}-150-known-issues"]
