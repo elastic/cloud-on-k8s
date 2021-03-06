@@ -1,0 +1,51 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "diag-{{ .ESName }}"
+  namespace: {{ .ESNamespace }}
+  labels:
+    test-run: {{ .Context.TestRun }}
+spec:
+  activeDeadlineSeconds: 500
+  template:
+    metadata:
+      labels:
+        test-run: {{ .Context.TestRun }}
+    spec:
+      initContainers:
+        - name: diagnostics
+          image: eu.gcr.io/elastic-cloud-dev/support-diagnostics:412ac7a392cf
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: ES_PW
+            valueFrom:
+              secretKeyRef:
+                name: {{ .ESName }}-es-elastic-user
+                key: elastic
+          command: [sh, -c]
+          args:
+          - ./diagnostics.sh -h {{.ESName}}-es-http --type api --bypassDiagVerify -u elastic --passwordText $ES_PW -s --noVerify -o /diagnostic-output
+          volumeMounts:
+          - name: output
+            mountPath: /diagnostic-output
+      containers:
+      - name: offer-output
+        image: alpine
+        volumeMounts:
+        - name: output
+          mountPath: /diagnostic-output
+        command: [sh, -c] 
+        args:
+          - |
+            set -e
+            echo "Creating fifo pipe"
+            mkfifo /export-pipe
+            echo "fifo pipe established"
+            tar -cvf - $(find /diagnostic-output -type f) > /export-pipe
+            echo "Diagnostic output has been received"
+      volumes:
+      - name: output
+        emptyDir: {}
+      restartPolicy: Never
+  backoffLimit: 0 # don't retry a failed diagnostic run
