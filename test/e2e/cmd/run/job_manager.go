@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// JobsManager represents a test session running on a remote K8S cluster.
+// JobsManager runs and monitors one or more jobs on a remote K8S cluster.
 type JobsManager struct {
 	*helper
 	cache.SharedInformer
@@ -32,7 +32,6 @@ type JobsManager struct {
 
 func NewJobsManager(client *kubernetes.Clientset, h *helper, label string) *JobsManager {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
-		// informers.WithNamespace(h.testContext.E2ENamespace),
 		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
 			opt.LabelSelector = fmt.Sprintf(
 				"%s=%s,%s=%v",
@@ -84,7 +83,7 @@ func (jm *JobsManager) Schedule(jobs ...Job) {
 // Start starts the informer, forwards the events to the Jobs and attempts to stop and return as soon as a first
 // Job is completed, either because it has succeeded of failed.
 func (jm *JobsManager) Start() {
-	log.Info("Starting test session")
+	log.Info("Starting to monitor jobs")
 
 	defer func() {
 		jm.cancelFunc()

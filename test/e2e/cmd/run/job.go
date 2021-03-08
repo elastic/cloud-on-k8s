@@ -29,7 +29,7 @@ type JobDependency interface {
 	WaitOnRunning()
 }
 
-// LogProducingJob represents a task materialized by a Kubernetes Pod.
+// LogProducingJob represents a task materialized by a Kubernetes Pod that produces a log stream.
 type LogProducingJob struct {
 	jobName    string
 	jobFactory func() error
@@ -116,7 +116,7 @@ func (j *LogProducingJob) WaitOnRunning() {
 	}
 }
 
-// onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
+// OnPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
 // received from the informer.
 func (j *LogProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 	switch pod.Status.Phase {
@@ -178,17 +178,14 @@ func (j *ArtifactProducingJob) Name() string {
 	return j.jobName
 }
 
-
 func (j *ArtifactProducingJob) Skip() {
 	log.Info("Skip job creation", "job_name", j.jobName)
 }
 
-// Stop is only a best effort to stop the streaming process
 func (j *ArtifactProducingJob) Stop() {}
 
-
-// onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
-// received from the informer.
+// OnPodEvent extracts the produced artifacts from the job via an exec tar pipe once the underlying Pod is running.
+// inspired by https://gist.github.com/samsieber/349fde899d508b4e6be119e762fb600c
 func (j *ArtifactProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
@@ -217,7 +214,7 @@ func (j *ArtifactProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *cor
 					return
 				}
 				go func() {
-				 	log.Info("streaming exec result", "namespace", pod.Namespace, "name", pod.Name)
+				 	log.Info("extracting remote job result", "namespace", pod.Namespace, "name", pod.Name)
 					defer pipe.Close()
 					err = executor.Stream(remotecommand.StreamOptions{
 						Stdin:  nil,
@@ -228,7 +225,6 @@ func (j *ArtifactProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *cor
 						log.Error(err, "failed to stream remote command", "namespace", pod.Namespace, "name", pod.Name)
 					}
 				}()
-				log.Info("Running tar", "namespace", pod.Namespace, "name", pod.Name)
 				out, err := cmd.CombinedOutput()
 				if err != nil {
 					log.Error(err, "tar command failed", "namespace", pod.Namespace, "name", pod.Name)
