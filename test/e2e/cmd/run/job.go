@@ -108,7 +108,6 @@ func (j *LogProducingJob) WithDependency(dependency *LogProducingJob) {
 	j.dependency = dependency
 }
 
-
 func (j *LogProducingJob) WaitOnRunning() {
 	if j.dependency != nil {
 		log.Info("Waiting for dependency job to be started", "job_name", j.Name(), "dependency_name", j.dependency.Name())
@@ -155,18 +154,18 @@ type ArtifactProducingJob struct {
 	jobFactory func() error
 
 	// Job context
-	jobStarted    bool // keep track of the first Pod running event
-	config *restclient.Config
+	jobStarted bool // keep track of the first Pod running event
+	config     *restclient.Config
 }
 
 var _ Job = &ArtifactProducingJob{}
 
 func NewArtifactJob(name string, jobFactory func() error, cfg *restclient.Config) *ArtifactProducingJob {
 	return &ArtifactProducingJob{
-		jobName:      name,
-		jobFactory:   jobFactory,
-		jobStarted:   false,
-		config:       cfg,
+		jobName:    name,
+		jobFactory: jobFactory,
+		jobStarted: false,
+		config:     cfg,
 	}
 }
 
@@ -187,51 +186,48 @@ func (j *ArtifactProducingJob) Stop() {}
 // OnPodEvent extracts the produced artifacts from the job via an exec tar pipe once the underlying Pod is running.
 // inspired by https://gist.github.com/samsieber/349fde899d508b4e6be119e762fb600c
 func (j *ArtifactProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
-	switch pod.Status.Phase {
-	case corev1.PodRunning:
-		if !j.jobStarted {
-			j.jobStarted = true
-			log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)
+	if pod.Status.Phase == corev1.PodRunning && !j.jobStarted {
+		j.jobStarted = true
+		log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)
+		go func() {
+			req := client.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(pod.Namespace).
+				SubResource("exec").VersionedParams(&corev1.PodExecOptions{
+				Stdin:     false,
+				Stdout:    true,
+				Stderr:    true,
+				TTY:       false,
+				Container: "offer-output",
+				Command:   []string{"sh", "-c", "cat /export-pipe"},
+			}, scheme.ParameterCodec)
+			executor, err := remotecommand.NewSPDYExecutor(j.config, "POST", req.URL())
+			if err != nil {
+				log.Error(err, "failed to exec in to pod", "namespace", pod.Namespace, "name", pod.Name)
+				return
+			}
+			cmd := exec.Command("tar", "-xvf", "-")
+			pipe, err := cmd.StdinPipe()
+			if err != nil {
+				log.Error(err, "failed to start tar pipe", "namespace", pod.Namespace, "name", pod.Name)
+				return
+			}
 			go func() {
-				req := client.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(pod.Namespace).
-					SubResource("exec").VersionedParams(&corev1.PodExecOptions{
-					Stdin:     false,
-					Stdout:    true,
-					Stderr:    true,
-					TTY:       false,
-					Container: "offer-output",
-					Command:   []string{"sh", "-c", "cat /export-pipe"},
-				}, scheme.ParameterCodec)
-				executor, err := remotecommand.NewSPDYExecutor(j.config, "POST", req.URL())
+				log.Info("extracting remote job result", "namespace", pod.Namespace, "name", pod.Name)
+				defer pipe.Close()
+				err = executor.Stream(remotecommand.StreamOptions{
+					Stdin:  nil,
+					Stdout: pipe,
+					Stderr: os.Stderr,
+				})
 				if err != nil {
-					log.Error(err, "failed to exec in to pod", "namespace", pod.Namespace, "name", pod.Name)
-					return
+					log.Error(err, "failed to stream remote command", "namespace", pod.Namespace, "name", pod.Name)
 				}
-				cmd := exec.Command("tar", "-xvf", "-")
-				pipe, err := cmd.StdinPipe()
-				if err != nil {
-					log.Error(err, "failed to start tar pipe", "namespace", pod.Namespace, "name", pod.Name)
-					return
-				}
-				go func() {
-				 	log.Info("extracting remote job result", "namespace", pod.Namespace, "name", pod.Name)
-					defer pipe.Close()
-					err = executor.Stream(remotecommand.StreamOptions{
-						Stdin:  nil,
-						Stdout: pipe,
-						Stderr: os.Stderr,
-					})
-					if err != nil {
-						log.Error(err, "failed to stream remote command", "namespace", pod.Namespace, "name", pod.Name)
-					}
-				}()
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					log.Error(err, "tar command failed", "namespace", pod.Namespace, "name", pod.Name)
-
-				}
-				log.Info(string(out),"namespace", pod.Namespace, "name", pod.Name )
 			}()
-		}
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				log.Error(err, "tar command failed", "namespace", pod.Namespace, "name", pod.Name)
+
+			}
+			log.Info(string(out), "namespace", pod.Namespace, "name", pod.Name)
+		}()
 	}
 }

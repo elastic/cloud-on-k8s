@@ -789,15 +789,16 @@ type diagnosticContext struct {
 	JobName     string
 }
 
-func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restclient.Config,) error {
+func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restclient.Config) {
 	output, err := h.kubectl("get", "es", "--all-namespaces", "-o", "json")
 	if err != nil {
-		return err
+		log.Error(err, "failed to list Elasticsearch clusters")
+		return
 	}
 	var ess v1.ElasticsearchList
 	err = json.Unmarshal([]byte(output), &ess)
 	if err != nil {
-		return err
+		log.Error(err, "failed to unmarshal kubectl response")
 	}
 
 	mgr := NewJobsManager(client, h, "extract-artifacts")
@@ -816,5 +817,7 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 
 	}
 	mgr.Start()
-	return mgr.err
+	if mgr.err != nil {
+		log.Error(err, "failed to extract Elasticsearch diagnostics")
+	}
 }
