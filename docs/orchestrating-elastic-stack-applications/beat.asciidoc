@@ -298,7 +298,7 @@ spec:
 [id="{p}-beat-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Beats may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+Depending on the use case, Beats may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how a given Beat should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[updateStrategy] used to replace old Pods with new ones.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -308,7 +308,7 @@ metadata:
   name: quickstart
 spec:
   deployment:
-    strategy:
+    updateStrategy:
       type: Recreate
     podTemplate:
       spec:
