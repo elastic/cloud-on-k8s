@@ -6,24 +6,40 @@ package run
 
 import (
 	"io"
+	"os"
+	"os/exec"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
-// Job represents a task materialized by a Kubernetes Pod.
-type Job struct {
-	jobName      string
-	templatePath string
+type Job interface {
+	Name() string
+	Materialize() error
+	OnPodEvent(*kubernetes.Clientset, *corev1.Pod)
+	Skip()
+	Stop()
+}
+
+type JobDependency interface {
+	WaitOnRunning()
+}
+
+// LogProducingJob represents a task materialized by a Kubernetes Pod.
+type LogProducingJob struct {
+	jobName    string
+	jobFactory func() error
 
 	// Job dependency
-	dependency *Job
+	dependency *LogProducingJob
 	runningWg  *sync.WaitGroup // wait for the dependency to be started
 
 	// Job context
 	jobStarted    bool // keep track of the first Pod running event
-	podSucceeded  bool // keep track of when we're done
 	stopRequested bool // keep track when a stop request has already been requested
 
 	// Job logs management
@@ -34,15 +50,16 @@ type Job struct {
 	writer             io.Writer       // where to stream the logs in "realtime"
 }
 
-func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
+var _ Job = &LogProducingJob{}
+
+func NewJob(podName string, jobFactory func() error, writer io.Writer, timestampExtractor timestampExtractor) *LogProducingJob {
 	logStreamWg := &sync.WaitGroup{}
 	runningWg := &sync.WaitGroup{}
 	runningWg.Add(1)
-	return &Job{
+	return &LogProducingJob{
 		jobName:            podName,
-		templatePath:       templatePath,
+		jobFactory:         jobFactory,
 		jobStarted:         false,
-		podSucceeded:       false,
 		stopLogStream:      make(chan struct{}), // notify the log stream it can stop when EOF
 		streamErrors:       make(chan error, 1), // receive log stream errors
 		writer:             writer,
@@ -52,8 +69,16 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 	}
 }
 
+func (j *LogProducingJob) Materialize() error {
+	return j.jobFactory()
+}
+
+func (j *LogProducingJob) Name() string {
+	return j.jobName
+}
+
 // WaitForLogs waits for logs to be fully read before leaving.
-func (j *Job) WaitForLogs() {
+func (j *LogProducingJob) OnPodTermination() {
 	if j.stopRequested {
 		// already done in the past
 		return
@@ -65,8 +90,13 @@ func (j *Job) WaitForLogs() {
 	close(j.streamErrors)
 }
 
+func (j *LogProducingJob) Skip() {
+	log.Info("Skip job creation", "job_name", j.jobName)
+	j.runningWg.Done()
+}
+
 // Stop is only a best effort to stop the streaming process
-func (j *Job) Stop() {
+func (j *LogProducingJob) Stop() {
 	if j.stopRequested {
 		// Job already stopped
 		return
@@ -74,14 +104,21 @@ func (j *Job) Stop() {
 	close(j.stopLogStream)
 }
 
-func (j *Job) WithDependency(dependency *Job) *Job {
+func (j *LogProducingJob) WithDependency(dependency *LogProducingJob) {
 	j.dependency = dependency
-	return j
+}
+
+
+func (j *LogProducingJob) WaitOnRunning() {
+	if j.dependency != nil {
+		log.Info("Waiting for dependency job to be started", "job_name", j.Name(), "dependency_name", j.dependency.Name())
+		j.dependency.runningWg.Wait()
+	}
 }
 
 // onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
 // received from the informer.
-func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
+func (j *LogProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		if !j.jobStarted {
@@ -105,7 +142,100 @@ func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 				defer j.logStreamWg.Done()
 			}()
 		}
+	case corev1.PodFailed:
+		j.OnPodTermination()
 	case corev1.PodSucceeded:
-		j.podSucceeded = true
+		j.OnPodTermination()
+	}
+}
+
+// ArtifactProducingJob represents a task materialized by a Kubernetes Pod.
+type ArtifactProducingJob struct {
+	jobName    string
+	jobFactory func() error
+
+	// Job context
+	jobStarted    bool // keep track of the first Pod running event
+	config *restclient.Config
+}
+
+var _ Job = &ArtifactProducingJob{}
+
+func NewArtifactJob(name string, jobFactory func() error, cfg *restclient.Config) *ArtifactProducingJob {
+	return &ArtifactProducingJob{
+		jobName:      name,
+		jobFactory:   jobFactory,
+		jobStarted:   false,
+		config:       cfg,
+	}
+}
+
+func (j *ArtifactProducingJob) Materialize() error {
+	return j.jobFactory()
+}
+
+func (j *ArtifactProducingJob) Name() string {
+	return j.jobName
+}
+
+
+func (j *ArtifactProducingJob) Skip() {
+	log.Info("Skip job creation", "job_name", j.jobName)
+}
+
+// Stop is only a best effort to stop the streaming process
+func (j *ArtifactProducingJob) Stop() {}
+
+
+// onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
+// received from the informer.
+func (j *ArtifactProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		if !j.jobStarted {
+			j.jobStarted = true
+			log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)
+			go func() {
+				req := client.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(pod.Namespace).
+					SubResource("exec").VersionedParams(&corev1.PodExecOptions{
+					Stdin:     false,
+					Stdout:    true,
+					Stderr:    true,
+					TTY:       false,
+					Container: "offer-output",
+					Command:   []string{"sh", "-c", "cat /export-pipe"},
+				}, scheme.ParameterCodec)
+				executor, err := remotecommand.NewSPDYExecutor(j.config, "POST", req.URL())
+				if err != nil {
+					log.Error(err, "failed to exec in to pod", "namespace", pod.Namespace, "name", pod.Name)
+					return
+				}
+				cmd := exec.Command("tar", "-xvf", "-")
+				pipe, err := cmd.StdinPipe()
+				if err != nil {
+					log.Error(err, "failed to start tar pipe", "namespace", pod.Namespace, "name", pod.Name)
+					return
+				}
+				go func() {
+				 	log.Info("streaming exec result", "namespace", pod.Namespace, "name", pod.Name)
+					defer pipe.Close()
+					err = executor.Stream(remotecommand.StreamOptions{
+						Stdin:  nil,
+						Stdout: pipe,
+						Stderr: os.Stderr,
+					})
+					if err != nil {
+						log.Error(err, "failed to stream remote command", "namespace", pod.Namespace, "name", pod.Name)
+					}
+				}()
+				log.Info("Running tar", "namespace", pod.Namespace, "name", pod.Name)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					log.Error(err, "tar command failed", "namespace", pod.Namespace, "name", pod.Name)
+
+				}
+				log.Info(string(out),"namespace", pod.Namespace, "name", pod.Name )
+			}()
+		}
 	}
 }

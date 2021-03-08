@@ -19,6 +19,7 @@ import (
 	"time"
 
 	sprig "github.com/Masterminds/sprig/v3"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
@@ -28,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -389,7 +391,7 @@ func (h *helper) createManagedNamespaces() error {
 
 func (h *helper) waitForOperatorToBeReady() error {
 	log.Info("Waiting for the operator pod to be ready")
-	client, err := h.createKubeClient()
+	client, _, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")
 	}
@@ -447,7 +449,7 @@ func (h *helper) deployTestSecrets() error {
 }
 
 func (h *helper) runTestJob() error {
-	client, err := h.createKubeClient()
+	client, config, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")
 	}
@@ -464,13 +466,14 @@ func (h *helper) runTestJob() error {
 	if err != nil {
 		h.dumpEventLog()
 		h.dumpK8sData()
+		h.runEsDiagnosticsJob(client, config)
 		return errors.Wrap(err, "test run failed")
 	}
 
 	return nil
 }
 
-func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
+func (h *helper) createKubeClient() (*kubernetes.Clientset, *restclient.Config, error) {
 	// load kubernetes client config
 	var overrides clientcmd.ConfigOverrides
 	var clientConfig clientcmd.ClientConfig
@@ -478,7 +481,7 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 	if h.kubeConfig != "" {
 		kubeConf, err := clientcmd.LoadFromFile(h.kubeConfig)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to load kubeconfig")
+			return nil, nil, errors.Wrap(err, "failed to load kubeconfig")
 		}
 
 		clientConfig = clientcmd.NewDefaultClientConfig(*kubeConf, &overrides)
@@ -490,16 +493,23 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 	// create the kubernetes API client
 	config, err := clientConfig.ClientConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create kubernetes client config")
+		return nil, nil, errors.Wrap(err, "failed to create kubernetes client config")
 	}
 
-	return kubernetes.NewForConfig(config)
+	client, err := kubernetes.NewForConfig(config)
+	return client, config, err
+}
+
+func (h *helper) testSessionJobFactory(templatePath string) func() error {
+	return func() error {
+		return h.kubectlApplyTemplateWithCleanup(templatePath, struct{ Context test.Context }{Context: h.testContext})
+	}
 }
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
 func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 
-	testSession := NewJobsManager(client, h)
+	testSession := NewJobsManager(client, h, logStreamLabel)
 
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
@@ -512,10 +522,10 @@ func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 		outputs = append(outputs, jl)
 	}
 	writer := io.MultiWriter(outputs...)
-	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser)
+	runJob := NewJob("eck-"+h.testRunName, h.testSessionJobFactory("config/e2e/e2e_job.yaml"), writer, goLangTestTimestampParser)
 
 	if h.deployChaosJob {
-		chaosJob := NewJob("chaos-"+h.testRunName, "config/e2e/chaos_job.yaml", os.Stdout, stdTimestampParser)
+		chaosJob := NewJob("chaos-"+h.testRunName, h.testSessionJobFactory("config/e2e/chaos_job.yaml"), os.Stdout, stdTimestampParser)
 		runJob.WithDependency(chaosJob)
 		testSession.Schedule(chaosJob)
 	}
@@ -709,18 +719,17 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 
 	// to avoid creating subdirectories, convert the file path to a flattened path
 	// Eg. path/to/config.yaml will become path_to_config.yaml
-	outFilePath := filepath.Join(h.scratchDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
-	f, err := os.Create(outFilePath)
+	outFile, err := ioutil.TempFile(h.scratchDir, filepath.Base(templatePath))
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)
+		return "", errors.Wrapf(err, "failed to create tmp file: %s", templatePath)
 	}
 
-	defer f.Close()
-	if err := tmpl.Execute(f, param); err != nil {
-		return "", errors.Wrapf(err, "failed to render template to %s", outFilePath)
+	defer outFile.Close()
+	if err := tmpl.Execute(outFile, param); err != nil {
+		return "", errors.Wrapf(err, "failed to render template to %s", outFile.Name())
 	}
 
-	return outFilePath, nil
+	return outFile.Name(), nil
 }
 
 func (h *helper) deleteResources(file string) func() {
@@ -771,4 +780,41 @@ func (h *helper) dumpK8sData() {
 	if err != nil {
 		log.Error(err, "Failed to run support/diagnostics/eck-dump.sh")
 	}
+}
+
+type diagnosticContext struct {
+	test.Context
+	ESNamespace string
+	ESName      string
+	JobName     string
+}
+
+func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restclient.Config,) error {
+	output, err := h.kubectl("get", "es", "--all-namespaces", "-o", "json")
+	if err != nil {
+		return err
+	}
+	var ess v1.ElasticsearchList
+	err = json.Unmarshal([]byte(output), &ess)
+	if err != nil {
+		return err
+	}
+
+	mgr := NewJobsManager(client, h, "extract-artifacts")
+	for _, es := range ess.Items {
+		jobName := fmt.Sprintf("diag-%s", es.Name)
+		mgr.Schedule(NewArtifactJob(jobName, func() error {
+			_, err := h.kubectlApplyTemplate("config/e2e/diagnostics_job.yaml", diagnosticContext{
+				Context:     h.testContext,
+				ESNamespace: es.Namespace,
+				ESName:      es.Name,
+				JobName:     jobName,
+			})
+			return err
+		}, config,
+		))
+
+	}
+	mgr.Start()
+	return mgr.err
 }

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,21 +26,22 @@ type JobsManager struct {
 	cancelFunc context.CancelFunc
 	*kubernetes.Clientset
 
-	jobs map[string]*Job
+	jobs map[string]Job
 	err  error // used to notify that an error occurred in this session
 }
 
-func NewJobsManager(client *kubernetes.Clientset, h *helper) *JobsManager {
+func NewJobsManager(client *kubernetes.Clientset, h *helper, label string) *JobsManager {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
-		informers.WithNamespace(h.testContext.E2ENamespace),
+		// informers.WithNamespace(h.testContext.E2ENamespace),
 		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
 			opt.LabelSelector = fmt.Sprintf(
 				"%s=%s,%s=%v",
 				testRunLabel,
 				h.testContext.TestRun,
-				logStreamLabel,
+				label,
 				true,
 			)
+			log.Info("Informer configured", "label-selector", opt.LabelSelector)
 		}))
 	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 	return &JobsManager{
@@ -49,39 +49,31 @@ func NewJobsManager(client *kubernetes.Clientset, h *helper) *JobsManager {
 		Clientset:      client,
 		SharedInformer: factory.Core().V1().Pods().Informer(),
 		Context:        ctx,
-		jobs:           map[string]*Job{},
+		jobs:           map[string]Job{},
 		cancelFunc:     cancelFunc,
 	}
 }
 
 // Schedule schedules some Jobs. A Job is started only when its dependency is fulfilled (if any).
-func (jm *JobsManager) Schedule(jobs ...*Job) {
+func (jm *JobsManager) Schedule(jobs ...Job) {
 	for _, job := range jobs {
 		j := job
-		jm.jobs[j.jobName] = j
+		jm.jobs[j.Name()] = j
 		go func() {
 			// Check if dependency is started
-			if j.dependency != nil {
-				log.Info("Waiting for dependency job to be started", "job_name", j.jobName, "dependency_name", j.dependency.jobName)
-				j.dependency.runningWg.Wait()
+			if dep, ok := j.(JobDependency); ok {
+				dep.WaitOnRunning()
 			}
 			// Check if context is still valid
 			if jm.Err() != nil {
-				log.Info("Skip job creation", "job_name", j.jobName)
-				j.runningWg.Done()
+				j.Skip()
 				return
 			}
 			// Create the Job
-			log.Info("Creating job", "job_name", j.jobName)
-			err := jm.helper.kubectlApplyTemplateWithCleanup(j.templatePath,
-				struct {
-					Context test.Context
-				}{
-					Context: jm.helper.testContext,
-				},
-			)
+			log.Info("Creating job", "job_name", j.Name())
+			err := j.Materialize()
 			if err != nil {
-				log.Error(err, "Error while creating Job", "job_name", j.jobName, "path", j.templatePath)
+				log.Error(err, "Error while creating Job", "job_name", j.Name())
 				jm.err = err
 				jm.Stop()
 			}
@@ -112,32 +104,27 @@ func (jm *JobsManager) Start() {
 			jobName, hasJobName := newPod.Labels["job-name"]
 			if !hasJobName {
 				// Unmanaged Job/Pod, this should not happen if the label selector is correct, harmless but report it in the logs.
-				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
+				log.Info("received an update event for a Pod which was not created by a job", "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
 			job, ok := jm.jobs[jobName]
 			if !ok {
 				// Same as above, it seems to be an unmanaged Job/Pod.
-				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
+				log.Info("received an update event for an unmanaged Pod", "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
 			switch newPod.Status.Phase {
 			case corev1.PodRunning:
-				job.onPodEvent(jm.Clientset, newPod)
+				job.OnPodEvent(jm.Clientset, newPod)
 			case corev1.PodSucceeded:
-				if job.podSucceeded {
-					// already done, but the informer is not stopped yet so this code is still running
-					return
-				}
 				log.Info("Pod succeeded", "name", newPod.Name, "status", newPod.Status.Phase)
-				job.onPodEvent(jm.Clientset, newPod)
-				job.WaitForLogs()
+				job.OnPodEvent(jm.Clientset, newPod)
 				jm.Stop()
 			case corev1.PodFailed:
 				// One of the managed Job/Pod has failed, wait for logs and return.
 				jm.err = errors.Errorf("Pod %s has failed", newPod.Name)
-				log.Error(jm.err, "Pod is in failed state", "name", newPod.Name)
-				job.WaitForLogs()
+				log.Info("Pod is in failed state", "name", newPod.Name, "err", jm.err, "status", newPod.Status)
+				job.OnPodEvent(jm.Clientset, newPod)
 				jm.Stop()
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)

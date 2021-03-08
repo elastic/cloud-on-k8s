@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "diag-{{ .ESName }}"
+  name: {{ .JobName }}
   namespace: {{ .ESNamespace }}
   labels:
     test-run: {{ .Context.TestRun }}
@@ -11,6 +11,7 @@ spec:
   template:
     metadata:
       labels:
+        extract-artifacts: "true"
         test-run: {{ .Context.TestRun }}
     spec:
       initContainers:
@@ -42,7 +43,8 @@ spec:
             echo "Creating fifo pipe"
             mkfifo /export-pipe
             echo "fifo pipe established"
-            tar -cvf - $(find /diagnostic-output -type f) > /export-pipe
+            cd /diagnostic-output
+            tar -cvf - $(find . -type f) > /export-pipe
             echo "Diagnostic output has been received"
       volumes:
       - name: output
