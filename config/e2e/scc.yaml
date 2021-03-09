@@ -24,7 +24,8 @@ allowedCapabilities:
 - SETPCAP
 - AUDIT_WRITE
 - NET_BIND_SERVICE
-defaultAddCapabilities: []
+defaultAddCapabilities:
+- NET_RAW        # required for Heartbeat
 fsGroup:
   type: RunAsAny
 priority: 0
