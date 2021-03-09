@@ -58,7 +58,7 @@ spec:
         annotations:
           traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
           traffic.sidecar.istio.io/excludeInboundPorts: "9300"
-  - name: coordinator
+  - name: coordinating
     count: 1
     config:
       node.master: false

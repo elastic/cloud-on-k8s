@@ -2,9 +2,9 @@
 
 This recipe demonstrates the following features:
 
-- Deploying an Elasticsearch cluster with different node types (coordinator, ingest, master, data, ml)
+- Deploying an Elasticsearch cluster with different node types (coordinating, ingest, master, data, ml)
 - Enforcing Istio mTLS between Elasticsearch nodes
-- Routing read traffic to coordinator nodes and write traffic to ingest nodes (internally and externally)
+- Routing read traffic to coordinating nodes and write traffic to ingest nodes (internally and externally)
 - Exposing Elasticsearch and Kibana deployments externally using the Istio ingress gateway
 
 
@@ -75,7 +75,7 @@ include::05-gateway.yaml[]
 
 This virtual service and destination rule splits both internal and external traffic using the following rules:
 
-- `POST` requests to `/_search` or any `GET` requests should be sent to coordinator nodes
+- `POST` requests to `/_search` or any `GET` requests should be sent to coordinating nodes
 - Any other requests (`DELETE`, `PUT`, `POST`, `PATCH`) should be sent to ingest nodes
 
 This traffic split applies to internal traffic (mesh) as well as external traffic.
@@ -122,11 +122,11 @@ curl -k \
 	"https://elasticsearch.ekmnt:$SECURE_INGRESS_PORT/_cat/health?v"
 ----
 
-If you have enabled proxy access logs, you can verify that the above `GET` request was received by the coordinator node by looking at the proxy logs:
+If you have enabled proxy access logs, you can verify that the above `GET` request was received by the coordinating node by looking at the proxy logs:
 
 [source,sh]
 ----
-kubectl logs -f ekmnt-es-coordinator-0 -n istio-apps -c istio-proxy
+kubectl logs -f ekmnt-es-coordinating-0 -n istio-apps -c istio-proxy
 ----
 
 Alternatively, if you have Kiali installed, your traffic graph might resemble the following:

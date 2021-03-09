@@ -32,7 +32,7 @@ spec:
       node.ingest: true
       node.ml: false
       node.store.allow_mmap: false
-  - name: coordinator
+  - name: coordinating
     count: 1
     config:
       node.master: false

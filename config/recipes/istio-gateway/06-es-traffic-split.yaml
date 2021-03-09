@@ -25,7 +25,7 @@ spec:
       route:
         - destination:
             host: ekmnt-es-http.istio-apps.svc.cluster.local
-            subset: coordinator
+            subset: coordinating
             port:
               number: 9200
     - name: writes
@@ -60,7 +60,7 @@ spec:
         elasticsearch.k8s.elastic.co/node-data: "false"
         elasticsearch.k8s.elastic.co/node-ingest: "true"
         elasticsearch.k8s.elastic.co/node-ml: "false"
-    - name: coordinator
+    - name: coordinating
       labels:
         elasticsearch.k8s.elastic.co/node-master: "false"
         elasticsearch.k8s.elastic.co/node-data: "false"
