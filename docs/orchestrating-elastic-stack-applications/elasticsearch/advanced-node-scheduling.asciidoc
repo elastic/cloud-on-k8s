@@ -20,7 +20,11 @@ You can combine these features to deploy a production-grade Elasticsearch cluste
 [id="{p}-define-elasticsearch-nodes-roles"]
 == Define Elasticsearch nodes roles
 
-You can configure Elasticsearch nodes with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. This allows you to describe an Elasticsearch cluster with 3 dedicated master nodes, for example:
+You can configure Elasticsearch nodes with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. 
+
+TIP: You can use link:https://yaml.org/spec/1.2/spec.html#id2765878[YAML anchors] to declare the configuration change once and reuse it across all the node sets.
+
+This allows you to describe an Elasticsearch cluster with 3 dedicated master nodes, for example:
 
 [source,yaml,subs="attributes"]
 ----
