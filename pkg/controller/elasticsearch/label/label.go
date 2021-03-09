@@ -44,7 +44,7 @@ const (
 	NodeTypesTransformLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
 	// NodeTypesRemoteClusterClientLabelName is a label set to true on nodes with the remote_cluster_client role
 	NodeTypesRemoteClusterClientLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-remote_cluster_client"
-	// NodeTypesVotingOnlyLabelName is a label set to true on nodes with voting_only master-eligible node
+	// NodeTypesVotingOnlyLabelName is a label set to true on voting-only master-eligible nodes
 	NodeTypesVotingOnlyLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-voting_only"
 	// NodeTypesDataColdLabelName is a label set to true on nodes with the data_cold role.
 	NodeTypesDataColdLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_cold"
