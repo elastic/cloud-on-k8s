@@ -27,7 +27,7 @@ In a given StatefulSet, all pods have the exact same spec.
 From our perspective, instances can be configured with several options:
 
 - Elasticsearch version
-- node types: master-only, master-data, data-only, master-data-ingest, coordinator-only, ML, APM, etc.
+- node types: master-only, master-data, data-only, master-data-ingest, coordinating-only, ML, APM, etc.
 - availability zones: as-1, az-2, etc.
 - instance configuration type: hot/warm architectures
 

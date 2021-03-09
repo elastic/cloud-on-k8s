@@ -38,8 +38,8 @@ spec:
     count: 3
     config:
       node.roles: ["ingest"]
-  # Dedicated coordinator nodes
-  - name: coordinator
+  # Dedicated coordinating nodes
+  - name: coordinating
     count: 3
     config:
       node.roles: !!seq ""
@@ -62,14 +62,14 @@ spec:
 
 The following examples illustrate how to create services for accessing different types of Elasticsearch nodes. The procedure for exposing services publicly is the same as described in <<{p}-allow-public-access>>.
 
-.Coordinator nodes
-[[{p}-traffic-splitting-coordinator-nodes]]
+.Coordinating nodes
+[[{p}-traffic-splitting-coordinating-nodes]]
 [source,yaml]
 ----
 apiVersion: v1
 kind: Service
 metadata:
-  name: hulk-es-coordinator-nodes
+  name: hulk-es-coordinating-nodes
 spec:
   ports:
     - name: https
