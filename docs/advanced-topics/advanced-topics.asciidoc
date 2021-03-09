@@ -14,7 +14,7 @@ endif::[]
 - <<{p}-service-meshes>>
 - <<{p}-traffic-splitting>>
 - <<{p}-network-policies>>
-- <<{p}-webhook>>
+- <<{p}-webhook-namespace-selectors>>
 --
 
 include::openshift.asciidoc[leveloffset=+1]
