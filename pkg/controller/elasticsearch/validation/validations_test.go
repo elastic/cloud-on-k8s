@@ -124,7 +124,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 		},
 		{
 			name:         "no master defined (node roles)",
-			es:           esWithRoles("7.9.0", 1, m{esv1.NodeRoles: []string{esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.VotingOnlyRole}}),
+			es:           esWithRoles("7.9.0", 1, m{esv1.NodeRoles: []esv1.NodeRole{esv1.DataRole}}, m{esv1.NodeRoles: []esv1.NodeRole{esv1.MasterRole, esv1.VotingOnlyRole}}),
 			expectErrors: true,
 		},
 		{
@@ -134,17 +134,17 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 		},
 		{
 			name:         "zero master nodes (node roles)",
-			es:           esWithRoles("7.9.0", 0, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}),
+			es:           esWithRoles("7.9.0", 0, m{esv1.NodeRoles: []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []esv1.NodeRole{esv1.DataRole}}),
 			expectErrors: true,
 		},
 		{
 			name:         "mixed node attributes and node roles",
-			es:           esWithRoles("7.9.0", 1, m{esv1.NodeMaster: "true", esv1.NodeRoles: []string{esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole, esv1.TransformRole}}),
+			es:           esWithRoles("7.9.0", 1, m{esv1.NodeMaster: "true", esv1.NodeRoles: []esv1.NodeRole{esv1.DataRole}}, m{esv1.NodeRoles: []esv1.NodeRole{esv1.DataRole, esv1.TransformRole}}),
 			expectErrors: true,
 		},
 		{
 			name:         "node roles on older version",
-			es:           esWithRoles("7.6.0", 1, m{esv1.NodeRoles: []string{esv1.MasterRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}),
+			es:           esWithRoles("7.6.0", 1, m{esv1.NodeRoles: []esv1.NodeRole{esv1.MasterRole}}, m{esv1.NodeRoles: []esv1.NodeRole{esv1.DataRole}}),
 			expectErrors: true,
 		},
 		{
@@ -153,7 +153,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 		},
 		{
 			name: "valid configuration (node roles)",
-			es:   esWithRoles("7.9.0", 4, m{esv1.NodeRoles: []string{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.DataRole}}, m{esv1.NodeRoles: []string{esv1.RemoteClusterClientRole}}),
+			es:   esWithRoles("7.9.0", 4, m{esv1.NodeRoles: []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}}, m{esv1.NodeRoles: []esv1.NodeRole{esv1.DataRole}}, m{esv1.NodeRoles: []esv1.NodeRole{esv1.RemoteClusterClientRole}}),
 		},
 	}
 	for _, tt := range tests {
