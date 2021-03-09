@@ -12,7 +12,7 @@ If you install ECK through the Helm chart, you can now set `namespaceSelector` a
 
 This can be useful in large and busy clusters, where you might want to divide the set of namespaces across several operators to speed up reconciliation times and reduce the amount of resources required per operator.
 
-Webhook resources are cluster-scoped, therefore `createClusterScopedResources` must be true. This means that each operator gets a ClusterRole that is not restricted to the set of managed namespaces. This approach avoids over-complicating the chart and is suitable for load-splitting scenarios. 
+Webhook resources are cluster-scoped, therefore `createClusterScopedResources` must be set to true when installing the chart. This means that each operator gets a ClusterRole that applies to the whole cluster and not just the set of namespaces it is configured to manage. This approach is suitable only if you want to do load-splitting in a trusted cluster. 
 
 WARNING: It is not recommended to deploy webhook resources in environments where operators are run by untrusted users and need to be locked down tightly.
 
