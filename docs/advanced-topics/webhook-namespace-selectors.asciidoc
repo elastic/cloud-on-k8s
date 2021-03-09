@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Webhook namespace selectors 
 
-Users are now allowed to set `namespaceSelector` and `objectSelector` on the webhook. The webhook name is generated as ``<operator-name>.<operator-namespace>.k8s.elastic.co` so that multiple operators can be installed side-by-side in the same cluster. 
+If you install ECK through the Helm chart, you can now set `namespaceSelector` and `objectSelector` on the webhook. The webhook name is generated as `<operator-name>.<operator-namespace>.k8s.elastic.co` so that multiple operators can be installed side-by-side in the same cluster. 
 
 This can be useful in large and busy clusters, where you might want to divide the set of namespaces across several operators to speed up reconciliation times and reduce the amount of resources required per operator.
 
@@ -16,4 +16,4 @@ Webhook resources are cluster-scoped, therefore `createClusterScopedResources` m
 
 WARNING: It is not recommended to deploy webhook resources in environments where operators are run by untrusted users and need to be locked down tightly.
 
-For more information on webhook, see link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/[Dynamic Admission Control].
+For more information, see <<{p}-webhook,Configure the validating webhook>> and link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/[Dynamic Admission Control].
