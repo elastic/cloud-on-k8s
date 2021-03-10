@@ -29,5 +29,8 @@
 
 * Add support for VolumeClaimDeletePolicies for Elasticsearch clusters {pull}4050[#4050] (issue: {issue}2328[#2328])
 
+[[deprecation-1.5.0]]
+[float]
+=== Deprecation
 
-
+* OpenShift 3.11 support is deprecated and will no longer be supported with ECK 2.0. ECK 1.8 will be the last version to support OpenShift 3.11.
