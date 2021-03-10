@@ -289,12 +289,14 @@ func (as AutoscalingSpec) GetAutoscaledNodeSets() (AutoscaledNodeSets, *NodeSetC
 func (as AutoscalingSpec) GetMLNodesSettings() (nodes int32, maxMemory string) {
 	var maxMemoryAsInt int64
 	for _, autoscalingSpec := range as.AutoscalingPolicySpecs {
-		if autoscalingSpec.IsMemoryDefined() &&
-			stringsutil.StringInSlice(MLRole, autoscalingSpec.Roles) &&
-			autoscalingSpec.MemoryRange.Max.Value() > maxMemoryAsInt {
-			maxMemoryAsInt = autoscalingSpec.MemoryRange.Max.Value()
+		if !stringsutil.StringInSlice(string(MLRole), autoscalingSpec.Roles) {
+			// not a node with the machine learning role
+			continue
 		}
 		nodes += autoscalingSpec.NodeCountRange.Max
+		if autoscalingSpec.IsMemoryDefined() && autoscalingSpec.MemoryRange.Max.Value() > maxMemoryAsInt {
+			maxMemoryAsInt = autoscalingSpec.MemoryRange.Max.Value()
+		}
 	}
 	maxMemory = fmt.Sprintf("%db", maxMemoryAsInt)
 	return nodes, maxMemory

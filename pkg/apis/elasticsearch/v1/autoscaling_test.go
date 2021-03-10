@@ -120,6 +120,13 @@ func TestAutoscalingSpec_GetMLNodesSettings(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
 					{
+						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data"}}},
+						AutoscalingResources: AutoscalingResources{
+							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+							NodeCountRange: CountRange{Min: 3, Max: 5},
+						},
+					},
+					{
 						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"ml"}}},
 						AutoscalingResources: AutoscalingResources{
 							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
@@ -136,7 +143,14 @@ func TestAutoscalingSpec_GetMLNodesSettings(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
 					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data,ml"}}},
+						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data"}}},
+						AutoscalingResources: AutoscalingResources{
+							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+							NodeCountRange: CountRange{Min: 3, Max: 5},
+						},
+					},
+					{
+						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml-data-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data", "ml"}}},
 						AutoscalingResources: AutoscalingResources{
 							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
 							NodeCountRange: CountRange{Min: 0, Max: 7},
