@@ -17,6 +17,7 @@ func shouldSkipTest(builders ...Builder) bool {
 }
 
 func skipIfIncompatibleBuilders(t *testing.T, builders ...Builder) {
+	t.Helper()
 	if shouldSkipTest(builders...) {
 		t.Skip("Skipping test due to an incompatible builder")
 	}

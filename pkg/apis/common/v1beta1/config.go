@@ -51,11 +51,11 @@ func (c *Config) DeepCopyInto(out *Config) {
 		// created in the API server
 		panic(err)
 	}
-	var copy map[string]interface{}
-	err = json.Unmarshal(bytes, &copy)
+	var clone map[string]interface{}
+	err = json.Unmarshal(bytes, &clone)
 	if err != nil {
 		// we assume again optimistically because we just marshalled that the round trip works as well
 		panic(err)
 	}
-	out.Data = copy
+	out.Data = clone
 }

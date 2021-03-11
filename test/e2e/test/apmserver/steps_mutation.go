@@ -19,6 +19,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying the ApmServer mutation should succeed",

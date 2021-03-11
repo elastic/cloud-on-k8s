@@ -52,6 +52,7 @@ func trialLicenseSecretSample(annotated bool, data map[string][]byte) *corev1.Se
 }
 
 func trialStatusSecretSample(t *testing.T, state licensing.TrialState) *corev1.Secret {
+	t.Helper()
 	status, err := licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, state)
 	require.NoError(t, err)
 	return &status
@@ -65,18 +66,21 @@ func trialLicenseBytes() []byte {
 }
 
 func trialStateSample(t *testing.T) licensing.TrialState {
+	t.Helper()
 	state, err := licensing.NewTrialState()
 	require.NoError(t, err)
 	return state
 }
 
 func runningTrialSample(t *testing.T) licensing.TrialState {
+	t.Helper()
 	state := trialStateSample(t)
 	state.CompleteTrialActivation()
 	return state
 }
 
 func simulateLicenseInit(t *testing.T, k k8s.Client, secret corev1.Secret) licensing.TrialState {
+	t.Helper()
 	l := licensing.EnterpriseLicense{
 		License: licensing.LicenseSpec{
 			Type: licensing.LicenseTypeEnterpriseTrial,
@@ -91,6 +95,7 @@ func simulateLicenseInit(t *testing.T, k k8s.Client, secret corev1.Secret) licen
 }
 
 func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
+	t.Helper()
 	state := simulateLicenseInit(t, k, secret)
 	state.CompleteTrialActivation()
 	statusSecret := trialStatusSecretSample(t, state)
@@ -98,7 +103,6 @@ func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
 }
 
 func TestReconcileTrials_Reconcile(t *testing.T) {
-
 	requireValidationMsg := func(msg string) func(c k8s.Client) {
 		return func(c k8s.Client) {
 			var sec corev1.Secret
@@ -295,7 +299,6 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			r := &ReconcileTrials{
 				Client:            tt.fields.Client,
 				recorder:          record.NewFakeRecorder(10),

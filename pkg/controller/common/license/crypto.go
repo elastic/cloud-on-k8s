@@ -39,7 +39,7 @@ func ecb(block cipher.Block, dst, src []byte) {
 	for len(src) > 0 {
 		block.Encrypt(dst, src[:block.BlockSize()])
 		src = src[block.BlockSize():]
-		dst = dst[block.BlockSize():]
+		dst = dst[block.BlockSize():] //nolint:wastedassign
 	}
 }
 
@@ -53,7 +53,6 @@ func customPad(data []byte) []byte {
 	_, _ = rand.Read(padding)
 	data = append(data, padding...)
 	return append(data, byte(padLen+1))
-
 }
 
 // pkcs5Pad see https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS#5_and_PKCS#7

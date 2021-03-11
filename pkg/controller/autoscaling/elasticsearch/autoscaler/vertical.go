@@ -142,7 +142,7 @@ func max64(x int64, others ...int64) int64 {
 
 // roundUp rounds a value up to an other one.
 func roundUp(v, n int64) int64 {
-	r := v % n
+	r := v % n //nolint:ifshort
 	if r == 0 {
 		return v
 	}

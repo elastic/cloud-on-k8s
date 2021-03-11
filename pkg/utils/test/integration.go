@@ -71,6 +71,7 @@ func RunWithK8s(m *testing.M) {
 // StartManager sets up a manager and controller to perform reconciliations in background.
 // It must be stopped by calling the returned function.
 func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters) (k8s.Client, func()) {
+	t.Helper()
 	mgr, err := manager.New(Config, manager.Options{
 		MetricsBindAddress: "0", // disable
 	})

@@ -166,6 +166,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		{
 			name: "is updated on mismatch",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data[CertFileName] = []byte{0, 1, 2, 3}
 				return mkClient(t, s)
@@ -175,6 +176,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		{
 			name: "removes extraneous keys",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data["extra"] = []byte{0, 1, 2, 3}
 				return mkClient(t, s)
@@ -184,6 +186,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		{
 			name: "preserves labels and annotations",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				t.Helper()
 				s := mkWantedSecret(t)
 				s.Labels["label1"] = "labelValue1"
 				s.Labels["label2"] = "labelValue2"
@@ -195,6 +198,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 				return mkClient(t, s)
 			},
 			wantSecret: func(t *testing.T) *corev1.Secret {
+				t.Helper()
 				s := mkWantedSecret(t)
 				s.Labels["label1"] = "labelValue1"
 				s.Labels["label2"] = "labelValue2"
@@ -257,6 +261,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
 				assert.Contains(t, cs.Data, KeyFileName)
 				assert.Contains(t, cs.Data, CertFileName)
 			},
@@ -286,6 +291,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
 				assert.Equal(t, cs.Data[KeyFileName], key)
 				assert.Equal(t, cs.Data[CertFileName], tls)
 
@@ -327,6 +333,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
 				assert.Equal(t, cs.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
 				assert.Equal(t, cs.Data[KeyFileName], key)
 				assert.Equal(t, cs.Data[CertFileName], tls)
@@ -431,6 +438,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				},
 			},
 			want: func(t *testing.T, cert *ValidatedCertificateTemplate) {
+				t.Helper()
 				expectedCommonName := "test-es-http.test.es.local"
 				assert.Contains(t, cert.Subject.CommonName, expectedCommonName)
 				assert.Contains(t, cert.DNSNames, expectedCommonName)

@@ -139,7 +139,6 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := checkAtMostOneDefaultESRef(tt.args.b)
 			assert.Equal(t, tt.wantErr, len(got) > 0)
-
 		})
 	}
 }

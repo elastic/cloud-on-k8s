@@ -49,6 +49,7 @@ func RetrieveClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, futureClu
 // CompareClusterUUIDStep compares the current clusterUUID with previousClusterUUID,
 // and fails if they don't match
 func CompareClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Cluster UUID should have been preserved",
 		Test: func(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Deleting EnterpriseSearch should return no error",
@@ -26,7 +27,6 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(context.Background(), obj)
 					require.NoError(t, err)
-
 				}
 			},
 		},
@@ -42,7 +42,6 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 						}
 					}
 					return errors.Wrap(err, "expected 404 not found API error here")
-
 				}
 				return nil
 			}),

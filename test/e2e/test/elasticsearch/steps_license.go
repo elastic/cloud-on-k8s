@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -39,6 +38,7 @@ func NewLicenseTestContext(k *test.K8sClient, es esv1.Elasticsearch) LicenseTest
 }
 
 func (ltctx *LicenseTestContext) Init() test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Creating Elasticsearch client",
 		Test: func(t *testing.T) {
@@ -54,14 +54,14 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...cl
 	if err != nil {
 		return err
 	}
-	expectedStrings := make([]string, len(expectedTypes))
-	for i := range expectedTypes {
-		expectedStrings = append(expectedStrings, string(expectedTypes[i]))
+
+	for _, et := range expectedTypes {
+		if l.Type == string(et) {
+			return nil
+		}
 	}
-	if !stringsutil.StringInSlice(l.Type, expectedStrings) {
-		return fmt.Errorf("expectedTypes license type %v got %s", expectedStrings, l.Type)
-	}
-	return nil
+
+	return fmt.Errorf("expected license type %v got %s", expectedTypes, l.Type)
 }
 
 func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...client.ElasticsearchLicenseType) test.Step {
@@ -74,6 +74,7 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...clie
 }
 
 func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string, licenseBytes []byte) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Creating enterprise license secret",
 		Test: func(t *testing.T) {
@@ -96,6 +97,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 }
 
 func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Creating a trial extension secret",
 		Test: func(t *testing.T) {
@@ -131,6 +133,7 @@ func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, private
 }
 
 func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName string) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Creating enterprise trial license secret",
 		Test: func(t *testing.T) {
@@ -182,6 +185,7 @@ func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseInvalid(secretName s
 }
 
 func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName string) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Removing any test enterprise license secrets",
 		Test: func(t *testing.T) {
@@ -198,6 +202,7 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 }
 
 func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Removing any test enterprise license secrets",
 		Test: func(t *testing.T) {
@@ -208,6 +213,7 @@ func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
 				t.Log(err)
 			}
 			for _, s := range licenseSecrets.Items {
+				s := s
 				_ = ltctx.k.Client.Delete(context.Background(), &s)
 			}
 		},

@@ -76,6 +76,7 @@ func Eventually(f func() error) func(*testing.T) {
 // UntilSuccess executes f until it succeeds, or the timeout is reached.
 func UntilSuccess(f func() error, timeout time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
+		t.Helper()
 		fmt.Printf("Retries (%s timeout): ", timeout)
 		err := retry.UntilSuccess(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
@@ -154,7 +155,6 @@ func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 	}
 
 	return errors.New("e2e runner pod not found")
-
 }
 
 func labelPod(client k8s.Client, name, namespace, key, value string) error {

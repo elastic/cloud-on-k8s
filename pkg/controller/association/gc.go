@@ -96,7 +96,6 @@ func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, err
 
 // DoGarbageCollection runs the User garbage collector.
 func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
-
 	// Shortcut execution if there's no resources to garbage collect
 	if len(ugc.registeredResources) == 0 {
 		return nil
@@ -119,6 +118,7 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 	}
 
 	for _, secret := range secrets {
+		secret := secret
 		if apiType, expectedParent, hasParent := ugc.getAssociationParent(secret); hasParent {
 			parents, ok := allParents[*apiType] // get all the parents of a given type
 			if !ok {
@@ -180,7 +180,6 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 				Name:      accessor.GetName(),
 			}] = struct{}{}
 		}
-
 	}
 
 	return result, nil
@@ -189,7 +188,7 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 func (ugc *UsersGarbageCollector) getResourcesInNamespaces(apiType client.ObjectList) ([]runtime.Object, error) {
 	objects := make([]runtime.Object, 0)
 	for _, namespace := range ugc.managedNamespaces {
-		list := apiType.DeepCopyObject().(client.ObjectList)
+		list := apiType.DeepCopyObject().(client.ObjectList) //nolint:forcetypeassert
 		err := ugc.client.List(context.Background(), list, client.InNamespace(namespace))
 		if err != nil {
 			return nil, err

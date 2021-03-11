@@ -26,6 +26,7 @@ func usesEmptyDir(es esv1.Elasticsearch) bool {
 }
 
 func CheckESDataVolumeType(es esv1.Elasticsearch, k *test.K8sClient) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Elasticsearch data volumes should be of the specified type",
 		Test: func(t *testing.T) {

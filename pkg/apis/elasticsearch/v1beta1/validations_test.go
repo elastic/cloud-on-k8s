@@ -570,7 +570,6 @@ func TestValidation_noDowngrades(t *testing.T) {
 }
 
 func Test_validUpgradePath(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		current      *Elasticsearch
@@ -660,7 +659,6 @@ func getEsCluster() *Elasticsearch {
 }
 
 func Test_noUnknownFields(t *testing.T) {
-
 	var GetEsWithLastApplied = func(lastApplied string) Elasticsearch {
 		return Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{

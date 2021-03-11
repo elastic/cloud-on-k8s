@@ -32,6 +32,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			existingSecrets:   nil,
 			existingFileRealm: filerealm.New(),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// a random password should be generated
 				require.NotEmpty(t, u[0].Password)
 			},
@@ -46,6 +47,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			},
 			existingFileRealm: filerealm.New().WithUser(ElasticUserName, []byte("$2a$10$lwsLdS0ZSyUv73WNdaRaTe8X9oeft4BoqjxtNHHH7LP7m1YImnvr6")),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// password should be regenerated
 				require.NotEmpty(t, u[0].Password)
 				// hash should be regenerated
@@ -63,6 +65,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			},
 			existingFileRealm: filerealm.New().WithUser(ElasticUserName, []byte("$2a$10$lwsLdS0ZSyUv73WNdaRaTe8X9oeft4BoqjxtNHHH7LP7m1YImnvr6")),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// password and hashes should be reused
 				require.Equal(t, []byte("existingPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lwsLdS0ZSyUv73WNdaRaTe8X9oeft4BoqjxtNHHH7LP7m1YImnvr6"), u[0].PasswordHash)
@@ -78,6 +81,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			},
 			existingFileRealm: filerealm.New().WithUser(ElasticUserName, []byte("does-not-match-password")),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// password should be reused
 				require.Equal(t, []byte("existingPassword"), u[0].Password)
 				// hash should be re-computed
@@ -94,6 +98,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			},
 			existingFileRealm: filerealm.New(),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// password should be reused
 				require.Equal(t, []byte("existingPassword"), u[0].Password)
 				// hash should be computed
@@ -136,6 +141,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			existingSecrets:   nil,
 			existingFileRealm: filerealm.New(),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// random passwords should be generated
 				require.NotEmpty(t, u[0].Password)
 				require.NotEmpty(t, u[1].Password)
@@ -156,6 +162,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")).
 				WithUser(ProbeUserName, []byte("$2a$10$8.9my2W7FVDqDnh.E1RwouN5RzkZGulQ3ZMgmoy3CH4xRvr5uYPbS")),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// passwords and hashes should be reused
 				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
@@ -178,6 +185,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")).
 				WithUser(ProbeUserName, []byte("does-not-match-password")),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// password & hash of controller user should be reused
 				require.Equal(t, []byte("existingPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
@@ -185,7 +193,6 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
 				require.NotEmpty(t, u[1].PasswordHash)
 				require.NotEqual(t, "does-not-match-password", u[1].PasswordHash)
-
 			},
 		},
 		{
@@ -203,6 +210,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				// missing probe user hash
 				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")),
 			assertions: func(t *testing.T, u users) {
+				t.Helper()
 				// password & hash of controller user should be reused
 				require.Equal(t, []byte("existingPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)

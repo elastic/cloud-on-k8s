@@ -127,7 +127,6 @@ func TestCheckAndUnbind(t *testing.T) {
 			if len(event) > 0 != tt.wantEvent {
 				t.Errorf("emitted event = %v, want %v", len(event) > 0, tt.wantEvent)
 			}
-
 		})
 	}
 }

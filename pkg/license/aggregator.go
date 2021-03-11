@@ -144,6 +144,7 @@ func containerMemLimits(
 ) (resource.Quantity, error) {
 	var mem resource.Quantity
 	for _, container := range containers {
+		//nolint:nestif
 		if container.Name == containerName {
 			mem = *container.Resources.Limits.Memory()
 

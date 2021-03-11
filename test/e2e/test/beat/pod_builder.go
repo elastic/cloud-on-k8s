@@ -140,6 +140,7 @@ func (pb PodBuilder) InitTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (pb PodBuilder) CreationTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{}.
 		WithSteps(test.StepList{
 			test.Step{
@@ -193,6 +194,7 @@ func (pb PodBuilder) CheckStackTestSteps(*test.K8sClient) test.StepList {
 }
 
 func (pb PodBuilder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying pod mutation should succeed",
@@ -206,6 +208,7 @@ func (pb PodBuilder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return []test.Step{
 		{
 			Name: "Deleting the resources should return no error",
@@ -228,7 +231,6 @@ func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 						}
 					}
 					return errors.Wrap(err, "expected 404 not found API error here")
-
 				}
 				return nil
 			}),

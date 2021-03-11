@@ -10,7 +10,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -542,7 +542,7 @@ func TestResourcePolicies_Validate(t *testing.T) {
 				es.Spec.NodeSets = append(es.Spec.NodeSets, nodeSet)
 			}
 			got := validAutoscalingConfiguration(es)
-			assert.Equal(t, tt.wantError, got != nil)
+			require.Equal(t, tt.wantError, len(got) > 0)
 			found := false
 			for _, gotErr := range got {
 				if strings.Contains(gotErr.Error(), tt.expectedError) {

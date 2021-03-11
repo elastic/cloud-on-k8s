@@ -31,6 +31,7 @@ func reconcilePVCOwnerRefs(c k8s.Client, es esv1.Elasticsearch) error {
 	}
 
 	for _, pvc := range pvcs.Items {
+		pvc := pvc
 		switch es.Spec.VolumeClaimDeletePolicyOrDefault() {
 		case esv1.DeleteOnScaledownOnlyPolicy:
 			k8s.RemoveOwner(&pvc, &es)

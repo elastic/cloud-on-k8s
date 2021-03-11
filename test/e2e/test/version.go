@@ -21,6 +21,7 @@ const (
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
 func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
+	t.Helper()
 	isValid, err := isValidUpgrade(srcVersion, dstVersion)
 	if err != nil {
 		t.Fatalf("Failed to determine the validity of the upgrade path: %v", err)

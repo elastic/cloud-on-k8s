@@ -255,10 +255,7 @@ func updateZenSettingsForDownscale(
 	}
 
 	// Maybe update zen2 settings to exclude leaving master nodes from voting.
-	if err := zen2.AddToVotingConfigExclusions(ctx, c, esClient, es, excludeNodes); err != nil {
-		return err
-	}
-	return nil
+	return zen2.AddToVotingConfigExclusions(ctx, c, esClient, es, excludeNodes)
 }
 
 // maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.

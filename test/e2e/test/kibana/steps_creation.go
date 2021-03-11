@@ -16,6 +16,7 @@ import (
 )
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Creating Kibana should succeed",

@@ -27,10 +27,5 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 		return err
 	}
 	// Watch for changes on Elasticsearch clusters.
-	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
-	); err != nil {
-		return err
-	}
-	return nil
+	return c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{})
 }

@@ -89,7 +89,6 @@ func Test_reconcileDaemonSet(t *testing.T) {
 				require.True(t, maps.IsSubset(beat.Labels, daemonSet.Spec.Selector.MatchLabels))
 				require.Equal(t, 1, len(daemonSet.OwnerReferences))
 				require.Equal(t, beat.Name, daemonSet.OwnerReferences[0].Name)
-
 			},
 			wantErr: false,
 		},

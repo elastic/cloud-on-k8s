@@ -23,6 +23,7 @@ func authToGCP(
 	vaultInfo *VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
+	//nolint: nestif
 	if asServiceAccount {
 		if vaultInfo == nil {
 			return errors.New("vault info not present in the plan to authenticate to GCP")

@@ -154,6 +154,7 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 func getNodeRoleAttrs(cfg esv1.ElasticsearchSettings) []string {
 	var nodeRoleAttrs []string
 
+	//nolint:nestif
 	if cfg.Node != nil {
 		if cfg.Node.Data != nil {
 			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeData)

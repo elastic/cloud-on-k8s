@@ -14,7 +14,6 @@ import (
 )
 
 func TestOverrideControllerReference(t *testing.T) {
-
 	ownerRefFixture := func(name string, controller bool) metav1.OwnerReference {
 		return metav1.OwnerReference{
 			APIVersion: "v1",

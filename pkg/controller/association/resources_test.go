@@ -58,6 +58,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	userSecretLabels := maps.Merge(map[string]string{common.TypeLabelName: esuser.AssociatedUserType}, associationLabels)
 
 	assertExpectObjectsExist := func(t *testing.T, c k8s.Client) {
+		t.Helper()
 		// user secret should be in ES namespace
 		assert.NoError(t, c.Get(context.Background(), types.NamespacedName{
 			Namespace: esFixture.Namespace,

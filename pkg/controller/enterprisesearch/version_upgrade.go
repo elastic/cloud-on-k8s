@@ -211,7 +211,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 
 	body := bytes.NewBuffer([]byte(fmt.Sprintf("{\"enabled\": %t}", enabled)))
 
-	req, err := http.NewRequest(http.MethodPut, url, body)
+	req, err := http.NewRequest(http.MethodPut, url, body) //nolint:noctx
 	if err != nil {
 		return nil, err
 	}

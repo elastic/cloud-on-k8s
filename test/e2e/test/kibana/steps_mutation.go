@@ -50,6 +50,7 @@ func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying the Kibana mutation should succeed",

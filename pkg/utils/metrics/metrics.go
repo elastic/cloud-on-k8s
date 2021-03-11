@@ -5,6 +5,7 @@
 package metrics
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -56,7 +57,8 @@ var (
 func registerGauge(gauge *prometheus.GaugeVec) *prometheus.GaugeVec {
 	err := crmetrics.Registry.Register(gauge)
 	if err != nil {
-		if existsErr, ok := err.(prometheus.AlreadyRegisteredError); ok {
+		existsErr := new(prometheus.AlreadyRegisteredError)
+		if errors.As(err, &existsErr) {
 			return existsErr.ExistingCollector.(*prometheus.GaugeVec)
 		}
 

@@ -149,8 +149,8 @@ type Beat struct {
 
 	Spec        BeatSpec                  `json:"spec,omitempty"`
 	Status      BeatStatus                `json:"status,omitempty"`
-	esAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
-	kbAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
+	esAssocConf *commonv1.AssociationConf `json:"-"`
+	kbAssocConf *commonv1.AssociationConf `json:"-"`
 }
 
 func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {

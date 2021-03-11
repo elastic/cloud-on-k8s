@@ -6,6 +6,7 @@ package run
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -62,7 +63,7 @@ func (us *FakeLogStream) Read(p []byte) (int, error) {
 		us.failed = true
 		return 0, fmt.Errorf("test error")
 	}
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		// informs streamTestJobOutput that the end of the stream has been reached
 		close(us.stop)
 	}
@@ -76,7 +77,6 @@ func (us *FakeLogStream) Close() error {
 
 // Test_helper_streamTestJobOutput_withError simulates an error while the stream is read using the FakeLogStreamProvider
 func Test_helper_streamTestJobOutput_withError(t *testing.T) {
-
 	log = logf.Log.WithName("streamTestJobOutput_withError")
 
 	stopLogStream := make(chan struct{})
@@ -100,7 +100,6 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 }
 
 func Test_helper_streamTestJobOutput(t *testing.T) {
-
 	log = logf.Log.WithName("streamTestJobOutput")
 
 	stopLogStream := make(chan struct{})

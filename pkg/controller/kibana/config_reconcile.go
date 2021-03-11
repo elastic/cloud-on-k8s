@@ -116,7 +116,7 @@ func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
 			return nil, nil
 		}
 
-		return nil, fmt.Errorf("error %s while getting usage secret, this is not expected", err)
+		return nil, fmt.Errorf("unexpected error while getting usage secret: %w", err)
 	}
 
 	telemetryBytes, ok := secret.Data[TelemetryFilename]
