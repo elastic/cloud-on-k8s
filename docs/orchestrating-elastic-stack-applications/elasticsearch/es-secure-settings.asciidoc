@@ -11,6 +11,8 @@ endif::[]
 You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
 The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch.
 
+It is possible to reference several secrets:
+
 [source,yaml]
 ----
 spec:
@@ -19,17 +21,53 @@ spec:
   - secretName: two-secure-settings-secret
 ----
 
+For the following secret, a `gcs.client.default.credentials_file` key will be created in Elasticsearch's keystore with the provided value:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: one-secure-settings-secret
+type: Opaque
+data:
+  gcs.client.default.credentials_file: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK
+----
+
 You can export a subset of secret keys and also project keys to specific paths using the `entries`, `key` and `path` fields:
 
 [source,yaml]
 ----
 spec:
   secureSettings:
-  - secretName: your-secure-settings-secret
+  - secretName: gcs-secure-settings
     entries:
-    - key: key1
-    - key: key2
-      path: newkey2
+    - key: gcs.client.default.credentials_file
+    - key: gcs_client_1
+      path: gcs.client.client_1.credentials_file
+    - key: gcs_client_2
+      path: gcs.client.client_2.credentials_file
+----
+
+For the three entries listed in the `gcs-secure-settings` secret, three keys are created in Elasticsearch's keystore: 
+
+- `gcs.client.default.credentials_file`
+- `gcs.client.client_1.credentials_file`
+- `gcs.client.client_2.credentials_file`
+
+The referenced `gcs-secure-settings` secret now looks like this:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gcs-secure-settings
+type: Opaque
+data:
+  gcs.client.default.credentials_file: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK
+  gcs_client_1: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykgLSBHQ1MgY2xpZW50IDEK
+  gcs_client_2: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykgLSBHQ1MgY2xpZW50IDIK
 ----
 
 See <<{p}-snapshots,How to create automated snapshots>> for an example use case.
