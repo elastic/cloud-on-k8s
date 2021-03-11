@@ -49,9 +49,13 @@ spec:
       path: gcs.client.client_2.credentials_file
 ----
 
-For the 3 entries listed for the `gcs-secure-settings` secret, 3 keys will be created in Elasticsearch's keystore: `gcs.client.default.credentials_file`, `gcs.client.client_1.credentials_file`, and `gcs.client.client_2.credentials_file`.
+For the three entries listed in the `gcs-secure-settings` secret, three keys are created in Elasticsearch's keystore: 
 
-The referenced `gcs-secure-settings` secret:
+- `gcs.client.default.credentials_file`
+- `gcs.client.client_1.credentials_file`
+- `gcs.client.client_2.credentials_file`
+
+The referenced `gcs-secure-settings` secret now looks like this:
 
 [source,yaml]
 ----
