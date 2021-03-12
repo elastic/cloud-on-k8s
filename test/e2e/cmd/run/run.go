@@ -843,11 +843,11 @@ func forEachFile(pattern string, fn func(string) error) error {
 func (h *helper) normalizeDiagnosticArchives() error {
 	// CI piplines are configured to upload *.tgz
 	// support-diagnostics produces either *.zip or if that fails *.tar.gz (!)
-	// this normalizes everthing to *.tgz
+	// this normalizes everything to *.tgz
 	err := forEachFile("api-diagnostics*.zip", func(file string) error {
 		name := filepath.Base(file)
 		basename := strings.TrimSuffix(name, filepath.Ext(name))
-		return exec.Command("tar", "czf", fmt.Sprintf("%s.tgz", basename), fmt.Sprintf("@%s", name)).Run()
+		return exec.Command("tar", "czf", fmt.Sprintf("%s.tgz", basename), fmt.Sprintf("@%s", name)).Run() //nolint:gosec
 	})
 	if err != nil {
 		return err
@@ -856,6 +856,6 @@ func (h *helper) normalizeDiagnosticArchives() error {
 	return forEachFile("api-diagnostics*.tar.gz", func(file string) error {
 		name := filepath.Base(file)
 		basename := strings.TrimSuffix(name, ".tar.gz")
-		return exec.Command("mv", name, fmt.Sprintf("%s.tgz", basename)).Run()
+		return exec.Command("mv", name, fmt.Sprintf("%s.tgz", basename)).Run() //nolint:gosec
 	})
 }
