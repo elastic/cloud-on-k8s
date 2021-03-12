@@ -1,4 +1,10 @@
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .JobName }} 
+  namespace: {{ .ESNamespace }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -14,6 +20,7 @@ spec:
         extract-artifacts: "true"
         test-run: {{ .Context.TestRun }}
     spec:
+      serviceAccountName: {{ .JobName }}
       initContainers:
         - name: diagnostics
           image: eu.gcr.io/elastic-cloud-dev/support-diagnostics:412ac7a392cf
@@ -33,6 +40,9 @@ spec:
       containers:
       - name: offer-output
         image: alpine
+        securityContext:
+          capabilities:
+            add: ["MKNOD"]
         volumeMounts:
         - name: output
           mountPath: /diagnostic-output

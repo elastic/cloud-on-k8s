@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
+	testSessionTimeout   = 600 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
 	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
@@ -509,7 +509,7 @@ func (h *helper) testSessionJobFactory(templatePath string) func() error {
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
 func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 
-	testSession := NewJobsManager(client, h, logStreamLabel)
+	testSession := NewJobsManager(client, h, logStreamLabel, testSessionTimeout)
 
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
@@ -801,11 +801,11 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 		log.Error(err, "failed to unmarshal kubectl response")
 	}
 
-	mgr := NewJobsManager(client, h, "extract-artifacts")
+	mgr := NewJobsManager(client, h, "extract-artifacts", 10 * time.Minute)
 	for _, es := range ess.Items {
 		jobName := fmt.Sprintf("diag-%s", es.Name)
 		mgr.Schedule(NewArtifactJob(jobName, func() error {
-			_, err := h.kubectlApplyTemplate("config/e2e/diagnostics_job.yaml", diagnosticContext{
+			err := h.kubectlApplyTemplateWithCleanup("config/e2e/diagnostics_job.yaml", diagnosticContext{
 				Context:     h.testContext,
 				ESNamespace: es.Namespace,
 				ESName:      es.Name,

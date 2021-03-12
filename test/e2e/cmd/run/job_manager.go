@@ -30,19 +30,19 @@ type JobsManager struct {
 	err  error // used to notify that an error occurred in this session
 }
 
-func NewJobsManager(client *kubernetes.Clientset, h *helper, label string) *JobsManager {
+func NewJobsManager(client *kubernetes.Clientset, h *helper, podSelector string, timeout time.Duration) *JobsManager {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
 		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
 			opt.LabelSelector = fmt.Sprintf(
 				"%s=%s,%s=%v",
 				testRunLabel,
 				h.testContext.TestRun,
-				label,
+				podSelector,
 				true,
 			)
 			log.Info("Informer configured", "label-selector", opt.LabelSelector)
 		}))
-	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	return &JobsManager{
 		helper:         h,
 		Clientset:      client,
@@ -88,7 +88,7 @@ func (jm *JobsManager) Start() {
 	defer func() {
 		jm.cancelFunc()
 		if deadline, _ := jm.Deadline(); deadline.Before(time.Now()) {
-			log.Info("Test job timeout exceeded", "timeout", jobTimeout)
+			log.Info("Test job timeout exceeded", "timeout", testSessionTimeout)
 		}
 		runtime.HandleCrash()
 	}()
