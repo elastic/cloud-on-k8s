@@ -787,6 +787,7 @@ type diagnosticContext struct {
 	ESNamespace string
 	ESName      string
 	JobName     string
+	TLS         bool
 }
 
 func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restclient.Config) {
@@ -810,6 +811,7 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 				ESNamespace: es.Namespace,
 				ESName:      es.Name,
 				JobName:     jobName,
+				TLS:         es.Spec.HTTP.TLS.Enabled(),
 			})
 			return err
 		}, config))
@@ -826,11 +828,11 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 }
 
 func forEachFile(pattern string, fn func(string) error) error {
-	zips, err := filepath.Glob(pattern)
+	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return err
 	}
-	for _, file := range zips {
+	for _, file := range files {
 		if err := fn(file); err != nil {
 			return err
 		}

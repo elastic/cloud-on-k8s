@@ -33,7 +33,7 @@ spec:
                 key: elastic
           command: [sh, -c]
           args:
-          - ./diagnostics.sh -h {{.ESName}}-es-http --type api --bypassDiagVerify -u elastic --passwordText $ES_PW -s --noVerify -o /diagnostic-output
+          - ./diagnostics.sh -h {{.ESName}}-es-http --type api --bypassDiagVerify -u elastic --passwordText $ES_PW {{if .TLS}}-s --noVerify{{end}} -o /diagnostic-output
           volumeMounts:
           - name: output
             mountPath: /diagnostic-output
