@@ -801,7 +801,7 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 		log.Error(err, "failed to unmarshal kubectl response")
 	}
 
-	mgr := NewJobsManager(client, h, "extract-artifacts", 10 * time.Minute)
+	mgr := NewJobsManager(client, h, "extract-artifacts", 10*time.Minute)
 	for _, es := range ess.Items {
 		jobName := fmt.Sprintf("diag-%s", es.Name)
 		mgr.Schedule(NewArtifactJob(jobName, func() error {
@@ -812,12 +812,48 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 				JobName:     jobName,
 			})
 			return err
-		}, config,
-		))
+		}, config))
 
 	}
 	mgr.Start()
 	if mgr.err != nil {
 		log.Error(err, "failed to extract Elasticsearch diagnostics")
 	}
+	err = h.normalizeDiagnosticArchives()
+	if err != nil {
+		log.Error(err, "error while normalizing diagnostic archives")
+	}
+}
+
+func forEachFile(pattern string, fn func(string) error) error {
+	zips, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	for _, file := range zips {
+		if err := fn(file); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (h *helper) normalizeDiagnosticArchives() error {
+	// CI piplines are configured to upload *.tgz
+	// support-diagnostics produces either *.zip or if that fails *.tar.gz (!)
+	// this normalizes everthing to *.tgz
+	err := forEachFile("api-diagnostics*.zip", func(file string) error {
+		name := filepath.Base(file)
+		basename := strings.TrimSuffix(name, filepath.Ext(name))
+		return exec.Command("tar", "czf", fmt.Sprintf("%s.tgz", basename), fmt.Sprintf("@%s", name)).Run()
+	})
+	if err != nil {
+		return err
+	}
+
+	return forEachFile("api-diagnostics*.tar.gz", func(file string) error {
+		name := filepath.Base(file)
+		basename := strings.TrimSuffix(name, ".tar.gz")
+		return exec.Command("mv", name, fmt.Sprintf("%s.tgz", basename)).Run()
+	})
 }
