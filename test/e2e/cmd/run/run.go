@@ -856,6 +856,6 @@ func (h *helper) normalizeDiagnosticArchives() error {
 	return forEachFile("api-diagnostics*.tar.gz", func(file string) error {
 		name := filepath.Base(file)
 		basename := strings.TrimSuffix(name, ".tar.gz")
-		return exec.Command("mv", name, fmt.Sprintf("%s.tgz", basename)).Run() //nolint:gosec
+		return exec.Command("mv", name, fmt.Sprintf("%s.tgz", basename)).Run()
 	})
 }
