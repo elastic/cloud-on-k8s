@@ -377,7 +377,7 @@ func (h *helper) createOperatorNamespaces() error {
 }
 
 func (h *helper) createManagedNamespaces() error {
-	log.Info("Creating managed namespacesS")
+	log.Info("Creating managed namespaces")
 	var err error
 	// when in local mode, don't delete the namespaces on exit
 	if h.testContext.Local {
