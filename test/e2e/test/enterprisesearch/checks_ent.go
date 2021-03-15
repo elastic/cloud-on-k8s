@@ -60,7 +60,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		},
 		test.Step{
 			Name: "Enterprise Search health endpoint should eventually respond",
-			Test: test.Eventually(entClient.HealthCheck),
+			Test: test.Eventually(func() error { return entClient.HealthCheck() }), //nolint:gocritic
 		},
 
 		// App Search tests
