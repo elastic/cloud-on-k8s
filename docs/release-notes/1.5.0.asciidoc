@@ -29,6 +29,12 @@
 
 * Add support for VolumeClaimDeletePolicies for Elasticsearch clusters {pull}4050[#4050] (issue: {issue}2328[#2328])
 
+[[bug-1.5.0]]
+[float]
+=== Bug fixes
+
+* Fix OpenShift monitoring recipe {pull}4344[#4344]
+
 [[deprecation-1.5.0]]
 [float]
 === Deprecation
