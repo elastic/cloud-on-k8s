@@ -391,8 +391,7 @@ func (h *helper) createManagedNamespaces() error {
 	if h.testContext.Ocp3Cluster {
 		log.Info("Resetting namespace node selector")
 		for _, ns := range h.testContext.Operator.ManagedNamespaces {
-			if err := exec.Command("oc", "annotate", "--overwrite", "namespace", ns, "openshift.io/node-selector=").Run(); err != nil {
-				log.Info("err:", err)
+			if err := exec.Command("oc", "annotate", "namespace", ns, "openshift.io/node-selector=").Run(); err != nil {
 				return err
 			}
 		}
