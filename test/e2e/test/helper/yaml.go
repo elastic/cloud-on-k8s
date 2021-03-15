@@ -276,7 +276,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithKibanaRef(tweakServiceRef(b.Beat.Spec.KibanaRef, suffix))
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
-				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix) //nolint:wastedassign
+				builder = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
 		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
