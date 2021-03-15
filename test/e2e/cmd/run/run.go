@@ -401,7 +401,6 @@ func (h *helper) createManagedNamespaces() error {
 	return err
 }
 
-
 func (h *helper) waitForOperatorToBeReady() error {
 	log.Info("Waiting for the operator pod to be ready")
 	client, err := h.createKubeClient()
