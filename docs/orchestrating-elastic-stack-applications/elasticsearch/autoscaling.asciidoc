@@ -10,7 +10,7 @@ endif::[]
 
 experimental[]
 
-ECK can leverage the autoscaling API introduced in Elasticsearch 7.11 to adjust automatically the number of Pods and the allocated resources in a tier. Currently, autoscaling is supported for Elasticsearch data tiers and machine learning nodes.
+ECK can leverage the autoscaling API introduced in Elasticsearch 7.11 to adjust automatically the number of Pods and the allocated resources in a tier. Currently, autoscaling is supported for Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/data-tiers.html[data tiers] and machine learning nodes.
 
 [float]
 [id="{p}-enable"]
