@@ -387,7 +387,7 @@ func (h *helper) createManagedNamespaces() error {
 	}
 
 	// Reset the node selector for all managed namespaces to override any possible OCP project node selector that might
-	// prevent scheduling daemonset pods on some nodes
+	// prevent scheduling daemonset pods on some nodes.
 	if h.testContext.Ocp3Cluster {
 		log.Info("Resetting namespace node selector")
 		for _, ns := range h.testContext.Operator.ManagedNamespaces {
