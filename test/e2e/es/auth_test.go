@@ -13,10 +13,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -25,6 +21,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -98,15 +98,9 @@ func TestESUserProvidedAuth(t *testing.T) {
 		// create secure settings secret
 		WithStep(test.Step{
 			Name: "Create file realm and role secrets",
-			Test: func(t *testing.T) {
-				for _, s := range authSecrets {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(context.Background(), &s)
-					// and create a fresh one
-					err := k.Client.Create(context.Background(), &s)
-					require.NoError(t, err)
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdateSecrets(authSecrets...)
+			}),
 		}).
 		// create the cluster
 		WithSteps(b.InitTestSteps(k)).
@@ -136,28 +130,30 @@ func TestESUserProvidedAuth(t *testing.T) {
 			},
 			test.Step{
 				Name: "Update password in the file realm secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var existingSecret corev1.Secret
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret)
-					require.NoError(t, err)
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret); err != nil {
+						return err
+					}
 					existingSecret.StringData = map[string]string{
 						filerealm.UsersFile:      sampleUsersFileUpdated,
 						filerealm.UsersRolesFile: sampleUsersRolesFile,
 					}
-					require.NoError(t, k.Client.Update(context.Background(), &existingSecret))
-				},
+					return k.Client.Update(context.Background(), &existingSecret)
+				}),
 			},
 			test.Step{
 				Name: "Update role in the roles secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var existingSecret corev1.Secret
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&rolesSecret), &existingSecret)
-					require.NoError(t, err)
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&rolesSecret), &existingSecret); err != nil {
+						return err
+					}
 					existingSecret.StringData = map[string]string{
 						user.RolesFile: sampleRolesFile(writeIndexUpdated),
 					}
-					require.NoError(t, k.Client.Update(context.Background(), &existingSecret))
-				},
+					return k.Client.Update(context.Background(), &existingSecret)
+				}),
 			},
 			test.Step{
 				Name: "ES API should eventually be accessible using the updated password and the updated role",
@@ -169,14 +165,14 @@ func TestESUserProvidedAuth(t *testing.T) {
 			},
 			test.Step{
 				Name: "Remove secrets ref in the ES spec",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
-					require.NoError(t, err)
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+						return err
+					}
 					es.Spec.Auth = esv1.Auth{}
-					err = k.Client.Update(context.Background(), &es)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(context.Background(), &es)
+				}),
 			},
 			test.Step{
 				Name: "ES API should eventually not be accessible anymore since user has been removed",
@@ -188,11 +184,15 @@ func TestESUserProvidedAuth(t *testing.T) {
 			},
 			test.Step{
 				Name: "Delete auth secrets",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					for _, s := range authSecrets {
-						require.NoError(t, k.Client.Delete(context.Background(), &s))
+						err := k.Client.Delete(context.Background(), &s)
+						if err != nil && !apierrors.IsNotFound(err) {
+							return err
+						}
 					}
-				},
+					return nil
+				}),
 			},
 		}).
 		WithSteps(b.DeletionTestSteps(k)).

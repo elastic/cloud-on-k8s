@@ -14,8 +14,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -70,12 +70,21 @@ func TestDeleteServices(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Delete external service",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					s, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
-					require.NoError(t, err)
+					if apierrors.IsNotFound(err) {
+						// already deleted
+						return nil
+					}
+					if err != nil {
+						return err
+					}
 					err = k.Client.Delete(context.Background(), s)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 			{
 				Name: "Service should be recreated",
@@ -100,17 +109,26 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Delete elastic user secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					key := types.NamespacedName{
 						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      b.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(context.Background(), key, &secret)
-					require.NoError(t, err)
+					if apierrors.IsNotFound(err) {
+						// already deleted
+						return nil
+					}
+					if err != nil {
+						return err
+					}
 					err = k.Client.Delete(context.Background(), &secret)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}, b)
@@ -124,17 +142,26 @@ func TestDeleteCACert(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Delete CA cert",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					key := types.NamespacedName{
 						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(context.Background(), key, &secret)
-					require.NoError(t, err)
+					if apierrors.IsNotFound(err) {
+						// already deleted
+						return nil
+					}
+					if err != nil {
+						return err
+					}
 					err = k.Client.Delete(context.Background(), &secret)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}, b)

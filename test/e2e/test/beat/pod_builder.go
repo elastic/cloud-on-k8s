@@ -7,13 +7,11 @@ package beat
 import (
 	"context"
 	"fmt"
-	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -144,20 +142,16 @@ func (pb PodBuilder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(test.StepList{
 			test.Step{
 				Name: "Creating a Pod should succeed",
-				Test: func(t *testing.T) {
-					for _, obj := range pb.RuntimeObjects() {
-						err := k.Client.Create(context.Background(), obj)
-						require.NoError(t, err)
-					}
-				},
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(pb.RuntimeObjects()...)
+				}),
 			},
 			test.Step{
 				Name: "Pod should be created",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var createdPod corev1.Pod
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&pb.Pod), &createdPod)
-					require.NoError(t, err)
-				},
+					return k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&pb.Pod), &createdPod)
+				}),
 			},
 		})
 }
@@ -196,12 +190,14 @@ func (pb PodBuilder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Applying pod mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var pod corev1.Pod
-				require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&pb.Pod), &pod))
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&pb.Pod), &pod); err != nil {
+					return err
+				}
 				pod.Spec = pb.Pod.Spec
-				require.NoError(t, k.Client.Update(context.Background(), &pod))
-			},
+				return k.Client.Update(context.Background(), &pod)
+			}),
 		}}
 }
 
@@ -209,12 +205,15 @@ func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 	return []test.Step{
 		{
 			Name: "Deleting the resources should return no error",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range pb.RuntimeObjects() {
 					err := k.Client.Delete(context.Background(), obj)
-					require.NoError(t, err)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "The resources should not be there anymore",
