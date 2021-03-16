@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -60,6 +61,7 @@ func doRun(flags runFlags) error {
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
+			helper.runTestScript,
 		}
 	} else {
 		// CI test run steps
@@ -457,6 +459,28 @@ func (h *helper) deployTestSecrets() error {
 			Context:         h.testContext,
 		},
 	)
+}
+
+func (h *helper) runTestScript() error {
+	log.Info("Running local test script", "timeout", fmt.Sprintf("%s", h.testTimeout))
+	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
+	defer cancelFunc()
+	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	// we need to set a process group ID to be able to terminate all child processes later if the timeout is exceeded and not just the test.sh script
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	go func() {
+		select {
+		case <-ctx.Done():
+			// exec.Command's support for contexts does not allow sending sigkill to the whole process group
+			// so we are doing it manually here. Go sets the process group to PID and kill on Linux and BSD supports
+			// sending signals to the whole process group if number passed to kill is negative see `man 2 kill`
+			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			log.Info("test timeout exceeded", "kill_error", err)
+		}
+	}()
+	return cmd.Run()
 }
 
 func (h *helper) runTestJob() error {

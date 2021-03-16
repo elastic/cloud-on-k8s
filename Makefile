@@ -399,9 +399,9 @@ switch-registry-dev: # just use the default values of variables
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
-TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 E2E_STACK_VERSION          ?= 7.11.0
-E2E_JSON                   ?= false
+export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
+export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
@@ -457,6 +457,7 @@ e2e-compile:
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
+e2e-local: export GO_TAGS=$(E2E_TAGS)
 e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
@@ -471,7 +472,6 @@ e2e-local:
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS)
-	@E2E_JSON=$(E2E_JSON) GO_TAGS=$(E2E_TAGS) test/e2e/run.sh -run $(TESTS_MATCH) -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
