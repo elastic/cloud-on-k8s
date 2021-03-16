@@ -47,7 +47,6 @@ pipeline {
 
                     steps {
                         script {
-                            sh 'echo VERSION=$VERSION'
                             sh 'make -C .ci yaml-upload'
                         }
                     }
@@ -149,4 +148,3 @@ pipeline {
         }
     }
 }
-
