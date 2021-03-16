@@ -5,6 +5,11 @@
 --
 This section summarizes the most important changes in each release. For the full list, see <<eck-release-notes>>.
 
+<<<<<<< HEAD
+=======
+* <<release-highlights-1.5.0>>
+* <<release-highlights-1.4.1>>
+>>>>>>> b4dcb249f (Release notes and highlights for 1.5.0 (#4313))
 * <<release-highlights-1.4.0>>
 * <<release-highlights-1.3.2>>
 * <<release-highlights-1.3.1>>
@@ -21,6 +26,11 @@ This section summarizes the most important changes in each release. For the full
 
 --
 
+<<<<<<< HEAD
+=======
+include::highlights-1.5.0.asciidoc[]
+include::highlights-1.4.1.asciidoc[]
+>>>>>>> b4dcb249f (Release notes and highlights for 1.5.0 (#4313))
 include::highlights-1.4.0.asciidoc[]
 include::highlights-1.3.2.asciidoc[]
 include::highlights-1.3.1.asciidoc[]
