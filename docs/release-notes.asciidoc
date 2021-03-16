@@ -6,7 +6,6 @@
 
 This section summarizes the changes in each release.
 
-=======
 * <<release-notes-1.5.0>>
 * <<release-notes-1.4.1>>
 * <<release-notes-1.4.0>>
