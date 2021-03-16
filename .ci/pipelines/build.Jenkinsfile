@@ -41,9 +41,13 @@ pipeline {
                     }
                 }
                 stage('Upload YAML manifest to S3') {
+                    environment {
+                        VERSION="${sh(returnStdout: true, script: '. ./.env; echo $IMG_VERSION').trim()}"
+                    }
+
                     steps {
                         script {
-                            env.VERSION = readFromEnvFile("VERSION")
+                            sh 'echo VERSION=$VERSION'
                             sh 'make -C .ci yaml-upload'
                         }
                     }
@@ -146,14 +150,3 @@ pipeline {
     }
 }
 
-def readFromEnvFile(name) {
-    def val = sh(returnStdout: true, script:
-    """
-    awk \'/${name}/{print \$3}\' .env
-    """
-    ).trim()
-
-    sh("echo ${name}=${val}")
-
-    return val
-}
