@@ -48,7 +48,8 @@ You can provision Local PersistentVolumes in one of the following ways:
 
 - **Static provisioning**: Run a program that automatically discovers the existing partitions on each host, and creates the corresponding PersistentVolume resources. The link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[Local PersistentVolume Static Provisioner] is a great way to get started.
 
-- **Dynamic provisioning**: Run a controller to dynamically create PersistentVolumes of the requested storage size to match  PersistentVolumeClaims. link:https://github.com/topolvm/topolvm[TopoLVM] is a great example. It dynamically provisions LVM volumes, formats their filesystem, and supports resizing. It requires installing an extra scheduler for capacity-awareness, which may not be permitted on hosted Kubernetes offerings.
+- **Dynamic provisioning**: link:https://openebs.io[OpenEBS] and link:https://github.com/topolvm/topolvm[TopoLVM] are examples of components you can install into your Kubernetes cluster to manage the provisioning of persistent volumes from local disks attached to the nodes. These tools leverage technologies like LVM and ZFS to dynamically allocate persistent volumes from storage pools made out of local disks. Depending on the technology used, bonus features like dynamic volume resizing, thin-provisioning and, snapshots are also available with some of these offerings. Installation of these components might require initial setup work on your Kubernetes cluster like installing filesystem utilities on all nodes, creating RAID configurations for the disks or even installing API extensions like custom schedulers. Some managed Kubernetes offerings might have restrictions that make it difficult to perform some of those setup steps. Check the documentation of the Kubernetes provider and the storage provisioner to ensure that they are compatible with each other.
+
 
 [float]
 == Storage class settings
