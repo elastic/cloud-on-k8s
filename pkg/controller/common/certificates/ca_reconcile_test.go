@@ -151,6 +151,7 @@ func checkCASecrets(
 	notExpectedCa *CA,
 	expectedExpiration time.Duration,
 ) {
+	t.Helper()
 	// ca cert should be valid
 	require.True(t, CertIsValid(*ca.Cert, DefaultRotateBefore))
 

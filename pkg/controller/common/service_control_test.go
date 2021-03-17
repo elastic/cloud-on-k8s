@@ -45,7 +45,7 @@ func TestReconcileService(t *testing.T) {
 }
 
 func mkService(owner *kbv1.Kibana) *corev1.Service {
-	true := true
+	trueVal := true
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "owner-svc",
@@ -57,8 +57,8 @@ func mkService(owner *kbv1.Kibana) *corev1.Service {
 					APIVersion:         "kibana.k8s.elastic.co/v1",
 					Kind:               "Kibana",
 					Name:               owner.Name,
-					Controller:         &true,
-					BlockOwnerDeletion: &true,
+					Controller:         &trueVal,
+					BlockOwnerDeletion: &trueVal,
 				},
 			},
 		},

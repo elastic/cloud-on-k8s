@@ -104,11 +104,16 @@ func (jm *JobsManager) Start() {
 
 	jm.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			pod := obj.(*corev1.Pod)
-			log.Info("Pod added", "name", pod.Name)
+			if pod, ok := obj.(*corev1.Pod); ok {
+				log.Info("Pod added", "name", pod.Name)
+			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			newPod := newObj.(*corev1.Pod)
+			newPod, ok := newObj.(*corev1.Pod)
+			if !ok {
+				return
+			}
+
 			jobName, hasJobName := newPod.Labels["job-name"]
 			if !hasJobName {
 				// Unmanaged Job/Pod, this should not happen if the label selector is correct, harmless but report it in the logs.
@@ -144,9 +149,10 @@ func (jm *JobsManager) Start() {
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			pod := obj.(*corev1.Pod)
-			log.Info("Pod deleted", "name", pod.Name)
-			jm.Stop()
+			if pod, ok := obj.(*corev1.Pod); ok {
+				log.Info("Pod deleted", "name", pod.Name)
+				jm.Stop()
+			}
 		},
 	})
 	jm.Run(jm.Done())

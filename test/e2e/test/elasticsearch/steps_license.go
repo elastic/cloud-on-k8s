@@ -39,6 +39,7 @@ func NewLicenseTestContext(k *test.K8sClient, es esv1.Elasticsearch) LicenseTest
 }
 
 func (ltctx *LicenseTestContext) Init() test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Creating Elasticsearch client",
 		Test: func(t *testing.T) {
@@ -55,8 +56,8 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...cl
 		return err
 	}
 	expectedStrings := make([]string, len(expectedTypes))
-	for i := range expectedTypes {
-		expectedStrings = append(expectedStrings, string(expectedTypes[i]))
+	for i, et := range expectedTypes {
+		expectedStrings[i] = string(et)
 	}
 	if !stringsutil.StringInSlice(l.Type, expectedStrings) {
 		return fmt.Errorf("expectedTypes license type %v got %s", expectedStrings, l.Type)
@@ -96,6 +97,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 }
 
 func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey) test.Step {
+	//nolint:thelper
 	return test.Step{
 		Name: "Creating a trial extension secret",
 		Test: func(t *testing.T) {
@@ -211,8 +213,8 @@ func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
 			if err != nil {
 				return err
 			}
-			for _, s := range licenseSecrets.Items {
-				err = ltctx.k.Client.Delete(context.Background(), &s)
+			for i := range licenseSecrets.Items {
+				err = ltctx.k.Client.Delete(context.Background(), &licenseSecrets.Items[i])
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}

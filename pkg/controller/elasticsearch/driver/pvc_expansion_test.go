@@ -202,8 +202,8 @@ func Test_handleVolumeExpansion(t *testing.T) {
 			err = k8sClient.List(context.Background(), &pvcs)
 			require.NoError(t, err)
 			require.Len(t, pvcs.Items, len(tt.expectedPVCs))
-			for i, expectedPVC := range tt.expectedPVCs {
-				comparison.RequireEqual(t, &expectedPVC, &pvcs.Items[i])
+			for i := range tt.expectedPVCs {
+				comparison.RequireEqual(t, &tt.expectedPVCs[i], &pvcs.Items[i])
 			}
 
 			// Elasticsearch should be annotated with the sset to recreate

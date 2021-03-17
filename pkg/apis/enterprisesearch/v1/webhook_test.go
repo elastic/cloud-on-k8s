@@ -24,6 +24,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "create-valid",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				return serialize(t, ent)
 			},
@@ -33,6 +34,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "unknown-field",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.SetAnnotations(map[string]string{
 					corev1.LastAppliedConfigAnnotation: `{"metadata":{"name": "ekesn", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },"spec":{"version":"7.6.1", "unknown": "UNKNOWN"}}`,
@@ -47,6 +49,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "long-name",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.SetName(strings.Repeat("x", 100))
 				return serialize(t, ent)
@@ -59,6 +62,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "invalid-version",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "7.x"
 				return serialize(t, ent)
@@ -71,6 +75,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "unsupported-version-lower",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "3.1.2"
 				return serialize(t, ent)
@@ -83,6 +88,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "unsupported-version-higher",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "300.1.2"
 				return serialize(t, ent)
@@ -95,11 +101,13 @@ func TestWebhook(t *testing.T) {
 			Name:      "update-valid",
 			Operation: admissionv1beta1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "7.7.0"
 				return serialize(t, ent)
 			},
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "7.7.1"
 				return serialize(t, ent)
@@ -110,11 +118,13 @@ func TestWebhook(t *testing.T) {
 			Name:      "version-downgrade",
 			Operation: admissionv1beta1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "7.7.1"
 				return serialize(t, ent)
 			},
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "7.7.0"
 				return serialize(t, ent)

@@ -31,9 +31,9 @@ func WatchClusterHealthChange(m *Manager) *source.Channel {
 // healthChangeListener returns an OnObservation listener that feeds a generic
 // event when a cluster's observed health has changed.
 func healthChangeListener(reconciliation chan event.GenericEvent) OnObservation {
-	return func(cluster types.NamespacedName, previous State, new State) {
+	return func(cluster types.NamespacedName, previous State, current State) {
 		// no-op if health hasn't change
-		if !hasHealthChanged(previous, new) {
+		if !hasHealthChanged(previous, current) {
 			return
 		}
 
@@ -49,14 +49,14 @@ func healthChangeListener(reconciliation chan event.GenericEvent) OnObservation 
 }
 
 // hasHealthChanged returns true if previous and new contain different health.
-func hasHealthChanged(previous State, new State) bool {
+func hasHealthChanged(previous State, current State) bool {
 	switch {
 	// both nil
-	case previous.ClusterHealth == nil && new.ClusterHealth == nil:
+	case previous.ClusterHealth == nil && current.ClusterHealth == nil:
 		return false
 	// both equal
-	case previous.ClusterHealth != nil && new.ClusterHealth != nil &&
-		previous.ClusterHealth.Status == new.ClusterHealth.Status:
+	case previous.ClusterHealth != nil && current.ClusterHealth != nil &&
+		previous.ClusterHealth.Status == current.ClusterHealth.Status:
 		return false
 	// else: different
 	default:

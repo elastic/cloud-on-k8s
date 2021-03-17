@@ -115,10 +115,7 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 		return err
 	}
 	// patch configs to consider zen2 initial master nodes
-	if err := zen2.SetupInitialMasterNodes(es, k8sClient, resources); err != nil {
-		return err
-	}
-	return nil
+	return zen2.SetupInitialMasterNodes(es, k8sClient, resources)
 }
 
 // adjustStatefulSetReplicas updates the replicas count in expected according to

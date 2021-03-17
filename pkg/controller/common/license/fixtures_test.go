@@ -104,12 +104,14 @@ func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 }
 
 func publicKeyBytesFixture(t *testing.T) []byte {
+	t.Helper()
 	bytes, err := x509.MarshalPKIXPublicKey(publicKeyFixture(t))
 	require.NoError(t, err)
 	return bytes
 }
 
 func publicKeyFixture(t *testing.T) *rsa.PublicKey {
+	t.Helper()
 	key, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)
 	return &key.PublicKey

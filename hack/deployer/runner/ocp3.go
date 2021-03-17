@@ -122,11 +122,8 @@ func writeGCloudSSHKey(vaultInfo VaultInfo) error {
 		return err
 	}
 	pubKeyFileName := filepath.Join(sshDir, "google_compute_engine.pub")
-	if err := client.ReadIntoFile(pubKeyFileName, OcpVaultPath, Ocp3GCloudPublicSSHKeyFieldName); err != nil {
-		return err
-	}
 
-	return nil
+	return client.ReadIntoFile(pubKeyFileName, OcpVaultPath, Ocp3GCloudPublicSSHKeyFieldName)
 }
 
 func (d Ocp3Driver) writeAnsibleVarsFile() error {

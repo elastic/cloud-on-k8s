@@ -126,7 +126,6 @@ func parsePodAddr(ctx context.Context, addr string, clientSet *kubernetes.Client
 		}
 		// podname.subdomain.ns
 		return &types.NamespacedName{Namespace: parts[2], Name: parts[0]}, nil
-
 	}
 	return nil, fmt.Errorf("unsupported pod address format: %s", host)
 }
@@ -212,7 +211,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
 		})
 		if err != nil {
-			return fmt.Errorf("unable to watch pod %s for changes: %s", f.podNSN, err)
+			return fmt.Errorf("unable to watch pod %s for changes: %w", f.podNSN, err)
 		}
 		defer w.Stop()
 

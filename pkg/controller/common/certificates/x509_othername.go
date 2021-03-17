@@ -152,6 +152,7 @@ func flattenNestedASN1Sequence(b []byte) ([]byte, error) {
 func ParseSANGeneralNamesOtherNamesOnly(c *x509.Certificate) ([]GeneralName, error) {
 	var generalNames []GeneralName
 	for _, ext := range c.Extensions {
+		//nolint:nestif
 		if SubjectAlternativeNamesObjectIdentifier.Equal(ext.Id) {
 			// rfc: should be wrapped in a sequence node:
 			var generalNamesValue asn1.RawValue

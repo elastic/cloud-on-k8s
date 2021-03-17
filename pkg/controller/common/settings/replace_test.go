@@ -19,7 +19,6 @@ var testReplacement = Replacement{
 }
 
 func TestCanonicalConfig_RenderReplacement(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    map[string]interface{}

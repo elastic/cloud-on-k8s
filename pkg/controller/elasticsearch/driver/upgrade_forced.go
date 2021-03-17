@@ -54,7 +54,6 @@ func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpg
 				return attempted, err
 			}
 		}
-
 	}
 
 	return attempted, nil

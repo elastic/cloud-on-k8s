@@ -50,6 +50,7 @@ func createSecret(name string, data map[string][]byte, labels map[string]string,
 }
 
 func withOwnerRef(t *testing.T, s *corev1.Secret) *corev1.Secret {
+	t.Helper()
 	err := controllerutil.SetControllerReference(owner, s, scheme.Scheme)
 	require.NoError(t, err)
 	return s
@@ -355,7 +356,7 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 		name        string
 		runtimeObjs []runtime.Object
 		wantObjs    []runtime.Object
-		assert      func(c k8s.Client, t *testing.T)
+		assert      func(t *testing.T, c k8s.Client)
 	}{
 		{
 			name: "nothing to gc",
@@ -400,7 +401,8 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 					SoftOwnerKindLabel:      "ConfigMap",
 				}}},
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// configmap should still be there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "configmap-name"}, &corev1.ConfigMap{}))
 			},
@@ -419,7 +421,7 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name)
 			}
 			if tt.assert != nil {
-				tt.assert(c, t)
+				tt.assert(t, c)
 			}
 		})
 	}

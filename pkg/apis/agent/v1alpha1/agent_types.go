@@ -142,7 +142,7 @@ type Agent struct {
 
 	Spec       AgentSpec                                         `json:"spec,omitempty"`
 	Status     AgentStatus                                       `json:"status,omitempty"`
-	assocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"` // nolint:govet
+	assocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true

@@ -115,7 +115,7 @@ func (el *eventLogger) runEventProcessor() {
 			continue
 		}
 
-		evt := evtObj.(*corev1.Event)
+		evt := evtObj.(*corev1.Event) //nolint:forcetypeassert
 		if el.isInterestingEvent(evt) {
 			logEntry := eventLogEntry{
 				Reason:    evt.Reason,

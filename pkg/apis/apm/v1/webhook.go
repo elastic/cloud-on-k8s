@@ -128,7 +128,6 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 			),
 		),
 		}
-
 	}
 	return nil
 }

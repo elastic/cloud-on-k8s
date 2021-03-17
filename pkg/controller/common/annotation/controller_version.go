@@ -139,6 +139,7 @@ func checkExistingResources(client k8s.Client, owner ctrlclient.Object, labels m
 	// If we list any services owned by the owner successfully, then we know this owner resource was reconciled
 	// by an old version since any owner resources reconciled by a 0.9.0+ operator would have a label already.
 	for _, svc := range svcs.Items {
+		svc := svc
 		if metav1.IsControlledBy(&svc, owner) {
 			return true, nil
 		}

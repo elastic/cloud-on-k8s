@@ -144,6 +144,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
@@ -168,6 +169,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
 					SecretSessionSetting: "alreadysetsessionkey",
 					// we don't want "user-provided-encryption-key" here
@@ -550,6 +552,7 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.NotEmpty(t, settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 1)
 				require.NotEmpty(t, settings.EncryptionKeys[0])
@@ -575,6 +578,7 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.NotEmpty(t, settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 3)
 				require.NotEmpty(t, settings.EncryptionKeys[0])
@@ -618,6 +622,7 @@ secret_session_key: alreadysetsessionkey
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.Equal(t, "alreadysetsessionkey", settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 3)
 				require.Equal(t, "operator-managed-encryption-key", settings.EncryptionKeys[0])
@@ -664,6 +669,7 @@ secret_session_key: alreadysetsessionkey
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.Equal(t, "alreadysetsessionkey", settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 4)
 				require.Equal(t, "operator-managed-encryption-key", settings.EncryptionKeys[0])

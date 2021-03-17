@@ -511,7 +511,6 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
 func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
-
 	testSession := NewJobsManager(client, h)
 
 	outputs := []io.Writer{os.Stdout}
@@ -697,7 +696,7 @@ func (h *helper) exec(cmd *command.Command) (string, error) {
 	outString := string(out)
 	if err != nil {
 		// suppress the stacktrace when the command fails naturally
-		if _, ok := err.(*exec.ExitError); ok {
+		if errors.Is(err, new(exec.ExitError)) {
 			log.Info("Command returned error code", "command", cmd, "message", err.Error())
 		} else {
 			log.Error(err, "Command execution failed", "command", cmd)
@@ -722,7 +721,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 
 	// to avoid creating subdirectories, convert the file path to a flattened path
 	// Eg. path/to/config.yaml will become path_to_config.yaml
-	outFilePath := filepath.Join(h.scratchDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
+	outFilePath := filepath.Join(h.scratchDir, strings.ReplaceAll(templatePath, string(filepath.Separator), "_"))
 	f, err := os.Create(outFilePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)
@@ -780,8 +779,7 @@ func (h *helper) dumpK8sData() {
 	operatorNs := h.testContext.Operator.Namespace
 	managedNs := strings.Join(h.testContext.Operator.ManagedNamespaces, ",")
 	cmd := exec.Command("support/diagnostics/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		log.Error(err, "Failed to run support/diagnostics/eck-dump.sh")
 	}
 }

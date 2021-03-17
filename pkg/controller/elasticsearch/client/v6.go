@@ -45,7 +45,6 @@ func (c *clientV6) updateAllocationEnable(ctx context.Context, value string) err
 		},
 	}
 	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
-
 }
 
 func (c *clientV6) EnableShardAllocation(ctx context.Context) error {

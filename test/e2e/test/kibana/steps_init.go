@@ -40,10 +40,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana CRDs should exist",
 			Test: test.Eventually(func() error {
 				crd := &kbv1.KibanaList{}
-				if err := k.Client.List(context.Background(), crd); err != nil {
-					return err
-				}
-				return nil
+				return k.Client.List(context.Background(), crd)
 			}),
 		},
 		{

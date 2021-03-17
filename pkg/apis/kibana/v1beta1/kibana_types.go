@@ -104,7 +104,7 @@ type Kibana struct {
 
 	Spec      KibanaSpec                     `json:"spec,omitempty"`
 	Status    KibanaStatus                   `json:"status,omitempty"`
-	assocConf *commonv1beta1.AssociationConf `json:"-"` //nolint:govet
+	assocConf *commonv1beta1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true

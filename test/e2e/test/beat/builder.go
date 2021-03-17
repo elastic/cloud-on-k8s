@@ -53,7 +53,6 @@ type Builder struct {
 func (b Builder) SkipTest() bool {
 	ver := version.MustParse(b.Beat.Spec.Version)
 	return version.SupportedBeatVersions.WithinRange(ver) != nil
-
 }
 
 // NewBuilderFromBeat creates a Beat builder from an existing Beat config. Sets all additional Builder fields
@@ -299,6 +298,7 @@ func (b Builder) RuntimeObjects() []k8sclient.Object {
 var _ test.Builder = Builder{}
 
 func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Builder {
+	t.Helper()
 	if configYaml != "" {
 		b.Beat.Spec.Config = &commonv1.Config{}
 		err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)

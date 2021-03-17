@@ -156,7 +156,7 @@ type EnterpriseSearch struct {
 
 	Spec      EnterpriseSearchSpec      `json:"spec,omitempty"`
 	Status    EnterpriseSearchStatus    `json:"status,omitempty"`
-	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
+	assocConf *commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true

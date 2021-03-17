@@ -277,10 +277,10 @@ func Test_Start(t *testing.T) {
 			cm.Data["enterprise_resource_units"] == "3" &&
 			cm.Data["total_managed_memory"] == "175.02GB"
 	}, waitFor, tick)
-
 }
 
 func startTrial(t *testing.T, k8sClient client.Client) {
+	t.Helper()
 	// start a trial
 	trialState, err := commonlicense.NewTrialState()
 	require.NoError(t, err)

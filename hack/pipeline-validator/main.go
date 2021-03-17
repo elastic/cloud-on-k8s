@@ -81,7 +81,7 @@ func getToken() (*CSRFToken, error) {
 	}
 	u.Path = path.Join(u.Path, "crumbIssuer/api/json")
 
-	req, err := http.NewRequest("GET", u.String(), http.NoBody)
+	req, err := http.NewRequest("GET", u.String(), http.NoBody) //nolint:noctx
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func getToken() (*CSRFToken, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New(string(resp.StatusCode))
+		return nil, fmt.Errorf("received status code %d", resp.StatusCode)
 	}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
@@ -130,7 +130,7 @@ func validate(token *CSRFToken, pipeline string) (string, error) {
 	}
 	u.Path = path.Join(u.Path, "pipeline-model-converter/validate")
 
-	req, err := http.NewRequest("POST", u.String(), &b)
+	req, err := http.NewRequest("POST", u.String(), &b) //nolint:noctx
 	if err != nil {
 		return "", err
 	}
@@ -144,7 +144,7 @@ func validate(token *CSRFToken, pipeline string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", errors.New(string(resp.StatusCode))
+		return "", fmt.Errorf("received status code %d", resp.StatusCode)
 	}
 
 	bytez, err = ioutil.ReadAll(resp.Body)

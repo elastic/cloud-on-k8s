@@ -28,7 +28,8 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	}
 	var licenses []EnterpriseLicense
 	var errors []error
-	for _, ls := range licenseList.Items {
+	for _, license := range licenseList.Items {
+		ls := license
 		parsed, err := ParseEnterpriseLicense(ls.Data)
 		if err != nil {
 			errors = append(errors, pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls)))

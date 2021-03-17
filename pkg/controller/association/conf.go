@@ -276,8 +276,8 @@ func UpdateAssociationConf(
 // since we read potentially large strings from annotations on every reconcile loop, this should help
 // reduce the amount of garbage created.
 func unsafeStringToBytes(s string) []byte {
-	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
+	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))    //nolint:govet
+	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{ //nolint:govet
 		Data: hdr.Data,
 		Len:  hdr.Len,
 		Cap:  hdr.Len,

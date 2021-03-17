@@ -46,10 +46,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Beat CRDs should exist",
 			Test: test.Eventually(func() error {
 				crd := &beatv1beta1.BeatList{}
-				if err := k.Client.List(context.Background(), crd); err != nil {
-					return err
-				}
-				return nil
+				return k.Client.List(context.Background(), crd)
 			}),
 		},
 		{
@@ -226,7 +223,6 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 						}
 					}
 					return errors.Wrap(err, "expected 404 not found API error here")
-
 				}
 				return nil
 			}),

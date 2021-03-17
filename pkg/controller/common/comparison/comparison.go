@@ -32,8 +32,7 @@ func Diff(a, b runtime.Object) string {
 // AssertEqual errors if two objects ignoring the TypeMeta and ResourceVersion. Equivalent to calling t.Error()
 func AssertEqual(t *testing.T, a, b runtime.Object) {
 	t.Helper()
-	diff := Diff(a, b)
-	if diff != "" {
+	if diff := Diff(a, b); diff != "" {
 		t.Errorf("Expected objects to be the same. Differences:\n%v", diff)
 	}
 }
@@ -41,8 +40,7 @@ func AssertEqual(t *testing.T, a, b runtime.Object) {
 // RequireEqual errors if two objects ignoring the TypeMeta and ResourceVersion. Equivalent to calling t.Fatal()
 func RequireEqual(t *testing.T, a, b runtime.Object) {
 	t.Helper()
-	diff := Diff(a, b)
-	if diff != "" {
+	if diff := Diff(a, b); diff != "" {
 		t.Fatalf("Expected objects to be the same. Differences:\n%v", diff)
 	}
 }

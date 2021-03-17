@@ -33,6 +33,7 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 		}}}
 }
 
+//nolint:thelper
 func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	log = logf.Log.WithName("test")
 	tests := []struct {

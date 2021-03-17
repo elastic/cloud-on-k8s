@@ -53,7 +53,6 @@ func ReconcileCAForOwner(
 	caType CAType,
 	rotationParams RotationParams,
 ) (*CA, error) {
-
 	// retrieve current CA secret
 	caInternalSecret := corev1.Secret{}
 	err := cl.Get(context.Background(), types.NamespacedName{

@@ -21,6 +21,7 @@ import (
 func NewMasterChangeBudgetWatcher(es esv1.Elasticsearch) test.Watcher {
 	var observations []int
 
+	//nolint:thelper
 	return test.NewWatcher(
 		"master additions and removals: expect single master added/removed at a time",
 		1*time.Second,
@@ -53,6 +54,7 @@ func NewChangeBudgetWatcher(from esv1.ElasticsearchSpec, to esv1.Elasticsearch) 
 	var ReadyPodCounts []int32
 
 	es := to.Spec
+	//nolint:thelper
 	return test.NewWatcher(
 		"pod count for change budget: expect to stay within the change budget",
 		1*time.Second,

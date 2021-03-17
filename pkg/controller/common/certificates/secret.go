@@ -135,7 +135,6 @@ func getCustomCertificates(
 	owner types.NamespacedName,
 	tls commonv1.TLSOptions,
 ) (*CertificatesSecret, error) {
-
 	secret, err := GetSecretFromRef(c, owner, tls.Certificate)
 	if err != nil || secret == nil {
 		return nil, err

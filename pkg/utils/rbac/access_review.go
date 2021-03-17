@@ -49,7 +49,7 @@ func NewPermissiveAccessReviewer() AccessReviewer {
 func (s *SubjectAccessReviewer) AccessAllowed(ctx context.Context, serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error) {
 	metaObject, err := meta.Accessor(object)
 	if err != nil {
-		return false, nil
+		return false, nil //nolint:nilerr
 	}
 	// For convenience we still allow association between objects in a same namespace
 	if sourceNamespace == metaObject.GetNamespace() {
