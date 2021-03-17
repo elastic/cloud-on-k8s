@@ -28,6 +28,6 @@ testParams:
     stackVersion: 7.10.1
     crdVersion: v1
   - name: v140
-    operatorVersion: 1.4.0-bc1
-    stackVersion: 7.11.0-SNAPSHOT
+    operatorVersion: 1.4.1 # same binary as 1.4.0
+    stackVersion: 7.11.2
     crdVersion: v1

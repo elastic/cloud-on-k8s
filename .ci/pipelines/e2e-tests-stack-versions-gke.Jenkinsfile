@@ -123,14 +123,14 @@ pipeline {
                         }
                     }
                 }
-                stage("7.11.0") {
+                stage("7.11.2") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-711-${BUILD_NUMBER}-e2e", "7.11.0")
+                            runWith(lib, failedTests, "eck-711-${BUILD_NUMBER}-e2e", "7.11.2")
                         }
                     }
                 }
