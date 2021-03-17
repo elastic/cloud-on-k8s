@@ -92,7 +92,10 @@ spec:
         initContainers:
         - name: elastic-internal-init-keystore
           securityContext:
-            runAsUser: 0
+           {{ if .OcpCluster }}
+           privileged: true
+           {{ end }}
+           runAsUser: 0
         containers:
         - args:
           - -e
@@ -120,9 +123,6 @@ spec:
         hostNetwork: true # Allows to provide richer host metadata
         securityContext:
           runAsUser: 0
-          {{ if .OcpCluster }}
-          privileged: true
-          {{ end }}
         terminationGracePeriodSeconds: 30
         volumes:
         - hostPath:
@@ -364,6 +364,7 @@ rules:
   resources:
   - namespaces
   - pods
+  - nodes
   verbs:
   - get
   - watch
