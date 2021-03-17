@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernets.io/component: elasticsearch
 spec:
-  version: 7.11.0
+  version: 7.11.2
   nodeSets:
     - name: default
       count: 3
@@ -23,7 +23,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernets.io/component: kibana
 spec:
-  version: 7.11.0
+  version: 7.11.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -150,7 +150,7 @@ metadata:
     app.kubernets.io/component: filebeat
 spec:
   type: filebeat
-  version: 7.11.0
+  version: 7.11.2
   config:
     filebeat.inputs:
       - type: log
