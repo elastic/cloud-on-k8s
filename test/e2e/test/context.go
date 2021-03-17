@@ -9,6 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,6 +129,25 @@ func (c Context) HasTag(tag string) bool {
 // KubernetesMajorMinor returns just the major and minor version numbers of the effective Kubernetes version.
 func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
+}
+
+//MustConfigDirPath is the path to the config directory with sample and recipe manifests.
+func MustConfigDirPath() string {
+	wd, err := os.Getwd()
+	// assumption: we are in or below test/e2e
+	if err != nil {
+		panic(err)
+	}
+	index := strings.LastIndex(wd, "test/e2e")
+	if index < 0 {
+		panic("tests need to be run from within test/e2e")
+	}
+	base := wd[:index]
+	return filepath.Join(base, "config")
+}
+
+func ConfigResourcePath(res string) string {
+	return filepath.Join(MustConfigDirPath(), res)
 }
 
 // ClusterResource is a generic cluster resource.

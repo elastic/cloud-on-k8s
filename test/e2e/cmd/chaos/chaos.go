@@ -115,7 +115,7 @@ func doRun(flags runFlags) error {
 // listOperators retrieves the list of running operator instances.
 func listOperators(client *kubernetes.Clientset, operatorNamespace, operatorName string) (*corev1.PodList, error) {
 	return client.CoreV1().Pods(operatorNamespace).List(context.Background(),
-		metav1.ListOptions{LabelSelector: "control-plane=" + operatorName},
+		metav1.ListOptions{LabelSelector: "control-plane=elastic-operator"},
 	)
 }
 

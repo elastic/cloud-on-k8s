@@ -226,7 +226,7 @@ func runBeatRecipe(
 	customize func(builder beat.Builder) beat.Builder,
 	additionalObjects ...client.Object,
 ) {
-	filePath := path.Join("../../../config/recipes/beats", fileName)
+	filePath := path.Join(test.ConfigResourcePath("recipes/beats"), fileName)
 	namespace := test.Ctx().ManagedNamespace(0)
 	suffix := rand.String(4)
 

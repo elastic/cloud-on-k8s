@@ -27,7 +27,9 @@ spec:
       containers:
         - name: e2e
           image: {{ .Context.E2EImage }}
+          command: ["./chaos-runner"]
           args:
+          - "chaos"
           - "--operator-namespace"
           - "{{ .Context.Operator.Namespace }}"
           - "--operator-name"

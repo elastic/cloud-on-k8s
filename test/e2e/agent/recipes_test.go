@@ -70,7 +70,7 @@ func runBeatRecipe(
 	customize func(builder agent.Builder) agent.Builder,
 	additionalObjects ...client.Object,
 ) {
-	filePath := path.Join("../../../config/recipes/elastic-agent", fileName)
+	filePath := path.Join(test.ConfigResourcePath("recipes/elastic-agent"), fileName)
 	namespace := test.Ctx().ManagedNamespace(0)
 	suffix := rand.String(4)
 
