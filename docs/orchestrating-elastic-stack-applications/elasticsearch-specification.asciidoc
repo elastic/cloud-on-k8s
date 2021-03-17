@@ -33,6 +33,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-remote-clusters,Remote clusters>>
 - <<{p}-readiness>>
 - <<{p}-prestop>>
+- <<{p}-autoscaling>>
 
 include::elasticsearch/jvm-heap-size.asciidoc[leveloffset=+1]
 include::elasticsearch/node-configuration.asciidoc[leveloffset=+1]
@@ -53,3 +54,4 @@ include::elasticsearch/snapshots.asciidoc[leveloffset=+1]
 include::elasticsearch/remote-clusters.asciidoc[leveloffset=+1]
 include::elasticsearch/readiness.asciidoc[leveloffset=+1]
 include::elasticsearch/prestop.asciidoc[leveloffset=+1]
+include::elasticsearch/autoscaling.asciidoc[leveloffset=+1]

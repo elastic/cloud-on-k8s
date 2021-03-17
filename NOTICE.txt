@@ -752,11 +752,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-multierror
-Version : v1.1.0
-Time    : 2020-03-31T18:10:32Z
+Version : v1.1.1
+Time    : 2021-03-11T20:17:12Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-multierror@v1.1.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-multierror@v1.1.1/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -3781,11 +3781,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.20.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.6.0
-Time    : 2021-03-03T11:05:20Z
+Version : v2.8.0
+Time    : 2021-03-12T18:52:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.8.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004

@@ -6,13 +6,11 @@ package enterprisesearch
 
 import (
 	"context"
-	"testing"
 
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -50,15 +48,16 @@ func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying the Enterprise Search mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var ent entv1.EnterpriseSearch
-				require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent))
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
+					return err
+				}
 				ent.Spec = b.EnterpriseSearch.Spec
-				require.NoError(t, k.Client.Update(context.Background(), &ent))
-			},
+				return k.Client.Update(context.Background(), &ent)
+			}),
 		}}
 }

@@ -19,9 +19,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -77,13 +77,9 @@ func TestUpdateConfiguration(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Create secure settings secret",
-				Test: func(t *testing.T) {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(context.Background(), &secureSettings)
-					// and create a fresh one
-					err := k.Client.Create(context.Background(), &secureSettings)
-					require.NoError(t, err)
-				},
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdateSecrets(secureSettings)
+				}),
 			},
 			// Keystore should be empty
 			test.CheckKeystoreEntries(k, APMKeystoreCmd, nil, apmPodListOpts...),
@@ -95,31 +91,44 @@ func TestUpdateConfiguration(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Check the value of a parameter in the configuration",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					config, err := partialAPMConfiguration(k, namespace, apmName)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					esHost := services.ExternalServiceURL(esBuilder.Elasticsearch)
-					require.Equal(t, config.Output.Elasticsearch.Hosts[0], esHost)
-					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 0) // CompressionLevel is not set by default
-				},
+					if config.Output.Elasticsearch.Hosts[0] != esHost {
+						return fmt.Errorf("expected es host %s but got %s", esHost, config.Output.Elasticsearch.Hosts[0])
+					}
+					if config.Output.Elasticsearch.CompressionLevel != 0{ // CompressionLevel is not set by default
+						return fmt.Errorf("expected compression level 0 but got %d", config.Output.Elasticsearch.CompressionLevel)
+					}
+					return nil
+				}),
 			},
 			test.Step{
 				Name: "Add a Keystore to the APM server",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// get current pod id
 					pods, err := k.GetPods(apmPodListOpts...)
-					require.NoError(t, err)
-					require.True(t, len(pods) == 1)
+					if err != nil {
+						return err
+					}
+					if len(pods) != 1 {
+						return fmt.Errorf("1 APM pod expected, got %d", len(pods))
+					}
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(context.Background(), apmNamespacedName, &apm))
+					if err := k.Client.Get(context.Background(), apmNamespacedName, &apm); err != nil {
+						return err
+					}
 					apm.Spec.SecureSettings = []commonv1.SecretSource{
 						{SecretName: secureSettingsSecretName},
 					}
-					require.NoError(t, k.Client.Update(context.Background(), &apm))
-				},
+					return k.Client.Update(context.Background(), &apm)
+				}),
 			},
 			test.Step{
 				Name: "APM Pod should be recreated",
@@ -143,21 +152,27 @@ func TestUpdateConfiguration(t *testing.T) {
 
 			test.Step{
 				Name: "Customize configuration of the APM server",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// get current pod id
 					pods, err := k.GetPods(apmPodListOpts...)
-					require.NoError(t, err)
-					require.True(t, len(pods) == 1)
+					if err != nil {
+						return err
+					}
+					if len(pods) != 1 {
+						return fmt.Errorf("expected 1 APM Pod, got %d", len(pods))
+					}
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					require.NoError(t, k.Client.Get(context.Background(), apmNamespacedName, &apm))
+					if err := k.Client.Get(context.Background(), apmNamespacedName, &apm); err != nil {
+						return err
+					}
 					customConfig := commonv1.Config{
 						Data: map[string]interface{}{"output.elasticsearch.compression_level": 1},
 					}
 					apm.Spec.Config = &customConfig
-					require.NoError(t, k.Client.Update(context.Background(), &apm))
-				},
+					return k.Client.Update(context.Background(), &apm)
+				}),
 			},
 			test.Step{
 				Name: "APM Pod should be recreated",
@@ -179,20 +194,28 @@ func TestUpdateConfiguration(t *testing.T) {
 
 			test.Step{
 				Name: "Check the value of a parameter in the configuration",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					config, err := partialAPMConfiguration(k, namespace, apmName)
-					require.NoError(t, err)
-					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 1) // value should be updated to 1
-				},
+					if err != nil {
+						return err
+					}
+					if config.Output.Elasticsearch.CompressionLevel != 1 { // value should be updated to 1
+						return fmt.Errorf("expected compression level 1 but got %d", config.Output.Elasticsearch.CompressionLevel)
+					}
+					return nil
+				}),
 			},
 
 			// cleanup extra resources
 			test.Step{
 				Name: "Delete secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					err := k.Client.Delete(context.Background(), &secureSettings)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}

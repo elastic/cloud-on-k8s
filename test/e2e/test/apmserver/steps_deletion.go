@@ -6,29 +6,29 @@ package apmserver
 
 import (
 	"context"
-	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
 	return []test.Step{
 		{
 			Name: "Deleting the resources should return no error",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(context.Background(), obj)
-					require.NoError(t, err)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "The resources should not be there anymore",

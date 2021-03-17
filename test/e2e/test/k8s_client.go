@@ -319,6 +319,33 @@ func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error
 	return nil
 }
 
+// CreateOrUpdateSecrets creates the given secrets, or updates them if they already exist.
+func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
+	for i := range secrets {
+		if err := k.CreateOrUpdate(&secrets[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (k K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
+	for _, obj := range objs {
+		// optimistic creation
+		err := k.Client.Create(context.Background(), obj)
+		if err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				return err
+			}
+			// already exists: update instead
+			if err := k.Client.Update(context.Background(), obj); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(esNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{

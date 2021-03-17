@@ -378,13 +378,26 @@ func (h *helper) createOperatorNamespaces() error {
 
 func (h *helper) createManagedNamespaces() error {
 	log.Info("Creating managed namespaces")
+	var err error
 	// when in local mode, don't delete the namespaces on exit
 	if h.testContext.Local {
-		_, err := h.kubectlApplyTemplate("config/e2e/managed_namespaces.yaml", h.testContext)
-		return err
+		_, err = h.kubectlApplyTemplate("config/e2e/managed_namespaces.yaml", h.testContext)
+	} else {
+		err = h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
 	}
 
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
+	// Reset the node selector for all managed namespaces to override any possible OCP project node selector that might
+	// prevent scheduling daemonset pods on some nodes.
+	if h.testContext.Ocp3Cluster {
+		log.Info("Resetting namespace node selector")
+		for _, ns := range h.testContext.Operator.ManagedNamespaces {
+			if err := exec.Command("oc", "annotate", "namespace", ns, "openshift.io/node-selector=").Run(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return err
 }
 
 func (h *helper) waitForOperatorToBeReady() error {

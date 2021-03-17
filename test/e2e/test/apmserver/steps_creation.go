@@ -24,12 +24,9 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Creating APM Server should succeed",
-			Test: func(t *testing.T) {
-				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(context.Background(), obj)
-					require.NoError(t, err)
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(b.RuntimeObjects()...)
+			}),
 		},
 		{
 			// The APM Server docker image can't run with a random user id, this step adds the SA to the anyuid SCC
@@ -67,13 +64,18 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		},
 		{
 			Name: "APM Server should be created",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var createdApmServer apmv1.ApmServer
 				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &createdApmServer)
-				require.NoError(t, err)
-				require.Equal(t, b.ApmServer.Spec.Version, createdApmServer.Spec.Version)
+				if err != nil {
+					return err
+				}
+				if b.ApmServer.Spec.Version != createdApmServer.Spec.Version {
+					return fmt.Errorf("expected version %s but got %s", b.ApmServer.Spec.Version, createdApmServer.Spec.Version)
+				}
+				return nil
 				// TODO this is incomplete
-			},
+			}),
 		},
 	}
 }

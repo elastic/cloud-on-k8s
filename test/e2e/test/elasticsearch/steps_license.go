@@ -11,17 +11,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type LicenseTestContext struct {
@@ -54,14 +55,14 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...cl
 	if err != nil {
 		return err
 	}
-
-	for _, et := range expectedTypes {
-		if l.Type == string(et) {
-			return nil
-		}
+	expectedStrings := make([]string, len(expectedTypes))
+	for i, et := range expectedTypes {
+		expectedStrings[i] = string(et)
 	}
-
-	return fmt.Errorf("expected license type %v got %s", expectedTypes, l.Type)
+	if !stringsutil.StringInSlice(l.Type, expectedStrings) {
+		return fmt.Errorf("expectedTypes license type %v got %s", expectedStrings, l.Type)
+	}
+	return nil
 }
 
 func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...client.ElasticsearchLicenseType) test.Step {
@@ -74,10 +75,9 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...clie
 }
 
 func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string, licenseBytes []byte) test.Step {
-	//nolint:thelper
 	return test.Step{
 		Name: "Creating enterprise license secret",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
@@ -91,8 +91,8 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 					license.FileName: licenseBytes,
 				},
 			}
-			require.NoError(t, ltctx.k.Client.Create(context.Background(), &sec))
-		},
+			return ltctx.k.CreateOrUpdate(&sec)
+		}),
 	}
 }
 
@@ -133,10 +133,9 @@ func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, private
 }
 
 func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName string) test.Step {
-	//nolint:thelper
 	return test.Step{
 		Name: "Creating enterprise trial license secret",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
@@ -150,8 +149,8 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 					},
 				},
 			}
-			require.NoError(t, ltctx.k.Client.Create(context.Background(), &sec))
-		},
+			return ltctx.k.CreateOrUpdate(&sec)
+		}),
 	}
 }
 
@@ -185,10 +184,9 @@ func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseInvalid(secretName s
 }
 
 func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName string) test.Step {
-	//nolint:thelper
 	return test.Step{
 		Name: "Removing any test enterprise license secrets",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			// Delete operator license secret
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -196,26 +194,32 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 					Name:      licenseSecretName,
 				},
 			}
-			_ = ltctx.k.Client.Delete(context.Background(), &sec)
-		},
+			err := ltctx.k.Client.Delete(context.Background(), &sec)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+			return nil
+		}),
 	}
 }
 
 func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
-	//nolint:thelper
 	return test.Step{
 		Name: "Removing any test enterprise license secrets",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			// Delete operator license secret
 			var licenseSecrets corev1.SecretList
 			err := ltctx.k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
 			if err != nil {
-				t.Log(err)
+				return err
 			}
-			for _, s := range licenseSecrets.Items {
-				s := s
-				_ = ltctx.k.Client.Delete(context.Background(), &s)
+			for i := range licenseSecrets.Items {
+				err = ltctx.k.Client.Delete(context.Background(), &licenseSecrets.Items[i])
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
 			}
-		},
+			return nil
+		}),
 	}
 }

@@ -6,13 +6,11 @@ package kibana
 
 import (
 	"context"
-	"testing"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -50,15 +48,16 @@ func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying the Kibana mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var kb kbv1.Kibana
-				require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb))
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
+					return err
+				}
 				kb.Spec = b.Kibana.Spec
-				require.NoError(t, k.Client.Update(context.Background(), &kb))
-			},
+				return k.Client.Update(context.Background(), &kb)
+			}),
 		}}
 }
