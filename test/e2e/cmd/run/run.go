@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -61,7 +62,7 @@ func doRun(flags runFlags) error {
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
-			helper.runTestScript,
+			helper.runTestsLocally,
 		}
 	} else {
 		// CI test run steps
@@ -78,7 +79,7 @@ func doRun(flags runFlags) error {
 			helper.deployMonitoring,
 			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
-			helper.runTestJob,
+			helper.runTestsRemote,
 		}
 	}
 
@@ -461,27 +462,41 @@ func (h *helper) deployTestSecrets() error {
 	)
 }
 
-func (h *helper) runTestScript() error {
+func (h *helper) runTestsLocally() error {
 	log.Info("Running local test script", "timeout", h.testTimeout.String())
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
-	defer cancelFunc()
-	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) // nolint:gosec
+
+	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
-	// we need to set a process group ID to be able to terminate all child processes later if the timeout is exceeded and not just the test.sh script
+	// we need to set a process group ID to be able to terminate all child processes and not just the test.sh script later if the timeout is exceeded
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// listen to Unix signals to handle user abort
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
-		<-ctx.Done()
-		// exec.Command's support for contexts does not allow sending sigkill to the whole process group
-		// so we are doing it manually here. Go sets the process group to PID and kill on Linux and BSD supports
-		// sending signals to the whole process group if number passed to kill is negative see `man 2 kill`
-		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		log.Info("test timeout exceeded", "kill_error", err)
+	DONE:
+		for {
+			select {
+			case s := <-sigs:
+				log.Info("caught Unix signal", "signal", s)
+				cancelFunc()
+			case <-ctx.Done():
+				// exec.Command's support for contexts does not allow sending sigkill to the whole process group
+				// so we are doing it manually here. Go sets the process group to PID and kill on Linux and BSD supports
+				// sending signals to the whole process group if number passed to kill is negative see `man 2 kill`
+				err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+				log.Info("test cancelled" , "kill_error", err)
+				break DONE
+			}
+		}
 	}()
 	return cmd.Run()
 }
 
-func (h *helper) runTestJob() error {
+func (h *helper) runTestsRemote() error {
 	client, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")
