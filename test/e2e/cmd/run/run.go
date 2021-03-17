@@ -488,7 +488,7 @@ func (h *helper) runTestsLocally() error {
 				// so we are doing it manually here. Go sets the process group to PID and kill on Linux and BSD supports
 				// sending signals to the whole process group if number passed to kill is negative see `man 2 kill`
 				err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-				log.Info("test cancelled" , "kill_error", err)
+				log.Info("test cancelled", "kill_error", err)
 				break DONE
 			}
 		}
