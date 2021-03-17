@@ -76,7 +76,7 @@ spec:
         #    path: /run
         #initContainers:
         #- name: cos-init
-        #  image: docker.elastic.co/beats/auditbeat:7.10.1
+        #  image: docker.elastic.co/beats/auditbeat:7.11.2
         #  volumeMounts:
         #  - name: run
         #    mountPath: /run
