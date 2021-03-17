@@ -84,6 +84,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				kibana: defaultKb,
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
 					XpackSecurityEncryptionKey:              "thisismyencryptionkey",
 					XpackReportingEncryptionKey:             "thisismyreportingkey",
@@ -106,6 +107,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				kibana: defaultKb,
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var r reusableSettings
 				assert.NoError(t, got.Unpack(&r))
@@ -129,6 +131,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				kibana: kb75,
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var r reusableSettings
 				assert.NoError(t, got.Unpack(&r))
@@ -376,7 +379,6 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, val)
 	}
-
 }
 
 // TestNewConfigSettingsExistingEncryptionKey tests that we do not override the existing key if one is already specified
@@ -455,7 +457,6 @@ func mkKibana() kbv1.Kibana {
 }
 
 func Test_getExistingConfig(t *testing.T) {
-
 	testKb := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testkb",
@@ -542,7 +543,6 @@ func Test_getExistingConfig(t *testing.T) {
 			}
 
 			if tc.expectKey != "" {
-
 				require.NotNil(t, result)
 				assert.True(t, (*ucfg.Config)(result).HasField(tc.expectKey))
 			}

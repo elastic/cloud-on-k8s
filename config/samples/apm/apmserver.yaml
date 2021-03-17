@@ -3,7 +3,7 @@ kind: ApmServer
 metadata:
   name: apmserver-sample
 spec:
-  version: 7.11.0
+  version: 7.11.2
   count: 1
   config:
     output.console:

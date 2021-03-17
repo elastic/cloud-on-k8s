@@ -21,5 +21,6 @@ const (
 // RetryUntilSuccess calls retry.UntilSuccess with default timeout and retry interval,
 // and requires that no error is returned.
 func RetryUntilSuccess(t *testing.T, f func() error) {
+	t.Helper()
 	require.NoError(t, retry.UntilSuccess(f, Timeout, RetryInterval))
 }

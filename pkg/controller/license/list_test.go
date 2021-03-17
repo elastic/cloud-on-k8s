@@ -19,7 +19,7 @@ import (
 )
 
 func Test_listAffectedLicenses(t *testing.T) {
-	true := true
+	trueVal := true
 
 	type args struct {
 		initialObjects []runtime.Object
@@ -71,7 +71,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 			name:          "list error",
 			args:          args{},
 			injectedError: errors.New("listing failed"),
-			wantErr:       true,
+			wantErr:       trueVal,
 		},
 	}
 	for _, tt := range tests {

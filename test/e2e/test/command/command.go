@@ -22,7 +22,7 @@ type Command struct {
 
 // Execute runs the command and returns the output.
 func (c *Command) Execute(ctx context.Context) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, c.executable, c.args...) // nolint:gosec
+	cmd := exec.CommandContext(ctx, c.executable, c.args...) //nolint:gosec
 	cmd.Dir = c.workDir
 	cmd.Env = append(os.Environ(), c.env...)
 

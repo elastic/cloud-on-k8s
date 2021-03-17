@@ -19,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -86,12 +85,14 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 		return test.StepList{
 			test.Step{
 				Name: "Updating to invalid Elasticsearch reference should succeed",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var kb kbv1.Kibana
-					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb))
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
+						return err
+					}
 					kb.Spec.ElasticsearchRef.Namespace = "xxxx"
-					require.NoError(t, k.Client.Update(context.Background(), &kb))
-				},
+					return k.Client.Update(context.Background(), &kb)
+				}),
 			},
 			test.Step{
 				Name: "Lost Elasticsearch association should generate events",

@@ -399,7 +399,7 @@ switch-registry-dev: # just use the default values of variables
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
-E2E_STACK_VERSION          ?= 7.11.0
+E2E_STACK_VERSION          ?= 7.11.2
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m

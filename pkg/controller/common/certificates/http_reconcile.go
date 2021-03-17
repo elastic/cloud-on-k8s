@@ -105,6 +105,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 
 	// by default let's assume that the CA is provided, either by the ECK internal certificate authority or by the user
 	caCertProvided := true
+	//nolint:nestif
 	if customCertificates != nil {
 		if err := customCertificates.Validate(); err != nil {
 			return nil, err
@@ -138,6 +139,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		needsUpdate = needsUpdate || selfSignedNeedsUpdate
 	}
 
+	//nolint:nestif
 	if needsUpdate {
 		if shouldCreateSecret {
 			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
@@ -179,7 +181,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
-	needsNewPrivateKey := true
+	needsNewPrivateKey := true //nolint:ifshort
 	if privateKeyData, ok := secret.Data[KeyFileName]; ok {
 		storedPrivateKey, err := ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
@@ -339,7 +341,6 @@ func createValidatedHTTPCertificateTemplate(
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
 ) *ValidatedCertificateTemplate {
-
 	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
 	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(HTTPCAType)
 	cnNameParts := []string{
@@ -356,7 +357,7 @@ func createValidatedHTTPCertificateTemplate(
 		certCommonName, // eg. clusterName-es-http.default.es.local
 		shortName,      // eg. clusterName-es-http
 	}
-	var ipAddresses []net.IP //nolint:prealloc
+	var ipAddresses []net.IP
 
 	for _, svc := range svcs {
 		dnsNames = append(dnsNames, k8s.GetServiceDNSName(svc)...)

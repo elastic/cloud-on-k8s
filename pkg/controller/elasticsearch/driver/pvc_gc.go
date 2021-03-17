@@ -37,6 +37,7 @@ func GarbageCollectPVCs(
 		return err
 	}
 	for _, pvc := range pvcsToRemove(pvcs.Items, actualStatefulSets, expectedStatefulSets) {
+		pvc := pvc
 		log.Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
 		if err := k8sClient.Delete(context.Background(), &pvc); err != nil {
 			return err
@@ -58,7 +59,7 @@ func pvcsToRemove(
 	// by checking expectations earlier in the process.
 	// Then, just return existing PVCs that are not part of that list.
 	toKeep := stringsutil.SliceToMap(append(actualStatefulSets.PVCNames(), expectedStatefulSets.PVCNames()...))
-	var toRemove []corev1.PersistentVolumeClaim // nolint
+	var toRemove []corev1.PersistentVolumeClaim //nolint:prealloc
 	for _, pvc := range pvcs {
 		if _, exists := toKeep[pvc.Name]; exists {
 			continue

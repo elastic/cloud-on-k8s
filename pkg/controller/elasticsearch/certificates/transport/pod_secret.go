@@ -40,7 +40,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 ) error {
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
-	needsNewPrivateKey := true
+	needsNewPrivateKey := true //nolint:ifshort
 	if privateKeyData, ok := secret.Data[PodKeyFileName(pod.Name)]; ok {
 		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
 		if err != nil {

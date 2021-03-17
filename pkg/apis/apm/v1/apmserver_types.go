@@ -87,8 +87,8 @@ type ApmServer struct {
 
 	Spec            ApmServerSpec             `json:"spec,omitempty"`
 	Status          ApmServerStatus           `json:"status,omitempty"`
-	esAssocConf     *commonv1.AssociationConf `json:"-"` //nolint:govet
-	kibanaAssocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
+	esAssocConf     *commonv1.AssociationConf `json:"-"`
+	kibanaAssocConf *commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true

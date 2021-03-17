@@ -65,7 +65,7 @@ func noEvent(url string) ValidationFunc {
 
 func checkEvent(url string, check func(int) error) ValidationFunc {
 	return func(esClient client.Client) error {
-		req, err := http.NewRequest(http.MethodGet, url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:noctx
 		if err != nil {
 			return err
 		}
@@ -84,10 +84,6 @@ func checkEvent(url string, check func(int) error) ValidationFunc {
 		if err != nil {
 			return err
 		}
-		if err := check(len(results.Hits.Hits)); err != nil {
-			return err
-		}
-
-		return nil
+		return check(len(results.Hits.Hits))
 	}
 }

@@ -24,7 +24,7 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint:gosec
+var certSecretName = "test-apm-server-apm-http-certs-internal" //nolint:gosec
 
 type testParams struct {
 	deployment.Params

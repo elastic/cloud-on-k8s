@@ -200,6 +200,7 @@ var (
 		},
 	}
 	setDynamicWatches = func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+		t.Helper()
 		err := r.reconcileWatches(k8s.ExtractNamespacedName(&kb), kb.GetAssociations())
 		require.NoError(t, err)
 	}
@@ -794,8 +795,10 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 }
 
 func checkSecrets(t *testing.T, client k8s.Client, expected bool, secrets ...[]corev1.Secret) {
+	t.Helper()
 	for _, expectedSecrets := range secrets {
 		for _, expectedSecret := range expectedSecrets {
+			expectedSecret := expectedSecret
 			var got corev1.Secret
 			err := client.Get(context.Background(), k8s.ExtractNamespacedName(&expectedSecret), &got)
 			if !expected {
@@ -812,6 +815,7 @@ func checkSecrets(t *testing.T, client k8s.Client, expected bool, secrets ...[]c
 }
 
 func checkAnnotations(t *testing.T, agent agentv1alpha1.Agent, expected bool, annotations ...string) {
+	t.Helper()
 	for _, annotation := range annotations {
 		if expected {
 			require.Contains(t, agent.Annotations, annotation)
@@ -823,6 +827,7 @@ func checkAnnotations(t *testing.T, agent agentv1alpha1.Agent, expected bool, an
 }
 
 func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool) {
+	t.Helper()
 	if expected {
 		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-es-user-watch")
 		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-ca-watch")
@@ -834,6 +839,7 @@ func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool) {
 }
 
 func checkStatus(t *testing.T, agent agentv1alpha1.Agent, keys ...string) {
+	t.Helper()
 	require.Equal(t, len(keys), len(agent.Status.ElasticsearchAssociationsStatus))
 	for _, key := range keys {
 		require.Contains(t, agent.Status.ElasticsearchAssociationsStatus, key)
@@ -891,6 +897,7 @@ func mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, 
 }
 
 func equalKeys(t *testing.T, a map[string][]byte, b map[string][]byte) {
+	t.Helper()
 	require.Equal(t, len(a), len(b))
 	for key := range a {
 		_, found := b[key]

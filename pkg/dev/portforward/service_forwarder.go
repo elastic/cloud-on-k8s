@@ -156,7 +156,7 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, errors.New("no pod addresses found in service endpoints")
 	}
 
-	pod := podTargets[rand.Intn(len(podTargets))]
+	pod := podTargets[rand.Intn(len(podTargets))] //nolint:gosec
 
 	// this should match a supported format of parsePodAddr(addr string)
 	podAddr := fmt.Sprintf("%s.%s.%s:%s", pod.Name, pod.Namespace, syntheticDNSSegment, targetPort.String())

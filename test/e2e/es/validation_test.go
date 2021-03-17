@@ -7,7 +7,6 @@
 package es
 
 import (
-	"context"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -23,6 +22,21 @@ func TestElasticsearchCRDOpenAPIValidation(t *testing.T) {
 	b := elasticsearch.NewBuilder("es-crd-validation")
 	k := test.NewK8sClientOrFatal()
 	// creation should be rejected
-	err := k.Client.Create(context.Background(), &b.Elasticsearch)
-	require.True(t, apierrors.IsInvalid(err))
+	rejected := false
+	test.Eventually(func() error {
+		err := k.CreateOrUpdate(&b.Elasticsearch)
+		if err != nil && apierrors.IsInvalid(err) {
+			// all good!
+			rejected = true
+			return nil
+		}
+		if err != nil && !apierrors.IsInvalid(err) {
+			// unrelated error, retry
+			return err
+		}
+		// we got no error, but creation should have been rejected
+		rejected = false
+		return nil
+	})(t)
+	require.True(t, rejected)
 }

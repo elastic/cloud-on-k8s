@@ -26,13 +26,13 @@ const (
 	DefaultHTTPPort = 8200
 
 	APMServerHost        = "apm-server.host"
-	APMServerSecretToken = "apm-server.secret_token" // nolint:gosec
+	APMServerSecretToken = "apm-server.secret_token" //nolint:gosec
 
 	APMServerSSLEnabled     = "apm-server.ssl.enabled"
 	APMServerSSLKey         = "apm-server.ssl.key"
 	APMServerSSLCertificate = "apm-server.ssl.certificate"
 
-	ApmCfgSecretKey = "apm-server.yml" // nolint:gosec
+	ApmCfgSecretKey = "apm-server.yml" //nolint:gosec
 )
 
 func certificatesDir(associationType commonv1.AssociationType) string {
@@ -160,5 +160,4 @@ func tlsSettings(as *apmv1.ApmServer) map[string]interface{} {
 		APMServerSSLCertificate: path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		APMServerSSLKey:         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
-
 }

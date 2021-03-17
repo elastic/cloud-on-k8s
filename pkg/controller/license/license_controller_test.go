@@ -82,6 +82,7 @@ var cluster = &esv1.Elasticsearch{
 }
 
 func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
+	t.Helper()
 	expiry := time.Now().Add(31 * 24 * time.Hour)
 	if expired {
 		expiry = time.Now().Add(-24 * time.Hour)

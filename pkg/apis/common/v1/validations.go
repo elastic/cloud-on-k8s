@@ -21,6 +21,7 @@ import (
 // NoUnknownFields checks whether the last applied config annotation contains json with unknown fields.
 func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorList {
 	var errs field.ErrorList
+	//nolint:nestif
 	if cfg, ok := meta.Annotations[v1.LastAppliedConfigAnnotation]; ok {
 		d := json.NewDecoder(strings.NewReader(cfg))
 		d.DisallowUnknownFields()

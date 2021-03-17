@@ -85,6 +85,7 @@ func resizePVCs(
 			continue
 		}
 		for _, pvc := range pvcs {
+			pvc := pvc
 			storageCmp := k8s.CompareStorageRequests(pvc.Spec.Resources, expectedClaim.Spec.Resources)
 			if !storageCmp.Increase {
 				// not an increase, nothing to do
@@ -155,13 +156,14 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 // 4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
 //    a different UID: the re-creation is over, remove the annotation.
 func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, error) {
-	toRecreate, err := ssetsToRecreate(es)
+	recreateList, err := ssetsToRecreate(es)
 	if err != nil {
 		return 0, err
 	}
-	recreations := len(toRecreate)
+	recreations := len(recreateList)
 
-	for annotation, toRecreate := range toRecreate {
+	for annotation, toRecreate := range recreateList {
+		toRecreate := toRecreate
 		var existing appsv1.StatefulSet
 		err := k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&toRecreate), &existing)
 		switch {

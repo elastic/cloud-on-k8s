@@ -96,11 +96,7 @@ func addWatches(c controller.Controller, r *ReconcileAgent) error {
 	}
 
 	// Watch dynamically referenced Secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileAgent{}

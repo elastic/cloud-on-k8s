@@ -16,6 +16,7 @@ type ReversalTestContext interface {
 
 // RunMutationReversal tests mutations that are either invalid or aborted mid way leading to a configuration reversal of
 // the original configuration.
+//nolint:thelper
 func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder) {
 	skipIfIncompatibleBuilders(t, append(creationBuilders, mutationBuilders...)...)
 	k := NewK8sClientOrFatal()

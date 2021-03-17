@@ -59,6 +59,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			},
 			want: &reconciler.Results{},
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
+				t.Helper()
 				// Check that there is 1 Secret per StatefulSet
 				assert.Equal(t, 3, len(secrets.Items))
 
@@ -114,6 +115,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			},
 			want: &reconciler.Results{},
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
+				t.Helper()
 				// Check that there is 1 Secret per StatefulSet
 				assert.Equal(t, 3, len(secrets.Items))
 
@@ -136,7 +138,6 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
-
 			},
 		},
 		{
@@ -155,6 +156,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			},
 			want: &reconciler.Results{},
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
+				t.Helper()
 				// Check that there is 1 Secret per StatefulSet
 				assert.Equal(t, 2, len(secrets.Items))
 
@@ -224,6 +226,7 @@ func TestDeleteStatefulSetTransportCertificate(t *testing.T) {
 				ssetName: esv1.StatefulSet(testEsName, "sset1"),
 			},
 			assertErr: func(t *testing.T, err error) {
+				t.Helper()
 				assert.Nil(t, err)
 			},
 		},
@@ -235,6 +238,7 @@ func TestDeleteStatefulSetTransportCertificate(t *testing.T) {
 				ssetName: esv1.StatefulSet(testEsName, "sset1"),
 			},
 			assertErr: func(t *testing.T, err error) {
+				t.Helper()
 				assert.NotNil(t, err)
 				assert.True(t, errors.IsNotFound(err))
 			},
@@ -270,6 +274,7 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 				es: testES,
 			},
 			assertErr: func(t *testing.T, err error) {
+				t.Helper()
 				assert.Nil(t, err)
 			},
 		},
@@ -280,6 +285,7 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 				es:     testES,
 			},
 			assertErr: func(t *testing.T, err error) {
+				t.Helper()
 				assert.NotNil(t, err)
 				assert.True(t, errors.IsNotFound(err))
 			},
@@ -329,6 +335,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
+				t.Helper()
 				// owner references are set upon creation, so ignore for comparison
 				expected := defaultSecretWith(func(s *corev1.Secret) {
 					s.OwnerReferences = secret.OwnerReferences
@@ -345,6 +352,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
+				t.Helper()
 				// UID should be kept the same
 				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.UID = types.UID("42")
@@ -363,6 +371,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
+				t.Helper()
 				// UID and data should be kept
 				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.UID = types.UID("42")
@@ -381,6 +390,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
+				t.Helper()
 				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.Labels["foo"] = "bar"
 				}), secret)

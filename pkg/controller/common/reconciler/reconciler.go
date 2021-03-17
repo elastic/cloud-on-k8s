@@ -63,7 +63,6 @@ func (p Params) CheckNilValues() error {
 		return errors.New("Expected must not be nil")
 	}
 	return nil
-
 }
 
 // ReconcileResource is a generic reconciliation function for resources that need to
@@ -93,7 +92,6 @@ func ReconcileResource(params Params) error {
 			if err := params.PreCreate(); err != nil {
 				return err
 			}
-
 		}
 
 		// Copy the content of params.Expected into params.Reconciled.
@@ -142,6 +140,7 @@ func ReconcileResource(params Params) error {
 		return create()
 	}
 
+	//nolint:nestif
 	// Update if needed
 	if params.NeedsUpdate() {
 		log.Info("Updating resource", "kind", kind, "namespace", namespace, "name", name)

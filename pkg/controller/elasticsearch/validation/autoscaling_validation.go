@@ -145,7 +145,7 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 			errs = append(errs, field.Required(autoscalingSpecPath(i, "roles"), "roles field is mandatory"))
 		} else {
 			if containsStringSlice(rolesSet, autoscalingSpec.Roles) {
-				//A set of roles must be unique across all the autoscaling policies.
+				// A set of roles must be unique across all the autoscaling policies.
 				errs = append(
 					errs,
 					field.Invalid(

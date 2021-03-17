@@ -27,7 +27,6 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) ([]byte, error) 
 	// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
 	// in which case we'll just retry that test step
 	return DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
-
 }
 
 func apiVersionAndTelemetryRequestBody(kbVersion version.Version) (string, telemetryRequest) {

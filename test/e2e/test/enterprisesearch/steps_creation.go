@@ -6,12 +6,11 @@ package enterprisesearch
 
 import (
 	"context"
-	"testing"
+	"fmt"
 
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 )
 
@@ -19,21 +18,22 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Creating Enterprise Search should succeed",
-			Test: func(t *testing.T) {
-				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(context.Background(), obj)
-					require.NoError(t, err)
-				}
-			},
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(b.RuntimeObjects()...)
+			}),
 		},
 		{
 			Name: "Enterprise Search should be created",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var createdEnt entv1.EnterpriseSearch
-				err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &createdEnt)
-				require.NoError(t, err)
-				require.Equal(t, b.EnterpriseSearch.Spec.Version, createdEnt.Spec.Version)
-			},
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &createdEnt); err != nil {
+					return err
+				}
+				if b.EnterpriseSearch.Spec.Version != createdEnt.Spec.Version {
+					return fmt.Errorf("expected version %s but got %s", b.EnterpriseSearch.Spec.Version, createdEnt.Spec.Version)
+				}
+				return nil
+			}),
 		},
 	}
 }
