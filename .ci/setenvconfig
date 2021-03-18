@@ -316,7 +316,7 @@ export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
-PIPELINE=e2e/eks
+PIPELINE=e2e/eks-arm
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=eks
 CLUSTER_NAME=${BUILD_TAG}-arm
