@@ -15,7 +15,7 @@ spec:
             runAsUser: 0
           volumeMounts:
           - name: agent-data
-            mountPath: /usr/share/elastic-agent/data/elastic-agent-84c4d4/run
+            mountPath: /usr/share/elastic-agent/data/elastic-agent-1d9cce/run
   config:
     id: 488e0b80-3634-11eb-8208-57893829af4e
     revision: 2
