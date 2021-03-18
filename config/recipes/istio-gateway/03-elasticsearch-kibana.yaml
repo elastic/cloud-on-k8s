@@ -7,7 +7,7 @@ metadata:
   labels:
     app: ekmnt
 spec:
-  version: 7.11.0
+  version: 7.11.2
   http:
     tls:
       selfSignedCertificate:
@@ -58,7 +58,7 @@ spec:
         annotations:
           traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
           traffic.sidecar.istio.io/excludeInboundPorts: "9300"
-  - name: coordinator
+  - name: coordinating
     count: 1
     config:
       node.master: false
@@ -97,7 +97,7 @@ metadata:
   labels:
     app: ekmnt
 spec:
-  version: 7.11.0
+  version: 7.11.2
   count: 1
   http:
     tls:

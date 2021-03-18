@@ -7,6 +7,7 @@ package helper
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -34,7 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta2 "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -73,7 +74,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 	for {
 		yamlBytes, err := yamlReader.Read()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, fmt.Errorf("failed to read YAML: %w", err)
@@ -122,7 +123,7 @@ func (yd *YAMLDecoder) ToObjects(reader *bufio.Reader) ([]runtime.Object, error)
 	for {
 		yamlBytes, err := yamlReader.Read()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, fmt.Errorf("failed to read YAML: %w", err)
@@ -141,6 +142,7 @@ func (yd *YAMLDecoder) ToObjects(reader *bufio.Reader) ([]runtime.Object, error)
 // RunFile runs the builder workflow for all known resources in a yaml file, all other objects are created before and deleted
 // after. Resources will be created in a given namespace and with a given suffix. Additional objects to be created and deleted
 // can be passed as well as set of optional transformations to apply to all Builders.
+//nolint:thelper
 func RunFile(
 	t *testing.T,
 	filePath, namespace, suffix string,
@@ -163,6 +165,7 @@ func extractFromFile(
 	filePath, namespace, suffix, fullTestName string,
 	transformations ...BuilderTransform,
 ) ([]test.Builder, []client.Object, error) {
+	t.Helper()
 	f, err := os.Open(filePath)
 	require.NoError(t, err, "Failed to open file %s", filePath)
 	defer f.Close()
@@ -184,10 +187,12 @@ func extractFromFile(
 	return builders, castObjects, nil
 }
 
+//nolint:thelper
 func makeObjectSteps(
 	t *testing.T,
 	objects []client.Object,
 ) (func(k *test.K8sClient) test.StepList, func(k *test.K8sClient) test.StepList) {
+	//nolint:thelper
 	return func(k *test.K8sClient) test.StepList {
 			steps := test.StepList{}
 			for i := range objects {
@@ -196,12 +201,9 @@ func makeObjectSteps(
 				require.NoError(t, err)
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Create %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
-					Test: func(t *testing.T) {
-						err := k.Client.Create(context.Background(), objects[ii])
-						if !k8serrors.IsAlreadyExists(err) {
-							require.NoError(t, err)
-						}
-					},
+					Test: test.Eventually(func() error {
+						return k.CreateOrUpdate(objects[ii])
+					}),
 				})
 			}
 			return steps
@@ -213,12 +215,13 @@ func makeObjectSteps(
 				require.NoError(t, err)
 				steps = steps.WithStep(test.Step{
 					Name: fmt.Sprintf("Delete %s %s", objects[ii].GetObjectKind().GroupVersionKind().Kind, meta.GetName()),
-					Test: func(t *testing.T) {
+					Test: test.Eventually(func() error {
 						err := k.Client.Delete(context.Background(), objects[ii])
-						if !k8serrors.IsNotFound(err) {
-							require.NoError(t, err)
+						if err != nil && !apierrors.IsNotFound(err) {
+							return err
 						}
-					},
+						return nil
+					}),
 				})
 			}
 			return steps
@@ -271,7 +274,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithKibanaRef(tweakServiceRef(b.Beat.Spec.KibanaRef, suffix))
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
-				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
+				builder = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
 		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
@@ -293,7 +296,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithDefaultESValidation(agent.HasAnyDataStream())
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
-				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
+				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix) //nolint:wastedassign
 			}
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace

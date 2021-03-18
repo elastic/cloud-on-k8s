@@ -182,7 +182,6 @@ func TestGarbageCollectPVCs(t *testing.T) {
 			var retrievedPVCs corev1.PersistentVolumeClaimList
 			require.NoError(t, tt.args.k8sClient.List(context.Background(), &retrievedPVCs))
 			require.Equal(t, tt.wantPVCs, len(retrievedPVCs.Items))
-
 		})
 	}
 }

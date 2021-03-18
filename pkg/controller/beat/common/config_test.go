@@ -23,8 +23,7 @@ import (
 
 func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
 	result := settings.NewCanonicalConfig()
-	err := result.MergeWith(cs...)
-	if err != nil {
+	if err := result.MergeWith(cs...); err != nil {
 		panic(err)
 	}
 	return result
@@ -190,7 +189,6 @@ func Test_buildBeatConfig(t *testing.T) {
 }
 
 func TestBuildKibanaConfig(t *testing.T) {
-
 	secretFixture := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-secret",

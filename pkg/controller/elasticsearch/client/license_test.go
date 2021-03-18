@@ -100,7 +100,6 @@ func TestClient_UpdateLicense(t *testing.T) {
 		assert.Equal(t, true, got.Acknowledged)
 		assert.Equal(t, "valid", got.LicenseStatus)
 	}
-
 }
 
 func TestClient_StartBasic(t *testing.T) {

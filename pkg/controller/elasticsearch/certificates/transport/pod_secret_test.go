@@ -121,6 +121,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
+				t.Helper()
 				assert.NotEmpty(t, after.Data[PodKeyFileName(testPod.Name)])
 				assert.NotEmpty(t, after.Data[PodCertFileName(testPod.Name)])
 
@@ -136,6 +137,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
+				t.Helper()
 				assert.NotEmpty(t, after.Data[PodKeyFileName(testPod.Name)])
 				assert.NotEmpty(t, after.Data[PodCertFileName(testPod.Name)])
 
@@ -152,6 +154,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
+				t.Helper()
 				assert.NotEmpty(t, after.Data[PodKeyFileName(testPod.Name)])
 				assert.NotEmpty(t, after.Data[PodCertFileName(testPod.Name)])
 
@@ -169,6 +172,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
+				t.Helper()
 				assert.NotEmpty(t, after.Data[PodKeyFileName(testPod.Name)])
 				assert.NotEmpty(t, after.Data[PodCertFileName(testPod.Name)])
 
@@ -186,6 +190,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
+				t.Helper()
 				assert.Equal(t, before, after)
 			},
 		},

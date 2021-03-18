@@ -24,7 +24,7 @@ func MustNumDataNodes(es esv1.Elasticsearch) int {
 
 func isDataNode(node esv1.NodeSet, ver version.Version) bool {
 	if node.Config == nil {
-		return esv1.DefaultCfg(ver).Node.HasDataRole()
+		return esv1.DefaultCfg(ver).Node.HasRole(esv1.DataRole)
 	}
 	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
 	if err != nil {
@@ -36,5 +36,5 @@ func isDataNode(node esv1.NodeSet, ver version.Version) bool {
 	if err != nil {
 		panic(err)
 	}
-	return nodeCfg.Node.HasDataRole()
+	return nodeCfg.Node.HasRole(esv1.DataRole)
 }

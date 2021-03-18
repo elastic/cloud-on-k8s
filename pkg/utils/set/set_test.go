@@ -74,7 +74,6 @@ func TestStringSet_Add(t *testing.T) {
 			assertion: func(s StringSet) {
 				require.True(t, s.Has("a"))
 				require.Equal(t, 1, s.Count())
-
 			},
 		},
 	}

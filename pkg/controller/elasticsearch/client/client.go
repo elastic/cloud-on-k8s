@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -70,6 +71,7 @@ type Client interface {
 	DisableReplicaShardsAllocation(ctx context.Context) error
 	// EnableShardAllocation enables shards allocation on the cluster.
 	EnableShardAllocation(ctx context.Context) error
+	//nolint:gocritic
 	// SyncedFlush requests a synced flush on the cluster. Deprecated in 7.6, removed in 8.0.
 	// This is "best-effort", see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-synced-flush.html.
 	SyncedFlush(ctx context.Context) error
@@ -156,40 +158,29 @@ func (e *APIError) Error() string {
 
 // IsForbidden checks whether the error was an HTTP 403 error.
 func IsForbidden(err error) bool {
-	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusForbidden
-	default:
-		return false
-	}
+	return isHTTPError(err, http.StatusForbidden)
 }
 
 // IsNotFound checks whether the error was an HTTP 404 error.
 func IsNotFound(err error) bool {
-	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusNotFound
-	default:
-		return false
-	}
+	return isHTTPError(err, http.StatusNotFound)
 }
 
 // IsTimeout checks whether the error was an HTTP 408 error
 func IsTimeout(err error) bool {
-	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusRequestTimeout
-	default:
-		return false
-	}
+	return isHTTPError(err, http.StatusRequestTimeout)
 }
 
 // IsConflict checks whether the error was an HTTP 409 error.
 func IsConflict(err error) bool {
-	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusConflict
-	default:
-		return false
+	return isHTTPError(err, http.StatusConflict)
+}
+
+func isHTTPError(err error, statusCode int) bool {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		return apiErr.response.StatusCode == statusCode
 	}
+
+	return false
 }

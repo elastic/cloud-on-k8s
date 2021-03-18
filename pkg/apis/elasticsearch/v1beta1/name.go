@@ -19,7 +19,7 @@ const (
 	secureSettingsSecretSuffix        = "secure-settings"
 	httpServiceSuffix                 = "http"
 	elasticUserSecretSuffix           = "elastic-user"
-	xpackFileRealmSecretSuffix        = "xpack-file-realm"
+	xpackFileRealmSecretSuffix        = "xpack-file-realm" //nolint:gosec
 	internalUsersSecretSuffix         = "internal-users"
 	unicastHostsConfigMapSuffix       = "unicast-hosts"
 	licenseSecretSuffix               = "license"

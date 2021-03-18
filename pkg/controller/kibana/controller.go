@@ -105,11 +105,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileKibana{}

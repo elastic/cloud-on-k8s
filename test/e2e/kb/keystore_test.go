@@ -15,8 +15,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -55,12 +55,9 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Create secure settings secret",
-				Test: func(t *testing.T) {
-					// remove if already exists (ignoring errors)
-					_ = k.Client.Delete(context.Background(), &secureSettings)
-					// and create a fresh one
-					require.NoError(t, k.Client.Create(context.Background(), &secureSettings))
-				},
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdateSecrets(secureSettings)
+				}),
 			},
 		}
 	}
@@ -71,15 +68,14 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					secureSettings.Data = map[string][]byte{
 						// this needs to be a valid configuration item, otherwise Kibana refuses to start
 						"logging.json":    []byte("true"),
 						"logging.verbose": []byte("true"),
 					}
-					err := k.Client.Update(context.Background(), &secureSettings)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(context.Background(), &secureSettings)
+				}),
 			},
 
 			// keystore should be updated accordingly
@@ -88,16 +84,16 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					// retrieve current Kibana resource
 					var currentKb kbv1.Kibana
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb)
-					require.NoError(t, err)
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb); err != nil {
+						return err
+					}
 					// set its secure settings to nil
 					currentKb.Spec.SecureSettings = nil
-					err = k.Client.Update(context.Background(), &currentKb)
-					require.NoError(t, err)
-				},
+					return k.Client.Update(context.Background(), &currentKb)
+				}),
 			},
 
 			// keystore should be updated accordingly
@@ -106,10 +102,13 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			// cleanup extra resources
 			test.Step{
 				Name: "Delete secure settings secret",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					err := k.Client.Delete(context.Background(), &secureSettings)
-					require.NoError(t, err)
-				},
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
 			},
 		}
 	}

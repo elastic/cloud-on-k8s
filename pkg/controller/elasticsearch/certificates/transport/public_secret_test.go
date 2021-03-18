@@ -74,6 +74,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		{
 			name: "is updated on mismatch",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data[certificates.CAFileName] = []byte("/some/ca.crt")
 				return mkClient(t, s)
@@ -83,6 +84,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		{
 			name: "removes extraneous keys",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data["extra"] = []byte{0, 1, 2, 3}
 				return mkClient(t, s)
@@ -92,6 +94,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		{
 			name: "preserves labels and annotations",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				t.Helper()
 				s := mkWantedSecret(t)
 				if s.Labels == nil {
 					s.Labels = make(map[string]string)
@@ -106,6 +109,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 				return mkClient(t, s)
 			},
 			wantSecret: func(t *testing.T) *corev1.Secret {
+				t.Helper()
 				s := mkWantedSecret(t)
 				if s.Labels == nil {
 					s.Labels = make(map[string]string)

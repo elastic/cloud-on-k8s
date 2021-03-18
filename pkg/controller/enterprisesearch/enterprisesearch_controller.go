@@ -49,7 +49,7 @@ var (
 )
 
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
-//The Manager will set fields on the Controller and Start it when the Manager is Started.
+// The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
 	c, err := common.NewController(mgr, controllerName, reconciler, params)
@@ -111,11 +111,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}

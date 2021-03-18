@@ -64,7 +64,7 @@ func doRun(flags runFlags) error {
 				return err
 			}
 			if err := checkElectedOperator(operators.Items, flags.autoPortForwarding); err != nil {
-				return nil
+				return nil //nolint:nilerr
 			}
 
 		case <-deletePodTicker.C:
@@ -76,7 +76,7 @@ func doRun(flags runFlags) error {
 				log.Info("No operator Pod available for deletion")
 				continue
 			}
-			toDelete := rand.Intn(len(operators.Items))
+			toDelete := rand.Intn(len(operators.Items)) //nolint:gosec
 			podToDelete := operators.Items[toDelete]
 			log.Info("Deleting operator", "pod_name", podToDelete.Name)
 			if err := client.CoreV1().Pods(flags.operatorNamespace).Delete(context.Background(), podToDelete.Name, metav1.DeleteOptions{}); err != nil {
@@ -110,7 +110,6 @@ func doRun(flags runFlags) error {
 			}
 		}
 	}
-
 }
 
 // listOperators retrieves the list of running operator instances.
@@ -162,7 +161,7 @@ func isElected(pod corev1.Pod, autoPortForwarding bool) bool {
 	url := fmt.Sprintf("http://%s:9090/metrics", pod.Status.PodIP)
 
 	client := createHTTPClient(autoPortForwarding)
-	resp, err := client.Get(url)
+	resp, err := client.Get(url) //nolint:noctx
 	if err != nil {
 		// Timeout or closed connections may happen since some Pods might be in the process of being started or stopped.
 		log.Error(err, "Error while retrieving Pod metrics")

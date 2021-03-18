@@ -58,6 +58,7 @@ func BenchmarkParseSANGeneralNames3WithDNS3(b *testing.B) {
 	benchmarkParseSANGeneralNames(b, 3, 3)
 }
 
+//nolint:thelper
 func benchmarkParseSANGeneralNames(b *testing.B, otherNames, dnsNames int) {
 	var generalNames []GeneralName
 	for i := 0; i < otherNames; i++ {

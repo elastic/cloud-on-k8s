@@ -82,6 +82,7 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 	scalingDown := nextNodeCount < currentNodeCount
 	// observedNodesByEs is the number of nodes used by Elasticsearch to compute its requirements
 	observedNodesByEs := len(ctx.AutoscalingPolicyResult.CurrentNodes)
+	//nolint:nestif
 	if observedNodesByEs < int(currentNodeCount) && scalingDown {
 		ctx.Log.Info(
 			"Number of nodes observed by Elasticsearch is less than expected, do not scale down",
@@ -126,7 +127,6 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		nextResources.NodeResources = nextResources.UpdateLimits(ctx.AutoscalingSpec.AutoscalingResources)
 
 		return nextResources
-
 	}
 	return calculatedResources
 }

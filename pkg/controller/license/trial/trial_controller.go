@@ -165,7 +165,6 @@ func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret
 	trialActivationInProgress := bytes.Equal(trialStatus.Data[licensing.TrialActivationKey], []byte("true"))
 	if trialActivationInProgress && allowNewState {
 		return licensing.NewTrialState()
-
 	}
 	// otherwise just recover the public key
 	return licensing.NewTrialStateFromStatus(trialStatus)
@@ -182,7 +181,6 @@ func (r *ReconcileTrials) startTrialActivation() error {
 
 func (r *ReconcileTrials) completeTrialActivation(license types.NamespacedName) (reconcile.Result, error) {
 	if r.trialState.CompleteTrialActivation() {
-
 		expectedStatus, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -238,9 +236,8 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 }
 
 func addWatches(c controller.Controller) error {
-
 	// Watch the trial status secret and the enterprise trial licenses as well
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
 		secret, ok := obj.(*corev1.Secret)
 		if !ok {
 			log.Error(fmt.Errorf("object of type %T in secret watch", obj), "dropping event due to type error")
@@ -268,10 +265,7 @@ func addWatches(c controller.Controller) error {
 			},
 		}
 	}),
-	); err != nil {
-		return err
-	}
-	return nil
+	)
 }
 
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller

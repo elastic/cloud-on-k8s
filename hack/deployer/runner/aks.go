@@ -165,11 +165,7 @@ func (d *AksDriver) create() error {
 		`--node-count {{.NodeCount}} --node-vm-size {{.MachineType}} --kubernetes-version {{.KubernetesVersion}} ` +
 		`--node-osdisk-size 30 --enable-addons http_application_routing --output none --generate-ssh-keys` + servicePrincipal
 
-	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
-		return err
-	}
-
-	return nil
+	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
 func (d *AksDriver) GetCredentials() error {

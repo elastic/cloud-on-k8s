@@ -416,7 +416,7 @@ func TestMinSupportedVersion(t *testing.T) {
 }
 
 func expectedDeploymentParams() deployment.Params {
-	false := false
+	falseVal := false
 	return deployment.Params{
 		Name:      "test-kb",
 		Namespace: "default",
@@ -443,7 +443,7 @@ func expectedDeploymentParams() deployment.Params {
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: "test-kb-http-certs-internal",
-								Optional:   &false,
+								Optional:   &falseVal,
 							},
 						},
 					},
@@ -452,7 +452,7 @@ func expectedDeploymentParams() deployment.Params {
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: "test-kb-config",
-								Optional:   &false,
+								Optional:   &falseVal,
 							},
 						},
 					},
@@ -467,7 +467,7 @@ func expectedDeploymentParams() deployment.Params {
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: "es-ca-secret",
-								Optional:   &false,
+								Optional:   &falseVal,
 							},
 						},
 					},
@@ -484,7 +484,7 @@ func expectedDeploymentParams() deployment.Params {
 					Image:           "my-image",
 					Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: &false,
+						Privileged: &falseVal,
 					},
 					Env: []corev1.EnvVar{
 						{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -519,7 +519,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 						{
 							Name:      DataVolumeName,
-							ReadOnly:  false,
+							ReadOnly:  falseVal,
 							MountPath: DataVolumeMountPath,
 						},
 					},
@@ -555,7 +555,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 						{
 							Name:      DataVolumeName,
-							ReadOnly:  false,
+							ReadOnly:  falseVal,
 							MountPath: DataVolumeMountPath,
 						},
 					},
@@ -580,7 +580,7 @@ func expectedDeploymentParams() deployment.Params {
 					},
 					Resources: DefaultResources,
 				}},
-				AutomountServiceAccountToken: &false,
+				AutomountServiceAccountToken: &falseVal,
 			},
 		},
 	}

@@ -126,11 +126,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler()); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler())
 }
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}

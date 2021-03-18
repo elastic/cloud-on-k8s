@@ -101,11 +101,7 @@ func copyCertificateAuthority(
 	}
 
 	// Reconcile the copy to the target cluster
-	if err := reconcileRemoteCA(ctx, r.Client, target, sourceKey, sourceCA.Data[certificates.CAFileName]); err != nil {
-		return err
-	}
-
-	return nil
+	return reconcileRemoteCA(ctx, r.Client, target, sourceKey, sourceCA.Data[certificates.CAFileName])
 }
 
 // deleteCertificateAuthorities deletes all the Secrets needed to establish a trust relationship between two clusters.

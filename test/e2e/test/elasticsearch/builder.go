@@ -204,7 +204,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 	})
 }
 
-func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequirements) Builder {
+func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceRequirements) Builder {
 	cfg := map[string]interface{}{}
 	v := version.MustParse(b.Elasticsearch.Spec.Version)
 
@@ -227,7 +227,7 @@ func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequ
 	}
 
 	return b.WithNodeSet(esv1.NodeSet{
-		Name:  "coordinator",
+		Name:  "coordinating",
 		Count: int32(count),
 		Config: &commonv1.Config{
 			Data: cfg,

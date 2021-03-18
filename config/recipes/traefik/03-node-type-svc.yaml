@@ -11,7 +11,7 @@ spec:
       port: 9200
       targetPort: 9200
   selector:
-    # Select coordinator nodes
+    # Select coordinating nodes
     elasticsearch.k8s.elastic.co/cluster-name: "hulk"
     elasticsearch.k8s.elastic.co/node-master: "false"
     elasticsearch.k8s.elastic.co/node-data: "false"

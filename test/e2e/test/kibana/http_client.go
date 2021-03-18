@@ -60,7 +60,7 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	u.Path = pathAndQueryURL.Path
 	u.RawQuery = pathAndQueryURL.RawQuery
 
-	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body)) //nolint:noctx
 	if err != nil {
 		return nil, errors.Wrap(err, "while creating request")
 	}

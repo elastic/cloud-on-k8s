@@ -264,6 +264,7 @@ func TestReconcile(t *testing.T) {
 }
 
 func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
+	t.Helper()
 	gotStatus, err := status.From(got)
 	require.NoError(t, err)
 	wantStatus, err := status.From(want)
@@ -280,7 +281,6 @@ func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
 			require.True(t, resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests))
 		}
 	}
-
 }
 
 func getPolicyStatus(autoscalingPolicyStatuses []status.AutoscalingPolicyStatus, name string) *status.AutoscalingPolicyStatus {
@@ -305,6 +305,7 @@ type fakeEsClient struct {
 }
 
 func newFakeEsClient(t *testing.T) *fakeEsClient {
+	t.Helper()
 	return &fakeEsClient{
 		t:                   t,
 		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},

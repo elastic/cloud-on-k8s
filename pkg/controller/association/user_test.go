@@ -27,13 +27,12 @@ import (
 
 const (
 	userName                  = "default-kibana-foo-kibana-user"
-	userSecretName            = "kibana-foo-kibana-user" // nolint:gosec
+	userSecretName            = "kibana-foo-kibana-user" //nolint:gosec
 	associationLabelName      = "association.k8s.elastic.co/name"
 	associationLabelNamespace = "association.k8s.elastic.co/namespace"
 )
 
 func Test_reconcileEsUser(t *testing.T) {
-
 	esFixture := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-foo",
@@ -270,6 +269,7 @@ func Test_reconcileEsUser(t *testing.T) {
 
 // ChecksUser checks that a secret contains the required fields expected by the user reconciler.
 func ChecksUser(t *testing.T, secret *corev1.Secret, expectedUsername string, expectedRoles []string) {
+	t.Helper()
 	assert.NotNil(t, secret)
 	currentUsername, ok := secret.Data["name"]
 	assert.True(t, ok)

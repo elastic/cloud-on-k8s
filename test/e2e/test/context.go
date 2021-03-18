@@ -53,13 +53,13 @@ func initializeContext() {
 
 	f, err := os.Open(*testContextPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to open test context file %s: %v", *testContextPath, err))
+		panic(fmt.Errorf("failed to open test context file %s: %w", *testContextPath, err))
 	}
 	defer f.Close()
 
 	decoder := json.NewDecoder(f)
 	if err := decoder.Decode(&ctx); err != nil {
-		panic(fmt.Errorf("failed to decode test context: %v", err))
+		panic(fmt.Errorf("failed to decode test context: %w", err))
 	}
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)

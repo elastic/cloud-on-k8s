@@ -13,11 +13,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-//TestCoordinatorNodes tests a cluster with coordinator nodes.
-func TestCoordinatorNodes(t *testing.T) {
+//TestCoordinatingNodes tests a cluster with coordinating nodes.
+func TestCoordinatingNodes(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-es-coord").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithESCoordinatorNodes(1, elasticsearch.DefaultResources)
+		WithESCoordinatingNodes(1, elasticsearch.DefaultResources)
 
 	test.Sequence(nil, test.EmptySteps, b).RunSequential(t)
 }

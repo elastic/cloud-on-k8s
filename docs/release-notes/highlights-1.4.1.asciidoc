@@ -1,0 +1,41 @@
+[[release-highlights-1.4.1]]
+== 1.4.1 release highlights
+
+[float]
+[id="{p}-141-fixes"]
+=== Fixes
+
+This release addresses two issues related to the Helm chart for the ECK operator.
+
+* On Kubernetes version 1.16 or higher, if the operator was installed using Helm and if the validating webhook was enabled, users were prevented from <<{p}-volume-claim-templates,increasing the storage size>> of Elasticsearch `volumeClaimTemplates` even if the underlying storage class allowed expansion.
+* When the ECK operator namespace was included in the <<{p}-install-helm-restricted,managed namespaces list>> a role binding was missing from the generated manifests.
+
+[float]
+[id="{p}-141-known-issues"]
+=== Known issues
+
+Elastic Agent currently writes its runtime state into the filesystem of its container. As a consequence, the identity of the Elastic Agent changes on container restarts and any internal state of applications run by that Elastic Agent is lost. As a workaround, you can mount the agent-data `hostPath` volume into the Elastic Agent container in the location where the process writes its runtime state. You also have to run the Elastic Agent as the root user to be able to access the `hostPath` volume, as shown in the following example:
+[source,yaml]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 7.11.1
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+          - name: agent-data
+            mountPath: /usr/share/elastic-agent/data/elastic-agent-9b2fec/run
+----
+The `mountPath` differs from version to version as it contains the hash of the version control system reference which was used to build Elastic Agent. You can find out which path to use by either inspecting the Docker image or by running a command against the container, as shown below:
+[source,sh]
+----
+docker run -ti --entrypoint bash docker.elastic.co/beats/elastic-agent:7.11.1 -c "ls /usr/share/elastic-agent/data"
+----

@@ -304,7 +304,6 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "green", s.status.Health)
-
 			},
 		},
 	}

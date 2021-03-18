@@ -16,15 +16,18 @@ import (
 
 // RunRecoverableFailureScenario tests a failure scenario that is recoverable.
 func RunRecoverableFailureScenario(t *testing.T, failureSteps StepsFunc, builders ...Builder) {
+	t.Helper()
 	runFailureScenario(t, true, failureSteps, builders...)
 }
 
 // RunUnrecoverableFailureScenario tests a failure scenario that is not recoverable.
 func RunUnrecoverableFailureScenario(t *testing.T, failureSteps StepsFunc, builders ...Builder) {
+	t.Helper()
 	runFailureScenario(t, false, failureSteps, builders...)
 }
 
 func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, builders ...Builder) {
+	t.Helper()
 	skipIfIncompatibleBuilders(t, builders...)
 	k := NewK8sClientOrFatal()
 
@@ -59,6 +62,7 @@ func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, 
 
 func KillNodeSteps(podMatch func(p corev1.Pod) bool, opts ...client.ListOption) StepsFunc {
 	var killedPod corev1.Pod
+	//nolint:thelper
 	return func(k *K8sClient) StepList {
 		return StepList{
 			{

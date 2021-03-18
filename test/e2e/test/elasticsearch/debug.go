@@ -26,7 +26,7 @@ func printShardsAndAllocation(clientFactory func() (client.Client, error)) func(
 }
 
 func printResponse(esClient client.Client, url string) {
-	request, err := http.NewRequest(
+	request, err := http.NewRequest( //nolint:noctx
 		http.MethodGet,
 		url,
 		nil,

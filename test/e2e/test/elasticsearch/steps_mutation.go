@@ -74,6 +74,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	masterChangeBudgetWatcher := NewMasterChangeBudgetWatcher(b.Elasticsearch)
 	changeBudgetWatcher := NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch)
 
+	//nolint:thelper
 	return test.StepList{
 		test.Step{
 			Name: "Add some data to the cluster before starting the mutation",
@@ -124,7 +125,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Data added initially should still be present",
-				Test: test.Eventually(func() error { // nolint
+				Test: test.Eventually(func() error {
 					return dataIntegrityCheck.Verify()
 				}),
 				OnFailure: printShardsAndAllocation(func() (esclient.Client, error) {
@@ -199,7 +200,7 @@ func (hc *ContinuousHealthCheck) Start() {
 					// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
 					// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
 					// so here we do the opposite: catch expected apiserver errors, and consider the rest are network errors.
-					switch err.(type) {
+					switch err.(type) { //nolint:errorlint
 					case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
 						// explicit apiserver error, consider as healthcheck failure
 						hc.AppendErr(err)

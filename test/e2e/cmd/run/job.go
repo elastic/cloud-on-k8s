@@ -118,6 +118,7 @@ func (j *LogProducingJob) WaitOnRunning() {
 // OnPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
 // received from the informer.
 func (j *LogProducingJob) OnPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
+	//nolint:exhaustive
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		if !j.jobStarted {

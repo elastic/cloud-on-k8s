@@ -6,7 +6,7 @@ package volume
 
 // Default values for the volume name and paths
 const (
-	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user"
+	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user" //nolint:gosec
 	ProbeUserVolumeName      = "elastic-internal-probe-user"
 
 	ConfigVolumeMountPath               = "/usr/share/elasticsearch/config"
@@ -15,13 +15,13 @@ const (
 	NodeTransportCertificateCertFile    = "transport.tls.crt"
 
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
-	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"
+	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs" //nolint:gosec
 
 	RemoteCertificateAuthoritiesSecretVolumeName      = "elastic-internal-remote-certificate-authorities"
-	RemoteCertificateAuthoritiesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-remote-certs/"
+	RemoteCertificateAuthoritiesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-remote-certs/" //nolint:gosec
 
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
-	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs"
+	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs" //nolint:gosec
 
 	XPackFileRealmVolumeName      = "elastic-internal-xpack-file-realm"
 	XPackFileRealmVolumeMountPath = "/mnt/elastic-internal/xpack-file-realm"

@@ -29,7 +29,6 @@ func setHashLabel(labelName string, labels map[string]string, template interface
 	}
 	labels[labelName] = HashObject(template)
 	return labels
-
 }
 
 // GetTemplateHashLabel returns the template hash label value if set, or an empty string.

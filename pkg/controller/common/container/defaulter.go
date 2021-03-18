@@ -28,7 +28,6 @@ func NewDefaulter(base *corev1.Container) Defaulter {
 
 // From inherits default values from an other container.
 func (d Defaulter) From(other corev1.Container) Defaulter {
-
 	if other.Lifecycle != nil {
 		d.WithPreStopHook(other.Lifecycle.PreStop)
 	}

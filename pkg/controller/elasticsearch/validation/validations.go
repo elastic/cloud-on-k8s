@@ -141,7 +141,7 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 		}
 
 		// Check if this nodeSet has the master role. If autoscaling is enabled the count value in the NodeSet might not be initially set.
-		seenMaster = seenMaster || (cfg.Node.HasMasterRole() && !cfg.Node.HasVotingOnlyRole() && ns.Count > 0) || es.IsAutoscalingDefined()
+		seenMaster = seenMaster || (cfg.Node.HasRole(esv1.MasterRole) && !cfg.Node.HasRole(esv1.VotingOnlyRole) && ns.Count > 0) || es.IsAutoscalingDefined()
 	}
 
 	if !seenMaster {
@@ -154,6 +154,7 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 func getNodeRoleAttrs(cfg esv1.ElasticsearchSettings) []string {
 	var nodeRoleAttrs []string
 
+	//nolint:nestif
 	if cfg.Node != nil {
 		if cfg.Node.Data != nil {
 			nodeRoleAttrs = append(nodeRoleAttrs, esv1.NodeData)

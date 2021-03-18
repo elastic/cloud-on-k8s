@@ -64,12 +64,8 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 	}
 
 	// Watch Secrets owned by the associated resource
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    r.AssociatedObjTemplate(),
 		IsController: true,
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }

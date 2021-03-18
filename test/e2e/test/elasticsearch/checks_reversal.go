@@ -30,6 +30,7 @@ type mutationReversalTestContext struct {
 }
 
 func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Remember the current config revisions",
@@ -78,6 +79,7 @@ func (s *mutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.
 }
 
 func (s *mutationReversalTestContext) VerificationSteps(k *test.K8sClient) test.StepList {
+	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Verify no data loss has happened during the aborted upgrade",

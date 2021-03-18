@@ -141,7 +141,7 @@ func extractDNSNames(webhookConf *v1beta1.ValidatingWebhookConfiguration) []stri
 
 	for n := range svcNames {
 		dnsNames[i] = n
-		i++
+		i++ //nolint:wastedassign
 	}
 
 	return dnsNames
