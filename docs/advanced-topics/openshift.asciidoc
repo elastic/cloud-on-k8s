@@ -101,6 +101,16 @@ spec:
 EOF
 ----
 
+On OpenShift 4.6, `NET_RAW` and `SYS_CHROOT` are no longer available in the default list of CRI-O capabilities. When you deploy Elasticsearch on OpenShift 4.6, to avoid having your pods in `CrashLoopBackOff` status, you can add the necessary capabilities directly to the container:
+ 
+[source,shell]
+----
+- name: elasticsearch
+  securityContext:
+    capabilities:
+     add: ["SYS_CHROOT"]
+----
+
 [id="{p}-openshift-es-plugins"]
 === Elasticsearch plugins
 
