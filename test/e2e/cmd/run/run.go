@@ -812,6 +812,11 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 		log.Error(err, "failed to unmarshal kubectl response")
 	}
 
+	if len(ess.Items) == 0 {
+		log.Info("No Elasticsearch clusters deployed. Cannot extract diagnostics")
+		return
+	}
+
 	mgr := NewJobsManager(client, h, "extract-artifacts", 10*time.Minute)
 	for _, es := range ess.Items {
 		jobName := fmt.Sprintf("diag-%s", es.Name)
