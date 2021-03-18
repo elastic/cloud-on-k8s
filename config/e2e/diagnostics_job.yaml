@@ -23,7 +23,7 @@ spec:
       serviceAccountName: {{ .JobName }}
       initContainers:
         - name: diagnostics
-          image: eu.gcr.io/elastic-cloud-dev/support-diagnostics:412ac7a392cf
+          image: docker.elastic.co/eck-dev/support-diagnostics:412ac7a392cf
           imagePullPolicy: IfNotPresent
           env:
           - name: ES_PW
