@@ -18,7 +18,6 @@ allowedCapabilities:
 - CHOWN
 - FSETID
 - FOWNER
-- MKNOD          # required for diagnostics
 - SETGID
 - SETUID
 - SETFCAP

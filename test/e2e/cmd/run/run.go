@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -29,12 +30,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
-	testSessionTimeout   = 600 * time.Minute // time to wait for the test job to finish
+	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
 	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
@@ -404,7 +404,7 @@ func (h *helper) createManagedNamespaces() error {
 
 func (h *helper) waitForOperatorToBeReady() error {
 	log.Info("Waiting for the operator pod to be ready")
-	client, _, err := h.createKubeClient()
+	client, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")
 	}
@@ -462,7 +462,7 @@ func (h *helper) deployTestSecrets() error {
 }
 
 func (h *helper) runTestJob() error {
-	client, config, err := h.createKubeClient()
+	client, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")
 	}
@@ -479,14 +479,14 @@ func (h *helper) runTestJob() error {
 	if err != nil {
 		h.dumpEventLog()
 		h.dumpK8sData()
-		h.runEsDiagnosticsJob(client, config)
+		h.runEsDiagnosticsJob()
 		return errors.Wrap(err, "test run failed")
 	}
 
 	return nil
 }
 
-func (h *helper) createKubeClient() (*kubernetes.Clientset, *restclient.Config, error) {
+func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 	// load kubernetes client config
 	var overrides clientcmd.ConfigOverrides
 	var clientConfig clientcmd.ClientConfig
@@ -494,7 +494,7 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, *restclient.Config, 
 	if h.kubeConfig != "" {
 		kubeConf, err := clientcmd.LoadFromFile(h.kubeConfig)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to load kubeconfig")
+			return nil, errors.Wrap(err, "failed to load kubeconfig")
 		}
 
 		clientConfig = clientcmd.NewDefaultClientConfig(*kubeConf, &overrides)
@@ -506,23 +506,15 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, *restclient.Config, 
 	// create the kubernetes API client
 	config, err := clientConfig.ClientConfig()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create kubernetes client config")
+		return nil, errors.Wrap(err, "failed to create kubernetes client config")
 	}
 
-	client, err := kubernetes.NewForConfig(config)
-	return client, config, err
-}
-
-func (h *helper) testSessionJobFactory(templatePath string) func() error {
-	return func() error {
-		return h.kubectlApplyTemplateWithCleanup(templatePath, struct{ Context test.Context }{Context: h.testContext})
-	}
+	return kubernetes.NewForConfig(config)
 }
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
 func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
-
-	testSession := NewJobsManager(client, h, logStreamLabel, testSessionTimeout)
+	testSession := NewJobsManager(client, h)
 
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
@@ -535,10 +527,10 @@ func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 		outputs = append(outputs, jl)
 	}
 	writer := io.MultiWriter(outputs...)
-	runJob := NewJob("eck-"+h.testRunName, h.testSessionJobFactory("config/e2e/e2e_job.yaml"), writer, goLangTestTimestampParser)
+	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser)
 
 	if h.deployChaosJob {
-		chaosJob := NewJob("chaos-"+h.testRunName, h.testSessionJobFactory("config/e2e/chaos_job.yaml"), os.Stdout, stdTimestampParser)
+		chaosJob := NewJob("chaos-"+h.testRunName, "config/e2e/chaos_job.yaml", os.Stdout, stdTimestampParser)
 		runJob.WithDependency(chaosJob)
 		testSession.Schedule(chaosJob)
 	}
@@ -796,11 +788,11 @@ type diagnosticContext struct {
 	test.Context
 	ESNamespace string
 	ESName      string
-	JobName     string
+	PodName     string
 	TLS         bool
 }
 
-func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restclient.Config) {
+func (h *helper) runEsDiagnosticsJob() {
 	output, err := h.kubectl("get", "es", "--all-namespaces", "-o", "json")
 	if err != nil {
 		log.Error(err, "failed to list Elasticsearch clusters")
@@ -817,60 +809,95 @@ func (h *helper) runEsDiagnosticsJob(client *kubernetes.Clientset, config *restc
 		return
 	}
 
-	mgr := NewJobsManager(client, h, "extract-artifacts", 10*time.Minute)
+	var wg sync.WaitGroup
+	wg.Add(len(ess.Items))
+
+	diagnosticsTimeout := 10 * time.Minute
+
 	for _, es := range ess.Items {
-		jobName := fmt.Sprintf("diag-%s", es.Name)
-		mgr.Schedule(NewArtifactJob(jobName, func() error {
+		go func(es v1.Elasticsearch) {
+			defer wg.Done()
+			podName := fmt.Sprintf("diag-%s", es.Name)
 			err := h.kubectlApplyTemplateWithCleanup("config/e2e/diagnostics_job.yaml", diagnosticContext{
 				Context:     h.testContext,
 				ESNamespace: es.Namespace,
 				ESName:      es.Name,
-				JobName:     jobName,
+				PodName:     podName,
 				TLS:         es.Spec.HTTP.TLS.Enabled(),
 			})
-			return err
-		}, config))
 
+			if err != nil {
+				log.Error(err, "diagnostics job failed to create")
+				return
+			}
+			wait := exec.Command("kubectl", "wait", //nolint:gosec
+				fmt.Sprintf("--timeout=%s", diagnosticsTimeout.String()),
+				"--for=condition=ContainersReady",
+				"-n", es.Namespace,
+				fmt.Sprintf("pod/%s", podName),
+			)
+			out, err := wait.CombinedOutput()
+			if err != nil {
+				log.Error(err, "diagnostics pod did not complete successfully", "pod", podName, "output", string(out))
+				return
+			}
+
+			cp := exec.Command("kubectl", "cp", fmt.Sprintf("%s/%s:/diagnostic-output", es.Namespace, podName), es.Name) //nolint:gosec
+			out, err = cp.CombinedOutput()
+			if err != nil {
+				log.Error(err, "diagnostics output did not copy successfully", "pod", podName, "output", string(out))
+				return
+			}
+			log.Info("Copied diagnostics", "name", podName, "namespace", es.Namespace)
+
+			// short circuit pod deletion
+			log.Info("Deleting", "name", podName, "namespace", es.Namespace)
+			out, err = exec.Command("kubectl", "delete", "pod", podName, "-n", es.Namespace).CombinedOutput()
+			if err != nil {
+				log.Info("Failed to delete diagnostic pod", "out", string(out), "err", err)
+			}
+			err = h.normalizeDiagnosticArchives(es.Name)
+			if err != nil {
+				log.Error(err, "error while normalizing diagnostic archives")
+			}
+
+			// clean up the download directory
+			out, err = exec.Command("rm", "-r", es.Name).CombinedOutput() //nolint:gosec
+			if err != nil {
+				log.Error(err, "while deleting download directory", "out", out)
+			}
+		}(es)
 	}
-	mgr.Start()
-	if mgr.err != nil {
-		log.Error(err, "failed to extract Elasticsearch diagnostics")
-	}
-	err = h.normalizeDiagnosticArchives()
-	if err != nil {
-		log.Error(err, "error while normalizing diagnostic archives")
-	}
+	wg.Wait()
 }
 
-func forEachFile(pattern string, fn func(string) error) error {
+func forEachFile(pattern string, fn func(string) ([]byte, error)) error {
 	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
-		if err := fn(file); err != nil {
+		out, err := fn(file)
+		if err != nil {
+			log.Info(string(out))
 			return err
 		}
 	}
 	return nil
 }
 
-func (h *helper) normalizeDiagnosticArchives() error {
+func (h *helper) normalizeDiagnosticArchives(dirName string) error {
 	// CI piplines are configured to upload *.tgz
 	// support-diagnostics produces either *.zip or if that fails *.tar.gz (!)
 	// this normalizes everything to *.tgz
-	err := forEachFile("api-diagnostics*.zip", func(file string) error {
-		name := filepath.Base(file)
-		basename := strings.TrimSuffix(name, filepath.Ext(name))
-		return exec.Command("tar", "czf", fmt.Sprintf("%s.tgz", basename), fmt.Sprintf("@%s", name)).Run() //nolint:gosec
+	err := forEachFile(fmt.Sprintf("%s/api-diagnostics*.zip", dirName), func(file string) ([]byte, error) {
+		return exec.Command("tar", "czf", fmt.Sprintf("api-diagnostics-%s.tgz", dirName), fmt.Sprintf("@%s", file)).CombinedOutput() //nolint:gosec
 	})
 	if err != nil {
 		return err
 	}
 
-	return forEachFile("api-diagnostics*.tar.gz", func(file string) error {
-		name := filepath.Base(file)
-		basename := strings.TrimSuffix(name, ".tar.gz")
-		return exec.Command("mv", name, fmt.Sprintf("%s.tgz", basename)).Run()
+	return forEachFile(fmt.Sprintf("%s/api-diagnostics*.tar.gz", dirName), func(file string) ([]byte, error) {
+		return exec.Command("mv", file, fmt.Sprintf("api-diagnostics-%s.tgz", dirName)).CombinedOutput()
 	})
 }

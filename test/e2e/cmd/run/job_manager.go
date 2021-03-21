@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +19,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// JobsManager runs and monitors one or more jobs on a remote K8S cluster.
+// JobsManager represents a test session running on a remote K8S cluster.
 type JobsManager struct {
 	*helper
 	cache.SharedInformer
@@ -26,53 +27,61 @@ type JobsManager struct {
 	cancelFunc context.CancelFunc
 	*kubernetes.Clientset
 
-	jobs map[string]Job
+	jobs map[string]*Job
 	err  error // used to notify that an error occurred in this session
 }
 
-func NewJobsManager(client *kubernetes.Clientset, h *helper, podSelector string, timeout time.Duration) *JobsManager {
+func NewJobsManager(client *kubernetes.Clientset, h *helper) *JobsManager {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
+		informers.WithNamespace(h.testContext.E2ENamespace),
 		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
 			opt.LabelSelector = fmt.Sprintf(
 				"%s=%s,%s=%v",
 				testRunLabel,
 				h.testContext.TestRun,
-				podSelector,
+				logStreamLabel,
 				true,
 			)
-			log.Info("Informer configured", "label-selector", opt.LabelSelector)
 		}))
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 	return &JobsManager{
 		helper:         h,
 		Clientset:      client,
 		SharedInformer: factory.Core().V1().Pods().Informer(),
 		Context:        ctx,
-		jobs:           map[string]Job{},
+		jobs:           map[string]*Job{},
 		cancelFunc:     cancelFunc,
 	}
 }
 
 // Schedule schedules some Jobs. A Job is started only when its dependency is fulfilled (if any).
-func (jm *JobsManager) Schedule(jobs ...Job) {
+func (jm *JobsManager) Schedule(jobs ...*Job) {
 	for _, job := range jobs {
 		j := job
-		jm.jobs[j.Name()] = j
+		jm.jobs[j.jobName] = j
 		go func() {
 			// Check if dependency is started
-			if dep, ok := j.(JobDependency); ok {
-				dep.WaitOnRunning()
+			if j.dependency != nil {
+				log.Info("Waiting for dependency job to be started", "job_name", j.jobName, "dependency_name", j.dependency.jobName)
+				j.dependency.runningWg.Wait()
 			}
 			// Check if context is still valid
 			if jm.Err() != nil {
-				j.Skip()
+				log.Info("Skip job creation", "job_name", j.jobName)
+				j.runningWg.Done()
 				return
 			}
 			// Create the Job
-			log.Info("Creating job", "job_name", j.Name())
-			err := j.Materialize()
+			log.Info("Creating job", "job_name", j.jobName)
+			err := jm.helper.kubectlApplyTemplateWithCleanup(j.templatePath,
+				struct {
+					Context test.Context
+				}{
+					Context: jm.helper.testContext,
+				},
+			)
 			if err != nil {
-				log.Error(err, "Error while creating Job", "job_name", j.Name())
+				log.Error(err, "Error while creating Job", "job_name", j.jobName, "path", j.templatePath)
 				jm.err = err
 				jm.Stop()
 			}
@@ -83,12 +92,12 @@ func (jm *JobsManager) Schedule(jobs ...Job) {
 // Start starts the informer, forwards the events to the Jobs and attempts to stop and return as soon as a first
 // Job is completed, either because it has succeeded of failed.
 func (jm *JobsManager) Start() {
-	log.Info("Starting to monitor jobs")
+	log.Info("Starting test session")
 
 	defer func() {
 		jm.cancelFunc()
 		if deadline, _ := jm.Deadline(); deadline.Before(time.Now()) {
-			log.Info("Test job timeout exceeded", "timeout", testSessionTimeout)
+			log.Info("Test job timeout exceeded", "timeout", jobTimeout)
 		}
 		runtime.HandleCrash()
 	}()
@@ -104,31 +113,35 @@ func (jm *JobsManager) Start() {
 			if !ok {
 				return
 			}
-
 			jobName, hasJobName := newPod.Labels["job-name"]
 			if !hasJobName {
 				// Unmanaged Job/Pod, this should not happen if the label selector is correct, harmless but report it in the logs.
-				log.Info("received an update event for a Pod which was not created by a job", "namespace", newPod.Namespace, "name", newPod.Name)
+				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
 			job, ok := jm.jobs[jobName]
 			if !ok {
 				// Same as above, it seems to be an unmanaged Job/Pod.
-				log.Info("received an update event for an unmanaged Pod", "namespace", newPod.Namespace, "name", newPod.Name)
+				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
 			switch newPod.Status.Phase {
 			case corev1.PodRunning:
-				job.OnPodEvent(jm.Clientset, newPod)
+				job.onPodEvent(jm.Clientset, newPod)
 			case corev1.PodSucceeded:
+				if job.podSucceeded {
+					// already done, but the informer is not stopped yet so this code is still running
+					return
+				}
 				log.Info("Pod succeeded", "name", newPod.Name, "status", newPod.Status.Phase)
-				job.OnPodEvent(jm.Clientset, newPod)
+				job.onPodEvent(jm.Clientset, newPod)
+				job.WaitForLogs()
 				jm.Stop()
 			case corev1.PodFailed:
 				// One of the managed Job/Pod has failed, wait for logs and return.
 				jm.err = errors.Errorf("Pod %s has failed", newPod.Name)
-				log.Info("Pod is in failed state", "name", newPod.Name, "err", jm.err, "status", newPod.Status)
-				job.OnPodEvent(jm.Clientset, newPod)
+				log.Error(jm.err, "Pod is in failed state", "name", newPod.Name)
+				job.WaitForLogs()
 				jm.Stop()
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)

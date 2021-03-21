@@ -1,63 +1,39 @@
----
 apiVersion: v1
-kind: ServiceAccount
+kind: Pod
 metadata:
-  name: {{ .JobName }} 
-  namespace: {{ .ESNamespace }}
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{ .JobName }}
+  name: {{ .PodName }}
   namespace: {{ .ESNamespace }}
   labels:
     test-run: {{ .Context.TestRun }}
 spec:
-  activeDeadlineSeconds: 500
-  template:
-    metadata:
-      labels:
-        extract-artifacts: "true"
-        test-run: {{ .Context.TestRun }}
-    spec:
-      serviceAccountName: {{ .JobName }}
-      initContainers:
-        - name: diagnostics
-          image: docker.elastic.co/eck-dev/support-diagnostics:412ac7a392cf
-          imagePullPolicy: IfNotPresent
-          env:
-          - name: ES_PW
-            valueFrom:
-              secretKeyRef:
-                name: {{ .ESName }}-es-elastic-user
-                key: elastic
-          command: [sh, -c]
-          args:
-          - ./diagnostics.sh -h {{.ESName}}-es-http --type api --bypassDiagVerify -u elastic --passwordText $ES_PW {{if .TLS}}-s --noVerify{{end}} -o /diagnostic-output
-          volumeMounts:
-          - name: output
-            mountPath: /diagnostic-output
-      containers:
-      - name: offer-output
-        image: alpine
-        securityContext:
-          capabilities:
-            add: ["MKNOD"]
-        volumeMounts:
-        - name: output
-          mountPath: /diagnostic-output
-        command: [sh, -c] 
-        args:
-          - |
-            set -e
-            echo "Creating fifo pipe"
-            mkfifo /export-pipe
-            echo "fifo pipe established"
-            cd /diagnostic-output
-            tar -cvf - $(find . -type f) > /export-pipe
-            echo "Diagnostic output has been received"
-      volumes:
+  terminationGracePeriodSeconds: 0
+  initContainers:
+    - name: diagnostics
+      image: docker.elastic.co/eck-dev/support-diagnostics:412ac7a392cf
+      imagePullPolicy: IfNotPresent
+      env:
+      - name: ES_PW
+        valueFrom:
+          secretKeyRef:
+            name: {{ .ESName }}-es-elastic-user
+            key: elastic
+      command: [sh, -c]
+      args:
+      - ./diagnostics.sh -h {{.ESName}}-es-http --type api --bypassDiagVerify -u elastic --passwordText $ES_PW {{if .TLS}}-s --noVerify{{end}} -o /diagnostic-output
+      volumeMounts:
       - name: output
-        emptyDir: {}
-      restartPolicy: Never
-  backoffLimit: 0 # don't retry a failed diagnostic run
+        mountPath: /diagnostic-output
+  containers:
+  - name: offer-output
+    image: alpine
+    volumeMounts:
+    - name: output
+      mountPath: /diagnostic-output
+    command: [sh, -c]
+    args:
+      - |
+        while true; do sleep 1; done;
+  volumes:
+  - name: output
+    emptyDir: {}
+  restartPolicy: Never
