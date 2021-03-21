@@ -842,6 +842,8 @@ func (h *helper) runEsDiagnosticsJob() {
 				return
 			}
 
+			// copy the whole diagnostic-output directory as archive names are unpredictable into a temporary folder named after the cluster
+			// assumption: cluster names in e2e tests are unique
 			cp := exec.Command("kubectl", "cp", fmt.Sprintf("%s/%s:/diagnostic-output", es.Namespace, podName), es.Name) //nolint:gosec
 			out, err = cp.CombinedOutput()
 			if err != nil {
@@ -850,12 +852,6 @@ func (h *helper) runEsDiagnosticsJob() {
 			}
 			log.Info("Copied diagnostics", "name", podName, "namespace", es.Namespace)
 
-			// short circuit pod deletion
-			log.Info("Deleting", "name", podName, "namespace", es.Namespace)
-			out, err = exec.Command("kubectl", "delete", "pod", podName, "-n", es.Namespace).CombinedOutput()
-			if err != nil {
-				log.Info("Failed to delete diagnostic pod", "out", string(out), "err", err)
-			}
 			err = h.normalizeDiagnosticArchives(es.Name)
 			if err != nil {
 				log.Error(err, "error while normalizing diagnostic archives")
@@ -890,6 +886,7 @@ func (h *helper) normalizeDiagnosticArchives(dirName string) error {
 	// CI piplines are configured to upload *.tgz
 	// support-diagnostics produces either *.zip or if that fails *.tar.gz (!)
 	// this normalizes everything to *.tgz
+	// also incorporate the dirName parameter in the name of the archive to avoid overwriting archives from multiple clusters with the same timestamp
 	err := forEachFile(fmt.Sprintf("%s/api-diagnostics*.zip", dirName), func(file string) ([]byte, error) {
 		return exec.Command("tar", "czf", fmt.Sprintf("api-diagnostics-%s.tgz", dirName), fmt.Sprintf("@%s", file)).CombinedOutput() //nolint:gosec
 	})
