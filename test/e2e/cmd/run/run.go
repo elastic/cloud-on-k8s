@@ -825,11 +825,11 @@ func (h *helper) runEsDiagnosticsJob() {
 				PodName:     podName,
 				TLS:         es.Spec.HTTP.TLS.Enabled(),
 			})
-
 			if err != nil {
-				log.Error(err, "diagnostics job failed to create")
+				log.Error(err, "diagnostics pod failed to create")
 				return
 			}
+
 			wait := exec.Command("kubectl", "wait", //nolint:gosec
 				fmt.Sprintf("--timeout=%s", diagnosticsTimeout.String()),
 				"--for=condition=ContainersReady",
