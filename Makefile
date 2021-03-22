@@ -398,7 +398,14 @@ switch-registry-dev: # just use the default values of variables
 ###################################
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
-E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
+
+E2E_IMG_TAG                := $(TAG) 
+E2E_IMG_TAG_SUFFIX         ?= $(subst /,-,$(PIPELINE)) # Derive the tag suffix from the PIPELINE environment variable
+ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it to the tag
+	E2E_IMG_TAG := $(TAG)-$(E2E_IMG_TAG_SUFFIX)
+endif
+
+E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
 TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 E2E_STACK_VERSION          ?= 7.11.2
 E2E_JSON                   ?= false
