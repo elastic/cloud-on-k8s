@@ -113,9 +113,9 @@ func forEachFile(pattern string, fn func(string) ([]byte, error)) error {
 	return nil
 }
 
-// normalizeDiagnosticArchives CI piplines are configured to upload *.tgz, support-diagnostics produces either *.zip or
-// if that fails *.tar.gz (!). This normalizes everything to *.tgz also incorporate the dirName parameter in the name of
-// the archive to avoid overwriting archives from multiple clusters with the same timestamp
+// normalizeDiagnosticArchives  normalizes everything to *.tgz. This is because CI piplines are configured to upload *.tgz,
+// support-diagnostics produces either *.zip or if that fails *.tar.gz (!). It also incorporate the dirName parameter in
+// the name of the archive to avoid overwriting archives from multiple clusters with the same timestamp.
 func (h *helper) normalizeDiagnosticArchives(dirName string) error {
 	err := forEachFile(fmt.Sprintf("%s/api-diagnostics*.zip", dirName), func(file string) ([]byte, error) {
 		return exec.Command("tar", "czf", fmt.Sprintf("api-diagnostics-%s.tgz", dirName), fmt.Sprintf("@%s", file)).CombinedOutput() //nolint:gosec
