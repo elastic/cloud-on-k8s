@@ -42,6 +42,7 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 }
 
 func TestKubernetesIntegrationRecipe(t *testing.T) {
+	t.Skip() // pending resolution of https://github.com/elastic/cloud-on-k8s/issues/4360
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
 			WithRoles(agent.PSPClusterRoleName).
