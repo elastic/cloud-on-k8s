@@ -799,8 +799,7 @@ func (h *helper) runEsDiagnosticsJob() {
 		return
 	}
 	var ess v1.ElasticsearchList
-	err = json.Unmarshal([]byte(output), &ess)
-	if err != nil {
+	if err := json.Unmarshal([]byte(output), &ess); err != nil {
 		log.Error(err, "failed to unmarshal kubectl response")
 	}
 
@@ -860,7 +859,7 @@ func (h *helper) runEsDiagnosticsJob() {
 			// clean up the download directory
 			out, err = exec.Command("rm", "-r", es.Name).CombinedOutput() //nolint:gosec
 			if err != nil {
-				log.Error(err, "while deleting download directory", "out", out)
+				log.Error(err, "while deleting download directory", "output", out)
 			}
 		}(es)
 	}

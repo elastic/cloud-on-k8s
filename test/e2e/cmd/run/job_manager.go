@@ -113,6 +113,7 @@ func (jm *JobsManager) Start() {
 			if !ok {
 				return
 			}
+
 			jobName, hasJobName := newPod.Labels["job-name"]
 			if !hasJobName {
 				// Unmanaged Job/Pod, this should not happen if the label selector is correct, harmless but report it in the logs.
