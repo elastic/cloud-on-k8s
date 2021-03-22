@@ -9,6 +9,7 @@ spec:
   terminationGracePeriodSeconds: 0
   initContainers:
     - name: diagnostics
+      # image built as described in https://github.com/elastic/support-diagnostics#creating-a-docker-image
       image: docker.elastic.co/eck-dev/support-diagnostics:412ac7a392cf
       imagePullPolicy: IfNotPresent
       env:
