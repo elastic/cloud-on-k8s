@@ -264,8 +264,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithPodLabel(run.TestNameLabel, fullTestName)
 		case *beatv1beta1.Beat:
 			b := beat.NewBuilderFromBeat(decodedObj)
-
-			builder = b.WithNamespace(namespace).
+			b = b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
 				WithLabel(run.TestNameLabel, fullTestName).
@@ -274,8 +273,10 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithKibanaRef(tweakServiceRef(b.Beat.Spec.KibanaRef, suffix))
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
-				builder = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
+				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
+
+			builder = b
 		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.EnterpriseSearch = *decodedObj
@@ -287,8 +288,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithPodLabel(run.TestNameLabel, fullTestName)
 		case *agentv1alpha1.Agent:
 			b := agent.NewBuilderFromAgent(decodedObj)
-
-			builder = b.WithNamespace(namespace).
+			b = b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRefs(tweakOutputRefs(b.Agent.Spec.ElasticsearchRefs, suffix)...).
 				WithLabel(run.TestNameLabel, fullTestName).
@@ -296,8 +296,10 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithDefaultESValidation(agent.HasAnyDataStream())
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
-				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix) //nolint:wastedassign
+				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
+
+			builder = b
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
