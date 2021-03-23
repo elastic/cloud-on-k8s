@@ -33,6 +33,7 @@ func (h *helper) runEsDiagnosticsJob() {
 	var ess v1.ElasticsearchList
 	if err := json.Unmarshal([]byte(output), &ess); err != nil {
 		log.Error(err, "failed to unmarshal kubectl response")
+		return
 	}
 
 	if len(ess.Items) == 0 {
@@ -49,14 +50,13 @@ func (h *helper) runEsDiagnosticsJob() {
 		go func(es v1.Elasticsearch) {
 			defer wg.Done()
 			podName := fmt.Sprintf("diag-%s", es.Name)
-			err := h.kubectlApplyTemplateWithCleanup("config/e2e/diagnostics_job.yaml", diagnosticContext{
+			if err := h.kubectlApplyTemplateWithCleanup("config/e2e/diagnostics_job.yaml", diagnosticContext{
 				Context:     h.testContext,
 				ESNamespace: es.Namespace,
 				ESName:      es.Name,
 				PodName:     podName,
 				TLS:         es.Spec.HTTP.TLS.Enabled(),
-			})
-			if err != nil {
+			}); err != nil {
 				log.Error(err, "diagnostics pod failed to create")
 				return
 			}
@@ -67,8 +67,7 @@ func (h *helper) runEsDiagnosticsJob() {
 				"-n", es.Namespace,
 				fmt.Sprintf("pod/%s", podName),
 			)
-			out, err := wait.CombinedOutput()
-			if err != nil {
+			if out, err := wait.CombinedOutput(); err != nil {
 				log.Error(err, "diagnostics pod did not complete successfully", "pod", podName, "output", string(out))
 				return
 			}
@@ -76,21 +75,18 @@ func (h *helper) runEsDiagnosticsJob() {
 			// copy the whole diagnostic-output directory as archive names are unpredictable into a temporary folder named after the cluster
 			// assumption: cluster names in e2e tests are unique
 			cp := exec.Command("kubectl", "cp", fmt.Sprintf("%s/%s:/diagnostic-output", es.Namespace, podName), es.Name) //nolint:gosec
-			out, err = cp.CombinedOutput()
-			if err != nil {
+			if out, err := cp.CombinedOutput(); err != nil {
 				log.Error(err, "diagnostics output did not copy successfully", "pod", podName, "output", string(out))
 				return
 			}
 			log.Info("Copied diagnostics", "name", podName, "namespace", es.Namespace)
 
-			err = h.normalizeDiagnosticArchives(es.Name)
-			if err != nil {
+			if err := h.normalizeDiagnosticArchives(es.Name); err != nil {
 				log.Error(err, "error while normalizing diagnostic archives")
 			}
 
 			// clean up the download directory
-			out, err = exec.Command("rm", "-r", es.Name).CombinedOutput() //nolint:gosec
-			if err != nil {
+			if out, err := exec.Command("rm", "-r", es.Name).CombinedOutput(); err != nil { //nolint:gosec
 				log.Error(err, "while deleting download directory", "output", out)
 			}
 		}(es)
@@ -113,7 +109,7 @@ func forEachFile(pattern string, fn func(string) ([]byte, error)) error {
 	return nil
 }
 
-// normalizeDiagnosticArchives  normalizes everything to *.tgz. This is because CI piplines are configured to upload *.tgz,
+// normalizeDiagnosticArchives normalizes everything to *.tgz. This is because CI piplines are configured to upload *.tgz,
 // support-diagnostics produces either *.zip or if that fails *.tar.gz (!). It also incorporate the dirName parameter in
 // the name of the archive to avoid overwriting archives from multiple clusters with the same timestamp.
 func (h *helper) normalizeDiagnosticArchives(dirName string) error {

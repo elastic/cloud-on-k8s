@@ -26,7 +26,7 @@ spec:
         mountPath: /diagnostic-output
   containers:
   - name: offer-output
-    image: alpine
+    image: docker.elastic.co/eck-dev/support-diagnostics:412ac7a392cf
     volumeMounts:
     - name: output
       mountPath: /diagnostic-output
