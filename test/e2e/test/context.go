@@ -131,7 +131,7 @@ func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
 }
 
-//MustConfigDirPath is the path to the config directory with sample and recipe manifests.
+// MustConfigDirPath is the path to the config directory with sample and recipe manifests.
 func MustConfigDirPath() string {
 	wd, err := os.Getwd()
 	// assumption: we are in or below test/e2e
