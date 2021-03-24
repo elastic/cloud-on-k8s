@@ -52,7 +52,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs); err != nil {
 					return err
 				}
-				// merge annotation
+				// merge annotations
 				if curEs.Annotations == nil {
 					curEs.Annotations = make(map[string]string)
 				}
