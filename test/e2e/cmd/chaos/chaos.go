@@ -59,7 +59,7 @@ func doRun(flags runFlags) error {
 			return nil
 
 		case <-checkLeaderTicker.C:
-			operators, err := listOperators(client, flags.operatorNamespace, flags.operatorName)
+			operators, err := listOperators(client, flags.operatorNamespace)
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func doRun(flags runFlags) error {
 			}
 
 		case <-deletePodTicker.C:
-			operators, err := listOperators(client, flags.operatorNamespace, flags.operatorName)
+			operators, err := listOperators(client, flags.operatorNamespace)
 			if err != nil {
 				return err
 			}
@@ -113,9 +113,9 @@ func doRun(flags runFlags) error {
 }
 
 // listOperators retrieves the list of running operator instances.
-func listOperators(client *kubernetes.Clientset, operatorNamespace, operatorName string) (*corev1.PodList, error) {
+func listOperators(client *kubernetes.Clientset, operatorNamespace string) (*corev1.PodList, error) {
 	return client.CoreV1().Pods(operatorNamespace).List(context.Background(),
-		metav1.ListOptions{LabelSelector: "control-plane=" + operatorName},
+		metav1.ListOptions{LabelSelector: "control-plane=elastic-operator"},
 	)
 }
 
