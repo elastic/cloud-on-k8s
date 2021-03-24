@@ -55,16 +55,16 @@ type Builder struct {
 
 func (b Builder) DeepCopy() *Builder {
 	es := b.Elasticsearch.DeepCopy()
-	copy := Builder{
+	builderCopy := Builder{
 		Elasticsearch: *es,
 	}
 	if b.expectedElasticsearch != nil {
-		copy.expectedElasticsearch = b.expectedElasticsearch.DeepCopy()
+		builderCopy.expectedElasticsearch = b.expectedElasticsearch.DeepCopy()
 	}
 	if b.MutatedFrom != nil {
-		copy.MutatedFrom = b.MutatedFrom.DeepCopy()
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
-	return &copy
+	return &builderCopy
 }
 
 func (b Builder) GetExpectedElasticsearch() esv1.Elasticsearch {
