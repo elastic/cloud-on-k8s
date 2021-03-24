@@ -8,6 +8,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Elasticsearch autoscaling
 
+NOTE: Elasticsearch autoscaling requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing, the license documentation>> for more details about managing licenses.
+
 experimental[]
 
 ECK can leverage the link:https://www.elastic.co/guide/en/elasticsearch/reference/master/autoscaling-apis.html[autoscaling API] introduced in Elasticsearch 7.11 to adjust automatically the number of Pods and the allocated resources in a tier. Currently, autoscaling is supported for Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/data-tiers.html[data tiers] and machine learning nodes.
