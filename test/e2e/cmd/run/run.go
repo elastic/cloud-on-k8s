@@ -477,6 +477,7 @@ func (h *helper) runTestJob() error {
 	if err != nil {
 		h.dumpEventLog()
 		h.dumpK8sData()
+		h.runEsDiagnosticsJob()
 		return errors.Wrap(err, "test run failed")
 	}
 
@@ -719,20 +720,17 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
 	}
 
-	// to avoid creating subdirectories, convert the file path to a flattened path
-	// Eg. path/to/config.yaml will become path_to_config.yaml
-	outFilePath := filepath.Join(h.scratchDir, strings.ReplaceAll(templatePath, string(filepath.Separator), "_"))
-	f, err := os.Create(outFilePath)
+	outFile, err := ioutil.TempFile(h.scratchDir, filepath.Base(templatePath))
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)
+		return "", errors.Wrapf(err, "failed to create tmp file: %s", templatePath)
 	}
 
-	defer f.Close()
-	if err := tmpl.Execute(f, param); err != nil {
-		return "", errors.Wrapf(err, "failed to render template to %s", outFilePath)
+	defer outFile.Close()
+	if err := tmpl.Execute(outFile, param); err != nil {
+		return "", errors.Wrapf(err, "failed to render template to %s", outFile.Name())
 	}
 
-	return outFilePath, nil
+	return outFile.Name(), nil
 }
 
 func (h *helper) deleteResources(file string) func() {

@@ -1,7 +1,7 @@
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
-  name: beat
+  name: eck-e2e
 allowHostDirVolumePlugin: true
 allowHostIPC: false
 allowHostNetwork: true
