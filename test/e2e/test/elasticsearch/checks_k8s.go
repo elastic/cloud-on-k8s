@@ -508,7 +508,6 @@ func checkStatefulSetsReplicas(es esv1.Elasticsearch, k *test.K8sClient) error {
 		actual[statefulSet.Name] = *statefulSet.Spec.Replicas // should not be nil
 	}
 	if !reflect.DeepEqual(expected, actual) {
-		fmt.Printf("expected: %v, actual: %v", expected, actual)
 		return fmt.Errorf("invalid StatefulSets: expected %v, got %v", expected, actual)
 	}
 	return nil
