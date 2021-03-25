@@ -33,7 +33,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/hashicorp/go-multierror[$$github.com/hashicorp/go-multierror$$] | v1.1.1 | MPL-2.0
 | link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.0.4 | MPL-2.0
 | link:https://github.com/imdario/mergo[$$github.com/imdario/mergo$$] | v0.3.12 | BSD-3-Clause
-| link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.4 | BSD-2-Clause
+| link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.5 | BSD-2-Clause
 | link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.9.1 | BSD-2-Clause
 | link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.9.0 | Apache-2.0
 | link:https://github.com/prometheus/common[$$github.com/prometheus/common$$] | v0.15.0 | Apache-2.0
