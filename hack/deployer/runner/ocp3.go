@@ -35,11 +35,6 @@ const (
 	MasterInstance = "n1-standard-2"
 )
 
-var (
-	// SharedVolumeName name shared by CI container and Ansible container
-	SharedVolumeName = os.Getenv("SHARED_VOLUME_NAME")
-)
-
 func init() {
 	drivers[Ocp3DriverID] = &Ocp3DriverFactory{}
 }
@@ -161,7 +156,7 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 
 	params := map[string]interface{}{
 		"User":                AnsibleUser,
-		"HomeVolumeName":      SharedVolumeName,
+		"HomeVolumeName":      SharedVolumeName(),
 		"HomeVolumeMountPath": AnsibleHomePath,
 		"GCloudCredsPath":     filepath.Join(AnsibleHomePath, GCPDir, ServiceAccountFilename),
 		"GCloudSDKPath":       filepath.Join(AnsibleHomePath, GCPDir),

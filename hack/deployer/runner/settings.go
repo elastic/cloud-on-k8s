@@ -6,9 +6,32 @@ package runner
 
 import (
 	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v3"
 )
+
+var (
+	clientBuildDefDir = ""
+)
+
+// SetclientBuildDefDir designates a directory which holds Dockerfiles for Cloud provider clients.
+func SetClientBuildDefDir(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return err
+	}
+	clientBuildDefDir = dir
+	return nil
+}
+
+// SharedVolumeName name shared by CI container and Docker containers launched by deployer
+func SharedVolumeName() string {
+	if vol := os.Getenv("SHARED_VOLUME_NAME"); vol != "" {
+		return vol
+	}
+	// use HOME for local dev mode
+	return os.Getenv("HOME")
+}
 
 // Plans encapsulates list of plans, expected to map to a file
 type Plans struct {
@@ -20,6 +43,7 @@ type Plan struct {
 	Id                string        `yaml:"id"` //nolint:revive
 	Operation         string        `yaml:"operation"`
 	ClusterName       string        `yaml:"clusterName"`
+	ClientVersion     string        `yaml:"clientVersion"`
 	Provider          string        `yaml:"provider"`
 	KubernetesVersion string        `yaml:"kubernetesVersion"`
 	MachineType       string        `yaml:"machineType"`

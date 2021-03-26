@@ -128,18 +128,24 @@ func (d *OcpDriver) Execute() error {
 		d.ctx["PullSecret"], _ = client.Get(OcpVaultPath, "pull-secret")
 	}
 
-	status := d.currentStatus()
+	image, err := ensureClientImage(OcpDriverID, d.plan.ClientVersion)
+	if err != nil {
+		return err
+	}
+	d.ctx["ClientImage"] = image
+
+	clusterStatus := d.currentStatus()
 
 	switch d.plan.Operation {
 	case DeleteAction:
-		if status != NotFound {
+		if clusterStatus != NotFound {
 			// always attempt a deletion
 			err = d.delete()
 		} else {
 			log.Printf("Not deleting as cluster doesn't exist")
 		}
 	case CreateAction:
-		if status == Running {
+		if clusterStatus == Running {
 			log.Printf("Not creating as cluster exists")
 
 			if err := d.uploadCredentials(); err != nil {
@@ -255,8 +261,7 @@ func (d *OcpDriver) create() error {
 		return err
 	}
 
-	cmd := NewCommand("openshift-install create cluster --dir {{.ClusterStateDir}}")
-	err = cmd.AsTemplate(d.ctx).Run()
+	err = d.runInstallerCommand("create")
 
 	// We want to *always* upload the state of the cluster
 	// this way we can run a delete operation even on failed
@@ -348,14 +353,32 @@ func (d *OcpDriver) GetCredentials() error {
 func (d *OcpDriver) delete() error {
 	log.Println("Deleting cluster...")
 
-	cmd := NewCommand("openshift-install destroy cluster --dir {{.ClusterStateDir}}")
-	err := cmd.AsTemplate(d.ctx).Run()
-
+	err := d.runInstallerCommand("destroy")
 	if err != nil {
 		return err
 	}
 
-	// No need to check whether this `rb` command succeeds
+	// No need to check whether this `rm` command succeeds
 	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.ctx).WithoutStreaming().Run()
 	return nil
+}
+
+func (d *OcpDriver) runInstallerCommand(action string) error {
+	params := map[string]interface{}{
+		"ClusterStateDir":     d.ctx["ClusterStateDir"],
+		"HomeVolume":          SharedVolumeName(),
+		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
+		"OCPToolsDockerImage": d.ctx["ClientImage"],
+		"Action":              action,
+	}
+	cmd := NewCommand(`docker run --rm \
+		-v {{.HomeVolume	}}:/home \
+		-v {{.ClusterStateDir}}:/config \
+		-v /tmp:/tmp \
+		-e USER=jenkins \
+		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
+		-e USER_HOME=/home \
+		{{.OCPToolsDockerImage}} \
+		/openshift-install {{.Action}} cluster --dir /config`)
+	return cmd.AsTemplate(params).Run()
 }
