@@ -4,16 +4,25 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-#
-# Update the Elastic Stack version
-# Usage: ./hack/update-stack-version.sh <previous_version> <new_version>
-#
+usage() {
+	echo '
+Usage: update-stack-version.sh PREVIOUS_VERSION NEW_VERSION
 
-set -eu
+Update the Elastic Stack version.
+Note: Make sure to escape dots in the previous version.
+
+Example:
+	update-stack-version.sh 7\.11\.2 7.12.0'
+}
 
 # Elastic Stack versions
 PREVIOUS_VERSION="$1"
 NEW_VERSION="$2"
+
+[[ -z "$PREVIOUS_VERSION" ]] && usage && exit
+[[ -z "$NEW_VERSION" ]] && usage && exit
+
+set -eu
 
 # Use the "-i.bak" trick to be compatible with both Linux and OSX
 bump_version() {
