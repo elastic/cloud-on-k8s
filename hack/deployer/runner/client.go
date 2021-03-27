@@ -5,8 +5,11 @@
 package runner
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 )
 
@@ -16,15 +19,20 @@ func ensureClientImage(driverID, clientVersion string) (string, error) {
 	if clientVersion == "" {
 		return "", errors.New("clientVersion must not be empty")
 	}
-	image := clientImageName(driverID, clientVersion) // todo: hash image!
+
+	dockerfilePath := dockerfilePath(driverID)
+	dockerfileName := filepath.Join(dockerfilePath, "Dockerfile")
+
+	image, err := clientImageName(driverID, clientVersion, dockerfileName)
+	if err != nil {
+		return "", fmt.Errorf("while calculting docker image name %w", err)
+	}
 
 	if exists := checkImageExists(image); exists {
 		return image, nil
 	}
 
-	dockerfilePath := dockerfilePath(driverID)
-	dockerfileName := filepath.Join(dockerfilePath, "Dockerfile")
-	err := NewCommand(
+	err = NewCommand(
 		fmt.Sprintf("docker build --build-arg VERSION=%s -f %s -t %s %s",
 			clientVersion, dockerfileName, image, dockerfilePath),
 	).Run()
@@ -55,8 +63,18 @@ func checkImageExists(image string) bool {
 	return false
 }
 
-func clientImageName(driverID, clientVersion string) string {
-	return fmt.Sprintf("%s:%s-%s", clientBaseImageName, driverID, clientVersion)
+func clientImageName(driverID, clientVersion, dockerfileName string) (string, error) {
+	// hash Dockerfile to trigger rebuild on content changes
+	f, err := os.Open(dockerfileName)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.New224()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	// including driver id and version directly image/tag for human benefit
+	return fmt.Sprintf("%s-%s:%s-%.8x", clientBaseImageName, driverID, clientVersion, h.Sum(nil)), nil
 }
 
 func dockerfilePath(driverID string) string {
