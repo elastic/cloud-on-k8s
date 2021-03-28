@@ -117,7 +117,7 @@ func (d *OcpDriver) Execute() error {
 	case CreateAction:
 		if clusterStatus == Running {
 			log.Printf("Not creating as cluster exists")
-
+			// rsync sometimes get stuck this makes sure we retry upload on repeated create invocations
 			if err := d.uploadClusterState(); err != nil {
 				return err
 			}
@@ -246,7 +246,6 @@ func (d *OcpDriver) ensureWorkDir() error {
 }
 
 func (d *OcpDriver) authToGCP() error {
-	return nil
 	// avoid double authentication
 	if d.runtimeState.Authenticated {
 		return nil
