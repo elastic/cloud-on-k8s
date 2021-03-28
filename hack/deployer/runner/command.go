@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+
+	"github.com/pkg/errors"
 )
 
 // Command allows building commands to execute using fluent-style api

@@ -94,6 +94,7 @@ type OcpSettings struct {
 	GCloudProject              string `yaml:"gCloudProject"`
 	Region                     string `yaml:"region"`
 	AdminUsername              string `yaml:"adminUsername"`
+	WorkDir                    string `yaml:"workDir"`
 	PullSecret                 string `yaml:"pullSecret"`
 	LocalSsdCount              int    `yaml:"localSsdCount"`
 	NodeCount                  int    `yaml:"nodeCount"`

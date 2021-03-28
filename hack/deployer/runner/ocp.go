@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -72,7 +73,6 @@ type OcpDriverFactory struct {
 
 type runtimeState struct {
 	Authenticated   bool
-	WorkDir         string
 	ClusterStateDir string
 	ClientImage     string
 }
@@ -83,29 +83,26 @@ type OcpDriver struct {
 }
 
 func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
-
 	return &OcpDriver{
 		plan: plan,
 	}, nil
 }
 
+func (d *OcpDriver) setup() []func() error {
+	return []func() error{
+		d.ensureWorkDir,
+		d.authToGCP,
+		d.ensurePullSecret,
+		d.downloadClusterState,
+	}
+}
+
 func (d *OcpDriver) Execute() error {
-	cleanUp, err := d.ensureContext()
-	defer cleanUp()
-	if err != nil {
+	// client image requires a plan which we don't have in GetCredentials
+	setup := append(d.setup(), d.ensureClientImage)
+	if err := run(setup); err != nil {
 		return err
 	}
-
-	err = d.ensurePullSecret()
-	if err != nil {
-		return err
-	}
-
-	image, err := ensureClientImage(OcpDriverID, d.plan.ClientVersion)
-	if err != nil {
-		return err
-	}
-	d.runtimeState.ClientImage = image
 
 	clusterStatus := d.currentStatus()
 
@@ -113,7 +110,7 @@ func (d *OcpDriver) Execute() error {
 	case DeleteAction:
 		if clusterStatus != NotFound {
 			// always attempt a deletion
-			err = d.delete()
+			return d.delete()
 		} else {
 			log.Printf("Not deleting as cluster doesn't exist")
 		}
@@ -121,28 +118,46 @@ func (d *OcpDriver) Execute() error {
 		if clusterStatus == Running {
 			log.Printf("Not creating as cluster exists")
 
-			if err := d.uploadCredentials(); err != nil {
+			if err := d.uploadClusterState(); err != nil {
 				return err
 			}
 		} else if err := d.create(); err != nil {
 			return err
 		}
 
-		if err := d.GetCredentials(); err != nil {
-			return err
-		}
+		return run([]func() error{
+			d.copyKubeconfig,
+			d.setupDisks,
+			createStorageClass,
+		})
 
-		if err := setupDisks(d.plan); err != nil {
-			return err
-		}
-		if err := createStorageClass(); err != nil {
-			return err
-		}
 	default:
-		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
+		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
 
-	return err
+	return nil
+}
+
+func run(steps []func() error) error {
+	for _, fn := range steps {
+		if err := fn(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *OcpDriver) setupDisks() error {
+	return setupDisks(d.plan)
+}
+
+func (d *OcpDriver) ensureClientImage() error {
+	image, err := ensureClientImage(OcpDriverID, d.plan.ClientVersion)
+	if err != nil {
+		return err
+	}
+	d.runtimeState.ClientImage = image
+	return nil
 }
 
 func (d *OcpDriver) ensurePullSecret() error {
@@ -160,43 +175,44 @@ func (d *OcpDriver) ensurePullSecret() error {
 	return nil
 }
 
-func (d *OcpDriver) ensureContext() (cleanUp func(), err error) {
-	cleanUp = func() {} // NOOP
-	if d.runtimeState.WorkDir == "" {
+func (d *OcpDriver) ensureWorkDir() error {
+	if d.plan.Ocp.WorkDir == "" {
+		// base work dir in /tmp dir otherwise mounting to container won't work without further settings adjustment
+		// in Mac OS in local mode
 		dir, err := ioutil.TempDir("/tmp", d.plan.ClusterName)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		cleanUp = func() {
-			os.RemoveAll(dir)
-		}
-		d.runtimeState.WorkDir = dir
-		log.Printf("Created WorkDir: %s", d.runtimeState.WorkDir)
+		d.plan.Ocp.WorkDir = dir
+		log.Printf("Created WorkDir: %s", d.plan.Ocp.WorkDir)
 	}
-
 	if d.runtimeState.ClusterStateDir == "" {
-		stateDir := filepath.Join(d.runtimeState.WorkDir, d.plan.ClusterName)
+		stateDir := filepath.Join(d.plan.Ocp.WorkDir, d.plan.ClusterName)
 		if err := os.MkdirAll(stateDir, os.ModePerm); err != nil {
-			return cleanUp, err
+			return err
 		}
 		d.runtimeState.ClusterStateDir = stateDir
 		log.Printf("Using ClusterStateDir: %s", stateDir)
 	}
+	return nil
+}
 
+func (d *OcpDriver) authToGCP() error {
+
+	return nil
 	// avoid double authentication
 	if d.runtimeState.Authenticated {
-		return cleanUp, nil
+		return nil
 	}
 
 	if err := authToGCP(
 		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.plan.Ocp.GCloudProject,
 	); err != nil {
-		return cleanUp, err
+		return err
 	}
 	d.runtimeState.Authenticated = true
-	return cleanUp, nil
+	return nil
 }
 
 type ClusterStatus string
@@ -266,11 +282,11 @@ func (d *OcpDriver) create() error {
 	// We want to *always* upload the state of the cluster
 	// this way we can run a delete operation even on failed
 	// deployments to clean all the resources on GCP.
-	_ = d.uploadCredentials()
+	_ = d.uploadClusterState()
 	return err
 }
 
-func (d *OcpDriver) uploadCredentials() error {
+func (d *OcpDriver) uploadClusterState() error {
 	// Let's check that the cluster dir exists
 	// before we attempt an upload.
 	if _, err := os.Stat(d.runtimeState.ClusterStateDir); os.IsNotExist(err) {
@@ -278,13 +294,16 @@ func (d *OcpDriver) uploadCredentials() error {
 		return nil
 	}
 
-	bucketNotFound, err := NewCommand("gsutil ls gs://{{.OcpStateBucket}}").AsTemplate(d.bucketParams()).OutputContainsAny("BucketNotFoundException")
+	bucketNotFound, err := NewCommand("gsutil ls gs://{{.OcpStateBucket}}").
+		AsTemplate(d.bucketParams()).
+		WithoutStreaming().
+		OutputContainsAny("BucketNotFoundException")
 	if err != nil {
 		return fmt.Errorf("while checking state bucket existence %w", err)
 	}
 	if bucketNotFound {
 		if err := NewCommand("gsutil mb gs://{{.OcpStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
-			return fmt.Errorf("while creating storage bucket", err)
+			return fmt.Errorf("while creating storage bucket: %w", err)
 		}
 	}
 
@@ -293,62 +312,39 @@ func (d *OcpDriver) uploadCredentials() error {
 	return NewCommand(cmd).AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 }
 
-type NoCredentials struct {
-	err error
-}
-
-func (e *NoCredentials) Error() string {
-	return "No credentials found"
-}
-
-func (e *NoCredentials) Unwrap() error {
-	return e.err
+func (d *OcpDriver) downloadClusterState() error {
+	cmd := "gsutil rsync -r -d gs://{{.OcpStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
+	doesNotExist, err := NewCommand(cmd).AsTemplate(d.bucketParams()).WithoutStreaming().OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir")
+	if doesNotExist {
+		log.Printf("No remote cluster state found")
+		return nil // swallow this error as it is expected if no cluster has been created yet
+	}
+	return err
 }
 
 func (d *OcpDriver) GetCredentials() error {
-	cleanUp, err := d.ensureContext()
-	defer cleanUp()
-	if err == nil {
+	if err := run(d.setup()); err != nil {
 		return err
 	}
+	return d.copyKubeconfig()
+}
 
+func (d *OcpDriver) copyKubeconfig() error {
 	log.Printf("Getting credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
-	copyKubeconfig := func() error {
-		if d.plan.Ocp.OverwriteDefaultKubeconfig == true {
-			log.Printf("copying %s to ~/.kube/config", kubeConfig)
-			if err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".kube"), os.ModePerm); err != nil {
-				return err
-			}
-			cmd := fmt.Sprintf("cp %s ~/.kube/config", kubeConfig)
-			return NewCommand(cmd).WithoutStreaming().Run()
-		}
-
-		return nil
+	if _, err := os.Stat(kubeConfig); os.IsNotExist(err) {
+		return errors.New("OpenShift's kubeconfig file does not exist")
 	}
-	// We do this check twice to avoid re-downloading files
-	// from the bucket when we already have them locally.
-	// The second time is further down in this function and it's
-	// done when the rsync succeeds
-	if _, err := os.Stat(kubeConfig); !os.IsNotExist(err) {
-		err = copyKubeconfig()
-		if err != nil {
+	if d.plan.Ocp.OverwriteDefaultKubeconfig == true {
+		log.Printf("copying %s to ~/.kube/config", kubeConfig)
+		if err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".kube"), os.ModePerm); err != nil {
 			return err
 		}
-
-		log.Printf("OpenShift's kubeconfig file exists and it's been copied under ~/.kube")
-		return nil
+		cmd := fmt.Sprintf("cp %s ~/.kube/config", kubeConfig)
+		return NewCommand(cmd).WithoutStreaming().Run()
 	}
-
-	cmd := "gsutil rsync -r -d gs://{{.OcpStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
-	doesNotExist, err := NewCommand(cmd).AsTemplate(d.bucketParams()).WithoutStreaming().OutputContainsAny("BucketNotFoundException")
-	if err != nil || doesNotExist {
-		// wrapping the error if any even though we are not logging it anymore as it adds to much noise to the output
-		return &NoCredentials{err}
-	}
-
-	return copyKubeconfig()
+	return nil
 }
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
