@@ -12,8 +12,6 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
-
-	"github.com/pkg/errors"
 )
 
 // Command allows building commands to execute using fluent-style api
@@ -23,6 +21,7 @@ type Command struct {
 	variables []string
 	stream    bool
 	stderr    bool
+	debug     bool
 }
 
 func NewCommand(command string) *Command {
@@ -46,6 +45,11 @@ func (c *Command) WithoutStreaming() *Command {
 
 func (c *Command) StdoutOnly() *Command {
 	c.stderr = false
+	return c
+}
+
+func (c *Command) Debug() *Command {
+	c.debug = true
 	return c
 }
 
@@ -96,6 +100,10 @@ func (c *Command) output() (string, error) {
 			return "", err
 		}
 		c.command = b.String()
+	}
+
+	if c.debug {
+		println(c.command)
 	}
 
 	cmd := exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204

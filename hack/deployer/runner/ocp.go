@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,7 +20,7 @@ const (
 	OcpDriverID                     = "ocp"
 	OcpVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
 	OcpServiceAccountVaultFieldName = "service-account"
-	OcpPullSecretFieldName          = "pull-secret" //nolint:gosec
+	OcpPullSecretFieldName          = "pull-secret"
 	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
 	OcpConfigFileName               = "deployer-config-ocp.yml"
 	DefaultOcpRunConfigTemplate     = `id: ocp-dev
@@ -111,9 +112,8 @@ func (d *OcpDriver) Execute() error {
 		if clusterStatus != NotFound {
 			// always attempt a deletion
 			return d.delete()
-		} else {
-			log.Printf("Not deleting as cluster doesn't exist")
 		}
+		log.Printf("Not deleting as cluster doesn't exist")
 	case CreateAction:
 		if clusterStatus == Running {
 			log.Printf("Not creating as cluster exists")
@@ -130,11 +130,59 @@ func (d *OcpDriver) Execute() error {
 			d.setupDisks,
 			createStorageClass,
 		})
-
+		// todo cleanup temp dir
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
 
+	return nil
+}
+
+func (d *OcpDriver) create() error {
+	log.Println("Creating cluster...")
+	params := map[string]interface{}{
+		"GCloudProject":     d.plan.Ocp.GCloudProject,
+		"ClusterName":       d.plan.ClusterName,
+		"Region":            d.plan.Ocp.Region,
+		"AdminUsername":     d.plan.Ocp.AdminUsername,
+		"KubernetesVersion": d.plan.KubernetesVersion,
+		"MachineType":       d.plan.MachineType,
+		"LocalSsdCount":     d.plan.Ocp.LocalSsdCount,
+		"NodeCount":         d.plan.Ocp.NodeCount,
+		"BaseDomain":        d.baseDomain(),
+		"OcpStateBucket":    OcpStateBucket,
+		"PullSecret":        d.plan.Ocp.PullSecret,
+	}
+	var tpl bytes.Buffer
+	if err := template.Must(template.New("").Parse(OcpInstallerConfigTemplate)).Execute(&tpl, params); err != nil {
+		return err
+	}
+
+	installConfig := filepath.Join(d.runtimeState.ClusterStateDir, "install-config.yaml")
+	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0600)
+	if err != nil {
+		return err
+	}
+
+	err = d.runInstallerCommand("create")
+
+	// We want to *always* upload the state of the cluster
+	// this way we can run a delete operation even on failed
+	// deployments to clean all the resources on GCP.
+	_ = d.uploadClusterState()
+	return err
+}
+
+func (d *OcpDriver) delete() error {
+	log.Println("Deleting cluster...")
+
+	err := d.runInstallerCommand("destroy")
+	if err != nil {
+		return err
+	}
+
+	// No need to check whether this `rm` command succeeds
+	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	return nil
 }
 
@@ -198,7 +246,6 @@ func (d *OcpDriver) ensureWorkDir() error {
 }
 
 func (d *OcpDriver) authToGCP() error {
-
 	return nil
 	// avoid double authentication
 	if d.runtimeState.Authenticated {
@@ -218,27 +265,24 @@ func (d *OcpDriver) authToGCP() error {
 type ClusterStatus string
 
 var (
-	NotFound      ClusterStatus = "NotFound"
-	NotResponding ClusterStatus = "NotResponding"
-	Running       ClusterStatus = "Running"
+	PartiallyDeployed ClusterStatus = "PartiallyDeployed"
+	NotFound          ClusterStatus = "NotFound"
+	NotResponding     ClusterStatus = "NotResponding"
+	Running           ClusterStatus = "Running"
 )
 
 func (d *OcpDriver) currentStatus() ClusterStatus {
 	log.Println("Checking if cluster exists...")
 
-	err := d.GetCredentials()
-
-	if err != nil {
-		// No need to send this error back
-		// in this case. We're checking whether
-		// the cluster exists and an error
-		// getting the credentials is expected for non
-		// existing clusters.
-		return NotFound
+	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
+	if _, err := os.Stat(kubeConfig); os.IsNotExist(err) {
+		if empty, err := isEmpty(d.runtimeState.ClusterStateDir); empty && err == nil {
+			return NotFound
+		}
+		return PartiallyDeployed
 	}
 
 	log.Println("Cluster state synced: Testing that the OpenShift cluster is alive... ")
-	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 	cmd := "kubectl version"
 	alive, err := NewCommand(cmd).WithoutStreaming().WithVariable("KUBECONFIG", kubeConfig).OutputContainsAny("Server Version")
 
@@ -250,40 +294,19 @@ func (d *OcpDriver) currentStatus() ClusterStatus {
 	return Running
 }
 
-func (d *OcpDriver) create() error {
-	log.Println("Creating cluster...")
-	params := map[string]interface{}{
-		"GCloudProject":     d.plan.Ocp.GCloudProject,
-		"ClusterName":       d.plan.ClusterName,
-		"Region":            d.plan.Ocp.Region,
-		"AdminUsername":     d.plan.Ocp.AdminUsername,
-		"KubernetesVersion": d.plan.KubernetesVersion,
-		"MachineType":       d.plan.MachineType,
-		"LocalSsdCount":     d.plan.Ocp.LocalSsdCount,
-		"NodeCount":         d.plan.Ocp.NodeCount,
-		"BaseDomain":        d.baseDomain(),
-		"OcpStateBucket":    OcpStateBucket,
-		"PullSecret":        d.plan.Ocp.PullSecret,
-	}
-	var tpl bytes.Buffer
-	if err := template.Must(template.New("").Parse(OcpInstallerConfigTemplate)).Execute(&tpl, params); err != nil {
-		return err
-	}
-
-	installConfig := filepath.Join(d.runtimeState.ClusterStateDir, "install-config.yaml")
-	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0600)
-
+func isEmpty(dir string) (bool, error) {
+	// https://stackoverflow.com/questions/30697324/how-to-check-if-directory-on-path-is-empty
+	f, err := os.Open(dir)
 	if err != nil {
-		return err
+		return false, err
 	}
+	defer f.Close()
 
-	err = d.runInstallerCommand("create")
-
-	// We want to *always* upload the state of the cluster
-	// this way we can run a delete operation even on failed
-	// deployments to clean all the resources on GCP.
-	_ = d.uploadClusterState()
-	return err
+	_, err = f.Readdirnames(1)
+	if errors.Is(err, io.EOF) {
+		return true, nil
+	}
+	return false, err
 }
 
 func (d *OcpDriver) uploadClusterState() error {
@@ -330,21 +353,36 @@ func (d *OcpDriver) GetCredentials() error {
 }
 
 func (d *OcpDriver) copyKubeconfig() error {
-	log.Printf("Getting credentials")
+	log.Printf("Copying  credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
 	if _, err := os.Stat(kubeConfig); os.IsNotExist(err) {
 		return errors.New("OpenShift's kubeconfig file does not exist")
 	}
-	if d.plan.Ocp.OverwriteDefaultKubeconfig == true {
-		log.Printf("copying %s to ~/.kube/config", kubeConfig)
-		if err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".kube"), os.ModePerm); err != nil {
-			return err
-		}
-		cmd := fmt.Sprintf("cp %s ~/.kube/config", kubeConfig)
-		return NewCommand(cmd).WithoutStreaming().Run()
+
+	hostKubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	if _, err := os.Stat(hostKubeconfig); os.IsNotExist(err) {
+		return copyFile(kubeConfig, filepath.Dir(hostKubeconfig))
 	}
-	return nil
+	// attempt to merge them
+	merged, err := NewCommand("kubectl config view --flatten").
+		WithoutStreaming().
+		WithVariable("KUBECONFIG", fmt.Sprintf("%s:%s", hostKubeconfig, kubeConfig)).
+		Output()
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(hostKubeconfig, []byte(merged), 0600)
+}
+
+func copyFile(src, tgtDir string) error {
+	log.Printf("copying %s to  %s", src, tgtDir)
+	if err := os.MkdirAll(tgtDir, os.ModePerm); err != nil {
+		return err
+	}
+	cmd := fmt.Sprintf("cp %s %s", src, tgtDir)
+	return NewCommand(cmd).WithoutStreaming().Run()
 }
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
@@ -353,19 +391,6 @@ func (d *OcpDriver) bucketParams() map[string]interface{} {
 		"ClusterName":     d.plan.ClusterName,
 		"ClusterStateDir": d.runtimeState.ClusterStateDir,
 	}
-}
-
-func (d *OcpDriver) delete() error {
-	log.Println("Deleting cluster...")
-
-	err := d.runInstallerCommand("destroy")
-	if err != nil {
-		return err
-	}
-
-	// No need to check whether this `rm` command succeeds
-	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
-	return nil
 }
 
 func (d *OcpDriver) runInstallerCommand(action string) error {

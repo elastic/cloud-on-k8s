@@ -90,15 +90,14 @@ type AksSettings struct {
 
 // OcpSettings encapsulates settings specific to OCP on GCloud
 type OcpSettings struct {
-	BaseDomain                 string `yaml:"baseDomain"`
-	GCloudProject              string `yaml:"gCloudProject"`
-	Region                     string `yaml:"region"`
-	AdminUsername              string `yaml:"adminUsername"`
-	WorkDir                    string `yaml:"workDir"`
-	PullSecret                 string `yaml:"pullSecret"`
-	LocalSsdCount              int    `yaml:"localSsdCount"`
-	NodeCount                  int    `yaml:"nodeCount"`
-	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
+	BaseDomain    string `yaml:"baseDomain"`
+	GCloudProject string `yaml:"gCloudProject"`
+	Region        string `yaml:"region"`
+	AdminUsername string `yaml:"adminUsername"`
+	WorkDir       string `yaml:"workDir"`
+	PullSecret    string `yaml:"pullSecret"`
+	LocalSsdCount int    `yaml:"localSsdCount"`
+	NodeCount     int    `yaml:"nodeCount"`
 }
 
 // Ocp3Settings encapsulates settings specific to OCP3 on GCloud
