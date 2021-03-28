@@ -25,11 +25,7 @@ func ExecuteCommand() *cobra.Command {
 				runConfig.Overrides["operation"] = operation
 			}
 
-			if err := runner.SetClientBuildDefDir(clientBuildDefs); err != nil {
-				return err
-			}
-
-			driver, err := runner.GetDriver(plans.Plans, runConfig)
+			driver, err := runner.GetDriver(plans.Plans, runConfig, clientBuildDefs)
 			if err != nil {
 				return err
 			}

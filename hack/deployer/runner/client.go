@@ -15,12 +15,12 @@ import (
 
 const clientBaseImageName = "docker.elastic.co/eck-dev/deployer"
 
-func ensureClientImage(driverID, clientVersion string) (string, error) {
+func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string) (string, error) {
 	if clientVersion == "" {
 		return "", errors.New("clientVersion must not be empty")
 	}
 
-	dockerfilePath := dockerfilePath(driverID)
+	dockerfilePath := filepath.Join(clientBuildDefDir, driverID)
 	dockerfileName := filepath.Join(dockerfilePath, "Dockerfile")
 
 	image, err := clientImageName(driverID, clientVersion, dockerfileName)
@@ -75,8 +75,4 @@ func clientImageName(driverID, clientVersion, dockerfileName string) (string, er
 	}
 	// including driver id and version directly image/tag for human benefit
 	return fmt.Sprintf("%s-%s:%s-%.8x", clientBaseImageName, driverID, clientVersion, h.Sum(nil)), nil
-}
-
-func dockerfilePath(driverID string) string {
-	return filepath.Join(clientBuildDefDir, driverID)
 }

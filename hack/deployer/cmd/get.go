@@ -29,7 +29,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			plan, err := runner.GetPlan(plans.Plans, runConfig)
+			plan, err := runner.GetPlan(plans.Plans, runConfig, "")
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			driver, err := runner.GetDriver(plans.Plans, runConfig)
+			driver, err := runner.GetDriver(plans.Plans, runConfig, "")
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			plan, err := runner.GetPlan(plans.Plans, runConfig)
+			plan, err := runner.GetPlan(plans.Plans, runConfig, "")
 			if err != nil {
 				return err
 			}

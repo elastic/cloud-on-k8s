@@ -200,7 +200,7 @@ func (d *OcpDriver) setupDisks() error {
 }
 
 func (d *OcpDriver) ensureClientImage() error {
-	image, err := ensureClientImage(OcpDriverID, d.plan.ClientVersion)
+	image, err := ensureClientImage(OcpDriverID, d.plan.ClientVersion, d.plan.ClientBuildDefDir)
 	if err != nil {
 		return err
 	}
