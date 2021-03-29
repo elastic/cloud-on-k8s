@@ -17,6 +17,3 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /usr/local/bin/openshift-install .
 COPY --from=builder /usr/local/bin/oc .
-
-
-
