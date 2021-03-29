@@ -6,22 +6,26 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
+	"time"
 )
 
 // Command allows building commands to execute using fluent-style api
 type Command struct {
 	command   string
+	context   context.Context
+	log       string
 	params    map[string]interface{}
 	variables []string
 	stream    bool
 	stderr    bool
-	debug     bool
 }
 
 func NewCommand(command string) *Command {
@@ -38,6 +42,16 @@ func (c *Command) WithVariable(name, value string) *Command {
 	return c
 }
 
+func (c *Command) WithContext(ctx context.Context) *Command {
+	c.context = ctx
+	return c
+}
+
+func (c *Command) WithLog(log string) *Command {
+	c.log = log
+	return c
+}
+
 func (c *Command) WithoutStreaming() *Command {
 	c.stream = false
 	return c
@@ -48,13 +62,21 @@ func (c *Command) StdoutOnly() *Command {
 	return c
 }
 
-func (c *Command) Debug() *Command {
-	c.debug = true
-	return c
-}
-
 func (c *Command) Run() error {
 	_, err := c.output()
+	return err
+}
+
+func (c *Command) RunWithRetries(numRetries int, timeout time.Duration) error {
+	var err error
+	for i := 0; i < numRetries; i++ {
+		ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+		err = c.WithContext(ctx).Run()
+		cancelFunc()
+		if err == nil {
+			return nil
+		}
+	}
 	return err
 }
 
@@ -102,11 +124,16 @@ func (c *Command) output() (string, error) {
 		c.command = b.String()
 	}
 
-	if c.debug {
-		println(c.command)
+	if c.log != "" {
+		log.Printf("%s: %s", c.log, c.command)
 	}
 
-	cmd := exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204
+	var cmd *exec.Cmd
+	if c.context != nil {
+		cmd = exec.CommandContext(c.context, "/usr/bin/env", "bash", "-c", c.command) // #nosec G204
+	} else {
+		cmd = exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204
+	}
 	cmd.Env = append(os.Environ(), c.variables...)
 
 	b := bytes.Buffer{}

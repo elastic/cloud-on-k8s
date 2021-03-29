@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const clientBaseImageName = "docker.elastic.co/eck-dev/deployer"
@@ -40,13 +41,7 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 		return image, fmt.Errorf("while building client image %s: %w", image, err)
 	}
 
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
-		err = NewCommand(fmt.Sprintf("docker push %s", image)).Run()
-		if err == nil {
-			return image, nil
-		}
-	}
+	err = NewCommand(fmt.Sprintf("docker push %s", image)).RunWithRetries(5, 1*time.Hour)
 	return image, err
 }
 

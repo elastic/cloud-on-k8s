@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+	"time"
 )
 
 const (
@@ -329,14 +330,21 @@ func (d *OcpDriver) uploadClusterState() error {
 		}
 	}
 
-	log.Printf("uploading cluster state %s to gs://%s/%s", d.runtimeState.ClusterStateDir, OcpStateBucket, d.plan.ClusterName)
-	cmd := "gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}"
-	return NewCommand(cmd).AsTemplate(d.bucketParams()).WithoutStreaming().Run()
+	// rsync seems to get stuck at least in local mode every now and then let's retry a few times
+	return NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}").
+		WithLog("Uploading cluster state").
+		AsTemplate(d.bucketParams()).
+		WithoutStreaming().
+		RunWithRetries(3, 15*time.Minute)
 }
 
 func (d *OcpDriver) downloadClusterState() error {
 	cmd := "gsutil rsync -r -d gs://{{.OcpStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
-	doesNotExist, err := NewCommand(cmd).AsTemplate(d.bucketParams()).WithoutStreaming().OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir")
+	doesNotExist, err := NewCommand(cmd).
+		AsTemplate(d.bucketParams()).
+		WithLog("Synching cluster state").
+		WithoutStreaming().
+		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir")
 	if doesNotExist {
 		log.Printf("No remote cluster state found")
 		return nil // swallow this error as it is expected if no cluster has been created yet
@@ -364,10 +372,11 @@ func (d *OcpDriver) copyKubeconfig() error {
 	hostKubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	if _, err := os.Stat(hostKubeconfig); os.IsNotExist(err) {
 		// if no just copy it over
-		return copyFile(kubeConfig, filepath.Dir(hostKubeconfig))
+		return copyFile(kubeConfig, hostKubeconfig)
 	}
 	// 3. if there is existing configuration  attempt to merge both
 	merged, err := NewCommand("kubectl config view --flatten").
+		WithLog("Merging kubeconfig with").
 		WithoutStreaming().
 		WithVariable("KUBECONFIG", fmt.Sprintf("%s:%s", hostKubeconfig, kubeConfig)).
 		Output()
@@ -382,13 +391,12 @@ func (d *OcpDriver) copyKubeconfig() error {
 	return NewCommand("kubectl config use-context admin").Run()
 }
 
-func copyFile(src, tgtDir string) error {
-	log.Printf("copying %s to  %s", src, tgtDir)
-	if err := os.MkdirAll(tgtDir, os.ModePerm); err != nil {
+func copyFile(src, tgt string) error {
+	if err := os.MkdirAll(filepath.Dir(tgt), os.ModePerm); err != nil {
 		return err
 	}
-	cmd := fmt.Sprintf("cp %s %s", src, tgtDir)
-	return NewCommand(cmd).WithoutStreaming().Run()
+	cmd := fmt.Sprintf("cp %s %s", src, tgt)
+	return NewCommand(cmd).WithoutStreaming().WithLog("Copying kubeconfig").Run()
 }
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
