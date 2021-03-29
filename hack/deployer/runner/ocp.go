@@ -107,6 +107,8 @@ func (d *OcpDriver) Execute() error {
 		return err
 	}
 
+	defer d.removeWorkDir()
+
 	clusterStatus := d.currentStatus()
 
 	switch d.plan.Operation {
@@ -135,8 +137,7 @@ func (d *OcpDriver) Execute() error {
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
-
-	return d.removeWorkDir()
+	return nil
 }
 
 func (d *OcpDriver) create() error {
