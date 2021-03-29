@@ -102,6 +102,7 @@ func (d *OcpDriver) setup() []func() error {
 func (d *OcpDriver) Execute() error {
 	// client image requires a plan which we don't have in GetCredentials
 	setup := append(d.setup(), d.ensureClientImage)
+
 	if err := run(setup); err != nil {
 		return err
 	}
@@ -131,12 +132,11 @@ func (d *OcpDriver) Execute() error {
 			d.setupDisks,
 			createStorageClass,
 		})
-		// todo cleanup temp dir
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
 
-	return nil
+	return d.removeWorkDir()
 }
 
 func (d *OcpDriver) create() error {
@@ -244,6 +244,14 @@ func (d *OcpDriver) ensureWorkDir() error {
 		log.Printf("Using ClusterStateDir: %s", stateDir)
 	}
 	return nil
+}
+
+func (d *OcpDriver) removeWorkDir() error {
+	// keep workdir around useful for debugging or when running in non-CI mode
+	if d.plan.Ocp.StickyWorkDir {
+		return nil
+	}
+	return os.RemoveAll(d.plan.Ocp.WorkDir)
 }
 
 func (d *OcpDriver) authToGCP() error {
