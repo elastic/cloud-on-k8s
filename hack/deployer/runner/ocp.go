@@ -355,15 +355,18 @@ func (d *OcpDriver) copyKubeconfig() error {
 	log.Printf("Copying  credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
+	// 1. do we have something to copy?
 	if _, err := os.Stat(kubeConfig); os.IsNotExist(err) {
 		return errors.New("OpenShift's kubeconfig file does not exist")
 	}
 
+	// 2. is there any existing kubeconfig?
 	hostKubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	if _, err := os.Stat(hostKubeconfig); os.IsNotExist(err) {
+		// if no just copy it over
 		return copyFile(kubeConfig, filepath.Dir(hostKubeconfig))
 	}
-	// attempt to merge them
+	// 3. if there is existing configuration  attempt to merge both
 	merged, err := NewCommand("kubectl config view --flatten").
 		WithoutStreaming().
 		WithVariable("KUBECONFIG", fmt.Sprintf("%s:%s", hostKubeconfig, kubeConfig)).
@@ -372,7 +375,11 @@ func (d *OcpDriver) copyKubeconfig() error {
 		return err
 	}
 
-	return ioutil.WriteFile(hostKubeconfig, []byte(merged), 0600)
+	if err := ioutil.WriteFile(hostKubeconfig, []byte(merged), 0600); err != nil {
+		return err
+	}
+	// 4. after merging make sure that the ocp context, which is always called `admin`
+	return NewCommand("kubectl config use-context admin").Run()
 }
 
 func copyFile(src, tgtDir string) error {
