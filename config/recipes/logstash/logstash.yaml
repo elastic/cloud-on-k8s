@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernets.io/component: elasticsearch
 spec:
-  version: 7.11.2
+  version: 7.12.0
   nodeSets:
     - name: default
       count: 3
@@ -23,7 +23,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernets.io/component: kibana
 spec:
-  version: 7.11.2
+  version: 7.12.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -92,7 +92,7 @@ spec:
     spec:
       containers:
         - name: logstash
-          image: docker.elastic.co/logstash/logstash:7.11.2
+          image: docker.elastic.co/logstash/logstash:7.12.0
           ports:
             - name: "tcp-beats"
               containerPort: 5044
@@ -150,7 +150,7 @@ metadata:
     app.kubernets.io/component: filebeat
 spec:
   type: filebeat
-  version: 7.11.2
+  version: 7.12.0
   config:
     filebeat.inputs:
       - type: log
