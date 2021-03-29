@@ -107,7 +107,9 @@ func (d *OcpDriver) Execute() error {
 		return err
 	}
 
-	defer d.removeWorkDir()
+	defer func() {
+		_ = d.removeWorkDir()
+	}()
 
 	clusterStatus := d.currentStatus()
 
@@ -186,6 +188,18 @@ func (d *OcpDriver) delete() error {
 	// No need to check whether this `rm` command succeeds
 	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	return nil
+}
+
+func (d *OcpDriver) GetCredentials() error {
+	if err := run(d.setup()); err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = d.removeWorkDir()
+	}()
+
+	return d.copyKubeconfig()
 }
 
 func run(steps []func() error) error {
@@ -359,13 +373,6 @@ func (d *OcpDriver) downloadClusterState() error {
 		return nil // swallow this error as it is expected if no cluster has been created yet
 	}
 	return err
-}
-
-func (d *OcpDriver) GetCredentials() error {
-	if err := run(d.setup()); err != nil {
-		return err
-	}
-	return d.copyKubeconfig()
 }
 
 func (d *OcpDriver) copyKubeconfig() error {
