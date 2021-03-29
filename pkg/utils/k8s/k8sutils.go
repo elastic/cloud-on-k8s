@@ -109,7 +109,7 @@ func GetServiceIPAddresses(svc corev1.Service) []net.IP {
 	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
 		for _, ingress := range svc.Status.LoadBalancer.Ingress {
 			if ingress.IP != "" {
-				ipAddrs = append(ipAddrs, netutil.IPToRFCForm(net.ParseIP(ingress.IP)))
+				ipAddrs = append(ipAddrs, netutil.IPToRFCForm(net.ParseIP(ingress.IP))) //nolint:makezero
 			}
 		}
 	}
@@ -146,7 +146,8 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 		return err
 	}
 	for _, s := range secrets.Items {
-		if err := c.Delete(context.Background(), &s); err != nil && !apierrors.IsNotFound(err) {
+		secret := s
+		if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
@@ -160,19 +161,6 @@ func PodsMatchingLabels(c Client, namespace string, labels map[string]string) ([
 		return nil, err
 	}
 	return pods.Items, nil
-}
-
-// OverrideControllerReference overrides the controller owner reference with the given owner reference.
-func OverrideControllerReference(obj metav1.Object, newOwner metav1.OwnerReference) {
-	owners := obj.GetOwnerReferences()
-
-	ref := indexOfCtrlRef(owners)
-	if ref == -1 {
-		obj.SetOwnerReferences([]metav1.OwnerReference{newOwner})
-		return
-	}
-	owners[ref] = newOwner
-	obj.SetOwnerReferences(owners)
 }
 
 func indexOfCtrlRef(owners []metav1.OwnerReference) int {

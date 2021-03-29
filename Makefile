@@ -23,8 +23,8 @@ GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/nu
 
 # find or download controller-gen
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.4.1)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.5.0)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -126,7 +126,12 @@ clean:
 
 reattach-pv:
 	# just check that reattach-pv still compiles
-	go build -o /dev/null hack/reattach-pv/main.go
+	go build -o /dev/null support/reattach-pv/main.go
+
+compile-all: 
+	@ go build ./...
+	@ go test -run=dryrun ./cmd/... ./pkg/... > /dev/null
+	@ $(MAKE) e2e-compile
 
 ## -- tests
 
@@ -393,10 +398,17 @@ switch-registry-dev: # just use the default values of variables
 ###################################
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
-E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
-TESTS_MATCH                ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-E2E_STACK_VERSION          ?= 7.10.1
-E2E_JSON                   ?= false
+
+E2E_IMG_TAG                := $(TAG)
+E2E_IMG_TAG_SUFFIX         ?= $(subst /,-,$(PIPELINE)) # Derive the tag suffix from the PIPELINE environment variable
+ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it to the tag
+	E2E_IMG_TAG := $(TAG)-$(E2E_IMG_TAG_SUFFIX)
+endif
+
+E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
+E2E_STACK_VERSION          ?= 7.11.2
+export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
+export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
@@ -447,14 +459,16 @@ e2e-generate-xml:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
+	@go test ./test/e2e/... -run=dryrun -tags=$(E2E_TAGS) $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
+e2e-local: export GO_TAGS=$(E2E_TAGS)
 e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
+		--operator-image=$(OPERATOR_IMAGE) \
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
@@ -465,7 +479,6 @@ e2e-local:
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS)
-	@E2E_JSON=$(E2E_JSON) GO_TAGS=$(E2E_TAGS) test/e2e/run.sh -run $(TESTS_MATCH) -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##

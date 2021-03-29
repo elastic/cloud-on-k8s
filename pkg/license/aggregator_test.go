@@ -6,6 +6,7 @@ package license
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 	"testing"
@@ -166,7 +167,7 @@ func readObjects(t *testing.T, filePath string) []runtime.Object {
 	for {
 		yamlBytes, err := yamlReader.Read()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 

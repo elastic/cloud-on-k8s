@@ -204,11 +204,11 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 	})
 }
 
-func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequirements) Builder {
+func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceRequirements) Builder {
 	cfg := map[string]interface{}{}
 	v := version.MustParse(b.Elasticsearch.Spec.Version)
 
-	if v.IsSameOrAfter(version.From(7, 9, 0)) {
+	if v.GTE(version.From(7, 9, 0)) {
 		cfg[esv1.NodeRoles] = []string{}
 	} else {
 		cfg[esv1.NodeMaster] = false
@@ -216,18 +216,18 @@ func (b Builder) WithESCoordinatorNodes(count int, resources corev1.ResourceRequ
 		cfg[esv1.NodeIngest] = false
 		cfg[esv1.NodeML] = false
 
-		if v.IsSameOrAfter(version.From(7, 3, 0)) {
+		if v.GTE(version.From(7, 3, 0)) {
 			cfg[esv1.NodeVotingOnly] = false
 		}
 
-		if v.IsSameOrAfter(version.From(7, 7, 0)) {
+		if v.GTE(version.From(7, 7, 0)) {
 			cfg[esv1.NodeTransform] = false
 			cfg[esv1.NodeRemoteClusterClient] = false
 		}
 	}
 
 	return b.WithNodeSet(esv1.NodeSet{
-		Name:  "coordinator",
+		Name:  "coordinating",
 		Count: int32(count),
 		Config: &commonv1.Config{
 			Data: cfg,
@@ -263,6 +263,11 @@ func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 		refs = append(refs, commonv1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Elasticsearch.Spec.SecureSettings = refs
+	return b
+}
+
+func (b Builder) WithVolumeClaimDeletePolicy(policy esv1.VolumeClaimDeletePolicy) Builder {
+	b.Elasticsearch.Spec.VolumeClaimDeletePolicy = policy
 	return b
 }
 

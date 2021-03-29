@@ -42,12 +42,14 @@ type ValidationWebhookTestCase struct {
 
 // ValidationWebhookSucceeded is a helper function to verify that the validation webhook accepted the request.
 func ValidationWebhookSucceeded(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+	t.Helper()
 	require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
 }
 
 // ValidationWebhookFailed is a helper function to verify that the validation webhook rejected the request.
 func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
 	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+		t.Helper()
 		require.False(t, response.Allowed)
 
 		if len(causeRegexes) > 0 {
@@ -74,6 +76,7 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 }
 
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
+//nolint:thelper
 func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
 	controllerscheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
@@ -127,7 +130,6 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 
 			response := decodeResponse(t, decoder, resp.Body)
 			tc.Check(t, response)
-
 		})
 	}
 }

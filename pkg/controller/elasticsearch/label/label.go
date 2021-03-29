@@ -44,8 +44,16 @@ const (
 	NodeTypesTransformLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
 	// NodeTypesRemoteClusterClientLabelName is a label set to true on nodes with the remote_cluster_client role
 	NodeTypesRemoteClusterClientLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-remote_cluster_client"
-	// NodeTypesVotingOnlyLabelName is a label set to true on nodes with voting_only master-eligible node
+	// NodeTypesVotingOnlyLabelName is a label set to true on voting-only master-eligible nodes
 	NodeTypesVotingOnlyLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-voting_only"
+	// NodeTypesDataColdLabelName is a label set to true on nodes with the data_cold role.
+	NodeTypesDataColdLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_cold"
+	// NodeTypesDataContentLabelName is a label set to true on nodes with the data_content role.
+	NodeTypesDataContentLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_content"
+	// NodeTypesDataHotLabelName is a label set to true on nodes with the data_hot role.
+	NodeTypesDataHotLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_hot"
+	// NodeTypesDataWarmLabelName is a label set to true on nodes with the data_warm role.
+	NodeTypesDataWarmLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
@@ -89,7 +97,7 @@ func IsDataNode(pod corev1.Pod) bool {
 }
 
 // ExtractVersion extracts the Elasticsearch version from the given labels.
-func ExtractVersion(labels map[string]string) (*version.Version, error) {
+func ExtractVersion(labels map[string]string) (version.Version, error) {
 	return version.FromLabels(labels, VersionLabelName)
 }
 
@@ -116,18 +124,25 @@ func NewPodLabels(
 	labels[VersionLabelName] = ver.String()
 
 	// node types labels
-	NodeTypesMasterLabelName.Set(nodeRoles.HasMasterRole(), labels)
-	NodeTypesDataLabelName.Set(nodeRoles.HasDataRole(), labels)
-	NodeTypesIngestLabelName.Set(nodeRoles.HasIngestRole(), labels)
-	NodeTypesMLLabelName.Set(nodeRoles.HasMLRole(), labels)
+	NodeTypesMasterLabelName.Set(nodeRoles.HasRole(esv1.MasterRole), labels)
+	NodeTypesDataLabelName.Set(nodeRoles.HasRole(esv1.DataRole), labels)
+	NodeTypesIngestLabelName.Set(nodeRoles.HasRole(esv1.IngestRole), labels)
+	NodeTypesMLLabelName.Set(nodeRoles.HasRole(esv1.MLRole), labels)
 	// transform and remote_cluster_client roles were only added in 7.7.0 so we should not annotate previous versions with them
-	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
-		NodeTypesTransformLabelName.Set(nodeRoles.HasTransformRole(), labels)
-		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRemoteClusterClientRole(), labels)
+	if ver.GTE(version.From(7, 7, 0)) {
+		NodeTypesTransformLabelName.Set(nodeRoles.HasRole(esv1.TransformRole), labels)
+		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRole(esv1.RemoteClusterClientRole), labels)
 	}
 	// voting_only master eligible nodes were added only in 7.3.0 so we don't want to label prior versions with it
-	if ver.IsSameOrAfter(version.From(7, 3, 0)) {
-		NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasVotingOnlyRole(), labels)
+	if ver.GTE(version.From(7, 3, 0)) {
+		NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasRole(esv1.VotingOnlyRole), labels)
+	}
+	// data tiers were added in 7.10.0
+	if ver.GTE(version.From(7, 10, 0)) {
+		NodeTypesDataContentLabelName.Set(nodeRoles.HasRole(esv1.DataContentRole), labels)
+		NodeTypesDataColdLabelName.Set(nodeRoles.HasRole(esv1.DataColdRole), labels)
+		NodeTypesDataHotLabelName.Set(nodeRoles.HasRole(esv1.DataHotRole), labels)
+		NodeTypesDataWarmLabelName.Set(nodeRoles.HasRole(esv1.DataWarmRole), labels)
 	}
 
 	// config hash label, to rotate pods on config changes

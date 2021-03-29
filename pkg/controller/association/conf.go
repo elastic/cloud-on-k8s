@@ -130,7 +130,9 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			logger.Error(err, "Invalid version found in association configuration", "association_version", assoc.AssociationConf().Version)
 			return false
 		}
-		if !refVer.IsSameOrAfterIgnoringPatch(resourceVersion) {
+
+		compatibleVersions := refVer.GTE(resourceVersion) || ((refVer.Major == resourceVersion.Major) && (refVer.Minor == resourceVersion.Minor))
+		if !compatibleVersions {
 			// the version of the referenced resource (example: Elasticsearch) is lower than
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
@@ -274,8 +276,8 @@ func UpdateAssociationConf(
 // since we read potentially large strings from annotations on every reconcile loop, this should help
 // reduce the amount of garbage created.
 func unsafeStringToBytes(s string) []byte {
-	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
+	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))    //nolint:govet
+	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{ //nolint:govet
 		Data: hdr.Data,
 		Len:  hdr.Len,
 		Cap:  hdr.Len,

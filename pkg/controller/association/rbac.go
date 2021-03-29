@@ -39,7 +39,7 @@ func CheckAndUnbind(
 	if !allowed {
 		metaObject, err := meta.Accessor(referencedObject)
 		if err != nil {
-			return false, nil
+			return false, nil //nolint:nilerr
 		}
 		log.Info("Association not allowed",
 			"associated_kind", association.GetObjectKind().GroupVersionKind().Kind,

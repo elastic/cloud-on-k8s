@@ -356,7 +356,6 @@ func Test_bestMatchAt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, _, found := bestMatchAt(now, &tt.args.minVersion, tt.args.licenses, noopFilter)
 			if tt.wantFound != found {
 				t.Errorf("bestMatchAt() found = %v, want %v", found, tt.wantFound)

@@ -150,7 +150,8 @@ func (l StatefulSetList) PVCNames() []string {
 func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	allPods := []corev1.Pod{}
 	for _, statefulSet := range l {
-		pods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
+		sset := statefulSet
+		pods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&sset))
 		if err != nil {
 			return nil, err
 		}
@@ -214,11 +215,11 @@ func (l StatefulSetList) WithStatefulSet(statefulSet appsv1.StatefulSet) Statefu
 // ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.
 func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Version) bool) bool {
 	v, err := GetESVersion(statefulSet)
-	if err != nil || v == nil {
+	if err != nil {
 		log.Error(err, "cannot parse version from StatefulSet", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
 		return false
 	}
-	return condition(*v)
+	return condition(v)
 }
 
 // AtLeastOneESVersionMatch returns true if at least one StatefulSet's ES version matches the given condition.

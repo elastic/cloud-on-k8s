@@ -17,7 +17,7 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string        `yaml:"id"` // nolint
+	Id                string        `yaml:"id"` //nolint:revive
 	Operation         string        `yaml:"operation"`
 	ClusterName       string        `yaml:"clusterName"`
 	Provider          string        `yaml:"provider"`
@@ -36,8 +36,8 @@ type Plan struct {
 
 type VaultInfo struct {
 	Address     string `yaml:"address"`
-	RoleId      string `yaml:"roleId"`   // nolint
-	SecretId    string `yaml:"secretId"` // nolint
+	RoleId      string `yaml:"roleId"`   //nolint:revive
+	SecretId    string `yaml:"secretId"` //nolint:revive
 	Token       string `yaml:"token"`
 	ClientToken string `yaml:"clientToken"`
 }
@@ -94,7 +94,7 @@ type EKSSettings struct {
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
 type RunConfig struct {
-	Id        string                 `yaml:"id"` // nolint
+	Id        string                 `yaml:"id"` //nolint:revive
 	Overrides map[string]interface{} `yaml:"overrides"`
 }
 

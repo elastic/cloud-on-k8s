@@ -27,7 +27,6 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) ([]byte, error) 
 	// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
 	// in which case we'll just retry that test step
 	return DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
-
 }
 
 func apiVersionAndTelemetryRequestBody(kbVersion version.Version) (string, telemetryRequest) {
@@ -35,11 +34,11 @@ func apiVersionAndTelemetryRequestBody(kbVersion version.Version) (string, telem
 	payload := telemetryRequest{
 		TimeRange: &timeRange{},
 	}
-	if kbVersion.IsSameOrAfter(version.From(7, 2, 0)) {
+	if kbVersion.GTE(version.From(7, 2, 0)) {
 		apiVersion = "v2"
 		payload.Unencrypted = true
 	}
-	if kbVersion.IsSameOrAfter(version.From(7, 11, 0)) {
+	if kbVersion.GTE(version.From(7, 11, 0)) {
 		payload.TimeRange = nil // removed in 7.11
 	}
 	return apiVersion, payload

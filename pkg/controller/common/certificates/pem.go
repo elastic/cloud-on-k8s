@@ -67,7 +67,7 @@ func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
 	}
 
 	switch {
-	case x509.IsEncryptedPEMBlock(block):
+	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck
 		// Private key is encrypted, do not attempt to parse it
 		return nil, ErrEncryptedPrivateKey
 	case block.Type == "PRIVATE KEY":

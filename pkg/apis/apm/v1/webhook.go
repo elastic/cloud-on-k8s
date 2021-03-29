@@ -38,7 +38,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1,name=elastic-apm-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1
+// +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1,name=elastic-apm-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
 var _ webhook.Validator = &ApmServer{}
 
@@ -118,7 +118,7 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 	if err != nil {
 		return err
 	}
-	if !apmVersion.IsSameOrAfter(ApmAgentConfigurationMinVersion) {
+	if !apmVersion.GTE(ApmAgentConfigurationMinVersion) {
 		return field.ErrorList{field.Forbidden(
 			field.NewPath("spec").Child("kibanaRef"),
 			fmt.Sprintf(
@@ -128,7 +128,6 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 			),
 		),
 		}
-
 	}
 	return nil
 }

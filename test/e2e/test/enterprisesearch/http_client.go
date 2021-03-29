@@ -16,7 +16,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -34,7 +34,7 @@ type EnterpriseSearchClient struct {
 	password   string
 }
 
-func NewEnterpriseSearchClient(ent entv1beta1.EnterpriseSearch, k *test.K8sClient) (EnterpriseSearchClient, error) {
+func NewEnterpriseSearchClient(ent entv1.EnterpriseSearch, k *test.K8sClient) (EnterpriseSearchClient, error) {
 	var caCerts []*x509.Certificate
 	scheme := "http"
 	if ent.Spec.HTTP.TLS.Enabled() {
@@ -88,7 +88,7 @@ func (e EnterpriseSearchClient) doRequest(request *http.Request) ([]byte, error)
 func (e EnterpriseSearchClient) HealthCheck() error {
 	// check the endpoint responds to requests
 	url := e.endpoint + "/api/ent/v1/internal/health"
-	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+	req, err := http.NewRequest(http.MethodGet, url, http.NoBody) //nolint:noctx
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ type CredentialsCollection struct {
 func (a AppSearchClient) GetAPIKey() (string, error) {
 	url := a.endpoint + "/as/credentials/collection"
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:noctx
 	if err != nil {
 		return "", err
 	}
@@ -157,7 +157,7 @@ type Results struct {
 func (a AppSearchClient) GetEngines() (Results, error) {
 	url := a.endpoint + "/api/as/v1/engines"
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:noctx
 	if err != nil {
 		return Results{}, err
 	}
@@ -184,7 +184,7 @@ func (a AppSearchClient) CreateEngine(name string) error {
 func (a AppSearchClient) GetDocuments(engineName string) (Results, error) {
 	url := a.endpoint + fmt.Sprintf("/api/as/v1/engines/%s/documents/list", engineName)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:noctx
 	if err != nil {
 		return Results{}, err
 	}
@@ -199,7 +199,7 @@ func (a AppSearchClient) GetDocuments(engineName string) (Results, error) {
 func (a AppSearchClient) IndexDocument(engineName string, document string) error {
 	url := a.endpoint + fmt.Sprintf("/api/as/v1/engines/%s/documents", engineName)
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(document)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(document))) //nolint:noctx
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (a AppSearchClient) SearchDocuments(engineName string, query string) (Resul
 	url := a.endpoint + fmt.Sprintf("/api/as/v1/engines/%s/search", engineName)
 	body := fmt.Sprintf(`{"query": "%s"}`, query)
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(body)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(body))) //nolint:noctx
 	if err != nil {
 		return Results{}, err
 	}

@@ -13,8 +13,10 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -60,6 +62,7 @@ func doRun(flags runFlags) error {
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
+			helper.runTestsLocally,
 		}
 	} else {
 		// CI test run steps
@@ -69,15 +72,14 @@ func doRun(flags runFlags) error {
 			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
-			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
-			helper.deployOperator,
+			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
-			helper.runTestJob,
+			helper.runTestsRemote,
 		}
 	}
 
@@ -132,6 +134,11 @@ func (h *helper) createScratchDir() error {
 }
 
 func (h *helper) initTestContext() error {
+	imageParts := strings.Split(h.operatorImage, ":")
+	if len(imageParts) != 2 {
+		return fmt.Errorf("invalid operator image: %s", h.operatorImage)
+	}
+
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
@@ -149,6 +156,8 @@ func (h *helper) initTestContext() error {
 			Replicas:          h.operatorReplicas,
 		},
 		OperatorImage:         h.operatorImage,
+		OperatorImageRepo:     imageParts[0],
+		OperatorImageTag:      imageParts[1],
 		TestLicense:           h.testLicense,
 		TestLicensePKeyPath:   h.testLicensePKeyPath,
 		MonitoringSecrets:     h.monitoringSecrets,
@@ -189,7 +198,7 @@ func (h *helper) initTestContext() error {
 	return nil
 }
 
-func getKubernetesVersion(h *helper) string {
+func getKubernetesVersion(h *helper) version.Version {
 	out, err := h.kubectl("version", "--output=json")
 	if err != nil {
 		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
@@ -209,10 +218,7 @@ func getKubernetesVersion(h *helper) string {
 	}
 
 	serverVersion = strings.TrimPrefix(serverVersion, "v")
-	v := version.MustParse(serverVersion)
-
-	// we just want major and minor to aggregate test results
-	return fmt.Sprintf("%d.%d", v.Major, v.Minor)
+	return version.MustParse(serverVersion)
 }
 
 func isOcpCluster(h *helper) bool {
@@ -291,6 +297,77 @@ func (h *helper) createRoles() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/roles.yaml", h.testContext)
 }
 
+func (h *helper) installOperatorUnderTest() error {
+	log.Info("Installing the operator under test")
+
+	installCRDs := false
+	if h.monitoringSecrets == "" {
+		installCRDs = true
+	}
+
+	manifestFile := filepath.Join(h.scratchDir, "operator-under-test.yaml")
+
+	if err := h.renderManifestFromHelm("config/e2e/helm-operator-under-test.yaml",
+		h.testContext.Operator.Namespace, installCRDs, manifestFile); err != nil {
+		return err
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestFile))
+
+	return nil
+}
+
+func (h *helper) installMonitoringOperator() error {
+	log.Info("Installing the Monitoring operator")
+
+	// Monitoring gets installed first so we need to install the CRDs.
+	// The CRDs are from the current version being tested.
+	installCRDs := true
+	manifestFile := filepath.Join(h.scratchDir, "monitoring-operator.yaml")
+
+	if err := h.renderManifestFromHelm("config/e2e/helm-monitoring-operator.yaml",
+		h.testContext.E2ENamespace, installCRDs, manifestFile); err != nil {
+		return err
+	}
+
+	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply monitoring operator manifest: %w", err)
+	}
+
+	h.addCleanupFunc(h.deleteResources(manifestFile))
+
+	return nil
+}
+
+func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRDs bool, manifestFile string) error {
+	values, err := h.renderTemplate(valuesFile, h.testContext)
+	if err != nil {
+		return fmt.Errorf("failed to generate Helm values from %s: %w", valuesFile, err)
+	}
+
+	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
+		"-g",
+		"-n", namespace,
+		fmt.Sprintf("--set=installCRDs=%t", installCRDs),
+		fmt.Sprintf("--values=%s", values),
+	).Build()
+
+	manifestBytes, err := cmd.Execute(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
+	}
+
+	if err := ioutil.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
+		return fmt.Errorf("failed to write manifest %s: %w", manifestFile, err)
+	}
+
+	return nil
+}
+
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
 	_, err := h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
@@ -304,18 +381,26 @@ func (h *helper) createOperatorNamespaces() error {
 
 func (h *helper) createManagedNamespaces() error {
 	log.Info("Creating managed namespaces")
+	var err error
 	// when in local mode, don't delete the namespaces on exit
 	if h.testContext.Local {
-		_, err := h.kubectlApplyTemplate("config/e2e/managed_namespaces.yaml", h.testContext)
-		return err
+		_, err = h.kubectlApplyTemplate("config/e2e/managed_namespaces.yaml", h.testContext)
+	} else {
+		err = h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
 	}
 
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
-}
+	// Reset the node selector for all managed namespaces to override any possible OCP project node selector that might
+	// prevent scheduling daemonset pods on some nodes.
+	if h.testContext.Ocp3Cluster {
+		log.Info("Resetting namespace node selector")
+		for _, ns := range h.testContext.Operator.ManagedNamespaces {
+			if err := exec.Command("oc", "annotate", "namespace", ns, "openshift.io/node-selector=").Run(); err != nil {
+				return err
+			}
+		}
+	}
 
-func (h *helper) deployOperator() error {
-	log.Info("Deploying operator")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator.yaml", h.testContext)
+	return err
 }
 
 func (h *helper) waitForOperatorToBeReady() error {
@@ -354,6 +439,10 @@ func (h *helper) deployMonitoring() error {
 		return nil
 	}
 
+	if err := h.installMonitoringOperator(); err != nil {
+		return err
+	}
+
 	log.Info("Deploying monitoring")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/monitoring.yaml", h.testContext)
 }
@@ -373,7 +462,41 @@ func (h *helper) deployTestSecrets() error {
 	)
 }
 
-func (h *helper) runTestJob() error {
+func (h *helper) runTestsLocally() error {
+	log.Info("Running local test script", "timeout", h.testTimeout.String())
+	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
+
+	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	// we need to set a process group ID to be able to terminate all child processes and not just the test.sh script later if the timeout is exceeded
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// listen to Unix signals to handle user abort
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+	DONE:
+		for {
+			select {
+			case s := <-sigs:
+				log.Info("Caught Unix signal", "signal", s)
+				cancelFunc()
+			case <-ctx.Done():
+				// exec.Command's support for contexts does not allow sending sigkill to the whole process group
+				// so we are doing it manually here. Go sets the process group to PID and kill on Linux and BSD supports
+				// sending signals to the whole process group if number passed to kill is negative see `man 2 kill`
+				err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+				log.Info("Test cancelled", "kill_error", err)
+				break DONE
+			}
+		}
+	}()
+	return cmd.Run()
+}
+
+func (h *helper) runTestsRemote() error {
 	client, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")
@@ -391,6 +514,7 @@ func (h *helper) runTestJob() error {
 	if err != nil {
 		h.dumpEventLog()
 		h.dumpK8sData()
+		h.runEsDiagnosticsJob()
 		return errors.Wrap(err, "test run failed")
 	}
 
@@ -425,7 +549,6 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
 func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
-
 	testSession := NewJobsManager(client, h)
 
 	outputs := []io.Writer{os.Stdout}
@@ -611,7 +734,7 @@ func (h *helper) exec(cmd *command.Command) (string, error) {
 	outString := string(out)
 	if err != nil {
 		// suppress the stacktrace when the command fails naturally
-		if _, ok := err.(*exec.ExitError); ok {
+		if errors.Is(err, new(exec.ExitError)) {
 			log.Info("Command returned error code", "command", cmd, "message", err.Error())
 		} else {
 			log.Error(err, "Command execution failed", "command", cmd)
@@ -634,20 +757,17 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
 	}
 
-	// to avoid creating subdirectories, convert the file path to a flattened path
-	// Eg. path/to/config.yaml will become path_to_config.yaml
-	outFilePath := filepath.Join(h.scratchDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
-	f, err := os.Create(outFilePath)
+	outFile, err := ioutil.TempFile(h.scratchDir, filepath.Base(templatePath))
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)
+		return "", errors.Wrapf(err, "failed to create tmp file: %s", templatePath)
 	}
 
-	defer f.Close()
-	if err := tmpl.Execute(f, param); err != nil {
-		return "", errors.Wrapf(err, "failed to render template to %s", outFilePath)
+	defer outFile.Close()
+	if err := tmpl.Execute(outFile, param); err != nil {
+		return "", errors.Wrapf(err, "failed to render template to %s", outFile.Name())
 	}
 
-	return outFilePath, nil
+	return outFile.Name(), nil
 }
 
 func (h *helper) deleteResources(file string) func() {
@@ -691,11 +811,10 @@ func (h *helper) dumpEventLog() {
 }
 
 func (h *helper) dumpK8sData() {
-	operatorNs := h.testContext.Operator.Namespace
-	managedNs := strings.Join(h.testContext.Operator.ManagedNamespaces, ",")
-	cmd := exec.Command("hack/diagnostics/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
-	err := cmd.Run()
-	if err != nil {
-		log.Error(err, "Failed to run hack/diagnostics/eck-dump.sh")
+	operatorNS := h.testContext.Operator.Namespace
+	otherNS := append([]string{h.testContext.E2ENamespace}, h.testContext.Operator.ManagedNamespaces...)
+	cmd := exec.Command("support/diagnostics/eck-dump.sh", "-N", operatorNS, "-n", strings.Join(otherNS, ","), "-o", h.testContext.TestRun, "-z")
+	if err := cmd.Run(); err != nil {
+		log.Error(err, "Failed to run support/diagnostics/eck-dump.sh")
 	}
 }

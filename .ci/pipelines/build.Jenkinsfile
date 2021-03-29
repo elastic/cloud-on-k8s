@@ -41,9 +41,12 @@ pipeline {
                     }
                 }
                 stage('Upload YAML manifest to S3') {
+                    environment {
+                        VERSION="${sh(returnStdout: true, script: '. ./.env; echo $IMG_VERSION').trim()}"
+                    }
+
                     steps {
                         script {
-                            env.VERSION = readFromEnvFile("VERSION")
                             sh 'make -C .ci yaml-upload'
                         }
                     }
@@ -61,8 +64,7 @@ pipeline {
                                 message: "`${TAG_NAME}` was released \r\n" +
                                     "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
                                     "Congratulations!",
-                                tokenCredentialId: 'cloud-ci-slack-integration-token',
-                                botUser: true
+                                tokenCredentialId: 'cloud-ci-slack-integration-token'
                             )
                         }
                     }
@@ -135,8 +137,7 @@ pipeline {
         }
         unsuccessful {
             script {
-                slackSend botUser: true,
-                    channel: '#cloud-k8s',
+                slackSend channel: '#cloud-k8s',
                     color: 'danger',
                     message: "${JOB_NAME} job failed! \r\n" + "${BUILD_URL}",
                     tokenCredentialId: 'cloud-ci-slack-integration-token'
@@ -146,16 +147,4 @@ pipeline {
             cleanWs()
         }
     }
-}
-
-def readFromEnvFile(name) {
-    def val = sh(returnStdout: true, script:
-    """
-    awk \'/${name}/{print \$3}\' .env
-    """
-    ).trim()
-
-    sh("echo ${name}=${val}")
-
-    return val
 }

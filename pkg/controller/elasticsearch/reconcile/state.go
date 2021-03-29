@@ -61,7 +61,12 @@ func (s *State) fetchMinRunningVersion(resourcesState ResourcesState) (*version.
 	if minSsetVersion == nil {
 		return minPodVersion, nil
 	}
-	return version.Min([]version.Version{*minPodVersion, *minSsetVersion}), nil
+
+	if minPodVersion.GT(*minSsetVersion) {
+		return minSsetVersion, nil
+	}
+
+	return minPodVersion, nil
 }
 
 func (s *State) updateWithPhase(

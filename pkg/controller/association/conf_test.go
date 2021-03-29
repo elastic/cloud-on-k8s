@@ -104,7 +104,6 @@ func testFetchAPMServer(t *testing.T) {
 					t.Fatalf("unknown association type: %s", assoc.AssociationType())
 				}
 			}
-
 		})
 	}
 }

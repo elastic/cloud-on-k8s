@@ -31,6 +31,7 @@ func TestNamer_WithDefaultSuffixes(t *testing.T) {
 				defaultSuffixes: []string{"bar"},
 			},
 			want: func(t *testing.T, namer Namer) {
+				t.Helper()
 				require.Equal(t, "test-bar-123", namer.Suffix("test", "123"))
 			},
 		},
@@ -44,6 +45,7 @@ func TestNamer_WithDefaultSuffixes(t *testing.T) {
 				defaultSuffixes: []string{"foo"},
 			},
 			want: func(t *testing.T, namer Namer) {
+				t.Helper()
 				require.Equal(t, "test-foo-123", namer.Suffix("test", "123"))
 			},
 		},

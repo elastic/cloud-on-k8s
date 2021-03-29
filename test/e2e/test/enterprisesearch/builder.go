@@ -5,27 +5,27 @@
 package enterprisesearch
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
+	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	minVersion = version.MustParse("7.7.0")
-	// Starting from 7.9.0, Enterprise Search is incompatible with Openshift default SCC due to file permission errors.
+	// Enterprise Search 7.9 and 7.10 are incompatible with Openshift default SCC due to file permission errors.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3656.
-	ocpFirstIncompatibleVersion = version.MustParse("7.9.0")
+	ocpIncompatibleVersions = semver.MustParseRange(">=7.9.0 <7.11.0")
 )
 
 // Builder to create Enterprise Search.
 type Builder struct {
-	EnterpriseSearch entv1beta1.EnterpriseSearch
+	EnterpriseSearch entv1.EnterpriseSearch
 	MutatedFrom      *Builder
 }
 
@@ -35,7 +35,7 @@ var _ test.Builder = Builder{}
 func (b Builder) SkipTest() bool {
 	v := version.MustParse(b.EnterpriseSearch.Spec.Version)
 	// skip if not at least 7.0
-	return !v.IsSameOrAfter(minVersion) ||
+	return !v.GTE(minVersion) ||
 		// or if incompatible with Openshift
 		isIncompatibleWithOcp(v)
 }
@@ -44,7 +44,7 @@ func isIncompatibleWithOcp(v version.Version) bool {
 	if !test.Ctx().OcpCluster {
 		return false
 	}
-	if v.IsSameOrAfter(ocpFirstIncompatibleVersion) {
+	if ocpIncompatibleVersions(v) {
 		return true
 	}
 
@@ -66,9 +66,9 @@ func newBuilder(name, randSuffix string) Builder {
 	}
 
 	return Builder{
-		EnterpriseSearch: entv1beta1.EnterpriseSearch{
+		EnterpriseSearch: entv1.EnterpriseSearch{
 			ObjectMeta: meta,
-			Spec: entv1beta1.EnterpriseSearchSpec{
+			Spec: entv1.EnterpriseSearchSpec{
 				Count:   1,
 				Version: test.Ctx().ElasticStackVersion,
 			},

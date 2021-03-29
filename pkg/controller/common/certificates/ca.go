@@ -97,7 +97,6 @@ func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 		PrivateKey: privateKey,
 		Cert:       cert,
 	}, nil
-
 }
 
 // CreateCertificate signs and creates a new certificate for a validated template.

@@ -91,7 +91,7 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 		mem, err := containerMemLimits(
 			kb.Spec.PodTemplate.Spec.Containers,
 			kbv1.KibanaContainerName,
-			kibana.EnvNodeOpts, memFromNodeOptions,
+			kibana.EnvNodeOptions, memFromNodeOptions,
 			kibana.DefaultMemoryLimits,
 		)
 		if err != nil {
@@ -144,6 +144,7 @@ func containerMemLimits(
 ) (resource.Quantity, error) {
 	var mem resource.Quantity
 	for _, container := range containers {
+		//nolint:nestif
 		if container.Name == containerName {
 			mem = *container.Resources.Limits.Memory()
 

@@ -40,18 +40,15 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}
-	if err := r.watches.Secrets.AddHandlers(
+
+	return r.watches.Secrets.AddHandlers(
 		&watches.OwnerWatch{
 			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 				IsController: true,
 				OwnerType:    &esv1.Elasticsearch{},
 			},
 		},
-	); err != nil {
-		return err
-	}
-
-	return nil
+	)
 }
 
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the

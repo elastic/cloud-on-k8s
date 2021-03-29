@@ -15,7 +15,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -33,8 +33,8 @@ import (
 // TestVersionUpgradeOrdering deploys the entire stack, with resources associated together.
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func TestVersionUpgradeOrdering(t *testing.T) {
-	initialVersion := "7.7.0"
-	updatedVersion := "7.8.0"
+	initialVersion := "7.10.0"
+	updatedVersion := "7.11.2"
 
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
@@ -129,11 +129,11 @@ type StackResourceVersions struct {
 
 func (s StackResourceVersions) IsValid() bool {
 	// ES >= Kibana >= (Beats, APM)
-	return s.Elasticsearch.IsSameOrAfter(s.Kibana) &&
-		s.Kibana.IsSameOrAfter(s.Beat) &&
-		s.Kibana.IsSameOrAfter(s.ApmServer) &&
+	return s.Elasticsearch.GTE(s.Kibana) &&
+		s.Kibana.GTE(s.Beat) &&
+		s.Kibana.GTE(s.ApmServer) &&
 		// ES >= EnterpriseSearch
-		s.Elasticsearch.IsSameOrAfter(s.EnterpriseSearch)
+		s.Elasticsearch.GTE(s.EnterpriseSearch)
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
@@ -162,14 +162,14 @@ type refVersion struct {
 	version string
 }
 
-func (r refVersion) IsSameOrAfter(r2 refVersion) bool {
+func (r refVersion) GTE(r2 refVersion) bool {
 	if r.version == "" || r2.version == "" {
 		// empty version, consider it's ok
 		return true
 	}
 	rVersion := version.MustParse(r.version)
 	r2Version := version.MustParse(r2.version)
-	return rVersion.IsSameOrAfter(r2Version)
+	return rVersion.GTE(r2Version)
 }
 
 func ref(ref types.NamespacedName) refVersion {
@@ -204,7 +204,7 @@ func (s *StackResourceVersions) retrieveApmServer(c k8s.Client) error {
 }
 
 func (s *StackResourceVersions) retrieveEnterpriseSearch(c k8s.Client) error {
-	var ent entv1beta1.EnterpriseSearch
+	var ent entv1.EnterpriseSearch
 	if err := c.Get(context.Background(), s.EnterpriseSearch.ref, &ent); err != nil {
 		return err
 	}

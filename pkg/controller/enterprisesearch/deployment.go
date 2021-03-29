@@ -10,7 +10,7 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
@@ -19,7 +19,7 @@ import (
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ctx context.Context,
-	ent entv1beta1.EnterpriseSearch,
+	ent entv1.EnterpriseSearch,
 	configHash string,
 ) (appsv1.Deployment, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
@@ -29,7 +29,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	return deployment.Reconcile(r.K8sClient(), deploy, &ent)
 }
 
-func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1beta1.EnterpriseSearch, configHash string) deployment.Params {
+func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) deployment.Params {
 	podSpec := newPodSpec(ent, configHash)
 
 	deploymentLabels := Labels(ent.Name)

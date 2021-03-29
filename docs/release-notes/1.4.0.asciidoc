@@ -1,0 +1,43 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.4.0]]
+== {n} version 1.4.0
+
+
+
+[[feature-1.4.0]]
+[float]
+=== New features
+
+* Add Elastic Agent CRD (standalone mode) {pull}4010[#4010]
+* Add support for multi-arch container images  {pull}3897[#3897] (issue: {issue}3504[#3504])
+
+[[enhancement-1.4.0]]
+[float]
+=== Enhancements
+
+* [Helm] Support additional environment variables {pull}4181[#4181]
+* Add support for a user-defined transport CA certificate and key {pull}4053[#4053] (issue: {issue}2812[#2812])
+* Add support for DaemonSetUpdateStrategy {pull}4049[#4049] (issue: {issue}3839[#3839])
+* [Helm] Use ValidatingWebhookConfiguration v1 on supported Kubernetes versions {pull}3963[#3963] (issues: {issue}3886[#3886], {issue}3958[#3958])
+* Include Beats daemonsets in the diagnostic bundle {pull}3908[#3908]
+* Add support for webhook constraints {pull}3876[#3876] (issue: {issue}3431[#3431])
+* Remove unnecessary metrics from _nodes ES API request {pull}3860[#3860] (issue: {issue}3249[#3249])
+* Allow automatic Elasticsearch nodes discovery {pull}3837[#3837] (issues: {issue}3182[#3182], {issue}3723[#3723])
+* Enable webhook dry run on supported Kubernetes versions {pull}3834[#3834] (issue: {issue}1233[#1233])
+* Create one transport certificates Secret per StatefulSet {pull}3828[#3828] (issue: {issue}3734[#3734])
+
+[[bug-1.4.0]]
+[float]
+=== Bug fixes
+
+* Update client-go to 0.18.14 {pull}4097[#4097] (issue: {issue}4087[#4087])
+* Don't duplicate user-provided Enterprise Search encryption keys when reusing them {pull}4052[#4052] (issue: {issue}4051[#4051])
+* Add a replacement mechanism to work around nil handling in ucfg {pull}4041[#4041] (issue: {issue}3718[#3718])
+* Avoid touching root filesystem in Kibana init script {pull}4023[#4023] (issue: {issue}4022[#4022])
+* Don't allow downscales if some shards are unassigned {pull}3883[#3883] (issue: {issue}3867[#3867])
+* Include secret token in APM Server config checksum {pull}3858[#3858] (issue: {issue}523[#523])
+* Do not set the default elasticsearch-data volume if claims are provided in the Elasticsearch manifest {pull}3806[#3806] (issue: {issue}2574[#2574])
+
+

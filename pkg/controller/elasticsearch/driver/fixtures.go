@@ -146,20 +146,18 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	i := 0
 	for statefulSet, replica := range statefulSets {
 		statefulSetList[i] = sset.TestSset{Name: statefulSet, ClusterName: TestEsName, Namespace: TestEsNamespace, Replicas: replica + 1}.Build()
-		i++
+		i++ //nolint:wastedassign
 	}
 	return statefulSetList
 }
 
 func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter) []runtime.Object {
 	var result []runtime.Object
-	i := 0
 	for _, testPod := range u {
 		pod := testPod.toPod()
 		if !f(pod) {
 			result = append(result, &pod)
 		}
-		i++
 	}
 	es := u.toES(version, maxUnavailable)
 	result = append(result, &es)

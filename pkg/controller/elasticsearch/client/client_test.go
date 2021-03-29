@@ -29,7 +29,6 @@ import (
 )
 
 func TestParseShards(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args string
@@ -86,13 +85,10 @@ func TestParseShards(t *testing.T) {
 		for i := range shards {
 			assert.EqualValues(t, tt.want[i], shards[i])
 		}
-
 	}
-
 }
 
 func TestShardsByNode(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args string
@@ -122,9 +118,7 @@ func TestShardsByNode(t *testing.T) {
 			assert.True(t, ok)
 			assert.EqualValues(t, expected, shards)
 		}
-
 	}
-
 }
 
 func errorResponses(statusCodes []int) RoundTripFunc {
@@ -139,7 +133,6 @@ func errorResponses(statusCodes []int) RoundTripFunc {
 			Request:    req,
 		}
 	}
-
 }
 
 func requestAssertion(test func(req *http.Request)) RoundTripFunc {
@@ -174,7 +167,6 @@ func TestClientErrorHandling(t *testing.T) {
 			assert.Error(t, err, fmt.Sprintf("%s should return an error for anything not 2xx", name))
 		}
 	}
-
 }
 
 func TestClientUsesJsonContentType(t *testing.T) {
@@ -189,7 +181,6 @@ func TestClientUsesJsonContentType(t *testing.T) {
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
-
 	type expected struct {
 		user        BasicAuth
 		authPresent bool
@@ -231,9 +222,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		_, err := testClient.GetClusterInfo(context.Background())
 		assert.NoError(t, err)
 		assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
-
 	}
-
 }
 
 func TestClient_request(t *testing.T) {
@@ -572,27 +561,27 @@ func TestAPIError_Types(t *testing.T) {
 		{
 			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: &APIError{response: NewMockResponse(500, nil, "")}, // nolint
+				err: &APIError{response: NewMockResponse(500, nil, "")}, //nolint:bodyclose
 			},
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
-				err: &APIError{response: NewMockResponse(409, nil, "")}, // nolint
+				err: &APIError{response: NewMockResponse(409, nil, "")}, //nolint:bodyclose
 			},
 			wantConflict: true,
 		},
 		{
 			name: "403 is a forbidden",
 			args: args{
-				err: &APIError{response: NewMockResponse(403, nil, "")}, // nolint
+				err: &APIError{response: NewMockResponse(403, nil, "")}, //nolint:bodyclose
 			},
 			wantForbidden: true,
 		},
 		{
 			name: "404 is not found",
 			args: args{
-				err: &APIError{response: NewMockResponse(404, nil, "")}, // nolint
+				err: &APIError{response: NewMockResponse(404, nil, "")}, //nolint:bodyclose
 			},
 			wantNotFound: true,
 		},

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/go-logr/logr"
@@ -52,13 +53,13 @@ func initializeContext() {
 
 	f, err := os.Open(*testContextPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to open test context file %s: %v", *testContextPath, err))
+		panic(fmt.Errorf("failed to open test context file %s: %w", *testContextPath, err))
 	}
 	defer f.Close()
 
 	decoder := json.NewDecoder(f)
 	if err := decoder.Decode(&ctx); err != nil {
-		panic(fmt.Errorf("failed to decode test context: %v", err))
+		panic(fmt.Errorf("failed to decode test context: %w", err))
 	}
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)
@@ -91,6 +92,8 @@ type Context struct {
 	ElasticStackVersion   string            `json:"elastic_stack_version"`
 	LogVerbosity          int               `json:"log_verbosity"`
 	OperatorImage         string            `json:"operator_image"`
+	OperatorImageRepo     string            `json:"operator_image_repo"`
+	OperatorImageTag      string            `json:"operator_image_tag"`
 	TestLicense           string            `json:"test_license"`
 	TestLicensePKeyPath   string            `json:"test_license_pkey_path"`
 	TestRegex             string            `json:"test_regex"`
@@ -107,7 +110,7 @@ type Context struct {
 	BuildNumber           string            `json:"build_number"`
 	Provider              string            `json:"provider"`
 	ClusterName           string            `json:"clusterName"`
-	KubernetesVersion     string            `json:"kubernetes_version"`
+	KubernetesVersion     version.Version   `json:"kubernetes_version"`
 	TestEnvTags           []string          `json:"test_tags"`
 }
 
@@ -119,6 +122,11 @@ func (c Context) ManagedNamespace(n int) string {
 // HasTag returns true if the test tags contain the specified value.
 func (c Context) HasTag(tag string) bool {
 	return stringsutil.StringInSlice(tag, c.TestEnvTags)
+}
+
+// KubernetesMajorMinor returns just the major and minor version numbers of the effective Kubernetes version.
+func (c Context) KubernetesMajorMinor() string {
+	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
 }
 
 // ClusterResource is a generic cluster resource.

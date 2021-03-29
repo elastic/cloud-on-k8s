@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -32,11 +32,11 @@ import (
 
 func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 	// unmanaged resource, should do nothing
-	sample := entv1beta1.EnterpriseSearch{
+	sample := entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample", Annotations: map[string]string{
 			common.ManagedAnnotation: "false",
 		}},
-		Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.0"},
+		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0"},
 	}
 	r := &ReconcileEnterpriseSearch{
 		Client: k8s.NewFakeClient(&sample),
@@ -68,9 +68,9 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) {
-	sample := entv1beta1.EnterpriseSearch{
+	sample := entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
-		Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.0"},
+		Spec:       entv1.EnterpriseSearchSpec{Version: "7.7.0"},
 	}
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
@@ -87,7 +87,7 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 	require.NoError(t, err)
 
 	// resource should be annotated with controller version
-	var updated entv1beta1.EnterpriseSearch
+	var updated entv1.EnterpriseSearch
 	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&sample), &updated)
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{annotation.ControllerVersionAnnotation: "operator-version"}, updated.Annotations)
@@ -95,9 +95,9 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 
 func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing.T) {
 	// an Elasticsearch ref is specified, but its configuration is not set: should do nothing
-	sample := entv1beta1.EnterpriseSearch{
+	sample := entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
-		Spec: entv1beta1.EnterpriseSearchSpec{
+		Spec: entv1.EnterpriseSearchSpec{
 			Version:          "7.7.0",
 			ElasticsearchRef: commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 		},
@@ -119,7 +119,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 
 func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 	// spec.Version missing from the spec
-	sample := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"}}
+	sample := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"}}
 	fakeRecorder := record.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
 		Client:   k8s.NewFakeClient(&sample),
@@ -136,8 +136,8 @@ func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.T) {
-	sample := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
-		Spec: entv1beta1.EnterpriseSearchSpec{
+	sample := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
+		Spec: entv1.EnterpriseSearchSpec{
 			Version: "7.7.0",
 			Count:   3,
 		}}
@@ -241,9 +241,9 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t *testing.T) {
 	// associate Enterprise Search 7.7.0 to Elasticsearch 7.7.0
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "some-es"}}
-	ent := entv1beta1.EnterpriseSearch{
+	ent := entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-		Spec:       entv1beta1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
+		Spec:       entv1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
 	esTLSCertsSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
 		Data: map[string][]byte{
@@ -322,16 +322,16 @@ func (f *fakeClientStatusCall) Status() client.StatusWriter {
 func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 	tests := []struct {
 		name                   string
-		ent                    entv1beta1.EnterpriseSearch
+		ent                    entv1.EnterpriseSearch
 		deploy                 appsv1.Deployment
 		svcName                string
-		wantStatus             entv1beta1.EnterpriseSearchStatus
+		wantStatus             entv1.EnterpriseSearchStatus
 		wantEvent              bool
 		wantStatusUpdateCalled bool
 	}{
 		{
 			name: "happy path",
-			ent:  entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
+			ent:  entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -342,7 +342,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				},
 			}},
 			svcName: "http-service",
-			wantStatus: entv1beta1.EnterpriseSearchStatus{
+			wantStatus: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 					Version:        "",
@@ -354,8 +354,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "preserve existing association status",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Status: entv1beta1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished}},
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -366,7 +366,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				},
 			}},
 			svcName: "http-service",
-			wantStatus: entv1beta1.EnterpriseSearchStatus{
+			wantStatus: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 					Version:        "",
@@ -379,7 +379,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "red health if deployment not available",
-			ent:  entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
+			ent:  entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -390,7 +390,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				},
 			}},
 			svcName: "http-service",
-			wantStatus: entv1beta1.EnterpriseSearchStatus{
+			wantStatus: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 					Version:        "",
@@ -402,8 +402,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "update existing status when replicas count changes",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Status: entv1beta1.EnterpriseSearchStatus{
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
 						Version:        "",
@@ -421,7 +421,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				},
 			}},
 			svcName: "http-service",
-			wantStatus: entv1beta1.EnterpriseSearchStatus{
+			wantStatus: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 4,
 					Version:        "",
@@ -433,8 +433,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "don't do a status update if not necessary",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Status: entv1beta1.EnterpriseSearchStatus{
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
 						Version:        "",
@@ -452,7 +452,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				},
 			}},
 			svcName: "http-service",
-			wantStatus: entv1beta1.EnterpriseSearchStatus{
+			wantStatus: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 					Version:        "",
@@ -464,8 +464,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		},
 		{
 			name: "emit an event when health goes from green to red",
-			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Status: entv1beta1.EnterpriseSearchStatus{
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
 						Version:        "",
@@ -483,7 +483,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				},
 			}},
 			svcName: "http-service",
-			wantStatus: entv1beta1.EnterpriseSearchStatus{
+			wantStatus: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 					Version:        "",
@@ -508,7 +508,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 
 			require.Equal(t, tt.wantStatusUpdateCalled, c.updateCalled)
 
-			var updatedEnt entv1beta1.EnterpriseSearch
+			var updatedEnt entv1.EnterpriseSearch
 			err = c.Get(context.Background(), k8s.ExtractNamespacedName(&tt.ent), &updatedEnt)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantStatus, updatedEnt.Status)
@@ -529,7 +529,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 }
 
 func Test_buildConfigHash(t *testing.T) {
-	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
+	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
 		Namespace: "ns", Name: "ent"}}
 
 	entWithAssociation := *ent.DeepCopy()
@@ -565,7 +565,7 @@ func Test_buildConfigHash(t *testing.T) {
 	}
 	type args struct {
 		c            k8s.Client
-		ent          entv1beta1.EnterpriseSearch
+		ent          entv1.EnterpriseSearch
 		configSecret corev1.Secret
 	}
 	tests := []struct {

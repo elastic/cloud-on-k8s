@@ -210,7 +210,6 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 			log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
 		}
 		return noResult, true, nil
-
 	}
 	log.V(1).Info("Found license for cluster", "eck_license", parent, "es_license", matchingSpec.UID, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
@@ -230,10 +229,11 @@ func (r *ReconcileLicenses) minVersion(cluster esv1.Elasticsearch) (*version.Ver
 		return nil, err
 	}
 	if minVersion == nil {
-		minVersion, err = version.Parse(cluster.Spec.Version)
+		v, err := version.Parse(cluster.Spec.Version)
 		if err != nil {
 			return nil, err
 		}
+		minVersion = &v
 	}
 	return minVersion, nil
 }

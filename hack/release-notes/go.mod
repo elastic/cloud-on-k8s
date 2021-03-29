@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/hack/release-notes
 
-go 1.14
+go 1.16
 
 require (
 	github.com/golang/protobuf v1.3.2 // indirect

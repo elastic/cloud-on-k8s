@@ -60,6 +60,9 @@ spec:
             - name: WEBHOOK_SECRET
               value: {{ include "eck-operator.webhookSecretName" . }}
             {{- end }}
+            {{- with .Values.env }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
             {{- if .Values.tracing.enabled -}}
             {{- range $name, $value :=  .Values.tracing.config }}
             - name: {{ $name }}
@@ -85,6 +88,9 @@ spec:
               name: cert
               readOnly: true
             {{- end }}
+            {{- with .Values.volumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: conf
           configMap:
@@ -94,6 +100,9 @@ spec:
           secret:
             defaultMode: 420
             secretName: {{ include "eck-operator.webhookSecretName" . }}
+        {{- end }}
+        {{- with .Values.volumes }}
+          {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

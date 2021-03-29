@@ -6,8 +6,13 @@
 
 This section summarizes the changes in each release.
 
+* <<release-notes-1.5.0>>
+* <<release-notes-1.4.1>>
+* <<release-notes-1.4.0>>
+* <<release-notes-1.3.2>>
 * <<release-notes-1.3.1>>
 * <<release-notes-1.3.0>>
+* <<release-notes-1.2.2>>
 * <<release-notes-1.2.1>>
 * <<release-notes-1.2.0>>
 * <<release-notes-1.1.2>>
@@ -19,8 +24,13 @@ This section summarizes the changes in each release.
 
 --
 
+include::release-notes/1.5.0.asciidoc[]
+include::release-notes/1.4.1.asciidoc[]
+include::release-notes/1.4.0.asciidoc[]
+include::release-notes/1.3.2.asciidoc[]
 include::release-notes/1.3.1.asciidoc[]
 include::release-notes/1.3.0.asciidoc[]
+include::release-notes/1.2.2.asciidoc[]
 include::release-notes/1.2.1.asciidoc[]
 include::release-notes/1.2.0.asciidoc[]
 include::release-notes/1.1.2.asciidoc[]

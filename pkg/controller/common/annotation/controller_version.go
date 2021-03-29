@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -33,22 +32,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlcli
 	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
 
-	accessor := meta.NewAccessor()
-	namespace, err := accessor.Namespace(obj)
-	if err != nil {
-		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return err
-	}
-	name, err := accessor.Name(obj)
-	if err != nil {
-		log.Error(err, "error getting name", "namespace", namespace, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return err
-	}
-	annotations, err := accessor.Annotations(obj)
-	if err != nil {
-		log.Error(err, "error getting annotations", "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return err
-	}
+	annotations := obj.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
@@ -59,13 +43,24 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlcli
 	}
 
 	annotations[ControllerVersionAnnotation] = version
-	err = accessor.SetAnnotations(obj, annotations)
-	if err != nil {
-		log.Error(err, "error updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
+	accessor := meta.NewAccessor()
+	if err := accessor.SetAnnotations(obj, annotations); err != nil {
+		log.Error(err, "error updating controller version annotation", "namespace", obj.GetNamespace(), "name", obj.GetName(), "kind", obj.GetObjectKind())
 		return err
 	}
-	log.V(1).Info("updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
+	log.V(1).Info("updating controller version annotation", "namespace", obj.GetNamespace(), "name", obj.GetName(), "kind", obj.GetObjectKind())
 	return client.Update(context.Background(), obj)
+}
+
+// CheckCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation. It has no side effect and
+// can be used by auxiliary controllers to check if they can process a resource.
+// The auxiliary controller must watch the resource to check the compatibility if the resource is updated.
+func CheckCompatibility(obj ctrlclient.Object, controllerVersion string) (supported bool, err error) {
+	annotatedVersion := obj.GetAnnotations()[ControllerVersionAnnotation]
+	if annotatedVersion == "" {
+		return false, nil
+	}
+	return isAnnotatedVersionSupported(annotatedVersion, controllerVersion, obj)
 }
 
 // ReconcileCompatibility determines if this controller is compatible with a given resource by examining the controller version annotation
@@ -76,34 +71,23 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 	span, ctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
 	defer span.End()
 
-	accessor := meta.NewAccessor()
-	namespace, err := accessor.Namespace(obj)
-	if err != nil {
-		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return false, err
-	}
-	name, err := accessor.Name(obj)
-	if err != nil {
-		log.Error(err, "error getting name", "namespace", namespace, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return false, err
-	}
-	annotations, err := accessor.Annotations(obj)
-	if err != nil {
-		log.Error(err, "error getting annotations", "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return false, err
-	}
-
-	annExists := annotations != nil && annotations[ControllerVersionAnnotation] != ""
+	annotatedVersion := obj.GetAnnotations()[ControllerVersionAnnotation]
 
 	// if the annotation does not exist, it might indicate it was reconciled by an older controller version that did not add the version annotation,
 	// in which case it is incompatible with the current controller, or it is a brand new resource that has not been reconciled by any controller yet
-	if !annExists {
+	if annotatedVersion == "" {
 		exist, err := checkExistingResources(client, obj, selector)
 		if err != nil {
 			return false, err
 		}
 		if exist {
-			log.Info("Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation", "controller_version", controllerVersion, "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+			log.Info(
+				"Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation",
+				"controller_version", controllerVersion,
+				"namespace", obj.GetNamespace(),
+				"name", obj.GetName(),
+				"kind", obj.GetObjectKind().GroupVersionKind().Kind,
+			)
 			err = UpdateControllerVersion(ctx, client, obj, UnknownControllerVersion)
 			return false, err
 		}
@@ -112,7 +96,13 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 		return true, err
 	}
 
-	currentVersion, err := version.Parse(annotations[ControllerVersionAnnotation])
+	return isAnnotatedVersionSupported(annotatedVersion, controllerVersion, obj)
+}
+
+// isAnnotatedVersionSupported attempts to parse the controller version set in the resource annotations and returns true
+// if it is greater than the min. compatible version.
+func isAnnotatedVersionSupported(currentVersion, controllerVersion string, obj ctrlclient.Object) (bool, error) {
+	current, err := version.Parse(currentVersion)
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing current version on resource")
 	}
@@ -126,37 +116,31 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 	}
 
 	// if the current version is gte the minimum version then they are compatible
-	if currentVersion.IsSameOrAfter(*minVersion) {
+	if current.GTE(minVersion) {
 		return true, nil
 	}
 
 	log.Info("Resource was created with older version of operator, will not take action", "controller_version", ctrlVersion,
-		"resource_controller_version", currentVersion, "namespace", namespace, "name", name)
+		"resource_controller_version", currentVersion, "namespace", obj.GetNamespace(), "name", obj.GetName())
 	return false, nil
 }
 
 // checkExistingResources returns a bool indicating if there are existing resources owned for a given resource.
 // The labels provided must exactly match.
-func checkExistingResources(client k8s.Client, owner runtime.Object, labels map[string]string) (bool, error) {
-
-	metaOwner, err := meta.Accessor(owner)
-	if err != nil {
-		return false, err
-	}
-
+func checkExistingResources(client k8s.Client, owner ctrlclient.Object, labels map[string]string) (bool, error) {
 	labelSelector := ctrlclient.MatchingLabels(labels)
-	nsSelector := ctrlclient.InNamespace(metaOwner.GetNamespace())
+	nsSelector := ctrlclient.InNamespace(owner.GetNamespace())
 
 	var svcs corev1.ServiceList
-	err = client.List(context.Background(), &svcs, labelSelector, nsSelector)
-	if err != nil {
+	if err := client.List(context.Background(), &svcs, labelSelector, nsSelector); err != nil {
 		return false, err
 	}
 
 	// If we list any services owned by the owner successfully, then we know this owner resource was reconciled
 	// by an old version since any owner resources reconciled by a 0.9.0+ operator would have a label already.
 	for _, svc := range svcs.Items {
-		if metav1.IsControlledBy(&svc, metaOwner) {
+		svc := svc
+		if metav1.IsControlledBy(&svc, owner) {
 			return true, nil
 		}
 	}

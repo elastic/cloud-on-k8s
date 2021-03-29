@@ -21,6 +21,7 @@ import (
 // NoUnknownFields checks whether the last applied config annotation contains json with unknown fields.
 func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorList {
 	var errs field.ErrorList
+	//nolint:nestif
 	if cfg, ok := meta.Annotations[v1.LastAppliedConfigAnnotation]; ok {
 		d := json.NewDecoder(strings.NewReader(cfg))
 		d.DisallowUnknownFields()
@@ -86,7 +87,7 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 		return err
 	}
 
-	if !currVer.IsSameOrAfter(*prevVer) {
+	if !currVer.GTE(*prevVer) {
 		return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("version"), "Version downgrades are not supported")}
 	}
 
@@ -99,5 +100,5 @@ func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 		return nil, field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), ver, fmt.Sprintf("Invalid version: %v", err))}
 	}
 
-	return v, nil
+	return &v, nil
 }

@@ -1,0 +1,196 @@
+:parent_page_id: elasticsearch-specification
+:page_id: autoscaling
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Elasticsearch autoscaling
+
+NOTE: Elasticsearch autoscaling requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing,the license documentation>> for more details about managing licenses.
+
+experimental[]
+
+ECK can leverage the link:https://www.elastic.co/guide/en/elasticsearch/reference/master/autoscaling-apis.html[autoscaling API] introduced in Elasticsearch 7.11 to adjust automatically the number of Pods and the allocated resources in a tier. Currently, autoscaling is supported for Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/data-tiers.html[data tiers] and machine learning nodes.
+
+[float]
+[id="{p}-enable"]
+== Enable autoscaling
+
+To enable autoscaling on an Elasticsearch cluster, you need to define one or more autoscaling policies. Each autoscaling policy applies to one or more NodeSets which share the same set of roles specified in the `node.roles` setting in the Elasticsearch configuration.
+
+[float]
+[id="{p}-{page_id}-policies"]
+=== Define autoscaling policies
+
+Autoscaling policies can be defined in the `elasticsearch.alpha.elastic.co/autoscaling-spec` annotation of the Elasticsearch resource. Each autoscaling policy must have the following fields:
+
+* `name` is a unique name used to identify the autoscaling policy.
+* `roles` contains a set of node roles, unique across all the autoscaling policies, used to identify the NodeSets to which this policy applies. At least one NodeSet with the exact same set of roles must exist in the Elasticsearch resource specification.
+* `resources` helps define the minimum and maximum compute resources usage:
+** `nodeCount` defines the minimum and maximum nodes allowed in the tier.
+** `cpu` and `memory` enforce minimum and maximum compute resources usage for the Elasticsearch container.
+** `storage` enforces minimum and maximum storage request per PersistentVolumeClaim.
+
+[source,json]
+----
+{
+    "policies": [{
+      "name": "data-ingest",
+      "roles": ["data", "ingest" , "transform"],
+      "resources": {
+          "nodeCount": { "min": 3, "max": 8 },
+          "cpu": { "min": 2, "max": 8 },
+          "memory": { "min": "2Gi", "max": "16Gi" },
+          "storage": { "min": "64Gi", "max": "512Gi" }
+      }
+    },
+    {
+      "name": "ml",
+      "roles": ["ml"],
+      "resources": {
+          "nodeCount": { "min": 1, "max": 9 },
+          "cpu": { "min": 1, "max": 4 },
+          "memory": { "min": "2Gi", "max": "8Gi" }
+      }
+    }]
+}
+----
+
+WARNING: A node role should not be referenced in more than one autoscaling policy.
+
+In the case of storage the following restrictions apply:
+
+- Scaling the storage size automatically requires the `ExpandInUsePersistentVolumes` feature to be enabled. It also requires a storage class that supports link:https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/[volume expansion].
+- Only one persistent volume claim per Elasticsearch node is supported when autoscaling is enabled.
+- Volume size cannot be scaled down.
+
+[float]
+[id="{p}-{page_id}-resources"]
+=== Set the limits
+
+The value set for memory and CPU limits are computed by applying a ratio to the calculated resource request. For memory, the default ratio between the request and the limit is 1. This means that request and limit have the same value. For CPU the default ratio is 0, which means that no limit is set. You can change the default ratio between the request and the limit for both the CPU and memory ranges by using the `requestsToLimitsRatio` field.
+
+For example, you can remove the memory limit and set a CPU limit to twice the value of the request, as follows:
+
+[source,json]
+----
+{
+    "policies": [{
+        "name": "data-ingest-hot",
+        "roles": ["data_hot", "ingest", "transform"],
+        "resources": {
+            "nodeCount": {
+                "min": 2,
+                "max": 5
+            },
+            "cpu": {
+                "min": 1,
+                "max": 2,
+                "requestsToLimitsRatio": 2
+            },
+            "memory": {
+                "min": "2Gi",
+                "max": "6Gi",
+                "requestsToLimitsRatio": 0
+            }
+        }
+    }]
+}
+----
+
+You can find link:{eck_github}/blob/{eck_release_branch}/config/recipes/autoscaling/elasticsearch.yaml[a complete example in the ECK GitHub repository] which will also show you how to fine-tune the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/autoscaling-deciders.html[autoscaling deciders].
+
+[float]
+[id="{p}-{page_id}-polling-interval"]
+=== Change the polling interval
+
+The Elasticsearch autoscaling capacity endpoint is polled every minute by the operator. This interval duration can be controlled using the `pollingPeriod` field in the autoscaling specification:
+
+[source,json]
+----
+{
+    "pollingPeriod": "42s",
+    "policies": [{
+        "name": "data-ingest-hot",
+        "roles": ["data_hot", "ingest", "transform"],
+        "resources": {
+            "nodeCount": {
+                "min": 2,
+                "max": 5
+            },
+            "cpu": {
+                "min": 1,
+                "max": 2
+            },
+            "memory": {
+                "min": "2Gi",
+                "max": "6Gi"
+            }
+        }
+    }]
+}
+----
+
+[float]
+[id="{p}-monitoring"]
+== Monitoring
+
+In addition to the logs generated by the operator, an autoscaling status is stored in the `elasticsearch.alpha.elastic.co/autoscaling-status` annotation. The autoscaling status is a JSON document which describes the expected resources for each NodeSet managed by an autoscaling policy. It may also contain important messages about the state of the tier.
+
+[source,json]
+----
+{
+	"policies": [
+		{
+			"name": "data-ingest-hot",
+			"nodeSets": [{
+				"name": "data-ingest-hot",
+				"nodeCount": 5
+			}],
+			"resources": {
+				"limits": {
+					"cpu": "2",
+					"memory": "6Gi"
+				},
+				"requests": {
+					"cpu": "2",
+					"memory": "6Gi",
+					"storage": "6Gi"
+				}
+			},
+			"state": [{
+				"type": "HorizontalScalingLimitReached",
+				"messages": [
+					"Can't provide total required storage 32588740338, max number of nodes is 5, requires 6 nodes"
+				]
+			}],
+			"lastModificationTime": "2021-03-09T17:01:25Z"
+		}
+	]
+}
+----
+
+Important events are also reported through Kubernetes events, for example when the maximum autoscaling size limit is reached:
+
+[source,sh]
+----
+> kubectl get events
+
+40m  Warning  HorizontalScalingLimitReached  elasticsearch/sample   Can't provide total required storage 32588740338, max number of nodes is 5, requires 6 nodes
+----
+
+[float]
+[id="{p}-disable"]
+== Disable autoscaling
+
+You can disable autoscaling at any time by removing the `elasticsearch.alpha.elastic.co/autoscaling-spec` annotation from the Elasticsearch resource metadata.
+
+For machine learning the following settings are not automatically reset:
+
+- `xpack.ml.max_ml_node_size`
+- `xpack.ml.max_lazy_ml_nodes`
+- `xpack.ml.use_auto_machine_memory_percent`
+
+You should adjust those settings manually to match the size of your deployment when you disable autoscaling.

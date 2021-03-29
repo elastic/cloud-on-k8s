@@ -60,6 +60,26 @@ affinity:
               operator: In
               values: ["x"]
 
+env:
+  - name: ELASTIC_APM_SERVER_CERT
+    value: "/mnt/elastic/apm.crt"
+  - name: ELASTIC_APM_SERVER_URL
+    valueFrom:
+      secretKeyRef:
+        name: "eck-secret"
+        key: apm_server_url
+
+volumeMounts:
+  - name: apm-cert
+    mountPath: /mnt/elastic/apm.crt
+    subPath: "apm_server_cert"
+    readOnly: true
+
+volumes:
+  - name: apm-cert
+    secret:
+      secretName: "eck-secret"
+
 # createClusterScopedResources determines whether cluster-scoped resources (ClusterRoles, ClusterRoleBindings) should be created.
 createClusterScopedResources: false
 

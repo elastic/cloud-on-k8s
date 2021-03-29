@@ -13,7 +13,6 @@ import (
 )
 
 func Test_getBeatRoles(t *testing.T) {
-
 	for _, tt := range []struct {
 		name    string
 		assoc   commonv1.Associated

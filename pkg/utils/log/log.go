@@ -167,7 +167,10 @@ func FromContext(ctx context.Context) logr.Logger {
 		logger = crlog.Log
 	}
 
-	result := logger.(logr.Logger)
+	result, ok := logger.(logr.Logger)
+	if !ok {
+		result = crlog.Log
+	}
 
 	if span := apm.SpanFromContext(ctx); span != nil {
 		result = result.WithValues(SpanIDField, span.TraceContext().Span)

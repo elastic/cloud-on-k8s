@@ -126,11 +126,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler()); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler())
 }
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}
@@ -270,7 +266,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	supported := esversion.SupportedVersions(*ver)
+	supported := esversion.SupportedVersions(ver)
 	if supported == nil {
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
@@ -281,7 +277,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
 		Recorder:           r.recorder,
-		Version:            *ver,
+		Version:            ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,

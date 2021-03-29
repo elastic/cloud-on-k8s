@@ -75,7 +75,7 @@ func (c *baseClient) get(ctx context.Context, pathWithQuery string, out interfac
 	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out)
 }
 
-func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out interface{}) error { //nolint:unparam
 	return c.request(ctx, http.MethodPut, pathWithQuery, in, out)
 }
 
@@ -108,7 +108,7 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body)
+	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body) //nolint:noctx
 	if err != nil {
 		return err
 	}

@@ -58,14 +58,14 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.11.0-SNAPSHOT") {
+                stage("7.12.0-SNAPSHOT") {
                      agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.11.0-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.12.0-SNAPSHOT")
                         }
                     }
                 }
@@ -85,7 +85,6 @@ pipeline {
                         color: 'danger',
                         message: lib.generateSlackMessage("E2E tests for Elastic stack snapshot versions failed!", env.BUILD_URL, filter),
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
-                        botUser: true,
                         failOnError: true
                     )
                 }

@@ -11,7 +11,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -33,6 +33,7 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 		}}}
 }
 
+//nolint:thelper
 func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	log = logf.Log.WithName("test")
 	tests := []struct {
@@ -132,7 +133,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		{
 			name: "no EnterpriseSearch soft-owned secrets to gc",
 			runtimeObjs: []runtime.Object{
-				&entv1beta1.EnterpriseSearch{
+				&entv1.EnterpriseSearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					TypeMeta:   metav1.TypeMeta{Kind: "EnterpriseSearch"},
 				},
@@ -140,7 +141,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			},
 			assert: func(c k8s.Client, t *testing.T) {
 				// EnterpriseSearch + the secret are still there
-				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &entv1beta1.EnterpriseSearch{}))
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &entv1.EnterpriseSearch{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
 		},

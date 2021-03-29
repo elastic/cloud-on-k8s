@@ -83,7 +83,7 @@ func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
 	case kind > r.currKind:
 		r.currKind = kind
 		r.currResult = res
-	case kind == r.currKind && kind == specificKind:
+	case kind == specificKind && r.currKind == specificKind:
 		if res.RequeueAfter < r.currResult.RequeueAfter {
 			r.currResult = res
 		}

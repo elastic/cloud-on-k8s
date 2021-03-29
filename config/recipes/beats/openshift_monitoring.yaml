@@ -4,7 +4,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 7.10.1
+  version: 7.11.2
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -109,6 +109,9 @@ spec:
           - /etc/beat.yml
           - -system.hostfs=/hostfs
           name: metricbeat
+          securityContext:
+            runAsUser: 0
+            privileged: true # This is required to access kubelet API
           volumeMounts:
           - mountPath: /hostfs/sys/fs/cgroup
             name: cgroup
@@ -129,9 +132,6 @@ spec:
               memory: 2Gi
         dnsPolicy: ClusterFirstWithHostNet
         hostNetwork: true # Allows to provide richer host metadata
-        securityContext:
-          runAsUser: 0
-          privileged: true # This is required to access kubelet API
         terminationGracePeriodSeconds: 30
         volumes:
         - hostPath:
@@ -221,7 +221,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.10.1
+  version: 7.11.2
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -310,7 +310,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.10.1
+  version: 7.11.2
   nodeSets:
   - name: default
     count: 3
@@ -322,7 +322,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.10.1
+  version: 7.11.2
   count: 1
   elasticsearchRef:
     name: elasticsearch

@@ -14,7 +14,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
@@ -28,8 +28,9 @@ import (
 )
 
 const (
-	resourceCount = "resource_count"
-	podCount      = "pod_count"
+	autoscaledResourceCount = "autoscaled_resource_count"
+	resourceCount           = "resource_count"
+	podCount                = "pod_count"
 
 	timestampFieldName = "timestamp"
 )
@@ -180,7 +181,7 @@ func (r *Reporter) getLicenseInfo() (map[string]string, error) {
 }
 
 func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0}
+	stats := map[string]int32{resourceCount: 0, podCount: 0, autoscaledResourceCount: 0}
 
 	var esList esv1.ElasticsearchList
 	for _, ns := range managedNamespaces {
@@ -191,6 +192,9 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		for _, es := range esList.Items {
 			stats[resourceCount]++
 			stats[podCount] += es.Status.AvailableNodes
+			if es.IsAutoscalingDefined() {
+				stats[autoscaledResourceCount]++
+			}
 		}
 	}
 	return "elasticsearches", stats, nil
@@ -257,7 +261,7 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
 	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
-	var entList entv1beta1.EnterpriseSearchList
+	var entList entv1.EnterpriseSearchList
 	for _, ns := range managedNamespaces {
 		if err := k8sClient.List(context.Background(), &entList, client.InNamespace(ns)); err != nil {
 			return "", nil, err

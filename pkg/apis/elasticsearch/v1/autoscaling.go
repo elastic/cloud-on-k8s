@@ -8,16 +8,32 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
 
-var errNodeRolesNotSet = errors.New("node.roles must be set")
+var (
+	errNodeRolesNotSet = errors.New("node.roles must be set")
+
+	// defaultMemoryRequestsToLimitsRatio is the default ratio used to convert a memory request to a memory limit in the
+	// Pod resources specification. By default we want to have the same value for both the memory request and the memory
+	// limit.
+	defaultMemoryRequestsToLimitsRatio = 1.0
+
+	// defaultCPURequestsToLimitsRatio is the default ratio used to convert a CPU request to a CPU limit in the Pod
+	// resources specification. By default we don't want a CPU limit, hence a default value of 0.0
+	defaultCPURequestsToLimitsRatio = 0.0
+
+	// defaultPollingPeriod is the default period between 2 Elasticsearch autoscaling API polls.
+	defaultPollingPeriod = 60 * time.Second
+)
 
 // -- Elasticsearch Autoscaling API structures
 
@@ -41,6 +57,10 @@ type AutoscalingPolicy struct {
 // +kubebuilder:object:generate=false
 type AutoscalingSpec struct {
 	AutoscalingPolicySpecs AutoscalingPolicySpecs `json:"policies"`
+
+	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+	PollingPeriod *metav1.Duration `json:"pollingPeriod"`
+
 	// Elasticsearch is stored in the autoscaling spec for convenience. It should be removed once the autoscaling spec is
 	// fully part of the Elasticsearch specification.
 	Elasticsearch Elasticsearch `json:"-"`
@@ -75,12 +95,12 @@ type AutoscalingPolicySpec struct {
 // If there is no limit range for a resource, and if that resource is not mandatory, then the resources in the NodeSets
 // managed by the autoscaling policy are left untouched.
 type AutoscalingResources struct {
-	CPU     *QuantityRange `json:"cpu,omitempty"`
-	Memory  *QuantityRange `json:"memory,omitempty"`
-	Storage *QuantityRange `json:"storage,omitempty"`
+	CPURange     *QuantityRange `json:"cpu,omitempty"`
+	MemoryRange  *QuantityRange `json:"memory,omitempty"`
+	StorageRange *QuantityRange `json:"storage,omitempty"`
 
-	// NodeCount is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
-	NodeCount CountRange `json:"nodeCount"`
+	// NodeCountRange is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
+	NodeCountRange CountRange `json:"nodeCount"`
 }
 
 // QuantityRange models a resource limit range for resources which can be expressed with resource.Quantity.
@@ -94,12 +114,54 @@ type QuantityRange struct {
 	RequestsToLimitsRatio *float64 `json:"requestsToLimitsRatio"`
 }
 
+// Enforce adjusts a proposed quantity to ensure it is within the quantity range.
+func (qr *QuantityRange) Enforce(proposed resource.Quantity) resource.Quantity {
+	if qr == nil {
+		return proposed.DeepCopy()
+	}
+	if qr.Min.Cmp(proposed) > 0 {
+		return qr.Min.DeepCopy()
+	}
+	if qr.Max.Cmp(proposed) < 0 {
+		return qr.Max.DeepCopy()
+	}
+	return proposed.DeepCopy()
+}
+
+// MemoryRequestsToLimitsRatio returns the ratio between the memory request, computed by the autoscaling algorithm, and
+// the limits. If no ratio has been specified by the user then a default value is returned.
+func (ar AutoscalingResources) MemoryRequestsToLimitsRatio() float64 {
+	if ar.MemoryRange == nil || ar.MemoryRange.RequestsToLimitsRatio == nil {
+		return defaultMemoryRequestsToLimitsRatio
+	}
+	return *ar.MemoryRange.RequestsToLimitsRatio
+}
+
+// CPURequestsToLimitsRatio returns the ratio between the CPU request, computed by the autoscaling algorithm, and
+// the limits. If no ratio has been specified by the user then a default value is returned.
+func (ar AutoscalingResources) CPURequestsToLimitsRatio() float64 {
+	if ar.CPURange == nil || ar.CPURange.RequestsToLimitsRatio == nil {
+		return defaultCPURequestsToLimitsRatio
+	}
+	return *ar.CPURange.RequestsToLimitsRatio
+}
+
 // +kubebuilder:object:generate=false
 type CountRange struct {
 	// Min represents the minimum number of nodes in a tier.
 	Min int32 `json:"min"`
 	// Max represents the maximum number of nodes in a tier.
 	Max int32 `json:"max"`
+}
+
+// Enforce adjusts a node count to ensure that it is within the range.
+func (cr *CountRange) Enforce(count int32) int32 {
+	if count < cr.Min {
+		return cr.Min
+	} else if count > cr.Max {
+		return cr.Max
+	}
+	return count
 }
 
 // GetAutoscalingSpecification unmarshal autoscaling specifications from an Elasticsearch resource.
@@ -115,17 +177,25 @@ func (es Elasticsearch) GetAutoscalingSpecification() (AutoscalingSpec, error) {
 
 // IsMemoryDefined returns true if the user specified memory limits.
 func (aps AutoscalingPolicySpec) IsMemoryDefined() bool {
-	return aps.Memory != nil
+	return aps.MemoryRange != nil
 }
 
 // IsCPUDefined returns true if the user specified cpu limits.
 func (aps AutoscalingPolicySpec) IsCPUDefined() bool {
-	return aps.CPU != nil
+	return aps.CPURange != nil
 }
 
 // IsStorageDefined returns true if the user specified storage limits.
 func (aps AutoscalingPolicySpec) IsStorageDefined() bool {
-	return aps.Storage != nil
+	return aps.StorageRange != nil
+}
+
+// GetPollingPeriodOrDefault returns the polling period as specified by the user in the autoscaling specification or the default value.
+func (as AutoscalingSpec) GetPollingPeriodOrDefault() time.Duration {
+	if as.PollingPeriod != nil {
+		return as.PollingPeriod.Duration
+	}
+	return defaultPollingPeriod
 }
 
 // findByRoles returns the autoscaling specification associated with a set of roles or nil if not found.
@@ -137,6 +207,17 @@ func (as AutoscalingSpec) findByRoles(roles []string) *AutoscalingPolicySpec {
 		return &autoscalingPolicySpec
 	}
 	return nil
+}
+
+// AutoscalingPoliciesByRole returns the names of the autoscaling policies indexed by roles.
+func (as AutoscalingSpec) AutoscalingPoliciesByRole() map[string][]string {
+	policiesByRole := make(map[string][]string)
+	for _, policySpec := range as.AutoscalingPolicySpecs {
+		for _, role := range policySpec.Roles {
+			policiesByRole[role] = append(policiesByRole[role], policySpec.Name)
+		}
+	}
+	return policiesByRole
 }
 
 // rolesMatch compares two set of roles and returns true if both sets contain the exact same roles.
@@ -156,6 +237,15 @@ func rolesMatch(roles1, roles2 []string) bool {
 // AutoscaledNodeSets holds the node sets managed by an autoscaling policy, indexed by the autoscaling policy name.
 // +kubebuilder:object:generate=false
 type AutoscaledNodeSets map[string]NodeSetList
+
+// Names returns the names of the node sets indexed by the autoscaling policy name.
+func (n AutoscaledNodeSets) Names() map[string][]string {
+	autoscalingPolicies := make(map[string][]string)
+	for policy, nodeSetList := range n {
+		autoscalingPolicies[policy] = nodeSetList.Names()
+	}
+	return autoscalingPolicies
+}
 
 // AutoscalingPolicies returns the list of autoscaling policies names from the named tiers.
 func (n AutoscaledNodeSets) AutoscalingPolicies() set.StringSet {
@@ -199,12 +289,14 @@ func (as AutoscalingSpec) GetAutoscaledNodeSets() (AutoscaledNodeSets, *NodeSetC
 func (as AutoscalingSpec) GetMLNodesSettings() (nodes int32, maxMemory string) {
 	var maxMemoryAsInt int64
 	for _, autoscalingSpec := range as.AutoscalingPolicySpecs {
-		if autoscalingSpec.IsMemoryDefined() &&
-			stringsutil.StringInSlice(MLRole, autoscalingSpec.Roles) &&
-			autoscalingSpec.Memory.Max.Value() > maxMemoryAsInt {
-			maxMemoryAsInt = autoscalingSpec.Memory.Max.Value()
+		if !stringsutil.StringInSlice(string(MLRole), autoscalingSpec.Roles) {
+			// not a node with the machine learning role
+			continue
 		}
-		nodes += autoscalingSpec.NodeCount.Max
+		nodes += autoscalingSpec.NodeCountRange.Max
+		if autoscalingSpec.IsMemoryDefined() && autoscalingSpec.MemoryRange.Max.Value() > maxMemoryAsInt {
+			maxMemoryAsInt = autoscalingSpec.MemoryRange.Max.Value()
+		}
 	}
 	maxMemory = fmt.Sprintf("%db", maxMemoryAsInt)
 	return nodes, maxMemory
@@ -216,7 +308,7 @@ func (as AutoscalingSpec) GetAutoscalingSpecFor(nodeSet NodeSet) (*AutoscalingPo
 	if err != nil {
 		return nil, err
 	}
-	roles, err := getNodeSetRoles(*v, nodeSet)
+	roles, err := getNodeSetRoles(v, nodeSet)
 	if err != nil {
 		return nil, err
 	}

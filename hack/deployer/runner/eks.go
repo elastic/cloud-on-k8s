@@ -44,7 +44,7 @@ iam:
   serviceRoleARN: {{.ServiceRoleARN}}
 `
 	awsAccessKeyID      = "aws_access_key_id"
-	awsSecretAccessKey  = "aws_secret_access_key" // nolint:gosec
+	awsSecretAccessKey  = "aws_secret_access_key" //nolint:gosec
 	credentialsTemplate = `[default]
 %s = %s
 %s = %s`
@@ -102,6 +102,7 @@ func (e *EKSDriver) Execute() error {
 		}
 		log.Printf("Not deleting cluster as it does not exist")
 	case CreateAction:
+		//nolint:nestif
 		if !exists {
 			log.Printf("Creating cluster ...")
 			if err := e.ensureWorkDir(); err != nil {

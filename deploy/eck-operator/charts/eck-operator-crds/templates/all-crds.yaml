@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -288,7 +288,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -863,7 +863,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -1171,7 +1171,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2411,6 +2411,14 @@ spec:
             version:
               description: Version of Elasticsearch.
               type: string
+            volumeClaimDeletePolicy:
+              description: VolumeClaimDeletePolicy sets the policy for handling deletion
+                of PersistentVolumeClaims for all NodeSets. Possible values are DeleteOnScaledownOnly
+                and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
+              enum:
+              - DeleteOnScaledownOnly
+              - DeleteOnScaledownAndClusterDeletion
+              type: string
           required:
           - nodeSets
           - version
@@ -2458,7 +2466,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2962,11 +2970,14 @@ spec:
                 specifies the lowest version currently running.'
               type: string
           type: object
-  version: v1beta1
+  version: v1
   versions:
-  - name: v1beta1
+  - name: v1
     served: true
     storage: true
+  - name: v1beta1
+    served: true
+    storage: false
 status:
   acceptedNames:
     kind: ""
@@ -2978,7 +2989,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'

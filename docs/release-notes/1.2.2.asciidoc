@@ -1,0 +1,17 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.2.2]]
+== {n} version 1.2.2
+
+
+
+
+[[enhancement-1.2.2]]
+[float]
+=== Enhancements
+
+* Adjust init container script for Elastic License 2.0 {pull}4191[#4191]
+
+
+

@@ -42,6 +42,7 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 }
 
 func TestKubernetesIntegrationRecipe(t *testing.T) {
+	t.Skip() // pending resolution of https://github.com/elastic/cloud-on-k8s/issues/4360
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
 			WithRoles(agent.PSPClusterRoleName).
@@ -110,5 +111,5 @@ func runBeatRecipe(
 func isStackIncompatible(agent agentv1alpha1.Agent) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	agentVersion := version.MustParse(agent.Spec.Version)
-	return agentVersion.IsAfter(stackVersion)
+	return agentVersion.GT(stackVersion)
 }

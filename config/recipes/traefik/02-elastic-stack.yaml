@@ -6,7 +6,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.10.1
+  version: 7.11.2
   nodeSets:
   - name: master
     count: 1
@@ -32,7 +32,7 @@ spec:
       node.ingest: true
       node.ml: false
       node.store.allow_mmap: false
-  - name: coordinator
+  - name: coordinating
     count: 1
     config:
       node.master: false
@@ -56,7 +56,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.10.1
+  version: 7.11.2
   count: 1
   elasticsearchRef:
     name: hulk
@@ -68,7 +68,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.10.1
+  version: 7.11.2
   count: 1
   elasticsearchRef:
     name: hulk

@@ -131,20 +131,57 @@ func Test_pvcsToRemove(t *testing.T) {
 }
 
 func TestGarbageCollectPVCs(t *testing.T) {
-	// Test_pvcsToRemove covers most of the testing logic,
-	// let's just check everything is correctly plugged to the k8s api here.
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	existingPVCS := []runtime.Object{
 		buildPVCPtr("claim1-sset1-0"),   // should not be removed
 		buildPVCPtr("claim1-oldsset-0"), // should be removed
 	}
-	actualSsets := sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")}
-	expectedSsets := sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")}
-	k8sClient := k8s.NewFakeClient(existingPVCS...)
-	err := GarbageCollectPVCs(k8sClient, es, actualSsets, expectedSsets)
-	require.NoError(t, err)
-
-	var retrievedPVCs corev1.PersistentVolumeClaimList
-	require.NoError(t, k8sClient.List(context.Background(), &retrievedPVCs))
-	require.Equal(t, 1, len(retrievedPVCs.Items))
+	type args struct {
+		k8sClient            k8s.Client
+		es                   esv1.Elasticsearch
+		actualStatefulSets   sset.StatefulSetList
+		expectedStatefulSets sset.StatefulSetList
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantErr  bool
+		wantPVCs int
+	}{
+		{
+			name: "Remove on default scale down policy",
+			args: args{
+				k8sClient:            k8s.NewFakeClient(existingPVCS...),
+				es:                   esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}},
+				actualStatefulSets:   sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")},
+				expectedStatefulSets: sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")},
+			},
+			wantErr:  false,
+			wantPVCs: 1,
+		},
+		{
+			name: "Remove on any other explicitly set policy",
+			args: args{
+				k8sClient: k8s.NewFakeClient(existingPVCS...),
+				es: esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+					Spec: esv1.ElasticsearchSpec{
+						VolumeClaimDeletePolicy: esv1.DeleteOnScaledownOnlyPolicy,
+					}},
+				actualStatefulSets:   sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")},
+				expectedStatefulSets: sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")},
+			},
+			wantErr:  false,
+			wantPVCs: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := GarbageCollectPVCs(tt.args.k8sClient, tt.args.es, tt.args.actualStatefulSets, tt.args.expectedStatefulSets); (err != nil) != tt.wantErr {
+				t.Errorf("GarbageCollectPVCs() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			var retrievedPVCs corev1.PersistentVolumeClaimList
+			require.NoError(t, tt.args.k8sClient.List(context.Background(), &retrievedPVCs))
+			require.Equal(t, tt.wantPVCs, len(retrievedPVCs.Items))
+		})
+	}
 }

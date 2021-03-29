@@ -15,7 +15,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
@@ -83,7 +83,7 @@ func CreateClient() (k8s.Client, error) {
 	if err := beatv1beta1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	if err := entv1beta1.AddToScheme(scheme.Scheme); err != nil {
+	if err := entv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	if err := agentv1alpha1.AddToScheme(scheme.Scheme); err != nil {
@@ -315,6 +315,33 @@ func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error
 			return err
 		}
 		return fmt.Errorf("expected secret %s to be garbage-collected", ref.Name)
+	}
+	return nil
+}
+
+// CreateOrUpdateSecrets creates the given secrets, or updates them if they already exist.
+func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
+	for i := range secrets {
+		if err := k.CreateOrUpdate(&secrets[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (k K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
+	for _, obj := range objs {
+		// optimistic creation
+		err := k.Client.Create(context.Background(), obj)
+		if err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				return err
+			}
+			// already exists: update instead
+			if err := k.Client.Update(context.Background(), obj); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

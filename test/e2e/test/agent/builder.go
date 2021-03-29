@@ -284,6 +284,7 @@ func (b Builder) RuntimeObjects() []k8sclient.Object {
 var _ test.Builder = Builder{}
 
 func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Builder {
+	t.Helper()
 	if configYaml != "" {
 		b.Agent.Spec.Config = &commonv1.Config{}
 		err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Agent.Spec.Config.Data)

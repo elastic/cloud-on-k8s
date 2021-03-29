@@ -17,7 +17,96 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func TestCheckCompatibility(t *testing.T) {
+	type args struct {
+		obj               ctrlclient.Object
+		controllerVersion string
+	}
+	tests := []struct {
+		name          string
+		args          args
+		wantSupported bool
+		wantErr       bool
+	}{
+		{
+			name: "Annotation is nil",
+			args: args{
+				obj: &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:   "ns",
+						Name:        "kibana",
+						Annotations: nil,
+					},
+				},
+			},
+			wantSupported: false,
+			wantErr:       false,
+		},
+		{
+			name: "Controller annotation is not set",
+			args: args{
+				obj: &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:   "ns",
+						Name:        "kibana",
+						Annotations: map[string]string{},
+					},
+				},
+			},
+			wantSupported: false,
+			wantErr:       false,
+		},
+		{
+			name: "Unknown controller version",
+			args: args{
+				obj: &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "kibana",
+						Annotations: map[string]string{
+							ControllerVersionAnnotation: UnknownControllerVersion,
+						},
+					},
+				},
+				controllerVersion: "1.5.0",
+			},
+			wantSupported: false,
+			wantErr:       false,
+		},
+		{
+			name: "Supported controller version",
+			args: args{
+				obj: &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "kibana",
+						Annotations: map[string]string{
+							ControllerVersionAnnotation: "1.4.0",
+						},
+					},
+				},
+				controllerVersion: "1.5.0",
+			},
+			wantSupported: true,
+			wantErr:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSupported, err := CheckCompatibility(tt.args.obj, tt.args.controllerVersion)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CheckCompatibility() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotSupported != tt.wantSupported {
+				t.Errorf("CheckCompatibility() gotSupported = %v, want %v", gotSupported, tt.wantSupported)
+			}
+		})
+	}
+}
 
 // Test UpdateControllerVersion updates annotation if there is an older version
 func TestAnnotationUpdated(t *testing.T) {

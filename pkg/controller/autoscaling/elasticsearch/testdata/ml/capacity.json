@@ -1,0 +1,64 @@
+{
+  "policies": {
+    "ml_only": {
+      "required_capacity": {
+        "node": {
+          "memory": 3520439718
+        },
+        "total": {
+          "memory": 3119893519
+        }
+      },
+      "current_capacity": {
+        "node": {
+          "storage": 0,
+          "memory": 0
+        },
+        "total": {
+          "storage": 0,
+          "memory": 0
+        }
+      },
+      "current_nodes": [],
+      "deciders": {
+        "ml": {
+          "required_capacity": {
+            "node": {
+              "memory": 3520439718
+            },
+            "total": {
+              "memory": 3119893519
+            }
+          },
+          "reason_summary": "requesting scale up as number of jobs in queues exceeded configured limit",
+          "reason_details": {
+            "waiting_analytics_jobs": [
+              "a"
+            ],
+            "waiting_anomaly_jobs": [
+              "a"
+            ],
+            "configuration": {},
+            "perceived_current_capacity": {
+              "node": {
+                "memory": 0
+              },
+              "total": {
+                "memory": 0
+              }
+            },
+            "required_capacity": {
+              "node": {
+                "memory": 3520439718
+              },
+              "total": {
+                "memory": 3119893519
+              }
+            },
+            "reason": "requesting scale up as number of jobs in queues exceeded configured limit"
+          }
+        }
+      }
+    }
+  }
+}

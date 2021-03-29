@@ -15,7 +15,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -136,9 +136,22 @@ func TestNewReporter(t *testing.T) {
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
+				Name:      "autoscaled",
+				Annotations: map[string]string{
+					esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}",
+				},
 			},
 			Status: esv1.ElasticsearchStatus{
 				AvailableNodes: 3,
+			},
+		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+				Name:      "non-autoscaled",
+			},
+			Status: esv1.ElasticsearchStatus{
+				AvailableNodes: 6,
 			},
 		},
 		&apmv1.ApmServer{
@@ -151,11 +164,11 @@ func TestNewReporter(t *testing.T) {
 				},
 			},
 		},
-		&entv1beta1.EnterpriseSearch{
+		&entv1.EnterpriseSearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
 			},
-			Status: entv1beta1.EnterpriseSearchStatus{
+			Status: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
 				},
@@ -268,8 +281,9 @@ func TestNewReporter(t *testing.T) {
       pod_count: 8
       resource_count: 2
     elasticsearches:
-      pod_count: 3
-      resource_count: 1
+      autoscaled_resource_count: 1
+      pod_count: 9
+      resource_count: 2
     enterprisesearches:
       pod_count: 3
       resource_count: 1

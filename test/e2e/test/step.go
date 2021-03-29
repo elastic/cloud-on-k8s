@@ -33,6 +33,7 @@ func (l StepList) WithStep(testStep Step) StepList {
 }
 
 // RunSequential runs the StepList sequentially, and fails fast on first error.
+//nolint:thelper
 func (l StepList) RunSequential(t *testing.T) {
 	for _, ts := range l {
 		if ts.Skip != nil && ts.Skip() {

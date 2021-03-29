@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1,name=elastic-es-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1
+// +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1,name=elastic-es-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
 const (
 	webhookPath = "/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch"
@@ -56,21 +56,21 @@ func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
 	return ValidateElasticsearch(es)
 }
 
-func (wh *validatingWebhook) validateUpdate(old esv1.Elasticsearch, new esv1.Elasticsearch) error {
-	eslog.V(1).Info("validate update", "name", new.Name)
+func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.Elasticsearch) error {
+	eslog.V(1).Info("validate update", "name", curr.Name)
 
 	var errs field.ErrorList
 	for _, val := range updateValidations(wh.client, wh.validateStorageClass) {
-		if err := val(old, new); err != nil {
+		if err := val(prev, curr); err != nil {
 			errs = append(errs, err...)
 		}
 	}
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
-			new.Name, errs)
+			curr.Name, errs)
 	}
-	return ValidateElasticsearch(new)
+	return ValidateElasticsearch(curr)
 }
 
 func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {

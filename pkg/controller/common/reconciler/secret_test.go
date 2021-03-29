@@ -50,6 +50,7 @@ func createSecret(name string, data map[string][]byte, labels map[string]string,
 }
 
 func withOwnerRef(t *testing.T, s *corev1.Secret) *corev1.Secret {
+	t.Helper()
 	err := controllerutil.SetControllerReference(owner, s, scheme.Scheme)
 	require.NoError(t, err)
 	return s
@@ -245,188 +246,6 @@ func addOwner(secret *corev1.Secret, name string, uid types.UID) *corev1.Secret 
 	return secret
 }
 
-func Test_hasOwner(t *testing.T) {
-	owner := sampleOwner()
-	type args struct {
-		resource metav1.Object
-		owner    metav1.Object
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "owner is referenced (same name and uid)",
-			args: args{
-				resource: addOwner(&corev1.Secret{}, owner.Name, owner.UID),
-				owner:    owner,
-			},
-			want: true,
-		},
-		{
-			name: "owner referenced among other owner references",
-			args: args{
-				resource: addOwner(addOwner(&corev1.Secret{}, "another-name", types.UID("another-id")), owner.Name, owner.UID),
-				owner:    owner,
-			},
-			want: true,
-		},
-		{
-			name: "owner not referenced",
-			args: args{
-				resource: addOwner(addOwner(&corev1.Secret{}, "another-name", types.UID("another-id")), "yet-another-name", "yet-another-uid"),
-				owner:    owner,
-			},
-			want: false,
-		},
-		{
-			name: "no owner ref",
-			args: args{
-				resource: &corev1.Secret{},
-				owner:    owner,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := hasOwner(tt.args.resource, tt.args.owner); got != tt.want {
-				t.Errorf("hasOwner() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_removeOwner(t *testing.T) {
-	type args struct {
-		resource metav1.Object
-		owner    metav1.Object
-	}
-	tests := []struct {
-		name         string
-		args         args
-		wantResource *corev1.Secret
-	}{
-		{
-			name: "no owner: no-op",
-			args: args{
-				resource: &corev1.Secret{},
-				owner:    sampleOwner(),
-			},
-			wantResource: &corev1.Secret{},
-		},
-		{
-			name: "different owner: no-op",
-			args: args{
-				resource: addOwner(&corev1.Secret{}, "another-owner-name", "another-owner-id"),
-				owner:    sampleOwner(),
-			},
-			wantResource: addOwner(&corev1.Secret{}, "another-owner-name", "another-owner-id"),
-		},
-		{
-			name: "remove the single owner",
-			args: args{
-				resource: addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID),
-				owner:    sampleOwner(),
-			},
-			wantResource: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{OwnerReferences: []metav1.OwnerReference{}}},
-		},
-		{
-			name: "remove the owner from a list of owners",
-			args: args{
-				resource: addOwner(addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID), "another-owner", "another-uid"),
-				owner:    sampleOwner(),
-			},
-			wantResource: addOwner(&corev1.Secret{}, "another-owner", "another-uid"),
-		},
-		{
-			name: "owner listed twice in the list (shouldn't happen): remove the first occurrence",
-			args: args{
-				resource: addOwner(addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID), sampleOwner().Name, sampleOwner().UID),
-				owner:    sampleOwner(),
-			},
-			wantResource: addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			removeOwner(tt.args.resource, tt.args.owner)
-			require.Equal(t, tt.wantResource, tt.args.resource)
-		})
-	}
-}
-
-func Test_findOwner(t *testing.T) {
-	type args struct {
-		resource metav1.Object
-		owner    metav1.Object
-	}
-	tests := []struct {
-		name      string
-		args      args
-		wantFound bool
-		wantIndex int
-	}{
-		{
-			name: "no owner: not found",
-			args: args{
-				resource: &corev1.Secret{},
-				owner:    sampleOwner(),
-			},
-			wantFound: false,
-			wantIndex: 0,
-		},
-		{
-			name: "different owner: not found",
-			args: args{
-				resource: addOwner(&corev1.Secret{}, "another-owner-name", "another-owner-id"),
-				owner:    sampleOwner(),
-			},
-			wantFound: false,
-			wantIndex: 0,
-		},
-		{
-			name: "owner at index 0",
-			args: args{
-				resource: addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID),
-				owner:    sampleOwner(),
-			},
-			wantFound: true,
-			wantIndex: 0,
-		},
-		{
-			name: "owner at index 1",
-			args: args{
-				resource: addOwner(addOwner(&corev1.Secret{}, "another-owner", "another-uid"), sampleOwner().Name, sampleOwner().UID),
-				owner:    sampleOwner(),
-			},
-			wantFound: true,
-			wantIndex: 1,
-		},
-		{
-			name: "owner listed twice in the list (shouldn't happen): return the first occurrence (index 0)",
-			args: args{
-				resource: addOwner(addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID), sampleOwner().Name, sampleOwner().UID),
-				owner:    sampleOwner(),
-			},
-			wantFound: true,
-			wantIndex: 0,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotFound, gotIndex := findOwner(tt.args.resource, tt.args.owner)
-			if gotFound != tt.wantFound {
-				t.Errorf("findOwner() gotFound = %v, want %v", gotFound, tt.wantFound)
-			}
-			if gotIndex != tt.wantIndex {
-				t.Errorf("findOwner() gotIndex = %v, want %v", gotIndex, tt.wantIndex)
-			}
-		})
-	}
-}
-
 func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Labels: map[string]string{
@@ -537,7 +356,7 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 		name        string
 		runtimeObjs []runtime.Object
 		wantObjs    []runtime.Object
-		assert      func(c k8s.Client, t *testing.T)
+		assert      func(t *testing.T, c k8s.Client)
 	}{
 		{
 			name: "nothing to gc",
@@ -582,7 +401,8 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 					SoftOwnerKindLabel:      "ConfigMap",
 				}}},
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// configmap should still be there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "configmap-name"}, &corev1.ConfigMap{}))
 			},
@@ -601,7 +421,7 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name)
 			}
 			if tt.assert != nil {
-				tt.assert(c, t)
+				tt.assert(t, c)
 			}
 		})
 	}

@@ -30,7 +30,7 @@ Deploy Elastic Stack applications.
 include::02-elastic-stack.yaml[]
 ----
 
-Create services to expose ingest nodes and coordinator nodes.
+Create services to expose ingest nodes and coordinating nodes.
 
 [source,yaml]
 ----

@@ -137,11 +137,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}
@@ -262,7 +258,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
-	if !association.AllowVersion(*asVersion, as, logger, r.recorder) {
+	if !association.AllowVersion(asVersion, as, logger, r.recorder) {
 		return reconcile.Result{}, nil // will eventually retry
 	}
 

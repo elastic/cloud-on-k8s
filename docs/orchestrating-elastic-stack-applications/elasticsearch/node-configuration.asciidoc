@@ -46,7 +46,7 @@ Marking a node as link:https://www.elastic.co/guide/en/elasticsearch/reference/c
 ----
 spec:
   nodeSets:
-  - name: coordinator
+  - name: coordinating
     count: 3
     config:
       node.roles: !!seq ""

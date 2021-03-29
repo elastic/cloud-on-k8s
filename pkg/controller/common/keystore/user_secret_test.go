@@ -124,7 +124,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 }
 
 func Test_reconcileSecureSettings(t *testing.T) {
-	true := true
+	trueVal := true
 	type args struct {
 		c           k8s.Client
 		hasKeystore HasKeystore
@@ -146,8 +146,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				Kind:               "Kibana",
 				Name:               "kb",
 				UID:                "",
-				Controller:         &true,
-				BlockOwnerDeletion: &true,
+				Controller:         &trueVal,
+				BlockOwnerDeletion: &trueVal,
 			},
 		},
 	}

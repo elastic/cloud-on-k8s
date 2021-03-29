@@ -110,7 +110,7 @@ metadata:
               }
           },
           {
-              "apiVersion": "enterprisesearch.k8s.elastic.co/v1beta1",
+              "apiVersion": "enterprisesearch.k8s.elastic.co/v1",
               "kind": "EnterpriseSearch",
               "metadata": {
                   "name": "ent-sample"
@@ -160,6 +160,58 @@ metadata:
                 }
               }
             }
+          },
+          {
+            "apiVersion": "agent.k8s.elastic.co/v1alpha1",
+            "kind": "Agent",
+            "metadata": {
+              "name": "agent-sample"
+            },
+            "spec": {
+              "version": "{{ .StackVersion }}",
+              "elasticsearchRefs": [
+                {
+                  "name": "elasticsearch-sample"
+                }
+              ],
+              "daemonSet": {},
+              "config": {
+                "inputs": [
+                  {
+                    "name": "system-1",
+                    "revision": 1,
+                    "type": "system/metrics",
+                    "use_output": "default",
+                    "meta": {
+                      "package": {
+                        "name": "system",
+                        "version": "0.9.1"
+                      }
+                    },
+                    "data_stream": {
+                      "namespace": "default"
+                    },
+                    "streams": [
+                      {
+                        "id": "system/metrics-system.cpu",
+                        "data_stream": {
+                          "dataset": "system.cpu",
+                          "type": "metrics"
+                        },
+                        "metricsets": [
+                          "cpu"
+                        ],
+                        "cpu.metrics": [
+                          "percentages",
+                          "normalized_percentages"
+                        ],
+                        "period": "10s"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
           }
       ]
   name: {{ .PackageName }}.v{{ .NewVersion }}
@@ -183,7 +235,7 @@ spec:
     Current features:
 
 
-    *  Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats deployments
+    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats and Elastic Agent deployments
 
     *  TLS Certificates management
 

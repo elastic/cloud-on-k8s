@@ -13,6 +13,22 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
+type NodeRole string
+
+const (
+	DataColdRole            NodeRole = "data_cold"
+	DataContentRole         NodeRole = "data_content"
+	DataHotRole             NodeRole = "data_hot"
+	DataRole                NodeRole = "data"
+	DataWarmRole            NodeRole = "data_warm"
+	IngestRole              NodeRole = "ingest"
+	MLRole                  NodeRole = "ml"
+	MasterRole              NodeRole = "master"
+	RemoteClusterClientRole NodeRole = "remote_cluster_client"
+	TransformRole           NodeRole = "transform"
+	VotingOnlyRole          NodeRole = "voting_only"
+)
+
 const (
 	NodeData                = "node.data"
 	NodeIngest              = "node.ingest"
@@ -22,14 +38,6 @@ const (
 	NodeVotingOnly          = "node.voting_only"
 	NodeRemoteClusterClient = "node.remote_cluster_client"
 	NodeRoles               = "node.roles"
-
-	MasterRole              = "master"
-	DataRole                = "data"
-	IngestRole              = "ingest"
-	MLRole                  = "ml"
-	RemoteClusterClientRole = "remote_cluster_client"
-	TransformRole           = "transform"
-	VotingOnlyRole          = "voting_only"
 )
 
 // ClusterSettings is the cluster node in elasticsearch.yml.
@@ -49,95 +57,40 @@ type Node struct {
 	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
 }
 
-func (n *Node) HasMasterRole() bool {
-	// all nodes are master-eligible by default
+// HasRole returns true if the node has the given role.
+func (n *Node) HasRole(role NodeRole) bool {
 	if n == nil {
-		return true
+		// Nodes have all the roles by default except for the voting_only role.
+		return role != VotingOnlyRole
 	}
 
-	if n.Roles == nil {
-		return pointer.BoolPtrDerefOr(n.Master, true)
+	if n.Roles != nil {
+		return stringsutil.StringInSlice(string(role), n.Roles)
 	}
 
-	return stringsutil.StringInSlice(MasterRole, n.Roles)
-}
-
-func (n *Node) HasDataRole() bool {
-	// all nodes are data nodes by default
-	if n == nil {
-		return true
-	}
-
-	if n.Roles == nil {
+	switch role {
+	case DataRole:
 		return pointer.BoolPtrDerefOr(n.Data, true)
-	}
-
-	return stringsutil.StringInSlice(DataRole, n.Roles)
-}
-
-func (n *Node) HasIngestRole() bool {
-	// all nodes are ingest nodes by default
-	if n == nil {
-		return true
-	}
-
-	if n.Roles == nil {
+	case DataColdRole, DataContentRole, DataHotRole, DataWarmRole:
+		// These roles should really be defined in node.roles. Since they were not, assume they are enabled unless node.data is set to false.
+		return pointer.BoolPtrDerefOr(n.Data, true)
+	case IngestRole:
 		return pointer.BoolPtrDerefOr(n.Ingest, true)
-	}
-
-	return stringsutil.StringInSlice(IngestRole, n.Roles)
-}
-
-func (n *Node) HasMLRole() bool {
-	// all nodes are ML nodes by default
-	if n == nil {
-		return true
-	}
-
-	if n.Roles == nil {
+	case MLRole:
 		return pointer.BoolPtrDerefOr(n.ML, true)
-	}
-
-	return stringsutil.StringInSlice(MLRole, n.Roles)
-}
-
-func (n *Node) HasRemoteClusterClientRole() bool {
-	// all nodes are remote_cluster_client nodes by default
-	if n == nil {
-		return true
-	}
-
-	if n.Roles == nil {
+	case MasterRole:
+		return pointer.BoolPtrDerefOr(n.Master, true)
+	case RemoteClusterClientRole:
 		return pointer.BoolPtrDerefOr(n.RemoteClusterClient, true)
-	}
-
-	return stringsutil.StringInSlice(RemoteClusterClientRole, n.Roles)
-}
-
-func (n *Node) HasTransformRole() bool {
-	// all nodes are data nodes by default and data nodes are transform nodes by default as well.
-	if n == nil {
-		return true
-	}
-
-	if n.Roles == nil {
-		return pointer.BoolPtrDerefOr(n.Transform, n.HasDataRole())
-	}
-
-	return stringsutil.StringInSlice(TransformRole, n.Roles)
-}
-
-func (n *Node) HasVotingOnlyRole() bool {
-	// voting only is not enabled by default
-	if n == nil {
-		return false
-	}
-
-	if n.Roles == nil {
+	case TransformRole:
+		// all data nodes are transform nodes by default as well.
+		return pointer.BoolPtrDerefOr(n.Transform, n.HasRole(DataRole))
+	case VotingOnlyRole:
 		return pointer.BoolPtrDerefOr(n.VotingOnly, false)
 	}
 
-	return stringsutil.StringInSlice(VotingOnlyRole, n.Roles)
+	// This point should never be reached. The default is to assume that a node has all roles except voting_only.
+	return role != VotingOnlyRole
 }
 
 // ElasticsearchSettings is a typed subset of elasticsearch.yml for purposes of the operator.
@@ -187,7 +140,7 @@ func UnpackConfig(c *commonv1.Config, ver version.Version, out *ElasticsearchSet
 // configureTransformRole explicitly sets the transform role to false if the version is below 7.7.0
 func configureTransformRole(cfg *ElasticsearchSettings, ver version.Version) {
 	// nothing to do if the version is above 7.7.0 as the transform role is automatically applied to data nodes by the HasTransformRole method.
-	if ver.IsSameOrAfter(version.From(7, 7, 0)) {
+	if ver.GTE(version.From(7, 7, 0)) {
 		return
 	}
 

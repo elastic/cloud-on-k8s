@@ -133,7 +133,7 @@ The resource definitions in ECK share the same philosophy when you want to:
 === Pod configuration
 You can <<{p}-customize-pods,customize the Kibana Pod>> using a Pod template.
 
-The following example demonstrates how to create a Kibana deployment with custom node affinity and resource limits.
+The following example demonstrates how to create a Kibana deployment with custom node affinity, increased heap size, and resource limits.
 
 [source,yaml,subs="attributes"]
 ----
@@ -150,12 +150,15 @@ spec:
     spec:
       containers:
       - name: kibana
+        env:
+          - name: NODE_OPTIONS
+            value: "--max-old-space-size=2048"
         resources:
           requests:
             memory: 1Gi
             cpu: 0.5
           limits:
-            memory: 2Gi
+            memory: 2.5Gi
             cpu: 2
       nodeSelector:
         type: frontend

@@ -42,7 +42,7 @@ func TestSupportedVersions(t *testing.T) {
 				v: version.MustParse("7.1.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("6.8.0"), //wire compat
+				version.MustParse("6.8.0"), // wire compat
 				version.MustParse("7.2.0"),
 				version.MustParse("7.99.99"),
 			},
@@ -69,48 +69,10 @@ func TestSupportedVersions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			vs := SupportedVersions(tt.args.v)
 			for _, v := range tt.supported {
-				require.NoError(t, vs.Supports(v))
+				require.NoError(t, vs.WithinRange(v))
 			}
 			for _, v := range tt.unsupported {
-				require.Error(t, vs.Supports(v))
-			}
-		})
-	}
-}
-
-func TestSupports(t *testing.T) {
-	tests := []struct {
-		name        string
-		lhsv        LowestHighestSupportedVersions
-		ver         version.Version
-		expectError bool
-	}{
-		{
-			name: "in range",
-			lhsv: LowestHighestSupportedVersions{
-				LowestSupportedVersion:  version.MustParse("2.0.1"),
-				HighestSupportedVersion: version.MustParse("3.0.0"),
-			},
-			ver:         version.MustParse("2.0.2-rc0"),
-			expectError: false,
-		},
-		{
-			name: "out of range",
-			lhsv: LowestHighestSupportedVersions{
-				LowestSupportedVersion:  version.MustParse("2.0.1"),
-				HighestSupportedVersion: version.MustParse("3.0.0"),
-			},
-			ver:         version.MustParse("3.0.1"),
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.lhsv.Supports(tt.ver)
-			actual := err != nil
-			if tt.expectError != actual {
-				t.Errorf("failed Supports(). Name: %v, actual: %v, wanted: %v, value: %v", tt.name, err, tt.expectError, tt.ver)
+				require.Error(t, vs.WithinRange(v))
 			}
 		})
 	}
@@ -124,7 +86,7 @@ func Test_supportedVersionsWithMinimum(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *LowestHighestSupportedVersions
+		want *version.MinMaxVersion
 	}{
 		{
 			name: "no minimum",
@@ -132,9 +94,9 @@ func Test_supportedVersionsWithMinimum(t *testing.T) {
 				v:   version.MustParse("7.10.0"),
 				min: version.Version{},
 			},
-			want: &LowestHighestSupportedVersions{
-				LowestSupportedVersion:  version.MustParse("6.8.0"),
-				HighestSupportedVersion: version.MustParse("7.99.99"),
+			want: &version.MinMaxVersion{
+				Min: version.MustParse("6.8.0"),
+				Max: version.MustParse("7.99.99"),
 			},
 		},
 		{
@@ -143,9 +105,9 @@ func Test_supportedVersionsWithMinimum(t *testing.T) {
 				v:   version.MustParse("7.10.0"),
 				min: version.MustParse("7.10.0"),
 			},
-			want: &LowestHighestSupportedVersions{
-				LowestSupportedVersion:  version.MustParse("6.8.0"),
-				HighestSupportedVersion: version.MustParse("7.99.99"),
+			want: &version.MinMaxVersion{
+				Min: version.MustParse("6.8.0"),
+				Max: version.MustParse("7.99.99"),
 			},
 		},
 		{

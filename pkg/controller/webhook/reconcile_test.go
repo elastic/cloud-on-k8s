@@ -98,6 +98,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 }
 
 func verifyCertificates(t *testing.T, rootCert []byte, serverCert []byte) {
+	t.Helper()
 	ca := x509.NewCertPool()
 	ok := ca.AppendCertsFromPEM(rootCert)
 	assert.True(t, ok)

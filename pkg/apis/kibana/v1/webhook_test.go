@@ -24,6 +24,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "create-valid",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				return serialize(t, k)
 			},
@@ -33,6 +34,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "unknown-field",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.SetAnnotations(map[string]string{
 					corev1.LastAppliedConfigAnnotation: `{"metadata":{"name": "ekesn", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },"spec":{"version":"7.6.1", "unknown": "UNKNOWN"}}`,
@@ -47,6 +49,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "long-name",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.SetName(strings.Repeat("x", 100))
 				return serialize(t, k)
@@ -59,18 +62,20 @@ func TestWebhook(t *testing.T) {
 			Name:      "invalid-version",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.x"
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.x": Invalid version: version string has too few segments: 7.x`,
+				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
 			),
 		},
 		{
 			Name:      "unsupported-version-lower",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "3.1.2"
 				return serialize(t, k)
@@ -83,6 +88,7 @@ func TestWebhook(t *testing.T) {
 			Name:      "unsupported-version-higher",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "300.1.2"
 				return serialize(t, k)
@@ -95,11 +101,13 @@ func TestWebhook(t *testing.T) {
 			Name:      "update-valid",
 			Operation: admissionv1beta1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.5.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.6.1"
 				return serialize(t, k)
@@ -110,11 +118,13 @@ func TestWebhook(t *testing.T) {
 			Name:      "version-downgrade",
 			Operation: admissionv1beta1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.6.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.5.1"
 				return serialize(t, k)

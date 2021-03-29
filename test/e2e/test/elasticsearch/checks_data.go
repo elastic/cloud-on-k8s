@@ -81,7 +81,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	}
 
 	// delete index if running check multiple times
-	indexDeletion, err := http.NewRequest(
+	indexDeletion, err := http.NewRequest( //nolint:noctx
 		http.MethodDelete,
 		fmt.Sprintf("/%s", dc.indexName),
 		nil,
@@ -96,7 +96,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	}
 
 	// create the index with controlled settings
-	indexCreation, err := http.NewRequest(
+	indexCreation, err := http.NewRequest( //nolint:noctx
 		http.MethodPut,
 		fmt.Sprintf("/%s", dc.indexName),
 		bytes.NewBuffer(createIndexSettings),
@@ -116,7 +116,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		return err
 	}
 	for i := 0; i < dc.docCount; i++ {
-		r, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/%s/_doc/%d?refresh=true", dc.indexName, i), bytes.NewReader(payload))
+		r, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/%s/_doc/%d?refresh=true", dc.indexName, i), bytes.NewReader(payload)) //nolint:noctx
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 
 	// retrieve the previously indexed documents
-	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/_search?size=%d", dc.indexName, dc.docCount), nil)
+	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/_search?size=%d", dc.indexName, dc.docCount), nil) //nolint:noctx
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-func entWithConfigRef(secretName string) entv1beta1.EnterpriseSearch {
-	ent := entv1beta1.EnterpriseSearch{
+func entWithConfigRef(secretName string) entv1.EnterpriseSearch {
+	ent := entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "ent",
@@ -47,13 +47,13 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	}
 }
 
-func entWithAssociation(name string, version string, associationConf commonv1.AssociationConf) entv1beta1.EnterpriseSearch {
-	ent := entv1beta1.EnterpriseSearch{
+func entWithAssociation(name string, version string, associationConf commonv1.AssociationConf) entv1.EnterpriseSearch {
+	ent := entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      name,
 		},
-		Spec: entv1beta1.EnterpriseSearchSpec{
+		Spec: entv1.EnterpriseSearchSpec{
 			Version: version,
 		},
 	}
@@ -65,7 +65,7 @@ func Test_parseConfigRef(t *testing.T) {
 	tests := []struct {
 		name        string
 		secrets     []runtime.Object
-		ent         entv1beta1.EnterpriseSearch
+		ent         entv1.EnterpriseSearch
 		wantConfig  *settings.CanonicalConfig
 		wantWatches bool
 		wantErr     bool
@@ -120,7 +120,7 @@ func Test_parseConfigRef(t *testing.T) {
 func Test_reuseOrGenerateSecrets(t *testing.T) {
 	type args struct {
 		c   k8s.Client
-		ent entv1beta1.EnterpriseSearch
+		ent entv1.EnterpriseSearch
 	}
 	tests := []struct {
 		name      string
@@ -139,11 +139,12 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 						},
 					},
 				),
-				ent: entv1beta1.EnterpriseSearch{
+				ent: entv1.EnterpriseSearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
@@ -163,11 +164,12 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 						},
 					},
 				),
-				ent: entv1beta1.EnterpriseSearch{
+				ent: entv1.EnterpriseSearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				t.Helper()
 				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
 					SecretSessionSetting: "alreadysetsessionkey",
 					// we don't want "user-provided-encryption-key" here
@@ -193,7 +195,7 @@ func TestReconcileConfig(t *testing.T) {
 	tests := []struct {
 		name        string
 		runtimeObjs []runtime.Object
-		ent         entv1beta1.EnterpriseSearch
+		ent         entv1.EnterpriseSearch
 		ipFamily    corev1.IPFamily
 		// we don't compare the exact secret content because some keys are random, but we at least check
 		// all entries in this array exist in the reconciled secret, and there are not more rows
@@ -202,12 +204,12 @@ func TestReconcileConfig(t *testing.T) {
 		{
 			name:        "create default config secret (IPv4)",
 			runtimeObjs: nil,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
@@ -234,12 +236,12 @@ func TestReconcileConfig(t *testing.T) {
 		{
 			name:        "create default config secret (IPv6)",
 			runtimeObjs: nil,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
@@ -279,12 +281,12 @@ func TestReconcileConfig(t *testing.T) {
 				},
 			},
 			ipFamily: corev1.IPv4Protocol,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
@@ -410,12 +412,12 @@ func TestReconcileConfig(t *testing.T) {
 		{
 			name:        "with user-provided config overrides",
 			runtimeObjs: nil,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"foo":                     "bar",                    // new setting
@@ -457,12 +459,12 @@ func TestReconcileConfig(t *testing.T) {
 					},
 				},
 			},
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"foo":                     "bar",                    // new setting
@@ -534,22 +536,23 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 	tests := []struct {
 		name        string
 		runtimeObjs []runtime.Object
-		ent         entv1beta1.EnterpriseSearch
+		ent         entv1.EnterpriseSearch
 		assertions  func(t *testing.T, settings reusableSettings)
 	}{
 		{
 			name:        "generate default session key and encryption key",
 			runtimeObjs: nil,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.NotEmpty(t, settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 1)
 				require.NotEmpty(t, settings.EncryptionKeys[0])
@@ -557,12 +560,12 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 		},
 		{
 			name: "generate defaults, append user-provided encryption keys",
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"secret_management": map[string]interface{}{
@@ -575,6 +578,7 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.NotEmpty(t, settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 3)
 				require.NotEmpty(t, settings.EncryptionKeys[0])
@@ -584,12 +588,12 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 		},
 		{
 			name: "reuse existing generated keys, append user-provided encryption keys",
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"secret_management": map[string]interface{}{
@@ -618,6 +622,7 @@ secret_session_key: alreadysetsessionkey
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.Equal(t, "alreadysetsessionkey", settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 3)
 				require.Equal(t, "operator-managed-encryption-key", settings.EncryptionKeys[0])
@@ -627,12 +632,12 @@ secret_session_key: alreadysetsessionkey
 		},
 		{
 			name: "reuse only the first operator-managed encryption key",
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 					Config: &commonv1.Config{Data: map[string]interface{}{
 						"secret_management": map[string]interface{}{
@@ -664,6 +669,7 @@ secret_session_key: alreadysetsessionkey
 				},
 			},
 			assertions: func(t *testing.T, settings reusableSettings) {
+				t.Helper()
 				require.Equal(t, "alreadysetsessionkey", settings.SecretSession)
 				require.Len(t, settings.EncryptionKeys, 4)
 				require.Equal(t, "operator-managed-encryption-key", settings.EncryptionKeys[0])
@@ -696,19 +702,19 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 	tests := []struct {
 		name        string
 		runtimeObjs []runtime.Object
-		ent         entv1beta1.EnterpriseSearch
+		ent         entv1.EnterpriseSearch
 		ipFamily    corev1.IPFamily
 		wantCmd     string
 	}{
 		{
 			name:        "create default readiness probe script (no es association, IPv4)",
 			runtimeObjs: nil,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
@@ -718,12 +724,12 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		{
 			name:        "create default readiness probe script (no es association, IPv6)",
 			runtimeObjs: nil,
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
@@ -743,12 +749,12 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					},
 				},
 			},
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
 				},
 			},
@@ -791,12 +797,12 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 					},
 				},
 			},
-			ent: entv1beta1.EnterpriseSearch{
+			ent: entv1.EnterpriseSearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
 					Name:      "sample",
 				},
-				Spec: entv1beta1.EnterpriseSearchSpec{
+				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.0",
 					ConfigRef: &commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{SecretName: "my-config"},

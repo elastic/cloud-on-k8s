@@ -66,7 +66,25 @@ type ElasticsearchSpec struct {
 	// RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 	// +optional
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
+
+	// VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
+	// Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=DeleteOnScaledownOnly;DeleteOnScaledownAndClusterDeletion
+	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 }
+
+// VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
+// Inspired by https://github.com/kubernetes/enhancements/pull/2440
+type VolumeClaimDeletePolicy string
+
+const (
+	// DeleteOnScaledownAndClusterDeletionPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is removed.
+	DeleteOnScaledownAndClusterDeletionPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownAndClusterDeletion"
+	// DeleteOnScaledownOnlyPolicy removes PersistentVolumeClaims on scale down of Elasticsearch nodes but retains all
+	// current PersistenVolumeClaims when the Elasticsearch cluster has been deleted.
+	DeleteOnScaledownOnlyPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownOnly"
+)
 
 // TransportConfig holds the transport layer settings for Elasticsearch.
 type TransportConfig struct {
@@ -116,6 +134,13 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 		count += topoElem.Count
 	}
 	return count
+}
+
+func (es ElasticsearchSpec) VolumeClaimDeletePolicyOrDefault() VolumeClaimDeletePolicy {
+	if es.VolumeClaimDeletePolicy == "" {
+		return DeleteOnScaledownAndClusterDeletionPolicy
+	}
+	return es.VolumeClaimDeletePolicy
 }
 
 // Auth contains user authentication and authorization security settings for Elasticsearch.

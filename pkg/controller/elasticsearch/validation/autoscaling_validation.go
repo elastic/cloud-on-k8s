@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -43,7 +44,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 	}
 
 	var errs field.ErrorList
-	if !proposedVer.IsSameOrAfter(ElasticsearchMinAutoscalingVersion) {
+	if !proposedVer.GTE(ElasticsearchMinAutoscalingVersion) {
 		errs = append(
 			errs,
 			field.Invalid(
@@ -144,7 +145,7 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 			errs = append(errs, field.Required(autoscalingSpecPath(i, "roles"), "roles field is mandatory"))
 		} else {
 			if containsStringSlice(rolesSet, autoscalingSpec.Roles) {
-				//A set of roles must be unique across all the autoscaling policies.
+				// A set of roles must be unique across all the autoscaling policies.
 				errs = append(
 					errs,
 					field.Invalid(
@@ -158,7 +159,7 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 		}
 
 		// Machine learning nodes must be in a dedicated tier.
-		if stringsutil.StringInSlice(esv1.MLRole, autoscalingSpec.Roles) && len(autoscalingSpec.Roles) > 1 {
+		if stringsutil.StringInSlice(string(esv1.MLRole), autoscalingSpec.Roles) && len(autoscalingSpec.Roles) > 1 {
 			errs = append(
 				errs,
 				field.Invalid(
@@ -167,44 +168,44 @@ func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs
 			)
 		}
 
-		if !(autoscalingSpec.NodeCount.Min >= 0) {
+		if !(autoscalingSpec.NodeCountRange.Min >= 0) {
 			errs = append(
 				errs,
 				field.Invalid(
 					autoscalingSpecPath(i, "resources", "nodeCount", "min"),
-					autoscalingSpec.NodeCount.Min,
+					autoscalingSpec.NodeCountRange.Min,
 					"min count must be equal or greater than 0",
 				),
 			)
 		}
 
-		if !(autoscalingSpec.NodeCount.Max > 0) {
+		if !(autoscalingSpec.NodeCountRange.Max > 0) {
 			errs = append(
 				errs,
 				field.Invalid(
 					autoscalingSpecPath(i, "resources", "nodeCount", "max"),
-					autoscalingSpec.NodeCount.Max,
+					autoscalingSpec.NodeCountRange.Max,
 					"max count must be greater than 0"),
 			)
 		}
 
-		if !(autoscalingSpec.NodeCount.Max >= autoscalingSpec.NodeCount.Min) {
+		if !(autoscalingSpec.NodeCountRange.Max >= autoscalingSpec.NodeCountRange.Min) {
 			errs = append(
 				errs,
 				field.Invalid(autoscalingSpecPath(i, "resources", "nodeCount", "max"),
-					autoscalingSpec.NodeCount.Max,
+					autoscalingSpec.NodeCountRange.Max,
 					"max node count must be an integer greater or equal than the min node count"),
 			)
 		}
 
 		// Validate CPU
-		errs = validateQuantities(errs, autoscalingSpec.CPU, i, "cpu", minCPU)
+		errs = validateQuantities(errs, autoscalingSpec.CPURange, i, "cpu", minCPU)
 
 		// Validate Memory
-		errs = validateQuantities(errs, autoscalingSpec.Memory, i, "memory", minMemory)
+		errs = validateQuantities(errs, autoscalingSpec.MemoryRange, i, "memory", minMemory)
 
 		// Validate storage
-		errs = validateQuantities(errs, autoscalingSpec.Storage, i, "storage", minStorage)
+		errs = validateQuantities(errs, autoscalingSpec.StorageRange, i, "storage", minStorage)
 	}
 	return errs
 }
@@ -276,14 +277,13 @@ func containsStringSlice(slices [][]string, slice []string) bool {
 }
 
 // HasAtMostOnePersistentVolumeClaim returns true if the NodeSet has only one volume claim template. It also returns
-// the name of the volume claim template in that case.
-func HasAtMostOnePersistentVolumeClaim(nodeSet esv1.NodeSet) (bool, string) {
-	//volumeClaimTemplates := len(nodeSet.VolumeClaimTemplates)
+// a copy of the volume claim template in that case.
+func HasAtMostOnePersistentVolumeClaim(nodeSet esv1.NodeSet) (bool, *corev1.PersistentVolumeClaim) {
 	switch len(nodeSet.VolumeClaimTemplates) {
 	case 0:
-		return true, ""
+		return true, nil
 	case 1:
-		return true, nodeSet.VolumeClaimTemplates[0].Name
+		return true, nodeSet.VolumeClaimTemplates[0].DeepCopy()
 	}
-	return false, ""
+	return false, nil
 }

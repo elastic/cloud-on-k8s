@@ -31,7 +31,7 @@ func withoutControllerRef(obj runtime.Object) runtime.Object {
 func noopModifier() {}
 
 func TestReconcileResource(t *testing.T) {
-	true := true
+	trueVal := true
 
 	objectKey := types.NamespacedName{Name: "test", Namespace: "foo"}
 	obj := &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(objectKey)}
@@ -233,7 +233,7 @@ func TestReconcileResource(t *testing.T) {
 						},
 					},
 					NeedsUpdate: func() bool {
-						return true
+						return trueVal
 					},
 					// owner reference update should happen automatically, so noop is OK
 					UpdateReconciled: noopModifier,
@@ -244,7 +244,7 @@ func TestReconcileResource(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       objectKey.Namespace,
 						Name:            objectKey.Name,
-						OwnerReferences: []metav1.OwnerReference{{Name: "oldOwner", Controller: &true}},
+						OwnerReferences: []metav1.OwnerReference{{Name: "oldOwner", Controller: &trueVal}},
 					},
 				},
 			},
@@ -260,7 +260,6 @@ func TestReconcileResource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			client := k8s.NewFakeClient(tt.initialObjects...)
 			args := tt.args()
 			p := Params{

@@ -45,6 +45,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	}.WithSteps(a.CheckAgentConfiguration(b.ApmServer, k))
 }
 
+//nolint:thelper
 func (c *apmClusterChecks) BuildApmServerClient(apm apmv1.ApmServer, k *test.K8sClient,
 ) test.Step {
 	return test.Step{
@@ -103,6 +104,7 @@ func (c *apmClusterChecks) CheckApmServerReachable() test.Step {
 	}
 }
 
+//nolint:thelper
 func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step {
 	return test.Step{
 		Name: "ApmServer version should be the expected one",
@@ -117,6 +119,7 @@ func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step 
 	}
 }
 
+//nolint:thelper
 func (c *apmClusterChecks) CheckEventsAPI() test.Step {
 	sampleBody := `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
 { "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
@@ -151,6 +154,7 @@ func (c *apmClusterChecks) CheckRUMEventsAPI(rumEnabled bool) test.Step {
 		should = "accepted"
 		assertError = assert.Nil
 	}
+	//nolint:thelper
 	return test.Step{
 		Name: "Events should be " + should,
 		Test: func(t *testing.T) {
@@ -241,7 +245,7 @@ func assertCountIndexEqual(esClient client.Client, index string, expected int) e
 
 // countIndex counts the number of document in an index.
 func countIndex(esClient client.Client, indexName string) (int, error) {
-	r, err := http.NewRequest(
+	r, err := http.NewRequest( //nolint:noctx
 		http.MethodGet, fmt.Sprintf("/%s/_count", indexName),
 		nil,
 	)
@@ -296,7 +300,7 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 				uri := "/api/apm/settings/agent-configuration"
 
 				// URI is slightly different before 7.7.0, we need to add "/new" at the end
-				if !apmVersion.IsSameOrAfter(version.MustParse("7.7.0")) {
+				if !apmVersion.GTE(version.MustParse("7.7.0")) {
 					uri += "/new"
 				}
 				_, err = kibana.DoRequest(k, kb, password, "PUT", uri, []byte(sampleDefaultAgentConfiguration))
