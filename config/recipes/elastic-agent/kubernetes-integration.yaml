@@ -17,7 +17,7 @@ spec:
             runAsUser: 0
           volumeMounts:
           - name: agent-data
-            mountPath: /usr/share/elastic-agent/data/elastic-agent-1d9cce/run
+            mountPath: /usr/share/elastic-agent/data/elastic-agent-08e204/run
           env:
           - name: NODE_NAME
             valueFrom:
