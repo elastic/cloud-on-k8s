@@ -242,7 +242,7 @@ func runBeatRecipe(
 
 		// OpenShift requires different securityContext than provided in the recipe.
 		// Skipping it altogether to reduce maintenance burden.
-		if test.Ctx().Provider == "ocp" {
+		if strings.HasPrefix(test.Ctx().Provider, "ocp") {
 			t.SkipNow()
 		}
 
