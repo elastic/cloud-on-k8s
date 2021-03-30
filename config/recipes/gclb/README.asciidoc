@@ -56,3 +56,12 @@ Access Elasticsearch.
 ----
 curl -H "Host: elasticsearch.hulk" --resolve "elasticsearch.hulk:443:$INGRESS_HOST" -k -u "elastic:$ELASTICSEARCH_PASSWORD" 'https://elasticsearch.hulk/_cat/health?v'
 ----
+
+== Bonus: Serve Kibana from a path 
+
+In the above example, Kibana is accessed through a dedicated domain (`https://kibana.hulk`). If you want to make Kibana accessible from a path of an existing domain (e.g. `https://elastic.stack/kibana`) extra configuration is required.
+
+[source,yaml]
+----
+include::99-kibana-path.yaml[]
+----
