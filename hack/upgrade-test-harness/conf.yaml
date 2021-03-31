@@ -31,3 +31,7 @@ testParams:
     operatorVersion: 1.4.1 # same binary as 1.4.0
     stackVersion: 7.11.2
     crdVersion: v1
+  - name: v150
+    operatorVersion: 1.5.0
+    stackVersion: 7.12.0
+    crdVersion: v1
