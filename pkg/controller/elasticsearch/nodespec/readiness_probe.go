@@ -68,7 +68,7 @@ fi
 if [[ $POD_IP =~ .*:.* ]]; then
   LOOPBACK="[::1]"
 else 
-  LOOPBACK=127.0.01
+  LOOPBACK=127.0.0.1
 fi
 
 # request Elasticsearch on /
