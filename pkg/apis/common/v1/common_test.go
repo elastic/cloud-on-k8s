@@ -4,7 +4,10 @@
 
 package v1
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestTLSOptions_Enabled(t *testing.T) {
 	type fields struct {
@@ -128,6 +131,68 @@ func TestHTTPConfig_Scheme(t *testing.T) {
 			}
 			if got := http.Protocol(); got != tt.want {
 				t.Errorf("Protocol() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestObjectSelector_WithDefaultNamespace(t *testing.T) {
+	type fields struct {
+		Name        string
+		Namespace   string
+		ServiceName string
+	}
+	type args struct {
+		defaultNamespace string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   ObjectSelector
+	}{
+		{
+			name: "keep non-empty namespace and name, serviceName",
+			fields: fields{
+				Name:        "a",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+			args: args{
+				defaultNamespace: "d",
+			},
+			want: ObjectSelector{
+				Name:        "a",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+		},
+		{
+			name: "default empty namespace, keep name and serviceName",
+			fields: fields{
+				Name:        "a",
+				Namespace:   "",
+				ServiceName: "c",
+			},
+			args: args{
+				defaultNamespace: "d",
+			},
+			want: ObjectSelector{
+				Name:        "a",
+				Namespace:   "d",
+				ServiceName: "c",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := ObjectSelector{
+				Name:        tt.fields.Name,
+				Namespace:   tt.fields.Namespace,
+				ServiceName: tt.fields.ServiceName,
+			}
+			if got := o.WithDefaultNamespace(tt.args.defaultNamespace); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("WithDefaultNamespace() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}

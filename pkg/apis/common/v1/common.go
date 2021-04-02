@@ -49,6 +49,9 @@ type ObjectSelector struct {
 	Name string `json:"name"`
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 	Namespace string `json:"namespace,omitempty"`
+	// ServiceName is the name of an existing Kubernetes service which will be used to make requests to the referenced
+	// object. If left empty the default HTTP service of the referenced resource will be used.
+	ServiceName string `json:"serviceName,omitempty"`
 }
 
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
@@ -57,8 +60,9 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 		return o
 	}
 	return ObjectSelector{
-		Namespace: defaultNamespace,
-		Name:      o.Name,
+		Namespace:   defaultNamespace,
+		Name:        o.Name,
+		ServiceName: o.ServiceName,
 	}
 }
 

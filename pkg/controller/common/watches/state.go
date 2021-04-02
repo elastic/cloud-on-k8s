@@ -8,6 +8,7 @@ package watches
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
 		Secrets:               NewDynamicEnqueueRequest(),
+		Services:              NewDynamicEnqueueRequest(),
 		Pods:                  NewDynamicEnqueueRequest(),
 		ElasticsearchClusters: NewDynamicEnqueueRequest(),
 		Kibanas:               NewDynamicEnqueueRequest(),
@@ -18,6 +19,7 @@ func NewDynamicWatches() DynamicWatches {
 // give each of them an identity.
 type DynamicWatches struct {
 	Secrets               *DynamicEnqueueRequest
+	Services              *DynamicEnqueueRequest
 	Pods                  *DynamicEnqueueRequest
 	ElasticsearchClusters *DynamicEnqueueRequest
 	Kibanas               *DynamicEnqueueRequest

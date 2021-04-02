@@ -6,21 +6,12 @@ package association
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -29,10 +20,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -48,10 +48,16 @@ var (
 		AssociatedNamer: esv1.ESNamer,
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
-			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{Namespace: esRef.Namespace, Name: esRef.Name},
+			es := esv1.Elasticsearch{}
+			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
+				return "", err
 			}
-			return services.ExternalServiceURL(es), nil
+			serviceName := esRef.ServiceName
+			if serviceName == "" {
+				serviceName = services.ExternalServiceName(es.Name)
+			}
+			nsn := types.NamespacedName{Name: serviceName, Namespace: es.Namespace}
+			return ServiceURL(c, nsn, es.Spec.HTTP.Protocol())
 		},
 		AssociationName:     "kb-es",
 		AssociatedShortName: "kb",
@@ -98,11 +104,15 @@ var (
 		kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace}}
 		return *kb
 	}
-	sampleAssociatedKibana = func() kbv1.Kibana {
+	sampleAssociatedKibana = func(customSvc ...string) kbv1.Kibana {
+		svcName := "esname-es-http"
+		if len(customSvc) > 0 {
+			svcName = customSvc[0]
+		}
 		sample := sampleKibanaWithESRef()
 		kb := (&sample).DeepCopy()
 		kb.Annotations = map[string]string{
-			kb.AssociationConfAnnotationName(): "{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://esname-es-http.esns.svc:9200\",\"version\":\"7.7.0\"}",
+			kb.AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
 		}
 		return *kb
 	}
@@ -199,6 +209,22 @@ var (
 			"kbns-kbname-kibana-user": []byte("cXEyeHd4dDhmNGNqenZ0Y2RjNzhnaGpx"),
 		},
 	}
+	esHTTPService = func() *corev1.Service {
+		return &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: esNamespace,
+				Name:      "esname-es-http",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name: "https",
+						Port: 9200,
+					},
+				},
+			},
+		}
+	}
 	setDynamicWatches = func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
 		t.Helper()
 		err := r.reconcileWatches(k8s.ExtractNamespacedName(&kb), kb.GetAssociations())
@@ -222,7 +248,7 @@ func testReconciler(runtimeObjs ...runtime.Object) Reconciler {
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
-					Version: "unit-tests",
+					Version: "1.5.0",
 				},
 			},
 		},
@@ -275,9 +301,11 @@ func TestReconciler_Reconcile_DeletionTimestamp(t *testing.T) {
 
 func TestReconciler_Reconcile_NotCompatible(t *testing.T) {
 	kb := sampleKibanaWithESRef()
-	// set an incompatible controller annotation
+	// set an invalid/incompatible controller annotation. It is actually quite hard to test the non-compatible case
+	// as we don't produce an event nor an error but only a log statement (something we should fix). So we approximate
+	// the non-compatible case here by injecting an invalid version annotation which will produce an error
 	kb.Annotations = map[string]string{
-		annotation.ControllerVersionAnnotation: "0.9.0",
+		annotation.ControllerVersionAnnotation: "0.9.x",
 	}
 	r := testReconciler(&kb)
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
@@ -294,7 +322,7 @@ func TestReconciler_Reconcile_SetsControllerVersion(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
-	require.Equal(t, "unit-tests", updatedKibana.Annotations[annotation.ControllerVersionAnnotation])
+	require.Equal(t, "1.5.0", updatedKibana.Annotations[annotation.ControllerVersionAnnotation])
 }
 
 func TestReconciler_Reconcile_DeletesOrphanedResource(t *testing.T) {
@@ -390,7 +418,7 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	// Kibana references ES, but no secret nor association conf exist yet
 	kb := sampleKibanaWithESRef()
 	require.Empty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
-	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
+	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
 	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
@@ -439,10 +467,79 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
 
+func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
+	// Kibana references ES with a custom service, but neither the service nor secret nor association conf exist yet
+	kb := sampleKibanaWithESRef()
+	serviceName := "coordinating-only"
+	kb.Spec.ElasticsearchRef.ServiceName = serviceName
+
+	require.Empty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
+	// no resources are watched yet
+	require.Empty(t, r.watches.Secrets.Registrations())
+	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	// run the reconciliation
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	// expect and error due to the missing service
+	require.Error(t, err)
+	// also expect a re-queue to be scheduled
+	require.Equal(t, defaultRequeue, results)
+
+	// should create the kibana user in es namespace
+	var actualKbUserInESNamespace corev1.Secret
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &actualKbUserInESNamespace)
+	require.NoError(t, err)
+	// password hash should be generated so let's ignore its exact content in the comparison
+	require.NotEmpty(t, actualKbUserInESNamespace.Data[user.PasswordHashField])
+	expected := kibanaUserInESNamespace.DeepCopy()
+	expected.Data[user.PasswordHashField] = actualKbUserInESNamespace.Data[user.PasswordHashField]
+	comparison.RequireEqual(t, expected, &actualKbUserInESNamespace)
+
+	// create the service
+	svc := esHTTPService()
+	svc.Name = serviceName
+	require.NoError(t, r.Create(context.Background(), svc))
+
+	// simulate a re-queue
+	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	require.NoError(t, err)
+	// no requeue to trigger
+	require.Equal(t, reconcile.Result{}, results)
+
+	// should create the kibana user in kibana namespace
+	var actualKbUserInKbNamespace corev1.Secret
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &actualKbUserInKbNamespace)
+	require.NoError(t, err)
+	// password should be generated so let's ignore its exact content in the comparison
+	require.NotEmpty(t, actualKbUserInKbNamespace.Data)
+	expected = kibanaUserInKibanaNamespace.DeepCopy()
+	expected.Data = actualKbUserInKbNamespace.Data
+	comparison.RequireEqual(t, expected, &actualKbUserInKbNamespace)
+
+	// should create the es certs in kibana namespace
+	var actualEsCertsInKibanaNamespace corev1.Secret
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&esCertsInKibanaNamespace), &actualEsCertsInKibanaNamespace)
+	require.NoError(t, err)
+	comparison.RequireEqual(t, &esCertsInKibanaNamespace, &actualEsCertsInKibanaNamespace)
+
+	// should have dynamic watches set
+	require.NotEmpty(t, r.watches.Secrets.Registrations())
+	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	// including a watch for the custom service
+	require.NotEmpty(t, t, r.watches.Services.Registrations())
+
+	var updatedKibana kbv1.Kibana
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
+	// association conf should be set
+	require.Equal(t, sampleAssociatedKibana(serviceName).Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	// association status should be established
+	require.NoError(t, err)
+	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
+}
 func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	// association already established, reconciliation should be a no-op
 	kb := sampleAssociatedKibana()
-	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esHTTPPublicCertsSecret, &esCertsInKibanaNamespace)
+	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esHTTPPublicCertsSecret, &esCertsInKibanaNamespace, esHTTPService())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
