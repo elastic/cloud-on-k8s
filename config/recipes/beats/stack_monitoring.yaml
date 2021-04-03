@@ -241,7 +241,7 @@ spec:
     name: elasticsearch
   config:
     # https://www.elastic.co/guide/en/kibana/current/monitoring-metricbeat.html
-    xpack.monitoring.kibana.collection.enabled: false
+    monitoring.kibana.collection.enabled: false
   podTemplate:
     metadata:
       labels:
@@ -271,5 +271,5 @@ spec:
   config:
     # enable the UI to reflect container level CPU usage, only displays info if CPU limits are set on the monitored ES cluster
     # https://www.elastic.co/guide/en/kibana/current/monitoring-settings-kb.html
-    xpack.monitoring.ui.container.elasticsearch.enabled: true
+    monitoring.ui.container.elasticsearch.enabled: true
 ...
