@@ -242,7 +242,6 @@ spec:
   config:
     # https://www.elastic.co/guide/en/kibana/current/monitoring-metricbeat.html
     xpack.monitoring.kibana.collection.enabled: false
-    xpack.monitoring.collection.enabled: true
   podTemplate:
     metadata:
       labels:
