@@ -1,5 +1,5 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: hulk
@@ -21,13 +21,19 @@ spec:
       http:
         paths:
           - path: "/*"
+            pathType: Exact
             backend:
-              serviceName: hulk-es-http
-              servicePort: 9200
+              service:
+                name: hulk-es-http
+                port:
+                  name: https
     - host: "kibana.hulk"
       http:
         paths:
           - path: "/*"
+            pathType: Exact
             backend:
-              serviceName: hulk-kb-http
-              servicePort: 5601
+              service:
+                name: hulk-kb-http
+                port:
+                  name: https

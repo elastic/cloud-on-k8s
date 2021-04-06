@@ -181,12 +181,6 @@ func TestManager_AddObservationListener(t *testing.T) {
 	cluster2 := esObject(cluster("cluster2"))
 	cluster2.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
 
-	// observe 2 clusters
-	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
-	defer obs1.Stop()
-	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
-	defer obs2.Stop()
-
 	// add a listener that is only interested in cluster1
 	eventsCluster1 := make(chan types.NamespacedName)
 	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
@@ -203,7 +197,13 @@ func TestManager_AddObservationListener(t *testing.T) {
 		}
 	})
 
-	// events should be propagated by both listeners
+	// observe 2 clusters
+	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
+	defer obs1.Stop()
+	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
+	defer obs2.Stop()
+
+	// events should be propagated to both listeners
 	<-eventsCluster1
 	<-eventsCluster2
 	<-eventsCluster1

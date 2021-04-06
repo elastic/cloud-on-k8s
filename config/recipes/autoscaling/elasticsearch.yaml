@@ -37,7 +37,7 @@ metadata:
           }]
       }
 spec:
-  version: 7.11.2
+  version: 7.12.0
   nodeSets:
     - name: master
       count: 1

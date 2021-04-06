@@ -9,6 +9,7 @@ package agent
 import (
 	"path"
 	"testing"
+	"strings"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -91,7 +92,7 @@ func runBeatRecipe(
 
 		// OpenShift requires different securityContext than provided in the recipe.
 		// Skipping it altogether to reduce maintenance burden.
-		if test.Ctx().Provider == "ocp" {
+		if strings.HasPrefix(test.Ctx().Provider, "ocp") {
 			t.SkipNow()
 		}
 

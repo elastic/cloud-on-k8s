@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 7.11.2
+  version: 7.12.0
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -15,7 +15,7 @@ spec:
             runAsUser: 0
           volumeMounts:
           - name: agent-data
-            mountPath: /usr/share/elastic-agent/data/elastic-agent-1d9cce/run
+            mountPath: /usr/share/elastic-agent/data/elastic-agent-08e204/run
   config:
     id: 488e0b80-3634-11eb-8208-57893829af4e
     revision: 2
@@ -34,7 +34,7 @@ spec:
       meta:
         package:
           name: system
-          version: 7.11.2
+          version: 7.12.0
       data_stream:
         namespace: default
       streams:
@@ -139,7 +139,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.11.2
+  version: 7.12.0
   nodeSets:
   - name: default
     count: 3
@@ -151,7 +151,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.11.2
+  version: 7.12.0
   count: 1
   elasticsearchRef:
     name: elasticsearch

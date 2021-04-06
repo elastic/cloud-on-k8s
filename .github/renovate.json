@@ -47,5 +47,8 @@
       ],
       "enabled": false
     }
+  ],
+  "ignorePaths": [
+    "**/vendor/**"
   ]
 }

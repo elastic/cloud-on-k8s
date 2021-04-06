@@ -1,0 +1,68 @@
+# How to serve Kibana from a path. In this example we make Kibana available at https://elastic.stack/kibana.
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: thor
+  labels:
+    app: thor
+spec:
+  version: 7.11.2
+  count: 1
+  config:
+    # Make Kibana aware of the fact that it is behind a proxy
+    server:
+      basePath: "/kibana"
+      rewriteBasePath: true
+      publicBaseUrl: "https://elastic.stack/kibana"
+  http:
+    service:
+      metadata:
+        labels:
+          app: thor
+        annotations:
+          # Enable TLS between GCLB and the application
+          cloud.google.com/app-protocols: '{"https":"HTTPS"}'
+          service.alpha.kubernetes.io/app-protocols: '{"https":"HTTPS"}'
+          # Comment out the following line if you are not using a VPC-native cluster
+          cloud.google.com/neg: '{"ingress": true}'
+  elasticsearchRef:
+    name: hulk
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          readinessProbe:
+            # Override the readiness probe as GCLB reuses it for its own healthchecks
+            # The path must contain the path prefix used to serve the application from the load balancer
+            httpGet:
+              scheme: HTTPS
+              path: "/kibana/login"
+              port: 5601
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thor
+  labels:
+    app: thor
+  annotations:
+    # Issue certificates for TLS hosts automatically
+    cert-manager.io/cluster-issuer: "selfsigning-issuer"
+    # Disable HTTP traffic
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  tls:
+    - hosts: ["elastic.stack"]
+      secretName: elastic-stack-cert
+  rules:
+    - host: "elastic.stack"
+      http:
+        paths:
+          - path: "/kibana/*"
+            pathType: Exact
+            backend:
+              service:
+                name: thor-kb-http
+                port:
+                  name: https
