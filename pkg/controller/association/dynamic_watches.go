@@ -29,8 +29,8 @@ func associatedCAWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-ca-watch", associated.Namespace, associated.Name)
 }
 
-// serviceWatchname returns the name of the watch setup ot monitor a custom service to be used to make requests to the
-// associated resource
+// serviceWatchName returns the name of the watch monitor a custom service to be used to make requests to the
+// associated resource.
 func serviceWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-svc-watch", associated.Namespace, associated.Name)
 }
