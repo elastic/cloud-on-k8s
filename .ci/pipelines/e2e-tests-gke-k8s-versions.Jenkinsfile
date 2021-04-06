@@ -35,7 +35,7 @@ pipeline {
         }
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.15") {
+                stage("1.17") {
                     agent {
                         label 'linux'
                     }
@@ -46,7 +46,7 @@ pipeline {
                         }
                     }
                 }
-                stage("1.16") {
+                stage("1.18") {
                     agent {
                         label 'linux'
                     }
