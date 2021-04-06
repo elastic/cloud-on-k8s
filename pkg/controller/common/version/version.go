@@ -30,6 +30,7 @@ var (
 	// Elastic Agent was introduced in 7.8.0, but as "experimental release" with no migration path forward, hence
 	// picking higher version as minimal supported.
 	SupportedAgentVersions = MinMaxVersion{Min: From(7, 10, 0), Max: From(8, 99, 99)}
+	SupportedMapsVersions  = MinMaxVersion{Min: From(7, 11, 0), Max: From(8, 99, 99)}
 )
 
 // MinMaxVersion holds the minimum and maximum supported versions.
