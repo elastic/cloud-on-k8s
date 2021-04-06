@@ -111,7 +111,7 @@ func TestAutoscaling(t *testing.T) {
 	licenseSecretName := "eck-license"
 
 	before := func(k *test.K8sClient) test.StepList {
-		// Deploy a Trial license
+		// Deploy an enterprise license
 		return test.StepList{
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseSecretName, licenseBytes),
