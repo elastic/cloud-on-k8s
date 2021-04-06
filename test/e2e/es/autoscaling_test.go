@@ -60,19 +60,19 @@ func TestAutoscaling(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(ns1).
 		// Create a dedicated master node
-		WithNodeSet(newExpectedNodeSet("master", []string{"master"}, 1, corev1.ResourceList{})).
+		WithNodeSet(newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{})).
 		// Add a data tier, node count is initially set to 0, it will be updated by the autoscaling controller.
-		WithNodeSet(newExpectedNodeSet("data-ingest", []string{"data", "ingest"}, 0, corev1.ResourceList{})).
+		WithNodeSet(newNodeSet("data-ingest", []string{"data", "ingest"}, 0, corev1.ResourceList{})).
 		// Add a ml tier, node count is initially set to 0, it will be updated by the autoscaling controller.
-		WithNodeSet(newExpectedNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{})).
+		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{})).
 		WithRestrictedSecurityContext().
 		WithAnnotation(esv1.ElasticsearchAutoscalingSpecAnnotationName, autoscalingSpecBuilder.toJSON()).
 		WithExpectedNodeSets(
-			newExpectedNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
 			// Autoscaling controller should eventually update the data node count to its min. value.
-			newExpectedNodeSet("data-ingest", []string{"data", "ingest"}, 2, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+			newNodeSet("data-ingest", []string{"data", "ingest"}, 2, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
 			// ML node count should still be 0.
-			newExpectedNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
+			newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
 		)
 
 	// scaleUpStorage uses the fixed decider to trigger a scale up of the data tier up to its max memory limit and 3 nodes.
@@ -80,9 +80,9 @@ func TestAutoscaling(t *testing.T) {
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
 		autoscalingSpecBuilder.withFixedDecider("data-ingest", map[string]string{"storage": "20gb", "nodes": "3"}).toJSON(),
 	).WithExpectedNodeSets(
-		newExpectedNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
-		newExpectedNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
-		newExpectedNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
+		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
 	)
 
 	// scaleUpML uses the fixed decider to trigger the creation of a ML node.
@@ -90,9 +90,9 @@ func TestAutoscaling(t *testing.T) {
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
 		autoscalingSpecBuilder.withFixedDecider("ml", map[string]string{"memory": "4gb", "nodes": "1"}).toJSON(),
 	).WithExpectedNodeSets(
-		newExpectedNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
-		newExpectedNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
-		newExpectedNodeSet("ml", []string{"ml"}, 1, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
+		newNodeSet("ml", []string{"ml"}, 1, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
 	)
 
 	// scaleDownML use the fixed decider to trigger the scale down, and thus the deletion, of the ML node previously created.
@@ -100,9 +100,9 @@ func TestAutoscaling(t *testing.T) {
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
 		autoscalingSpecBuilder.withFixedDecider("ml", map[string]string{"memory": "0gb", "nodes": "0"}).toJSON(),
 	).WithExpectedNodeSets(
-		newExpectedNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
-		newExpectedNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
-		newExpectedNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
+		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
 	)
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
@@ -141,8 +141,8 @@ func TestAutoscaling(t *testing.T) {
 
 // -- Test helpers
 
-// newExpectedNodeSet returns a NodeSet with the provided properties.
-func newExpectedNodeSet(name string, roles []string, count int32, limits corev1.ResourceList) esv1.NodeSet {
+// newNodeSet returns a NodeSet with the provided properties.
+func newNodeSet(name string, roles []string, count int32, limits corev1.ResourceList) esv1.NodeSet {
 	return esv1.NodeSet{
 		Name: name,
 		Config: &commonv1.Config{
