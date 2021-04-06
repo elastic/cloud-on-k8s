@@ -42,7 +42,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, '1.15', "eck-gke15-${BUILD_NUMBER}-e2e")
+                            runWith(lib, failedTests, '1.17', "eck-gke15-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
@@ -53,7 +53,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, '1.16', "eck-gke16-${BUILD_NUMBER}-e2e")
+                            runWith(lib, failedTests, '1.18', "eck-gke16-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
