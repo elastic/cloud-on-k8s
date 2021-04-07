@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Labels set on secrets which cannot rely on owner references due to https://github.com/kubernetes/kubernetes/issues/65200,
+// labels set on secrets which cannot rely on owner references due to https://github.com/kubernetes/kubernetes/issues/65200,
 // but should still be garbage-collected (best-effort) by the operator upon owner deletion.
 const (
 	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/owner-namespace"
