@@ -15,6 +15,7 @@ func TestImageRepository(t *testing.T) {
 	testCases := []struct {
 		name    string
 		image   Image
+		suffix  string
 		version string
 		want    string
 	}{
@@ -36,17 +37,33 @@ func TestImageRepository(t *testing.T) {
 			version: "7.5.2",
 			want:    testRegistry + "/kibana/kibana:7.5.2",
 		},
+		{
+			name:    "Maps image",
+			image:   MapsImage,
+			version: "7.12.0",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:7.12.0",
+		},
+		{
+			name:    "Maps image with custom suffix",
+			image:   MapsImage,
+			version: "7.12.0",
+			suffix:  "-ubi8",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:7.12.0",
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// save and restore the current registry setting in case it has been modified
 			currentRegistry := containerRegistry
+			currentSuffix := containerSuffix
 			defer func() {
 				SetContainerRegistry(currentRegistry)
+				SetContainerSuffix(currentSuffix)
 			}()
 
 			SetContainerRegistry(testRegistry)
+			SetContainerSuffix(tc.suffix)
 			have := ImageRepository(tc.image, tc.version)
 			assert.Equal(t, tc.want, have)
 		})

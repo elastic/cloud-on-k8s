@@ -59,7 +59,7 @@ func (m *MapsServer) ValidateUpdate(old runtime.Object) error {
 	return m.validate(oldObj)
 }
 
-func (m *MapsServer) validate(old *MapsServer) error {
+func (m *MapsServer) validate(_ *MapsServer) error {
 	var errors field.ErrorList
 
 	for _, dc := range defaultChecks {
@@ -85,8 +85,4 @@ func checkNameLength(k *MapsServer) field.ErrorList {
 
 func checkSupportedVersion(k *MapsServer) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(k.Spec.Version, version.SupportedMapsVersions)
-}
-
-func checkNoDowngrade(prev, curr *MapsServer) field.ErrorList {
-	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }

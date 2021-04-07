@@ -2,13 +2,14 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1alpha1
+package v1alpha1_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
 
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -98,24 +99,24 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	validator := &MapsServer{}
-	gvk := metav1.GroupVersionKind{Group: GroupVersion.Group, Version: GroupVersion.Version, Kind: Kind}
+	validator := &emsv1alpha1.MapsServer{}
+	gvk := metav1.GroupVersionKind{Group: emsv1alpha1.GroupVersion.Group, Version: emsv1alpha1.GroupVersion.Version, Kind: emsv1alpha1.Kind}
 	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
 }
 
-func mkMaps(uid string) *MapsServer {
-	return &MapsServer{
+func mkMaps(uid string) *emsv1alpha1.MapsServer {
+	return &emsv1alpha1.MapsServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "webhook-test",
 			UID:  types.UID(uid),
 		},
-		Spec: MapsSpec{
+		Spec: emsv1alpha1.MapsSpec{
 			Version: "7.12.0",
 		},
 	}
 }
 
-func serialize(t *testing.T, k *MapsServer) []byte {
+func serialize(t *testing.T, k *emsv1alpha1.MapsServer) []byte {
 	t.Helper()
 
 	objBytes, err := json.Marshal(k)
