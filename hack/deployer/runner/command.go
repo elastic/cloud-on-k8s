@@ -21,7 +21,7 @@ import (
 type Command struct {
 	command   string
 	context   context.Context
-	log       string
+	logPrefix string
 	params    map[string]interface{}
 	variables []string
 	stream    bool
@@ -47,8 +47,8 @@ func (c *Command) WithContext(ctx context.Context) *Command {
 	return c
 }
 
-func (c *Command) WithLog(log string) *Command {
-	c.log = log
+func (c *Command) WithLog(logPrefix string) *Command {
+	c.logPrefix = logPrefix
 	return c
 }
 
@@ -67,9 +67,9 @@ func (c *Command) Run() error {
 	return err
 }
 
-func (c *Command) RunWithRetries(numRetries int, timeout time.Duration) error {
+func (c *Command) RunWithRetries(numAttempts int, timeout time.Duration) error {
 	var err error
-	for i := 0; i < numRetries; i++ {
+	for i := 0; i < numAttempts; i++ {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 		err = c.WithContext(ctx).Run()
 		cancelFunc()
@@ -124,8 +124,8 @@ func (c *Command) output() (string, error) {
 		c.command = b.String()
 	}
 
-	if c.log != "" {
-		log.Printf("%s: %s", c.log, c.command)
+	if c.logPrefix != "" {
+		log.Printf("%s: %s", c.logPrefix, c.command)
 	}
 
 	var cmd *exec.Cmd

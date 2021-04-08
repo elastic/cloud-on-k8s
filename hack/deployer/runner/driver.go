@@ -33,7 +33,7 @@ type Driver interface {
 	GetCredentials() error
 }
 
-func GetPlan(plans []Plan, config RunConfig, clientBuildDefs string) (Plan, error) {
+func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, error) {
 	plan, err := choosePlan(plans, config.Id)
 	if err != nil {
 		return Plan{}, err
@@ -46,15 +46,15 @@ func GetPlan(plans []Plan, config RunConfig, clientBuildDefs string) (Plan, erro
 
 	// allows plans and runConfigs to set this value but use a default if not set
 	if plan.ClientBuildDefDir == "" {
-		plan.ClientBuildDefDir = clientBuildDefs
+		plan.ClientBuildDefDir = clientBuildDefDir
 	}
 
 	return plan, nil
 }
 
 // GetDriver picks plan based on the run config and returns the appropriate driver
-func GetDriver(plans []Plan, config RunConfig, clientBuildDefs string) (Driver, error) {
-	plan, err := GetPlan(plans, config, clientBuildDefs)
+func GetDriver(plans []Plan, config RunConfig, clientBuildDefDir string) (Driver, error) {
+	plan, err := GetPlan(plans, config, clientBuildDefDir)
 	if err != nil {
 		return nil, err
 	}

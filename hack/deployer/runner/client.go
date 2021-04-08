@@ -34,7 +34,7 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 	}
 
 	if err = NewCommand(
-		fmt.Sprintf("docker build --build-arg VERSION=%s -f %s -t %s %s",
+		fmt.Sprintf("docker build --build-arg CLIENT_VERSION=%s -f %s -t %s %s",
 			clientVersion, dockerfileName, image, dockerfilePath),
 	).Run(); err != nil {
 		return image, fmt.Errorf("while building client image %s: %w", image, err)
@@ -51,7 +51,7 @@ func checkImageExists(image string) bool {
 	}
 
 	// check registry
-	imageExists, err := NewCommand(fmt.Sprintf("docker pull -q %s", image)).OutputContainsAny("Downloading", "Extracting", "Verifying", "complete")
+	imageExists, err := NewCommand(fmt.Sprintf("docker pull -q %s", image)).OutputContainsAny(image)
 	return imageExists && err == nil
 }
 
@@ -61,6 +61,7 @@ func clientImageName(driverID, clientVersion, dockerfileName string) (string, er
 	if err != nil {
 		return "", err
 	}
+	defer f.Close()
 	h := sha256.New224()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err

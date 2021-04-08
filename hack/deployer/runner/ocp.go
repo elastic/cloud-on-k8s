@@ -84,7 +84,7 @@ type OcpDriver struct {
 	runtimeState runtimeState
 }
 
-func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
+func (*OcpDriverFactory) Create(plan Plan) (Driver, error) {
 	return &OcpDriver{
 		plan: plan,
 	}, nil

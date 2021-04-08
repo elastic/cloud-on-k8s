@@ -11,7 +11,7 @@ import (
 
 func ExecuteCommand() *cobra.Command {
 	var plansFile, configFile *string
-	var operation, clientBuildDefs string
+	var operation, clientBuildDefDir string
 	var executeCmd = &cobra.Command{
 		Use:   "execute",
 		Short: "Executes the plan according to plans file, run config file and overrides.",
@@ -25,7 +25,7 @@ func ExecuteCommand() *cobra.Command {
 				runConfig.Overrides["operation"] = operation
 			}
 
-			driver, err := runner.GetDriver(plans.Plans, runConfig, clientBuildDefs)
+			driver, err := runner.GetDriver(plans.Plans, runConfig, clientBuildDefDir)
 			if err != nil {
 				return err
 			}
@@ -36,7 +36,7 @@ func ExecuteCommand() *cobra.Command {
 
 	plansFile, configFile = registerFileFlags(executeCmd)
 
-	executeCmd.Flags().StringVar(&clientBuildDefs, "client-dockerfiles", "hack/deployer/clients", "Directory containing Dockerfiles for Cloud provider clients")
+	executeCmd.Flags().StringVar(&clientBuildDefDir, "client-dockerfiles", "hack/deployer/clients", "Directory containing Dockerfiles for Cloud provider clients")
 	executeCmd.Flags().StringVar(&operation, "operation", "", "Operation type. This will override config files.")
 
 	return executeCmd
