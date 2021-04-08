@@ -18,29 +18,26 @@ import (
 )
 
 type esClusterChecks struct {
-	es esv1.Elasticsearch
-	k  *test.K8sClient
+	Builder
+	k *test.K8sClient
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	e := esClusterChecks{
-		es: b.Elasticsearch,
-		k:  k,
-	}
+	e := esClusterChecks{b, k}
 	return test.StepList{
-		e.CheckESNodesTopology(b.Elasticsearch),
-		e.CheckESVersion(b.Elasticsearch),
+		e.CheckESNodesTopology(),
+		e.CheckESVersion(),
 		e.CheckESHealthGreen(),
-		b.CheckTransportCertificatesStep(k),
+		e.CheckTransportCertificatesStep(),
 	}
 }
 
 func (e *esClusterChecks) newESClient() (client.Client, error) {
 	// recreate ES client for tests that switch between TlS/no TLS
-	return NewElasticsearchClient(e.es, e.k)
+	return NewElasticsearchClient(e.Elasticsearch, e.k)
 }
 
-func (e *esClusterChecks) CheckESVersion(es esv1.Elasticsearch) test.Step {
+func (e *esClusterChecks) CheckESVersion() test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
 		Test: test.Eventually(func() error {
@@ -53,8 +50,8 @@ func (e *esClusterChecks) CheckESVersion(es esv1.Elasticsearch) test.Step {
 			if err != nil {
 				return err
 			}
-			if es.Spec.Version != info.Version.Number {
-				return fmt.Errorf("expected %s, got %s", es.Spec.Version, info.Version.Number)
+			if e.Elasticsearch.Spec.Version != info.Version.Number {
+				return fmt.Errorf("expected %s, got %s", e.Elasticsearch.Spec.Version, info.Version.Number)
 			}
 			return nil
 		}),
@@ -85,7 +82,7 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 	}
 }
 
-func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step {
+func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 	return test.Step{
 		Name: "ES nodes topology should eventually be the expected one",
 		Test: test.Eventually(func() error {
@@ -98,6 +95,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step 
 			if err != nil {
 				return err
 			}
+			es := e.GetExpectedElasticsearch()
 			if int(es.Spec.NodeCount()) != len(nodes.Nodes) {
 				return fmt.Errorf("expected node count %d but was %d", es.Spec.NodeCount(), len(nodes.Nodes))
 			}
