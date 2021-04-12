@@ -61,7 +61,6 @@ type AksSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
 	NodeCount     int    `yaml:"nodeCount"`
-	DiskSetup     string `yaml:"diskSetup"`
 }
 
 // OcpSettings encapsulates settings specific to OCP on GCloud
@@ -89,7 +88,6 @@ type EKSSettings struct {
 	NodeCount int    `yaml:"nodeCount"`
 	Region    string `yaml:"region"`
 	WorkDir   string `yaml:"workDir"`
-	DiskSetup string `yaml:"diskSetup"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
