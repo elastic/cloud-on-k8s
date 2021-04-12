@@ -15,12 +15,14 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestAutoscaling ensures that the operator is compatible with the autoscaling Elasticsearch API.
@@ -37,6 +39,13 @@ func TestAutoscaling(t *testing.T) {
 	// Autoscaling API is supported since 7.11.0
 	if !stackVersion.GTE(version.MustParse("7.11.0")) {
 		t.SkipNow()
+	}
+
+	// This autoscaling test requires a storage class which supports volume expansion.
+	storageClass, err := getResizeableStorageClass(test.NewK8sClientOrFatal().Client)
+	require.NoError(t, err)
+	if storageClass == "" {
+		t.Skip("No storage class allowing volume expansion found. Skipping the test.")
 	}
 
 	// The test sequence involves 2 tiers:
@@ -57,33 +66,35 @@ func TestAutoscaling(t *testing.T) {
 		})
 
 	name := "test-autoscaling"
+	initialPVC := newPVC("1Gi", storageClass)
 	ns1 := test.Ctx().ManagedNamespace(0)
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(ns1).
 		// Create a dedicated master node
-		WithNodeSet(newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{})).
+		WithNodeSet(newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC)).
 		// Add a data tier, node count is initially set to 0, it will be updated by the autoscaling controller.
-		WithNodeSet(newNodeSet("data-ingest", []string{"data", "ingest"}, 0, corev1.ResourceList{})).
+		WithNodeSet(newNodeSet("data-ingest", []string{"data", "ingest"}, 0, corev1.ResourceList{}, initialPVC)).
 		// Add a ml tier, node count is initially set to 0, it will be updated by the autoscaling controller.
-		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{})).
+		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC)).
 		WithRestrictedSecurityContext().
 		WithAnnotation(esv1.ElasticsearchAutoscalingSpecAnnotationName, autoscalingSpecBuilder.toJSON()).
 		WithExpectedNodeSets(
-			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
 			// Autoscaling controller should eventually update the data node count to its min. value.
-			newNodeSet("data-ingest", []string{"data", "ingest"}, 2, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
+			newNodeSet("data-ingest", []string{"data", "ingest"}, 2, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, newPVC("10Gi", storageClass)),
 			// ML node count should still be 0.
-			newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
+			newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 		)
 
 	// scaleUpStorage uses the fixed decider to trigger a scale up of the data tier up to its max memory limit and 3 nodes.
+	expectedDataPVC := newPVC("20Gi", storageClass)
 	scaleUpStorage := esBuilder.DeepCopy().WithAnnotation(
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
 		autoscalingSpecBuilder.withFixedDecider("data-ingest", map[string]string{"storage": "20gb", "nodes": "3"}).toJSON(),
 	).WithExpectedNodeSets(
-		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
-		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
-		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
+		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
 	// scaleUpML uses the fixed decider to trigger the creation of a ML node.
@@ -91,9 +102,9 @@ func TestAutoscaling(t *testing.T) {
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
 		autoscalingSpecBuilder.withFixedDecider("ml", map[string]string{"memory": "4gb", "nodes": "1"}).toJSON(),
 	).WithExpectedNodeSets(
-		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
-		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
-		newNodeSet("ml", []string{"ml"}, 1, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
+		newNodeSet("ml", []string{"ml"}, 1, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, initialPVC),
 	)
 
 	// scaleDownML use the fixed decider to trigger the scale down, and thus the deletion, of the ML node previously created.
@@ -101,9 +112,9 @@ func TestAutoscaling(t *testing.T) {
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
 		autoscalingSpecBuilder.withFixedDecider("ml", map[string]string{"memory": "0gb", "nodes": "0"}).toJSON(),
 	).WithExpectedNodeSets(
-		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}),
-		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}),
-		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
+		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
@@ -142,14 +153,35 @@ func TestAutoscaling(t *testing.T) {
 
 // -- Test helpers
 
+// newPVC returns a new volume claim for the Elasticsearch data volume
+func newPVC(storageQuantity, storageClass string) corev1.PersistentVolumeClaim {
+	return corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: volume.ElasticsearchDataVolumeName,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse(storageQuantity),
+				},
+			},
+			StorageClassName: &storageClass,
+		},
+	}
+}
+
 // newNodeSet returns a NodeSet with the provided properties.
-func newNodeSet(name string, roles []string, count int32, limits corev1.ResourceList) esv1.NodeSet {
+func newNodeSet(name string, roles []string, count int32, limits corev1.ResourceList, pvc corev1.PersistentVolumeClaim) esv1.NodeSet {
 	return esv1.NodeSet{
 		Name: name,
 		Config: &commonv1.Config{
 			Data: map[string]interface{}{esv1.NodeRoles: roles},
 		},
-		Count: count,
+		Count:                count,
+		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{pvc},
 		PodTemplate: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
