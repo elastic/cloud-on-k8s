@@ -85,16 +85,6 @@ RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIN
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION_0_9}/kind-linux-amd64 && \
     mv kind-linux-amd64 /usr/local/bin/kind-${KIND_VERSION_0_9} && chmod +x /usr/local/bin/kind-${KIND_VERSION_0_9}
 
-# OpenShift installer and CLI to provision OCP clusters
-RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
-    tar -zxf openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz openshift-install && \
-    mv openshift-install /usr/local/bin/openshift-install && \
-    rm openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
-    curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
-    tar -zxf openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz oc && \
-    mv oc /usr/local/bin/oc && \
-    rm openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz
-
 RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" && \
     tar xzf eksctl_Linux_amd64.tar.gz && \
     mv eksctl /usr/local/bin/eksctl && \

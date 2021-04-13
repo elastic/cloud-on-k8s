@@ -75,17 +75,16 @@ plans:
   ocp:
     region: europe-west2
     nodeCount: 3
-    overwriteDefaultKubeconfig: true
 - id: ocp-dev
   operation: create
   clusterName: dev
+  clientVersion: 4.7.0
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
   ocp:
     region: europe-west1
     nodeCount: 3
-    overwriteDefaultKubeconfig: true
 - id: ocp3-ci
   operation: create
   clusterName: ci
