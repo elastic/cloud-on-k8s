@@ -130,7 +130,7 @@ spec:
             name: e2e-default
             mountPropagation: Bidirectional
       containers:
-        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.4"
+        - image: "k8s.gcr.io/sig-storage/local-volume-provisioner:v2.4.0"
           imagePullPolicy: "Always"
           name: provisioner
           securityContext:
