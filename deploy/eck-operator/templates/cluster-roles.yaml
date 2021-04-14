@@ -35,6 +35,9 @@ rules:
   - apiGroups: ["beat.k8s.elastic.co"]
     resources: ["beats"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["agent.k8s.elastic.co"]
+    resources: ["agents"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -59,5 +62,8 @@ rules:
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
   - apiGroups: ["beat.k8s.elastic.co"]
     resources: ["beats"]
+    verbs: ["create", "delete", "deletecollection", "patch", "update"]
+  - apiGroups: ["agent.k8s.elastic.co"]
+    resources: ["agents"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
 {{- end -}}
