@@ -225,6 +225,7 @@ write_deployer_config <<CFG
 id: ocp-ci
 overrides:
   clusterName: $BUILD_TAG
+  clientVersion: $2
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
@@ -551,6 +552,7 @@ id: ocp-ci
 overrides:
   operation: delete
   clusterName: $BUILD_TAG
+  clientVersion: $2
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID

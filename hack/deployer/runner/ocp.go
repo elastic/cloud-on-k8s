@@ -74,9 +74,12 @@ type OcpDriverFactory struct {
 }
 
 type runtimeState struct {
-	Authenticated   bool
+	// Authenticated tracks authentication against the GCloud API to avoid double authentication
+	Authenticated bool
+	// ClusterStateDir is the effective work dir containing the OCP installer state. Derived from plan.Ocp.Workdir.
 	ClusterStateDir string
-	ClientImage     string
+	// ClientImage is the name of the installer client image.
+	ClientImage string
 }
 
 type OcpDriver struct {
@@ -240,24 +243,29 @@ func (d *OcpDriver) ensurePullSecret() error {
 }
 
 func (d *OcpDriver) ensureWorkDir() error {
-	if d.plan.Ocp.WorkDir == "" {
-		// base work dir in /tmp dir otherwise mounting to container won't work without further settings adjustment
-		// in Mac OS in local mode
-		dir, err := ioutil.TempDir("/tmp", d.plan.ClusterName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		d.plan.Ocp.WorkDir = dir
-		log.Printf("Created WorkDir: %s", d.plan.Ocp.WorkDir)
+	if d.runtimeState.ClusterStateDir != "" {
+		// already initialised
+		return nil
 	}
-	if d.runtimeState.ClusterStateDir == "" {
-		stateDir := filepath.Join(d.plan.Ocp.WorkDir, d.plan.ClusterName)
-		if err := os.MkdirAll(stateDir, os.ModePerm); err != nil {
+	workDir := d.plan.Ocp.WorkDir
+	if workDir == "" {
+		// base work dir in HOME dir otherwise mounting to container won't work without further settings adjustment
+		// in macOS in local mode. In CI mode we need the workdir to be in the volume shared between containers.
+		// having the work dir in HOME also underlines the importance of the work dir contents. The work dir is the only
+		// source to cleanly uninstall the cluster should the rsync fail.
+		var err error
+		workDir, err = ioutil.TempDir(os.Getenv("HOME"), d.plan.ClusterName)
+		if err != nil {
 			return err
 		}
-		d.runtimeState.ClusterStateDir = stateDir
-		log.Printf("Using ClusterStateDir: %s", stateDir)
+		log.Printf("Defaulting WorkDir: %s", workDir)
 	}
+
+	if err := os.MkdirAll(workDir, os.ModePerm); err != nil {
+		return err
+	}
+	d.runtimeState.ClusterStateDir = workDir
+	log.Printf("Using ClusterStateDir: %s", workDir)
 	return nil
 }
 
@@ -425,20 +433,19 @@ func (d *OcpDriver) bucketParams() map[string]interface{} {
 
 func (d *OcpDriver) runInstallerCommand(action string) error {
 	params := map[string]interface{}{
-		"ClusterStateDir":     d.runtimeState.ClusterStateDir,
+		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
 		"HomeVolume":          SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
 		"OCPToolsDockerImage": d.runtimeState.ClientImage,
 		"Action":              action,
 	}
 	cmd := NewCommand(`docker run --rm \
-		-v {{.HomeVolume	}}:/home \
-		-v {{.ClusterStateDir}}:/config \
+		-v {{.HomeVolume}}:/home \
 		-v /tmp:/tmp \
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
-		-e USER_HOME=/home \
+		-e HOME=/home \
 		{{.OCPToolsDockerImage}} \
-		/openshift-install {{.Action}} cluster --dir /config`)
+		/openshift-install {{.Action}} cluster --dir /home/{{.ClusterStateDirBase}}`)
 	return cmd.AsTemplate(params).Run()
 }
 

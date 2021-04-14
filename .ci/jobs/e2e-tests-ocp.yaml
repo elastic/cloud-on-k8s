@@ -11,6 +11,9 @@
       - string:
           name: JKS_PARAM_OPERATOR_IMAGE
           description: "ECK Docker image"
+      - string:
+          name: OCP_VERSION
+          description: "OCP version to test. If left empty will be defaulted to one of the supported versions"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true

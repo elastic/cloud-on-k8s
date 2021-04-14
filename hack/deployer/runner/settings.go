@@ -11,7 +11,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// SharedVolumeName name shared by CI container and Docker containers launched by deployer
+// SharedVolumeName name shared by CI container and Docker containers launched by deployer. This is the name of the volume
+// valid outside of the CI Docker container, necessary to create other containers referencing the same volume.
+// In local dev mode it is just the home dir as we are typically not running inside a container in the case.
 func SharedVolumeName() string {
 	if vol := os.Getenv("SHARED_VOLUME_NAME"); vol != "" {
 		return vol

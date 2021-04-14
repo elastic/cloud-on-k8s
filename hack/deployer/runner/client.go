@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const clientBaseImageName = "docker.elastic.co/eck-dev/deployer"
+const clientBaseImageName = "docker.elastic.co/eck-ci/deployer"
 
 func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string) (string, error) {
 	if clientVersion == "" {
@@ -38,6 +38,10 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 			clientVersion, dockerfileName, image, dockerfilePath),
 	).Run(); err != nil {
 		return image, fmt.Errorf("while building client image %s: %w", image, err)
+	}
+
+	if err = dockerLogin(); err != nil {
+		return image, fmt.Errorf("while logging into docker registry: %w", err)
 	}
 
 	err = NewCommand(fmt.Sprintf("docker push %s", image)).RunWithRetries(5, 1*time.Hour)
@@ -68,4 +72,14 @@ func clientImageName(driverID, clientVersion, dockerfileName string) (string, er
 	}
 	// including driver id and version directly image/tag for human benefit
 	return fmt.Sprintf("%s-%s:%s-%.8x", clientBaseImageName, driverID, clientVersion, h.Sum(nil)), nil
+}
+
+func dockerLogin() error {
+	registryEnv := ".registry.env"
+	if _, err := os.Stat(registryEnv); os.IsNotExist(err) {
+		// not attempting login when registry env file does not exist (typically outside of CI)
+		return nil
+	}
+	return NewCommand(`docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD" docker.elastic.co 2> /dev/null`).
+		WithVariablesFromFile(registryEnv).Run()
 }
