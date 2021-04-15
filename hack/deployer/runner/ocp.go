@@ -74,8 +74,11 @@ type OcpDriverFactory struct {
 }
 
 type runtimeState struct {
-	// Authenticated tracks authentication against the GCloud API to avoid double authentication
+	// Authenticated tracks authentication against the GCloud API to avoid double authentication.
 	Authenticated bool
+	// SafeToDeleteWorkdir indicates that the installer state has been uploaded successfully to the storage bucket or is
+	// otherwise not needed anymore.
+	SafeToDeleteWorkdir bool
 	// ClusterStateDir is the effective work dir containing the OCP installer state. Derived from plan.Ocp.Workdir.
 	ClusterStateDir string
 	// ClientImage is the name of the installer client image.
@@ -190,6 +193,7 @@ func (d *OcpDriver) delete() error {
 
 	// No need to check whether this `rm` command succeeds
 	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
+	d.runtimeState.SafeToDeleteWorkdir = true
 	return nil
 }
 
@@ -270,8 +274,13 @@ func (d *OcpDriver) ensureWorkDir() error {
 }
 
 func (d *OcpDriver) removeWorkDir() error {
+	if !d.runtimeState.SafeToDeleteWorkdir {
+		log.Printf("Not deleting work dir as rsync backup of installer state not successful")
+		return nil
+	}
 	// keep workdir around useful for debugging or when running in non-CI mode
 	if d.plan.Ocp.StickyWorkDir {
+		log.Printf("Not deleting work dir as requested via StickyWorkDir option")
 		return nil
 	}
 	return os.RemoveAll(d.plan.Ocp.WorkDir)
@@ -362,11 +371,15 @@ func (d *OcpDriver) uploadClusterState() error {
 	}
 
 	// rsync seems to get stuck at least in local mode every now and then let's retry a few times
-	return NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}").
+	err = NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}").
 		WithLog("Uploading cluster state").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
 		RunWithRetries(3, 15*time.Minute)
+	if err == nil {
+		d.runtimeState.SafeToDeleteWorkdir = true
+	}
+	return err
 }
 
 func (d *OcpDriver) downloadClusterState() error {
