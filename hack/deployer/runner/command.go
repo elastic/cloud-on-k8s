@@ -148,9 +148,7 @@ func (c *Command) output() (string, error) {
 			return "", err
 		}
 		// assume k=v pair lines
-		for _, varLine := range strings.Split(string(bytes), "\n") {
-			c.variables = append(c.variables, varLine)
-		}
+		c.variables = append(c.variables, strings.Split(string(bytes), "\n")...)
 	}
 
 	cmd.Env = append(os.Environ(), c.variables...)
