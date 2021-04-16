@@ -40,6 +40,9 @@ resources:
 # podAnnotations define the annotations that should be added to the operator pod.
 podAnnotations: {}
 
+## podLabels define additional labels that should be added to the operator pod.
+podLabels: {}
+
 # podSecurityContext defines the pod security context for the operator pod.
 podSecurityContext:
   runAsNonRoot: true
