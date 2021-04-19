@@ -169,7 +169,7 @@ config:
   validateStorageClass: true
 
 # Prometheus PodMonitor configuration
-# Reference: https://docs.openshift.com/container-platform/4.5/rest_api/monitoring_apis/podmonitor-monitoring-coreos-com-v1.html
+# Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
 podMonitor:
 
   # enabled determines whether a podMonitor should deployed to scrape the eck metrics.
