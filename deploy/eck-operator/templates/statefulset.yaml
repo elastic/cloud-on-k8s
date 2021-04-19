@@ -1,3 +1,4 @@
+{{- $metricsPort := int .Values.config.metricsPort -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -76,9 +77,9 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if or (ne .Values.config.metricsPort "0") .Values.webhook.enabled }}
+          {{- if or (gt $metricsPort 0) .Values.webhook.enabled }}
           ports:
-            {{- if (ne .Values.config.metricsPort "0") }}
+            {{- if (gt $metricsPort 0) }}
             - containerPort: {{ .Values.config.metricsPort }}
               name: metrics
               protocol: TCP
