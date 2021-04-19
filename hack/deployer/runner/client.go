@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -78,6 +79,7 @@ func dockerLogin() error {
 	registryEnv := ".registry.env"
 	if _, err := os.Stat(registryEnv); os.IsNotExist(err) {
 		// not attempting login when registry env file does not exist (typically outside of CI)
+		log.Printf("Not attempting Docker login as .registry.env is not present in the filesystem.")
 		return nil
 	}
 	return NewCommand(`docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD" docker.elastic.co 2> /dev/null`).

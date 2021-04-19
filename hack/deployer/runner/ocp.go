@@ -447,13 +447,17 @@ func (d *OcpDriver) bucketParams() map[string]interface{} {
 func (d *OcpDriver) runInstallerCommand(action string) error {
 	params := map[string]interface{}{
 		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
-		"HomeVolume":          SharedVolumeName(),
+		"SharedVolume":        SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
 		"OCPToolsDockerImage": d.runtimeState.ClientImage,
 		"Action":              action,
 	}
+	// We are mounting the shared volume into the installer container and configure it to be the HOME directory
+	// this is mainly so that the GCloud tooling picks up the authentication information correctly as the base image is
+	// scratch+curl and thus an empty
+	// We are mounting tmp as the installer needs a scratch space and writing into the container won't work
 	cmd := NewCommand(`docker run --rm \
-		-v {{.HomeVolume}}:/home \
+		-v {{.SharedVolume}}:/home \
 		-v /tmp:/tmp \
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
 		-e HOME=/home \

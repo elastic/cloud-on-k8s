@@ -19,14 +19,14 @@ import (
 
 // Command allows building commands to execute using fluent-style api
 type Command struct {
-	command     string
-	context     context.Context
-	logPrefix   string
-	params      map[string]interface{}
-	variableSrc string
-	variables   []string
-	stream      bool
-	stderr      bool
+	command      string
+	context      context.Context
+	logPrefix    string
+	params       map[string]interface{}
+	variablesSrc string
+	variables    []string
+	stream       bool
+	stderr       bool
 }
 
 func NewCommand(command string) *Command {
@@ -44,7 +44,7 @@ func (c *Command) WithVariable(name, value string) *Command {
 }
 
 func (c *Command) WithVariablesFromFile(filename string) *Command {
-	c.variableSrc = filename
+	c.variablesSrc = filename
 	return c
 }
 
@@ -142,8 +142,8 @@ func (c *Command) output() (string, error) {
 	}
 
 	// support .env or similar files to specify environment variables
-	if c.variableSrc != "" {
-		bytes, err := os.ReadFile(c.variableSrc)
+	if c.variablesSrc != "" {
+		bytes, err := os.ReadFile(c.variablesSrc)
 		if err != nil {
 			return "", err
 		}
