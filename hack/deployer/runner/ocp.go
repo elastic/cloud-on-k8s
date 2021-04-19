@@ -74,9 +74,15 @@ type OcpDriverFactory struct {
 }
 
 type runtimeState struct {
-	Authenticated   bool
+	// Authenticated tracks authentication against the GCloud API to avoid double authentication.
+	Authenticated bool
+	// SafeToDeleteWorkdir indicates that the installer state has been uploaded successfully to the storage bucket or is
+	// otherwise not needed anymore.
+	SafeToDeleteWorkdir bool
+	// ClusterStateDir is the effective work dir containing the OCP installer state. Derived from plan.Ocp.Workdir.
 	ClusterStateDir string
-	ClientImage     string
+	// ClientImage is the name of the installer client image.
+	ClientImage string
 }
 
 type OcpDriver struct {
@@ -187,6 +193,7 @@ func (d *OcpDriver) delete() error {
 
 	// No need to check whether this `rm` command succeeds
 	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
+	d.runtimeState.SafeToDeleteWorkdir = true
 	return nil
 }
 
@@ -240,30 +247,40 @@ func (d *OcpDriver) ensurePullSecret() error {
 }
 
 func (d *OcpDriver) ensureWorkDir() error {
-	if d.plan.Ocp.WorkDir == "" {
-		// base work dir in /tmp dir otherwise mounting to container won't work without further settings adjustment
-		// in Mac OS in local mode
-		dir, err := ioutil.TempDir("/tmp", d.plan.ClusterName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		d.plan.Ocp.WorkDir = dir
-		log.Printf("Created WorkDir: %s", d.plan.Ocp.WorkDir)
+	if d.runtimeState.ClusterStateDir != "" {
+		// already initialised
+		return nil
 	}
-	if d.runtimeState.ClusterStateDir == "" {
-		stateDir := filepath.Join(d.plan.Ocp.WorkDir, d.plan.ClusterName)
-		if err := os.MkdirAll(stateDir, os.ModePerm); err != nil {
+	workDir := d.plan.Ocp.WorkDir
+	if workDir == "" {
+		// base work dir in HOME dir otherwise mounting to container won't work without further settings adjustment
+		// in macOS in local mode. In CI mode we need the workdir to be in the volume shared between containers.
+		// having the work dir in HOME also underlines the importance of the work dir contents. The work dir is the only
+		// source to cleanly uninstall the cluster should the rsync fail.
+		var err error
+		workDir, err = ioutil.TempDir(os.Getenv("HOME"), d.plan.ClusterName)
+		if err != nil {
 			return err
 		}
-		d.runtimeState.ClusterStateDir = stateDir
-		log.Printf("Using ClusterStateDir: %s", stateDir)
+		log.Printf("Defaulting WorkDir: %s", workDir)
 	}
+
+	if err := os.MkdirAll(workDir, os.ModePerm); err != nil {
+		return err
+	}
+	d.runtimeState.ClusterStateDir = workDir
+	log.Printf("Using ClusterStateDir: %s", workDir)
 	return nil
 }
 
 func (d *OcpDriver) removeWorkDir() error {
+	if !d.runtimeState.SafeToDeleteWorkdir {
+		log.Printf("Not deleting work dir as rsync backup of installer state not successful")
+		return nil
+	}
 	// keep workdir around useful for debugging or when running in non-CI mode
 	if d.plan.Ocp.StickyWorkDir {
+		log.Printf("Not deleting work dir as requested via StickyWorkDir option")
 		return nil
 	}
 	return os.RemoveAll(d.plan.Ocp.WorkDir)
@@ -354,11 +371,15 @@ func (d *OcpDriver) uploadClusterState() error {
 	}
 
 	// rsync seems to get stuck at least in local mode every now and then let's retry a few times
-	return NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}").
+	err = NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}").
 		WithLog("Uploading cluster state").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
 		RunWithRetries(3, 15*time.Minute)
+	if err == nil {
+		d.runtimeState.SafeToDeleteWorkdir = true
+	}
+	return err
 }
 
 func (d *OcpDriver) downloadClusterState() error {
@@ -425,20 +446,23 @@ func (d *OcpDriver) bucketParams() map[string]interface{} {
 
 func (d *OcpDriver) runInstallerCommand(action string) error {
 	params := map[string]interface{}{
-		"ClusterStateDir":     d.runtimeState.ClusterStateDir,
-		"HomeVolume":          SharedVolumeName(),
+		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
+		"SharedVolume":        SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
 		"OCPToolsDockerImage": d.runtimeState.ClientImage,
 		"Action":              action,
 	}
+	// We are mounting the shared volume into the installer container and configure it to be the HOME directory
+	// this is mainly so that the GCloud tooling picks up the authentication information correctly as the base image is
+	// scratch+curl and thus an empty
+	// We are mounting tmp as the installer needs a scratch space and writing into the container won't work
 	cmd := NewCommand(`docker run --rm \
-		-v {{.HomeVolume	}}:/home \
-		-v {{.ClusterStateDir}}:/config \
+		-v {{.SharedVolume}}:/home \
 		-v /tmp:/tmp \
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
-		-e USER_HOME=/home \
+		-e HOME=/home \
 		{{.OCPToolsDockerImage}} \
-		/openshift-install {{.Action}} cluster --dir /config`)
+		/openshift-install {{.Action}} cluster --dir /home/{{.ClusterStateDirBase}}`)
 	return cmd.AsTemplate(params).Run()
 }
 

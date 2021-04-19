@@ -4,6 +4,16 @@
 
 def failedTests = []
 def lib
+def ocpVersion
+
+def pickVersion(extParam) {
+    supportedVersions = ["4.3.40", "4.4.33", "4.5.37", "4.6.24", "4.7.6" ]
+    if (extParam != '') {
+        return extParam
+    }
+    idx = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK) % supportedVersions.size()
+    return supportedVersions[idx]
+}
 
 pipeline {
 
@@ -27,13 +37,14 @@ pipeline {
             steps {
                 script {
                     lib = load ".ci/common/tests.groovy"
+                    ocpVersion = pickVersion(params.OCP_VERSION)
                 }
             }
         }
         stage("Run E2E tests") {
             steps {
-                sh '.ci/setenvconfig e2e/ocp'
                 script {
+                    sh ".ci/setenvconfig e2e/ocp $ocpVersion"
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-e2e ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'
@@ -74,7 +85,7 @@ pipeline {
         }
         cleanup {
             script {
-                sh '.ci/setenvconfig cleanup/ocp'
+                sh ".ci/setenvconfig cleanup/ocp $ocpVersion"
                 sh 'make -C .ci TARGET=run-deployer ci'
             }
             cleanWs()

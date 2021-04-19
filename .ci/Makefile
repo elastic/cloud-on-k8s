@@ -72,8 +72,8 @@ ci-build-image: write-ci-docker-creds
 
 # make Docker creds available from inside the CI container through the .registry.env file
 write-ci-docker-creds:
-	@ echo "DOCKER_LOGIN = $(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
-	@ echo "DOCKER_PASSWORD = $(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_LOGIN=$(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_PASSWORD=$(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
 ##  Test
 

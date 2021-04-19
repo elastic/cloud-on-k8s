@@ -19,13 +19,14 @@ import (
 
 // Command allows building commands to execute using fluent-style api
 type Command struct {
-	command   string
-	context   context.Context
-	logPrefix string
-	params    map[string]interface{}
-	variables []string
-	stream    bool
-	stderr    bool
+	command      string
+	context      context.Context
+	logPrefix    string
+	params       map[string]interface{}
+	variablesSrc string
+	variables    []string
+	stream       bool
+	stderr       bool
 }
 
 func NewCommand(command string) *Command {
@@ -39,6 +40,11 @@ func (c *Command) AsTemplate(params map[string]interface{}) *Command {
 
 func (c *Command) WithVariable(name, value string) *Command {
 	c.variables = append(c.variables, name+"="+value)
+	return c
+}
+
+func (c *Command) WithVariablesFromFile(filename string) *Command {
+	c.variablesSrc = filename
 	return c
 }
 
@@ -134,6 +140,17 @@ func (c *Command) output() (string, error) {
 	} else {
 		cmd = exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204
 	}
+
+	// support .env or similar files to specify environment variables
+	if c.variablesSrc != "" {
+		bytes, err := os.ReadFile(c.variablesSrc)
+		if err != nil {
+			return "", err
+		}
+		// assume k=v pair lines
+		c.variables = append(c.variables, strings.Split(string(bytes), "\n")...)
+	}
+
 	cmd.Env = append(os.Environ(), c.variables...)
 
 	b := bytes.Buffer{}
