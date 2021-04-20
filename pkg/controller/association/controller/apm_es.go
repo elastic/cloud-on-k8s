@@ -60,8 +60,8 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 	})
 }
 
-func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association) (string, error) {
-	esRef := association.AssociationRef()
+func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
+	esRef := assoc.AssociationRef()
 	if !esRef.IsDefined() {
 		return "", nil
 	}
@@ -69,7 +69,12 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
-	return services.ExternalServiceURL(es), nil
+	serviceName := esRef.ServiceName
+	if serviceName == "" {
+		serviceName = services.ExternalServiceName(es.Name)
+	}
+	nsn := types.NamespacedName{Name: serviceName, Namespace: es.Namespace}
+	return association.ServiceURL(c, nsn, es.Spec.HTTP.Protocol())
 }
 
 // referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch

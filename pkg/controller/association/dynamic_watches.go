@@ -29,6 +29,12 @@ func associatedCAWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-ca-watch", associated.Namespace, associated.Name)
 }
 
+// serviceWatchName returns the name of the watch monitor a custom service to be used to make requests to the
+// associated resource.
+func serviceWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-svc-watch", associated.Namespace, associated.Name)
+}
+
 // reconcileWatches sets up dynamic watches related to:
 // * The referenced Elasticsearch resource
 // * The user created in the Elasticsearch namespace
@@ -56,6 +62,18 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.AssociatedNamer, ref.Name),
+			Namespace: ref.Namespace,
+		}
+	}); err != nil {
+		return err
+	}
+
+	// watch the custom services users may have setup to be able to react to updates on services that are not error related
+	// (error related updates are covered by re-queueing on unsuccessful reconciliation)
+	if err := ReconcileWatch(associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		ref := association.AssociationRef()
+		return types.NamespacedName{
+			Name:      ref.ServiceName,
 			Namespace: ref.Namespace,
 		}
 	}); err != nil {
@@ -111,4 +129,6 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
 	// - ES CA Secret in the ES namespace
 	RemoveWatch(r.watches.Secrets, associatedCAWatchName(associated))
+	// - custom service watch in resource namespace
+	RemoveWatch(r.watches.Services, serviceWatchName(associated))
 }

@@ -7,7 +7,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -19,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -70,8 +68,8 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 	})
 }
 
-func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (string, error) {
-	kibanaRef := association.AssociationRef()
+func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
+	kibanaRef := assoc.AssociationRef()
 	if !kibanaRef.IsDefined() {
 		return "", nil
 	}
@@ -79,7 +77,12 @@ func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (strin
 	if err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb); err != nil {
 		return "", err
 	}
-	return stringsutil.Concat(kb.Spec.HTTP.Protocol(), "://", kibana.HTTPService(kb.Name), ".", kb.Namespace, ".svc:", strconv.Itoa(kibana.HTTPPort)), nil
+	serviceName := kibanaRef.ServiceName
+	if serviceName == "" {
+		serviceName = kibana.HTTPService(kb.Name)
+	}
+	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: serviceName}
+	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())
 }
 
 // referencedKibanaStatusVersion returns the currently running version of Kibana
