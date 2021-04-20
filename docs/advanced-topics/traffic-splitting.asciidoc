@@ -42,7 +42,7 @@ spec:
   - name: coordinator
     count: 3
     config:
-      node.roles: !!seq ""
+      node.roles: []
   # Dedicated machine learning nodes
   - name: ml
     count: 3
