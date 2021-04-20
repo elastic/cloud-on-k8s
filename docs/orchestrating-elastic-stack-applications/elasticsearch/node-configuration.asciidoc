@@ -36,20 +36,3 @@ spec:
 ----
 
 For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
-
-[NOTE]
-====
-
-Marking a node as link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#coordinating-only-node[coordinating-only] in ECK requires a YAML type tag due to an issue in a supporting library.
-
-[source,yaml]
-----
-spec:
-  nodeSets:
-  - name: coordinating
-    count: 3
-    config:
-      node.roles: !!seq ""
-----
-
-====
