@@ -50,7 +50,8 @@ type ObjectSelector struct {
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 	Namespace string `json:"namespace,omitempty"`
 	// ServiceName is the name of an existing Kubernetes service which will be used to make requests to the referenced
-	// object. If left empty the default HTTP service of the referenced resource will be used.
+	// object. It has to be in the same namespace as the referenced resource. If left empty the default HTTP service of
+	// the referenced resource will be used.
 	ServiceName string `json:"serviceName,omitempty"`
 }
 

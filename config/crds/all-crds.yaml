@@ -186,7 +186,8 @@ spec:
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
                       service which will be used to make requests to the referenced
-                      object. If left empty the default HTTP service of the referenced
+                      object. It has to be in the same namespace as the referenced
+                      resource. If left empty the default HTTP service of the referenced
                       resource will be used.
                     type: string
                 required:
@@ -360,6 +361,7 @@ spec:
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
                     which will be used to make requests to the referenced object.
+                    It has to be in the same namespace as the referenced resource.
                     If left empty the default HTTP service of the referenced resource
                     will be used.
                   type: string
@@ -757,6 +759,7 @@ spec:
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
                     which will be used to make requests to the referenced object.
+                    It has to be in the same namespace as the referenced resource.
                     If left empty the default HTTP service of the referenced resource
                     will be used.
                   type: string
@@ -1054,6 +1057,7 @@ spec:
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
                     which will be used to make requests to the referenced object.
+                    It has to be in the same namespace as the referenced resource.
                     If left empty the default HTTP service of the referenced resource
                     will be used.
                   type: string
@@ -1079,6 +1083,7 @@ spec:
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
                     which will be used to make requests to the referenced object.
+                    It has to be in the same namespace as the referenced resource.
                     If left empty the default HTTP service of the referenced resource
                     will be used.
                   type: string
@@ -1989,8 +1994,9 @@ spec:
                       serviceName:
                         description: ServiceName is the name of an existing Kubernetes
                           service which will be used to make requests to the referenced
-                          object. If left empty the default HTTP service of the referenced
-                          resource will be used.
+                          object. It has to be in the same namespace as the referenced
+                          resource. If left empty the default HTTP service of the
+                          referenced resource will be used.
                         type: string
                     required:
                     - name
@@ -2561,6 +2567,7 @@ spec:
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
                     which will be used to make requests to the referenced object.
+                    It has to be in the same namespace as the referenced resource.
                     If left empty the default HTTP service of the referenced resource
                     will be used.
                   type: string
@@ -3073,6 +3080,7 @@ spec:
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
                     which will be used to make requests to the referenced object.
+                    It has to be in the same namespace as the referenced resource.
                     If left empty the default HTTP service of the referenced resource
                     will be used.
                   type: string
