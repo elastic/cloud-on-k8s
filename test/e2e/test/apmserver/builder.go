@@ -7,10 +7,12 @@ package apmserver
 import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -22,6 +24,7 @@ type Builder struct {
 }
 
 var _ test.Builder = Builder{}
+var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
 	return false
@@ -157,6 +160,30 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 	labels[key] = value
 	b.ApmServer.Spec.PodTemplate.Labels = labels
 	return b
+}
+
+func (b Builder) NSN() types.NamespacedName {
+	return k8s.ExtractNamespacedName(&b.ApmServer)
+}
+
+func (b Builder) Kind() string {
+	return apmv1.Kind
+}
+
+func (b Builder) Spec() interface{} {
+	return b.ApmServer.Spec
+}
+
+func (b Builder) Count() int32 {
+	return b.ApmServer.Spec.Count
+}
+
+func (b Builder) ServiceName() string {
+	return b.ApmServer.Name + "-apm-http"
+}
+
+func (b Builder) ListOptions() []client.ListOption {
+	return test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name)
 }
 
 // -- Helper functions

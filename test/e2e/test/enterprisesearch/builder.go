@@ -9,9 +9,11 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -163,6 +165,32 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 	b.EnterpriseSearch.Spec.PodTemplate.Labels = labels
 	return b
 }
+
+func (b Builder) Kind() string {
+	return entv1.Kind
+}
+
+func (b Builder) NSN() types.NamespacedName {
+	return k8s.ExtractNamespacedName(&b.EnterpriseSearch)
+}
+
+func (b Builder) Spec() interface{} {
+	return b.EnterpriseSearch.Spec
+}
+
+func (b Builder) Count() int32 {
+	return b.EnterpriseSearch.Spec.Count
+}
+
+func (b Builder) ServiceName() string {
+	return b.EnterpriseSearch.Name + "-ent-http"
+}
+
+func (b Builder) ListOptions() []client.ListOption {
+	return test.EnterpriseSearchPodListOptions(b.EnterpriseSearch.Namespace, b.EnterpriseSearch.Name)
+}
+
+var _ test.Subject = Builder{}
 
 // -- Helper functions
 

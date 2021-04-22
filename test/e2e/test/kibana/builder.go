@@ -5,8 +5,10 @@
 package kibana
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -24,6 +26,7 @@ type Builder struct {
 }
 
 var _ test.Builder = Builder{}
+var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
 	return false
@@ -163,6 +166,32 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	}
 	b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
 	return b
+}
+
+// -- test.Subject impl
+
+func (b Builder) NSN() types.NamespacedName {
+	return k8s.ExtractNamespacedName(&b.Kibana)
+}
+
+func (b Builder) Kind() string {
+	return kbv1.Kind
+}
+
+func (b Builder) Spec() interface{} {
+	return b.Kibana.Spec
+}
+
+func (b Builder) Count() int32 {
+	return b.Kibana.Spec.Count
+}
+
+func (b Builder) ServiceName() string {
+	return b.Kibana.Name + "-kb-http"
+}
+
+func (b Builder) ListOptions() []client.ListOption {
+	return test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)
 }
 
 // -- Helper functions
