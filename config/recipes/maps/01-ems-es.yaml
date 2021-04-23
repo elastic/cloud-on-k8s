@@ -1,0 +1,33 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 7.12.0
+  nodeSets:
+  - name: default
+    count: 3
+    volumeClaimTemplates:
+      - metadata:
+          name: elasticsearch-data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi
+    config:
+      # The following is to avoid configuring memory mapping settings on the underlying host.
+      # This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration
+      node.store.allow_mmap: false
+---
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: ems-sample
+spec:
+  version: 7.12.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
