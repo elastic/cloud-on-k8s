@@ -40,7 +40,7 @@ Some hosted Kubernetes offerings only respect the PodDisruptionBudget for a cert
 If a host has a failure, or is permanently removed, its local data is likely lost. The corresponding Pod stays `Pending` because it can no longer attach the PersistentVolume. To schedule the Pod on a different host with a new empty volume, you have to manually remove both the PersistenteVolumeClaim and the Pod. A new Pod is automatically created with a new PersistentVolumeClaim, which is then matched with a PersistentVolume. Then, Elasticsearch shard replication makes sure that data is recovered on the new instance.
 
 [float]
-== Local PersistentVolums provisioners
+== Local PersistentVolume provisioners
 
 You can provision Local PersistentVolumes in one of the following ways:
 
