@@ -90,6 +90,21 @@ func TestReconcile(t *testing.T) {
 		wantErr    bool
 	}{
 		{
+			name: "Frozen decider only returns capacity at the tier level",
+			fields: fields{
+				EsClient:       newFakeEsClient(t).withCapacity("frozen-tier"),
+				recorder:       record.NewFakeRecorder(1000),
+				licenseChecker: &fakeLicenceChecker{},
+			},
+			args: args{
+				esManifest: "frozen-tier",
+				isOnline:   true,
+			},
+			want:       defaultRequeue,
+			wantErr:    false,
+			wantEvents: []string{},
+		},
+		{
 			name: "ML case where tier total memory was lower than node memory",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("ml"),
@@ -246,12 +261,13 @@ func TestReconcile(t *testing.T) {
 				bytes, err := ioutil.ReadFile(filepath.Join("testdata", tt.args.esManifest, "elasticsearch-expected.yml"))
 				require.NoError(t, err)
 				require.NoError(t, yaml.Unmarshal(bytes, &expectedElasticsearch))
-				assert.Equal(t, updatedElasticsearch.Spec, expectedElasticsearch.Spec)
+				assert.Equal(t, updatedElasticsearch.Spec, expectedElasticsearch.Spec, "Updated Elasticsearch spec. is not the expected one")
 				// Check that the autoscaling spec is still the expected one.
 				assert.Equal(
 					t,
 					updatedElasticsearch.Annotations[esv1.ElasticsearchAutoscalingSpecAnnotationName],
 					expectedElasticsearch.Annotations[esv1.ElasticsearchAutoscalingSpecAnnotationName],
+					"Autoscaling specification is not the expected one",
 				)
 				// Compare the statuses.
 				statusesEqual(t, updatedElasticsearch, expectedElasticsearch)
@@ -275,10 +291,16 @@ func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
 		require.NotNil(t, gotPolicyStatus, "Autoscaling policy not found")
 		require.ElementsMatch(t, gotPolicyStatus.NodeSetNodeCount, wantPolicyStatus.NodeSetNodeCount)
 		for resource := range wantPolicyStatus.ResourcesSpecification.Requests {
-			require.True(t, resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests))
+			require.True(
+				t,
+				resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests),
+				"unexpected resource requests for policy %s, expected %v, got %v", gotPolicyStatus.Name, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests)
 		}
 		for resource := range wantPolicyStatus.ResourcesSpecification.Limits {
-			require.True(t, resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests))
+			require.True(
+				t,
+				resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Limits, gotPolicyStatus.ResourcesSpecification.Limits),
+				"unexpected resource limits for policy %s, expected %v, got %v", gotPolicyStatus.Name, wantPolicyStatus.ResourcesSpecification.Limits, gotPolicyStatus.ResourcesSpecification.Limits)
 		}
 	}
 }
