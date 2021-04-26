@@ -54,11 +54,11 @@ The {ems} configuration file is automatically setup by ECK to establish a secure
 The {ems} Docker image contains only a few zoom levels of data. In order to get the map data up to the highest zoom level {ems} needs a basemap file mounted into its container.
 [id="{p}-maps-basemap-download"]
 === Basemap download
-You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods.   See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
+You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods.  See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
 
 The exact procedure of how to get a Kubernetes volume populated with that data is out of scope of this documenation as it depends on your specific Kubernetes setup and choice of volume provisioner. One possible approach that should work for most setups is as follows:
 
-. Download the basemap zip archive using the link  shown in the {ems} UI or extracted from the  `/status` endpoint.
+. Download the basemap zip archive using the link shown in the {ems} UI or extracted from the `/status` endpoint.
 . Create a PersistentVolumeClaim of sufficient size (> 90G) and a temporary Pod to mount the corresponding volume
 +
 [source,yaml]
@@ -177,6 +177,8 @@ spec:
      logging.level: debug
 ----
 
+Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resources for {ems}
+
 [id="{p}-maps-scaling"]
 === Scale out a {ems} deployment
 
@@ -191,27 +193,7 @@ To deploy more than one instance of maps, all the instances must mount the data 
 By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated with the maps deployment.
 If you want to expose maps externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer], it is recommended to include a custom DNS name or IP in the self-generated certificate.
 
-[source,yaml,subs="attributes"]
-----
-apiVersion: maps.k8s.elastic.co/v1alpha1
-kind: ElasticMapsServer
-metadata:
-  name: maps-sample
-spec:
-  version: {version}
-  count: 1
-  elasticsearchRef:
-    name: "elasticsearch-sample"
-  http:
-    service:
-      spec:
-        type: LoadBalancer # default is ClusterIP
-    tls:
-      selfSignedCertificate:
-        subjectAltNames:
-        - ip: 1.2.3.4
-        - dns: maps.example.com
-----
+Refer to <<{p}-static-ip-custom-domain>> for more details.
 
 [id="{p}-maps-http-custom-tls"]
 === Provide your own certificate
@@ -221,24 +203,8 @@ If you want to use your own certificate, the required configuration is identical
 [id="{p}-maps-http-disable-tls"]
 === Disable TLS
 
-You can disable the generation of the self-signed certificate and hence disable TLS.
+You can disable the generation of the self-signed certificate and hence disable TLS. See <<{p}-disable-tls>>.
 
-[source,yaml,subs="attributes"]
-----
-apiVersion: maps.k8s.elastic.co/v1alpha1
-kind: ElasticMapsServer
-metadata:
-  name: maps-sample
-spec:
-  version: {version}
-  count: 1
-  elasticsearchRef:
-    name: "elasticsearch-sample"
-  http:
-    tls:
-      selfSignedCertificate:
-        disabled: true
-----
 
 [id="{p}-maps-ingress"]
 ==== Ingress and Kibana configuration

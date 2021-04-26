@@ -33,12 +33,13 @@ include::03-ingress.yaml[]
 
 == Test the ingress
 
+Go to `maps.{{YOUR_DOMAIN}}` in your browser. You should see the Elastic Maps Server UI.
 
 Obtain the password of the `elastic` user.
 
 [source,sh]
 ----
-kubectl get secret hulk-es-elastic-user -o=go-template='{{ .data.elastic | base64decode}}'
+kubectl get secret elasticsearch-es-elastic-user -o=go-template='{{ .data.elastic | base64decode}}'
 ----
 
 Access Kibana in your browser and verify that maps data is coming from your Elastic Maps Server instance.
