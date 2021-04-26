@@ -63,3 +63,11 @@ patchesJson6902:
       kind: CustomResourceDefinition
       name: agents.agent.k8s.elastic.co
     path: agent-patches.yaml
+  # custom patches for Maps
+  - target:
+      group: apiextensions.k8s.io
+      version: v1beta1
+      kind: CustomResourceDefinition
+      name: elasticmapsservers.maps.k8s.elastic.co
+    path: ems-patches.yaml
+

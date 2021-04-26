@@ -2,7 +2,7 @@ processor:
   ignoreTypes:
     - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)List$"
     - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)Health$"
-    - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent)Status$"
+    - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent|Maps)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tion|tionStatus|tionConf)$"
     - "APM(Es|Kibana)Association"

@@ -5,3 +5,4 @@ resources:
   - enterprisesearch.k8s.elastic.co_enterprisesearches.yaml
   - beat.k8s.elastic.co_beats.yaml
   - agent.k8s.elastic.co_agents.yaml
+  - maps.k8s.elastic.co_elasticmapsservers.yaml
