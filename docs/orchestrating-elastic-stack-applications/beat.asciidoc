@@ -194,7 +194,7 @@ For more details, see the link:https://www.elastic.co/guide/en/beats/libbeat/cur
 [id="{p}-beat-connect-es"]
 === Customize the connection to an Elasticsearch cluster
 
-The `elasticsearchRef` element allows ECK to automatically configure Beats to establish a secured connection to a managed Elasticsearch cluster. By default it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster see  <<{p}-traffic-splitting>> for more information and examples.
+The `elasticsearchRef` element allows ECK to automatically configure Beats to establish a secured connection to a managed Elasticsearch cluster. By default it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to  <<{p}-traffic-splitting>> for more information and examples.
 
 [id="{p}-beat-deploy-elastic-beat"]
 === Deploy a Beat

@@ -43,7 +43,7 @@ spec:
 EOF
 ----
 
-By default `elasticsearchRef` targets all nodes in your Elasticsearch cluster. If you want to direct traffic to specific nodes of your cluster see  <<{p}-traffic-splitting>> for more information and examples.
+By default `elasticsearchRef` targets all nodes in your Elasticsearch cluster. If you want to direct traffic to specific nodes of your cluster,  refer to  <<{p}-traffic-splitting>> for more information and examples.
 
 . Monitor APM Server deployment.
 +

@@ -123,7 +123,7 @@ spec:
 [float]
 [id="{p}-traffic-splitting-with-service-name"]
 == Specify a custom service in elasticsearchRef
-You can then use your custom service in the `elasticsearchRef` element when specifying connections between Elasticsearch and other stack applications. To target only coordinating node from Kibana for example:
+You can then use your custom service in the `elasticsearchRef` element when specifying connections between Elasticsearch and other stack applications. This is an example on how to target only coordinating node from Kibana:
 
 [source,yaml,subs="attributes"]
 ----
