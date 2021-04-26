@@ -3,7 +3,7 @@
 This recipe illustrates how to expose an Elastic Maps Server and Kibana instance to the outside world using custom TLS certificates. All communications -- including those between the load balancer and the Elasticsearch/Kibana pods -- are done over secure TLS connections. The specific configuration necessary might differ depending on your Ingress controller.
 
 
-IMPORTANT: This recipe assumes that your have valid TLS certificates for the domain you want to use.
+IMPORTANT: This recipe assumes that you have valid TLS certificates issued by a trusted certificate authority for the domain you want to use.
 
 
 == Recipe
@@ -42,5 +42,4 @@ kubectl get secret hulk-es-elastic-user -o=go-template='{{ .data.elastic | base6
 ----
 
 Access Kibana in your browser and verify that maps data is coming from your Elastic Maps Server instance.
-
 
