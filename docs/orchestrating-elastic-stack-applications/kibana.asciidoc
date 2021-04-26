@@ -49,7 +49,8 @@ spec:
     namespace: default
 ----
 
-The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana.
+The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana. An additional `serviceName` attribute can be specified to target a custom Kubernetes service.
+Refer to <<{p}-traffic-splitting>> for more information.
 
 NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to Kibana namespace. Kibana cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, see <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
 

@@ -119,3 +119,22 @@ spec:
     elasticsearch.k8s.elastic.co/cluster-name: "hulk"
     elasticsearch.k8s.elastic.co/node-master: "false"
 ----
+
+[float]
+[id="{p}-traffic-splitting-with-service-name"]
+== Specify a custom service in elasticsearchRef
+You can then use your custom service in the `elasticsearchRef` element when specifying connections between Elasticsearch and other stack applications. This is an example on how to target only coordinating node from Kibana:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: hulk
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: "hulk"
+    serviceName: "hulk-es-coordinating-nodes"
+----
