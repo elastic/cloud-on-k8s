@@ -127,7 +127,7 @@ spec:
 
 By default, volumes can be bound to a Pod before the Pod gets scheduled to a particular Kubernetes node. This can be a problem if the PersistentVolume can only be accessed from a particular host or set of hosts. Local persistent volumes are a good example: they are accessible from a single host. If the Pod gets scheduled to a different host based on any affinity or anti-affinity rule, the volume may not be available.
 
-To solve this problem, you can link:https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode[set the Volume Binding Mode] of the `StorageClass` you are using. Make sure  `volumeBindingMode: WaitForFirstConsumer` is set, link:https://kubernetes.io/docs/concepts/storage/volumes/#local[especially if you are using local persistent volumes].
+To solve this problem, you can link:https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode[set the Volume Binding Mode] of the `StorageClass` you are using. Make sure `volumeBindingMode: WaitForFirstConsumer` is set, link:https://kubernetes.io/docs/concepts/storage/volumes/#local[especially if you are using local persistent volumes].
 
 [source,yaml]
 ----

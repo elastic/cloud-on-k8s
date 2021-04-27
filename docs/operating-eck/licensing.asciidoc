@@ -41,7 +41,7 @@ EOF
 
 <1> By setting this annotation to `accepted` you are expressing that you have accepted the Elastic EULA which can be found at https://www.elastic.co/eula.
 
-NOTE: You can initiate a trial only if a trial has not been previously  activated.
+NOTE: You can initiate a trial only if a trial has not been previously activated.
 
 At the end of the trial period, the Platinum and Enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/current/license-expiration.html[degraded mode]. You can revert to a Basic license, extend the trial, or purchase an Enterprise subscription.
 
@@ -70,7 +70,7 @@ data:
 <1> This label is required for ECK to identify your license secret.
 <2> The license file can have any name.
 
-You can easily create this secret using `kubectl` built-in support for secrets.  Note that it must be in the same namespace as the operator:
+You can easily create this secret using `kubectl` built-in support for secrets. Note that it must be in the same namespace as the operator:
 
 [source,shell script]
 ----

@@ -88,7 +88,7 @@ hulk-kb-http        LoadBalancer   10.19.247.151   35.242.197.228   5601:31380/T
 [id="{p}-tls-certificates"]
 == TLS certificates
 
-This section only covers TLS certificates for the HTTP layer. TLS certificates for the transport layer that are used for  internal communications between Elasticsearch nodes are managed by ECK and cannot be changed.
+This section only covers TLS certificates for the HTTP layer. TLS certificates for the transport layer that are used for internal communications between Elasticsearch nodes are managed by ECK and cannot be changed.
 
 [id="{p}-default-self-signed-certificate"]
 === Default self-signed certificate
