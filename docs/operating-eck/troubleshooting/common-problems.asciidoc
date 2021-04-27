@@ -30,7 +30,7 @@ Error from server (Timeout): error when creating "elasticsearch.yaml": Timeout: 
 ....
 
 
-This error is usually an indication of a problem communicating with the validating webhook. If you are running ECK on a private Google Kubernetes Engine (GKE) cluster, you may need to link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[add a firewall rule] allowing port 9443 from the API server. Another possible cause for failure is if a strict network policy is in effect. Refer to the <<{p}-webhook-troubleshooting-timeouts,webhook troubleshooting>> documentation for  more details and workarounds.
+This error is usually an indication of a problem communicating with the validating webhook. If you are running ECK on a private Google Kubernetes Engine (GKE) cluster, you may need to link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[add a firewall rule] allowing port 9443 from the API server. Another possible cause for failure is if a strict network policy is in effect. Refer to the <<{p}-webhook-troubleshooting-timeouts,webhook troubleshooting>> documentation for more details and workarounds.
 
 [id="{p}-{page_id}-owner-refs"]
 == Copying secrets with Owner References
@@ -144,7 +144,7 @@ NAME                                                              HEALTH   NODES
 elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample   yellow   1       7.9.2     Ready   3m50s
 ----
 +
-In this case, you have to link:{ref}/cluster-allocation-explain.html[check] and fix your shard allocations.  The link:{ref}/cluster-health.html[cluster health], link:{ref}/cat-shards.html[cat shards], and <<{p}-elasticsearch-monitor-cluster-health,get Elasticsearch>> APIs can assist in tracking the shard recover process.
+In this case, you have to link:{ref}/cluster-allocation-explain.html[check] and fix your shard allocations. The link:{ref}/cluster-health.html[cluster health], link:{ref}/cat-shards.html[cat shards], and <<{p}-elasticsearch-monitor-cluster-health,get Elasticsearch>> APIs can assist in tracking the shard recover process.
 
 * Scheduling issues
 +

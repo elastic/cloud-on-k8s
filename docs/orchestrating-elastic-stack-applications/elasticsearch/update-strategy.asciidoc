@@ -54,6 +54,6 @@ spec:
 == Caveats
 * With both `maxSurge` and `maxUnavailable` set to `0`, the operator cannot bring down an existing Pod nor create a new Pod.
 * Due to the safety measures employed by the operator, certain `changeBudget` might prevent the operator from making any progress . For example, with `maxSurge` set to 0, you cannot remove the last data node from one `nodeSet` and add a data node to a different `nodeSet`. In this case, the operator cannot create the new node because `maxSurge` is 0, and it cannot remove the old node because there are no other data nodes to migrate the data to.
-* For certain complex configurations, the operator might not be able to deduce the optimal order of operations necessary to achieve the desired outcome. If progress is blocked,  you may need to update the `maxSurge` setting to a higher value than the theoretical best to help the operator make progress in that case.
+* For certain complex configurations, the operator might not be able to deduce the optimal order of operations necessary to achieve the desired outcome. If progress is blocked, you may need to update the `maxSurge` setting to a higher value than the theoretical best to help the operator make progress in that case.
 
 If any of the above occurs, the operator generates logs to indicate that upscaling or downscaling are limited by `maxSurge` or `maxUnavailable` settings.

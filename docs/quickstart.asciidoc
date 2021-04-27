@@ -101,7 +101,7 @@ NAME          HEALTH    NODES     VERSION   PHASE         AGE
 quickstart    green     1         {version}     Ready         1m
 ----
 
-When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.  The `HEALTH` status comes from link:{ref}/cluster-health.html[Elasticsearch's cluster health API].
+When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`. The `HEALTH` status comes from link:{ref}/cluster-health.html[Elasticsearch's cluster health API].
 
 You can see that one Pod is in the process of being started:
 
