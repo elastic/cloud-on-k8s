@@ -186,7 +186,7 @@ If `resources` is not defined in the specification of an object, then the operat
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
 |Beat   |200Mi | 200Mi
-|Elastic Agent | 200Mi|200Mi
+|Elastic Agent | 300Mi|300Mi
 |===
 
 If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator defaults and cause object creation to fail.
