@@ -8,6 +8,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Run Elastic Maps Server on ECK
 
+experimental[]
+
 If you cannot connect to Elastic Maps Service from the Kibana server or browser clients, and you are running ECK with an Enterprise license, you can opt to host the service on your Kubernetes cluster. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
 
 The following sections describe how to customize an {ems} deployment to suit your requirements.
@@ -27,6 +29,8 @@ The following sections describe how to customize an {ems} deployment to suit you
 
 [id="{p}-maps-es"]
 == Connect to an Elasticsearch cluster
+
+experimental[]
 
 {ems} needs a connection to Elasticseach to verify the installed license. You define the connection via the `elasticsearchRef` attribute:
 
@@ -49,8 +53,12 @@ The use of `namespace` is optional if the Elasticsearch cluster is running in th
 NOTE: Any {ems} can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to the {ems} namespace. {ems} cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, see <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
 
 The {ems} configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
+
 [id="{p}-maps-data"]
 == Map data
+
+experimental[]
+
 The {ems} Docker image contains only a few zoom levels of data. In order to get the map data up to the highest zoom level {ems} needs a basemap file mounted into its container.
 [id="{p}-maps-basemap-download"]
 === Basemap download
@@ -150,6 +158,8 @@ The name of the container in the Pod template must be `maps`.
 [id="{p}-maps-advanced-configuration"]
 == Advanced configuration
 
+experimental[]
+
 If you already looked at the <<{p}-elasticsearch-specification,Elasticsearch on ECK>> documentation, some of these concepts might sound familiar to you.
 The resource definitions in ECK share the same philosophy when you want to:
 
@@ -180,6 +190,28 @@ spec:
      logging.level: debug
 ----
 
+Alternatively, settings can be provided via a Secret specified in the `configRef` element:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRef:
+    name: elasticsearch-sample
+  configRef:
+    secretName: maps-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maps-config
+stringData:
+  elastic-maps-server.yml: |-
+    logging.level: debug
+----
 Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resources for {ems}
 
 [id="{p}-maps-scaling"]
@@ -189,6 +221,8 @@ To deploy more than one instance of maps, all the instances must mount the data 
 
 [id="{p}-maps-http-configuration"]
 == HTTP configuration
+
+experimental[]
 
 [id="{p}-maps-http-publish"]
 === Load balancer settings and TLS SANs

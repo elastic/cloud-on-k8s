@@ -4,7 +4,7 @@ kind: Ingress
 metadata:
   name: ems-demo
   annotations:
-    # Disable HTTP traffic
+    # Disable HTTP traffic between the Ingress and the backend services
     kubernetes.io/ingress.allow-http: "false"
 spec:
   tls:
@@ -18,8 +18,8 @@ spec:
     - host: "maps.{{YOUR_DOMAIN}}"
       http:
         paths:
-          - path: "/*"
-            pathType: Exact
+          - path: "/"
+            pathType: Prefix
             backend:
               service:
                 name: ems-sample-ems-http
@@ -28,8 +28,8 @@ spec:
     - host: "kibana.{{YOUR_DOMAIN}}"
       http:
         paths:
-          - path: "/*"
-            pathType: Exact
+          - path: "/"
+            pathType: Prefix
             backend:
               service:
                 name: kibana-kb-http
