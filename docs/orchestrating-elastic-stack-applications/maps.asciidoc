@@ -170,7 +170,7 @@ The following example demonstrates how to set the log level to `debug`:
 apiVersion: maps.k8s.elastic.co/v1alpha1
 kind: ElasticMapsServer
 metadata:
-  name: maps-sample
+  name: quickstart
 spec:
   version: {version}
   count: 1
@@ -183,7 +183,7 @@ spec:
 Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resources for {ems}
 
 [id="{p}-maps-scaling"]
-=== Scale out a {ems} deployment
+=== Scale out an {ems} deployment
 
 To deploy more than one instance of maps, all the instances must mount the data volume containing the basemap read only. Once that is the case scaling out is just a matter of increasing the `count` attribute.
 
@@ -211,4 +211,4 @@ You can disable the generation of the self-signed certificate and hence disable 
 
 [id="{p}-maps-ingress"]
 ==== Ingress and Kibana configuration
-In order to use {ems} from you Kibana instances you need to configure Kibana to fetch maps from your {ems} instance by using the `map.emsUrl` configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. In order to work correctly the certificates presented by {ems} need to be trusted by the browser and the URL should have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues.  Please see the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example how to set this up using an Ingress resource.
+In order to use {ems} from you Kibana instances you need to configure Kibana to fetch maps from your {ems} instance by using the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-kibana[`map.emsUrl`] configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. In order to work correctly the certificates presented by {ems} need to be trusted by the browser and the URL should have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues.  Please see the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example how to set this up using an Ingress resource.
