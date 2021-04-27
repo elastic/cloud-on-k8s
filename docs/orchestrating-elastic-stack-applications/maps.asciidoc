@@ -124,9 +124,12 @@ The following example demonstrates how to create a {ems} deployment which mounts
 apiVersion: maps.k8s.elastic.co/v1alpha1
 kind: ElasticMapsServer
 metadata:
-  name: ems-sample
+  name: quickstart
 spec:
   version: {version}
+  elasticsearchRef:
+    name: "quickstart"
+  count: 1
   podTemplate:
     spec:
       containers:
