@@ -303,6 +303,20 @@ RBAC permissions
   - update
   - patch
   - delete
+- apiGroups:
+  - maps.k8s.elastic.co
+  resources:
+  - elasticmapsservers
+  - elasticmapsservers/status
+  - elasticmapsservers/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 {{- end -}}
 
 {{/*

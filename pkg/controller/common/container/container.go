@@ -6,6 +6,7 @@ package container
 
 import (
 	"fmt"
+	"strings"
 )
 
 const DefaultContainerRegistry = "docker.elastic.co"
@@ -38,9 +39,14 @@ const (
 	JournalbeatImage      Image = "beats/journalbeat"
 	PacketbeatImage       Image = "beats/packetbeat"
 	AgentImage            Image = "beats/elastic-agent"
+	MapsImage             Image = "elastic-maps-service/elastic-maps-server-ubi8"
 )
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
 func ImageRepository(img Image, version string) string {
+	// don't double append suffix if already contained as e.g. the case for maps
+	if strings.HasSuffix(string(img), containerSuffix) {
+		return fmt.Sprintf("%s/%s:%s", containerRegistry, img, version)
+	}
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, img, containerSuffix, version)
 }

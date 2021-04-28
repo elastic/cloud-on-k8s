@@ -176,7 +176,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	return nil
 }
 
-// ensureTransportCertificatesSecretExists ensures the existence and Labels of the Secret that at a later point
+// ensureTransportCertificatesSecretExists ensures the existence and labels of the Secret that at a later point
 // in time will contain the transport certificates for a nodeSet.
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
