@@ -33,7 +33,7 @@ var (
 	}
 )
 
-// readinessProbe is the readiness probe for the Kibana container
+// readinessProbe is the readiness probe for the maps container
 func readinessProbe(useTLS bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if useTLS {

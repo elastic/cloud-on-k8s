@@ -115,18 +115,20 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	return false, nil
 }
 
-type MockChecker struct{}
+type MockChecker struct {
+	MissingLicense bool
+}
 
-func (MockChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
+func (m MockChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 	return &EnterpriseLicense{}, nil
 }
 
-func (MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return true, nil
+func (m MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
+	return !m.MissingLicense, nil
 }
 
-func (MockChecker) Valid(l EnterpriseLicense) (bool, error) {
-	return true, nil
+func (m MockChecker) Valid(l EnterpriseLicense) (bool, error) {
+	return !m.MissingLicense, nil
 }
 
-var _ Checker = MockChecker{}
+var _ Checker = &MockChecker{}

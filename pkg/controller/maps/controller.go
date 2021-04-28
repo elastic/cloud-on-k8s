@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync/atomic"
+	"time"
 
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
@@ -20,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -65,6 +67,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMa
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
+		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		Parameters:     params,
 	}
 }
@@ -120,6 +123,7 @@ type ReconcileMapsServer struct {
 	operator.Parameters
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
+	licenseChecker license.Checker
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -160,6 +164,19 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	if common.IsUnmanaged(&ems) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "name", ems.Name)
 		return reconcile.Result{}, nil
+	}
+
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	if err != nil {
+		return reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}, err
+	}
+
+	if !enabled {
+		msg := "Elastic Maps Server is an enterprise feature. Enterprise features are disabled"
+		log.Info(msg, "namespace", ems.Namespace, "name", ems.Name)
+		r.recorder.Eventf(&ems, corev1.EventTypeWarning, events.EventReconciliationError, msg)
+		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}, nil
 	}
 
 	// check for compatibility with the operator version

@@ -33,8 +33,6 @@ func configSecretVolume(ems emsv1alpha1.ElasticMapsServer) volume.SecretVolume {
 	return volume.NewSecretVolume(Config(ems.Name), "config", ConfigMountPath, ConfigFilename, 0444)
 }
 
-// Reconcile reconciles the configuration of Elastic Maps Server: it generates the right configuration and
-// stores it in a secret that is kept up to date.
 func reconcileConfig(driver driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (corev1.Secret, error) {
 	cfg, err := newConfig(driver, ems, ipFamily)
 	if err != nil {
