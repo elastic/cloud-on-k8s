@@ -43,6 +43,8 @@ spec:
 EOF
 ----
 
+By default `elasticsearchRef` targets all nodes in your Elasticsearch cluster. If you want to direct traffic to specific nodes of your cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
+
 . Monitor APM Server deployment.
 +
 You can retrieve details about the APM Server instance:
@@ -227,7 +229,7 @@ By default the operator manages a private CA and generates a self-signed certifi
 
 This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. See link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[Setting up your own certificate] for more information on how to use your own certificate to configure the TLS endpoint of the APM Server.
 
-For more details on how to configure the APM agents to work with custom certificates, see the  https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation].
+For more details on how to configure the APM agents to work with custom certificates, see the https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation].
 
 [id="{p}-apm-connecting"]
 == Connect to the APM Server

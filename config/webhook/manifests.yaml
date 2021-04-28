@@ -205,6 +205,27 @@ webhooks:
     - kibanas
   sideEffects: None
 - admissionReviewVersions:
+  - v1alpha1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-ems-k8s-elastic-co-v1alpha1-mapsservers
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-ems-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - maps.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - mapsservers
+  sideEffects: None
+- admissionReviewVersions:
   - v1
   - v1beta1
   clientConfig:

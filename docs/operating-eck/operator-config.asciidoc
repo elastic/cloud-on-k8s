@@ -93,7 +93,7 @@ If you use a combination of all or some of the methods listed above, the descend
 - File
 
 
-You can edit the `elastic-operator` ConfigMap to change the operator configuration. Unless the `--disable-config-watch` flag is set, the operator should restart automatically to apply the new changes. Alternatively, you can edit the `elastic-operator` StatefulSet  and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
+You can edit the `elastic-operator` ConfigMap to change the operator configuration. Unless the `--disable-config-watch` flag is set, the operator should restart automatically to apply the new changes. Alternatively, you can edit the `elastic-operator` StatefulSet and add flags to the `args` section -- which will trigger an automatic restart of the operator pod by the StatefulSet controller.
 
 [float]
 [id="{p}-{page_id}-olm"]

@@ -19,7 +19,8 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 	nodeResources := resources.NodeResources{}
 	requiredCapacity := ctx.AutoscalingPolicyResult.RequiredCapacity
 	// Compute desired memory quantity for the nodes managed by this AutoscalingPolicySpec.
-	if !requiredCapacity.Node.Memory.IsEmpty() {
+	if !requiredCapacity.Node.Memory.IsEmpty() ||
+		!requiredCapacity.Total.Memory.IsEmpty() {
 		memoryRequest := ctx.getResourceValue(
 			"memory",
 			requiredCapacity.Node.Memory,
@@ -30,9 +31,9 @@ func (ctx *Context) nodeResources(minNodesCount int64, minStorage resource.Quant
 		)
 		nodeResources.SetRequest(corev1.ResourceMemory, memoryRequest)
 	}
-
 	// Compute desired storage quantity for the nodes managed by this AutoscalingPolicySpec.
-	if !requiredCapacity.Node.Storage.IsEmpty() {
+	if !requiredCapacity.Node.Storage.IsEmpty() ||
+		!requiredCapacity.Total.Storage.IsEmpty() {
 		storageRequest := ctx.getResourceValue(
 			"storage",
 			requiredCapacity.Node.Storage,

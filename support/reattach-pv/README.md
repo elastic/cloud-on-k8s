@@ -52,5 +52,5 @@ This tool basically does the following:
 
 ## Limitations
 
-* PersistentVolumsClaims are not created the exact same way they would normally be created by the StatefulSet controller. Especially, they don't have the usual annotations and labels.
+* PersistentVolumeClaims are not created the exact same way they would normally be created by the StatefulSet controller. Especially, they don't have the usual annotations and labels.
 * PersistentVolumeClaims are not created with an OwnerReference pointing to the Elasticsearch resource, because they are created before that resource. Therefore, they will not be automatically removed upon Elasticsearch resource deletion.

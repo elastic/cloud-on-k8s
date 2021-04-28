@@ -210,12 +210,15 @@ See link:k8s-accessing-elastic-services.html[how to access Elastic Stack service
 
 NOTE: When exposed outside the scope of `localhost`, make sure to set `ent_search.external_url` accordingly in the Enterprise Search configuration.
 
+[id="{p}-enterprise-search-connect-es"]
+=== Customize the connection to an Elasticsearch cluster
+
+The `elasticsearchRef` element allows ECK to automatically configure Enterprise Search to establish a secured connection to a managed Elasticsearch cluster. By default it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
+
+
 [id="{p}-enterprise-search-connect-non-eck-es"]
 === Connect to an external Elasticsearch cluster
-
-The `elasticsearchRef` element allows ECK to automatically configure Enterprise Search to establish a secured connection to a managed Elasticsearch cluster.
-
-Also, you can manually configure Enterprise Search to access any available Elasticsearch cluster:
+If you do not want to use the `elasticsearchRef` mechanism or if you want to connect to an Elasticsearch cluster not managed by ECK, you can manually configure Enterprise Search to access any available Elasticsearch cluster:
 
 [source,yaml,subs="attributes,+macros"]
 ----

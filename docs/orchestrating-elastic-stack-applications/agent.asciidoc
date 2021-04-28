@@ -215,7 +215,7 @@ stringData:
             period: 10s
 ----
 
-You can use the Fleet application in Kibana to generate configuration for Elastic Agent even when running in standalone mode, see the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[Elastic Agent standalone] documentation.  Adding the corresponding integration package to Kibana also adds the related dashboards and visualizations.
+You can use the Fleet application in Kibana to generate configuration for Elastic Agent even when running in standalone mode, see the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[Elastic Agent standalone] documentation. Adding the corresponding integration package to Kibana also adds the related dashboards and visualizations.
 
 
 [id="{p}-elastic-agent-multi-output"]
@@ -255,6 +255,10 @@ spec:
 ...
 ----
 
+[id="{p}-elastic-agent-connect-es"]
+=== Customize the connection to an Elasticsearch cluster
+
+The `elasticsearchRefs` element allows ECK to automatically configure Elastic Agent to establish a secured connection to one or more managed Elasticsearch clusters. By default it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
 
 [id="{p}-elastic-agent-set-output"]
 === Manually set Elastic Agent outputs

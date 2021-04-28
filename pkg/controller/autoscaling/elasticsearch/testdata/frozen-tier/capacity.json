@@ -1,0 +1,169 @@
+{
+  "policies" : {
+    "di-frozen" : {
+      "required_capacity" : {
+        "total" : {
+          "storage" : 1523908623,
+          "memory" : 2164663494
+        }
+      },
+      "current_capacity" : {
+        "node" : {
+          "storage" : 2046640128,
+          "memory" : 2147483648
+        },
+        "total" : {
+          "storage" : 2046640128,
+          "memory" : 2147483648
+        }
+      },
+      "current_nodes" : [
+        {
+          "name" : "frozen-sample-es-di-frozen-0"
+        }
+      ],
+      "deciders" : {
+        "frozen_shards" : {
+          "required_capacity" : {
+            "total" : {
+              "memory" : 2164663494
+            }
+          },
+          "reason_summary" : "shard count [63]",
+          "reason_details" : {
+            "shards" : 63
+          }
+        },
+        "frozen_storage" : {
+          "required_capacity" : {
+            "total" : {
+              "storage" : 1523908623
+            }
+          },
+          "reason_summary" : "total data set size [30478172467]",
+          "reason_details" : {
+            "total_data_set_size" : 30478172467
+          }
+        }
+      }
+    },
+    "di-hot" : {
+      "required_capacity" : {
+        "node" : {
+          "storage" : 38107923
+        },
+        "total" : {
+          "storage" : 8387952640
+        }
+      },
+      "current_capacity" : {
+        "node" : {
+          "storage" : 4193976320,
+          "memory" : 2147483648
+        },
+        "total" : {
+          "storage" : 8387952640,
+          "memory" : 4294967296
+        }
+      },
+      "current_nodes" : [
+        {
+          "name" : "frozen-sample-es-di-hot-0"
+        },
+        {
+          "name" : "frozen-sample-es-di-hot-1"
+        }
+      ],
+      "deciders" : {
+        "proactive_storage" : {
+          "required_capacity" : {
+            "node" : {
+              "storage" : 38107923
+            },
+            "total" : {
+              "storage" : 8387952640
+            }
+          },
+          "reason_summary" : "storage ok",
+          "reason_details" : {
+            "reason" : "storage ok",
+            "unassigned" : 0,
+            "assigned" : 0,
+            "forecasted" : 0,
+            "forecast_window" : "30m"
+          }
+        },
+        "reactive_storage" : {
+          "required_capacity" : {
+            "node" : {
+              "storage" : 38107923
+            },
+            "total" : {
+              "storage" : 8387952640
+            }
+          },
+          "reason_summary" : "storage ok",
+          "reason_details" : {
+            "reason" : "storage ok",
+            "unassigned" : 0,
+            "assigned" : 0
+          }
+        }
+      }
+    },
+    "ml" : {
+      "required_capacity" : {
+        "node" : {
+          "storage" : 0,
+          "memory" : 0
+        },
+        "total" : {
+          "storage" : 0,
+          "memory" : 0
+        }
+      },
+      "current_capacity" : {
+        "node" : {
+          "storage" : 0,
+          "memory" : 0
+        },
+        "total" : {
+          "storage" : 0,
+          "memory" : 0
+        }
+      },
+      "current_nodes" : [ ],
+      "deciders" : {
+        "ml" : {
+          "required_capacity" : {
+            "node" : {
+              "storage" : 0,
+              "memory" : 0
+            },
+            "total" : {
+              "storage" : 0,
+              "memory" : 0
+            }
+          },
+          "reason_summary" : "Passing currently perceived capacity as no scaling changes were detected to be possible",
+          "reason_details" : {
+            "waiting_analytics_jobs" : [ ],
+            "waiting_anomaly_jobs" : [ ],
+            "configuration" : {
+              "down_scale_delay" : "5m"
+            },
+            "perceived_current_capacity" : {
+              "node" : {
+                "memory" : 0
+              },
+              "total" : {
+                "memory" : 0
+              }
+            },
+            "reason" : "Passing currently perceived capacity as no scaling changes were detected to be possible"
+          }
+        }
+      }
+    }
+  }
+}
