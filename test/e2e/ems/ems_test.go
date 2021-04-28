@@ -15,6 +15,11 @@ import (
 
 // TestElasticMapsServerCrossNSAssociation tests associating Elasticsearch and Elastic Maps Server running in different namespaces.
 func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	emsNamespace := test.Ctx().ManagedNamespace(1)
 	name := "test-cross-ns-ems-es"
@@ -33,6 +38,11 @@ func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
 }
 
 func TestElasticMapsServerTLSDisabled(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
 	name := "test-ems-tls-disabled"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -48,6 +58,11 @@ func TestElasticMapsServerTLSDisabled(t *testing.T) {
 }
 
 func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 

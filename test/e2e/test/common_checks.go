@@ -19,7 +19,7 @@ import (
 // CheckDeployment checks the Deployment resource exists
 func CheckDeployment(subj Subject, k *K8sClient, deploymentName string) Step {
 	return Step{
-		Name: "Elastic Map Server deployment should be created",
+		Name: subj.Kind() + " deployment should be created",
 		Test: Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(context.Background(), types.NamespacedName{
@@ -40,7 +40,7 @@ func CheckDeployment(subj Subject, k *K8sClient, deploymentName string) Step {
 	}
 }
 
-// CheckPods checks test subjects expected pods are eventually ready.
+// CheckPods checks that the test subject's expected pods are eventually ready.
 func CheckPods(subj Subject, k *K8sClient) Step {
 	// This is a shared test but it is common for Enterprise Search Pods to take some time to be ready, especially
 	// during the initial bootstrap, or during version upgrades. Let's increase the timeout
@@ -86,7 +86,7 @@ func CheckPods(subj Subject, k *K8sClient) Step {
 	}
 }
 
-// CheckServices checks that all Enterprise Search services are created
+// CheckServices checks that all expected services have been created
 func CheckServices(subj Subject, k *K8sClient) Step {
 	return Step{
 		Name: subj.Kind() + " services should be created",
