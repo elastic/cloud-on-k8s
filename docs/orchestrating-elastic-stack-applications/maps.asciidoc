@@ -62,7 +62,7 @@ experimental[]
 The {ems} Docker image contains only a few zoom levels of data. In order to get the map data up to the highest zoom level {ems} needs a basemap file mounted into its container.
 [id="{p}-maps-basemap-download"]
 === Basemap download
-You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods.  See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
+You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
 
 The exact procedure of how to get a Kubernetes volume populated with that data is out of scope of this documenation as it depends on your specific Kubernetes setup and choice of volume provisioner. One possible approach that should work for most setups is as follows:
 
