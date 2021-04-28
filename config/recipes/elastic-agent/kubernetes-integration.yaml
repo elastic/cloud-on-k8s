@@ -53,7 +53,7 @@ spec:
         - apiserver
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         hosts:
-        - 'https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}'
+        - 'https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}'
         period: 30s
         ssl.certificate_authorities:
         - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
@@ -66,7 +66,7 @@ spec:
         add_metadata: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         hosts:
-        - 'https://${NODE_NAME}:10250'
+        - 'https://${env.NODE_NAME}:10250'
         period: 10s
         ssl.verification_mode: none
       - id: kubernetes/metrics-kubernetes.event
@@ -86,7 +86,7 @@ spec:
         add_metadata: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         hosts:
-        - 'https://${NODE_NAME}:10250'
+        - 'https://${env.NODE_NAME}:10250'
         period: 10s
         ssl.verification_mode: none
       - id: kubernetes/metrics-kubernetes.pod
@@ -98,7 +98,7 @@ spec:
         add_metadata: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         hosts:
-        - 'https://${NODE_NAME}:10250'
+        - 'https://${env.NODE_NAME}:10250'
         period: 10s
         ssl.verification_mode: none
       - id: kubernetes/metrics-kubernetes.system
@@ -110,7 +110,7 @@ spec:
         add_metadata: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         hosts:
-        - 'https://${NODE_NAME}:10250'
+        - 'https://${env.NODE_NAME}:10250'
         period: 10s
         ssl.verification_mode: none
       - id: kubernetes/metrics-kubernetes.volume
@@ -122,7 +122,7 @@ spec:
         add_metadata: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         hosts:
-        - 'https://${NODE_NAME}:10250'
+        - 'https://${env.NODE_NAME}:10250'
         period: 10s
         ssl.verification_mode: none
 ---
