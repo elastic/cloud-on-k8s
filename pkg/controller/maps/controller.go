@@ -168,7 +168,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
-		return reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}, err
+		return reconcile.Result{}, err
 	}
 
 	if !enabled {
