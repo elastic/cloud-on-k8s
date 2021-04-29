@@ -7,16 +7,22 @@ package ems
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/maps"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/maps"
 )
 
 // TestElasticMapsServerCrossNSAssociation tests associating Elasticsearch and Elastic Maps Server running in different namespaces.
 func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Elastic Maps Server is supported since 7.11.0
+	if !stackVersion.GTE(version.MustParse("7.11.0")) {
 		t.SkipNow()
 	}
 
@@ -34,12 +40,21 @@ func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, emsBuilder).RunSequential(t)
+	esWithLicense := test.LicenseTestBuilder()
+	esWithLicense.BuildingThis = esBuilder
+
+	test.Sequence(nil, test.EmptySteps, esWithLicense, emsBuilder).RunSequential(t)
 }
 
 func TestElasticMapsServerTLSDisabled(t *testing.T) {
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Elastic Maps Server is supported since 7.11.0
+	if !stackVersion.GTE(version.MustParse("7.11.0")) {
 		t.SkipNow()
 	}
 
@@ -54,12 +69,21 @@ func TestElasticMapsServerTLSDisabled(t *testing.T) {
 		WithTLSDisabled(true).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, emsBuilder).RunSequential(t)
+	esWithLicense := test.LicenseTestBuilder()
+	esWithLicense.BuildingThis = esBuilder
+
+	test.Sequence(nil, test.EmptySteps, esWithLicense, emsBuilder).RunSequential(t)
 }
 
 func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Elastic Maps Server is supported since 7.11.0
+	if !stackVersion.GTE(version.MustParse("7.11.0")) {
 		t.SkipNow()
 	}
 
@@ -81,5 +105,8 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 
 	emsUpgraded := ems.WithVersion(dstVersion).WithMutatedFrom(&ems)
 
-	test.RunMutations(t, []test.Builder{es, ems}, []test.Builder{es, emsUpgraded})
+	esWithLicense := test.LicenseTestBuilder()
+	esWithLicense.BuildingThis = es
+
+	test.RunMutations(t, []test.Builder{esWithLicense, ems}, []test.Builder{esWithLicense, emsUpgraded})
 }

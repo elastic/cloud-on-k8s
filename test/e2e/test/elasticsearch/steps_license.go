@@ -22,7 +22,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type LicenseTestContext struct {
@@ -75,25 +74,7 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...clie
 }
 
 func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string, licenseBytes []byte) test.Step {
-	return test.Step{
-		Name: "Creating enterprise license secret",
-		Test: test.Eventually(func() error {
-			sec := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      secretName,
-					Labels: map[string]string{
-						common.TypeLabelName:      license.Type,
-						license.LicenseLabelScope: string(license.LicenseScopeOperator),
-					},
-				},
-				Data: map[string][]byte{
-					license.FileName: licenseBytes,
-				},
-			}
-			return ltctx.k.CreateOrUpdate(&sec)
-		}),
-	}
+	return test.CreateEnterpriseLicenseSecret(ltctx.k, secretName, licenseBytes)
 }
 
 func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey) test.Step {
@@ -204,22 +185,5 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 }
 
 func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
-	return test.Step{
-		Name: "Removing any test enterprise license secrets",
-		Test: test.Eventually(func() error {
-			// Delete operator license secret
-			var licenseSecrets corev1.SecretList
-			err := ltctx.k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
-			if err != nil {
-				return err
-			}
-			for i := range licenseSecrets.Items {
-				err = ltctx.k.Client.Delete(context.Background(), &licenseSecrets.Items[i])
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			}
-			return nil
-		}),
-	}
+	return test.DeleteAllEnterpriseLicenseSecrets(ltctx.k)
 }

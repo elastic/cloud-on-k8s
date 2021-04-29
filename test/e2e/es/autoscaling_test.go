@@ -8,7 +8,6 @@ package es
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -117,18 +116,8 @@ func TestAutoscaling(t *testing.T) {
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
-	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
-	require.NoError(t, err)
-	licenseSecretName := "eck-license"
-
-	before := func(k *test.K8sClient) test.StepList {
-		// Deploy an enterprise license
-		return test.StepList{
-			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
-			licenseTestContext.CreateEnterpriseLicenseSecret(licenseSecretName, licenseBytes),
-		}
-	}
+	esWithLicense := test.LicenseTestBuilder()
+	esWithLicense.BuildingThis = esBuilder
 
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{}.
@@ -143,12 +132,10 @@ func TestAutoscaling(t *testing.T) {
 			// Scale ML tier back to 0 node
 			WithSteps(scaleDownML.UpgradeTestSteps(k)).
 			WithSteps(scaleDownML.CheckK8sTestSteps(k)).
-			WithSteps(scaleDownML.CheckStackTestSteps(k)).
-			// Delete enterprise license
-			WithStep(licenseTestContext.DeleteEnterpriseLicenseSecret(licenseSecretName))
+			WithSteps(scaleDownML.CheckStackTestSteps(k))
 	}
 
-	test.Sequence(before, stepsFn, esBuilder).RunSequential(t)
+	test.Sequence(nil, stepsFn, esWithLicense).RunSequential(t)
 }
 
 // -- Test helpers
