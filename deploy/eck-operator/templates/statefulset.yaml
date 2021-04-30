@@ -1,3 +1,4 @@
+{{- $metricsPort := int .Values.config.metricsPort -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -24,6 +25,9 @@ spec:
         {{- end }}
       labels:
         {{- include "eck-operator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: {{ include "eck-operator.serviceAccountName" . }}
@@ -73,11 +77,18 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.webhook.enabled }}
+          {{- if or (gt $metricsPort 0) .Values.webhook.enabled }}
           ports:
+            {{- if (gt $metricsPort 0) }}
+            - containerPort: {{ .Values.config.metricsPort }}
+              name: metrics
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.webhook.enabled }}
             - containerPort: 9443
               name: https-webhook
               protocol: TCP
+            {{- end }}  
           {{- end }}
           volumeMounts:
             - mountPath: "/conf"

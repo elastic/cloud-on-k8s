@@ -40,6 +40,9 @@ resources:
 # podAnnotations define the annotations that should be added to the operator pod.
 podAnnotations: {}
 
+## podLabels define additional labels that should be added to the operator pod.
+podLabels: {}
+
 # podSecurityContext defines the pod security context for the operator pod.
 podSecurityContext:
   runAsNonRoot: true
@@ -164,6 +167,37 @@ config:
   # validateStorageClass specifies whether storage classes volume expansion support should be verified.
   # Can be disabled if cluster-wide storage class RBAC access is not available.
   validateStorageClass: true
+
+# Prometheus PodMonitor configuration
+# Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
+podMonitor:
+
+  # enabled determines whether a podMonitor should deployed to scrape the eck metrics.
+  # This requires the prometheus operator and the config.metricsPort not to be 0
+  enabled: false
+
+  # labels adds additional labels to the podMonitor
+  labels: {}
+
+  # annotations adds additional annotations to the podMonitor
+  annotations: {}
+
+  # namespace determines in which namespace the podMonitor will be deployed.
+  # If not set the podMonitor will be created in the namespace to release is installed into
+  # namespace: monitoring
+
+  # interval specifies the interval at which metrics should be scraped
+  interval: 5m
+
+  # scrapeTimeout specifies the timeout after which the scrape is ended
+  scrapeTimeout: 30s
+
+  # podTargetLabels transfers labels on the Kubernetes Pod onto the target.
+  podTargetLabels: []
+
+  # podMetricsEndpointConfig allows to add an extended configuration to the podMonitor
+  podMetricsEndpointConfig: {}
+  # honorTimestamps: true
 
 # Internal use only
 internal:
