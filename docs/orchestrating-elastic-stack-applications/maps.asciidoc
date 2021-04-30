@@ -59,15 +59,15 @@ The {ems} configuration file is automatically setup by ECK to establish a secure
 
 experimental[]
 
-The {ems} Docker image contains only a few zoom levels of data. In order to get the map data up to the highest zoom level {ems} needs a basemap file mounted into its container.
+The {ems} Docker image contains only a few zoom levels of data. To get the map data up to the highest zoom level, {ems} needs a basemap file mounted into its container.
 [id="{p}-maps-basemap-download"]
 === Basemap download
 You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
 
-The exact procedure of how to get a Kubernetes volume populated with that data is out of scope of this documenation as it depends on your specific Kubernetes setup and choice of volume provisioner. One possible approach that should work for most setups is as follows:
+The procedure on how to get a Kubernetes volume populated with that data is outside the scope of this document, as it depends on your specific Kubernetes setup and choice of volume provisioner. This is a possible approach that works for most setups:
 
 . Download the basemap zip archive using the link shown in the {ems} UI or extracted from the `/status` endpoint.
-. Create a PersistentVolumeClaim of sufficient size (> 90G) and a temporary Pod to mount the corresponding volume
+. Create a PersistentVolumeClaim of sufficient size (> 90G) and a temporary Pod to mount the corresponding volume.
 +
 [source,yaml]
 ----
@@ -114,7 +114,7 @@ kubectl cp planet.zip ems-data-setup:/usr/share/planet/planet.zip
 ----
 kubectl exec ems-data-setup -- unzip /usr/share/data/planet.zip -d /usr/share/planet
 ----
-. Delete the temporary Pod and remount the volume into the {ems} Pods as shown <<{p}-maps-pod-configuration,below>>.
+. Delete the temporary Pod and remount the volume into the {ems} Pods as described in <<{p}-maps-pod-configuration,Pod configuration>>.
 +
 [source,sh]
 ----
@@ -212,7 +212,7 @@ stringData:
   elastic-maps-server.yml: |-
     logging.level: debug
 ----
-Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resources for {ems}
+Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resources for {ems}.
 
 [id="{p}-maps-scaling"]
 === Scale out an {ems} deployment
@@ -245,4 +245,4 @@ You can disable the generation of the self-signed certificate and hence disable 
 
 [id="{p}-maps-ingress"]
 ==== Ingress and Kibana configuration
-In order to use {ems} from your Kibana instances you need to configure Kibana to fetch maps from your {ems} instance by using the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-kibana[`map.emsUrl`] configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. In order to work correctly the certificates presented by {ems} need to be trusted by the browser and the URL should have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues.  Please see the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example how to set this up using an Ingress resource.
+To use {ems} from your Kibana instances, you need to configure Kibana to fetch maps from your {ems} instance by using the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-kibana[`map.emsUrl`] configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. The certificates presented by {ems} need to be trusted by the browser, and the URL must have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues. See the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example on how to set this up using an Ingress resource.

@@ -16,7 +16,7 @@ Create an Elasticsearch cluster and an Elastic Maps Server instance with customi
 ----
 include::01-ems-es.yaml[]
 ----
-CAUTION: The Elasticsearch configuration uses `node.store.allow_mmap: false` to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+CAUTION: The Elasticsearch configuration uses `node.store.allow_mmap: false` to avoid configuring memory mapping settings on the underlying host. This could impact the performance of your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
 
 
 Create a Kibana. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain.
@@ -25,7 +25,7 @@ Create a Kibana. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with yo
 include::02-kb.yaml[]
 ----
 
-Create the Ingress. Again replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain. Create the TLS secrets with your certificates.
+Create the Ingress. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain. Create the TLS secrets with your certificates.
 
 [source,yaml]
 ----
@@ -33,7 +33,7 @@ include::03-ingress.yaml[]
 ----
 
 
-== Test the ingress
+== Test the Ingress
 
 Go to `maps.{{YOUR_DOMAIN}}` in your browser. You should see the Elastic Maps Server UI.
 
@@ -45,4 +45,3 @@ kubectl get secret elasticsearch-es-elastic-user -o=go-template='{{ .data.elasti
 ----
 
 Access Kibana in your browser and verify that maps data is coming from your Elastic Maps Server instance.
-
