@@ -137,9 +137,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				if err := json.Unmarshal(bytes, &status); err != nil {
 					return err
 				}
-				// we cannot just test for "available" because in absence of a valid license the state is "critical"
-				// however we consider a parseable response to be a sufficient signal for a successful deployment
-				expectedStatus := set.Make("available", "degraded", "unavailable", "critical")
+				// 7.11-7.12 reports `degraded` status when the full basemap is not installed
+				expectedStatus := set.Make("available", "degraded")
 				if !expectedStatus.Has(status.Overall.State) {
 					return fmt.Errorf("expected one of %v but got %s", expectedStatus, status.Overall.State)
 				}
