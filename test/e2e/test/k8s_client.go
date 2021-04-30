@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -395,6 +396,15 @@ func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.Li
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		common.TypeLabelName:     beatcommon.TypeLabelValue,
 		beatcommon.NameLabelName: beatcommon.Name(beatName, beatType),
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+func MapsPodListOptions(emsNS, emsName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(emsNS)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		common.TypeLabelName: maps.Type,
+		maps.NameLabelName:   emsName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

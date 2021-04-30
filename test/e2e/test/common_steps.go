@@ -1,0 +1,113 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
+package test
+
+import (
+	"context"
+	"io/ioutil"
+	"testing"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	corev1 "k8s.io/api/core/v1"
+)
+
+func AnnotatePodsWithBuilderHash(subj, prev Subject, k *K8sClient) StepList {
+	return []Step{
+		{
+			Name: "Annotate Pods with a hash of their Builder spec",
+			Test: Eventually(func() error {
+				var pods corev1.PodList
+				if err := k.Client.List(context.Background(), &pods, subj.ListOptions()...); err != nil {
+					return err
+				}
+
+				expectedHash := hash.HashObject(prev.Spec())
+				for _, pod := range pods.Items {
+					if err := AnnotatePodWithBuilderHash(k, pod, expectedHash); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
+	}
+}
+
+func CreateEnterpriseLicenseSecret(k *K8sClient, secretName string, licenseBytes []byte) Step {
+	return Step{
+		Name: "Creating enterprise license secret",
+		Test: Eventually(func() error {
+			sec := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: Ctx().ManagedNamespace(0),
+					Name:      secretName,
+					Labels: map[string]string{
+						common.TypeLabelName:      license.Type,
+						license.LicenseLabelScope: string(license.LicenseScopeOperator),
+					},
+				},
+				Data: map[string][]byte{
+					license.FileName: licenseBytes,
+				},
+			}
+			return k.CreateOrUpdate(&sec)
+		}),
+	}
+}
+
+func DeleteAllEnterpriseLicenseSecrets(k *K8sClient) Step {
+	return Step{
+		Name: "Removing any test enterprise license secrets",
+		Test: Eventually(func() error {
+			// Delete operator license secret
+			var licenseSecrets corev1.SecretList
+			err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
+			if err != nil {
+				return err
+			}
+			for i := range licenseSecrets.Items {
+				err = k.Client.Delete(context.Background(), &licenseSecrets.Items[i])
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+			}
+			return nil
+		}),
+	}
+}
+
+// LicenseTestBuilder is a wrapped builder for tests that require a valid Enterprise license to be installed in the operator.
+// It creates an Enterprise license secret before the test and deletes it again after the test. Callers are responsible for
+// making sure that Ctx().TestLicense contains a valid test license.
+func LicenseTestBuilder() WrappedBuilder {
+	return WrappedBuilder{
+		PreInitSteps: func(k *K8sClient) StepList {
+			//nolint:thelper
+			return StepList{
+				Step{
+					Name: "Create an Enterprise license secret",
+					Test: func(t *testing.T) {
+						licenseBytes, err := ioutil.ReadFile(Ctx().TestLicense)
+						require.NoError(t, err)
+						DeleteAllEnterpriseLicenseSecrets(k)
+						CreateEnterpriseLicenseSecret(k, "eck-license", licenseBytes).Test(t)
+					},
+				},
+			}
+		},
+		PreDeletionSteps: func(k *K8sClient) StepList {
+			return StepList{
+				DeleteAllEnterpriseLicenseSecrets(k),
+			}
+		},
+	}
+}

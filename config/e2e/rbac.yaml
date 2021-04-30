@@ -240,6 +240,19 @@ rules:
       - patch
       - delete
   - apiGroups:
+      - maps.k8s.elastic.co
+    resources:
+      - elasticmapsservers
+      - elasticmapsservers/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
       - storage.k8s.io
     resources:
       - storageclasses
