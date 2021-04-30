@@ -463,14 +463,14 @@ e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
-e2e-compile:
+e2e-compile: go-generate
 	@go test ./test/e2e/... -run=dryrun -tags='$(E2E_TAGS)' $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
-e2e-local:
-	@go run -tags $(GO_TAGS) test/e2e/cmd/main.go run \
+e2e-local: go-generate
+	@go run -tags '$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--test-context-out=$(LOCAL_E2E_CTX) \
