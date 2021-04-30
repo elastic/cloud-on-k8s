@@ -217,7 +217,7 @@ Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resource
 [id="{p}-maps-scaling"]
 === Scale out an {ems} deployment
 
-To deploy more than one instance of maps, all the instances must mount the data volume containing the basemap read only. Once that is the case scaling out is just a matter of increasing the `count` attribute.
+To deploy more than one instance of maps, all the instances must mount the data volume containing the basemap read only. When this is the case, scaling out is just a matter of increasing the `count` attribute.
 
 [id="{p}-maps-http-configuration"]
 == HTTP configuration
