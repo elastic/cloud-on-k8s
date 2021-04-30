@@ -64,7 +64,7 @@ spec:
 
 [float]
 [id="{p}-compute-resources-kibana-and-apm"]
-=== Set compute resources for Kibana and APM Server
+=== Set compute resources for Kibana, Elastic Maps Server and APM Server
 
 .Kibana
 [source,yaml,subs="attributes"]
@@ -91,6 +91,30 @@ spec:
             cpu: 2
 ----
 
+.Elastic Maps Server
+[source,yaml,subs="attributes"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  podTemplate:
+    spec:
+      containers:
+      - name: maps
+        env:
+          - name: NODE_OPTIONS
+            value: "--max-old-space-size=980"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 1
+          limits:
+            memory: 1Gi
+            cpu: 1
+----
 .APM Server
 [source,yaml,subs="attributes"]
 ----
@@ -113,7 +137,7 @@ spec:
             cpu: 2
 ----
 
-For the container name, you can use `apm-server` or `kibana` as appropriate.
+For the container name, you have to use `apm-server`, `maps` or `kibana` respectively.
 
 [float]
 [id="{p}-compute-resources-beats-agent"]
@@ -185,8 +209,9 @@ If `resources` is not defined in the specification of an object, then the operat
 |APM Server |512Mi |512Mi
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
-|Beat   |200Mi | 200Mi
-|Elastic Agent | 300Mi|300Mi
+|Beat   |200Mi |200Mi
+|Elastic Agent |300Mi |300Mi
+|Elastic Maps Sever |200Mi |200Mi
 |===
 
 If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator defaults and cause object creation to fail.

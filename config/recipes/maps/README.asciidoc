@@ -1,0 +1,47 @@
+= Expose Elastic Maps Server and Kibana using a Kubernetes Ingress
+
+This recipe illustrates how to expose an Elastic Maps Server and Kibana instance to the outside world using custom TLS certificates. All communications, including those between the load balancer and the Elasticsearch/Kibana pods, occur over secure TLS connections.
+
+The Ingress in this example is configured for an Nginx Ingress controller. The specific configuration necessary might differ if you are using another Ingress controller.
+
+
+IMPORTANT: This recipe assumes that you have valid TLS certificates issued by a trusted certificate authority for the domain you want to use.
+
+
+== Recipe
+
+Create an Elasticsearch cluster and an Elastic Maps Server instance with customized service definition.
+
+[source,yaml]
+----
+include::01-ems-es.yaml[]
+----
+CAUTION: The Elasticsearch configuration uses `node.store.allow_mmap: false` to avoid configuring memory mapping settings on the underlying host. This could impact the performance of your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+
+Create a Kibana. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain.
+[source,yaml]
+----
+include::02-kb.yaml[]
+----
+
+Create the Ingress. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain. Create the TLS secrets with your certificates.
+
+[source,yaml]
+----
+include::03-ingress.yaml[]
+----
+
+
+== Test the Ingress
+
+Go to `maps.{{YOUR_DOMAIN}}` in your browser. You should see the Elastic Maps Server UI.
+
+Obtain the password of the `elastic` user.
+
+[source,sh]
+----
+kubectl get secret elasticsearch-es-elastic-user -o=go-template='{{ .data.elastic | base64decode}}'
+----
+
+Access Kibana in your browser and verify that maps data is coming from your Elastic Maps Server instance.

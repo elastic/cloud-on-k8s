@@ -1,0 +1,248 @@
+:page_id: maps
+:ems: Elastic Maps Server
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run Elastic Maps Server on ECK
+
+experimental[]
+
+If you cannot connect to Elastic Maps Service from the Kibana server or browser clients, and you are running ECK with an Enterprise license, you can opt to host the service on your Kubernetes cluster. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
+
+The following sections describe how to customize an {ems} deployment to suit your requirements.
+
+* <<{p}-maps-es,Connect to an Elasticsearch cluster>>
+* <<{p}-maps-data>>
+** <<{p}-maps-basemap-download,Basemap Download>>
+** <<{p}-maps-pod-configuration,Pod Configuration>>
+* <<{p}-maps-advanced-configuration,Advanced configuration>>
+** <<{p}-maps-configuration>>
+** <<{p}-maps-scaling>>
+* <<{p}-maps-http-configuration,HTTP Configuration>>
+** <<{p}-maps-http-publish,Load balancer settings and TLS SANs>>
+** <<{p}-maps-http-custom-tls,Provide your own certificate>>
+** <<{p}-maps-http-disable-tls,Disable TLS>>
+** <<{p}-maps-ingress>>
+
+[id="{p}-maps-es"]
+== Connect to an Elasticsearch cluster
+
+experimental[]
+
+{ems} needs a connection to Elasticseach to verify the installed license. You define the connection via the `elasticsearchRef` attribute:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+    namespace: default
+----
+
+The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as {ems}.
+
+NOTE: Any {ems} can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to the {ems} namespace. {ems} cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, see <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
+
+The {ems} configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
+
+[id="{p}-maps-data"]
+== Map data
+
+experimental[]
+
+The {ems} Docker image contains only a few zoom levels of data. To get the map data up to the highest zoom level, {ems} needs a basemap file mounted into its container.
+[id="{p}-maps-basemap-download"]
+=== Basemap download
+You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
+
+The procedure on how to get a Kubernetes volume populated with that data is outside the scope of this document, as it depends on your specific Kubernetes setup and choice of volume provisioner. This is a possible approach that works for most setups:
+
+. Download the basemap zip archive using the link shown in the {ems} UI or extracted from the `/status` endpoint.
+. Create a PersistentVolumeClaim of sufficient size (> 90G) and a temporary Pod to mount the corresponding volume.
++
+[source,yaml]
+----
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ems-basemap
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 250G
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: ems-data-setup
+spec:
+  terminationGracePeriodSeconds: 0
+  volumes:
+    - name: ems-storage
+      persistentVolumeClaim:
+       claimName: ems-basemap
+  containers:
+    - name: ems-setup
+      image: ubuntu
+      command: [bash, -c, "apt-get update && apt-get install unzip && while true; do sleep 10; done"]
+      volumeMounts:
+        - mountPath: "/usr/share/planet"
+          name: ems-storage
+----
+. Use `kubectl` to copy the basemap data into the volume
++
+[source,sh]
+----
+kubectl cp planet.zip ems-data-setup:/usr/share/planet/planet.zip
+----
+. Unzip the archive on the temporary Pod
++
+[source,sh]
+----
+kubectl exec ems-data-setup -- unzip /usr/share/data/planet.zip -d /usr/share/planet
+----
+. Delete the temporary Pod and remount the volume into the {ems} Pods as described in <<{p}-maps-pod-configuration,Pod configuration>>.
++
+[source,sh]
+----
+kubectl delete pod ems-data-setup
+----
+
+[id="{p}-maps-pod-configuration"]
+=== Pod configuration
+You can <<{p}-customize-pods,customize the {ems} Pod>> using a Pod template.
+
+The following example demonstrates how to create a {ems} deployment which mounts a data volume with the complete basemap.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRef:
+    name: "quickstart"
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: maps
+        volumeMounts:
+        - name: map-data
+          readOnly: true
+          mountPath: /usr/src/app/data
+      volumes:
+        - name: map-data
+          persistentVolumeClaim:
+            claimName: ems-basemap
+
+----
+
+The name of the container in the Pod template must be `maps`.
+
+[id="{p}-maps-advanced-configuration"]
+== Advanced configuration
+
+experimental[]
+
+If you already looked at the <<{p}-elasticsearch-specification,Elasticsearch on ECK>> documentation, some of these concepts might sound familiar to you.
+The resource definitions in ECK share the same philosophy when you want to:
+
+* Customize the Pod configuration
+* Customize the product configuration
+* Manage HTTP settings
+
+
+
+[id="{p}-maps-configuration"]
+=== {ems} configuration
+You can add any valid {ems} setting as documented on the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration[product] page to the `spec.config` section.
+
+The following example demonstrates how to set the log level to `debug`:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  config:
+     logging.level: debug
+----
+
+Alternatively, settings can be provided via a Secret specified in the `configRef` element:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRef:
+    name: elasticsearch-sample
+  configRef:
+    secretName: maps-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maps-config
+stringData:
+  elastic-maps-server.yml: |-
+    logging.level: debug
+----
+Refer to <<{p}-compute-resources-kibana-and-apm>> for adjusting compute resources for {ems}.
+
+[id="{p}-maps-scaling"]
+=== Scale out an {ems} deployment
+
+To deploy more than one instance of maps, all the instances must mount the data volume containing the basemap read only. When this is the case, scaling out is just a matter of increasing the `count` attribute.
+
+[id="{p}-maps-http-configuration"]
+== HTTP configuration
+
+experimental[]
+
+[id="{p}-maps-http-publish"]
+=== Load balancer settings and TLS SANs
+
+By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated with the {ems} deployment.
+If you want to expose maps externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer], it is recommended to include a custom DNS name or IP in the self-generated certificate.
+
+Refer to <<{p}-static-ip-custom-domain>> for more details.
+
+[id="{p}-maps-http-custom-tls"]
+=== Provide your own certificate
+
+If you want to use your own certificate, the required configuration is identical to Elasticsearch. See <<{p}-custom-http-certificate>>.
+
+[id="{p}-maps-http-disable-tls"]
+=== Disable TLS
+
+You can disable the generation of the self-signed certificate and hence disable TLS. See <<{p}-disable-tls>>.
+
+
+[id="{p}-maps-ingress"]
+==== Ingress and Kibana configuration
+To use {ems} from your Kibana instances, you need to configure Kibana to fetch maps from your {ems} instance by using the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-kibana[`map.emsUrl`] configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. The certificates presented by {ems} need to be trusted by the browser, and the URL must have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues. See the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example on how to set this up using an Ingress resource.
