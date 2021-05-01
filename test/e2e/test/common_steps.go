@@ -42,47 +42,43 @@ func AnnotatePodsWithBuilderHash(subj, prev Subject, k *K8sClient) StepList {
 	}
 }
 
-func CreateEnterpriseLicenseSecret(k *K8sClient, secretName string, licenseBytes []byte) Step {
-	return Step{
-		Name: "Creating enterprise license secret",
-		Test: Eventually(func() error {
-			sec := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: Ctx().ManagedNamespace(0),
-					Name:      secretName,
-					Labels: map[string]string{
-						common.TypeLabelName:      license.Type,
-						license.LicenseLabelScope: string(license.LicenseScopeOperator),
-					},
+func CreateEnterpriseLicenseSecret(t *testing.T, k *K8sClient, secretName string, licenseBytes []byte) {
+	t.Helper()
+	Eventually(func() error {
+		sec := corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: Ctx().ManagedNamespace(0),
+				Name:      secretName,
+				Labels: map[string]string{
+					common.TypeLabelName:      license.Type,
+					license.LicenseLabelScope: string(license.LicenseScopeOperator),
 				},
-				Data: map[string][]byte{
-					license.FileName: licenseBytes,
-				},
-			}
-			return k.CreateOrUpdate(&sec)
-		}),
-	}
+			},
+			Data: map[string][]byte{
+				license.FileName: licenseBytes,
+			},
+		}
+		return k.CreateOrUpdate(&sec)
+	})(t)
 }
 
-func DeleteAllEnterpriseLicenseSecrets(k *K8sClient) Step {
-	return Step{
-		Name: "Removing any test enterprise license secrets",
-		Test: Eventually(func() error {
-			// Delete operator license secret
-			var licenseSecrets corev1.SecretList
-			err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
-			if err != nil {
+func DeleteAllEnterpriseLicenseSecrets(t *testing.T, k *K8sClient) {
+	t.Helper()
+	Eventually(func() error {
+		// Delete operator license secret
+		var licenseSecrets corev1.SecretList
+		err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
+		if err != nil {
+			return err
+		}
+		for i := range licenseSecrets.Items {
+			err = k.Client.Delete(context.Background(), &licenseSecrets.Items[i])
+			if err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
-			for i := range licenseSecrets.Items {
-				err = k.Client.Delete(context.Background(), &licenseSecrets.Items[i])
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			}
-			return nil
-		}),
-	}
+		}
+		return nil
+	})(t)
 }
 
 // LicenseTestBuilder is a wrapped builder for tests that require a valid Enterprise license to be installed in the operator.
@@ -98,15 +94,21 @@ func LicenseTestBuilder() WrappedBuilder {
 					Test: func(t *testing.T) {
 						licenseBytes, err := ioutil.ReadFile(Ctx().TestLicense)
 						require.NoError(t, err)
-						DeleteAllEnterpriseLicenseSecrets(k)
-						CreateEnterpriseLicenseSecret(k, "eck-license", licenseBytes).Test(t)
+						DeleteAllEnterpriseLicenseSecrets(t, k)
+						CreateEnterpriseLicenseSecret(t, k, "eck-license", licenseBytes)
 					},
 				},
 			}
 		},
 		PreDeletionSteps: func(k *K8sClient) StepList {
+			//nolint:thelper
 			return StepList{
-				DeleteAllEnterpriseLicenseSecrets(k),
+				Step{
+					Name: "Removing any test enterprise license secrets",
+					Test: func(t *testing.T) {
+						DeleteAllEnterpriseLicenseSecrets(t, k)
+					},
+				},
 			}
 		},
 	}

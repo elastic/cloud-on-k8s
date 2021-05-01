@@ -74,7 +74,13 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...clie
 }
 
 func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string, licenseBytes []byte) test.Step {
-	return test.CreateEnterpriseLicenseSecret(ltctx.k, secretName, licenseBytes)
+	//nolint:thelper
+	return test.Step{
+		Name: "Creating an Enterprise license secret",
+		Test: func(t *testing.T) {
+			test.CreateEnterpriseLicenseSecret(t, ltctx.k, secretName, licenseBytes)
+		},
+	}
 }
 
 func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey) test.Step {
@@ -185,5 +191,11 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 }
 
 func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
-	return test.DeleteAllEnterpriseLicenseSecrets(ltctx.k)
+	//nolint:thelper
+	return test.Step{
+		Name: "Removing all Enterprise license secrets",
+		Test: func(t *testing.T) {
+			test.DeleteAllEnterpriseLicenseSecrets(t, ltctx.k)
+		},
+	}
 }
