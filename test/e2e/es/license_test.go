@@ -90,12 +90,10 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 
-	k := test.NewK8sClientOrFatal()
-
 	esBuilder := elasticsearch.NewBuilder("test-es-trial-license").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
+	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
 
 	trialSecretName := "eck-trial"
 	licenseSecretName := "eck-license"
@@ -145,12 +143,10 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 	privateKey, err := x509.ParsePKCS8PrivateKey(privateKeyBytes)
 	require.NoError(t, err)
 
-	k := test.NewK8sClientOrFatal()
-
 	esBuilder := elasticsearch.NewBuilder("test-es-trial-extension").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
+	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
 
 	trialSecretName := "eck-trial"
 	licenseSecretName := "eck-license"
