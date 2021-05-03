@@ -311,7 +311,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	return common.UpdateStatus(r.Client, cluster)
 }
 
-// onDelete garbage collect resources when a Elasticsearch cluster is deleted
+// onDelete garbage collect resources when an Elasticsearch cluster is deleted
 func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)

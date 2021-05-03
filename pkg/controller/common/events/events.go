@@ -20,7 +20,7 @@ const (
 	EventReasonUnexpected = "Unexpected"
 	// EventReasonValidation describes events that were due to an invalid resource being submitted by the user.
 	EventReasonValidation = "Validation"
-	// EventReasonStateChange describes events that are expected state changes in a Elasticsearch cluster.
+	// EventReasonStateChange describes events that are expected state changes in an Elasticsearch cluster.
 	EventReasonStateChange = "StateChange"
 	// EventReasonRestart describes events where one or multiple Elasticsearch nodes are scheduled for a restart.
 	EventReasonRestart = "Restart"

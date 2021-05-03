@@ -38,7 +38,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ElasticMapsServer represents a Elastic Map Server resource in a Kubernetes cluster.
+      description: ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes cluster.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -49,7 +49,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: MapsSpec holds the specification of a Elastic Maps Server instance.
+          description: MapsSpec holds the specification of an Elastic Maps Server instance.
           properties:
             config:
               description: 'Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'

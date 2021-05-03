@@ -19,7 +19,7 @@ const (
 	AssociationFailed      AssociationStatus = "Failed"
 )
 
-// Associated interface represents a Elastic stack application that is associated with an Elasticsearch cluster.
+// Associated interface represents an Elastic stack application that is associated with an Elasticsearch cluster.
 // An associated object needs some credentials to establish a connection to the Elasticsearch cluster and usually it
 // offers a keystore which in ECK is represented with an underlying Secret.
 // Kibana and the APM server are two examples of associated objects.

@@ -240,7 +240,7 @@ type DiscoveryZenSettings struct {
 	Persistent DiscoveryZen `json:"persistent"`
 }
 
-// ErrorResponse is a Elasticsearch error response.
+// ErrorResponse is an Elasticsearch error response.
 type ErrorResponse struct {
 	Status int `json:"status"`
 	Error  struct {
