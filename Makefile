@@ -420,15 +420,14 @@ E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test e
 E2E_TAGS += $(GO_TAGS)
 export E2E_TAGS
 
-# clean to remove irrelevant/build-breaking generated public keys
-e2e-docker-build:
+e2e-docker-build: go-generate
 	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) --build-arg E2E_TAGS='$(E2E_TAGS)' \
        -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
 	@ hack/docker.sh -l -p $(E2E_IMG)
 
-e2e-docker-multiarch-build:
+e2e-docker-multiarch-build: go-generate
 	@ hack/docker.sh -l -m $(E2E_IMG)
 	docker buildx build \
 		--progress=plain \
@@ -439,7 +438,7 @@ e2e-docker-multiarch-build:
 		--push \
 		-t $(E2E_IMG) .
 
-e2e-run:
+e2e-run: go-generate
 	@go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
