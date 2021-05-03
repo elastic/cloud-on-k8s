@@ -24,10 +24,11 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.SkipNow()
 	}
-	k := test.NewK8sClientOrFatal()
 
 	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
+
+	k := test.NewK8sClientOrFatal()
 
 	// create a single node cluster
 	esBuilder := elasticsearch.NewBuilder("test-es-license-provisioning").
@@ -92,18 +93,12 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder("test-es-trial-license").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	var licenseTestContext elasticsearch.LicenseTestContext
+	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
 
 	trialSecretName := "eck-trial"
 	licenseSecretName := "eck-license"
 	initStepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
-			{
-				Name: "Create license test context",
-				Test: func(t *testing.T) {
-					licenseTestContext = elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
-				},
-			},
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
 		}
@@ -151,18 +146,12 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder("test-es-trial-extension").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	var licenseTestContext elasticsearch.LicenseTestContext
+	licenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), esBuilder.Elasticsearch)
 
 	trialSecretName := "eck-trial"
 	licenseSecretName := "eck-license"
 	initStepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
-			{
-				Name: "Create license test context",
-				Test: func(t *testing.T) {
-					licenseTestContext = elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
-				},
-			},
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
 		}
