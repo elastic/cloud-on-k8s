@@ -21,6 +21,7 @@ const (
 	NoNodeSet                     AutoscalingEventType = "NoNodeSet"
 	OverlappingPolicies           AutoscalingEventType = "OverlappingPolicies"
 	StorageRequired               AutoscalingEventType = "StorageRequired"
+	UnexpectedStorageCapacity     AutoscalingEventType = "UnexpectedStorageCapacity"
 	VerticalScalingLimitReached   AutoscalingEventType = "VerticalScalingLimitReached"
 )
 
