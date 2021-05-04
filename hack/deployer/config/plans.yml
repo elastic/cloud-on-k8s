@@ -110,7 +110,7 @@ plans:
   kubernetesVersion: 1.17
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
-    region: eu-central-1
+    region: eu-west-3
     nodeCount: 3
     nodeAMI: auto
 - id: eks-arm-ci
@@ -135,7 +135,7 @@ plans:
   eks:
     region: eu-west-2
     nodeCount: 3
-    nodeAMI: static
+    nodeAMI: auto
 - id: e2e-monitor
   operation: create
   clusterName: e2e-monitor
