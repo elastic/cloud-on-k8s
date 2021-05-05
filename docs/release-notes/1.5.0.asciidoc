@@ -39,4 +39,4 @@
 [float]
 === Deprecation
 
-* OpenShift 3.11 support is deprecated in ECK 2.0. ECK 1.8 is the last version that supports OpenShift 3.11.
+* OpenShift 3.11 support will be deprecated in ECK 2.0. ECK 1.8 is the last version that will support OpenShift 3.11.
