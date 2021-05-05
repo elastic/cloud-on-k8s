@@ -19,7 +19,7 @@ const (
 	Kind = "ElasticMapsServer"
 )
 
-// MapsSpec holds the specification of a Elastic Maps Server instance.
+// MapsSpec holds the specification of an Elastic Maps Server instance.
 type MapsSpec struct {
 	// Version of Elastic Maps Server.
 	Version string `json:"version"`
@@ -137,7 +137,7 @@ var _ commonv1.Association = &ElasticMapsServer{}
 
 // +kubebuilder:object:root=true
 
-// ElasticMapsServer represents a Elastic Map Server resource in a Kubernetes cluster.
+// ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=ems
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"

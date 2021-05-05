@@ -53,7 +53,7 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a Elasticsearch resource in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to an Elasticsearch resource in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
