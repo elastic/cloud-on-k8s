@@ -20,6 +20,9 @@ crds:
   - name: agents.agent.k8s.elastic.co
     displayName: Elastic Agent
     description: Elastic Agent instance
+  - name: elasticmapsservers.maps.k8s.elastic.co
+    displayName: Elastic Maps Server
+    description: Elastic Maps Server instance
 packages:
   - outputPath: community-operators
     packageName: elastic-cloud-eck
