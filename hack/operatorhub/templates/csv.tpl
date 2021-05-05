@@ -212,7 +212,21 @@ metadata:
                 ]
               }
             }
-          }
+          },
+          {
+              "apiVersion": "maps.k8s.elastic.co/v1alpha1",
+              "kind": "ElasticMapsServer",
+              "metadata": {
+                  "name": "ems-sample"
+              },
+              "spec": {
+                  "version": "{{ .StackVersion }}",
+                  "count": 1,
+                  "elasticsearchRef": {
+                      "name": "elasticsearch-sample"
+                  }
+              }
+          },
       ]
   name: {{ .PackageName }}.v{{ .NewVersion }}
   namespace: placeholder
