@@ -226,7 +226,7 @@ metadata:
                       "name": "elasticsearch-sample"
                   }
               }
-          },
+          }
       ]
   name: {{ .PackageName }}.v{{ .NewVersion }}
   namespace: placeholder
