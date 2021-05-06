@@ -7,7 +7,6 @@ package ems
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/maps"
@@ -15,17 +14,6 @@ import (
 
 // TestElasticMapsServerCrossNSAssociation tests associating Elasticsearch and Elastic Maps Server running in different namespaces.
 func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
-	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
-		t.SkipNow()
-	}
-
-	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	// Elastic Maps Server is supported since 7.11.0
-	if !stackVersion.GTE(version.MustParse("7.11.0")) {
-		t.SkipNow()
-	}
-
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	emsNamespace := test.Ctx().ManagedNamespace(1)
 	name := "test-cross-ns-ems-es"
@@ -47,17 +35,6 @@ func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
 }
 
 func TestElasticMapsServerTLSDisabled(t *testing.T) {
-	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
-		t.SkipNow()
-	}
-
-	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	// Elastic Maps Server is supported since 7.11.0
-	if !stackVersion.GTE(version.MustParse("7.11.0")) {
-		t.SkipNow()
-	}
-
 	name := "test-ems-tls-disabled"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -76,17 +53,6 @@ func TestElasticMapsServerTLSDisabled(t *testing.T) {
 }
 
 func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
-	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
-		t.SkipNow()
-	}
-
-	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	// Elastic Maps Server is supported since 7.11.0
-	if !stackVersion.GTE(version.MustParse("7.11.0")) {
-		t.SkipNow()
-	}
-
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 

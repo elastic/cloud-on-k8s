@@ -148,6 +148,18 @@ func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
 }
 
 func (b Builder) SkipTest() bool {
+	// only execute EMS tests if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		return true
+	}
+
+	// TODO: remove once an EMS 8.x Docker image image is available
+	// https://github.com/elastic/cloud-on-k8s/issues/4479
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	if stackVersion.Major >= uint64(8) {
+		return true
+	}
+
 	ver := version.MustParse(b.EMS.Spec.Version)
 	return version.SupportedMapsVersions.WithinRange(ver) != nil
 }
