@@ -16,6 +16,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/license"
@@ -104,6 +105,7 @@ func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
 		beatStats,
 		entStats,
 		agentStats,
+		mapsStats,
 	} {
 		key, statsPart, err := f(r.client, r.managedNamespaces)
 		if err != nil {
@@ -294,4 +296,21 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 		}
 	}
 	return "agents", stats, nil
+}
+
+func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := map[string]int32{resourceCount: 0, podCount: 0}
+
+	var mapsList mapsv1alpha1.ElasticMapsServerList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(context.Background(), &mapsList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+
+		for _, maps := range mapsList.Items {
+			stats[resourceCount]++
+			stats[podCount] += maps.Status.AvailableNodes
+		}
+	}
+	return "maps", stats, nil
 }
