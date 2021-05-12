@@ -82,12 +82,14 @@ type BeatSpec struct {
 }
 
 type DaemonSetSpec struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	// +kubebuilder:validation:Optional
 	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 type DeploymentSpec struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional

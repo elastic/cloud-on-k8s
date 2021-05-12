@@ -47,6 +47,7 @@ type MapsSpec struct {
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.

@@ -6768,6 +6768,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Kibana.
@@ -13581,6 +13582,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Kibana.

@@ -6671,6 +6671,7 @@ spec:
                         - containers
                         type: object
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -13306,6 +13307,7 @@ spec:
                         - containers
                         type: object
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   replicas:
                     format: int32
                     type: integer

@@ -42,6 +42,7 @@ type KibanaSpec struct {
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.

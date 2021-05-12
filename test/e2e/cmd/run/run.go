@@ -370,10 +370,9 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	_, err := h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
+	_, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml")
 	return err
 }
-
 func (h *helper) createOperatorNamespaces() error {
 	log.Info("Creating operator namespaces")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator_namespaces.yaml", h.testContext)

@@ -80,6 +80,11 @@ spec:
                   DaemonSet, and allows providing its spec. Cannot be used along with
                   `deployment`.
                 properties:
+                  podTemplate:
+                    description: PodTemplateSpec describes the data a pod should have
+                      when created from a template
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -123,6 +128,11 @@ spec:
                   a Deployment, and allows providing its spec. Cannot be used along
                   with `daemonSet`.
                 properties:
+                  podTemplate:
+                    description: PodTemplateSpec describes the data a pod should have
+                      when created from a template
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   replicas:
                     format: int32
                     type: integer
@@ -814,6 +824,7 @@ spec:
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for APM Server.
@@ -7642,6 +7653,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for APM Server.
@@ -7800,6 +7812,11 @@ spec:
                   DaemonSet, and allows providing its spec. Cannot be used along with
                   `deployment`. If both are absent a default for the Type is used.
                 properties:
+                  podTemplate:
+                    description: PodTemplateSpec describes the data a pod should have
+                      when created from a template
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -7843,6 +7860,11 @@ spec:
                   Deployment, and allows providing its spec. Cannot be used along
                   with `daemonSet`. If both are absent a default for the Type is used.
                 properties:
+                  podTemplate:
+                    description: PodTemplateSpec describes the data a pod should have
+                      when created from a template
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   replicas:
                     format: int32
                     type: integer
@@ -8549,6 +8571,7 @@ spec:
                   affinity rules, resource requests, and so on) for the Elastic Maps
                   Server pods
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (eg. Elasticsearch) in a different namespace.
@@ -11417,6 +11440,7 @@ spec:
                   affinity rules, resource requests, and so on) for the Enterprise
                   Search pods.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (eg. Elasticsearch) in a different namespace.
@@ -18218,6 +18242,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (eg. Elasticsearch) in a different namespace.
@@ -18759,6 +18784,7 @@ spec:
                 description: PodTemplate provides customisation options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Kibana.
@@ -25572,6 +25598,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Kibana.

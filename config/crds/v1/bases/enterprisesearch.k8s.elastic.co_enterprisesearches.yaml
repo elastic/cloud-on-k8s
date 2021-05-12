@@ -6782,6 +6782,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (eg. Elasticsearch) in a different namespace.
@@ -13583,6 +13584,7 @@ spec:
                     - containers
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (eg. Elasticsearch) in a different namespace.
