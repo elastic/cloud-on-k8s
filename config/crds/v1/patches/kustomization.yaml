@@ -1,0 +1,73 @@
+bases:
+  - ../bases
+
+patchesJson6902:
+  # patches that apply to all CRDS
+#  - target:
+#      group: apiextensions.k8s.io
+#      version: v1
+#      kind: CustomResourceDefinition
+#      name: apmservers.apm.k8s.elastic.co
+#    path: all-patches.yaml
+#  - target:
+#      group: apiextensions.k8s.io
+#      version: v1
+#      kind: CustomResourceDefinition
+#      name: elasticsearches.elasticsearch.k8s.elastic.co
+#    path: all-patches.yaml
+#  - target:
+#      group: apiextensions.k8s.io
+#      version: v1
+#      kind: CustomResourceDefinition
+#      name: kibanas.kibana.k8s.elastic.co
+#    path: all-patches.yaml
+  # custom patches for apm
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: apmservers.apm.k8s.elastic.co
+    path: apm-kibana-patches.yaml
+  # custom patches for Elasticsearch
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: elasticsearches.elasticsearch.k8s.elastic.co
+    path: elasticsearch-patches.yaml
+  # custom patches for Kibana
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: kibanas.kibana.k8s.elastic.co
+    path: apm-kibana-patches.yaml
+  # custom patches for EnterpriseSearch
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: enterprisesearches.enterprisesearch.k8s.elastic.co
+    path: ent-patches.yaml
+  # custom patches for Beat
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: beats.beat.k8s.elastic.co
+    path: beat-patches.yaml
+  # custom patches for Agent
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: agents.agent.k8s.elastic.co
+    path: agent-patches.yaml
+  # custom patches for Maps
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: elasticmapsservers.maps.k8s.elastic.co
+    path: ems-patches.yaml
+

@@ -53,7 +53,7 @@ func Generate(opts *GenerateFlags) error {
 	valueFiles = append(valueFiles, opts.ValueFiles...)
 
 	// set manifestGen flag
-	valueFlags := append(opts.Values, "internal.manifestGen=true")
+	valueFlags := append(opts.Values, "internal.manifestGen=true", "eck-operator-crds.internal.manifestGen=true")
 
 	valueOpts := &values.Options{
 		Values:     valueFlags,

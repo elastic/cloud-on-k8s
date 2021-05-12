@@ -33,6 +33,7 @@ type ApmServerSpec struct {
 	Count int32 `json:"count,omitempty"`
 
 	// Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for the APM Server resource.

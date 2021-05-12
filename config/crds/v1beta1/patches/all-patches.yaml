@@ -1,0 +1,8 @@
+# Add v1alpha1 to the list of versions, to not break compatibility when upgrading from previous versions of the CRD
+# that list the v1alpha1 version in their status.storedVersions. We mark it as `served: false` so it cannot be used.
+- op: add
+  path: /spec/versions/-
+  value:
+    name: v1alpha1
+    served: false
+    storage: false

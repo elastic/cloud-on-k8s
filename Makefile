@@ -23,8 +23,8 @@ GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/nu
 
 # find or download controller-gen
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.5.0)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.6.0-beta.0)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.0-beta.0)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -85,8 +85,7 @@ dependencies:
 	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
-ALL_CRDS=config/crds/all-crds.yaml
-generate: tidy generate-crds generate-config-file generate-api-docs generate-notice-file
+generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -95,16 +94,45 @@ go-generate:
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds: go-generate controller-gen
+generate-crds-v1: export ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
+generate-crds-v1: go-generate controller-gen
 	# Generate webhook manifest
 	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
 	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/patches > $(ALL_CRDS)
+	kubectl kustomize config/crds/v1/patches > config/crds/v1/all-crds.yaml
 	# generate an all-in-one version including the operator manifests
-	$(MAKE) --no-print-directory generate-all-in-one
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=telemetry.distributionChannel=all-in-one \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
+
+
+
+generate-crds-v1beta1: export ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-legacy.yaml
+generate-crds-v1beta1: go-generate controller-gen
+	# Generate webhook manifest
+	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
+	# Generate manifests e.g. CRD, RBAC etc.
+	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1beta1/bases
+	# apply patches to work around some CRD generation issues, and merge them into a single file
+	kubectl kustomize config/crds/v1beta1/patches > config/crds/v1beta1/all-crds.yaml
+	# generate an all-in-one version including the operator manifests
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=internal.kubeVersion=1.12.0 \
+		--set=eck-operator-crds.internal.kubeVersion=1.12.0 \
+		--set=telemetry.distributionChannel=all-in-one \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
 
 generate-config-file:
 	@hack/config-extractor/extract.sh
@@ -243,18 +271,6 @@ endif
 
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
-
-ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
-
-# merge all-in-one crds with operator manifests
-generate-all-in-one:
-	@ ./hack/manifest-gen/manifest-gen.sh -g \
-		--namespace=$(OPERATOR_NAMESPACE) \
-		--set=telemetry.distributionChannel=all-in-one \
-		--set=image.tag=$(IMG_VERSION) \
-		--set=image.repository=$(BASE_IMG) \
-		--set=nameOverride=$(OPERATOR_NAME) \
-		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release

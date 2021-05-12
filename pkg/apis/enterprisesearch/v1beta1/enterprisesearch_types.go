@@ -31,6 +31,7 @@ type EnterpriseSearchSpec struct {
 	Count int32 `json:"count,omitempty"`
 
 	// Config holds the Enterprise Search configuration.
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// ConfigRef contains a reference to an existing Kubernetes Secret holding the Enterprise Search configuration.

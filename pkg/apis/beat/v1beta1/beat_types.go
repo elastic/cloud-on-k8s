@@ -56,6 +56,7 @@ type BeatSpec struct {
 	// Beat settings must be specified as yaml, under a single "beat.yml" entry. At most one of [`Config`, `ConfigRef`]
 	// can be specified.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.
