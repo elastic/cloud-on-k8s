@@ -85,6 +85,8 @@ dependencies:
 	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
+ALL_CRDS=config/crds/v1/all-crds.yaml
+
 generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
 tidy:
@@ -102,7 +104,7 @@ generate-crds-v1: go-generate controller-gen
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/v1/patches > config/crds/v1/all-crds.yaml
+	kubectl kustomize config/crds/v1/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
@@ -170,11 +172,11 @@ unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 integration: GO_TAGS += integration
-integration: clean generate-crds
+integration: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean generate-crds
+integration-xml: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
@@ -190,8 +192,8 @@ upgrade-test: docker-build docker-push
 #############################
 ##  --       Run       --  ##
 #############################
-
-install-crds: generate-crds
+# TODO do the right thing depending on k8s version
+install-crds: generate-crds-v1
 	kubectl apply -f $(ALL_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
