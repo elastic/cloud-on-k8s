@@ -61,7 +61,6 @@ spec:
               description: Config holds the Agent configuration. At most one of [`Config`,
                 `ConfigRef`] can be specified.
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Agent configuration. Agent settings must be specified
@@ -344,7 +343,6 @@ spec:
             config:
               description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             count:
               description: Count of APM Server instances to deploy.
               format: int32
@@ -947,7 +945,6 @@ spec:
                   description: SecretName is the name of the secret.
                   type: string
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             daemonSet:
               description: DaemonSet specifies the Beat should be deployed as a DaemonSet,
                 and allows providing its spec. Cannot be used along with `deployment`.
@@ -1248,7 +1245,6 @@ spec:
               description: 'Config holds the ElasticMapsServer configuration. See:
                 https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Elastic Maps Server configuration. Configuration
@@ -2180,7 +2176,6 @@ spec:
                   config:
                     description: Config holds the Elasticsearch configuration.
                     type: object
-                    x-kubernetes-preserve-unknown-fields: true
                   count:
                     description: Count of Elasticsearch nodes to deploy. If the node
                       set is managed by an autoscaling policy the initial value is
@@ -2198,7 +2193,6 @@ spec:
                       annotations, affinity rules, resource requests, and so on) for
                       the Pods belonging to this NodeSet.
                     type: object
-                    x-kubernetes-preserve-unknown-fields: true
                   volumeClaimTemplates:
                     description: VolumeClaimTemplates is a list of persistent volume
                       claims to be used by each Pod in this NodeSet. Every claim in
@@ -2416,7 +2410,6 @@ spec:
                           type: object
                       type: object
                     type: array
-                    x-kubernetes-preserve-unknown-fields: true
                 required:
                 - name
                 type: object
@@ -3066,7 +3059,6 @@ spec:
             config:
               description: Config holds the Enterprise Search configuration.
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             configRef:
               description: ConfigRef contains a reference to an existing Kubernetes
                 Secret holding the Enterprise Search configuration. Configuration
@@ -3590,7 +3582,6 @@ spec:
             config:
               description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             count:
               description: Count of Kibana instances to deploy.
               format: int32

@@ -67,6 +67,7 @@ spec:
                 description: Config holds the Beat configuration. At most one of [`Config`,
                   `ConfigRef`] can be specified.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               configRef:
                 description: ConfigRef contains a reference to an existing Kubernetes
                   Secret holding the Beat configuration. Beat settings must be specified
@@ -77,7 +78,6 @@ spec:
                     description: SecretName is the name of the secret.
                     type: string
                 type: object
-                x-kubernetes-preserve-unknown-fields: true
               daemonSet:
                 description: DaemonSet specifies the Beat should be deployed as a
                   DaemonSet, and allows providing its spec. Cannot be used along with

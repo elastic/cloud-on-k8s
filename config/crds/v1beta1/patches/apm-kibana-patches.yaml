@@ -46,3 +46,6 @@
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/clusterIPs/x-kubernetes-list-type
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ipFamilies/x-kubernetes-list-type
+# we need to generate x-kubernetes-preserve-unknown-fields for v1 CRDs but they break v1beta so we have to remove them again here
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/config/x-kubernetes-preserve-unknown-fields
