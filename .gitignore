@@ -35,6 +35,7 @@ monitoring-secrets.json
 
 # generated from merging multiple files in the Makefile
 config/all-in-one.yaml
+config/all-in-one-legacy.yaml
 
 # ignore generated configuration
 config/eck.yaml

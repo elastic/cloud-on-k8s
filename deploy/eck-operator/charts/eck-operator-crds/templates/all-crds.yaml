@@ -248,8 +248,8 @@ spec:
                 type: array
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a Elasticsearch resource in a different namespace. Can
-                  only be used if ECK is enforcing RBAC on references.
+                  resource to an Elasticsearch resource in a different namespace.
+                  Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
                 description: Version of the Agent.
@@ -8077,7 +8077,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ElasticMapsServer represents a Elastic Map Server resource in
+        description: ElasticMapsServer represents an Elastic Map Server resource in
           a Kubernetes cluster.
         properties:
           apiVersion:
@@ -8093,7 +8093,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: MapsSpec holds the specification of a Elastic Maps Server
+            description: MapsSpec holds the specification of an Elastic Maps Server
               instance.
             properties:
               config:
