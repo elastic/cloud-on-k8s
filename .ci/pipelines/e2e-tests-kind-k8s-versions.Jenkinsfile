@@ -1,6 +1,6 @@
 // This library overrides the default checkout behavior to enable sleep+retries if there are errors
 // Added to help overcome some recurring github connection issues
-@Library('apm@current') _
+//@Library('apm@current') _
 
 def failedTests = []
 def lib
@@ -36,7 +36,7 @@ pipeline {
         stage('Run tests on different versions of vanilla K8s') {
             // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
             parallel {
-                stage("1.12.10") {
+               /* stage("1.12.10") {
                     agent {
                         label 'eck'
                     }
@@ -134,7 +134,7 @@ pipeline {
                             runTests(lib, failedTests, "kindest/node:v1.20.0@sha256:b40ecf8bcb188f6a0d0f5d406089c48588b75edc112c6f635d26be5de1c89040", "0.9.0", "ipv4")
                         }
                     }
-                }
+                }*/
                 stage("1.20.0 IPv6") {
                     agent {
                         label 'eck'
@@ -178,7 +178,7 @@ pipeline {
 def runTests(lib, failedTests, kindNodeImage, kindVersion, ipFamily) {
     sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage $kindVersion $ipFamily"
     script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=kind-e2e ci')
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-e2e ci')
 
         sh 'make -C .ci TARGET=e2e-generate-xml ci'
         junit "e2e-tests.xml"

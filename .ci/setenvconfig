@@ -116,9 +116,6 @@ TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
-KIND_NODE_IMAGE=$2
-KIND_VERSION=$3
-IP_FAMILY=$4
 
 PIPELINE=e2e/kind-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER
@@ -127,6 +124,19 @@ CLUSTER_NAME=kind-$BUILD_NUMBER
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="kind,$4"
 ENV
+write_deployer_config <<CFG
+id: kind-ci
+overrides:
+  clusterName: eck-e2e-$BUILD_NUMBER
+  clientVersion: $3
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  kind:
+    nodeImage: $2
+    ipFamily: $4
+CFG
 ;;
 
 ######################################
