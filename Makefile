@@ -512,7 +512,7 @@ ci-check: check-license-header lint shellcheck generate check-local-changes
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-multiarch-build
+setup-e2e: e2e-compile run-deployer apply-psp e2e-docker-multiarch-build
 
 ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run
