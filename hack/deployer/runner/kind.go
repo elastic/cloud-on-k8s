@@ -227,7 +227,7 @@ func (k *KindDriver) apiVersion() string {
 
 func (k *KindDriver) getKubeConfig() (*os.File, error) {
 	// Get kubeconfig from kind
-	output, err := k.cmd("get", "kubeconfig").Output()
+	output, err := k.cmd("get", "kubeconfig").WithoutStreaming().Output()
 	if err != nil {
 		return nil, err
 	}
