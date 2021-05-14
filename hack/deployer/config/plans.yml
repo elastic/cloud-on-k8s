@@ -150,3 +150,13 @@ plans:
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: kind-dev
+  operation: create
+  clusterName: eck
+  clientVersion: 0.9.0
+  provider: kind
+  kubernetesVersion: 1.20.0
+  kind:
+    nodeCount: 3
+    nodeImage: kindest/node:v1.20.0
+    ipFamily: ipv4

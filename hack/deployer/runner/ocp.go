@@ -209,14 +209,6 @@ func (d *OcpDriver) GetCredentials() error {
 	return d.copyKubeconfig()
 }
 
-func run(steps []func() error) error {
-	for _, fn := range steps {
-		if err := fn(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func (d *OcpDriver) setupDisks() error {
 	return setupDisks(d.plan)
@@ -400,41 +392,15 @@ func (d *OcpDriver) copyKubeconfig() error {
 	log.Printf("Copying  credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
-	// 1. do we have something to copy?
-	if _, err := os.Stat(kubeConfig); os.IsNotExist(err) {
-		return errors.New("OpenShift's kubeconfig file does not exist")
-	}
-
-	// 2. is there any existing kubeconfig?
-	hostKubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	if _, err := os.Stat(hostKubeconfig); os.IsNotExist(err) {
-		// if no just copy it over
-		return copyFile(kubeConfig, hostKubeconfig)
-	}
-	// 3. if there is existing configuration  attempt to merge both
-	merged, err := NewCommand("kubectl config view --flatten").
-		WithLog("Merging kubeconfig with").
-		WithoutStreaming().
-		WithVariable("KUBECONFIG", fmt.Sprintf("%s:%s", hostKubeconfig, kubeConfig)).
-		Output()
-	if err != nil {
+	// 1. merge or create kubeconfig
+	if err := mergeKubeconfig(kubeConfig); err != nil {
 		return err
 	}
-
-	if err := ioutil.WriteFile(hostKubeconfig, []byte(merged), 0600); err != nil {
-		return err
-	}
-	// 4. after merging make sure that the ocp context, which is always called `admin`
+	// 2. after merging make sure that the ocp context is in use, which is always called `admin`
 	return NewCommand("kubectl config use-context admin").Run()
 }
 
-func copyFile(src, tgt string) error {
-	if err := os.MkdirAll(filepath.Dir(tgt), os.ModePerm); err != nil {
-		return err
-	}
-	cmd := fmt.Sprintf("cp %s %s", src, tgt)
-	return NewCommand(cmd).WithoutStreaming().WithLog("Copying kubeconfig").Run()
-}
+
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
 	return map[string]interface{}{

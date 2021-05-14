@@ -13,12 +13,12 @@ import (
 )
 
 func GetCommand() *cobra.Command {
-	var plansFile, configFile *string
+	var plansFile, configFile, clientBuildDefDir *string
 	var getCommand = &cobra.Command{
 		Use:   "get",
 		Short: "Gets cluster configuration, credentials.",
 	}
-	plansFile, configFile = registerFileFlags(getCommand)
+	plansFile, configFile, clientBuildDefDir = registerFileFlags(getCommand)
 
 	var getClusterNameCommand = &cobra.Command{
 		Use:   "clusterName",
@@ -29,7 +29,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			plan, err := runner.GetPlan(plans.Plans, runConfig, "")
+			plan, err := runner.GetPlan(plans.Plans, runConfig, *clientBuildDefDir)
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			driver, err := runner.GetDriver(plans.Plans, runConfig, "")
+			driver, err := runner.GetDriver(plans.Plans, runConfig, *clientBuildDefDir)
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			plan, err := runner.GetPlan(plans.Plans, runConfig, "")
+			plan, err := runner.GetPlan(plans.Plans, runConfig, *clientBuildDefDir)
 			if err != nil {
 				return err
 			}
