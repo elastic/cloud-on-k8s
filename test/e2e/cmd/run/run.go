@@ -352,6 +352,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
 		"-g",
 		"-n", namespace,
+		fmt.Sprintf("--set=global.kubeVersion=%s", h.testContext.KubernetesVersion),
 		fmt.Sprintf("--set=installCRDs=%t", installCRDs),
 		fmt.Sprintf("--values=%s", values),
 	).Build()

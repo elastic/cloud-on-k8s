@@ -54,8 +54,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Determine effective Kubernetes version
 */}}
 {{- define "eck-operator-crds.effectiveKubeVersion" -}}
-{{- if .Values.internal.manifestGen -}}
-{{- semver .Values.internal.kubeVersion -}}
+{{- if .Values.global.manifestGen -}}
+{{- semver .Values.global.kubeVersion -}}
 {{- else -}}
 {{- .Capabilities.KubeVersion.Version -}}
 {{- end -}}

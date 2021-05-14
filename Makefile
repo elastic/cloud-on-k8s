@@ -128,8 +128,7 @@ generate-crds-v1beta1: go-generate controller-gen
 	# generate an all-in-one version including the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
-		--set=internal.kubeVersion=1.12.0 \
-		--set=eck-operator-crds.internal.kubeVersion=1.12.0 \
+		--set=global.kubeVersion=1.12.0 \
 		--set=telemetry.distributionChannel=all-in-one \
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \

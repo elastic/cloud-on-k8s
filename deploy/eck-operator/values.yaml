@@ -199,8 +199,8 @@ podMonitor:
   podMetricsEndpointConfig: {}
   # honorTimestamps: true
 
-# Internal use only
-internal:
+# Globals meant for internal use only
+global:
   # manifestGen specifies whether the chart is running under manifest generator. 
   # This is used for tasks specific to generating the all-in-one.yaml file.
   manifestGen: false
