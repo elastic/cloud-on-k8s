@@ -117,15 +117,15 @@ func Test_GetResources(t *testing.T) {
 				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
 					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("1Gi")}}}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("6Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
 					currentNodeStorage("960Mi").  // physical capacity as reported by Elasticsearch, a bit smaller than 1Gi
 					currentTierStorage("1920Mi"). // 2 nodes with storage capacity ~1Gi in the current tier
 					// required storage capacity as expressed by the deciders
-					requiredNodeMemory("3Gi").requiredNodeStorage("8Gi").
-					requiredTierMemory("9Gi").requiredTierStorage("50Gi").
+					requiredNodeMemory("3Gi").requiredTierMemory("9Gi").
+					requiredNodeStorage("7Gi").requiredTierStorage("43Gi").
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("3Gi", "4Gi").WithStorage("5Gi", "10Gi").Build(),
 			},
@@ -139,7 +139,61 @@ func Test_GetResources(t *testing.T) {
 			},
 		},
 		{
-			name: "Scale existing nodes vertically",
+			name: "Scale storage vertically to handle total storage requirement",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
+				},
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
+					currentNodeStorage("1020M"). // 1Gi (1073MB) * 0.95
+					currentTierStorage("2040M"). // 1Gi (1073MB) * 0.95 * 2
+					observedNodes("default-0", "default-1").
+					requiredNodeStorage("600Mi"). // largest shard can still fit in the current 1Gi storage
+					requiredTierStorage("2044M"). // Storage deciders want a bit more than the current observed storage
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(2, 3).WithMemory("2Gi", "4Gi").WithStorage("1Gi", "2Gi").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}}, // Only scale vertically, do not scale out.
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi"), corev1.ResourceStorage: q("2Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi")},
+				},
+			},
+		},
+		{
+			name: "Scale storage vertically to handle large shard",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "my-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
+				},
+				requiredCapacity: newAutoscalingPolicyResultBuilder().
+					currentNodeStorage("1020M"). // 1Gi (1073MB) * 0.95
+					currentTierStorage("2040M"). // 1Gi (1073MB) * 0.95 * 2
+					observedNodes("default-0", "default-1").
+					requiredNodeStorage("1022M"). // Scale up vertically to accommodate for a large shard.
+					requiredTierStorage("2044M"). // Storage deciders want a bit more than the current observed storage.
+					build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(2, 3).WithMemory("2Gi", "4Gi").WithStorage("1Gi", "2Gi").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "my-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}}, // Only scale vertically, do not scale out.
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi"), corev1.ResourceStorage: q("2Gi")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi")},
+				},
+			},
+		},
+		{
+			name: "Scale memory vertically",
 			args: args{
 				currentNodeSets: defaultNodeSets,
 				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{

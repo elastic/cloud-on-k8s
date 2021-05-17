@@ -6,6 +6,7 @@ package recommender
 
 import (
 	"fmt"
+	"math"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
@@ -60,8 +61,8 @@ func (s *storage) NodeResourceQuantity() resource.Quantity {
 			s.autoscalingSpec,
 			s.statusBuilder,
 			string(s.ManagedResource()),
-			s.requiredNodeStorageCapacity,
-			s.requiredTotalStorageCapacity,
+			adjustRequiredStorage(s.requiredNodeStorageCapacity),
+			adjustRequiredStorage(s.requiredTotalStorageCapacity),
 			*s.autoscalingSpec.StorageRange,
 		)
 	} else {
@@ -123,13 +124,14 @@ func (s *storage) NodeCount(nodeCapacity resources.NodeResources) int32 {
 	currentResources, hasResources := s.currentAutoscalingStatus.CurrentResourcesForPolicy(s.autoscalingSpec.Name)
 	if !hasResources || s.requiredTotalStorageCapacity.Value() > s.observedTotalStorageCapacity.Value() {
 		nodeStorage := nodeCapacity.GetRequest(corev1.ResourceStorage)
+		adjustedTotalRequiredCapacity := adjustRequiredStorage(s.requiredTotalStorageCapacity)
 		return getNodeCount(
 			s.log,
 			s.autoscalingSpec,
 			s.statusBuilder,
 			string(s.ManagedResource()),
 			nodeStorage.Value(),
-			s.requiredTotalStorageCapacity.Value(),
+			adjustedTotalRequiredCapacity.Value(),
 		)
 	}
 	return s.autoscalingSpec.NodeCountRange.Enforce(currentResources.NodeSetNodeCount.TotalNodeCount())
@@ -210,4 +212,13 @@ func getMinStorageQuantity(autoscalingSpec esv1.AutoscalingPolicySpec, currentAu
 		}
 	}
 	return storage
+}
+
+var usableDiskPercent = 0.95
+
+// adjustRequiredStorage adjust the required capacity from Elasticsearch to account for the filesystem reserved space.
+// In the worst case we consider that Elasticsearch is only able to use 95% of the persistent volume capacity.
+func adjustRequiredStorage(v *client.AutoscalingCapacity) *client.AutoscalingCapacity {
+	adjustedStorage := client.AutoscalingCapacity(math.Ceil(float64(v.Value()) / usableDiskPercent))
+	return &adjustedStorage
 }

@@ -105,8 +105,8 @@ func getResourceValue(
 	// This is done to check if the required resources at the tier level can fit on the minimum number of nodes scaled to
 	// their maximums, and thus avoid to scale horizontally while scaling vertically to the maximum is enough.
 	if totalRequired != nil && minNodesCount > 0 {
-		memoryOverAllTiers := (totalRequired).Value() / minNodesCount
-		nodeResource = max64(nodeResource, memoryOverAllTiers)
+		resourceOverAllTiers := (totalRequired).Value() / minNodesCount
+		nodeResource = max64(nodeResource, resourceOverAllTiers)
 	}
 
 	// Try to round up the Gb value

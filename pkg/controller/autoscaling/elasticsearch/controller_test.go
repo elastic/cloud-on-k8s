@@ -175,10 +175,10 @@ func TestReconcile(t *testing.T) {
 				Requeue:      true,
 				RequeueAfter: 42 * time.Second,
 			},
-			wantEvents: []string{"Warning HorizontalScalingLimitReached Can't provide total required storage 37106614256, max number of nodes is 8, requires 9 nodes"},
+			wantEvents: []string{"Warning HorizontalScalingLimitReached Can't provide total required storage 39059593954, max number of nodes is 8, requires 10 nodes"},
 		},
 		{
-			name: "Cluster is online, data tier needs to be scaled up from 8 to 9 nodes",
+			name: "Cluster is online, data tier needs to be scaled up from 8 to 10 nodes",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("storage-scaled-horizontally"),
 				recorder:       record.NewFakeRecorder(1000),
@@ -290,6 +290,7 @@ func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
 		gotPolicyStatus := getPolicyStatus(gotStatus.AutoscalingPolicyStatuses, wantPolicyStatus.Name)
 		require.NotNil(t, gotPolicyStatus, "Autoscaling policy not found")
 		require.ElementsMatch(t, gotPolicyStatus.NodeSetNodeCount, wantPolicyStatus.NodeSetNodeCount)
+		require.ElementsMatch(t, gotPolicyStatus.PolicyStates, wantPolicyStatus.PolicyStates)
 		for resource := range wantPolicyStatus.ResourcesSpecification.Requests {
 			require.True(
 				t,
