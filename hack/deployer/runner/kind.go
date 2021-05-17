@@ -6,14 +6,16 @@ package runner
 
 import (
 	"fmt"
-	"github.com/blang/semver/v4"
 	"io/fs"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/blang/semver/v4"
 )
 
 const (
@@ -26,7 +28,7 @@ overrides:
 	KindConfigFileName = "deployer-config-kind.yml"
 	// manifest is a kind cluster template
 	// the explicit podSubnet definition can be removed as soon as https://github.com/kubernetes-sigs/kind/commit/60074a9e67ddc8d35d3468ab137358b62a4cf723
-	// will be available in a released version of kind
+	// will be available in a released version of kind and we don't rely on older versions anymore
 	manifest = `---
 kind: Cluster
 apiVersion: {{.APIVersion}}
@@ -73,14 +75,8 @@ type KindDriver struct {
 	clientImage string
 }
 
-func(k *KindDriver)  setup() []func() error{
-	return []func()error {
-		k.ensureClientImage,
-	}
-}
-
 func (k *KindDriver) Execute() error {
-	if err := run(k.setup()); err != nil {
+	if err := k.ensureClientImage(); err != nil {
 		return err
 	}
 
@@ -94,7 +90,6 @@ func (k *KindDriver) Execute() error {
 }
 
 func (k *KindDriver) create() error {
-
 	// Write manifest to temporary file
 	tmpManifest, err := k.createTmpManifest()
 	if err != nil {
@@ -122,7 +117,6 @@ func (k *KindDriver) create() error {
 
 	// Delete standard storage class but ignore error if not found
 	if err := kubectl("--kubeconfig", kubeCfg.Name(), "delete", "storageclass", "standard"); err != nil {
-		println(err.Error())
 		return err
 	}
 
@@ -131,10 +125,7 @@ func (k *KindDriver) create() error {
 		return err
 	}
 
-	if err := kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass); err != nil {
-		return err
-	}
-	return nil
+	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)
 }
 
 func (k *KindDriver) inContainerName(file *os.File) string {
@@ -143,10 +134,9 @@ func (k *KindDriver) inContainerName(file *os.File) string {
 
 func kubectl(arg ...string) error {
 	output, err := NewCommand(`kubectl {{Join .Args " "}}`).AsTemplate(map[string]interface{}{"Args": arg}).Output()
-	fmt.Println(string(output))
-	if err != nil && strings.Contains(string(output), "Error from server (NotFound)") {
-		fmt.Printf("Ignoring NotFound error for command: %v\n", arg)
-		return nil //ignore not found errors
+	if err != nil && strings.Contains(output, "Error from server (NotFound)") {
+		log.Printf("Ignoring NotFound error for command: %v\n", arg)
+		return nil // ignore not found errors
 	}
 	return err
 }
@@ -195,7 +185,6 @@ func (k *KindDriver) workerNames() []string {
 }
 
 func (k *KindDriver) cmd(args ...string) *Command {
-
 	params := map[string]interface{}{
 		"SharedVolume":    SharedVolumeName(),
 		"KindClientImage": k.clientImage,
@@ -246,7 +235,7 @@ func (k *KindDriver) getKubeConfig() (*os.File, error) {
 }
 
 func (k *KindDriver) GetCredentials() error {
-	if err := run(k.setup()); err != nil {
+	if err := k.ensureClientImage(); err != nil {
 		return err
 	}
 

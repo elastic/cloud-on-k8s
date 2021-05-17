@@ -1,6 +1,6 @@
 // This library overrides the default checkout behavior to enable sleep+retries if there are errors
 // Added to help overcome some recurring github connection issues
-//@Library('apm@current') _
+@Library('apm@current') _
 
 def failedTests = []
 def lib
@@ -47,7 +47,6 @@ pipeline {
                         }
                     }
                 }
-                /*
                 stage("1.13.12") {
                     agent {
                         label 'eck'
@@ -135,7 +134,7 @@ pipeline {
                             runTests(lib, failedTests, "kindest/node:v1.20.0@sha256:b40ecf8bcb188f6a0d0f5d406089c48588b75edc112c6f635d26be5de1c89040", "0.9.0", "ipv4")
                         }
                     }
-                }*/
+                }
                 stage("1.20.0 IPv6") {
                     agent {
                         label 'eck'

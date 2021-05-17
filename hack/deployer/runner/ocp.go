@@ -209,6 +209,14 @@ func (d *OcpDriver) GetCredentials() error {
 	return d.copyKubeconfig()
 }
 
+func run(steps []func() error) error {
+	for _, fn := range steps {
+		if err := fn(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (d *OcpDriver) setupDisks() error {
 	return setupDisks(d.plan)
@@ -399,8 +407,6 @@ func (d *OcpDriver) copyKubeconfig() error {
 	// 2. after merging make sure that the ocp context is in use, which is always called `admin`
 	return NewCommand("kubectl config use-context admin").Run()
 }
-
-
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
 	return map[string]interface{}{
