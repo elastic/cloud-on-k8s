@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/go-logr/logr"
@@ -171,18 +170,19 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 				"required_capacity", autoscalingPolicyResult.RequiredCapacity,
 				"current_capacity", autoscalingPolicyResult.CurrentCapacity,
 				"current_capacity.count", len(autoscalingPolicyResult.CurrentNodes),
-				"current_nodes", autoscalingPolicyResult.CurrentNodes)
-			// Ensure that the user provides the related resources policies
-			if !canDecide(log, autoscalingPolicyResult.RequiredCapacity, autoscalingPolicy, statusBuilder) {
+				"current_nodes", autoscalingPolicyResult.CurrentNodes,
+			)
+			ctx, err := autoscaler.NewContext(
+				log,
+				autoscalingPolicy,
+				nodeSetList,
+				currentAutoscalingStatus,
+				autoscalingPolicyResult,
+				statusBuilder,
+			)
+			if err != nil {
+				log.Error(err, "Error while creating autoscaling context for policy", "policy", autoscalingPolicy.Name)
 				continue
-			}
-			ctx := autoscaler.Context{
-				Log:                      log,
-				AutoscalingSpec:          autoscalingPolicy,
-				NodeSets:                 nodeSetList,
-				CurrentAutoscalingStatus: currentAutoscalingStatus,
-				AutoscalingPolicyResult:  autoscalingPolicyResult,
-				StatusBuilder:            statusBuilder,
 			}
 			nodeSetsResources = ctx.GetResources()
 		} else {
@@ -218,25 +218,6 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 		return results.WithError(err).Aggregate()
 	}
 	return reconcile.Result{}, nil
-}
-
-// canDecide ensures that the user has provided resource ranges to process the Elasticsearch API autoscaling response.
-// Expected ranges are not consistent across all deciders. For example ml may only require memory limits, while processing
-// data deciders response may require storage limits.
-// Only memory and storage are supported since CPU is not part of the autoscaling API specification.
-func canDecide(log logr.Logger, requiredCapacity esclient.AutoscalingCapacityInfo, spec esv1.AutoscalingPolicySpec, statusBuilder *status.AutoscalingStatusBuilder) bool {
-	result := true
-	if (requiredCapacity.Node.Memory != nil || requiredCapacity.Total.Memory != nil) && !spec.IsMemoryDefined() {
-		log.Error(fmt.Errorf("min and max memory must be specified"), "Min and max memory must be specified", "policy", spec.Name)
-		statusBuilder.ForPolicy(spec.Name).RecordEvent(status.MemoryRequired, "Min and max memory must be specified")
-		result = false
-	}
-	if (requiredCapacity.Node.Storage != nil || requiredCapacity.Total.Storage != nil) && !spec.IsStorageDefined() {
-		log.Error(fmt.Errorf("min and max memory must be specified"), "Min and max storage must be specified", "policy", spec.Name)
-		statusBuilder.ForPolicy(spec.Name).RecordEvent(status.StorageRequired, "Min and max storage must be specified")
-		result = false
-	}
-	return result
 }
 
 // doOfflineReconciliation runs an autoscaling reconciliation if the autoscaling API is not ready (yet).

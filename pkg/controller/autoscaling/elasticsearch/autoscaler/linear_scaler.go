@@ -7,6 +7,8 @@ package autoscaler
 import (
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/autoscaler/recommender"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -36,7 +38,7 @@ func cpuFromMemory(requiredMemoryCapacity resource.Quantity, memoryRange, cpuRan
 	requiredCPUCapacityAsMilli := cpuRange.Min.MilliValue() + requiredAdditionalCPUCapacity
 
 	// Round up memory to the next core
-	requiredCPUCapacityAsMilli = roundUp(requiredCPUCapacityAsMilli, 1000)
+	requiredCPUCapacityAsMilli = recommender.RoundUp(requiredCPUCapacityAsMilli, 1000)
 	requiredCPUCapacity := resource.NewQuantity(requiredCPUCapacityAsMilli/1000, resource.DecimalSI).DeepCopy()
 	if requiredCPUCapacity.Cmp(cpuRange.Max) > 0 {
 		requiredCPUCapacity = cpuRange.Max.DeepCopy()
@@ -67,7 +69,7 @@ func memoryFromStorage(requiredStorageCapacity resource.Quantity, storageRange, 
 	requiredMemoryCapacity := memoryRange.Min.Value() + requiredAdditionalMemoryCapacity
 
 	// Round up memory to the next GB
-	requiredMemoryCapacity = roundUp(requiredMemoryCapacity, resources.GIB)
+	requiredMemoryCapacity = recommender.RoundUp(requiredMemoryCapacity, resources.GIB)
 	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/resources.GIB))
 
 	if resourceMemoryAsGiga.Cmp(memoryRange.Max) > 0 {
