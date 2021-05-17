@@ -24,6 +24,7 @@ import (
 	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/kubectl/pkg/scheme"
@@ -204,6 +205,10 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 		return nil, fmt.Errorf("failed to register api-extensions: %w", err)
 	}
 
+	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, fmt.Errorf("failed to register api-extensions: %w", err)
+	}
+
 	decoder := scheme.Codecs.UniversalDeserializer()
 	yamlReader := yaml.NewYAMLReader(bufio.NewReader(stream))
 
@@ -233,6 +238,14 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 				Group:   obj.Spec.Group,
 				Kind:    obj.Spec.Names.Kind,
 				Version: obj.Spec.Version,
+				Def:     yamlBytes,
+			}
+		case *apiextv1.CustomResourceDefinition:
+			parts.crds[obj.Name] = &CRD{
+				Name:    obj.Name,
+				Group:   obj.Spec.Group,
+				Kind:    obj.Spec.Names.Kind,
+				Version: obj.Spec.Versions[0].Name,
 				Def:     yamlBytes,
 			}
 		case *rbacv1.ClusterRole:
