@@ -7,19 +7,17 @@ package recommender
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/go-logr/logr"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-// Recommender implements the logic to calculate the resource quantity required for a given resource both at the node
-// and the tier (autoscaling policy) level.
+// Recommender implements the logic to calculate the resource quantity required for a given resource at both node
+// and tier (autoscaling policy) level.
 type Recommender interface {
 	// ManagedResource returns the type of resource managed by this recommender.
 	ManagedResource() corev1.ResourceName
@@ -27,10 +25,12 @@ type Recommender interface {
 	HasResourceRecommendation() bool
 	// NodeResourceQuantity returns the advised Pod resource quantity to be set for this resource.
 	NodeResourceQuantity() resource.Quantity
-	// NodeCount returns the advised number of Pods required to fulfill the resource required by Elasticsearch.
+	// NodeCount returns the advised number of Pods required to fulfill the resource required by Elasticsearch given
+	// resources allocated to a single node.
 	NodeCount(nodeCapacity resources.NodeResources) int32
 }
 
+// base is a struct shared by all the recommenders.
 type base struct {
 	log                      logr.Logger
 	statusBuilder            *status.AutoscalingStatusBuilder
@@ -73,7 +73,6 @@ func getResourceValue(
 	totalRequired *client.AutoscalingCapacity, // tier required capacity as returned by the Elasticsearch API, considered as optional
 	quantityRange esv1.QuantityRange, // as expressed by the user
 ) resource.Quantity {
-
 	max := quantityRange.Max.Value()
 	// Surface the situation where a resource is exhausted.
 	if nodeRequired.Value() > max {

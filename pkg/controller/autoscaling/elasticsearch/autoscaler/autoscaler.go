@@ -129,10 +129,6 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 func (ctx *Context) scaleHorizontally(
 	nodeCapacity resources.NodeResources, // resources for each node in the tier/policy, as computed by the vertical autoscaler.
 ) resources.NodeSetsResources {
-
-	// The vertical autoscaler computed the expected capacity for each node in the autoscaling policy. The minimum number of nodes, specified by the user
-	// in AutoscalingSpec.NodeCountRange.Min, can then be used to know what amount of resources we already have (AutoscalingSpec.NodeCountRange.Min * nodeCapacity).
-	// nodesToAdd is the number of nodes to be added to that min. amount of resources to match the required capacity.
 	var nodeCount int32
 	for _, recommender := range ctx.Recommenders {
 		if recommender.HasResourceRecommendation() {

@@ -33,9 +33,6 @@ type storage struct {
 	// to accurately detect the storage capacity that can be used by Elasticsearch.
 	observedTotalStorageCapacity, observedNodeStorageCapacity client.AutoscalingCapacity
 
-	// observedNodeCount is the number of nodes currently observed by Elasticsearch
-	observedNodeCount int
-
 	requiredNodeStorageCapacity, requiredTotalStorageCapacity *client.AutoscalingCapacity
 }
 
@@ -90,7 +87,7 @@ func (s *storage) shouldScaleUp() bool {
 	if s.observedNodeStorageCapacity.Value() > currentClaimedStorage.Value() {
 		// Log a warning and ensure we max out the storage in the claim to also scale up dependant resources like memory or CPU.
 		s.log.Info(
-			"Current node storage capacity is greater than the one specified in the autoscaling specification.",
+			"Vertical Pod autoscaling deprecated: current node storage capacity is greater than the claimed capacity.",
 			"policy", s.autoscalingSpec.Name,
 			"scope", "node",
 			"resource", "storage",
@@ -104,7 +101,7 @@ func (s *storage) shouldScaleUp() bool {
 			RecordEvent(
 				status.UnexpectedNodeStorageCapacity,
 				fmt.Sprintf(
-					"Current node storage capacity %d is greater than the claimed capacity %d",
+					"Vertical Pod autoscaling deprecated: current node storage capacity %d is greater than the claimed capacity %d",
 					s.observedNodeStorageCapacity.Value(),
 					currentClaimedStorage.Value(),
 				),
@@ -116,9 +113,6 @@ func (s *storage) shouldScaleUp() bool {
 }
 
 func (s *storage) NodeCount(nodeCapacity resources.NodeResources) int32 {
-	if s.hasZeroRequirement {
-		return 0
-	}
 	// Elasticsearch does not support data nodes scale down, always check if we should scale up first.
 	// Otherwise return the current node count.
 	currentResources, hasResources := s.currentAutoscalingStatus.CurrentResourcesForPolicy(s.autoscalingSpec.Name)
@@ -186,8 +180,6 @@ func NewStorageRecommender(
 		// Observed storage capacity is retrieved from the Elasticsearch autoscaling response.
 		observedNodeStorageCapacity:  *autoscalingPolicyResult.CurrentCapacity.Node.Storage,
 		observedTotalStorageCapacity: *autoscalingPolicyResult.CurrentCapacity.Total.Storage,
-		// Observed number of nodes
-		observedNodeCount: len(autoscalingPolicyResult.CurrentNodes),
 	}
 
 	return &storageRecommender, nil

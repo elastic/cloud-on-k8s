@@ -71,7 +71,7 @@ func Test_GetResources(t *testing.T) {
 				{
 					// We expect a warning here because the user expects the operator to scale storage vertically, while the physical capacity diverges from the claimed one.
 					Type:     status.UnexpectedNodeStorageCapacity,
-					Messages: []string{"Current node storage capacity 395136991232 is greater than the claimed capacity 1073741824"},
+					Messages: []string{"Vertical Pod autoscaling deprecated: current node storage capacity 395136991232 is greater than the claimed capacity 1073741824"},
 				},
 			},
 		},
@@ -594,16 +594,6 @@ func (rcb *autoscalingPolicyResultBuilder) requiredNodeStorage(m string) *autosc
 
 func (rcb *autoscalingPolicyResultBuilder) requiredTierStorage(m string) *autoscalingPolicyResultBuilder {
 	rcb.RequiredCapacity.Total.Storage = ptr(value(m))
-	return rcb
-}
-
-func (rcb *autoscalingPolicyResultBuilder) currentNodeMemory(m string) *autoscalingPolicyResultBuilder {
-	rcb.CurrentCapacity.Node.Memory = ptr(value(m))
-	return rcb
-}
-
-func (rcb *autoscalingPolicyResultBuilder) currentTierMemory(m string) *autoscalingPolicyResultBuilder {
-	rcb.CurrentCapacity.Total.Memory = ptr(value(m))
 	return rcb
 }
 

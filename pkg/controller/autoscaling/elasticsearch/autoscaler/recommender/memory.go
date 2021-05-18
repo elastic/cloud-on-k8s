@@ -18,11 +18,6 @@ import (
 
 type memory struct {
 	base
-
-	// hasZeroRequirement is true when ES returns a requirement set to 0, just return the min storage in that case
-	hasZeroRequirement bool
-
-	storageRange                                            esv1.QuantityRange
 	requiredNodeMemoryCapacity, requiredTotalMemoryCapacity *client.AutoscalingCapacity
 }
 
@@ -91,8 +86,6 @@ func NewMemoryRecommender(
 			statusBuilder:            statusBuilder,
 			currentAutoscalingStatus: currentAutoscalingStatus,
 		},
-		hasZeroRequirement: autoscalingPolicyResult.RequiredCapacity.Node.Memory.IsZero() &&
-			autoscalingPolicyResult.RequiredCapacity.Total.Memory.IsZero(),
 		requiredTotalMemoryCapacity: autoscalingPolicyResult.RequiredCapacity.Total.Memory,
 		requiredNodeMemoryCapacity:  autoscalingPolicyResult.RequiredCapacity.Node.Memory,
 	}
