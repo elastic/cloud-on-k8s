@@ -28,7 +28,7 @@ sleep 1
 }
 
 run_chaos() {
-  go run test/e2e/cmd/main.go chaos "$@"
+  go run -tags="$E2E_TAGS" test/e2e/cmd/main.go chaos "$@"
 }
 
 main() {
