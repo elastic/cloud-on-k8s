@@ -18,4 +18,4 @@ In this release, ECK introduces the Elastic Maps Server CRD that allows you to r
 [id="{p}-160-service-name-in-associations"]
 ==== Support for custom services in associations between components
 
-When creating associations between components, for example using `elasticsearchRef`, it is now possible to specify a custom service name and this way only target specific nodes. For example, this is useful for configuring Kibana to target only Elasticsearch coordinator nodes by referencing a custom service selecting only coordinating nodes.
+When you create associations between components, for example using `elasticsearchRef`, you can now specify a custom service name to target specific nodes. For example, if you want to configure Kibana to target only Elasticsearch coordinating nodes, you can now reference a custom service by selecting only coordinating nodes.
