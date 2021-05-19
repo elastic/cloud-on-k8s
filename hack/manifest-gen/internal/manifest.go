@@ -49,7 +49,10 @@ func Generate(opts *GenerateFlags) error {
 		return err
 	}
 
-	valueFiles := []string{filepath.Join(chartPath, fmt.Sprintf("profile-%s.yaml", opts.Profile))}
+	valueFiles := []string{}
+	if opts.Profile != "" {
+		valueFiles = append(valueFiles, filepath.Join(chartPath, fmt.Sprintf("profile-%s.yaml", opts.Profile)))
+	}
 	valueFiles = append(valueFiles, opts.ValueFiles...)
 
 	// set manifestGen flag

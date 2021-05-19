@@ -6,7 +6,6 @@
 
 ROOT_DIR               := $(CURDIR)/..
 GO_MOUNT_PATH          ?= /go/src/github.com/elastic/cloud-on-k8s
-S3_ECK_DIR             ?= s3://download.elasticsearch.org/downloads/eck
 DOCKER_LOGIN           ?= eckadmin
 
 -include $(ROOT_DIR)/.env
@@ -109,15 +108,11 @@ license.key:
 yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
 yaml-upload: AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
 yaml-upload: AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
-yaml-upload: YAML_SRC_V1 = "$(GO_MOUNT_PATH)/config/all-in-one.yaml"
-yaml-upload: YAML_SRC_V1BETA1 = "$(GO_MOUNT_PATH)/config/all-in-one-legacy.yaml"
-yaml-upload: YAML_DST_V1 = "$(S3_ECK_DIR)/$(VERSION)/all-in-one.yaml"
-yaml-upload: YAML_DST_V1BETA1 = "$(S3_ECK_DIR)/$(VERSION)/all-in-one-legacy.yaml"
 yaml-upload:
 ifndef VERSION
 	$(error VERSION not set to upload YAML to S3)
 endif
 	@ $(MAKE) \
-		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
-		DOCKER_CMD="aws s3 ls $(YAML_DST) && echo OK: $(YAML_DST) already uploaded || aws s3 cp $(YAML_SRC_V1) $(YAML_DST_V1) || aws s3 cp $(YAML_SRC_V1BETA1) $(YAML_DST_V1BETA1)" \
+		DOCKER_OPTS="-e VERSION=$(VERSION) -e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
+		DOCKER_CMD="hack/manifest-upload.sh" \
 		ci-internal

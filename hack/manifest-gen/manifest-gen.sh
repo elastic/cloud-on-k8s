@@ -11,6 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHART_DIR="${SCRIPT_DIR}/../../deploy/eck-operator"
 CRD_CHART_DIR="${CHART_DIR}/charts/eck-operator-crds"
+EFFECTIVE_SRC_CHART_DIR=${CHART_DIR}
 
 update_chart() {
     local ALL_CRDS="${SCRIPT_DIR}/../../config/crds/v1/all-crds.yaml"
@@ -56,14 +57,19 @@ usage() {
     echo "         Update the chart (version and CRDs) and exit"
     echo "    '-g'"
     echo "         Generate manifest using the given arguments"
+    echo "    '-c'"
+    echo "         Only generate the CRDs manifests"
     echo ""
     echo "Example: $0 -g --profile=restricted --set=operator.namespace=myns"
     exit 2
 }
 
 
-while getopts "ug" OPT; do
+while getopts "cug" OPT; do
     case "$OPT" in
+        c)
+            EFFECTIVE_SRC_CHART_DIR=$CRD_CHART_DIR
+            ;;
         u)
             update_chart
             exit 0
@@ -74,8 +80,9 @@ while getopts "ug" OPT; do
             ARGS=("$@")
             (
                 cd "$SCRIPT_DIR"
-                go build -o manifest-gen >/dev/null 2>&1 
-                ./manifest-gen --source="$CHART_DIR" generate "${ARGS[@]}"
+                go build -o manifest-gen >/dev/null 2>&1
+                echo ${ARGS[@]}
+                ./manifest-gen --source="$EFFECTIVE_SRC_CHART_DIR" generate "${ARGS[@]}"
                 rm manifest-gen
             )
             exit 0
