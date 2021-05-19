@@ -48,7 +48,13 @@ IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempt
 ----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
-
++
+If you are running version of Kubernetes before 1.16 you have to use the legacy version of the manifests:
++
+[source,sh,subs="attributes"]
+----
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-legacy.yaml
+----
 . Monitor the operator logs:
 +
 [source,sh]
