@@ -1,0 +1,22 @@
+[[release-highlights-1.6.0]]
+== 1.6.0 release highlights
+
+[float]
+[id="{p}-160-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.6.0 of {n}. See <<release-notes-1.6.0>> for the full list of changes.
+
+[float]
+[id="{p}-160-ems-support"]
+==== Support for Elastic Maps Server
+
+In this release, ECK introduces the Elastic Maps Server CRD that allows you to run the link:https://www.elastic.co/guide/en/kibana/7.13/maps-connect-to-ems.html[Elastic Maps Service] in your Kubernetes environment. This is mostly relevant for air-gapped environments where Kibana server and browser clients are unable to reach the Elastic Maps Service for Maps rendering. 
+
+
+[float]
+[id="{p}-160-service-name-in-associations"]
+==== Support using custom services in associations between components
+
+When creating associations between components, for example using `elasticsearchRef`, it is now possible to specify a custom service name and this way only target specific nodes. For example, this is useful for configuring Kibana to target only Elasticsearch coordinator nodes by referecing a custom service selecting only coordinator nodes.
+
