@@ -124,3 +124,23 @@ spec:
               memory: 2Gi
             limits:
               memory: 2Gi
+---
+apiVersion: enterprisesearch.k8s.elastic.co/v1
+kind: EnterpriseSearch
+metadata:
+  name: enterprise-search-quickstart
+spec:
+  count: 3
+  podTemplate:
+    spec:
+      containers:
+        - name: enterprise-search
+          resources:
+            requests:
+              cpu: 3
+              memory: 8Gi
+            limits:
+              memory: 8Gi
+          env:
+            - name: JAVA_OPTS
+              value: -Xms7500m -Xmx7500m
