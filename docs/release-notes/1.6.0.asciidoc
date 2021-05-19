@@ -1,0 +1,30 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.6.0]]
+== {n} version 1.6.0
+
+[[feature-1.6.0]]
+[float]
+=== New features
+
+* [EMS] Add Elastic Maps Server controller {pull}4443[#4443] (issue: {issue}4179[#4179])
+* [EMS] Add Elastic Maps Server CRD {pull}4439[#4439] (issue: {issue}4179[#4179])
+
+[[enhancement-1.6.0]]
+[float]
+=== Enhancements
+
+* [Agent] Increase default memory resources for Elastic Agent {pull}4453[#4453] (issue: {issue}4403[#4403])
+* [Helm] Add optional podLabels to operator pod and Expose Metrics ports {pull}4424[#4424]
+* Allow users to spec a serviceName in associations {pull}4404[#4404] (issue: {issue}3732[#3732])
+* Add data tier labels to Elasticsearch nodes {pull}4312[#4312] (issue: {issue}4054[#4054])
+
+[[bug-1.6.0]]
+[float]
+=== Bug fixes
+
+* [EnterpriseSearch] Update EnterpriseSearch config 8.x version test {pull}4466[#4466] (issue: {issue}4455[#4455])
+* [Autoscaling] Add support for tier only requests {pull}4445[#4445] (issue: {issue}4440[#4440])
+* [Agent] Add missing rules for agents to the operator roles {pull}4418[#4418] (issue: {issue}4413[#4413])
+* Remove labels from operator namespace {pull}4400[#4400] (issue: {issue}4395[#4395])
