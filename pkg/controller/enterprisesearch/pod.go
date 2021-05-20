@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	EnvJavaOpts         = "JAVA_OPTS"
 	HTTPPort            = 3002
 	DefaultJavaOpts     = "-Xms3500m -Xmx3500m"
 	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
@@ -36,7 +37,7 @@ var (
 		},
 	}
 	DefaultEnv = []corev1.EnvVar{
-		{Name: "JAVA_OPTS", Value: DefaultJavaOpts},
+		{Name: EnvJavaOpts, Value: DefaultJavaOpts},
 	}
 	ReadinessProbe = corev1.Probe{
 		FailureThreshold:    3,
