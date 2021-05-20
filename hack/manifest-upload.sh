@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-CONFIG_DIR=../../config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR=${SCRIPT_DIR}/../config
 S3_ECK_DIR="${S3_ECK_DIR:-s3://download.elasticsearch.org/downloads/eck}"
 YAML_DST_DIR="${S3_ECK_DIR}/${VERSION}"
 
