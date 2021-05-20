@@ -81,7 +81,6 @@ while getopts "cug" OPT; do
             (
                 cd "$SCRIPT_DIR"
                 go build -o manifest-gen >/dev/null 2>&1
-                echo ${ARGS[@]}
                 ./manifest-gen --source="$EFFECTIVE_SRC_CHART_DIR" generate "${ARGS[@]}"
                 rm manifest-gen
             )
