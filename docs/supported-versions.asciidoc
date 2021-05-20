@@ -4,7 +4,7 @@
 * Elasticsearch, Kibana, APM Server: 6.8+, 7.1+
 * Enterprise Search: 7.7+
 * Beats: 7.0+
-* Agent: 7.10+
+* Elastic Agent: 7.10+
 * Elastic Maps Server: 7.11+
 
 ECK should work with all conformant installers as listed in these link:https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer[FAQs]. Distributions include source patches and so may not work as-is with ECK.
