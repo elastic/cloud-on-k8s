@@ -352,6 +352,9 @@ switch-ocp:
 switch-eks:
 	@ echo "eks" > hack/deployer/config/provider
 
+switch-kind:
+	@ echo "kind" > hack/deployer/config/provider
+
 #################################
 ##  --    Docker images    --  ##
 #################################
@@ -523,68 +526,3 @@ check-local-changes:
 # Runs small Go tool to validate syntax correctness of Jenkins pipelines
 validate-jenkins-pipelines:
 	@ go run ./hack/pipeline-validator/main.go
-
-#########################
-# Kind specific targets #
-#########################
-KIND_VERSION ?= 0.9.0
-KIND_NODES ?= 3
-KIND_NODE_IMAGE ?= kindest/node:v1.20.0
-KIND_CLUSTER_NAME ?= eck
-
-kind-node-variable-check:
-ifndef KIND_NODE_IMAGE
-	$(error KIND_NODE_IMAGE is mandatory when using Kind)
-endif
-
-bootstrap-kind:
-	KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME} \
-		$(MAKE) kind-cluster-$(KIND_NODES)
-	@ echo "Run the following command to update your current context:"
-	@ echo "kubectl config set-context kind-${KIND_CLUSTER_NAME}"
-
-## Start a Kind cluster with just the CRDs, e.g.:
-# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-node cluster
-# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-master 3-nodes cluster
-kind-cluster-%: kind-node-variable-check
-	go run ./hack/kind/main.go start \
-		--nodes "${*}" \
-		--cluster-name $(KIND_CLUSTER_NAME) \
-		--kind-version $(KIND_VERSION) \
-		--node-image $(KIND_NODE_IMAGE)
-	make install-crds
-
-## Same as above but build and deploy the operator image
-kind-with-operator-%: kind-node-variable-check docker-build
-	go run ./hack/kind/main.go start \
-		--load-image $(OPERATOR_IMAGE) \
-		--nodes "${*}" \
-		--cluster-name $(KIND_CLUSTER_NAME) \
-		--node-image $(KIND_NODE_IMAGE) \
-		--kind-version $(KIND_VERSION)
-	make install-crds apply-operator
-
-## Run all e2e tests in a Kind cluster
-set-kind-e2e-image:
-ifneq ($(OPERATOR_IMAGE),)
-	@docker pull $(OPERATOR_IMAGE)
-else
-	$(MAKE) go-generate docker-build
-endif
-
-kind-e2e: export E2E_JSON := true
-kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
-kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
-	go run ./hack/kind/main.go start \
-		--load-image $(OPERATOR_IMAGE) \
-		--load-image $(E2E_IMG) \
-		--ip-family ${IP_FAMILY} \
-		--nodes 3 \
-		--cluster-name $(KIND_CLUSTER_NAME) \
-		--node-image $(KIND_NODE_IMAGE) \
-		--kind-version $(KIND_VERSION)
-	make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
-
-## Cleanup
-delete-kind:
-	go run ./hack/kind/main.go stop --cluster-name $(KIND_CLUSTER_NAME)

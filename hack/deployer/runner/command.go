@@ -124,7 +124,9 @@ func (c *Command) OutputList() (list []string, err error) {
 func (c *Command) output() (string, error) {
 	if c.params != nil {
 		var b bytes.Buffer
-		if err := template.Must(template.New("").Parse(c.command)).Execute(&b, c.params); err != nil {
+		if err := template.Must(template.New("").
+			Funcs(template.FuncMap{"Join": strings.Join}).
+			Parse(c.command)).Execute(&b, c.params); err != nil {
 			return "", err
 		}
 		c.command = b.String()

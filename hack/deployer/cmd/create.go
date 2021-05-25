@@ -84,6 +84,10 @@ func CreateCommand() *cobra.Command {
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
 					return err
 				}
+			case runner.KindDriverID:
+				data := fmt.Sprintf(runner.DefaultKindRunConfigTemplate, user)
+				fullPath := path.Join(filePath, runner.KindConfigFileName)
+				return ioutil.WriteFile(fullPath, []byte(data), 0600)
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}

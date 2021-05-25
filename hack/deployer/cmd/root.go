@@ -28,9 +28,10 @@ func Execute() {
 	}
 }
 
-func registerFileFlags(cmd *cobra.Command) (*string, *string) {
-	var plansFile, configFile string
+func registerFileFlags(cmd *cobra.Command) (*string, *string, *string) {
+	var plansFile, configFile, clientBuildDefDir string
 	cmd.PersistentFlags().StringVar(&plansFile, "plans-file", "config/plans.yml", "File containing execution plans.")
 	cmd.PersistentFlags().StringVar(&configFile, "config-file", "config/deployer-config.yml", "File containing run config.")
-	return &plansFile, &configFile
+	cmd.PersistentFlags().StringVar(&clientBuildDefDir, "client-dockerfiles", "hack/deployer/clients", "Directory containing Dockerfiles for Cloud provider clients")
+	return &plansFile, &configFile, &clientBuildDefDir
 }
