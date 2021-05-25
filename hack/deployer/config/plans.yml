@@ -153,20 +153,20 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.9.0
+  clientVersion: 0.11.0
   provider: kind
-  kubernetesVersion: 1.20.0
+  kubernetesVersion: 1.21.1
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.20.0
+    nodeImage: kindest/node:v1.21.1
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.9.0
+  clientVersion: 0.11.0
   provider: kind
-  kubernetesVersion: 1.20.0
+  kubernetesVersion: 1.21.1
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.20.0
+    nodeImage: kindest/node:v1.21.1
     ipFamily: ipv4
