@@ -191,13 +191,10 @@ func (k *KindDriver) cmd(args ...string) *Command {
 		"ClusterName":     k.plan.ClusterName,
 		"Args":            args,
 	}
-	// We are mounting the shared volume into the installer container and configure it to be the HOME directory
-	// this is mainly so that the GCloud tooling picks up the authentication information correctly as the base image is
-	// scratch+curl and thus an empty
-	// We are mounting tmp as the installer needs a scratch space and writing into the container won't work
+	// We need the docker socket so that kind can bootstrap
 	cmd := NewCommand(`docker run --rm \
 		-v {{.SharedVolume}}:/home \
-        -v /var/run/docker.sock:/var/run/docker.sock \
+		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e HOME=/home \
 		-e PATH=/ \
 		{{.KindClientImage}} \

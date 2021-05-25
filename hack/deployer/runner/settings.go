@@ -106,10 +106,9 @@ type EKSSettings struct {
 }
 
 type KindSettings struct {
-	NodeCount    int      `yaml:"nodeCount"`
-	NodeImage    string   `yaml:"nodeImage"`
-	ImagesToLoad []string `yaml:"imagesToLoad"`
-	IPFamily     string   `yaml:"ipFamily"`
+	NodeCount int    `yaml:"nodeCount"`
+	NodeImage string `yaml:"nodeImage"`
+	IPFamily  string `yaml:"ipFamily"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
