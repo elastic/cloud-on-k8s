@@ -43,8 +43,7 @@ require (
 	go.elastic.co/apm v1.8.0
 	go.elastic.co/apm/module/apmelasticsearch v1.8.0
 	go.uber.org/automaxprocs v1.4.0
-	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.16.0
+	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
 	golang.org/x/oauth2 v0.0.0-20210113205817-d3ed898aa8a3 // indirect

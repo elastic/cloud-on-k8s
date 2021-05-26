@@ -2808,11 +2808,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.16.0
-Time    : 2020-09-01T21:18:33Z
+Version : v1.17.0
+Time    : 2021-05-25T21:53:22Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.16.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.17.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
