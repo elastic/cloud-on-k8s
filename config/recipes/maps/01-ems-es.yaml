@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.12.0
+  version: 7.13.0
   nodeSets:
   - name: default
     count: 3
@@ -27,7 +27,7 @@ kind: ElasticMapsServer
 metadata:
   name: ems-sample
 spec:
-  version: 7.12.0
+  version: 7.13.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
