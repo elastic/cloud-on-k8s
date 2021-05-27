@@ -5,12 +5,8 @@
 package autoscaler
 
 import (
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // GetResources calculates the resources required by all the NodeSets managed by a same autoscaling policy.
@@ -35,35 +31,33 @@ func (ctx *Context) GetResources() resources.NodeSetsResources {
 // capacity returned by the Elasticsearch autoscaling API and the AutoscalingSpec specified by the user.
 // It attempts to scale all the resources vertically until the required resources are provided or the limits set by the user are reached.
 func (ctx *Context) scaleVertically() resources.NodeResources {
-	// All resources can be computed "from scratch", without knowing the previous values.
-	// This is however not true for storage. Storage can't be scaled down, current storage capacity must be considered
-	// as a hard min. limit. This storage limit must be taken into consideration when computing the desired resources.
-	minStorage := getMinStorageQuantity(ctx.AutoscalingSpec, ctx.CurrentAutoscalingStatus)
-	return ctx.nodeResources(
-		int64(ctx.AutoscalingSpec.NodeCountRange.Min),
-		minStorage,
-	)
-}
+	nodeResources := resources.NodeResources{}
 
-// getMinStorageQuantity returns the min. storage quantity that should be used by the autoscaling algorithm.
-// The value is the max. value of either:
-// * the current value in the status
-// * the min. value set by the user in the autoscaling spec.
-func getMinStorageQuantity(autoscalingSpec esv1.AutoscalingPolicySpec, currentAutoscalingStatus status.Status) resource.Quantity {
-	// If no storage spec is defined in the autoscaling status we return the default volume size.
-	storage := volume.DefaultPersistentVolumeSize.DeepCopy()
-	// Always adjust to the min value specified by the user in the limits.
-	if autoscalingSpec.IsStorageDefined() {
-		storage = autoscalingSpec.StorageRange.Min
-	}
-	// If a storage value is stored in the status then reuse it.
-	if currentResourcesInStatus, exists := currentAutoscalingStatus.CurrentResourcesForPolicy(autoscalingSpec.Name); exists && currentResourcesInStatus.HasRequest(corev1.ResourceStorage) {
-		storageInStatus := currentResourcesInStatus.GetRequest(corev1.ResourceStorage)
-		if storageInStatus.Cmp(storage) > 0 {
-			storage = storageInStatus
+	// Apply recommenders to get recommended quantities for each resource.
+	for _, recommender := range ctx.Recommenders {
+		if recommender.HasResourceRecommendation() {
+			nodeResources.SetRequest(
+				recommender.ManagedResource(),
+				recommender.NodeResourceQuantity(),
+			)
 		}
 	}
-	return storage
+
+	// If no memory has been returned by the autoscaling API, but the user has expressed the intent to manage memory
+	// using the autoscaling specification then we derive the memory from the storage if available.
+	// See https://github.com/elastic/cloud-on-k8s/issues/4076
+	if !nodeResources.HasRequest(corev1.ResourceMemory) && ctx.AutoscalingSpec.IsMemoryDefined() &&
+		ctx.AutoscalingSpec.IsStorageDefined() && nodeResources.HasRequest(corev1.ResourceStorage) {
+		nodeResources.SetRequest(corev1.ResourceMemory, memoryFromStorage(nodeResources.GetRequest(corev1.ResourceStorage), *ctx.AutoscalingSpec.StorageRange, *ctx.AutoscalingSpec.MemoryRange))
+	}
+
+	// Same as above, if CPU limits have been expressed by the user in the autoscaling specification then we adjust CPU request according to the memory request.
+	// See https://github.com/elastic/cloud-on-k8s/issues/4021
+	if ctx.AutoscalingSpec.IsCPUDefined() && ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
+		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.MemoryRange, *ctx.AutoscalingSpec.CPURange))
+	}
+
+	return nodeResources.UpdateLimits(ctx.AutoscalingSpec.AutoscalingResources)
 }
 
 // stabilize filters scale down decisions for a policy if the number of nodes observed by Elasticsearch is less than the expected one.
@@ -129,4 +123,35 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		return nextResources
 	}
 	return calculatedResources
+}
+
+// scaleHorizontally adds or removes nodes in a set of node sets to provide the required capacity in a tier.
+func (ctx *Context) scaleHorizontally(
+	nodeCapacity resources.NodeResources, // resources for each node in the tier/policy, as computed by the vertical autoscaler.
+) resources.NodeSetsResources {
+	var nodeCount int32
+	for _, recommender := range ctx.Recommenders {
+		if recommender.HasResourceRecommendation() {
+			nodeCount = max(nodeCount, recommender.NodeCount(nodeCapacity))
+		}
+	}
+
+	ctx.Log.Info("Horizontal autoscaler", "policy", ctx.AutoscalingSpec.Name,
+		"scope", "tier",
+		"count", nodeCount,
+		"required_capacity", ctx.AutoscalingPolicyResult.RequiredCapacity.Total,
+	)
+
+	nodeSetsResources := resources.NewNodeSetsResources(ctx.AutoscalingSpec.Name, ctx.NodeSets.Names())
+	nodeSetsResources.NodeResources = nodeCapacity
+	distributeFairly(nodeSetsResources.NodeSetNodeCount, nodeCount)
+
+	return nodeSetsResources
+}
+
+func max(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
 }

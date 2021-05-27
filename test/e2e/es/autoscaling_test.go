@@ -7,6 +7,7 @@
 package es
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -40,8 +42,9 @@ func TestAutoscaling(t *testing.T) {
 		t.SkipNow()
 	}
 
+	k8sClient := test.NewK8sClientOrFatal()
 	// This autoscaling test requires a storage class which supports volume expansion.
-	storageClass, err := getResizeableStorageClass(test.NewK8sClientOrFatal().Client)
+	storageClass, err := getResizeableStorageClass(k8sClient.Client)
 	require.NoError(t, err)
 	if storageClass == "" {
 		t.Skip("No storage class allowing volume expansion found. Skipping the test.")
@@ -119,20 +122,53 @@ func TestAutoscaling(t *testing.T) {
 	esWithLicense := test.LicenseTestBuilder()
 	esWithLicense.BuildingThis = esBuilder
 
+	// autoscalingCapacityTest validates that the Elasticsearch autoscaling API response does contain a non empty
+	// current/observed storage capacity for a policy with a data role. The observed capacity is not only used to
+	// decide when to scale up, but also to alert the user if the volume capacity is greater than the claimed capacity.
+	// See https://github.com/elastic/cloud-on-k8s/issues/4469 and https://github.com/elastic/cloud-on-k8s/pull/4493#discussion_r635869407
+	autoscalingCapacityTest := test.Step{
+		Name: "Autoscaling API response must contain the observed capacity",
+		Test: test.Eventually(func() error {
+			esClient, err := elasticsearch.NewElasticsearchClient(esBuilder.Elasticsearch, k8sClient)
+			if err != nil {
+				return err
+			}
+			capacity, err := esClient.GetAutoscalingCapacity(context.Background())
+			if err != nil {
+				return err
+			}
+			dataIngestPolicy, hasPolicy := capacity.Policies["data-ingest"]
+			if !hasPolicy {
+				return errors.New("Autoscaling policy \"data-ingest\" is expected in the autoscaling API response")
+			}
+			if dataIngestPolicy.CurrentCapacity.Total.Storage.IsZero() {
+				return errors.New("Current total capacity for policy \"data-ingest\" should not be nil or 0")
+			}
+			if dataIngestPolicy.CurrentCapacity.Node.Storage.IsZero() {
+				return errors.New("Current node capacity for policy \"data-ingest\" should not be nil or 0")
+			}
+			return nil
+		}),
+	}
+
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{}.
+			WithStep(autoscalingCapacityTest).
 			// Scale vertically and horizontally to add some storage capacity
 			WithSteps(scaleUpStorage.UpgradeTestSteps(k)).
 			WithSteps(scaleUpStorage.CheckK8sTestSteps(k)).
 			WithSteps(scaleUpStorage.CheckStackTestSteps(k)).
+			WithStep(autoscalingCapacityTest).
 			// Scale vertically and horizontally to add some ml capacity
 			WithSteps(scaleUpML.UpgradeTestSteps(k)).
 			WithSteps(scaleUpML.CheckK8sTestSteps(k)).
 			WithSteps(scaleUpML.CheckStackTestSteps(k)).
+			WithStep(autoscalingCapacityTest).
 			// Scale ML tier back to 0 node
 			WithSteps(scaleDownML.UpgradeTestSteps(k)).
 			WithSteps(scaleDownML.CheckK8sTestSteps(k)).
-			WithSteps(scaleDownML.CheckStackTestSteps(k))
+			WithSteps(scaleDownML.CheckStackTestSteps(k)).
+			WithStep(autoscalingCapacityTest)
 	}
 
 	test.Sequence(nil, stepsFn, esWithLicense).RunSequential(t)
