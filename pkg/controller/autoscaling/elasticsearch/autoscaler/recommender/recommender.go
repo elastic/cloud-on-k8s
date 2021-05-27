@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/math"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -109,7 +110,7 @@ func getResourceValue(
 	}
 
 	// Try to round up the Gb value
-	nodeResource = RoundUp(nodeResource, resources.GIB)
+	nodeResource = math.RoundUp(nodeResource, resources.GIB)
 
 	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
 	if nodeResource < quantityRange.Min.Value() {
@@ -199,13 +200,4 @@ func max64(x int64, others ...int64) int64 {
 		}
 	}
 	return max
-}
-
-// RoundUp rounds a value up to an other one.
-func RoundUp(v, n int64) int64 {
-	r := v % n //nolint:ifshort
-	if r == 0 {
-		return v
-	}
-	return v + n - r
 }
