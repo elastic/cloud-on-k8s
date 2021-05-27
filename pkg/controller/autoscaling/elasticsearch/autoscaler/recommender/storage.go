@@ -145,7 +145,7 @@ func NewStorageRecommender(
 	hasRequirement := !autoscalingPolicyResult.RequiredCapacity.Node.Storage.IsEmpty() ||
 		!autoscalingPolicyResult.RequiredCapacity.Total.Storage.IsEmpty()
 
-	// We must recommend something in one of the following situation:
+	// We must recommend something in one of the following situations:
 	// * User has provided a resource range for the resource.
 	// * Elasticsearch API returned a non zero requirement
 	if !hasResourceRange && !hasRequirement {

@@ -33,7 +33,7 @@ func (ctx *Context) GetResources() resources.NodeSetsResources {
 func (ctx *Context) scaleVertically() resources.NodeResources {
 	nodeResources := resources.NodeResources{}
 
-	// Apply recommenders to get recommended quantities for each resources.
+	// Apply recommenders to get recommended quantities for each resource.
 	for _, recommender := range ctx.Recommenders {
 		if recommender.HasResourceRecommendation() {
 			nodeResources.SetRequest(
