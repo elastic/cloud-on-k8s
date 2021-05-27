@@ -87,7 +87,7 @@ func (s *storage) shouldScaleUp() bool {
 	if s.observedNodeStorageCapacity.Value() > currentClaimedStorage.Value() {
 		// Log a warning and ensure we max out the storage in the claim to also scale up dependant resources like memory or CPU.
 		s.log.Info(
-			"Vertical Pod autoscaling deprecated: current node storage capacity is greater than the claimed capacity.",
+			"Vertical Pod autoscaling is not supported: current node storage capacity is greater than the claimed capacity.",
 			"policy", s.autoscalingSpec.Name,
 			"scope", "node",
 			"resource", "storage",
@@ -101,7 +101,7 @@ func (s *storage) shouldScaleUp() bool {
 			RecordEvent(
 				status.UnexpectedNodeStorageCapacity,
 				fmt.Sprintf(
-					"Vertical Pod autoscaling deprecated: current node storage capacity %d is greater than the claimed capacity %d",
+					"Vertical Pod autoscaling is not supported: current node storage capacity %d is greater than the claimed capacity %d",
 					s.observedNodeStorageCapacity.Value(),
 					currentClaimedStorage.Value(),
 				),
