@@ -677,6 +677,8 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
 		{name: "AGENT-ES", registerFunc: associationctl.AddAgentES},
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
+		{name: "METRICBEAT-ES", registerFunc: associationctl.AddMetricbeatES},
+		{name: "FILEBEAT-ES", registerFunc: associationctl.AddFilebeatES},
 	}
 
 	for _, c := range assocControllers {

@@ -23,6 +23,16 @@ func NewConfigMapVolumeWithMode(configMapName, name, mountPath string, defaultMo
 	}
 }
 
+func NewConfigMapVolumeWithSubPath(configMapName, name, mountPath string, subPath string) ConfigMapVolume {
+	return ConfigMapVolume{
+		configMapName: configMapName,
+		name:          name,
+		mountPath:     mountPath,
+		defaultMode:   corev1.ConfigMapVolumeSourceDefaultMode,
+		subPath:       subPath,
+	}
+}
+
 // ConfigMapVolume defines a volume to expose a configmap
 type ConfigMapVolume struct {
 	configMapName string
@@ -30,15 +40,20 @@ type ConfigMapVolume struct {
 	mountPath     string
 	items         []corev1.KeyToPath
 	defaultMode   int32
+	subPath       string
 }
 
 // VolumeMount returns the k8s volume mount.
 func (cm ConfigMapVolume) VolumeMount() corev1.VolumeMount {
-	return corev1.VolumeMount{
+	vm := corev1.VolumeMount{
 		Name:      cm.name,
 		MountPath: cm.mountPath,
 		ReadOnly:  true,
 	}
+	if cm.subPath != "" {
+		vm.SubPath = cm.subPath
+	}
+	return vm
 }
 
 // Volume returns the k8s volume.

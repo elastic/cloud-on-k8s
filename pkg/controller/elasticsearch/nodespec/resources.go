@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -54,7 +55,8 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg)
+		isMonitoring := stackmon.IsMonitoringDefined(es)
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, isMonitoring)
 		if err != nil {
 			return nil, err
 		}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -242,6 +243,18 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 	if requeue {
 		results = results.WithResult(defaultRequeue)
+	}
+
+	// reconcile monitoring configurations
+	if stackmon.IsMonitoringMetricsDefined(d.ES) {
+		if err := configmap.ReconcileMetricbeatConfigMap(ctx, d.Client, d.ES); err != nil {
+			return results.WithError(err)
+		}
+	}
+	if stackmon.IsMonitoringLogDefined(d.ES) {
+		if err := configmap.ReconcileFilebeatConfigMap(ctx, d.Client, d.ES); err != nil {
+			return results.WithError(err)
+		}
 	}
 
 	// reconcile StatefulSets and nodes configuration

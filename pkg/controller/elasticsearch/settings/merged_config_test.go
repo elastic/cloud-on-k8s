@@ -219,6 +219,7 @@ func TestNewMergedESConfig(t *testing.T) {
 				tt.ipFamily,
 				commonv1.HTTPConfig{},
 				commonv1.Config{Data: tt.cfgData},
+				false,
 			)
 			require.NoError(t, err)
 			tt.assert(cfg)

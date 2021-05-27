@@ -5,8 +5,13 @@
 package v1
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
@@ -72,7 +77,263 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=DeleteOnScaledownOnly;DeleteOnScaledownAndClusterDeletion
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
+
+	// Monitoring enables you to extract log and stack monitoring metrics of this Elasticsearch cluster.
+	// Metricbeat and Filebeat are deployed in the same pod as sidecar and each one send data to one or two different
+	// monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// +kubebuilder:validation:Optional
+	Monitoring Monitoring `json:"monitoring,omitempty"`
 }
+
+// Monitoring holds Elasticsearch references to send logs and metrics of this Elasticsearch cluster.
+type Monitoring struct {
+	Metrics MetricsMonitoring `json:"metrics,omitempty"`
+	Logs    LogsMonitoring    `json:"logs,omitempty"`
+}
+
+type MetricsMonitoring struct {
+	// ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster
+	// dedicated to receiving stack monitoring metrics.
+	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+}
+
+type LogsMonitoring struct {
+	// ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster
+	// dedicated to receiving Elasticsearch logs.
+	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+}
+
+// MetricsMonitoringAssociation helps to manage the (Elasticsearch+Metricbeat)/Elasticsearch association
+type MetricsMonitoringAssociation struct {
+	*Elasticsearch
+	ref types.NamespacedName
+}
+
+var _ commonv1.Association = &MetricsMonitoringAssociation{}
+
+func (mma *MetricsMonitoringAssociation) Associated() commonv1.Associated {
+	if mma == nil {
+		return nil
+	}
+	if mma.Elasticsearch == nil {
+		mma.Elasticsearch = &Elasticsearch{}
+	}
+	return mma.Elasticsearch
+}
+
+func (mma *MetricsMonitoringAssociation) AssociationConfAnnotationName() string {
+	// annotation key should be stable to allow Elasticsearch Controller only pick up the ones it expects,
+	// based on ElasticsearchRefs
+
+	nsNameHash := sha256.New224()
+	// concat with dot to avoid collisions, as namespace can't contain dots
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", mma.ref.Namespace, mma.ref.Name)))
+	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
+	// give too long output
+	// no padding to avoid illegal '=' character in the annotation name
+	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
+
+	return commonv1.FormatNameWithID(
+		commonv1.MetricbeatConfigAnnotationNameBase+"%s",
+		hash,
+	)
+}
+
+func (mma *MetricsMonitoringAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.MetricbeatAssociationType
+}
+
+func (mma *MetricsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      mma.ref.Name,
+		Namespace: mma.ref.Namespace,
+	}
+}
+
+func (mma *MetricsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
+	if mma.assocConfs == nil {
+		return nil
+	}
+	assocConf, found := mma.assocConfs[mma.ref]
+	if !found {
+		return nil
+	}
+
+	return &assocConf
+}
+
+func (mma *MetricsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	if mma.assocConfs == nil {
+		mma.assocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+	}
+	if assocConf != nil {
+		mma.assocConfs[mma.ref] = *assocConf
+	}
+}
+
+func (mma *MetricsMonitoringAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", mma.ref.Namespace, mma.ref.Name)
+}
+
+// LogsMonitoringAssociation helps to manage the (Elasticsearch+Filebeat)/Elasticsearch association
+type LogsMonitoringAssociation struct {
+	*Elasticsearch
+	ref types.NamespacedName
+}
+
+var _ commonv1.Association = &LogsMonitoringAssociation{}
+
+func (lma *LogsMonitoringAssociation) Associated() commonv1.Associated {
+	if lma == nil {
+		return nil
+	}
+	if lma.Elasticsearch == nil {
+		lma.Elasticsearch = &Elasticsearch{}
+	}
+	return lma.Elasticsearch
+}
+
+func (lma *LogsMonitoringAssociation) AssociationConfAnnotationName() string {
+	// annotation key should be stable to allow Elasticsearch Controller only pick up the ones it expects,
+	// based on ElasticsearchRefs
+
+	nsNameHash := sha256.New224()
+	// concat with dot to avoid collisions, as namespace can't contain dots
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", lma.ref.Namespace, lma.ref.Name)))
+	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
+	// give too long output
+	// no padding to avoid illegal '=' character in the annotation name
+	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
+
+	return commonv1.FormatNameWithID(
+		commonv1.FilebeatConfigAnnotationNameBase+"%s",
+		hash,
+	)
+}
+
+func (lma *LogsMonitoringAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.FilebeatAssociationType
+}
+
+func (lma *LogsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      lma.ref.Name,
+		Namespace: lma.ref.Namespace,
+	}
+}
+
+func (lma *LogsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
+	if lma.assocConfs == nil {
+		return nil
+	}
+	assocConf, found := lma.assocConfs[lma.ref]
+	if !found {
+		return nil
+	}
+
+	return &assocConf
+}
+
+func (lma *LogsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	if lma.assocConfs == nil {
+		lma.assocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+	}
+	if assocConf != nil {
+		lma.assocConfs[lma.ref] = *assocConf
+	}
+}
+
+func (lma *LogsMonitoringAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", lma.ref.Namespace, lma.ref.Name)
+}
+
+// RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
+/*func (es *Elasticsearch) RequiresAssociation() bool {
+	return es.Spec.Monitoring.Metrics.ElasticsearchRef.Name != "" || es.Spec.Monitoring.Logs.ElasticsearchRef.Name != ""
+}*/
+
+// Associated methods
+
+var _ commonv1.Associated = &Elasticsearch{}
+
+func (es *Elasticsearch) ServiceAccountName() string {
+	return es.Spec.ServiceAccountName
+}
+
+func (es *Elasticsearch) GetAssociations() []commonv1.Association {
+	associations := make([]commonv1.Association, 0)
+	ref := es.Spec.Monitoring.Metrics.ElasticsearchRef
+	if ref.IsDefined() {
+		associations = append(associations, &MetricsMonitoringAssociation{
+			Elasticsearch: es,
+			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+		})
+	}
+
+	ref = es.Spec.Monitoring.Logs.ElasticsearchRef
+	if ref.IsDefined() {
+		associations = append(associations, &LogsMonitoringAssociation{
+			Elasticsearch: es,
+			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+		})
+	}
+	return associations
+}
+
+func (es *Elasticsearch) GetMonitoringMetricsAssociation() commonv1.Association {
+	ref := es.Spec.Monitoring.Metrics.ElasticsearchRef
+	if ref.IsDefined() {
+		return &MetricsMonitoringAssociation{
+			Elasticsearch: es,
+			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+		}
+	}
+	return &MetricsMonitoringAssociation{}
+}
+
+func (es *Elasticsearch) GetMonitoringLogsAssociation() commonv1.Association {
+	ref := es.Spec.Monitoring.Logs.ElasticsearchRef
+	if ref.IsDefined() {
+		return &LogsMonitoringAssociation{
+			Elasticsearch: es,
+			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+		}
+	}
+	return &LogsMonitoringAssociation{}
+}
+
+func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	switch typ {
+	case commonv1.MetricbeatAssociationType:
+		return commonv1.NewSingleAssociationStatusMap(es.Status.MonitoringMetricsAssociationStatus)
+	case commonv1.FilebeatAssociationType:
+		return commonv1.NewSingleAssociationStatusMap(es.Status.MonitoringLogsAssociationStatus)
+	}
+
+	return commonv1.AssociationStatusMap{}
+}
+
+func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	single, err := status.Single()
+	if err != nil {
+		return err
+	}
+
+	switch typ {
+	case commonv1.MetricbeatAssociationType:
+		es.Status.MonitoringMetricsAssociationStatus = single
+		return nil
+	case commonv1.FilebeatAssociationType:
+		es.Status.MonitoringLogsAssociationStatus = single
+		return nil
+	default:
+		return fmt.Errorf("association type %s not known", typ)
+	}
+}
+
+/*func (es *Elasticsearch) AssociationID() string {
+	return commonv1.SingletonAssociationID
+}*/
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
 // Inspired by https://github.com/kubernetes/enhancements/pull/2440
@@ -364,6 +625,9 @@ type ElasticsearchStatus struct {
 	Version string                          `json:"version,omitempty"`
 	Health  ElasticsearchHealth             `json:"health,omitempty"`
 	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+
+	MonitoringMetricsAssociationStatus commonv1.AssociationStatus `json:"monitoringMetricsAssociationStatus,omitempty"`
+	MonitoringLogsAssociationStatus    commonv1.AssociationStatus `json:"monitoringLogsAssociationStatus,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {
@@ -390,8 +654,9 @@ type Elasticsearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ElasticsearchSpec   `json:"spec,omitempty"`
-	Status ElasticsearchStatus `json:"status,omitempty"`
+	Spec       ElasticsearchSpec                                 `json:"spec,omitempty"`
+	Status     ElasticsearchStatus                               `json:"status,omitempty"`
+	assocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
 }
 
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted

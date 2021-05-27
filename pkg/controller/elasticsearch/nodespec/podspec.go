@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -73,6 +74,10 @@ func BuildPodTemplateSpec(
 		})
 	}
 
+	if stackmon.IsMonitoringLogDefined(es) {
+		builder = stackmon.EnableStackLoggingEnvVar(builder)
+	}
+
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
 	builder = builder.
 		WithLabels(labels).
@@ -89,6 +94,13 @@ func BuildPodTemplateSpec(
 		WithInitContainers(initContainers...).
 		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
 		WithPreStopHook(*NewPreStopHook())
+
+	if stackmon.IsMonitoringDefined(es) {
+		builder, err = stackmon.WithMonitoring(builder, es)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+	}
 
 	return builder.PodTemplate, nil
 }
