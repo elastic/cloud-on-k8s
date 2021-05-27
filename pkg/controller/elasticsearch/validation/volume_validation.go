@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +21,48 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
+
+func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	for i, ns := range proposed.Spec.NodeSets {
+		// do we have a claim at all and if so is it named correctly? OK
+		if len(ns.VolumeClaimTemplates) == 0 || hasDefaultClaim(ns.VolumeClaimTemplates) {
+			continue
+		}
+		// we have claims but they are using custom names, are all of them mounted as a volume?
+		for _, m := range unmountedClaims(ns) {
+			errs = append(errs, field.Invalid(
+				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
+				m.Name,
+				pvcNotMounted,
+			))
+		}
+	}
+	return errs
+}
+
+func unmountedClaims(ns esv1.NodeSet) []corev1.PersistentVolumeClaim {
+	templates := ns.VolumeClaimTemplates
+	for _, c := range ns.PodTemplate.Spec.Containers {
+		for _, vm := range c.VolumeMounts {
+			for i := len(templates) - 1; i >= 0; i-- {
+				if templates[i].Name == vm.Name {
+					templates = append(templates[:i], templates[i+1:]...)
+				}
+			}
+		}
+	}
+	return templates
+}
+
+func hasDefaultClaim(templates []corev1.PersistentVolumeClaim) bool {
+	for _, t := range templates {
+		if t.Name == volume.ElasticsearchDataVolumeName {
+			return true
+		}
+	}
+	return false
+}
 
 // validPVCModification ensures the only part of volume claim templates that can be changed is storage requests.
 // Storage increase is allowed as long as the storage class supports volume expansion.
