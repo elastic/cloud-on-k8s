@@ -85,7 +85,7 @@ dependencies:
 	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
-ALL_V1_CRDS=config/crds/v1/crds.yaml
+ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
 generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
@@ -96,7 +96,6 @@ go-generate:
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds-v1: export OPERATOR_YAML_OUTPUT_FILE=config/operator.yaml
 generate-crds-v1: go-generate controller-gen
 	# Generate webhook manifest
 	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
@@ -117,7 +116,7 @@ generate-crds-v1: go-generate controller-gen
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \
-		--set=fullnameOverride=$(OPERATOR_NAME) > $(OPERATOR_YAML_OUTPUT_FILE)
+		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator.yaml
 
 
 
@@ -199,7 +198,6 @@ upgrade-test: docker-build docker-push
 #############################
 ##  --       Run       --  ##
 #############################
-# TODO do the right thing depending on k8s version
 install-crds: generate-crds-v1
 	kubectl apply -f $(ALL_V1_CRDS)
 
@@ -280,11 +278,6 @@ endif
 
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
-
-# Deploy an all in one operator against the current k8s cluster
-deploy-all-in-one: GO_TAGS ?= release
-deploy-all-in-one: docker-build docker-push
-	kubectl apply -f $(OPERATOR_YAML_OUTPUT_FILE)
 
 logs-operator:
 	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
