@@ -177,8 +177,8 @@ processors:
     -a always,exit -F arch=b64 -S execve,execveat -k exec
 
     # Unauthorized access attempts
-    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access
-    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access
+    -a always,exit -F arch=b64 -S truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access
+    -a always,exit -F arch=b64 -S truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access
 
 processors:
   - add_cloud_metadata: {}
