@@ -483,6 +483,7 @@ write_env <<ENV
 IMG_SUFFIX=-dev-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
+# Disable EMS tests for snapshot builds see https://github.com/elastic/cloud-on-k8s/issues/4479
 E2E_TAGS=!ems e2e
 IS_SNAPSHOT_BUILD=yes
 GO_TAGS=release

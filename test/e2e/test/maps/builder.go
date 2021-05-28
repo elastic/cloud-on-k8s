@@ -153,13 +153,6 @@ func (b Builder) SkipTest() bool {
 		return true
 	}
 
-	// TODO: remove once an EMS 8.x Docker image image is available
-	// https://github.com/elastic/cloud-on-k8s/issues/4479
-	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if stackVersion.Major >= uint64(8) {
-		return true
-	}
-
 	ver := version.MustParse(b.EMS.Spec.Version)
 	return version.SupportedMapsVersions.WithinRange(ver) != nil
 }
