@@ -176,7 +176,7 @@ processors:
     # Executions
     -a always,exit -F arch=b64 -S execve,execveat -k exec
 
-    # Unauthorized access attempts
+    # Unauthorized access attempts (adjusted to be compatible with amd64 and arm64)
     -a always,exit -F arch=b64 -S truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access
     -a always,exit -F arch=b64 -S truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access
 
