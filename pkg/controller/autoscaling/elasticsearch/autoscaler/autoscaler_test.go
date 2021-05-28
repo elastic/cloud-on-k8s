@@ -413,6 +413,32 @@ func Test_GetResources(t *testing.T) {
 			wantPolicyState: []status.PolicyState{},
 		},
 		{
+			name: "Scale down ML nodes to 0",
+			args: args{
+				currentNodeSets: defaultNodeSets,
+				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+					Name:                   "ml-autoscaling-policy",
+					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 1}},
+					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G"), corev1.ResourceStorage: q("1G")}}}},
+				},
+				requiredCapacity: newAutoscalingPolicyResultBuilder(). // ML decider sets all the resources to 0.
+											currentNodeStorage("1G").requiredNodeStorage("0").
+											currentTierStorage("1G").requiredTierStorage("0").
+											observedNodes("default-0").
+											build(),
+				policy: NewAutoscalingSpecBuilder("ml-autoscaling-policy").WithNodeCounts(0, 3).WithMemory("7G", "9G").WithStorage("1G", "1G").Build(),
+			},
+			want: resources.NodeSetsResources{
+				Name:             "ml-autoscaling-policy",
+				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 0}}, // Scale down to 0 node as no resource is needed.
+				NodeResources: resources.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("1G")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
+				},
+			},
+			wantPolicyState: []status.PolicyState{},
+		},
+		{
 			name: "Adjust limits",
 			args: args{
 				currentNodeSets: defaultNodeSets,
