@@ -109,7 +109,7 @@ func getResourceValue(
 		nodeResource = max64(nodeResource, resourceOverAllTiers)
 	}
 
-	// Try to round up the Gb value
+	// Try to round up to the next GiB value
 	nodeResource = math.RoundUp(nodeResource, resources.GiB)
 
 	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
