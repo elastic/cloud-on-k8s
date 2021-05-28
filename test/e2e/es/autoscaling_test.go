@@ -92,7 +92,8 @@ func TestAutoscaling(t *testing.T) {
 	expectedDataPVC := newPVC("20Gi", storageClass)
 	scaleUpStorage := esBuilder.DeepCopy().WithAnnotation(
 		esv1.ElasticsearchAutoscalingSpecAnnotationName,
-		autoscalingSpecBuilder.withFixedDecider("data-ingest", map[string]string{"storage": "20gb", "nodes": "3"}).toJSON(),
+		// A storage request of 19gb should lead to claims of 20Gi because the operator adds a capacity margin of 5% to account for reserved fs space.
+		autoscalingSpecBuilder.withFixedDecider("data-ingest", map[string]string{"storage": "19gb", "nodes": "3"}).toJSON(),
 	).WithExpectedNodeSets(
 		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
