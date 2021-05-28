@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	// GIB - 1 GibiByte
+	// GIB - 1 GibiBytes
 	GIB = int64(1024 * 1024 * 1024)
+	// GB - 1 Gigabytes
+	GB = int64(1000 * 1000 * 1000)
 )
 
 // NodeSetsResources models for all the nodeSets managed by a same autoscaling policy:
@@ -291,6 +293,9 @@ func ResourceToQuantity(nodeResource int64) resource.Quantity {
 	if nodeResource >= GIB && nodeResource%GIB == 0 {
 		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
 		nodeQuantity = resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GIB))
+	} else if nodeResource >= GB && nodeResource%GB == 0 {
+		// Same for gigabytes unit
+		nodeQuantity = resource.MustParse(fmt.Sprintf("%dG", nodeResource/GB))
 	} else {
 		nodeQuantity = resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
 	}
