@@ -289,20 +289,18 @@ func (nr NodeResources) UpdateLimits(autoscalingResources v1.AutoscalingResource
 
 // ResourceToQuantity attempts to convert a raw integer value into a human readable quantity.
 func ResourceToQuantity(nodeResource int64) resource.Quantity {
-	var nodeQuantity resource.Quantity
-	if nodeResource >= GIB && nodeResource%GIB == 0 {
+	switch {
+	case nodeResource >= GIB && nodeResource%GIB == 0:
 		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
-		nodeQuantity = resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GIB))
-	} else if nodeResource >= GB && nodeResource%GB == 0 {
+		return resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GIB))
+	case nodeResource >= GB && nodeResource%GB == 0:
 		// Same for gigabytes unit
-		nodeQuantity = resource.MustParse(fmt.Sprintf("%dG", nodeResource/GB))
-	} else {
-		nodeQuantity = resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
+		return resource.MustParse(fmt.Sprintf("%dG", nodeResource/GB))
 	}
-	return nodeQuantity
+	return resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
 }
 
-// ResourceList is a set of (resource name, quantity) pairs.
+// ResourceListInt64 is a set of (resource name, quantity) pairs.
 type ResourceListInt64 map[corev1.ResourceName]int64
 
 // NodeResourcesInt64 is mostly use in logs to print comparable values which can be used in dashboards.
