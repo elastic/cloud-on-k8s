@@ -110,7 +110,7 @@ func getResourceValue(
 	}
 
 	// Try to round up the Gb value
-	nodeResource = math.RoundUp(nodeResource, resources.GIB)
+	nodeResource = math.RoundUp(nodeResource, resources.GiB)
 
 	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
 	if nodeResource < quantityRange.Min.Value() {

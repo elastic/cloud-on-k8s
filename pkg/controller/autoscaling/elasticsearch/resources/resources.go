@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	// GIB - 1 GibiBytes
-	GIB = int64(1024 * 1024 * 1024)
-	// GB - 1 Gigabytes
+	// GiB - 1 GibiByte
+	GiB = int64(1024 * 1024 * 1024)
+	// GB - 1 Gigabyte
 	GB = int64(1000 * 1000 * 1000)
 )
 
@@ -290,9 +290,9 @@ func (nr NodeResources) UpdateLimits(autoscalingResources v1.AutoscalingResource
 // ResourceToQuantity attempts to convert a raw integer value into a human readable quantity.
 func ResourceToQuantity(nodeResource int64) resource.Quantity {
 	switch {
-	case nodeResource >= GIB && nodeResource%GIB == 0:
+	case nodeResource >= GiB && nodeResource%GiB == 0:
 		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
-		return resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GIB))
+		return resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GiB))
 	case nodeResource >= GB && nodeResource%GB == 0:
 		// Same for gigabytes unit
 		return resource.MustParse(fmt.Sprintf("%dG", nodeResource/GB))
