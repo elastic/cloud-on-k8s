@@ -113,8 +113,8 @@ func (s *storage) shouldScaleUp() bool {
 }
 
 func (s *storage) NodeCount(nodeCapacity resources.NodeResources) int32 {
-	// A value of 0 explicitly means that Elasticsearch is expecting the nodes managed by this policy to be scaled down
-	// to 0. For example this could be the case for ML nodes when there is no ML jobs to run.
+	// A value of 0 explicitly means that storage decider should not prevent a scale down.
+	// For example this could be the case for ML nodes when there is no ML jobs to run.
 	if s.requiredTotalStorageCapacity.IsZero() {
 		return s.autoscalingSpec.NodeCountRange.Enforce(0)
 	}
