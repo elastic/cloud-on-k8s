@@ -291,7 +291,7 @@ func (nr NodeResources) UpdateLimits(autoscalingResources v1.AutoscalingResource
 func ResourceToQuantity(nodeResource int64) resource.Quantity {
 	switch {
 	case nodeResource >= GiB && nodeResource%GiB == 0:
-		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
+		// When it's possible we may want to express the memory with a "human readable unit" like the Gi unit
 		return resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GiB))
 	case nodeResource >= GB && nodeResource%GB == 0:
 		// Same for gigabytes unit
