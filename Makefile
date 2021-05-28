@@ -85,7 +85,7 @@ dependencies:
 	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
-ALL_CRDS=config/crds/v1/all-crds.yaml
+ALL_V1_CRDS=config/crds/v1/crds.yaml
 
 generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
@@ -96,7 +96,7 @@ go-generate:
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds-v1: export ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
+generate-crds-v1: export OPERATOR_YAML_OUTPUT_FILE=config/operator.yaml
 generate-crds-v1: go-generate controller-gen
 	# Generate webhook manifest
 	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
@@ -104,23 +104,23 @@ generate-crds-v1: go-generate controller-gen
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/v1/patches > $(ALL_CRDS)
+	kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
 
 	# generate a CRD only version without the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
-	# generate an all-in-one version including the operator manifests
+	# generate the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--profile=global \
+		--set=installCRDs=false \
 		--set=telemetry.distributionChannel=all-in-one \
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \
-		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
+		--set=fullnameOverride=$(OPERATOR_NAME) > $(OPERATOR_YAML_OUTPUT_FILE)
 
 
 
-generate-crds-v1beta1: export ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-legacy.yaml
 generate-crds-v1beta1: go-generate controller-gen
 	# Generate webhook manifest
 	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
@@ -129,16 +129,19 @@ generate-crds-v1beta1: go-generate controller-gen
 	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1beta1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
 	kubectl kustomize config/crds/v1beta1/patches > config/crds/v1beta1/all-crds.yaml
-	# generate an all-in-one version including the operator manifests
+    # generate a CRD only version without the operator manifests
+	@ ./hack/manifest-gen/manifest-gen.sh -c -g --set=global.kubeVersion=1.12.0 > config/crds-legacy.yaml
+	# generate the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
         --profile=global \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--set=global.kubeVersion=1.12.0 \
+		--set=installCRDs=false \
 		--set=telemetry.distributionChannel=all-in-one \
 		--set=image.tag=$(IMG_VERSION) \
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \
-		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
+		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator-legacy.yaml
 
 generate-config-file:
 	@hack/config-extractor/extract.sh
@@ -198,7 +201,7 @@ upgrade-test: docker-build docker-push
 #############################
 # TODO do the right thing depending on k8s version
 install-crds: generate-crds-v1
-	kubectl apply -f $(ALL_CRDS)
+	kubectl apply -f $(ALL_V1_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
@@ -281,7 +284,7 @@ apply-psp:
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
-	kubectl apply -f $(ALL_IN_ONE_OUTPUT_FILE)
+	kubectl apply -f $(OPERATOR_YAML_OUTPUT_FILE)
 
 logs-operator:
 	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)

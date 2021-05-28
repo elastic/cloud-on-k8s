@@ -28,17 +28,23 @@ IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 
 This release moves the link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions] (CRD) used by ECK to the v1 version. If you are upgrading from a previous version of ECK the new version of the CRDs have to replace the existing CRDs. If removing the current ECK installation is not an option because you have production workloads that must not be deleted, then the following approach is recommended:
 
 [source,shell,subs="attributes,callouts"]
-.If you are using the "all-in-one" manifest: replace existing CRDs
+.If you are installing using the YAML manifests: replace existing CRDs
 ----
 kubectl replace -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 ----
 
-Then upgrade the remaining manifests with the all-in-one manifest:
+Then upgrade the remaining objects with the operator manifest:
 [source,shell,subs="attributes,callouts"]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
 
+[source,shell,subs="attributes,callouts"]
+.If you are running a version of Kubernetes before 1.16: use the legacy manifests
+----
+kubectl replace -f https://download.elastic.co/downloads/eck/{eck_version}/crds-legacy.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator-legacy.yaml
+----
 
 [source,shell,subs="attributes,callouts"]
 .If you are using Helm: force upgrade the CRD chart to move to the v1 CRDs
