@@ -34,7 +34,7 @@ func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
 				m.Name,
-				pvcNotMounted,
+				pvcNotMountedErrMsg,
 			))
 		}
 	}
