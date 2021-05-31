@@ -11,6 +11,6 @@ ECK should work with all conformant installers as listed in these link:https://g
 
 Alpha, beta, and stable API versions follow the same link:https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning[conventions used by Kubernetes].
 
-Elastic stack application images for the OpenShift certified Elasticsearch (ECK) Operator are only available from version 7.10 onwards.
+Elastic stack application images for the OpenShift certified Elasticsearch (ECK) Operator are only available from version 7.10 and later.
 
 Please see the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.
