@@ -4478,14 +4478,14 @@ spec:
                 description: AvailableNodes is the number of available instances.
                 format: int32
                 type: integer
+              esAssociationStatus:
+                additionalProperties:
+                  description: AssociationStatus is the status of an association resource.
+                  type: string
+                description: AssociationStatusMap is the map of association's namespaced name string to its AssociationStatus. For resources that have a single Association of a given type (eg. single ES reference), this map will contain a single entry.
+                type: object
               health:
                 description: ElasticsearchHealth is the health of the cluster as returned by the health API.
-                type: string
-              monitoringLogsAssociationStatus:
-                description: AssociationStatus is the status of an association resource.
-                type: string
-              monitoringMetricsAssociationStatus:
-                description: AssociationStatus is the status of an association resource.
                 type: string
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
