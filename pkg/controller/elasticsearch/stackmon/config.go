@@ -15,6 +15,8 @@ const (
 )
 
 var (
+	// Environments variables used in the beats configuration to describe how to connect to Elasticsearch.
+	// Warning: they are hard-coded in the two configs below.
 	EsSourceURLEnvVarKey      = "ES_SOURCE_URL"
 	EsSourceURLEnvVarValue    = "https://localhost:9200"
 	EsSourceUsernameEnvVarKey = "ES_SOURCE_USERNAME"
@@ -23,7 +25,13 @@ var (
 	EsTargetUsernameEnvVarKey = "ES_TARGET_USERNAME"
 	EsTargetPasswordEnvVarKey = "ES_TARGET_PASSWORD" //nolint:gosec
 
+	// Paths to the Elasticsearch CA certificates used by the beats to send data
+	MonitoringMetricsSourceEsCaCertMountPath = "/mnt/es/monitoring/metrics/source"
+	MonitoringMetricsTargetEsCaCertMountPath = "/mnt/es/monitoring/metrics/target"
+	MonitoringLogsTargetEsCaCertMountPath    = "/mnt/es/monitoring/logs/target"
+
 	// MetricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
+	// Warning: environment variables and CA cert paths are hard-coded for simplicity.
 	MetricbeatConfig = `metricbeat.modules:
 - module: elasticsearch
   metricsets:
@@ -55,6 +63,7 @@ output.elasticsearch:
   ssl.certificate_authorities: ["/mnt/es/monitoring/metrics/target/ca.crt"]`
 
 	// FilebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
+	// Warning: environment variables and CA cert paths are hard-coded for simplicity.
 	FilebeatConfig = `filebeat.modules:
 # https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-elasticsearch.html
 - module: elasticsearch
@@ -97,6 +106,7 @@ processors:
   - add_cloud_metadata: {}
   - add_host_metadata: {}
 
+# TODO: finish
 #setup.dashboards.enabled: true
 #setup.kibana:
   #host: '${ES_TARGET_URL}'

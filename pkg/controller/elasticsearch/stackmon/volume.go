@@ -21,28 +21,23 @@ const (
 	FilebeatConfigMountPath  = "/etc/filebeat.yml"
 
 	MonitoringMetricsSourceEsCaCertVolumeName = "es-monitoring-metrics-source-certs"
-	MonitoringMetricsSourceEsCaCertMountPath  = "/mnt/es/monitoring/metrics/source"
-
 	MonitoringMetricsTargetEsCaCertVolumeName = "es-monitoring-metrics-target-certs"
-	MonitoringMetricsTargetEsCaCertMountPath  = "/mnt/es/monitoring/metrics/target"
-
-	MonitoringLogsTargetEsCaCertVolumeName = "es-monitoring-logs-certs"
-	MonitoringLogsTargetEsCaCertMountPath  = "/mnt/es/monitoring/logs/target"
+	MonitoringLogsTargetEsCaCertVolumeName    = "es-monitoring-logs-certs"
 )
 
 // monitoringVolumes returns the volumes to add to the Elasticsearch pod for the Metricbeat and Filebeat sidecar containers.
-// Metricbeat mounts its configuration and the CA certificate of the source and the target Elasticsearch cluster.
+// Metricbeat mounts its configuration and the CA certificates of the source and the target Elasticsearch cluster.
 // Filebeat mounts its configuration and the CA certificate of the target Elasticsearch cluster.
-func monitoringVolumes(es esv1.Elasticsearch, isMonitoringMetricsDefined bool, isMonitoringLogsDefined bool) []corev1.Volume {
+func monitoringVolumes(es esv1.Elasticsearch) []corev1.Volume {
 	var volumes []corev1.Volume
-	if isMonitoringMetricsDefined {
+	if IsMonitoringMetricsDefined(es) {
 		volumes = append(volumes,
 			metricbeatConfigMapVolume(es).Volume(),
 			monitoringMetricsSourceCaCertSecretVolume(es).Volume(),
 			monitoringMetricsTargetCaCertSecretVolume(es).Volume(),
 		)
 	}
-	if isMonitoringLogsDefined {
+	if IsMonitoringLogDefined(es) {
 		volumes = append(volumes,
 			filebeatConfigMapVolume(es).Volume(),
 			monitoringLogsTargetCaCertSecretVolume(es).Volume(),
@@ -90,7 +85,7 @@ func monitoringMetricsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.Sec
 }
 
 func monitoringLogsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
-	assocConf := es.GetMonitoringMetricsAssociation().AssociationConf()
+	assocConf := es.GetMonitoringLogsAssociation().AssociationConf()
 	return volume.NewSecretVolumeWithMountPath(
 		assocConf.CASecretName,
 		MonitoringLogsTargetEsCaCertVolumeName,

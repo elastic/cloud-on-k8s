@@ -39,15 +39,12 @@ func EnableStackLoggingEnvVar(builder *defaults.PodTemplateBuilder) *defaults.Po
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
-// in the pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
+// in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
 func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
-	isMonitoringMetricsDefined := IsMonitoringMetricsDefined(es)
-	isMonitoringLogsDefined := IsMonitoringLogDefined(es)
-
 	// Inject volumes
-	builder = builder.WithVolumes(monitoringVolumes(es, isMonitoringMetricsDefined, isMonitoringLogsDefined)...)
+	builder = builder.WithVolumes(monitoringVolumes(es)...)
 
-	if isMonitoringMetricsDefined {
+	if IsMonitoringMetricsDefined(es) {
 		// Inject Metricbeat sidecar container
 		metricBeat, err := metricbeatContainer(es)
 		if err != nil {
@@ -56,7 +53,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 		builder.PodTemplate.Spec.Containers = append(builder.PodTemplate.Spec.Containers, metricBeat)
 	}
 
-	if isMonitoringLogsDefined {
+	if IsMonitoringLogDefined(es) {
 		// Inject Filebeat sidecar container
 		filebeat, err := filebeatContainer(es)
 		if err != nil {

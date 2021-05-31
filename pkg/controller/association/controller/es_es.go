@@ -18,18 +18,18 @@ import (
 )
 
 const (
-	// FilebeatESAssociationLabelName marks resources created by this controller for easier retrieval.
-	FilebeatESAssociationLabelName = "filebeatassociation.k8s.elastic.co/name"
-	// FilebeatESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	FilebeatESAssociationLabelNamespace = "filebeatassociation.k8s.elastic.co/namespace"
-	// FilebeatESAssociationLabelType marks the type of association.
-	FilebeatESAssociationLabelType = "filebeatassociation.k8s.elastic.co/type"
+	// EsEsAssociationLabelName marks resources created by this controller for easier retrieval.
+	EsEsAssociationLabelName = "esesassociation.k8s.elastic.co/name"
+	// EsEsAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	EsEsAssociationLabelNamespace = "esesassociation.k8s.elastic.co/namespace"
+	// EsEsAssociationLabelType marks the type of association.
+	EsEsAssociationLabelType = "esesassociation.k8s.elastic.co/type"
 
-	// FilebeatBuiltinRole is the name of the built-in role for the Filebeat system user.
-	FilebeatBuiltinRole = "superuser" // FIXME: create a dedicated role?
+	// BeatBuiltinRole is the name of the built-in role for the Metricbeat/Filebeat system user.
+	BeatBuiltinRole = "superuser" // FIXME: create a dedicated role?
 )
 
-func AddFilebeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+func AddEsEs(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate: func() commonv1.Associated { return &esv1.Elasticsearch{} },
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
@@ -37,21 +37,21 @@ func AddFilebeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		},
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociationType:           commonv1.FilebeatAssociationType,
+		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedNamer:           esv1.ESNamer,
-		AssociationName:           "filebeat-es",
-		AssociatedShortName:       "filebeat",
+		AssociationName:           "es-es",
+		AssociatedShortName:       "es",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				FilebeatESAssociationLabelName:      associated.Name,
-				FilebeatESAssociationLabelNamespace: associated.Namespace,
-				FilebeatESAssociationLabelType:      commonv1.FilebeatAssociationType,
+				EsEsAssociationLabelName:      associated.Name,
+				EsEsAssociationLabelNamespace: associated.Namespace,
+				EsEsAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.FilebeatConfigAnnotationNameBase,
-		UserSecretSuffix:                  "filebeat-user",
+		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
+		UserSecretSuffix:                  "beat-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return FilebeatBuiltinRole, nil
+			return BeatBuiltinRole, nil
 		},
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
