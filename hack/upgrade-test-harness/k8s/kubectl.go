@@ -198,6 +198,26 @@ func (h *Kubectl) DynamicClient() (dynamic.Interface, error) {
 	return h.factory.DynamicClient()
 }
 
+// Replace the given set of resources.
+func (h *Kubectl) Replace(resources resource.Visitor) error {
+	return resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		if err := util.CreateOrUpdateAnnotation(false, info.Object, scheme.DefaultJSONEncoder()); err != nil {
+			return cmdutil.AddSourceToErr("replacing", info.Source, err)
+		}
+		obj, err := resource.NewHelper(info.Client, info.Mapping).
+			WithFieldManager("kubectl-replace").
+			Replace(info.Namespace, info.Name, true, info.Object)
+		if err != nil {
+			return cmdutil.AddSourceToErr("replacing", info.Source, err)
+		}
+		info.Refresh(obj, true)
+		return nil
+	})
+}
+
 // Delete the given set of resources from the cluster.
 func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration) error {
 	resources = resources.IgnoreErrors(errors.IsNotFound)

@@ -35,3 +35,11 @@ testParams:
     operatorVersion: 1.5.0
     stackVersion: 7.12.0
     crdVersion: v1
+  - name: v160
+    operatorVersion: 1.6.0
+    stackVersion: 7.13.0
+    crdVersion: v1
+  - name: upcoming
+    operatorVersion: 1.7.0
+    stackVersion: 7.13.0
+    crdVersion: v1
