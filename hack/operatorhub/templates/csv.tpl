@@ -265,10 +265,28 @@ spec:
     Supported versions:
 
 
-    * Kubernetes: 1.12+ or OpenShift 3.11+
+    * Kubernetes 1.16-1.20
 
-    * Elasticsearch: 6.8+, 7.1+
+    * OpenShift 3.11, 4.3-4.7
+    
+    * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
+    
+    * Elasticsearch, Kibana, APM Server: {{ if .UbiOnly }}7.10+{{ else }}6.8+, 7.1+{{ end }}
+    
+    * Enterprise Search: {{ if .UbiOnly }}7.10+{{ else }}7.7+{{ end }}
+    
+    * Beats: {{ if .UbiOnly }}7.10+{{ else }}7.0+{{ end }}
+    
+    * Elastic Agent: 7.10+
+    
+    * Elastic Maps Server: 7.11+
 
+
+    ECK should work with all conformant installers as listed in these link:https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer[FAQs]. Distributions include source patches and so may not work as-is with ECK.
+
+    Alpha, beta, and stable API versions follow the same link:https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning[conventions used by Kubernetes].
+
+    Please see the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.
 
     See the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/{{ .ShortVersion }}/k8s-quickstart.html)
     to get started with ECK.'

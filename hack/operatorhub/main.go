@@ -253,6 +253,7 @@ type RenderParams struct {
 	AdditionalArgs []string
 	CRDList        []*CRD
 	PackageName    string
+	UbiOnly        bool
 }
 
 func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
@@ -310,6 +311,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		CRDList:        crdList,
 		OperatorRBAC:   string(rbac),
 		PackageName:    conf.Packages[packageIndex].PackageName,
+		UbiOnly:        conf.Packages[packageIndex].UbiOnly,
 	}, nil
 }
 
