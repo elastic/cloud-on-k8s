@@ -35,6 +35,8 @@ spec:
 
 NOTE: link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/#arbitrary-controllers-and-selectors[`maxUnavailable`] cannot be used with an arbitrary label selector, therefore `minAvailable` is used in this example.
 
+NOTE:  If there is a node type where there is only one node instance such as ingest, then when that node is restarted, the cluster will go yello.
+
 You can also explicitly disable the default PDB:
 
 [source,yaml,subs="attributes"]
