@@ -232,13 +232,13 @@ OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 PIPELINE=e2e/ocp
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
-CLUSTER_NAME=$BUILD_TAG
+CLUSTER_NAME=ocp4-ci-$BUILD_NUMBER
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: ocp4-ci-$BUILD_NUMBER
   clientVersion: $2
   vaultInfo:
     address: $VAULT_ADDR
@@ -566,7 +566,7 @@ write_deployer_config <<CFG
 id: ocp-ci
 overrides:
   operation: delete
-  clusterName: $BUILD_TAG
+  clusterName: ocp4-ci-$BUILD_NUMBER
   clientVersion: $2
   vaultInfo:
     address: $VAULT_ADDR
