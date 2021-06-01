@@ -7,6 +7,7 @@ package test
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,5 +38,38 @@ func TestIsValidUpgrade(t *testing.T) {
 			t.Errorf(`isValidUpgrade("%s", "%s") = %v, want %v`, tt.from, tt.to, isValid, tt.isValid)
 		}
 		require.Equal(t, tt.isValid, isValid)
+	}
+}
+
+func Test_isSnapshot(t *testing.T) {
+	type args struct {
+		ver version.Version
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "stable",
+			args: args{
+				ver: version.MustParse("7.13.0"),
+			},
+			want: false,
+		},
+		{
+			name: "pre-release",
+			args: args{
+				ver: version.MustParse("7.13.0-SNAPSHOT"),
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsSnapshotVersion(tt.args.ver); got != tt.want {
+				t.Errorf("isSnapshot() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
