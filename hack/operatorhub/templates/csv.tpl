@@ -286,7 +286,7 @@ spec:
 
     Alpha, beta, and stable API versions follow the same link:https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning[conventions used by Kubernetes].
 
-    Please see the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.
+    See the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.
 
     See the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/{{ .ShortVersion }}/k8s-quickstart.html)
     to get started with ECK.'
