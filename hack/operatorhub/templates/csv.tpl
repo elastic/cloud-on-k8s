@@ -7,7 +7,7 @@ metadata:
     certified: 'false'
     containerImage: {{ .OperatorRepo }}:{{ .NewVersion }}
     createdAt: {{ now | date "2006-01-02 15:04:05" }}
-    description: Run Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent and Elastic Maps Server on Kubernetes and OpenShift
+    description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent and Elastic Maps Server on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
     support: elastic.co
     alm-examples: |-
@@ -242,8 +242,8 @@ spec:
       version: {{ .Version }}
     {{- end }}
   description: 'Elastic Cloud on Kubernetes (ECK) is the official operator by Elastic for automating the deployment, provisioning,
-    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Beats, Elastic Agent,
-    and Elastic Maps Server on Kubernetes.
+    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent and Elastic Maps Server
+    on Kubernetes.
 
 
     Current features:
