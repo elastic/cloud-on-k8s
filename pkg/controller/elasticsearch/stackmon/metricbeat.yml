@@ -1,0 +1,29 @@
+metricbeat.modules:
+  - module: elasticsearch
+    metricsets:
+      - ccr
+      - cluster_stats
+      - enrich
+      - index
+      - index_recovery
+      - index_summary
+      - ml_job
+      - node_stats
+      - shard
+    period: 10s
+    xpack.enabled: true
+    hosts: ["${ES_SOURCE_URL}"]
+    username: ${ES_SOURCE_USERNAME}
+    password: ${ES_SOURCE_PASSWORD}
+    ssl.certificate_authorities: ["/mnt/es/monitoring/metrics/source/ca.crt"]
+    ssl.verification_mode: "certificate"
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+output.elasticsearch:
+  hosts: ['${ES_TARGET_URL}']
+  username: ${ES_TARGET_USERNAME}
+  password: ${ES_TARGET_PASSWORD}
+  ssl.certificate_authorities: ["/mnt/es/monitoring/metrics/target/ca.crt"]

@@ -4,7 +4,10 @@
 
 package stackmon
 
-import esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+import (
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	_ "embed" // for the beats config files
+)
 
 const (
 	MetricbeatConfigKey       = "metricbeat.yml"
@@ -31,93 +34,14 @@ var (
 	MonitoringLogsTargetEsCaCertMountPath    = "/mnt/es/monitoring/logs/target"
 
 	// MetricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
-	// Warning: environment variables and CA cert paths are hard-coded for simplicity.
-	MetricbeatConfig = `metricbeat.modules:
-- module: elasticsearch
-  metricsets:
-    - ccr
-    - cluster_stats
-    - enrich
-    - index
-    - index_recovery
-    - index_summary
-    - ml_job
-    - node_stats
-    - shard
-  period: 10s
-  xpack.enabled: true
-  hosts: ["${ES_SOURCE_URL}"]
-  username: ${ES_SOURCE_USERNAME}
-  password: ${ES_SOURCE_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/monitoring/metrics/source/ca.crt"]
-  ssl.verification_mode: "certificate"
-
-processors:
-  - add_cloud_metadata: {}
-  - add_host_metadata: {}
-
-output.elasticsearch:
-  hosts: ['${ES_TARGET_URL}']
-  username: ${ES_TARGET_USERNAME}
-  password: ${ES_TARGET_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/monitoring/metrics/target/ca.crt"]`
+	// Warning: environment variables and CA cert paths defined below are hard-coded for simplicity.
+	//go:embed metricbeat.yml
+	MetricbeatConfig string
 
 	// FilebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
-	// Warning: environment variables and CA cert paths are hard-coded for simplicity.
-	FilebeatConfig = `filebeat.modules:
-# https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-elasticsearch.html
-- module: elasticsearch
-  server:
-    enabled: true
-    var.paths:
-      - /usr/share/elasticsearch/logs/*_server.json
-    close_timeout: 2h
-    fields_under_root: true
-  gc:
-    enabled: true
-    var.paths:
-      - /usr/share/elasticsearch/logs/gc.log.[0-9]*
-      - /usr/share/elasticsearch/logs/gc.log
-      - /usr/share/elasticsearch/logs/gc.output.[0-9]*
-      - /usr/share/elasticsearch/logs/gc.output
-    close_timeout: 2h
-    fields_under_root: true
-  audit:
-    enabled: true
-    var.paths:
-      - /usr/share/elasticsearch/logs/*_audit.json
-    close_timeout: 2h
-    fields_under_root: true
-  slowlog:
-    enabled: true
-    var.paths:
-      - /usr/share/elasticsearch/logs/*_index_search_slowlog.json
-      - /usr/share/elasticsearch/logs/*_index_indexing_slowlog.json
-    close_timeout: 2h
-    fields_under_root: true
-  deprecation:
-    enabled: true
-    var.paths:
-      - /usr/share/elasticsearch/logs/*_deprecation.json
-    close_timeout: 2h
-    fields_under_root: true
-
-processors:
-  - add_cloud_metadata: {}
-  - add_host_metadata: {}
-
-# TODO: finish
-#setup.dashboards.enabled: true
-#setup.kibana:
-  #host: '${ES_TARGET_URL}'
-  #username: ${ES_TARGET_USERNAME}
-  #password: ${ES_TARGET_PASSWORD}
-
-output.elasticsearch:
-  hosts: ['${ES_TARGET_URL}']
-  username: ${ES_TARGET_USERNAME}
-  password: ${ES_TARGET_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/monitoring/logs/target/ca.crt"]`
+	// Warning: environment variables and CA cert paths defined below are hard-coded for simplicity.
+	//go:embed filebeat.yml
+	FilebeatConfig string
 )
 
 func MetricbeatConfigMapName(es esv1.Elasticsearch) string {
