@@ -109,15 +109,20 @@ func filebeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
 	}, nil
 }
 
+// containerImage returns the full Beat container image with the image registry.
+// If the Elasticsearch specification is configured with a custom image, we do best effort by trying to derive the Beat
+// image from the Elasticsearch custom image with an image name replacement
+// (<registry>/elasticsearch/elasticsearch:<version> becomes <registry>/beats/<filebeat|metricbeat>:<version>)
 func containerImage(es esv1.Elasticsearch, defaultImage container.Image) (string, error) {
-	customImage := es.Spec.Image
-	if customImage != "" {
+	fullCustomImage := es.Spec.Image
+	if fullCustomImage != "" {
 		esImage := string(container.ElasticsearchImage)
-		if strings.Contains(customImage, esImage) {
-			// Derive the image from the custom image by replacing the ES image by the default beat image.
-			return strings.ReplaceAll(es.Spec.Image, esImage, string(defaultImage)), nil
+		// Check if Elasticsearch image follows official Elastic naming
+		if strings.Contains(fullCustomImage, esImage) {
+			// Derive the Beat image from the ES custom image, there is no guarantee that the resulted image exists
+			return strings.ReplaceAll(fullCustomImage, esImage, string(defaultImage)), nil
 		}
-		return "", errors.New("Stack monitoring not supported with custom image")
+		return "", errors.New("stack monitoring not supported with custom image")
 	}
 	return container.ImageRepository(defaultImage, es.Spec.Version), nil
 }
