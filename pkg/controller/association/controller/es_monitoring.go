@@ -18,18 +18,21 @@ import (
 )
 
 const (
-	// EsEsAssociationLabelName marks resources created by this controller for easier retrieval.
-	EsEsAssociationLabelName = "esesassociation.k8s.elastic.co/name"
-	// EsEsAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	EsEsAssociationLabelNamespace = "esesassociation.k8s.elastic.co/namespace"
-	// EsEsAssociationLabelType marks the type of association.
-	EsEsAssociationLabelType = "esesassociation.k8s.elastic.co/type"
+	// EsMonitoringAssociationLabelName marks resources created by this controller for easier retrieval.
+	EsMonitoringAssociationLabelName = "esmonitoringassociation.k8s.elastic.co/name"
+	// EsMonitoringAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	EsMonitoringAssociationLabelNamespace = "esmonitoringassociation.k8s.elastic.co/namespace"
+	// EsMonitoringAssociationLabelType marks the type of association.
+	EsMonitoringAssociationLabelType = "esmonitoringassociation.k8s.elastic.co/type"
 
 	// BeatBuiltinRole is the name of the built-in role for the Metricbeat/Filebeat system user.
 	BeatBuiltinRole = "superuser" // FIXME: create a dedicated role?
 )
 
-func AddEsEs(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+// AddEsMonitoring reconciles an association between two Elasticsearch clusters for Stack monitoring.
+// Beats are configured to collect monitoring metrics and logs data of the associated Elasticsearch and send
+// them to the Elasticsearch referenced in the association.
+func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate: func() commonv1.Associated { return &esv1.Elasticsearch{} },
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
@@ -39,17 +42,17 @@ func AddEsEs(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params ope
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedNamer:           esv1.ESNamer,
-		AssociationName:           "es-es",
+		AssociationName:           "es-mon",
 		AssociatedShortName:       "es",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				EsEsAssociationLabelName:      associated.Name,
-				EsEsAssociationLabelNamespace: associated.Namespace,
-				EsEsAssociationLabelType:      commonv1.ElasticsearchAssociationType,
+				EsMonitoringAssociationLabelName:      associated.Name,
+				EsMonitoringAssociationLabelNamespace: associated.Namespace,
+				EsMonitoringAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
 		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "beat-user",
+		UserSecretSuffix:                  "beat-mon-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return BeatBuiltinRole, nil
 		},

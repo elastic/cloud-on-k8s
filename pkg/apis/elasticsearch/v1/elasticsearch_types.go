@@ -103,16 +103,16 @@ type LogsMonitoring struct {
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 }
 
-// EsEsAssociation helps to manage the Elasticsearch+Metricbeat+Filebeat <-> Elasticsearch(es) association
-type EsEsAssociation struct {
+// EsMonitoringAssociation helps to manage Elasticsearch+Metricbeat+Filebeat <-> Elasticsearch(es) associations
+type EsMonitoringAssociation struct {
 	*Elasticsearch
-	// ref is the namespaced name of the Elasticsearch used in Association
+	// ref is the namespaced name of the Elasticsearch referenced in the Association
 	ref types.NamespacedName
 }
 
-var _ commonv1.Association = &EsEsAssociation{}
+var _ commonv1.Association = &EsMonitoringAssociation{}
 
-func (eea *EsEsAssociation) Associated() commonv1.Associated {
+func (eea *EsMonitoringAssociation) Associated() commonv1.Associated {
 	if eea == nil {
 		return nil
 	}
@@ -122,7 +122,7 @@ func (eea *EsEsAssociation) Associated() commonv1.Associated {
 	return eea.Elasticsearch
 }
 
-func (eea *EsEsAssociation) AssociationConfAnnotationName() string {
+func (eea *EsMonitoringAssociation) AssociationConfAnnotationName() string {
 	// annotation key should be stable to allow Elasticsearch Controller only pick up the ones it expects,
 	// based on ElasticsearchRefs
 
@@ -140,18 +140,18 @@ func (eea *EsEsAssociation) AssociationConfAnnotationName() string {
 	)
 }
 
-func (eea *EsEsAssociation) AssociationType() commonv1.AssociationType {
+func (eea *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (eea *EsEsAssociation) AssociationRef() commonv1.ObjectSelector {
+func (eea *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      eea.ref.Name,
 		Namespace: eea.ref.Namespace,
 	}
 }
 
-func (eea *EsEsAssociation) AssociationConf() *commonv1.AssociationConf {
+func (eea *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
 	if eea.AssocConfs == nil {
 		return nil
 	}
@@ -163,7 +163,7 @@ func (eea *EsEsAssociation) AssociationConf() *commonv1.AssociationConf {
 	return &assocConf
 }
 
-func (eea *EsEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+func (eea *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	if eea.AssocConfs == nil {
 		eea.AssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
 	}
@@ -172,7 +172,7 @@ func (eea *EsEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationCo
 	}
 }
 
-func (eea *EsEsAssociation) AssociationID() string {
+func (eea *EsMonitoringAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", eea.ref.Namespace, eea.ref.Name)
 }
 
@@ -188,14 +188,14 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	ref := es.Spec.Monitoring.Metrics.ElasticsearchRef
 	if ref.IsDefined() {
-		associations = append(associations, &EsEsAssociation{
+		associations = append(associations, &EsMonitoringAssociation{
 			Elasticsearch: es,
 			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
 		})
 	}
 	ref = es.Spec.Monitoring.Logs.ElasticsearchRef
 	if ref.IsDefined() {
-		associations = append(associations, &EsEsAssociation{
+		associations = append(associations, &EsMonitoringAssociation{
 			Elasticsearch: es,
 			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
 		})
@@ -206,23 +206,23 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 func (es *Elasticsearch) GetMonitoringMetricsAssociation() commonv1.Association {
 	ref := es.Spec.Monitoring.Metrics.ElasticsearchRef
 	if ref.IsDefined() {
-		return &EsEsAssociation{
+		return &EsMonitoringAssociation{
 			Elasticsearch: es,
 			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
 		}
 	}
-	return &EsEsAssociation{}
+	return &EsMonitoringAssociation{}
 }
 
 func (es *Elasticsearch) GetMonitoringLogsAssociation() commonv1.Association {
 	ref := es.Spec.Monitoring.Logs.ElasticsearchRef
 	if ref.IsDefined() {
-		return &EsEsAssociation{
+		return &EsMonitoringAssociation{
 			Elasticsearch: es,
 			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
 		}
 	}
-	return &EsEsAssociation{}
+	return &EsMonitoringAssociation{}
 }
 
 func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
