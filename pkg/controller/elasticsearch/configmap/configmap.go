@@ -60,26 +60,12 @@ func ReconcileMetricbeatConfigMap(ctx context.Context, c k8s.Client, es esv1.Ela
 	span, _ := apm.StartSpan(ctx, "reconcile_metricbeat_config", tracing.SpanTypeApp)
 	defer span.End()
 
-	configMap := NewConfigMapWithData(
-		types.NamespacedName{Namespace: es.Namespace, Name: stackmon.MetricbeatConfigMapName(es)},
-		map[string]string{
-			stackmon.MetricbeatConfigKey: stackmon.MetricbeatConfig,
-		},
-	)
-
-	return ReconcileConfigMap(c, es, configMap)
+	return ReconcileConfigMap(c, es, NewConfigMapWithData(stackmon.MetricbeatConfigMapParams(es)))
 }
 
 func ReconcileFilebeatConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_filebeat_config", tracing.SpanTypeApp)
 	defer span.End()
 
-	configMap := NewConfigMapWithData(
-		types.NamespacedName{Namespace: es.Namespace, Name: stackmon.FilebeatConfigMapName(es)},
-		map[string]string{
-			stackmon.FilebeatConfigKey: stackmon.FilebeatConfig,
-		},
-	)
-
-	return ReconcileConfigMap(c, es, configMap)
+	return ReconcileConfigMap(c, es, NewConfigMapWithData(stackmon.FilebeatConfigMapParams(es)))
 }

@@ -5,16 +5,18 @@
 package stackmon
 
 import (
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	_ "embed" // for the beats config files
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
 	MetricbeatConfigKey       = "metricbeat.yml"
 	MetricbeatConfigMapSuffix = "metricbeat-config"
 
-	FilebeatConfigKey       = "filebeat.yml"
 	FilebeatConfigMapSuffix = "filebeat-config"
+	FilebeatConfigKey       = "filebeat.yml"
 )
 
 var (
@@ -44,10 +46,22 @@ var (
 	FilebeatConfig string
 )
 
-func MetricbeatConfigMapName(es esv1.Elasticsearch) string {
+func metricbeatConfigMapName(es esv1.Elasticsearch) string {
 	return esv1.ESNamer.Suffix(es.Name, MetricbeatConfigMapSuffix)
 }
 
-func FilebeatConfigMapName(es esv1.Elasticsearch) string {
+func filebeatConfigMapName(es esv1.Elasticsearch) string {
 	return esv1.ESNamer.Suffix(es.Name, FilebeatConfigMapSuffix)
+}
+
+func MetricbeatConfigMapParams(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
+	nsn := types.NamespacedName{Namespace: es.Namespace, Name: metricbeatConfigMapName(es)}
+	data := map[string]string{MetricbeatConfigKey: MetricbeatConfig}
+	return nsn, data
+}
+
+func FilebeatConfigMapParams(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
+	nsn := types.NamespacedName{Namespace: es.Namespace, Name: filebeatConfigMapName(es)}
+	data := map[string]string{FilebeatConfigKey: FilebeatConfig}
+	return nsn, data
 }

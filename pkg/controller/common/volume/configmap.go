@@ -23,16 +23,6 @@ func NewConfigMapVolumeWithMode(configMapName, name, mountPath string, defaultMo
 	}
 }
 
-func NewConfigMapVolumeWithSubPath(configMapName, name, mountPath string, subPath string) ConfigMapVolume {
-	return ConfigMapVolume{
-		configMapName: configMapName,
-		name:          name,
-		mountPath:     mountPath,
-		defaultMode:   corev1.ConfigMapVolumeSourceDefaultMode,
-		subPath:       subPath,
-	}
-}
-
 // ConfigMapVolume defines a volume to expose a configmap
 type ConfigMapVolume struct {
 	configMapName string

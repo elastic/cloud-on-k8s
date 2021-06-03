@@ -245,7 +245,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		results = results.WithResult(defaultRequeue)
 	}
 
-	// reconcile monitoring configurations
+	// reconcile Beat configurations when monitoring is enabled
 	if stackmon.IsMonitoringMetricsDefined(d.ES) {
 		if err := configmap.ReconcileMetricbeatConfigMap(ctx, d.Client, d.ES); err != nil {
 			return results.WithError(err)
