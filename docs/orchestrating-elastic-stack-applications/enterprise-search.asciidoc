@@ -11,6 +11,7 @@ This section describes how to deploy, configure and access Enterprise Search wit
 
 * <<{p}-enterprise-search-quickstart>>
 * <<{p}-enterprise-search-configuration>>
+* <<{p}-enterprise-search-troubleshoot>>
 
 [id="{p}-enterprise-search-quickstart"]
 == Quickstart
@@ -243,3 +244,25 @@ stringData:
     elasticsearch.password: my-password
     elasticsearch.ssl.enabled: true
 ----
+
+[id="{p}-enterprise-search-troubleshoot"]
+== Troubleshooting
+
+[id="{p}-enterprise-search-jvm-heap-dump"]
+=== Capture a JVM heap dump
+
+For advanced troubleshooting it can be necessary to capture a JVM heap dump. The Enterprise Search Docker image is by default not configured to run with a data volume by the ECK operator. You can however write a heap dump to the `tmp` directory Enterprise Search uses. Please note that your heap dump will be lost if you do not manage to extract it before the container restarts.
+
+
+[source,sh,subs="attributes,+macros"]
+----
+kubectl exec $POD_NAME \
+ -- bash -c  'jmap -dump:format=b,file=tmp/heap.hprof $(jps| grep Main | cut -f 1 -d " ")'
+
+# The Enterprise Search Docker images don't have tar installed so we cannot use kubectl cp
+kubectl exec $POD_NAME -- cat /usr/share/enterprise-search/tmp/heap.hprof | gzip -c  > heap.hprof.gz
+
+# Remove the heap dump from the running container to free up space
+kubectl exec $POD_NAME -- rm /usr/share/enterprise-search/tmp/heap.hprof
+----
+
