@@ -22,7 +22,7 @@ get_licence_detector() {
 generate_notice() {
     (
         cd "$PROJECT_DIR"
-        go mod download
+        go mod download all
         go list -m -json all | "${TEMP_DIR}"/go-licence-detector \
             -depsTemplate="${SCRIPT_DIR}"/templates/dependencies.asciidoc.tmpl \
             -depsOut="${PROJECT_DIR}"/docs/reference/dependencies.asciidoc \
