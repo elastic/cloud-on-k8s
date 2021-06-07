@@ -74,10 +74,6 @@ func BuildPodTemplateSpec(
 		})
 	}
 
-	if stackmon.IsMonitoringLogDefined(es) {
-		builder = stackmon.EnableStackLoggingEnvVar(builder)
-	}
-
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
 	builder = builder.
 		WithLabels(labels).
@@ -95,11 +91,9 @@ func BuildPodTemplateSpec(
 		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
 		WithPreStopHook(*NewPreStopHook())
 
-	if stackmon.IsMonitoringDefined(es) {
-		builder, err = stackmon.WithMonitoring(builder, es)
-		if err != nil {
-			return corev1.PodTemplateSpec{}, err
-		}
+	builder, err = stackmon.WithMonitoring(builder, es)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
 	}
 
 	return builder.PodTemplate, nil

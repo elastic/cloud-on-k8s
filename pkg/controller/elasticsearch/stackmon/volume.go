@@ -5,8 +5,6 @@
 package stackmon
 
 import (
-	"path/filepath"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -14,22 +12,17 @@ import (
 )
 
 const (
-	MetricbeatContainerName    = "metricbeat"
-	MetricbeatConfigVolumeName = "metricbeat-config"
-	MetricbeatConfigDirMountPath  = "/etc/metricbeat-config"
+	MetricbeatContainerName      = "metricbeat"
+	MetricbeatConfigVolumeName   = "metricbeat-config"
+	MetricbeatConfigDirMountPath = "/etc/metricbeat-config"
 
-	FilebeatContainerName    = "filebeat"
-	FilebeatConfigVolumeName = "filebeat-config"
-	FilebeatConfigDirMountPath  = "/etc/filebeat-config"
+	FilebeatContainerName      = "filebeat"
+	FilebeatConfigVolumeName   = "filebeat-config"
+	FilebeatConfigDirMountPath = "/etc/filebeat-config"
 
 	MonitoringMetricsSourceEsCaCertVolumeName = "es-monitoring-metrics-source-certs"
 	MonitoringMetricsTargetEsCaCertVolumeName = "es-monitoring-metrics-target-certs"
 	MonitoringLogsTargetEsCaCertVolumeName    = "es-monitoring-logs-target-certs"
-)
-
-var (
-	MetricbeatConfigMountPath  = filepath.Join(MetricbeatConfigDirMountPath, MetricbeatConfigKey)
-	FilebeatConfigMountPath  = filepath.Join(FilebeatConfigDirMountPath, FilebeatConfigKey)
 )
 
 // monitoringVolumes returns the volumes to add to the Elasticsearch pod for the Metricbeat and Filebeat sidecar containers.

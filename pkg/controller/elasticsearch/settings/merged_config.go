@@ -32,7 +32,7 @@ func NewMergedESConfig(
 	ipFamily corev1.IPFamily,
 	httpConfig commonv1.HTTPConfig,
 	userConfig commonv1.Config,
-	isMonitoring bool,
+	isMonitoringMetrics bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -46,7 +46,7 @@ func NewMergedESConfig(
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
-	if isMonitoring {
+	if isMonitoringMetrics {
 		err = config.MergeWith(monitoringConfig().CanonicalConfig)
 	}
 	if err != nil {

@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"path/filepath"
 	"strings"
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -18,12 +19,46 @@ import (
 )
 
 var (
-	EsLogStyleEnvVarKey   = "ES_LOG_STYLE"
-	EsLogStyleEnvVarValue = "file"
+	metricbeatConfigMountPath = filepath.Join(MetricbeatConfigDirMountPath, MetricbeatConfigKey)
+	filebeatConfigMountPath   = filepath.Join(FilebeatConfigDirMountPath, FilebeatConfigKey)
+
+	esLogStyleEnvVarKey   = "ES_LOG_STYLE"
+	esLogStyleEnvVarValue = "file"
 )
 
-func IsMonitoringDefined(es esv1.Elasticsearch) bool {
-	return IsMonitoringMetricsDefined(es) || IsMonitoringLogDefined(es)
+// WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
+// in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
+func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
+	isMonitoringMetrics := IsMonitoringMetricsDefined(es)
+	isMonitoringLog := IsMonitoringLogDefined(es)
+
+	if isMonitoringMetrics || isMonitoringLog {
+		// Inject volumes
+		builder.WithVolumes(monitoringVolumes(es)...)
+	}
+
+	if isMonitoringMetrics {
+		// Inject Metricbeat sidecar container
+		metricbeat, err := metricbeatContainer(es)
+		if err != nil {
+			return nil, err
+		}
+		builder.WithContainers(metricbeat)
+	}
+
+	if isMonitoringLog {
+		// Enable stack logging in files
+		builder.WithEnv(stackLoggingEnvVar())
+
+		// Inject Filebeat sidecar container
+		filebeat, err := filebeatContainer(es)
+		if err != nil {
+			return nil, err
+		}
+		builder.WithContainers(filebeat)
+	}
+
+	return builder, nil
 }
 
 func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
@@ -34,39 +69,12 @@ func IsMonitoringLogDefined(es esv1.Elasticsearch) bool {
 	return es.Spec.Monitoring.Logs.ElasticsearchRef.IsDefined()
 }
 
-func EnableStackLoggingEnvVar(builder *defaults.PodTemplateBuilder) *defaults.PodTemplateBuilder {
-	return builder.WithEnv(corev1.EnvVar{Name: EsLogStyleEnvVarKey, Value: EsLogStyleEnvVarValue})
-}
-
-// WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
-// in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
-func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
-	// Inject volumes
-	builder = builder.WithVolumes(monitoringVolumes(es)...)
-
-	if IsMonitoringMetricsDefined(es) {
-		// Inject Metricbeat sidecar container
-		metricBeat, err := metricbeatContainer(es)
-		if err != nil {
-			return nil, err
-		}
-		builder.PodTemplate.Spec.Containers = append(builder.PodTemplate.Spec.Containers, metricBeat)
-	}
-
-	if IsMonitoringLogDefined(es) {
-		// Inject Filebeat sidecar container
-		filebeat, err := filebeatContainer(es)
-		if err != nil {
-			return nil, err
-		}
-		builder.PodTemplate.Spec.Containers = append(builder.PodTemplate.Spec.Containers, filebeat)
-	}
-
-	return builder, nil
+func stackLoggingEnvVar() corev1.EnvVar {
+	return corev1.EnvVar{Name: esLogStyleEnvVarKey, Value: esLogStyleEnvVarValue}
 }
 
 func metricbeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
-	image, err := containerImage(es, container.MetricbeatImage)
+	image, err := fullContainerImage(es, container.MetricbeatImage)
 	if err != nil {
 		return corev1.Container{}, err
 	}
@@ -77,7 +85,7 @@ func metricbeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
 	return corev1.Container{
 		Name:  MetricbeatContainerName,
 		Image: image,
-		Args:  []string{"-c", MetricbeatConfigMountPath, "-e"},
+		Args:  []string{"-c", metricbeatConfigMountPath, "-e"},
 		Env:   append(envVars, defaults.PodDownwardEnvVars()...),
 		VolumeMounts: []corev1.VolumeMount{
 			metricbeatConfigMapVolume(es).VolumeMount(),
@@ -88,7 +96,7 @@ func metricbeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
 }
 
 func filebeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
-	image, err := containerImage(es, container.FilebeatImage)
+	image, err := fullContainerImage(es, container.FilebeatImage)
 	if err != nil {
 		return corev1.Container{}, err
 	}
@@ -99,7 +107,7 @@ func filebeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
 	return corev1.Container{
 		Name:  FilebeatContainerName,
 		Image: image,
-		Args:  []string{"-c", FilebeatConfigMountPath, "-e"},
+		Args:  []string{"-c", filebeatConfigMountPath, "-e"},
 		Env:   append(envVars, defaults.PodDownwardEnvVars()...),
 		VolumeMounts: []corev1.VolumeMount{
 			esvolume.DefaultLogsVolumeMount,
@@ -109,11 +117,11 @@ func filebeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
 	}, nil
 }
 
-// containerImage returns the full Beat container image with the image registry.
+// fullContainerImage returns the full Beat container image with the image registry.
 // If the Elasticsearch specification is configured with a custom image, we do best effort by trying to derive the Beat
 // image from the Elasticsearch custom image with an image name replacement
 // (<registry>/elasticsearch/elasticsearch:<version> becomes <registry>/beats/<filebeat|metricbeat>:<version>)
-func containerImage(es esv1.Elasticsearch, defaultImage container.Image) (string, error) {
+func fullContainerImage(es esv1.Elasticsearch, defaultImage container.Image) (string, error) {
 	fullCustomImage := es.Spec.Image
 	if fullCustomImage != "" {
 		esImage := string(container.ElasticsearchImage)
