@@ -319,4 +319,4 @@ This can also be done for Kibana and APM Server.
 [id="{p}-capture-jvm-heap-dumps"]
 == Capture JVM heap dumps
 
-Elasticsearch and Enterprise Search are applications that run on the JVM. It can be useful to capture a heap dump to troubleshoot garbage collection issues or suspected memory leaks or to share it with Elastic. Please follow the application specific instructions for <<{p}-jvm-heap-dumps,Elasticsearch>> and <<{p}-enterprise-search-jvm-heap-dump,Enterprise Search>>.
+Elasticsearch and Enterprise Search are applications that run on the JVM. It can be useful to capture a heap dump to troubleshoot garbage collection issues or suspected memory leaks or to share it with Elastic. Follow the application specific instructions for <<{p}-jvm-heap-dumps,Elasticsearch>> and <<{p}-enterprise-search-jvm-heap-dump,Enterprise Search>>.

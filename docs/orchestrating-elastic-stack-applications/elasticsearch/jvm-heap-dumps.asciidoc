@@ -9,10 +9,10 @@ endif::[]
 = JVM heap dumps
 
 == Ensure sufficient storage
-Elasticsearch is link:https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#heap-dump-path[configured by default] to take heap dumps on out of memory exceptions to the default data directory. The default data directory is `/usr/share/elasticsearch/data` in the official Docker images ECK uses. If you are running Elasticsearch with a large heap that is as large as the remaining space on the data volume this can lead to a situation where Elasticsearch is no longer able to start. To avoid this scenario you have two options:
+Elasticsearch is link:https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#heap-dump-path[configured by default] to take heap dumps on out-of-memory exceptions to the default data directory. The default data directory is `/usr/share/elasticsearch/data` in the official Docker images that ECK uses. If you are running Elasticsearch with a large heap that is as large as the remaining space on the data volume, this can lead to a situation where Elasticsearch is no longer able to start. To avoid this scenario you have two options:
 
-.  choose a different path by setting `-XX:HeapDumpPath=` via the  `ES_JAVA_OPTS` variable to a path where a volume with sufficient storage space is mounted
-.  <<{p}-volume-claim-templates,resize the data volume>> to a sufficiently large size if your volume provisioner supports volume expansion
+.  Choose a different path by setting `-XX:HeapDumpPath=` via the  `ES_JAVA_OPTS` variable to a path where a volume with sufficient storage space is mounted
+.  <<{p}-volume-claim-templates,Resize the data volume>> to a sufficiently large size if your volume provisioner supports volume expansion
 
 == Taking add-hoc heap dumps
 To take a heap dump before the JVM process runs out of memory you can execute the heap dump command directly in the Elasticsearch container:
@@ -24,7 +24,7 @@ kubectl exec $POD_NAME \
 '/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
 ----
 
-If the Elasticsearch container is running with a random user ID, as it is the case for example on OpenShift, then there is no need to substitute the user identity:
+If the Elasticsearch container is running with a random user ID, as for example on OpenShift, there is no need to substitute the user identity:
 
 [source,sh,subs="attributes,+macros"]
 ----
