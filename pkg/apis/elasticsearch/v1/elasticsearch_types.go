@@ -242,10 +242,6 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 	return nil
 }
 
-/*func (es *Elasticsearch) AssociationID() string {
-	return commonv1.SingletonAssociationID
-}*/
-
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
 // Inspired by https://github.com/kubernetes/enhancements/pull/2440
 type VolumeClaimDeletePolicy string
