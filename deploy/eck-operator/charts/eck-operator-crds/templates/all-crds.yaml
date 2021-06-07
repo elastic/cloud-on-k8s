@@ -2197,9 +2197,9 @@ spec:
               description: Image is the Elasticsearch Docker image to deploy.
               type: string
             monitoring:
-              description: Monitoring enables you to extract log and stack monitoring
+              description: Monitoring enables you to extract log and Stack Monitoring
                 metrics of this Elasticsearch cluster. Metricbeat and Filebeat are
-                deployed in the same pod as sidecar and each one send data to one
+                deployed in the same Pod as sidecars and each one send data to one
                 or two different monitoring Elasticsearch clusters running in the
                 same Kubernetes cluster.
               properties:
@@ -2233,7 +2233,7 @@ spec:
                     elasticsearchRef:
                       description: ElasticsearchRef is a reference to a monitoring
                         Elasticsearch cluster running in the same Kubernetes cluster
-                        dedicated to receiving stack monitoring metrics.
+                        dedicated to receiving Stack Monitoring metrics.
                       properties:
                         name:
                           description: Name of the Kubernetes object.

@@ -78,8 +78,8 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=DeleteOnScaledownOnly;DeleteOnScaledownAndClusterDeletion
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 
-	// Monitoring enables you to extract log and stack monitoring metrics of this Elasticsearch cluster.
-	// Metricbeat and Filebeat are deployed in the same pod as sidecar and each one send data to one or two different
+	// Monitoring enables you to extract log and Stack Monitoring metrics of this Elasticsearch cluster.
+	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one send data to one or two different
 	// monitoring Elasticsearch clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
@@ -93,7 +93,7 @@ type Monitoring struct {
 
 type MetricsMonitoring struct {
 	// ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster
-	// dedicated to receiving stack monitoring metrics.
+	// dedicated to receiving Stack Monitoring metrics.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 }
 
