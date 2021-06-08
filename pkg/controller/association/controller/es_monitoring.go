@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
@@ -24,9 +25,6 @@ const (
 	EsMonitoringAssociationLabelNamespace = "esmonitoringassociation.k8s.elastic.co/namespace"
 	// EsMonitoringAssociationLabelType marks the type of association.
 	EsMonitoringAssociationLabelType = "esmonitoringassociation.k8s.elastic.co/type"
-
-	// BeatBuiltinRole is the name of the built-in role for the Metricbeat/Filebeat system user.
-	BeatBuiltinRole = "superuser" // FIXME: create a dedicated role?
 )
 
 // AddEsMonitoring reconciles an association between two Elasticsearch clusters for Stack Monitoring.
@@ -54,7 +52,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
 		UserSecretSuffix:                  "beat-mon-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return BeatBuiltinRole, nil
+			return user.StackMonitoringUserRole, nil
 		},
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
