@@ -183,9 +183,9 @@ func (b *PodTemplateBuilder) WithTerminationGracePeriod(period int64) *PodTempla
 	return b
 }
 
-// WithContainer appends the given containers to the list of containers belonging to the pod.
+// WithContainers appends the given containers to the list of containers belonging to the pod.
 // It also ensures that the base container defaulter still points to the container in the list because append()
-// create a new slice.
+// creates a new slice.
 func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *PodTemplateBuilder {
 	b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, containers...)
 	b.setContainerDefaulter()
