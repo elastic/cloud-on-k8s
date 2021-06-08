@@ -37,7 +37,7 @@ func monitoringVolumes(es esv1.Elasticsearch) []corev1.Volume {
 			monitoringMetricsTargetCaCertSecretVolume(es).Volume(),
 		)
 	}
-	if IsMonitoringLogDefined(es) {
+	if IsMonitoringLogsDefined(es) {
 		volumes = append(volumes,
 			filebeatConfigMapVolume(es).Volume(),
 			monitoringLogsTargetCaCertSecretVolume(es).Volume(),

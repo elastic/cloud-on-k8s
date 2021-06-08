@@ -251,7 +251,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			return results.WithError(err)
 		}
 	}
-	if stackmon.IsMonitoringLogDefined(d.ES) {
+	if stackmon.IsMonitoringLogsDefined(d.ES) {
 		if err := configmap.ReconcileFilebeatConfigMap(ctx, d.Client, d.ES); err != nil {
 			return results.WithError(err)
 		}
