@@ -19,18 +19,16 @@ To take a heap dump before the JVM process runs out of memory you can execute th
 
 [source,sh,subs="attributes,+macros"]
 ----
-kubectl exec $POD_NAME \
--- su elasticsearch -g root -c \
-'/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
+kubectl exec $POD_NAME -- su elasticsearch -g root -c \
+  '/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
 ----
 
 If the Elasticsearch container is running with a random user ID, as for example on OpenShift, there is no need to substitute the user identity:
 
 [source,sh,subs="attributes,+macros"]
 ----
-kubectl exec  $POD_NAME \
--- bash -c \
-'/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
+kubectl exec $POD_NAME -- bash -c \
+  '/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
 ----
 
 == Extracting heap dumps from the Elasticsearch container
@@ -39,6 +37,8 @@ To retrieve heap dumps taken by the Elasticsearch JVM or by you, as described in
 [source,sh]
 ----
 kubectl cp $POD_NAME:/usr/share/elasticsearch/data/heap.hprof ./heap.hprof
-# deleting the heap dump from the mounted data volume to free up space
+
+
+# Remove the heap dump from the running container to free up space
 kubectl exec $POD_NAME -- rm /usr/share/elasticsearch/data/heap.hprof
 ----

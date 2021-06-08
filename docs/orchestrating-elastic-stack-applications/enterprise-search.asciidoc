@@ -256,11 +256,11 @@ For advanced troubleshooting you might need to capture a JVM heap dump. By defau
 
 [source,sh,subs="attributes,+macros"]
 ----
-kubectl exec $POD_NAME \
- -- bash -c  'jmap -dump:format=b,file=tmp/heap.hprof $(jps| grep Main | cut -f 1 -d " ")'
+kubectl exec $POD_NAME -- bash -c \
+  'jmap -dump:format=b,file=tmp/heap.hprof $(jps| grep Main | cut -f 1 -d " ")'
 
 # The Enterprise Search Docker images don't have tar installed so we cannot use kubectl cp
-kubectl exec $POD_NAME -- cat /usr/share/enterprise-search/tmp/heap.hprof | gzip -c  > heap.hprof.gz
+kubectl exec $POD_NAME -- cat /usr/share/enterprise-search/tmp/heap.hprof | gzip -c > heap.hprof.gz
 
 # Remove the heap dump from the running container to free up space
 kubectl exec $POD_NAME -- rm /usr/share/enterprise-search/tmp/heap.hprof
