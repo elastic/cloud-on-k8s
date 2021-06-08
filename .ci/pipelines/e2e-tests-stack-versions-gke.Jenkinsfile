@@ -42,29 +42,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.15")
-                        }
-                    }
-                }
-                stage("7.4.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-74-${BUILD_NUMBER}-e2e", "7.4.2")
-                        }
-                    }
-                }
-                stage("7.5.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-75-${BUILD_NUMBER}-e2e", "7.5.2")
+                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.16")
                         }
                     }
                 }
@@ -145,14 +123,14 @@ pipeline {
                         }
                     }
                 }
-                stage("7.13.0") {
+                stage("7.13.1") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-713-${BUILD_NUMBER}-e2e", "7.13.0")
+                            runWith(lib, failedTests, "eck-713-${BUILD_NUMBER}-e2e", "7.13.1")
                         }
                     }
                 }
@@ -186,8 +164,6 @@ pipeline {
             script {
                 clusters = [
                     "eck-68-${BUILD_NUMBER}-e2e",
-                    "eck-74-${BUILD_NUMBER}-e2e",
-                    "eck-75-${BUILD_NUMBER}-e2e",
                     "eck-76-${BUILD_NUMBER}-e2e",
                     "eck-77-${BUILD_NUMBER}-e2e",
                     "eck-78-${BUILD_NUMBER}-e2e",

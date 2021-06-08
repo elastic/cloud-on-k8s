@@ -517,3 +517,100 @@ func Test_validPVCModification(t *testing.T) {
 		})
 	}
 }
+
+func Test_validPVCNaming(t *testing.T) {
+	esFixture := func() esv1.Elasticsearch {
+		return esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+			{Name: "default"},
+		}}}
+	}
+	esWithClaim := func(claimName string, es esv1.Elasticsearch) esv1.Elasticsearch {
+		es.Spec.NodeSets[0].VolumeClaimTemplates = append(es.Spec.NodeSets[0].VolumeClaimTemplates, corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: claimName},
+		})
+		return es
+	}
+	esWithVolumeMount := func(mountName string, es esv1.Elasticsearch) esv1.Elasticsearch {
+		if es.Spec.NodeSets[0].PodTemplate.Spec.Containers == nil {
+			es.Spec.NodeSets[0].PodTemplate.Spec.Containers = []corev1.Container{
+				{Name: "elasticsearch"},
+			}
+		}
+		es.Spec.NodeSets[0].PodTemplate.Spec.Containers[0].VolumeMounts = append(
+			es.Spec.NodeSets[0].PodTemplate.Spec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{
+				Name:      mountName,
+				MountPath: "/something/we/cannot/check/as/it/is/customizable/in/elasticsearch.yml",
+			},
+		)
+		return es
+	}
+	esWithSidecar := esv1.Elasticsearch{
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name: "default",
+					PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{
+						{
+							Name: "sidecar",
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "my-data"},
+							},
+						}}}},
+				},
+			},
+		},
+	}
+	tests := []struct {
+		name    string
+		es      esv1.Elasticsearch
+		wantErr bool
+	}{
+		{
+			name:    "no claims is OK",
+			es:      esFixture(),
+			wantErr: false,
+		},
+		{
+			name:    "default volume claim name is OK",
+			es:      esWithClaim("elasticsearch-data", esFixture()),
+			wantErr: false,
+		},
+		{
+			name:    "custom claim name not mounted is NOK",
+			es:      esWithClaim("my-data", esFixture()),
+			wantErr: true,
+		},
+		{
+			name:    "custom claim name but mounted is OK",
+			es:      esWithVolumeMount("my-data", esWithClaim("my-data", esFixture())),
+			wantErr: false,
+		},
+		{
+			name:    "multiple custom claims but one not mounted is NOK",
+			es:      esWithVolumeMount("my-data", esWithClaim("yet-another", esWithClaim("my-data", esFixture()))),
+			wantErr: true,
+		},
+		{
+			name:    "multiple custom claims is OK",
+			es:      esWithVolumeMount("yet-another", esWithVolumeMount("my-data", esWithClaim("yet-another", esWithClaim("my-data", esFixture())))),
+			wantErr: false,
+		},
+		{
+			name: "custom claims for sidecars if all are mounted is OK",
+			// this example has no valid data volume but if we want to allow data path customization there is no easy way to validate that
+			es:      esWithClaim("my-data", esWithSidecar),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := validPVCNaming(tt.es)
+			if tt.wantErr {
+				require.NotEmpty(t, got)
+			} else {
+				require.Empty(t, got)
+			}
+		})
+	}
+}

@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build e2e
+// +build mixed e2e
 
 package e2e
 
@@ -34,7 +34,7 @@ import (
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func TestVersionUpgradeOrdering(t *testing.T) {
 	initialVersion := "7.12.1"
-	updatedVersion := "7.13.0"
+	updatedVersion := "7.13.1"
 
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade

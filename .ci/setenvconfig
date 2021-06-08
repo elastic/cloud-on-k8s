@@ -232,13 +232,13 @@ OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 PIPELINE=e2e/ocp
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
-CLUSTER_NAME=$BUILD_TAG
+CLUSTER_NAME=ocp4-ci-$BUILD_NUMBER
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: ocp4-ci-$BUILD_NUMBER
   clientVersion: $2
   vaultInfo:
     address: $VAULT_ADDR
@@ -324,7 +324,7 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-E2E_TAGS=es
+E2E_TAGS=es kb apm ent beat agent
 export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 # TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
 # MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
@@ -484,7 +484,6 @@ IMG_SUFFIX=-dev-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 IS_SNAPSHOT_BUILD=yes
-
 GO_TAGS=release
 export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 ENV
@@ -565,7 +564,7 @@ write_deployer_config <<CFG
 id: ocp-ci
 overrides:
   operation: delete
-  clusterName: $BUILD_TAG
+  clusterName: ocp4-ci-$BUILD_NUMBER
   clientVersion: $2
   vaultInfo:
     address: $VAULT_ADDR

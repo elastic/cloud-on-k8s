@@ -15,13 +15,15 @@ import (
 const (
 	ElasticsearchAutoscalingStatusAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-status"
 
-	EmptyResponse                 AutoscalingEventType = "EmptyResponse"
-	HorizontalScalingLimitReached AutoscalingEventType = "HorizontalScalingLimitReached"
-	MemoryRequired                AutoscalingEventType = "MemoryRequired"
-	NoNodeSet                     AutoscalingEventType = "NoNodeSet"
-	OverlappingPolicies           AutoscalingEventType = "OverlappingPolicies"
-	StorageRequired               AutoscalingEventType = "StorageRequired"
-	VerticalScalingLimitReached   AutoscalingEventType = "VerticalScalingLimitReached"
+	EmptyResponse                  AutoscalingEventType = "EmptyResponse"
+	HorizontalScalingLimitReached  AutoscalingEventType = "HorizontalScalingLimitReached"
+	MemoryRequired                 AutoscalingEventType = "MemoryRequired"
+	NoNodeSet                      AutoscalingEventType = "NoNodeSet"
+	OverlappingPolicies            AutoscalingEventType = "OverlappingPolicies"
+	StorageRequired                AutoscalingEventType = "StorageRequired"
+	UnexpectedTotalStorageCapacity AutoscalingEventType = "UnexpectedTotalStorageCapacity"
+	UnexpectedNodeStorageCapacity  AutoscalingEventType = "UnexpectedNodeStorageCapacity"
+	VerticalScalingLimitReached    AutoscalingEventType = "VerticalScalingLimitReached"
 )
 
 type Status struct {

@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	// GIB - 1 GibiByte
-	GIB = int64(1024 * 1024 * 1024)
+	// GiB - 1 GibiByte
+	GiB = int64(1024 * 1024 * 1024)
+	// GB - 1 Gigabyte
+	GB = int64(1000 * 1000 * 1000)
 )
 
 // NodeSetsResources models for all the nodeSets managed by a same autoscaling policy:
@@ -287,17 +289,18 @@ func (nr NodeResources) UpdateLimits(autoscalingResources v1.AutoscalingResource
 
 // ResourceToQuantity attempts to convert a raw integer value into a human readable quantity.
 func ResourceToQuantity(nodeResource int64) resource.Quantity {
-	var nodeQuantity resource.Quantity
-	if nodeResource >= GIB && nodeResource%GIB == 0 {
-		// When it's possible we may want to express the memory with a "human readable unit" like the the Gi unit
-		nodeQuantity = resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GIB))
-	} else {
-		nodeQuantity = resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
+	switch {
+	case nodeResource >= GiB && nodeResource%GiB == 0:
+		// When it's possible we may want to express the memory with a "human readable unit" like the Gi unit
+		return resource.MustParse(fmt.Sprintf("%dGi", nodeResource/GiB))
+	case nodeResource >= GB && nodeResource%GB == 0:
+		// Same for gigabytes unit
+		return resource.MustParse(fmt.Sprintf("%dG", nodeResource/GB))
 	}
-	return nodeQuantity
+	return resource.NewQuantity(nodeResource, resource.DecimalSI).DeepCopy()
 }
 
-// ResourceList is a set of (resource name, quantity) pairs.
+// ResourceListInt64 is a set of (resource name, quantity) pairs.
 type ResourceListInt64 map[corev1.ResourceName]int64
 
 // NodeResourcesInt64 is mostly use in logs to print comparable values which can be used in dashboards.

@@ -14,9 +14,9 @@ import (
 // Elastic Stack versions used in the E2E tests
 const (
 	// Minimum version for 6.8.x tested with the operator
-	MinVersion68x = "6.8.15"
+	MinVersion68x = "6.8.16"
 	// Current latest version for 7.x
-	LatestVersion7x = "7.13.0" // version to synchronize with the latest release of the Elastic Stack
+	LatestVersion7x = "7.13.1" // version to synchronize with the latest release of the Elastic Stack
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
@@ -44,4 +44,8 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	// major digits must be equal or differ by only 1
 	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
 	return validMajorDigit && !srcVer.GTE(dstVer), nil
+}
+
+func IsSnapshotVersion(v version.Version) bool {
+	return len(v.Pre) > 0
 }

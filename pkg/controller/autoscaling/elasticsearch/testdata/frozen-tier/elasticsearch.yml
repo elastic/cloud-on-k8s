@@ -55,7 +55,7 @@ metadata:
           "nodeSets": [{"name": "di-frozen","nodeCount": 1}],
           "resources": {
             "limits": {"memory": "2Gi"},
-            "requests": {"cpu": "2","memory": "2Gi","storage": "1Gi"}
+            "requests": {"cpu": "2","memory": "2Gi","storage": "2Gi"}
           },
           "state": [],
           "lastModificationTime": "2021-04-22T01:11:50Z"
