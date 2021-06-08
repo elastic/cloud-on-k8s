@@ -106,8 +106,9 @@ type LogsMonitoring struct {
 
 // EsMonitoringAssociation helps to manage Elasticsearch+Metricbeat+Filebeat <-> Elasticsearch(es) associations
 type EsMonitoringAssociation struct {
+	// The monitored Elasticsearch cluster from where are collected logs and monitoring metrics
 	*Elasticsearch
-	// ref is the namespaced name of the Elasticsearch referenced in the Association
+	// ref is the namespaced name of the Elasticsearch referenced in the Association used to send and store monitoring data
 	ref types.NamespacedName
 }
 
