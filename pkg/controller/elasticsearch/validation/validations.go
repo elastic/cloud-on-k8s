@@ -12,6 +12,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
@@ -37,6 +38,7 @@ const (
 	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg    = "Unsupported version"
+	unsupportedVersionForStackMonitoringMsg    = "Unsupported version for Stack Monitoring. Required >= %s."
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
@@ -49,6 +51,7 @@ var validations = []validation{
 	supportedVersion,
 	validSanIP,
 	validAutoscalingConfiguration,
+	supportedVersionForStackMonitoring,
 }
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
@@ -99,6 +102,17 @@ func supportedVersion(es esv1.Elasticsearch) field.ErrorList {
 		}
 	}
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionMsg)}
+}
+
+func supportedVersionForStackMonitoring(es esv1.Elasticsearch) field.ErrorList {
+	if stackmon.IsStackMonitoringDefined(es) {
+		err := stackmon.IsSupportedVersion(es.Spec.Version)
+		if err != nil {
+			return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version,
+				fmt.Sprintf(unsupportedVersionForStackMonitoringMsg, stackmon.MinStackVersion.String()))}
+		}
+	}
+	return field.ErrorList{}
 }
 
 // hasCorrectNodeRoles checks whether Elasticsearch node roles are correctly configured.

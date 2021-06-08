@@ -14,12 +14,19 @@ import (
 	"testing"
 
 	esClient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
 // TestStackMonitoring
 func TestStackMonitoring(t *testing.T) {
+	// only execute this test on supported version
+	err := stackmon.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+	if err != nil {
+		t.SkipNow()
+	}
+
 	// Create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
 	metrics := elasticsearch.NewBuilder("test-es-mon-metrics").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)

@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/pkg/errors"
@@ -24,6 +26,11 @@ var (
 
 	esLogStyleEnvVarKey   = "ES_LOG_STYLE"
 	esLogStyleEnvVarValue = "file"
+
+	// Minimum Stack version to enable Stack Monitoring.
+	// This requirement comes from the fact that we configure Elasticsearch to write logs to disk for Filebeat
+	// via the env var ES_LOG_STYLE available from this version.
+	MinStackVersion = version.MustParse("7.14.0")
 )
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
@@ -32,10 +39,19 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 	isMonitoringMetrics := IsMonitoringMetricsDefined(es)
 	isMonitoringLog := IsMonitoringLogDefined(es)
 
-	if isMonitoringMetrics || isMonitoringLog {
-		// Inject volumes
-		builder.WithVolumes(monitoringVolumes(es)...)
+	// No monitoring defined
+	if !isMonitoringMetrics && !isMonitoringLog {
+		return builder, nil
 	}
+
+	// Reject unsupported version
+	err := IsSupportedVersion(es.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	// Inject volumes
+	builder.WithVolumes(monitoringVolumes(es)...)
 
 	if isMonitoringMetrics {
 		// Inject Metricbeat sidecar container
@@ -61,12 +77,27 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 	return builder, nil
 }
 
+func IsStackMonitoringDefined(es esv1.Elasticsearch) bool {
+	return IsMonitoringMetricsDefined(es) || IsMonitoringLogDefined(es)
+}
+
 func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
 	return es.Spec.Monitoring.Metrics.ElasticsearchRef.IsDefined()
 }
 
 func IsMonitoringLogDefined(es esv1.Elasticsearch) bool {
 	return es.Spec.Monitoring.Logs.ElasticsearchRef.IsDefined()
+}
+
+func IsSupportedVersion(esVersion string) error {
+	ver, err := version.Parse(esVersion)
+	if err != nil {
+		return err
+	}
+	if ver.LT(MinStackVersion) {
+		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", MinStackVersion)
+	}
+	return nil
 }
 
 func stackLoggingEnvVar() corev1.EnvVar {
