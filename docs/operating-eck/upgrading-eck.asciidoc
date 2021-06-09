@@ -59,13 +59,13 @@ kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operato
 [source,shell,subs="attributes,callouts"]
 .If you are using Helm: force upgrade the CRD chart to move to the v1 CRDs
 ----
-helm upgrade eck-operator elastic/eck-operator-crds -n elastic-system --force
+helm upgrade elastic-operator elastic/eck-operator-crds -n elastic-system --force
 ----
 
 Then upgrade the main chart as usual:
 [source,shell,subs="attributes,callouts"]
 ----
-helm upgrade eck-operator elastic/eck-operator -n elastic-system
+helm upgrade elastic-operator elastic/eck-operator -n elastic-system
 ----
 
 If you are using ECK through an OLM-managed distribution channel like operatorhub.io or the OpenShift OperatorHub then the CRD version upgrade will by handled by OLM for you and you do not need to take special action.
