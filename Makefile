@@ -242,7 +242,8 @@ else
 endif
 
 apply-psp:
-	kubectl apply -f config/dev/elastic-psp.yaml
+	kubectl apply -f config/recipes/psp/elastic-psp.yaml
+	kubectl apply -f config/recipes/psp/beats-agent-psp.yaml
 
 ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 
