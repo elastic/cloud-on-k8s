@@ -177,6 +177,7 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
+# kubebuilder 2.3.1 comes with a 1.15 control plane and we rely on it for the k8s binaries
 integration: GO_TAGS += integration
 integration: clean generate-crds-v1beta1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)

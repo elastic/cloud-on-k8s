@@ -2,32 +2,13 @@ bases:
   - ../bases
 
 patchesJson6902:
-  # patches that apply to all CRDS
-#  - target:
-#      group: apiextensions.k8s.io
-#      version: v1
-#      kind: CustomResourceDefinition
-#      name: apmservers.apm.k8s.elastic.co
-#    path: all-patches.yaml
-#  - target:
-#      group: apiextensions.k8s.io
-#      version: v1
-#      kind: CustomResourceDefinition
-#      name: elasticsearches.elasticsearch.k8s.elastic.co
-#    path: all-patches.yaml
-#  - target:
-#      group: apiextensions.k8s.io
-#      version: v1
-#      kind: CustomResourceDefinition
-#      name: kibanas.kibana.k8s.elastic.co
-#    path: all-patches.yaml
   # custom patches for apm
   - target:
       group: apiextensions.k8s.io
       version: v1
       kind: CustomResourceDefinition
       name: apmservers.apm.k8s.elastic.co
-    path: apm-kibana-patches.yaml
+    path: remove-pod-template-patch.yaml
   # custom patches for Elasticsearch
   - target:
       group: apiextensions.k8s.io
@@ -41,14 +22,14 @@ patchesJson6902:
       version: v1
       kind: CustomResourceDefinition
       name: kibanas.kibana.k8s.elastic.co
-    path: apm-kibana-patches.yaml
+    path: remove-pod-template-patch.yaml
   # custom patches for EnterpriseSearch
   - target:
       group: apiextensions.k8s.io
       version: v1
       kind: CustomResourceDefinition
       name: enterprisesearches.enterprisesearch.k8s.elastic.co
-    path: ent-patches.yaml
+    path: remove-pod-template-patch.yaml
   # custom patches for Beat
   - target:
       group: apiextensions.k8s.io
@@ -69,5 +50,5 @@ patchesJson6902:
       version: v1
       kind: CustomResourceDefinition
       name: elasticmapsservers.maps.k8s.elastic.co
-    path: ems-patches.yaml
+    path: remove-pod-template-patch.yaml
 
