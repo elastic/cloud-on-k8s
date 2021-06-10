@@ -48,7 +48,7 @@ At the end of the trial period, the Platinum and Enterprise features operate in 
 [float]
 [id="{p}-add-license"]
 == Add a license
-If you have a valid Enterprise subscription or a trial license extension, you will receive a license as a JSON file.
+If you have a valid Enterprise subscription or a trial license extension, you will receive a license as a JSON file. This file contains the ECK orchestration(Enterprise) license which enables ECK features, as well as individual Platinum licenses for your actual Elasticsearch cluster(s).
 
 NOTE: ECK will only accept Enterprise licenses. You can not apply a single Platinum or Gold cluster license to ECK.
 
@@ -78,7 +78,7 @@ kubectl create secret generic eck-license --from-file=my-license-file.json -n el
 kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elastic-system
 ----
 
-NOTE: After you install a license into ECK, all the Elastic stack applications you manage with ECK will have all Platinum and Enterprise features enabled. Applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
+NOTE: After you install a license into ECK, all the Elastic stack applications you manage with ECK will have all Platinum and Enterprise features enabled, and additionally the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API for the individual Elasticsearch cluster(s) will report as a Platinum license, and the command `kubectl -n elastic-system get configmap elastic-licensing -o yaml` will return as Enterprise. Applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
 
 [float]
 [id="{p}-update-license"]
