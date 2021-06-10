@@ -42,7 +42,7 @@
     fsGroup:
       rule: 'MustRunAs'
       ranges:
-        # Forbid
+        # Forbid reserved uids.
         - min: 1000
           max: 65535
     readOnlyRootFilesystem: false
