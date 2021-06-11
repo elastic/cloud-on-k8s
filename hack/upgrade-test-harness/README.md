@@ -35,6 +35,7 @@ Adding a new release
 --------------------
 
 - Create a directory under `testdata` following the existing naming convention.
-- Add the `all-in-one.yaml` as `install.yaml` to the release directory.
+- Add the `crds.yaml` as `crds.yaml` to the release directory.
+- Add the `operator.yaml` as `install.yaml` to the release directory.
 - Add resource definitions to a file named `stack.yaml` in the release directory. Resource names must match the name of the release.
 - Update `conf.yaml` and add the new release to the correct position in the `testParam` list.

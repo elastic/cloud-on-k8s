@@ -26,7 +26,7 @@ Validating webhooks are defined using a `ValidatingWebhookConfiguration` object 
 [id="{p}-{page_id}-defaults"]
 == Defaults provided by ECK
 
-When installed through the default `all-in-one.yaml` manifest, ECK will be installed with a `ValidatingWebhookConfiguration` configured as follows:
+When installed through the default `operator.yaml` manifest, ECK will be installed with a `ValidatingWebhookConfiguration` configured as follows:
 
 * Validate all known Elastic custom resources ({eck_resources_list}) on create and update.
 * The operator itself is the webhook server -- which is exposed through a service named `elastic-webhook-server` in the `elastic-system` namespace.

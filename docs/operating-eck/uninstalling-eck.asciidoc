@@ -23,5 +23,6 @@ This deletes all underlying Elastic Stack resources, included their Pods, Secret
 +
 [source,shell,subs="attributes"]
 ----
-kubectl delete -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+kubectl delete -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
+kubectl delete -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 ----
