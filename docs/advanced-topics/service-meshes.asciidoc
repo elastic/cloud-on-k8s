@@ -45,7 +45,7 @@ kubectl label namespace elastic-system istio-injection=enabled
 +
 [source,sh,subs="attributes"]
 ----
-kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/create.yaml
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
 

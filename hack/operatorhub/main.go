@@ -167,8 +167,10 @@ func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, 
 }
 
 func installManifestFromWeb(version string) (io.Reader, error) {
+	// try the legacy all-in-one first for older releases
 	buf, err := makeRequest(fmt.Sprintf(allInOneURL, version))
-	if err != nil && err == errNotFound {
+	if err == errNotFound {
+		// if not found load the separate manifests for CRDs and operator (version  >= 1.7.0)
 		crds, err := makeRequest(fmt.Sprintf(crdManifestURL, version))
 		if err != nil {
 			return nil, err
