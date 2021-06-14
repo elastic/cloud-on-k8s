@@ -748,13 +748,20 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 			Rotation:   certRotation,
 		}
 
-		// Force a first reconciliation to create the resources before the server is started
-		if err := webhookParams.ReconcileResources(context.Background(), clientset); err != nil {
+		// retrieve the current webhook configuration interface
+		wh, err := webhookParams.NewAdmissionControllerInterface(context.Background(), clientset)
+		if err != nil {
 			log.Error(err, "unable to setup and fill the webhook certificates")
 			os.Exit(1)
 		}
 
-		if err := webhook.Add(mgr, webhookParams, clientset); err != nil {
+		// Force a first reconciliation to create the resources before the server is started
+		if err := webhookParams.ReconcileResources(context.Background(), clientset, wh); err != nil {
+			log.Error(err, "unable to setup and fill the webhook certificates")
+			os.Exit(1)
+		}
+
+		if err := webhook.Add(mgr, webhookParams, clientset, wh); err != nil {
 			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
 			os.Exit(1)
 		}

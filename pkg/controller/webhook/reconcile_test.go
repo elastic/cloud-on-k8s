@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/admissionregistration/v1beta1"
+	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -38,22 +38,37 @@ func TestParams_ReconcileResources(t *testing.T) {
 					Name:      "elastic-webhook-server-cert",
 				},
 			},
-			&v1beta1.ValidatingWebhookConfiguration{
+			&v1.ValidatingWebhookConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "elastic-webhook.k8s.elastic.co",
 				},
-				Webhooks: []v1beta1.ValidatingWebhook{
+				Webhooks: []v1.ValidatingWebhook{
 					{
 						Name: "elastic-es-validation-v1.k8s.elastic.co",
-						ClientConfig: v1beta1.WebhookClientConfig{
-							Service: &v1beta1.ServiceReference{Name: "elastic-webhook-server", Namespace: "elastic-system"},
+						ClientConfig: v1.WebhookClientConfig{
+							Service: &v1.ServiceReference{Name: "elastic-webhook-server", Namespace: "elastic-system"},
 						},
 					},
 				},
 			},
 		)
 
-	if err := w.ReconcileResources(context.Background(), clientset); err != nil {
+	clientset.Resources = []*metav1.APIResourceList{
+		{
+			GroupVersion: "admissionregistration.k8s.io/v1",
+			APIResources: []metav1.APIResource{
+				{Name: "admissionregistration.k8s.io", Namespaced: false, Kind: "APIGroup", Group: "admissionregistration.k8s.io", Version: "v1"},
+			},
+		},
+	}
+
+	// retrieve the current webhook configuration interface
+	wh, err := w.NewAdmissionControllerInterface(context.Background(), clientset)
+	if err != nil {
+		t.Errorf("Params.NewAdmissionControllerInterface() error = %v", err)
+	}
+
+	if err := w.ReconcileResources(context.Background(), clientset, wh); err != nil {
 		t.Errorf("Params.ReconcileResources() error = %v", err)
 	}
 
@@ -81,7 +96,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(webhookServerSecret.Data))
 
-	if err := w.ReconcileResources(ctx, clientset); err != nil {
+	if err := w.ReconcileResources(ctx, clientset, wh); err != nil {
 		t.Errorf("Params.ReconcileResources() error = %v", err)
 	}
 
