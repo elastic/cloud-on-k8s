@@ -15,7 +15,7 @@ RUN mkdir -p /.cache && chmod 777 /.cache
 
 # Download dependencies
 COPY ["go.mod", "go.sum","./"]
-RUN go mod download all
+RUN go mod download
 
 # Copy the source
 COPY pkg/ pkg/

@@ -82,7 +82,7 @@ all: dependencies lint check-license-header unit integration e2e-compile elastic
 ## -- build
 
 dependencies:
-	go mod tidy -v && go mod download all
+	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
