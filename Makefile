@@ -104,7 +104,6 @@ generate-crds-v1: go-generate controller-gen
 	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
 	kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
-
 	# generate a CRD only version without the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
 	# generate the operator manifests
@@ -128,11 +127,11 @@ generate-crds-v1beta1: go-generate controller-gen
 	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1beta1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
 	kubectl kustomize config/crds/v1beta1/patches > config/crds/v1beta1/all-crds.yaml
-    # generate a CRD only version without the operator manifests
+	# generate a CRD only version without the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g --set=global.kubeVersion=1.12.0 > config/crds-legacy.yaml
 	# generate the operator manifests
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
-        --profile=global \
+		--profile=global \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--set=global.kubeVersion=1.12.0 \
 		--set=installCRDs=false \

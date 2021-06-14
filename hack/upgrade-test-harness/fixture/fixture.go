@@ -179,7 +179,7 @@ func deleteManifests(path string) func(*TestContext) error {
 	}
 }
 
-// ifExists runs a test action if the given path exists exists in the filesystem.
+// ifExists runs a test action if the given path exists in the filesystem.
 func ifExists(path string, fn func(ctx *TestContext) error) func(ctx *TestContext) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return func(_ *TestContext) error {

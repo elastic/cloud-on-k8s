@@ -374,6 +374,7 @@ func (h *helper) installCRDs() error {
 	_, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml")
 	return err
 }
+
 func (h *helper) createOperatorNamespaces() error {
 	log.Info("Creating operator namespaces")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator_namespaces.yaml", h.testContext)
