@@ -199,8 +199,8 @@ podMonitor:
   podMetricsEndpointConfig: {}
   # honorTimestamps: true
 
-# Internal use only
-internal:
+# Globals meant for internal use only
+global:
   # manifestGen specifies whether the chart is running under manifest generator. 
   # This is used for tasks specific to generating the all-in-one.yaml file.
   manifestGen: false
@@ -208,4 +208,5 @@ internal:
   # Usually we do want that to happen (e.g. all-in-one.yaml) but, sometimes we don't (e.g. E2E tests). 
   createOperatorNamespace: true
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
-  kubeVersion: 1.12.0
+  kubeVersion: 1.16.0
+

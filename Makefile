@@ -23,8 +23,8 @@ GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/nu
 
 # find or download controller-gen
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.5.0)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.6.0)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.0)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -85,8 +85,9 @@ dependencies:
 	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
-ALL_CRDS=config/crds/all-crds.yaml
-generate: tidy generate-crds generate-config-file generate-api-docs generate-notice-file
+ALL_V1_CRDS=config/crds/v1/all-crds.yaml
+
+generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -95,16 +96,50 @@ go-generate:
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds: go-generate controller-gen
+generate-crds-v1: go-generate controller-gen
 	# Generate webhook manifest
 	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
 	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/patches > $(ALL_CRDS)
-	# generate an all-in-one version including the operator manifests
-	$(MAKE) --no-print-directory generate-all-in-one
+	kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
+	# generate a CRD only version without the operator manifests
+	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
+	# generate the operator manifests
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--profile=global \
+		--set=installCRDs=false \
+		--set=telemetry.distributionChannel=all-in-one \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator.yaml
+
+
+
+generate-crds-v1beta1: go-generate controller-gen
+	# Generate webhook manifest
+	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
+	# Generate manifests e.g. CRD, RBAC etc.
+	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1beta1/bases
+	# apply patches to work around some CRD generation issues, and merge them into a single file
+	kubectl kustomize config/crds/v1beta1/patches > config/crds/v1beta1/all-crds.yaml
+	# generate a CRD only version without the operator manifests
+	@ ./hack/manifest-gen/manifest-gen.sh -c -g --set=global.kubeVersion=1.12.0 > config/crds-legacy.yaml
+	# generate the operator manifests
+	@ ./hack/manifest-gen/manifest-gen.sh -g \
+		--profile=global \
+		--namespace=$(OPERATOR_NAMESPACE) \
+		--set=global.kubeVersion=1.12.0 \
+		--set=installCRDs=false \
+		--set=telemetry.distributionChannel=all-in-one \
+		--set=image.tag=$(IMG_VERSION) \
+		--set=image.repository=$(BASE_IMG) \
+		--set=nameOverride=$(OPERATOR_NAME) \
+		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator-legacy.yaml
 
 generate-config-file:
 	@hack/config-extractor/extract.sh
@@ -141,12 +176,13 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
+# kubebuilder 2.3.1 comes with a 1.15 control plane and we rely on it for the k8s binaries
 integration: GO_TAGS += integration
-integration: clean generate-crds
+integration: clean generate-crds-v1beta1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean generate-crds
+integration-xml: clean generate-crds-v1beta1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
@@ -162,9 +198,8 @@ upgrade-test: docker-build docker-push
 #############################
 ##  --       Run       --  ##
 #############################
-
-install-crds: generate-crds
-	kubectl apply -f $(ALL_CRDS)
+install-crds: generate-crds-v1
+	kubectl apply -f $(ALL_V1_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
@@ -243,23 +278,6 @@ endif
 
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
-
-ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
-
-# merge all-in-one crds with operator manifests
-generate-all-in-one:
-	@ ./hack/manifest-gen/manifest-gen.sh -g \
-		--namespace=$(OPERATOR_NAMESPACE) \
-		--set=telemetry.distributionChannel=all-in-one \
-		--set=image.tag=$(IMG_VERSION) \
-		--set=image.repository=$(BASE_IMG) \
-		--set=nameOverride=$(OPERATOR_NAME) \
-		--set=fullnameOverride=$(OPERATOR_NAME) > $(ALL_IN_ONE_OUTPUT_FILE)
-
-# Deploy an all in one operator against the current k8s cluster
-deploy-all-in-one: GO_TAGS ?= release
-deploy-all-in-one: docker-build docker-push
-	kubectl apply -f $(ALL_IN_ONE_OUTPUT_FILE)
 
 logs-operator:
 	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
@@ -494,7 +512,7 @@ ci-check: check-license-header lint shellcheck generate check-local-changes
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-multiarch-build
+setup-e2e: e2e-compile run-deployer apply-psp e2e-docker-multiarch-build
 
 ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run

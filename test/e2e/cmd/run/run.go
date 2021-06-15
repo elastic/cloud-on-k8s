@@ -352,6 +352,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
 		"-g",
 		"-n", namespace,
+		fmt.Sprintf("--set=global.kubeVersion=%s", h.testContext.KubernetesVersion),
 		fmt.Sprintf("--set=installCRDs=%t", installCRDs),
 		fmt.Sprintf("--values=%s", values),
 	).Build()
@@ -370,7 +371,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	_, err := h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
+	_, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml")
 	return err
 }
 

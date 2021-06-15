@@ -157,7 +157,7 @@ config:
   validateStorageClass: true
 
 # Internal use only
-internal:
+global:
   manifestGen: false
   kubeVersion: 1.13.0
 

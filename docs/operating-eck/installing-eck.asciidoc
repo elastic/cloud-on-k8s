@@ -12,14 +12,14 @@ endif::[]
 CAUTION: Deleting CRDs will trigger deletion of all custom resources ({eck_resources_list}) in all namespaces of the cluster, regardless of whether they are managed by a single operator or multiple operators. 
 
 
-* <<{p}-install-all-in-one>>
+* <<{p}-install-yaml-manifests>>
 * <<{p}-install-helm>>
 
 
-[id="{p}-install-all-in-one"]
-== Install ECK using the `all-in-one.yaml` file
+[id="{p}-install-yaml-manifests"]
+== Install ECK using the YAML manifests
 
-The `all-in-one.yaml` method is the quickest way to get started with ECK if you have full administrative access to the Kubernetes cluster. The <<{p}-quickstart>> document describes how to proceed with this method. When you run the `kubectl` command listed in <<{p}-deploy-eck>>, the following components are installed or updated:
+This method is the quickest way to get started with ECK if you have full administrative access to the Kubernetes cluster. The <<{p}-quickstart>> document describes how to proceed with this method. When you run the `kubectl` command listed in <<{p}-deploy-eck>>, the following components are installed or updated:
 
 * `CustomResourceDefinition` objects for all supported resource types ({eck_resources_list}).
 * `Namespace` named `elastic-system` to hold all operator resources.
@@ -45,7 +45,7 @@ helm repo update
 [id="{p}-install-helm-global"]
 === Cluster-wide (global) installation
 
-This is the default mode of installation and is equivalent to <<{p}-install-all-in-one,installing ECK using the `all-in-one.yaml` file>>.
+This is the default mode of installation and is equivalent to <<{p}-install-yaml-manifests,installing ECK using the stand-alone YAML manifests>>.
 
 
 [source,sh]
@@ -129,7 +129,7 @@ for CRD in $(kubectl get crds --no-headers -o custom-columns=NAME:.metadata.name
 done
 ----
 
-. Uninstall the current ECK operator. You can do this by taking the `all-in-one.yaml` file you used to install the operator, deleting the CRD definitions from it and then running `kubectl delete -f all-in-one-without-crds.yaml`. Alternatively, you could delete each resource individually. 
+. Uninstall the current ECK operator. You can do this by taking the `operator.yaml` file you used to install the operator and running `kubectl delete -f operator.yaml`. Alternatively, you could delete each resource individually.
 +
 [source,sh]
 ----

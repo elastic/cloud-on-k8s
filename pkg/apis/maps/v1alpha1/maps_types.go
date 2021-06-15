@@ -34,6 +34,7 @@ type MapsSpec struct {
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration.
@@ -46,6 +47,7 @@ type MapsSpec struct {
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
