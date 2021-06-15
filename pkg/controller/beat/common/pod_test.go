@@ -68,6 +68,7 @@ func Test_buildPodTemplate(t *testing.T) {
 var expectedConfigVolumeMode int32 = 292
 
 func assertPodWithInitContainer(t *testing.T, pod corev1.PodTemplateSpec) {
+	t.Helper()
 	// Validate that init container is in the PodTemplate
 	assert.Len(t, pod.Spec.InitContainers, 1)
 	// Image used by the init container and by the "main" container must be the same
