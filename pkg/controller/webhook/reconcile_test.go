@@ -80,7 +80,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
+	webhookConfiguration, err := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle := webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	assert.True(t, len(caBundle) > 0)
@@ -105,7 +105,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	assert.Equal(t, 2, len(webhookServerSecret.Data))
 
 	// retrieve the new ca
-	webhookConfiguration, err = clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
+	webhookConfiguration, err = clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	caBundle = webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	// Check again that the cert in the secret has been signed by the caBundle
