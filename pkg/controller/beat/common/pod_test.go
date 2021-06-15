@@ -17,9 +17,8 @@ import (
 
 func Test_buildPodTemplate(t *testing.T) {
 	tests := []struct {
-		name       string
-		beat       v1beta1.Beat
-		assertions func(pod corev1.PodTemplateSpec)
+		name string
+		beat v1beta1.Beat
 	}{
 		{
 			name: "deployment user-provided init containers should inherit from the default main container image",
@@ -37,10 +36,6 @@ func Test_buildPodTemplate(t *testing.T) {
 					},
 				},
 			}},
-			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
-			},
 		},
 		{
 			name: "daemonset user-provided init containers should inherit from the default main container image",
@@ -58,18 +53,35 @@ func Test_buildPodTemplate(t *testing.T) {
 					},
 				},
 			}},
-			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
-			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params := DriverParams{Beat: tt.beat}
-			got := buildPodTemplate(params, container.AuditbeatImage, nil, sha256.New224())
-			tt.assertions(got)
+			assertPodWithInitContainer(t, buildPodTemplate(params, container.AuditbeatImage, nil, sha256.New224()))
 		})
 	}
+}
+
+// decimal value of '0444' in octal is 292
+var expectedConfigVolumeMode int32 = 292
+
+func assertPodWithInitContainer(t *testing.T, pod corev1.PodTemplateSpec) {
+	// Validate that init container is in the PodTemplate
+	assert.Len(t, pod.Spec.InitContainers, 1)
+	// Image used by the init container and by the "main" container must be the same
+	assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
+	// Validate that the Pod contains a Secret as a config volume.
+	var configVolume *corev1.SecretVolumeSource
+	for _, vol := range pod.Spec.Volumes {
+		if vol.Secret != nil && vol.Name == "config" {
+			configVolume = vol.Secret
+			break
+		}
+	}
+	assert.NotNil(t, configVolume)
+	// Validate the mode
+	assert.NotNil(t, configVolume.DefaultMode, "default volume mode for beat configuration should not be nil")
+	assert.Equal(t, expectedConfigVolumeMode, *configVolume.DefaultMode)
 }
