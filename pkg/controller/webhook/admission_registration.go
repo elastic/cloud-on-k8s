@@ -68,7 +68,7 @@ type v1webhookHandler struct {
 	webhookConfiguration *v1.ValidatingWebhookConfiguration
 }
 
-func (_ *v1webhookHandler) getType() client.Object {
+func (*v1webhookHandler) getType() client.Object {
 	return &v1.ValidatingWebhookConfiguration{}
 }
 
@@ -120,7 +120,7 @@ type v1beta1webhookHandler struct {
 	webhookConfiguration *v1beta1.ValidatingWebhookConfiguration
 }
 
-func (_ *v1beta1webhookHandler) getType() client.Object {
+func (*v1beta1webhookHandler) getType() client.Object {
 	return &v1beta1.ValidatingWebhookConfiguration{}
 }
 
