@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestCertificatesSecret(t *testing.T) {
@@ -21,33 +23,56 @@ func TestCertificatesSecret(t *testing.T) {
 		name                                 string
 		s                                    CertificatesSecret
 		wantCa, wantCert, wantChain, wantKey []byte
+		wantFullCA                           bool
 	}{
 		{
 			name: "Simple chain",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CAFileName:   ca,
-					CertFileName: tls,
-					KeyFileName:  key,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:   ca,
+						CertFileName: tls,
+						KeyFileName:  key,
+					},
 				},
 			},
-			wantCa:    ca,
-			wantKey:   key,
-			wantCert:  tls,
-			wantChain: chain,
+			wantCa:     ca,
+			wantKey:    key,
+			wantCert:   tls,
+			wantChain:  chain,
+			wantFullCA: false,
 		},
 		{
 			name: "No CA cert",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CertFileName: tls,
-					KeyFileName:  key,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CertFileName: tls,
+						KeyFileName:  key,
+					},
 				},
 			},
-			wantCa:    nil,
-			wantKey:   key,
-			wantCert:  tls,
-			wantChain: tls,
+			wantCa:     nil,
+			wantKey:    key,
+			wantCert:   tls,
+			wantChain:  tls,
+			wantFullCA: false,
+		},
+		{
+			name: "Full CA cert",
+			s: CertificatesSecret{
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:    ca,
+						CAKeyFileName: []byte(testPemPrivateKey),
+					},
+				},
+			},
+			wantCa:     ca,
+			wantCert:   nil,
+			wantChain:  ca,
+			wantKey:    nil,
+			wantFullCA: true,
 		},
 	}
 	for _, tt := range tests {
@@ -64,6 +89,10 @@ func TestCertificatesSecret(t *testing.T) {
 			if got := tt.s.KeyPem(); !reflect.DeepEqual(got, tt.wantKey) {
 				t.Errorf("CertificatesSecret.CertChain() = %v, want %v", got, tt.wantKey)
 			}
+
+			if tt.s.HasFullCA() != tt.wantFullCA {
+				t.Errorf("CertificatesSecret.HasFullCA() = %v, want %v", tt.s.HasFullCA(), tt.wantFullCA)
+			}
 		})
 	}
 }
@@ -72,6 +101,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 	ca := loadFileBytes("ca.crt")
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
+	chain := loadFileBytes("chain.crt")
 	corruptedKey := loadFileBytes("corrupted.key")
 	encryptedKey := loadFileBytes("encrypted.key")
 
@@ -83,10 +113,12 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		{
 			name: "Happy path",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CAFileName:   ca,
-					CertFileName: tls,
-					KeyFileName:  key,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:   ca,
+						CertFileName: tls,
+						KeyFileName:  key,
+					},
 				},
 			},
 			wantErr: false,
@@ -94,15 +126,19 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		{
 			name: "Empty certificate",
 			s: CertificatesSecret{
-				Data: map[string][]byte{},
+				Secret: v1.Secret{
+					Data: map[string][]byte{},
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "No cert",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					KeyFileName: key,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						KeyFileName: key,
+					},
 				},
 			},
 			wantErr: true,
@@ -110,9 +146,11 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		{
 			name: "No key",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CAFileName:   ca,
-					CertFileName: tls,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:   ca,
+						CertFileName: tls,
+					},
 				},
 			},
 			wantErr: true,
@@ -120,9 +158,11 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		{
 			name: "No CA cert",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CertFileName: tls,
-					KeyFileName:  key,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CertFileName: tls,
+						KeyFileName:  key,
+					},
 				},
 			},
 			wantErr: false,
@@ -130,9 +170,11 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		{
 			name: "Encrypted key",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CertFileName: tls,
-					KeyFileName:  encryptedKey,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CertFileName: tls,
+						KeyFileName:  encryptedKey,
+					},
 				},
 			},
 			wantErr: false,
@@ -140,9 +182,61 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 		{
 			name: "Corrupted private key",
 			s: CertificatesSecret{
-				Data: map[string][]byte{
-					CertFileName: tls,
-					KeyFileName:  corruptedKey,
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CertFileName: tls,
+						KeyFileName:  corruptedKey,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Full custom CA",
+			s: CertificatesSecret{
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:    ca,
+						CAKeyFileName: []byte(testPemPrivateKey),
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Mixed leaf and custom CA 1/2",
+			s: CertificatesSecret{
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:    ca,
+						CAKeyFileName: []byte(testPemPrivateKey),
+						CertFileName:  tls,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Mixed leaf and custom CA 2/2",
+			s: CertificatesSecret{
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:    ca,
+						CAKeyFileName: []byte(testPemPrivateKey),
+						KeyFileName:   key,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "multiple CA certs",
+			s: CertificatesSecret{
+				Secret: v1.Secret{
+					Data: map[string][]byte{
+						CAFileName:    chain,
+						CAKeyFileName: []byte(testPemPrivateKey),
+					},
 				},
 			},
 			wantErr: true,
