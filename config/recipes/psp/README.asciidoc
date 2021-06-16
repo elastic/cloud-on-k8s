@@ -30,7 +30,7 @@ rules:
   - use
 ----
 
-You also have to bind that role to a user or service account or a group of users. Again, the link:https://kubernetes.io/docs/concepts/policy/pod-security-policy/[Kubernetes documentation] has all the details.
+You also have to bind that role to a user or service account or a group of users. See the link:https://kubernetes.io/docs/concepts/policy/pod-security-policy/#authorizing-policies[Kubernetes documentation] for more details.
 
 [source,yaml]
 ----
