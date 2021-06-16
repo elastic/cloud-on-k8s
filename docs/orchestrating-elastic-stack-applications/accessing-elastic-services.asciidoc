@@ -151,7 +151,14 @@ Create a Kubernetes secret with:
 kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
 ----
 
-Then, you have to reference the secret name in the `http.tls.certificate` section of the resource manifest.
+Alternatively you can also bring your own CA certificate including a private key and let ECK issue certificates based on that.
+
+Create a Kubernetes secret with:
+
+- `ca.crt`: CA certificate
+- `ca.key`: The private key to the CA certificate
+
+In both cases, you have to reference the secret name in the `http.tls.certificate` section of the resource manifest.
 
 [source,yaml]
 ----

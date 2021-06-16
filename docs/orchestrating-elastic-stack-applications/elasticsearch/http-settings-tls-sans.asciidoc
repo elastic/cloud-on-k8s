@@ -93,3 +93,5 @@ spec:
   - name: default
     count: 3
 ----
+
+See also <<{p}-custom-http-certificate>> on how to use your own CA certificate to sign the HTTP certificate. Any customization you apply as outlined in this section still applies in this case.
