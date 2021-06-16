@@ -7,6 +7,7 @@ package stackmon
 import (
 	_ "embed" // for the beats config files
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -45,6 +46,17 @@ var (
 	//go:embed filebeat.yml
 	FilebeatConfig string
 )
+
+// MonitoringConfig returns the Elasticsearch settings required to enable the collection of monitoring data
+func MonitoringConfig(es esv1.Elasticsearch) commonv1.Config {
+	if !IsMonitoringMetricsDefined(es) {
+		return commonv1.Config{}
+	}
+	return commonv1.Config{Data: map[string]interface{}{
+		esv1.XPackMonitoringCollectionEnabled:              true,
+		esv1.XPackMonitoringElasticsearchCollectionEnabled: false,
+	}}
+}
 
 func metricbeatConfigMapName(es esv1.Elasticsearch) string {
 	return esv1.ESNamer.Suffix(es.Name, MetricbeatConfigMapSuffix)

@@ -32,7 +32,7 @@ func NewMergedESConfig(
 	ipFamily corev1.IPFamily,
 	httpConfig commonv1.HTTPConfig,
 	userConfig commonv1.Config,
-	isMonitoringMetrics bool,
+	monitoringConfig commonv1.Config,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -46,9 +46,14 @@ func NewMergedESConfig(
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
-	if isMonitoringMetrics {
-		err = config.MergeWith(monitoringConfig().CanonicalConfig)
+	monitoringCfg, err := common.NewCanonicalConfigFrom(monitoringConfig.Data)
+	if err != nil {
+		return CanonicalConfig{}, err
 	}
+	err = config.MergeWith(
+		xpackConfig(ver, httpConfig).CanonicalConfig,
+		monitoringCfg,
+	)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -138,14 +143,5 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalCon
 		}
 	}
 
-	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
-}
-
-// monitoringConfig returns the configuration bit related to XPack monitoring
-func monitoringConfig() *CanonicalConfig {
-	cfg := map[string]interface{}{
-		esv1.XPackMonitoringCollectionEnabled:              true,
-		esv1.XPackMonitoringElasticsearchCollectionEnabled: false,
-	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

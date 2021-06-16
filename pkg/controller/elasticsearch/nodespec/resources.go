@@ -55,8 +55,7 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		isMonitoringMetrics := stackmon.IsMonitoringMetricsDefined(es)
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, isMonitoringMetrics)
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, stackmon.MonitoringConfig(es))
 		if err != nil {
 			return nil, err
 		}
