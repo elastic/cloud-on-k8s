@@ -277,7 +277,8 @@ else
 endif
 
 apply-psp:
-	kubectl apply -f config/dev/elastic-psp.yaml
+	kubectl apply -f config/recipes/psp/elastic-psp.yaml
+	kubectl apply -f config/recipes/psp/beats-agent-psp.yaml
 
 logs-operator:
 	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
