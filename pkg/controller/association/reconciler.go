@@ -377,11 +377,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	span, _ := apm.StartSpan(ctx, "update_association_status", tracing.SpanTypeApp)
 	defer span.End()
 
-	oldStatus := commonv1.AssociationStatusMap{}
-	// Copy from the original map to the target map
-	for key, value := range associated.AssociationStatusMap(r.AssociationType) {
-		oldStatus[key] = value
-	}
+	oldStatus := associated.AssociationStatusMap(r.AssociationType)
 
 	// To correctly compare statuses without making the reconciler aware of singleton vs multiple associations status
 	// differences we: set new status, get it from associated and only then compare with the oldStatus. Setting the
