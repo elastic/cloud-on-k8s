@@ -119,6 +119,8 @@ func (d *driver) Reconcile(
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
+		_, err := results.Aggregate()
+		k8s.EmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return results
 	}
 
