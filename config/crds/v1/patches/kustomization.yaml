@@ -50,5 +50,5 @@ patchesJson6902:
       version: v1
       kind: CustomResourceDefinition
       name: elasticmapsservers.maps.k8s.elastic.co
-    path: remove-pod-template-patch.yaml
+    path: maps-patches.yaml
 
