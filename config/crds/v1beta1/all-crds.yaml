@@ -112,7 +112,6 @@ spec:
                             daemonsets should take into account that they may cause
                             evictions during disruption. This is an alpha field and
                             requires enabling DaemonSetUpdateSurge feature gate.'
-                          x-kubernetes-int-or-string: true
                         maxUnavailable:
                           anyOf:
                           - type: integer
@@ -1043,7 +1042,6 @@ spec:
                             daemonsets should take into account that they may cause
                             evictions during disruption. This is an alpha field and
                             requires enabling DaemonSetUpdateSurge feature gate.'
-                          x-kubernetes-int-or-string: true
                         maxUnavailable:
                           anyOf:
                           - type: integer
