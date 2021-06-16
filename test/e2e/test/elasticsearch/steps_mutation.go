@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -221,6 +222,9 @@ func (hc *ContinuousHealthCheck) Start() {
 				defer cancel()
 				health, err := client.GetClusterHealth(ctx)
 				if err != nil {
+					if hc.isToleratedError(err) {
+						continue
+					}
 					// Could not retrieve cluster health, can happen when the master node is killed
 					// during a rolling upgrade. We allow it, unless it lasts for too long.
 					clusterUnavailability.markUnavailable()
@@ -244,6 +248,15 @@ func (hc *ContinuousHealthCheck) Start() {
 // Stop the health checks goroutine
 func (hc *ContinuousHealthCheck) Stop() {
 	hc.stopChan <- struct{}{}
+}
+
+func (hc *ContinuousHealthCheck) isToleratedError(err error) bool {
+	for _, msg := range hc.b.toleratedHealthCheckErrors {
+		if strings.Contains(err.Error(), msg) {
+			return true
+		}
+	}
+	return false
 }
 
 type clusterUnavailability struct {

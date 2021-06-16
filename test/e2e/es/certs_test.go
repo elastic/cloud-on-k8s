@@ -32,23 +32,132 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestCustomTransportCA(t *testing.T) {
-	caSecretName := "my-custom-ca"
-	esName := "test-custom-ca"
+var caSecretName = "my-custom-ca"
+
+func TestCustomHTTPCA(t *testing.T) {
+	esName := "test-custom-http-ca"
 	esNamespace := test.Ctx().ManagedNamespace(0)
 
-	mkTestSecret := func(cert, key []byte) corev1.Secret {
-		return corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: esNamespace,
-				Name:      caSecretName,
-			},
-			Data: map[string][]byte{
-				certificates.CertFileName: cert,
-				certificates.KeyFileName:  key,
-			},
-		}
+	// Create a multi-node cluster so we have transient states when switching certs where some nodes still have the old ones
+	initialCluster := elasticsearch.NewBuilder(esName).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		// transient error during cert changes, this affects also this builder as we migrate back to built-in certs at the end
+		WithToleratedHealthCheckErrors("certificate signed by unknown authority")
+
+		// start with the operator provided HTTP CA
+	withBuiltinCA := test.WrappedBuilder{
+		BuildingThis: initialCluster,
+		PreDeletionSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Clean up custom CA secret",
+					Test: func(t *testing.T) {
+						// This is counter-intuitive but deletion steps run on the initial builder
+						// let's clean up the CA secret here.
+						toDelete := mkCertSecret(nil, nil)
+						_ = k.Client.Delete(context.Background(), &toDelete)
+					},
+				},
+			}
+		},
 	}
+
+	// The initial Cluster builder should result in a healthy cluster as verified by the standard check steps
+	// Now modify cluster to use custom HTTP CA  but simulate a user error by populating the secret with
+	// garbage and verify this is bubbled up through an event
+	b := initialCluster.
+		WithCustomHTTPCerts(caSecretName).
+		WithMutatedFrom(&initialCluster)
+
+	withBogusCert := test.WrappedBuilder{
+		BuildingThis: b,
+
+		// we don't want to run a regular mutation as the invalid certificates will not lead to a successful upgrade
+		OverrideMutationSteps: func(k *test.K8sClient) test.StepList {
+			steps := test.StepList{
+				{
+					Name: "Create an invalid CA secret",
+					Test: test.Eventually(func() error {
+						bogusSecret := mkCertSecret([]byte("garbage"), []byte("more garbage"))
+						_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
+						return err
+					}),
+				},
+			}
+			steps = append(steps, b.UpgradeTestSteps(k)...)
+			steps = append(steps,
+				test.Step{
+					Name: "Invalid CA secret should create events",
+					Test: test.Eventually(func() error {
+						eventList, err := k.GetEvents(test.EventListOptions(esNamespace, initialCluster.Elasticsearch.Name)...)
+						if err != nil {
+							return err
+						}
+						for _, evt := range eventList {
+							if evt.Type == corev1.EventTypeWarning &&
+								evt.Reason == events.EventReconciliationError &&
+								strings.Contains(evt.Message, "can't parse") {
+								return nil
+							}
+						}
+						return fmt.Errorf("expected validation event but could not observe it")
+					}),
+				},
+			)
+			return steps
+		},
+	}
+
+	var ca *certificates.CA
+
+	// A NOOP mutation but set up the CA secret correctly now (using the existing CA generation code in the operator)
+	withCustomCert := test.WrappedBuilder{
+		BuildingThis: initialCluster.
+			WithCustomHTTPCerts(caSecretName).
+			WithMutatedFrom(&initialCluster),
+
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Create custom CA secret",
+					Test: test.Eventually(func() error {
+						var err error
+						ca, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+							Subject: pkix.Name{
+								CommonName:         "eck-e2e-test-custom-ca",
+								OrganizationalUnit: []string{"eck-e2e"},
+							},
+						})
+						if err != nil {
+							return err
+						}
+
+						caSecret := mkCertSecret(
+							certificates.EncodePEMCert(ca.Cert.Raw),
+							certificates.EncodePEMPrivateKey(*ca.PrivateKey),
+						)
+						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
+						return err
+					}),
+				},
+			}
+		},
+		// verification that the certificate works is implicit by the standard check steps that all require an Elasticsearch
+		// connection
+	}
+
+	// tests the following sequence:
+	// 1. healthy cluster with self-signed operator provided CA
+	// 2. reconfigure to use custom certs but simulate user error on certificate setup: no rollout expected
+	// 3. reconfigure with correct custom certificates
+	// 4. reconfigure back to self-signed operator provided CA
+	test.RunMutations(t, []test.Builder{withBuiltinCA}, []test.Builder{withBogusCert, withCustomCert, withBuiltinCA})
+
+}
+
+func TestCustomTransportCA(t *testing.T) {
+	esName := "test-custom-ca"
+	esNamespace := test.Ctx().ManagedNamespace(0)
 
 	// Create a multi-node cluster so we have inter-node communication
 	initialCluster := elasticsearch.NewBuilder(esName).
@@ -64,7 +173,7 @@ func TestCustomTransportCA(t *testing.T) {
 					Test: func(t *testing.T) {
 						// This is counter-intuitive but deletion steps run on the initial builder
 						// let's clean up the CA secret here.
-						toDelete := mkTestSecret(nil, nil)
+						toDelete := mkCertSecret(nil, nil)
 						_ = k.Client.Delete(context.Background(), &toDelete)
 					},
 					Skip:      nil,
@@ -87,7 +196,7 @@ func TestCustomTransportCA(t *testing.T) {
 				{
 					Name: "Create an invalid CA secret",
 					Test: test.Eventually(func() error {
-						bogusSecret := mkTestSecret([]byte("garbage"), []byte("more garbage"))
+						bogusSecret := mkCertSecret([]byte("garbage"), []byte("more garbage"))
 						_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
 						return err
 					}),
@@ -142,7 +251,7 @@ func TestCustomTransportCA(t *testing.T) {
 							return err
 						}
 
-						caSecret := mkTestSecret(
+						caSecret := mkCertSecret(
 							certificates.EncodePEMCert(ca.Cert.Raw),
 							certificates.EncodePEMPrivateKey(*ca.PrivateKey),
 						)
@@ -302,4 +411,17 @@ func requestESWithCA(ip string, caCert []byte) (int, error) {
 	defer resp.Body.Close()
 
 	return resp.StatusCode, nil
+}
+
+func mkCertSecret(cert, key []byte) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: test.Ctx().ManagedNamespace(0),
+			Name:      caSecretName,
+		},
+		Data: map[string][]byte{
+			certificates.CAFileName:    cert,
+			certificates.CAKeyFileName: key,
+		},
+	}
 }
