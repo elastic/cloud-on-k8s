@@ -34,7 +34,10 @@ test-license.json
 monitoring-secrets.json
 
 # generated from merging multiple files in the Makefile
-config/all-in-one.yaml
+config/operator.yaml
+config/operator-legacy.yaml
+config/crds.yaml
+config/crds-legacy.yaml
 
 # ignore generated configuration
 config/eck.yaml

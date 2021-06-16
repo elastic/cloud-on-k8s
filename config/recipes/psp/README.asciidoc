@@ -1,0 +1,75 @@
+= Secure your cluster with Pod Security Policies
+
+NOTE: PodSecurityPolicy is deprecated in Kubernetes 1.21 and will be removed in 1.25
+
+This recipe contains Pod Security Policies tailored for the use with the Elastic stack. They are to be taken as illustrative examples only and might need adjustment for your specific environment and requirements.  Please read the corresponding link:https://kubernetes.io/docs/concepts/policy/pod-security-policy/[Kubernetes documentation] on how to enable the PodSecurityPolicy admission controller in your cluster.
+
+
+[source,yaml]
+----
+include::elastic-psp.yaml[]
+----
+
+You have to authorize the policy with a role binding:
+
+[source,yaml]
+----
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-restricted
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.restricted
+  verbs:
+  - use
+----
+
+You also have to bind that role to a user or service account or a group of users. See the link:https://kubernetes.io/docs/concepts/policy/pod-security-policy/#authorizing-policies[Kubernetes documentation] for more details.
+
+[source,yaml]
+----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: <binding name>
+roleRef:
+  kind: ClusterRole
+  name: elastic-restricted
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+# Authorize specific service accounts:
+- kind: ServiceAccount
+  name: <authorized service account name>
+  namespace: <authorized pod namespace>
+----
+
+Note that this Pod Security Policy requires Elasticsearch and other stack applications to run a non-root user. You can set a link:https://kubernetes.io/docs/tasks/configure-pod-container/security-context/[Pod Security Context] to enforce a user ID:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  nodeSets:
+  - name: default
+    podTemplate:
+      spec:
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          fsGroup: 1000
+----
+
+Elastic Agent and Beats need wider access to the host and additional Linux capabilities. They therefore need their own Pod Security Policies. Note the different policies below, matching the requirements of the individual Beats:
+[source,yaml]
+----
+include::beats-agent-psp.yaml[]
+----

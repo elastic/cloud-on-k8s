@@ -31,6 +31,7 @@ type EnterpriseSearchSpec struct {
 	Count int32 `json:"count,omitempty"`
 
 	// Config holds the Enterprise Search configuration.
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// ConfigRef contains a reference to an existing Kubernetes Secret holding the Enterprise Search configuration.
@@ -47,6 +48,7 @@ type EnterpriseSearchSpec struct {
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
 	// for the Enterprise Search pods.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.

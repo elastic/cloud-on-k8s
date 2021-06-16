@@ -62,7 +62,7 @@ pipeline {
                                 channel: '#cloud-k8s',
                                 color: 'good',
                                 message: "`${TAG_NAME}` was released \r\n" +
-                                    "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
+                                    "Manifests were uploaded to https://download.elastic.co/downloads/eck/${TAG_NAME}\r\n" +
                                     "Congratulations!",
                                 tokenCredentialId: 'cloud-ci-slack-integration-token'
                             )

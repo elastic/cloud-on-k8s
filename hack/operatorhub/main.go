@@ -24,14 +24,17 @@ import (
 	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/kubectl/pkg/scheme"
 )
 
 const (
-	manifestURL  = "https://download.elastic.co/downloads/eck/%s/all-in-one.yaml"
-	operatorName = "elastic-operator"
+	allInOneURL         = "https://download.elastic.co/downloads/eck/%s/all-in-one.yaml"
+	crdManifestURL      = "https://download.elastic.co/downloads/eck/%s/crds.yaml"
+	operatorManifestURL = "https://download.elastic.co/downloads/eck/%s/operator.yaml"
+	operatorName        = "elastic-operator"
 
 	csvTemplateFile     = "csv.tpl"
 	packageTemplateFile = "package.tpl"
@@ -42,9 +45,9 @@ const (
 )
 
 type cmdArgs struct {
-	confPath     string
-	allInOnePath string
-	templatesDir string
+	confPath      string
+	manifestPaths []string
+	templatesDir  string
 }
 
 var args = cmdArgs{}
@@ -63,7 +66,7 @@ func main() {
 	cmd.Flags().StringVar(&args.confPath, "conf", "", "Path to config file")
 	_ = cmd.MarkFlagRequired("conf")
 
-	cmd.Flags().StringVar(&args.allInOnePath, "all-in-one", "", "Path to all-in-one.yaml")
+	cmd.Flags().StringSliceVar(&args.manifestPaths, "yaml-manifest", nil, "Path to installation manifests")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
 
 	if err := cmd.Execute(); err != nil {
@@ -78,14 +81,14 @@ func doRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	allInOneStream, err := getAllInOneStream(conf, args.allInOnePath)
+	manifestStream, close, err := getInstallManifestStream(conf, args.manifestPaths)
 	if err != nil {
 		return err
 	}
 
-	defer allInOneStream.Close()
+	defer close()
 
-	extracts, err := extractYAMLParts(allInOneStream)
+	extracts, err := extractYAMLParts(manifestStream)
 	if err != nil {
 		return err
 	}
@@ -137,22 +140,51 @@ func loadConfig(path string) (*config, error) {
 	return &conf, nil
 }
 
-func getAllInOneStream(conf *config, allInOnePath string) (io.ReadCloser, error) {
-	if allInOnePath == "" {
-		return allInOneFromWeb(conf.NewVersion)
+var errNotFound = errors.New("not found")
+
+func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, func(), error) {
+	if len(manifestPaths) == 0 {
+		s, err := installManifestFromWeb(conf.NewVersion)
+		return s, func() {}, err
 	}
 
-	f, err := os.Open(allInOnePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open %s: %w", allInOnePath, err)
+	var rs []io.Reader
+	closer := func() {
+		for _, r := range rs {
+			if closer, ok := r.(io.Closer); ok {
+				closer.Close()
+			}
+		}
 	}
-
-	return f, nil
+	for _, p := range manifestPaths {
+		r, err := os.Open(p)
+		if err != nil {
+			return nil, closer, fmt.Errorf("failed to open %s: %w", manifestPaths, err)
+		}
+		rs = append(rs, r)
+	}
+	return io.MultiReader(rs...), closer, nil
 }
 
-func allInOneFromWeb(version string) (io.ReadCloser, error) {
-	url := fmt.Sprintf(manifestURL, version)
+func installManifestFromWeb(version string) (io.Reader, error) {
+	// try the legacy all-in-one first for older releases
+	buf, err := makeRequest(fmt.Sprintf(allInOneURL, version))
+	if err == errNotFound {
+		// if not found load the separate manifests for CRDs and operator (version >= 1.7.0)
+		crds, err := makeRequest(fmt.Sprintf(crdManifestURL, version))
+		if err != nil {
+			return nil, err
+		}
+		op, err := makeRequest(fmt.Sprintf(operatorManifestURL, version))
+		if err != nil {
+			return nil, err
+		}
+		return io.MultiReader(crds, op), nil
+	}
+	return buf, err
+}
 
+func makeRequest(url string) (io.Reader, error) {
 	client := http.Client{}
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
@@ -174,14 +206,18 @@ func allInOneFromWeb(version string) (io.ReadCloser, error) {
 		}
 	}()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, errNotFound
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request error: %s", resp.Status)
+		return nil, fmt.Errorf("request error %s: %s", url, resp.Status)
 	}
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, resp.Body)
 
-	return ioutil.NopCloser(buf), err
+	return buf, err
 }
 
 type CRD struct {
@@ -201,7 +237,11 @@ type yamlExtracts struct {
 
 func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to register api-extensions: %w", err)
+		return nil, fmt.Errorf("failed to register apiextensions/v1beta1: %w", err)
+	}
+
+	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, fmt.Errorf("failed to register apiextensions/v1: %w", err)
 	}
 
 	decoder := scheme.Codecs.UniversalDeserializer()
@@ -233,6 +273,14 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 				Group:   obj.Spec.Group,
 				Kind:    obj.Spec.Names.Kind,
 				Version: obj.Spec.Version,
+				Def:     yamlBytes,
+			}
+		case *apiextv1.CustomResourceDefinition:
+			parts.crds[obj.Name] = &CRD{
+				Name:    obj.Name,
+				Group:   obj.Spec.Group,
+				Kind:    obj.Spec.Names.Kind,
+				Version: obj.Spec.Versions[0].Name,
 				Def:     yamlBytes,
 			}
 		case *rbacv1.ClusterRole:

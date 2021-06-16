@@ -16,6 +16,7 @@ Most common issues can be identified and resolved by following these instruction
 - <<{p}-exclude-resource,Exclude a resource from reconciliation>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
+- <<{p}-capture-jvm-heap-dumps>>
 
 If you are still unable to find a solution to your problem after following the above instructions, ask for help:
 
@@ -314,3 +315,8 @@ kubectl exec -ti elasticsearch-sample-es-p45nrjch29 bash
 ----
 
 This can also be done for Kibana and APM Server.
+
+[id="{p}-capture-jvm-heap-dumps"]
+== Capture JVM heap dumps
+
+Elasticsearch and Enterprise Search are applications that run on the JVM. It can be useful to capture a heap dump to troubleshoot garbage collection issues or suspected memory leaks or to share it with Elastic. Follow the application specific instructions for <<{p}-jvm-heap-dumps,Elasticsearch>> and <<{p}-enterprise-search-jvm-heap-dump,Enterprise Search>>.

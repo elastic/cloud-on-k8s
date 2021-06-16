@@ -115,7 +115,7 @@ Restricted operator with tracing configured:
 		},
 	}
 
-	cmd.Flags().StringVar(&generateFlags.Profile, "profile", "global", "Operator profile (global, restricted)")
+	cmd.Flags().StringVar(&generateFlags.Profile, "profile", "", "Operator profile (global, restricted)")
 	cmd.Flags().StringArrayVar(&generateFlags.Values, "set", []string{}, "Set additional options")
 	cmd.Flags().StringArrayVar(&generateFlags.ValueFiles, "values", []string{}, "Set additional options from file(s)")
 	cmd.Flags().StringVarP(&generateFlags.OperatorNamespace, "namespace", "n", "elastic-system", "Operator namespace")

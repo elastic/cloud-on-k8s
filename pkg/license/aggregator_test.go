@@ -87,6 +87,16 @@ func TestMemFromJavaOpts(t *testing.T) {
 			expected: resource.MustParse("16777216k"),
 			isErr:    true,
 		},
+		{
+			name:     "with trailing spaces at the end",
+			actual:   "-Xms1k -Xmx8388608k   ",
+			expected: resource.MustParse("16777216Ki"),
+		},
+		{
+			name:     "with trailing space at the beginning",
+			actual:   "  -Xms1k -Xmx8388608k",
+			expected: resource.MustParse("16777216Ki"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

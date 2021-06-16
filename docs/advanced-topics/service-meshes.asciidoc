@@ -45,7 +45,8 @@ kubectl label namespace elastic-system istio-injection=enabled
 +
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
 
 . Check the configuration and make sure the installation has been successful:
@@ -255,7 +256,8 @@ In order to connect the operator to the service mesh, Linkerd sidecar must be in
 
 [source,sh,subs="attributes"]
 ----
-linkerd inject https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml | kubectl apply -f -
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+linkerd inject https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml | kubectl apply -f -
 ----
 
 Confirm that the operator is now meshed:

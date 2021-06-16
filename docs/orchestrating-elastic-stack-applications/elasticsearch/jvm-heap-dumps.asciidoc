@@ -1,0 +1,44 @@
+:parent_page_id: elasticsearch-specification
+:page_id: jvm-heap-dumps
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= JVM heap dumps
+
+== Ensure sufficient storage
+Elasticsearch is link:https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#heap-dump-path[configured by default] to take heap dumps on out-of-memory exceptions to the default data directory. The default data directory is `/usr/share/elasticsearch/data` in the official Docker images that ECK uses. If you are running Elasticsearch with a large heap that is as large as the remaining space on the data volume, this can lead to a situation where Elasticsearch is no longer able to start. To avoid this scenario you have two options:
+
+.  Choose a different path by setting `-XX:HeapDumpPath=` via the  `ES_JAVA_OPTS` variable to a path where a volume with sufficient storage space is mounted
+.  <<{p}-volume-claim-templates,Resize the data volume>> to a sufficiently large size if your volume provisioner supports volume expansion
+
+== Taking add-hoc heap dumps
+To take a heap dump before the JVM process runs out of memory you can execute the heap dump command directly in the Elasticsearch container:
+
+[source,sh,subs="attributes,+macros"]
+----
+kubectl exec $POD_NAME -- su elasticsearch -g root -c \
+  '/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
+----
+
+If the Elasticsearch container is running with a random user ID, as for example on OpenShift, there is no need to substitute the user identity:
+
+[source,sh,subs="attributes,+macros"]
+----
+kubectl exec $POD_NAME -- bash -c \
+  '/usr/share/elasticsearch/jdk/bin/jmap -dump:format=b,file=data/heap.hprof $(pgrep java)'
+----
+
+== Extracting heap dumps from the Elasticsearch container
+To retrieve heap dumps taken by the Elasticsearch JVM or by you, as described in the previous section, you can use the `kubectl cp` command:
+
+[source,sh]
+----
+kubectl cp $POD_NAME:/usr/share/elasticsearch/data/heap.hprof ./heap.hprof
+
+
+# Remove the heap dump from the running container to free up space
+kubectl exec $POD_NAME -- rm /usr/share/elasticsearch/data/heap.hprof
+----
