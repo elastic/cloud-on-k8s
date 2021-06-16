@@ -54,13 +54,15 @@ func filebeatConfigMapName(es esv1.Elasticsearch) string {
 	return esv1.ESNamer.Suffix(es.Name, FilebeatConfigMapSuffix)
 }
 
-func MetricbeatConfigMapParams(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
+// MetricbeatConfigMapData returns the data for the ConfigMap holding the Metricbeat configuration
+func MetricbeatConfigMapData(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
 	nsn := types.NamespacedName{Namespace: es.Namespace, Name: metricbeatConfigMapName(es)}
 	data := map[string]string{MetricbeatConfigKey: MetricbeatConfig}
 	return nsn, data
 }
 
-func FilebeatConfigMapParams(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
+// FilebeatConfigMapData returns the data for the ConfigMap holding the Filebeat configuration
+func FilebeatConfigMapData(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
 	nsn := types.NamespacedName{Namespace: es.Namespace, Name: filebeatConfigMapName(es)}
 	data := map[string]string{FilebeatConfigKey: FilebeatConfig}
 	return nsn, data
