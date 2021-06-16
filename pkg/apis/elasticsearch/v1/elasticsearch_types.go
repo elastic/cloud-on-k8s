@@ -80,13 +80,13 @@ type ElasticsearchSpec struct {
 
 	// Monitoring enables you to extract logs and Stack Monitoring metrics of this Elasticsearch cluster.
 	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
-	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one send data to one or two different
-	// monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
+	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
 }
 
-// Monitoring holds Elasticsearch references to send logs and metrics of this Elasticsearch cluster.
+// Monitoring holds references to Elasticsearch clusters which will receive logs and metrics from this Elasticsearch cluster.
 type Monitoring struct {
 	Metrics MetricsMonitoring `json:"metrics,omitempty"`
 	Logs    LogsMonitoring    `json:"logs,omitempty"`
@@ -232,7 +232,7 @@ func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) comm
 		return commonv1.AssociationStatusMap{}
 	}
 
-	return es.Status.ElasticsearchAssociationsStatus
+	return es.Status.MonitoringAssociationsStatus
 }
 
 func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
@@ -240,7 +240,7 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 		return fmt.Errorf("association type %s not known", typ)
 	}
 
-	es.Status.ElasticsearchAssociationsStatus = status
+	es.Status.MonitoringAssociationsStatus = status
 	return nil
 }
 
@@ -538,7 +538,7 @@ type ElasticsearchStatus struct {
 	Health  ElasticsearchHealth             `json:"health,omitempty"`
 	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 
-	ElasticsearchAssociationsStatus commonv1.AssociationStatusMap `json:"esAssociationStatus,omitempty"`
+	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {

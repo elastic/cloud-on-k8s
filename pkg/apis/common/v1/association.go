@@ -79,7 +79,7 @@ func (asm AssociationStatusMap) Single() (AssociationStatus, error) {
 	return result, nil
 }
 
-// AllEstablished returns true if all Associations have AssociationEstablished status, false otherwise.
+// AllEstablished returns true iff all Associations have AssociationEstablished status, false otherwise.
 func (asm AssociationStatusMap) AllEstablished() bool {
 	for _, status := range asm {
 		if status != AssociationEstablished {
