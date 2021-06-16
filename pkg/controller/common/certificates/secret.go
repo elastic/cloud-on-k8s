@@ -112,29 +112,15 @@ func (s *CertificatesSecret) validateCustomCA() error {
 	_, tlsKeyExists := s.Data[KeyFileName]
 	_, tlsCertExists := s.Data[CertFileName]
 	if tlsKeyExists || tlsCertExists {
-		return fmt.Errorf("cannot specify both %s and %s or  %s in %s/%s",
+		return fmt.Errorf("cannot specify both %s and %s or %s in %s/%s",
 			CAKeyFileName, KeyFileName, CertFileName, s.Namespace, s.Name)
 	}
-	// validate CA private key
-	caKey := s.Data[CAKeyFileName]
-	privkey, err := ParsePEMPrivateKey(caKey)
-	if err != nil {
-		fmt.Errorf("CA private key specified but cannot be parsed: %w", err)
+	ca, err := parseCAFromSecret(s.Secret, CAKeyFileName, CAFileName)
+	if err == nil {
+		// breaking the validation contract here by remembering the results to avoid parsing everything once more
+		s.ca = ca
 	}
-	//  validate CA certificate
-	ca, exist := s.Data[CAFileName]
-	if !exist {
-		fmt.Errorf("cannot find CA certificate %s/%s", s.Namespace, s.Name)
-	}
-	pubkeys, err := ParsePEMCerts(ca)
-	if err != nil {
-		return fmt.Errorf("when parsing CA certificate: %w", err)
-	}
-	if len(pubkeys) != 1 {
-		return fmt.Errorf("must contain exactly one CA certificate in %s %s/%s", CAFileName, s.Namespace, s.Name)
-	}
-	s.ca = NewCA(privkey, pubkeys[0]) // breaking the validation contract here to avoid parsing everything once more
-	return nil
+	return err
 }
 
 // Validate checks that mandatory fields are present.

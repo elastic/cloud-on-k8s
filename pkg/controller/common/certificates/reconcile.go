@@ -69,9 +69,10 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 
 	var httpCa *CA
 	if customCerts.HasFullCA() {
+		// if we have user-provided CA cert + key use that
 		httpCa = customCerts.CA()
 	} else {
-		// then reconcile CA certs if necessary
+		// if not then reconcile self-signed CA
 		httpCa, err = ReconcileCAForOwner(
 			r.K8sClient,
 			r.Namer,
