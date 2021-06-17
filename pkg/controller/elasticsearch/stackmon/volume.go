@@ -76,7 +76,7 @@ func monitoringMetricsSourceCaCertSecretVolume(es esv1.Elasticsearch) volume.Sec
 func monitoringMetricsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
 	assocConf := es.GetMonitoringMetricsAssociation().AssociationConf()
 	return volume.NewSecretVolumeWithMountPath(
-		assocConf.CASecretName,
+		assocConf.GetCASecretName(),
 		MonitoringMetricsTargetEsCaCertVolumeName,
 		MonitoringMetricsTargetEsCaCertMountPath,
 	)
@@ -85,7 +85,7 @@ func monitoringMetricsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.Sec
 func monitoringLogsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
 	assocConf := es.GetMonitoringLogsAssociation().AssociationConf()
 	return volume.NewSecretVolumeWithMountPath(
-		assocConf.CASecretName,
+		assocConf.GetCASecretName(),
 		MonitoringLogsTargetEsCaCertVolumeName,
 		MonitoringLogsTargetEsCaCertMountPath,
 	)
