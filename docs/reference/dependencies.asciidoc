@@ -56,7 +56,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/kubernetes/klog[$$k8s.io/klog/v2$$] | v2.9.0 | Apache-2.0
 | link:https://github.com/kubernetes/utils[$$k8s.io/utils$$] | v0.0.0-20210527160623-6fdb442a123b | Apache-2.0
 | link:https://sigs.k8s.io/controller-runtime[$$sigs.k8s.io/controller-runtime$$] | v0.9.0 | Apache-2.0
-| link:https://sigs.k8s.io/controller-tools[$$sigs.k8s.io/controller-tools$$] | v0.5.0 | Apache-2.0
+| link:https://sigs.k8s.io/controller-tools[$$sigs.k8s.io/controller-tools$$] | v0.6.0 | Apache-2.0
 |===
 
 
@@ -129,7 +129,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/dgrijalva/jwt-go[$$github.com/dgrijalva/jwt-go$$] | v3.2.0+incompatible | MIT
 | link:https://github.com/dgryski/go-gk[$$github.com/dgryski/go-gk$$] | v0.0.0-20200319235926-a69029f61654 | MIT
 | link:https://github.com/dgryski/go-sip13[$$github.com/dgryski/go-sip13$$] | v0.0.0-20181026042036-e10d5fee7954 | MIT
-| link:https://github.com/docker/spdystream[$$github.com/docker/spdystream$$] | v0.0.0-20160310174837-449fdfce4d96 | Apache-2.0
 | link:https://github.com/docopt/docopt-go[$$github.com/docopt/docopt-go$$] | v0.0.0-20180111231733-ee0de3bc6815 | MIT
 | link:https://github.com/dustin/go-humanize[$$github.com/dustin/go-humanize$$] | v1.0.0 | MIT
 | link:https://github.com/elastic/go-sysinfo[$$github.com/elastic/go-sysinfo$$] | v1.1.1 | Apache-2.0
@@ -139,7 +138,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/envoyproxy/go-control-plane[$$github.com/envoyproxy/go-control-plane$$] | v0.9.9-0.20210217033140-668b12f5399d | Apache-2.0
 | link:https://github.com/envoyproxy/protoc-gen-validate[$$github.com/envoyproxy/protoc-gen-validate$$] | v0.1.0 | Apache-2.0
 | link:https://github.com/evanphx/json-patch[$$github.com/evanphx/json-patch$$] | v4.11.0+incompatible | BSD-3-Clause
-| link:https://github.com/fatih/color[$$github.com/fatih/color$$] | v1.9.0 | MIT
+| link:https://github.com/fatih/color[$$github.com/fatih/color$$] | v1.12.0 | MIT
 | link:https://github.com/fatih/structs[$$github.com/fatih/structs$$] | v1.1.0 | MIT
 | link:https://github.com/form3tech-oss/jwt-go[$$github.com/form3tech-oss/jwt-go$$] | v3.2.2+incompatible | MIT
 | link:https://github.com/go-asn1-ber/asn1-ber[$$github.com/go-asn1-ber/asn1-ber$$] | v1.3.1 | MIT
@@ -333,7 +332,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://gopkg.in/resty.v1[$$gopkg.in/resty.v1$$] | v1.12.0 | MIT
 | link:https://gopkg.in/square/go-jose.v2[$$gopkg.in/square/go-jose.v2$$] | v2.5.1 | Apache-2.0
 | link:https://gopkg.in/tomb.v1[$$gopkg.in/tomb.v1$$] | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause
-| link:https://gotest.tools[$$gotest.tools$$] | v2.2.0+incompatible | Apache-2.0
 | link:https://gotest.tools/v3[$$gotest.tools/v3$$] | v3.0.3 | Apache-2.0
 | link:https://honnef.co/go/tools[$$honnef.co/go/tools$$] | v0.0.1-2020.1.4 | MIT
 | link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v0.0.0-20181124034731-591f970eefbb | BSD-2-Clause
