@@ -424,7 +424,6 @@ func TestWithMonitoring(t *testing.T) {
 				// Check that the beat sidecar containers are present
 				require.Len(t, actual.Spec.Containers, tc.expectedContainerLen)
 			}
-
 		})
 	}
 }
