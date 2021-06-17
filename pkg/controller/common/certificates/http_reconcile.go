@@ -103,9 +103,6 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA, customCertificates *Certi
 	caCertProvided := true
 	//nolint:nestif
 	if customCertificates.HasLeafCertificate() {
-		if err := customCertificates.Validate(); err != nil {
-			return nil, err
-		}
 		expectedSecretData := make(map[string][]byte)
 		expectedSecretData[CertFileName] = customCertificates.CertPem()
 		expectedSecretData[KeyFileName] = customCertificates.KeyPem()

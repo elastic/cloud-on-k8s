@@ -71,6 +71,14 @@ type CertificatesSecret struct {
 	ca *CA
 }
 
+func NewCertificatesSecret(secret v1.Secret) (*CertificatesSecret, error) {
+	result := CertificatesSecret{Secret: secret}
+	if err := result.validate(); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // CAPem returns the certificate of the certificate authority.
 func (s *CertificatesSecret) CAPem() []byte {
 	return s.Data[CAFileName]
@@ -123,9 +131,9 @@ func (s *CertificatesSecret) validateCustomCA() error {
 	return err
 }
 
-// Validate checks that mandatory fields are present.
+// validate checks that mandatory fields are present.
 // It does not check that the public key matches the private key.
-func (s *CertificatesSecret) Validate() error {
+func (s *CertificatesSecret) validate() error {
 	if s.HasFullCA() {
 		return s.validateCustomCA()
 	}
@@ -183,11 +191,5 @@ func validCustomCertificatesOrNil(
 	if err != nil || secret == nil {
 		return nil, err
 	}
-
-	result := CertificatesSecret{Secret: *secret}
-	if err := result.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	return NewCertificatesSecret(*secret)
 }

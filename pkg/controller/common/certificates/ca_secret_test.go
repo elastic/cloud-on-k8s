@@ -90,7 +90,7 @@ func TestSecret_Parse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if _, err := ParseCustomCASecret(tt.s); (err != nil) != tt.wantErr {
-				t.Errorf("Secret.Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseCustomCASecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
