@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"errors"
 	"sort"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
@@ -315,6 +317,114 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.es), tc.want)
+		})
+	}
+}
+
+func TestWithMonitoring(t *testing.T) {
+	monitoringRef := commonv1.ObjectSelector{
+		Name:      "m1",
+		Namespace: "c",
+	}
+	fakeAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "name-c-m1-beat-mon-user",
+		AuthSecretKey:  "default-name-c-m1-beat-mon-user",
+		CACertProvided: true,
+		CASecretName:   "name-es-mon-c-m1-ca",
+		URL:            "https://m1-es-http.c.svc:9200",
+		Version:        "7.14.0",
+	}
+	tt := []struct {
+		name                              string
+		es                                func() esv1.Elasticsearch
+		expectedXPackMonitoringConfigKeys int
+		expectedContainerLen              int
+		expectedErr                       error
+	}{
+		{
+			name: "without monitoring",
+			es: func() esv1.Elasticsearch {
+				return sampleES
+			},
+			expectedXPackMonitoringConfigKeys: 0,
+			expectedContainerLen:              2,
+		},
+		{
+			name: "with unsupported version",
+			es: func() esv1.Elasticsearch {
+				es := sampleES
+				es.Spec.Monitoring.Logs.ElasticsearchRef = monitoringRef
+				return es
+			},
+			expectedXPackMonitoringConfigKeys: 0,
+			expectedErr:                       errors.New("unsupported version for Stack Monitoring: required >= 7.14.0"),
+		},
+		{
+			name: "with logs monitoring",
+			es: func() esv1.Elasticsearch {
+				es := sampleES
+				es.Spec.Version = "7.14.0"
+				es.Spec.Monitoring.Logs.ElasticsearchRef = monitoringRef
+				return es
+			},
+			expectedXPackMonitoringConfigKeys: 0,
+			expectedContainerLen:              3,
+		},
+		{
+			name: "with metrics monitoring",
+			es: func() esv1.Elasticsearch {
+				es := sampleES
+				es.Spec.Version = "7.14.0"
+				es.Spec.Monitoring.Metrics.ElasticsearchRef = monitoringRef
+				return es
+			},
+			expectedXPackMonitoringConfigKeys: 2,
+			expectedContainerLen:              3,
+		},
+		{
+			name: "with logs and metrics monitoring",
+			es: func() esv1.Elasticsearch {
+				es := sampleES
+				es.Spec.Version = "7.14.0"
+				es.Spec.Monitoring.Metrics.ElasticsearchRef = monitoringRef
+				es.Spec.Monitoring.Logs.ElasticsearchRef = monitoringRef
+				return es
+			},
+			expectedXPackMonitoringConfigKeys: 2,
+			expectedContainerLen:              4,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			es := tc.es()
+			nodeSet := es.Spec.NodeSets[0]
+			ver, err := version.Parse(es.Spec.Version)
+			require.NoError(t, err)
+
+			// Check that the Elasticsearch config contains Xpack monitoring settings only when metrics monitoring config is defined
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, stackmon.MonitoringConfig(es))
+			require.NoError(t, err)
+			require.Len(t, cfg.HasKeys([]string{esv1.XPackMonitoringCollectionEnabled, esv1.XPackMonitoringElasticsearchCollectionEnabled}), tc.expectedXPackMonitoringConfigKeys)
+
+			// Fake association conf
+			if stackmon.IsMonitoringMetricsDefined(es) {
+				es.GetMonitoringMetricsAssociation().SetAssociationConf(&fakeAssocConf)
+			}
+			if stackmon.IsMonitoringLogsDefined(es) {
+				es.GetMonitoringLogsAssociation().SetAssociationConf(&fakeAssocConf)
+			}
+
+			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, false)
+			if tc.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tc.expectedErr, err)
+			} else {
+				require.NoError(t, err)
+				// Check that the beat sidecar containers are present
+				require.Len(t, actual.Spec.Containers, tc.expectedContainerLen)
+			}
+
 		})
 	}
 }
