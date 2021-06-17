@@ -94,6 +94,33 @@ spec:
                         convention for oneOf, whatever we decide it to be. Same as
                         Deployment `strategy.rollingUpdate`. See https://github.com/kubernetes/kubernetes/issues/35345'
                       properties:
+                        maxSurge:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of nodes with an existing
+                            available DaemonSet pod that can have an updated DaemonSet
+                            pod during during an update. Value can be an absolute
+                            number (ex: 5) or a percentage of desired pods (ex: 10%).
+                            This can not be 0 if MaxUnavailable is 0. Absolute number
+                            is calculated from percentage by rounding up to a minimum
+                            of 1. Default value is 0. Example: when this is set to
+                            30%, at most 30% of the total number of nodes that should
+                            be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their a new pod created before the old pod is
+                            marked as deleted. The update starts by launching new
+                            pods on 30% of nodes. Once an updated pod is available
+                            (Ready for at least minReadySeconds) the old DaemonSet
+                            pod on that node is marked deleted. If the old pod becomes
+                            unavailable for any reason (Ready transitions to false,
+                            is evicted, or is drained) an updated pod is immediatedly
+                            created on that node without considering surge limits.
+                            Allowing surge implies the possibility that the resources
+                            consumed by the daemonset on any given node can double
+                            if the readiness check fails, and so resource intensive
+                            daemonsets should take into account that they may cause
+                            evictions during disruption. This is an alpha field and
+                            requires enabling DaemonSetUpdateSurge feature gate.'
                         maxUnavailable:
                           anyOf:
                           - type: integer
@@ -103,9 +130,10 @@ spec:
                             absolute number (ex: 5) or a percentage of total number
                             of DaemonSet pods at the start of the update (ex: 10%).
                             Absolute number is calculated from percentage by rounding
-                            up. This cannot be 0. Default value is 1. Example: when
-                            this is set to 30%, at most 30% of the total number of
-                            nodes that should be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            down to a minimum of one. This cannot be 0 if MaxSurge
+                            is 0 Default value is 1. Example: when this is set to
+                            30%, at most 30% of the total number of nodes that should
+                            be running the daemon pod (i.e. status.desiredNumberScheduled)
                             can have their pods stopped for an update at any given
                             time. The update starts by stopping at most 30% of those
                             DaemonSet pods and then brings up new DaemonSet pods in
@@ -478,7 +506,7 @@ spec:
                             discovery mechanisms will return as an alias for this
                             service (e.g. a DNS CNAME record). No proxying will be
                             involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be
+                            and requires `type` to be "ExternalName".
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -505,6 +533,14 @@ spec:
                             type).
                           format: int32
                           type: integer
+                        internalTrafficPolicy:
+                          description: InternalTrafficPolicy specifies if the cluster
+                            internal traffic should be routed to all endpoints or
+                            node-local endpoints only. "Cluster" routes internal traffic
+                            to a Service to all endpoints. "Local" routes traffic
+                            to node-local endpoints only, traffic is dropped if no
+                            node-local endpoints are ready. The default value is "Cluster".
+                          type: string
                         ipFamilies:
                           description: "IPFamilies is a list of IP families (e.g.
                             IPv4, IPv6) assigned to this service, and is gated by
@@ -543,6 +579,24 @@ spec:
                             fail). The ipFamilies and clusterIPs fields depend on
                             the value of this field.  This field will be wiped when
                             updating a service to type ExternalName.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass is the class of the load
+                            balancer implementation this Service belongs to. If specified,
+                            the value of this field must be a label-style identifier,
+                            with an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                            Unprefixed names are reserved for end-users. This field
+                            can only be set when the Service type is 'LoadBalancer'.
+                            If not set, the default load balancer implementation is
+                            used, today this is typically done through the cloud provider
+                            integration, but should apply for any default implementation.
+                            If set, it is assumed that a load balancer implementation
+                            is watching for Services with a matching class. Any default
+                            load balancer implementation (e.g. cloud providers) should
+                            ignore Services that set this field. This field can only
+                            be set when creating or updating a Service to type 'LoadBalancer'.
+                            Once set, it can not be changed. This field will be wiped
+                            when a service is updated to a non 'LoadBalancer' type.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -690,7 +744,8 @@ spec:
                             the list. If this is not specified or empty, no topology
                             constraints will be applied. This field is alpha-level
                             and is only honored by servers that enable the ServiceTopology
-                            feature.
+                            feature. This field is deprecated and will be removed
+                            in a future version.
                           items:
                             type: string
                           type: array
@@ -981,6 +1036,33 @@ spec:
                         convention for oneOf, whatever we decide it to be. Same as
                         Deployment `strategy.rollingUpdate`. See https://github.com/kubernetes/kubernetes/issues/35345'
                       properties:
+                        maxSurge:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: 'The maximum number of nodes with an existing
+                            available DaemonSet pod that can have an updated DaemonSet
+                            pod during during an update. Value can be an absolute
+                            number (ex: 5) or a percentage of desired pods (ex: 10%).
+                            This can not be 0 if MaxUnavailable is 0. Absolute number
+                            is calculated from percentage by rounding up to a minimum
+                            of 1. Default value is 0. Example: when this is set to
+                            30%, at most 30% of the total number of nodes that should
+                            be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their a new pod created before the old pod is
+                            marked as deleted. The update starts by launching new
+                            pods on 30% of nodes. Once an updated pod is available
+                            (Ready for at least minReadySeconds) the old DaemonSet
+                            pod on that node is marked deleted. If the old pod becomes
+                            unavailable for any reason (Ready transitions to false,
+                            is evicted, or is drained) an updated pod is immediatedly
+                            created on that node without considering surge limits.
+                            Allowing surge implies the possibility that the resources
+                            consumed by the daemonset on any given node can double
+                            if the readiness check fails, and so resource intensive
+                            daemonsets should take into account that they may cause
+                            evictions during disruption. This is an alpha field and
+                            requires enabling DaemonSetUpdateSurge feature gate.'
                         maxUnavailable:
                           anyOf:
                           - type: integer
@@ -990,9 +1072,10 @@ spec:
                             absolute number (ex: 5) or a percentage of total number
                             of DaemonSet pods at the start of the update (ex: 10%).
                             Absolute number is calculated from percentage by rounding
-                            up. This cannot be 0. Default value is 1. Example: when
-                            this is set to 30%, at most 30% of the total number of
-                            nodes that should be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            down to a minimum of one. This cannot be 0 if MaxSurge
+                            is 0 Default value is 1. Example: when this is set to
+                            30%, at most 30% of the total number of nodes that should
+                            be running the daemon pod (i.e. status.desiredNumberScheduled)
                             can have their pods stopped for an update at any given
                             time. The update starts by stopping at most 30% of those
                             DaemonSet pods and then brings up new DaemonSet pods in
@@ -1402,7 +1485,7 @@ spec:
                             discovery mechanisms will return as an alias for this
                             service (e.g. a DNS CNAME record). No proxying will be
                             involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be
+                            and requires `type` to be "ExternalName".
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -1429,6 +1512,14 @@ spec:
                             type).
                           format: int32
                           type: integer
+                        internalTrafficPolicy:
+                          description: InternalTrafficPolicy specifies if the cluster
+                            internal traffic should be routed to all endpoints or
+                            node-local endpoints only. "Cluster" routes internal traffic
+                            to a Service to all endpoints. "Local" routes traffic
+                            to node-local endpoints only, traffic is dropped if no
+                            node-local endpoints are ready. The default value is "Cluster".
+                          type: string
                         ipFamilies:
                           description: "IPFamilies is a list of IP families (e.g.
                             IPv4, IPv6) assigned to this service, and is gated by
@@ -1467,6 +1558,24 @@ spec:
                             fail). The ipFamilies and clusterIPs fields depend on
                             the value of this field.  This field will be wiped when
                             updating a service to type ExternalName.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass is the class of the load
+                            balancer implementation this Service belongs to. If specified,
+                            the value of this field must be a label-style identifier,
+                            with an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                            Unprefixed names are reserved for end-users. This field
+                            can only be set when the Service type is 'LoadBalancer'.
+                            If not set, the default load balancer implementation is
+                            used, today this is typically done through the cloud provider
+                            integration, but should apply for any default implementation.
+                            If set, it is assumed that a load balancer implementation
+                            is watching for Services with a matching class. Any default
+                            load balancer implementation (e.g. cloud providers) should
+                            ignore Services that set this field. This field can only
+                            be set when creating or updating a Service to type 'LoadBalancer'.
+                            Once set, it can not be changed. This field will be wiped
+                            when a service is updated to a non 'LoadBalancer' type.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -1614,7 +1723,8 @@ spec:
                             the list. If this is not specified or empty, no topology
                             constraints will be applied. This field is alpha-level
                             and is only honored by servers that enable the ServiceTopology
-                            feature.
+                            feature. This field is deprecated and will be removed
+                            in a future version.
                           items:
                             type: string
                           type: array
@@ -1918,7 +2028,7 @@ spec:
                             discovery mechanisms will return as an alias for this
                             service (e.g. a DNS CNAME record). No proxying will be
                             involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be
+                            and requires `type` to be "ExternalName".
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -1945,6 +2055,14 @@ spec:
                             type).
                           format: int32
                           type: integer
+                        internalTrafficPolicy:
+                          description: InternalTrafficPolicy specifies if the cluster
+                            internal traffic should be routed to all endpoints or
+                            node-local endpoints only. "Cluster" routes internal traffic
+                            to a Service to all endpoints. "Local" routes traffic
+                            to node-local endpoints only, traffic is dropped if no
+                            node-local endpoints are ready. The default value is "Cluster".
+                          type: string
                         ipFamilies:
                           description: "IPFamilies is a list of IP families (e.g.
                             IPv4, IPv6) assigned to this service, and is gated by
@@ -1983,6 +2101,24 @@ spec:
                             fail). The ipFamilies and clusterIPs fields depend on
                             the value of this field.  This field will be wiped when
                             updating a service to type ExternalName.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass is the class of the load
+                            balancer implementation this Service belongs to. If specified,
+                            the value of this field must be a label-style identifier,
+                            with an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                            Unprefixed names are reserved for end-users. This field
+                            can only be set when the Service type is 'LoadBalancer'.
+                            If not set, the default load balancer implementation is
+                            used, today this is typically done through the cloud provider
+                            integration, but should apply for any default implementation.
+                            If set, it is assumed that a load balancer implementation
+                            is watching for Services with a matching class. Any default
+                            load balancer implementation (e.g. cloud providers) should
+                            ignore Services that set this field. This field can only
+                            be set when creating or updating a Service to type 'LoadBalancer'.
+                            Once set, it can not be changed. This field will be wiped
+                            when a service is updated to a non 'LoadBalancer' type.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -2130,7 +2266,8 @@ spec:
                             the list. If this is not specified or empty, no topology
                             constraints will be applied. This field is alpha-level
                             and is only honored by servers that enable the ServiceTopology
-                            feature.
+                            feature. This field is deprecated and will be removed
+                            in a future version.
                           items:
                             type: string
                           type: array
@@ -2303,7 +2440,7 @@ spec:
                                     - type: string
                                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   description: 'Limits describes the maximum amount
-                                    of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                   type: object
                                 requests:
                                   additionalProperties:
@@ -2315,7 +2452,7 @@ spec:
                                     of compute resources required. If Requests is
                                     omitted for a container, it defaults to Limits
                                     if that is explicitly specified, otherwise to
-                                    an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                   type: object
                               type: object
                             selector:
@@ -2481,7 +2618,10 @@ spec:
                         "100%".
                     selector:
                       description: Label query over pods whose evictions are managed
-                        by the disruption budget.
+                        by the disruption budget. A null selector selects no pods.
+                        An empty selector ({}) also selects no pods, which differs
+                        from standard behavior of selecting all pods. In policy/v1,
+                        an empty selector will select all pods in the namespace.
                       properties:
                         matchExpressions:
                           description: matchExpressions is a list of label selector
@@ -2699,7 +2839,7 @@ spec:
                             discovery mechanisms will return as an alias for this
                             service (e.g. a DNS CNAME record). No proxying will be
                             involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be
+                            and requires `type` to be "ExternalName".
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -2726,6 +2866,14 @@ spec:
                             type).
                           format: int32
                           type: integer
+                        internalTrafficPolicy:
+                          description: InternalTrafficPolicy specifies if the cluster
+                            internal traffic should be routed to all endpoints or
+                            node-local endpoints only. "Cluster" routes internal traffic
+                            to a Service to all endpoints. "Local" routes traffic
+                            to node-local endpoints only, traffic is dropped if no
+                            node-local endpoints are ready. The default value is "Cluster".
+                          type: string
                         ipFamilies:
                           description: "IPFamilies is a list of IP families (e.g.
                             IPv4, IPv6) assigned to this service, and is gated by
@@ -2764,6 +2912,24 @@ spec:
                             fail). The ipFamilies and clusterIPs fields depend on
                             the value of this field.  This field will be wiped when
                             updating a service to type ExternalName.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass is the class of the load
+                            balancer implementation this Service belongs to. If specified,
+                            the value of this field must be a label-style identifier,
+                            with an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                            Unprefixed names are reserved for end-users. This field
+                            can only be set when the Service type is 'LoadBalancer'.
+                            If not set, the default load balancer implementation is
+                            used, today this is typically done through the cloud provider
+                            integration, but should apply for any default implementation.
+                            If set, it is assumed that a load balancer implementation
+                            is watching for Services with a matching class. Any default
+                            load balancer implementation (e.g. cloud providers) should
+                            ignore Services that set this field. This field can only
+                            be set when creating or updating a Service to type 'LoadBalancer'.
+                            Once set, it can not be changed. This field will be wiped
+                            when a service is updated to a non 'LoadBalancer' type.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -2911,7 +3077,8 @@ spec:
                             the list. If this is not specified or empty, no topology
                             constraints will be applied. This field is alpha-level
                             and is only honored by servers that enable the ServiceTopology
-                            feature.
+                            feature. This field is deprecated and will be removed
+                            in a future version.
                           items:
                             type: string
                           type: array
@@ -3228,7 +3395,7 @@ spec:
                             discovery mechanisms will return as an alias for this
                             service (e.g. a DNS CNAME record). No proxying will be
                             involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be
+                            and requires `type` to be "ExternalName".
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -3255,6 +3422,14 @@ spec:
                             type).
                           format: int32
                           type: integer
+                        internalTrafficPolicy:
+                          description: InternalTrafficPolicy specifies if the cluster
+                            internal traffic should be routed to all endpoints or
+                            node-local endpoints only. "Cluster" routes internal traffic
+                            to a Service to all endpoints. "Local" routes traffic
+                            to node-local endpoints only, traffic is dropped if no
+                            node-local endpoints are ready. The default value is "Cluster".
+                          type: string
                         ipFamilies:
                           description: "IPFamilies is a list of IP families (e.g.
                             IPv4, IPv6) assigned to this service, and is gated by
@@ -3293,6 +3468,24 @@ spec:
                             fail). The ipFamilies and clusterIPs fields depend on
                             the value of this field.  This field will be wiped when
                             updating a service to type ExternalName.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass is the class of the load
+                            balancer implementation this Service belongs to. If specified,
+                            the value of this field must be a label-style identifier,
+                            with an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                            Unprefixed names are reserved for end-users. This field
+                            can only be set when the Service type is 'LoadBalancer'.
+                            If not set, the default load balancer implementation is
+                            used, today this is typically done through the cloud provider
+                            integration, but should apply for any default implementation.
+                            If set, it is assumed that a load balancer implementation
+                            is watching for Services with a matching class. Any default
+                            load balancer implementation (e.g. cloud providers) should
+                            ignore Services that set this field. This field can only
+                            be set when creating or updating a Service to type 'LoadBalancer'.
+                            Once set, it can not be changed. This field will be wiped
+                            when a service is updated to a non 'LoadBalancer' type.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -3440,7 +3633,8 @@ spec:
                             the list. If this is not specified or empty, no topology
                             constraints will be applied. This field is alpha-level
                             and is only honored by servers that enable the ServiceTopology
-                            feature.
+                            feature. This field is deprecated and will be removed
+                            in a future version.
                           items:
                             type: string
                           type: array
@@ -3746,7 +3940,7 @@ spec:
                             discovery mechanisms will return as an alias for this
                             service (e.g. a DNS CNAME record). No proxying will be
                             involved.  Must be a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                            and requires Type to be
+                            and requires `type` to be "ExternalName".
                           type: string
                         externalTrafficPolicy:
                           description: externalTrafficPolicy denotes if this Service
@@ -3773,6 +3967,14 @@ spec:
                             type).
                           format: int32
                           type: integer
+                        internalTrafficPolicy:
+                          description: InternalTrafficPolicy specifies if the cluster
+                            internal traffic should be routed to all endpoints or
+                            node-local endpoints only. "Cluster" routes internal traffic
+                            to a Service to all endpoints. "Local" routes traffic
+                            to node-local endpoints only, traffic is dropped if no
+                            node-local endpoints are ready. The default value is "Cluster".
+                          type: string
                         ipFamilies:
                           description: "IPFamilies is a list of IP families (e.g.
                             IPv4, IPv6) assigned to this service, and is gated by
@@ -3811,6 +4013,24 @@ spec:
                             fail). The ipFamilies and clusterIPs fields depend on
                             the value of this field.  This field will be wiped when
                             updating a service to type ExternalName.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass is the class of the load
+                            balancer implementation this Service belongs to. If specified,
+                            the value of this field must be a label-style identifier,
+                            with an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                            Unprefixed names are reserved for end-users. This field
+                            can only be set when the Service type is 'LoadBalancer'.
+                            If not set, the default load balancer implementation is
+                            used, today this is typically done through the cloud provider
+                            integration, but should apply for any default implementation.
+                            If set, it is assumed that a load balancer implementation
+                            is watching for Services with a matching class. Any default
+                            load balancer implementation (e.g. cloud providers) should
+                            ignore Services that set this field. This field can only
+                            be set when creating or updating a Service to type 'LoadBalancer'.
+                            Once set, it can not be changed. This field will be wiped
+                            when a service is updated to a non 'LoadBalancer' type.
                           type: string
                         loadBalancerIP:
                           description: 'Only applies to Service Type: LoadBalancer
@@ -3958,7 +4178,8 @@ spec:
                             the list. If this is not specified or empty, no topology
                             constraints will be applied. This field is alpha-level
                             and is only honored by servers that enable the ServiceTopology
-                            feature.
+                            feature. This field is deprecated and will be removed
+                            in a future version.
                           items:
                             type: string
                           type: array
