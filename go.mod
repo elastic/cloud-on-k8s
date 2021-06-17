@@ -14,7 +14,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-test/deep v1.0.7
-	github.com/gobuffalo/flect v0.2.2
+	github.com/gobuffalo/flect v0.2.3
 	github.com/google/go-cmp v0.5.6
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0
