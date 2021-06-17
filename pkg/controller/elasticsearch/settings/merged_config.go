@@ -39,19 +39,13 @@ func NewMergedESConfig(
 		return CanonicalConfig{}, err
 	}
 	config := baseConfig(clusterName, ver, ipFamily).CanonicalConfig
-	err = config.MergeWith(
-		xpackConfig(ver, httpConfig).CanonicalConfig,
-		userCfg,
-	)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
 	monitoringCfg, err := common.NewCanonicalConfigFrom(monitoringConfig.Data)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
 	err = config.MergeWith(
 		xpackConfig(ver, httpConfig).CanonicalConfig,
+		userCfg,
 		monitoringCfg,
 	)
 	if err != nil {
