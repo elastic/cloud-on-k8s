@@ -20,6 +20,7 @@ const (
 	FilebeatConfigKey       = "filebeat.yml"
 )
 
+// Warning: environment variables and CA cert paths defined below are also used in the embedded files.
 var (
 	// Environments variables used in the beats configuration to describe how to connect to Elasticsearch.
 	// Warning: they are hard-coded in the two configs below.
@@ -37,7 +38,6 @@ var (
 	MonitoringLogsTargetEsCaCertMountPath    = "/mnt/es/monitoring/logs/target"
 
 	// MetricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
-	// Warning: environment variables and CA cert paths defined below are hard-coded for simplicity.
 	//go:embed metricbeat.yml
 	MetricbeatConfig string
 
