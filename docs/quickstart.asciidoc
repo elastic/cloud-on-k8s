@@ -50,7 +50,7 @@ kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.y
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
 +
-If you are running version of Kubernetes before 1.16 you have to use the legacy version of the manifests:
+If you are running a version of Kubernetes before 1.16 you have to use the legacy version of the manifests:
 +
 [source,sh,subs="attributes"]
 ----
