@@ -28,9 +28,9 @@ type AdmissionControllerInterface interface {
 	getType() client.Object
 	// services returns the set of services used by the Webhooks
 	services() Services
-	// webhooks returns the list of webhook in the configuration
+	// webhooks returns the list of webhooks in the configuration
 	webhooks() []webhook
-	// update ca bundle with the provided CA in all the Webhooks
+	// updateCABundle updates CABundle with the provided CA in all the Webhooks
 	updateCABundle(caCert []byte) error
 }
 
@@ -49,7 +49,7 @@ func (w *Params) NewAdmissionControllerInterface(ctx context.Context, clientset 
 	if err != nil {
 		return nil, err
 	}
-	log.V(1).Info(" using admissionregistration.k8s.io/v1 for webhook configuration")
+	log.V(1).Info("using admissionregistration.k8s.io/v1 for webhook configuration")
 	webhookConfiguration, err := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
 	if err != nil {
 		// 404 is also considered as an error, webhook configuration is expected to be created before the operator is started

@@ -751,13 +751,13 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		// retrieve the current webhook configuration interface
 		wh, err := webhookParams.NewAdmissionControllerInterface(context.Background(), clientset)
 		if err != nil {
-			log.Error(err, "unable to setup and fill the webhook certificates")
+			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
 
 		// Force a first reconciliation to create the resources before the server is started
 		if err := webhookParams.ReconcileResources(context.Background(), clientset, wh); err != nil {
-			log.Error(err, "unable to setup and fill the webhook certificates")
+			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
 
