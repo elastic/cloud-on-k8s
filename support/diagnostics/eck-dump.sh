@@ -117,6 +117,7 @@ main() {
     get_resources "$ns" networkpolicies
     get_resources "$ns" controllerrevisions
     get_metadata "$ns" secrets
+    get_metadata "$ns" poddisruptionbudgets
 
     # get all managed resources and their logs
     get_resources "$ns" kibana
