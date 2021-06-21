@@ -6,9 +6,11 @@ package stackmon
 
 import (
 	_ "embed" // for the beats config files
+	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -20,22 +22,22 @@ const (
 	FilebeatConfigKey       = "filebeat.yml"
 )
 
+// Environments variables and paths to the Elasticsearch CA certificates used in the beats configuration to describe
+// how to connect to Elasticsearch.
 // Warning: environment variables and CA cert paths defined below are also used in the embedded files.
 var (
-	// Environments variables used in the beats configuration to describe how to connect to Elasticsearch.
-	// Warning: they are hard-coded in the two configs below.
 	EsSourceURLEnvVarKey      = "ES_SOURCE_URL"
 	EsSourceURLEnvVarValue    = "https://localhost:9200"
 	EsSourceUsernameEnvVarKey = "ES_SOURCE_USERNAME"
 	EsSourcePasswordEnvVarKey = "ES_SOURCE_PASSWORD" //nolint:gosec
-	EsTargetURLEnvVarKey      = "ES_TARGET_URL"
-	EsTargetUsernameEnvVarKey = "ES_TARGET_USERNAME"
-	EsTargetPasswordEnvVarKey = "ES_TARGET_PASSWORD" //nolint:gosec
 
-	// Paths to the Elasticsearch CA certificates used by the beats to send data
+	EsTargetURLEnvVarKeyFormat      = "ES_%d_TARGET_URL"
+	EsTargetUsernameEnvVarKeyFormat = "ES_%d_TARGET_USERNAME"
+	EsTargetPasswordEnvVarKeyFormat = "ES_%d_TARGET_PASSWORD" //nolint:gosec
+
 	MonitoringMetricsSourceEsCaCertMountPath = "/mnt/es/monitoring/metrics/source"
-	MonitoringMetricsTargetEsCaCertMountPath = "/mnt/es/monitoring/metrics/target"
-	MonitoringLogsTargetEsCaCertMountPath    = "/mnt/es/monitoring/logs/target"
+	MonitoringMetricsTargetEsCaCertMountPath = "/mnt/es/%d/monitoring/metrics/target"
+	MonitoringLogsTargetEsCaCertMountPath    = "/mnt/es/%d/monitoring/logs/target"
 
 	// MetricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
 	//go:embed metricbeat.yml
@@ -78,4 +80,24 @@ func FilebeatConfigMapData(es esv1.Elasticsearch) (types.NamespacedName, map[str
 	nsn := types.NamespacedName{Namespace: es.Namespace, Name: filebeatConfigMapName(es)}
 	data := map[string]string{FilebeatConfigKey: FilebeatConfig}
 	return nsn, data
+}
+
+func monitoringTargetEnvVars(assocs []commonv1.Association) []corev1.EnvVar {
+	vars := make([]corev1.EnvVar, 0)
+	for i, assoc := range assocs {
+		assocConf := assoc.AssociationConf()
+		vars = append(vars, []corev1.EnvVar{
+			{Name: fmt.Sprintf(EsTargetURLEnvVarKeyFormat, i), Value: assocConf.GetURL()},
+			{Name: fmt.Sprintf(EsTargetUsernameEnvVarKeyFormat, i), Value: assocConf.GetAuthSecretKey()},
+			{Name: fmt.Sprintf(EsTargetPasswordEnvVarKeyFormat, i), ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: assocConf.GetAuthSecretName(),
+					},
+					Key: assocConf.GetAuthSecretKey(),
+				},
+			}}}...,
+		)
+	}
+	return vars
 }

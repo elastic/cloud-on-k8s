@@ -23,23 +23,24 @@ import (
 var log = ulog.Log.WithName("es-validation")
 
 const (
-	autoscalingVersionMsg                   = "autoscaling is not available in this version of Elasticsearch"
-	cfgInvalidMsg                           = "Configuration invalid"
-	duplicateNodeSets                       = "NodeSet names must be unique"
-	invalidNamesErrMsg                      = "Elasticsearch configuration would generate resources with invalid names"
-	invalidSanIPErrMsg                      = "Invalid SAN IP address. Must be a valid IPv4 address"
-	masterRequiredMsg                       = "Elasticsearch needs to have at least one master node"
-	mixedRoleConfigMsg                      = "Detected a combination of node.roles and %s. Use only node.roles"
-	noDowngradesMsg                         = "Downgrades are not supported"
-	nodeRolesInOldVersionMsg                = "node.roles setting is not available in this version of Elasticsearch"
-	parseStoredVersionErrMsg                = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	parseVersionErrMsg                      = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	pvcImmutableErrMsg                      = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
-	pvcNotMountedErrMsg                     = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
-	unsupportedConfigErrMsg                 = "Configuration setting is reserved for internal use. User-configured use is unsupported"
-	unsupportedUpgradeMsg                   = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
-	unsupportedVersionMsg                   = "Unsupported version"
-	unsupportedVersionForStackMonitoringMsg = "Unsupported version for Stack Monitoring. Required >= %s."
+	autoscalingVersionMsg                      = "autoscaling is not available in this version of Elasticsearch"
+	cfgInvalidMsg                              = "Configuration invalid"
+	duplicateNodeSets                          = "NodeSet names must be unique"
+	invalidNamesErrMsg                         = "Elasticsearch configuration would generate resources with invalid names"
+	invalidSanIPErrMsg                         = "Invalid SAN IP address. Must be a valid IPv4 address"
+	masterRequiredMsg                          = "Elasticsearch needs to have at least one master node"
+	mixedRoleConfigMsg                         = "Detected a combination of node.roles and %s. Use only node.roles"
+	noDowngradesMsg                            = "Downgrades are not supported"
+	nodeRolesInOldVersionMsg                   = "node.roles setting is not available in this version of Elasticsearch"
+	parseStoredVersionErrMsg                   = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	parseVersionErrMsg                         = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	pvcImmutableErrMsg                         = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
+	pvcNotMountedErrMsg                        = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
+	unsupportedConfigErrMsg                    = "Configuration setting is reserved for internal use. User-configured use is unsupported"
+	unsupportedUpgradeMsg                      = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
+	unsupportedVersionMsg                      = "Unsupported version"
+	unsupportedVersionForStackMonitoringMsg    = "Unsupported version for Stack Monitoring. Required >= %s."
+	invalidStackMonitoringElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
@@ -54,6 +55,7 @@ var validations = []validation{
 	validAutoscalingConfiguration,
 	validPVCNaming,
 	supportedVersionForStackMonitoring,
+	validStackMonitoringElasticsearchRefs,
 }
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
@@ -114,6 +116,21 @@ func supportedVersionForStackMonitoring(es esv1.Elasticsearch) field.ErrorList {
 				fmt.Sprintf(unsupportedVersionForStackMonitoringMsg, stackmon.MinStackVersion.String()))}
 		}
 	}
+	return field.ErrorList{}
+}
+
+func validStackMonitoringElasticsearchRefs(es esv1.Elasticsearch) field.ErrorList {
+	if !stackmon.ValidMonitoringMetricsElasticsearchRefs(es) {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
+			es.Spec.Monitoring.Metrics.ElasticsearchRefs,
+			fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Metrics"))}
+	}
+	if !stackmon.ValidMonitoringLogsElasticsearchRefs(es) {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
+			es.Spec.Monitoring.Logs.ElasticsearchRefs,
+			fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Logs"))}
+	}
+
 	return field.ErrorList{}
 }
 

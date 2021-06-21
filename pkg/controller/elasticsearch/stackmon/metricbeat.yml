@@ -23,7 +23,7 @@ processors:
   - add_host_metadata: {}
 
 output.elasticsearch:
-  hosts: ['${ES_TARGET_URL}']
-  username: ${ES_TARGET_USERNAME}
-  password: ${ES_TARGET_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/monitoring/metrics/target/ca.crt"]
+  hosts: ['${ES_0_TARGET_URL}']
+  username: ${ES_0_TARGET_USERNAME}
+  password: ${ES_0_TARGET_PASSWORD}
+  ssl.certificate_authorities: ["/mnt/es/0/monitoring/metrics/target/ca.crt"]

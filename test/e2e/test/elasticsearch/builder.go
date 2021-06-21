@@ -449,8 +449,8 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 }
 
 func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
-	b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRef = metricsESRef
-	b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRef = logsESRef
+	b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
+	b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
 	return b
 }
 

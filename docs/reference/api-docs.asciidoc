@@ -939,7 +939,7 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster dedicated to receiving Elasticsearch logs.
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster dedicated to receiving Elasticsearch logs. Only one ElasticsearchRef is supported.
 |===
 
 
@@ -956,7 +956,7 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster dedicated to receiving Stack Monitoring metrics.
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster dedicated to receiving Stack Monitoring metrics. Only one ElasticsearchRef is supported.
 |===
 
 

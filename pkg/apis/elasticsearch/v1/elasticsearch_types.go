@@ -93,15 +93,15 @@ type Monitoring struct {
 }
 
 type MetricsMonitoring struct {
-	// ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster
-	// dedicated to receiving Stack Monitoring metrics.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster
+	// dedicated to receiving Stack Monitoring metrics. Only one ElasticsearchRef is supported.
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 type LogsMonitoring struct {
-	// ElasticsearchRef is a reference to a monitoring Elasticsearch cluster running in the same Kubernetes cluster
-	// dedicated to receiving Elasticsearch logs.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster
+	// dedicated to receiving Elasticsearch logs. Only one ElasticsearchRef is supported.
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 // EsMonitoringAssociation helps to manage Elasticsearch+Metricbeat+Filebeat <-> Elasticsearch(es) associations
@@ -188,43 +188,49 @@ func (es *Elasticsearch) ServiceAccountName() string {
 
 func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	ref := es.Spec.Monitoring.Metrics.ElasticsearchRef
-	if ref.IsDefined() {
-		associations = append(associations, &EsMonitoringAssociation{
-			Elasticsearch: es,
-			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
-		})
+	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &EsMonitoringAssociation{
+				Elasticsearch: es,
+				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+			})
+		}
 	}
-	ref = es.Spec.Monitoring.Logs.ElasticsearchRef
-	if ref.IsDefined() {
-		associations = append(associations, &EsMonitoringAssociation{
-			Elasticsearch: es,
-			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
-		})
+	for _, ref := range es.Spec.Monitoring.Logs.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &EsMonitoringAssociation{
+				Elasticsearch: es,
+				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+			})
+		}
 	}
 	return associations
 }
 
-func (es *Elasticsearch) GetMonitoringMetricsAssociation() commonv1.Association {
-	ref := es.Spec.Monitoring.Metrics.ElasticsearchRef
-	if ref.IsDefined() {
-		return &EsMonitoringAssociation{
-			Elasticsearch: es,
-			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+func (es *Elasticsearch) GetMonitoringMetricsAssociation() []commonv1.Association {
+	associations := make([]commonv1.Association, 0)
+	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &EsMonitoringAssociation{
+				Elasticsearch: es,
+				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+			})
 		}
 	}
-	return &EsMonitoringAssociation{}
+	return associations
 }
 
-func (es *Elasticsearch) GetMonitoringLogsAssociation() commonv1.Association {
-	ref := es.Spec.Monitoring.Logs.ElasticsearchRef
-	if ref.IsDefined() {
-		return &EsMonitoringAssociation{
-			Elasticsearch: es,
-			ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+func (es *Elasticsearch) GetMonitoringLogsAssociation() []commonv1.Association {
+	associations := make([]commonv1.Association, 0)
+	for _, ref := range es.Spec.Monitoring.Logs.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &EsMonitoringAssociation{
+				Elasticsearch: es,
+				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+			})
 		}
 	}
-	return &EsMonitoringAssociation{}
+	return associations
 }
 
 func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {

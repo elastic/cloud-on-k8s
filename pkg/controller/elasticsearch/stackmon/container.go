@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +33,53 @@ var (
 	MinStackVersion = version.MustParse("7.14.0")
 )
 
+func ValidMonitoringMetricsElasticsearchRefs(es esv1.Elasticsearch) bool {
+	if IsMonitoringMetricsDefined(es) {
+		return len(es.Spec.Monitoring.Metrics.ElasticsearchRefs) == 1
+	}
+	return true
+}
+
+func ValidMonitoringLogsElasticsearchRefs(es esv1.Elasticsearch) bool {
+	if IsMonitoringLogsDefined(es) {
+		return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) == 1
+	}
+	return true
+}
+
+func IsStackMonitoringDefined(es esv1.Elasticsearch) bool {
+	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
+}
+
+func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
+	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
+		if !ref.IsDefined() {
+			return false
+		}
+	}
+	return len(es.Spec.Monitoring.Metrics.ElasticsearchRefs) > 0
+}
+
+func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
+	for _, ref := range es.Spec.Monitoring.Logs.ElasticsearchRefs {
+		if !ref.IsDefined() {
+			return false
+		}
+	}
+	return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) > 0
+}
+
+func IsSupportedVersion(esVersion string) error {
+	ver, err := version.Parse(esVersion)
+	if err != nil {
+		return err
+	}
+	if ver.LT(MinStackVersion) {
+		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", MinStackVersion)
+	}
+	return nil
+}
+
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
 func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
@@ -50,12 +97,17 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 		return nil, err
 	}
 
-	// Inject volumes
-	builder.WithVolumes(monitoringVolumes(es)...)
-
+	volumeLikes := make([]volume.VolumeLike, 0)
 	if isMonitoringMetrics {
+		metricbeatVolumes := append(
+			monitoringMetricsTargetCaCertSecretVolumes(es),
+			metricbeatConfigMapVolume(es),
+			monitoringMetricsSourceCaCertSecretVolume(es),
+		)
+		volumeLikes = append(volumeLikes, metricbeatVolumes...)
+
 		// Inject Metricbeat sidecar container
-		metricbeat, err := metricbeatContainer(es)
+		metricbeat, err := metricbeatContainer(es, metricbeatVolumes)
 		if err != nil {
 			return nil, err
 		}
@@ -66,85 +118,77 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 		// Enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(stackLoggingEnvVar())
 
+		filebeatVolumes := append(
+			monitoringLogsTargetCaCertSecretVolumes(es),
+			filebeatConfigMapVolume(es),
+		)
+		volumeLikes = append(volumeLikes, filebeatVolumes...)
+
 		// Inject Filebeat sidecar container
-		filebeat, err := filebeatContainer(es)
+		filebeat, err := filebeatContainer(es, filebeatVolumes)
 		if err != nil {
 			return nil, err
 		}
 		builder.WithContainers(filebeat)
 	}
 
+	// Inject volumes
+	volumes := make([]corev1.Volume, 0)
+	for _, v := range volumeLikes {
+		volumes = append(volumes, v.Volume())
+	}
+	builder.WithVolumes(volumes...)
+
 	return builder, nil
-}
-
-func IsStackMonitoringDefined(es esv1.Elasticsearch) bool {
-	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
-}
-
-func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
-	return es.Spec.Monitoring.Metrics.ElasticsearchRef.IsDefined()
-}
-
-func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
-	return es.Spec.Monitoring.Logs.ElasticsearchRef.IsDefined()
-}
-
-func IsSupportedVersion(esVersion string) error {
-	ver, err := version.Parse(esVersion)
-	if err != nil {
-		return err
-	}
-	if ver.LT(MinStackVersion) {
-		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", MinStackVersion)
-	}
-	return nil
 }
 
 func stackLoggingEnvVar() corev1.EnvVar {
 	return corev1.EnvVar{Name: esLogStyleEnvVarKey, Value: esLogStyleEnvVarValue}
 }
 
-func metricbeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
+func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (corev1.Container, error) {
 	image, err := fullContainerImage(es, container.MetricbeatImage)
 	if err != nil {
 		return corev1.Container{}, err
 	}
 
-	assocConf := es.GetMonitoringMetricsAssociation().AssociationConf()
-	envVars := append(monitoringSourceEnvVars(es), monitoringTargetEnvVars(assocConf)...)
+	volumeMounts := make([]corev1.VolumeMount, 0)
+	for _, v := range volumes {
+		volumeMounts = append(volumeMounts, v.VolumeMount())
+	}
+
+	envVars := append(monitoringSourceEnvVars(es), monitoringTargetEnvVars(es.GetMonitoringMetricsAssociation())...)
 
 	return corev1.Container{
-		Name:  MetricbeatContainerName,
-		Image: image,
-		Args:  []string{"-c", metricbeatConfigMountPath, "-e"},
-		Env:   append(envVars, defaults.PodDownwardEnvVars()...),
-		VolumeMounts: []corev1.VolumeMount{
-			metricbeatConfigMapVolume(es).VolumeMount(),
-			monitoringMetricsSourceCaCertSecretVolume(es).VolumeMount(),
-			monitoringMetricsTargetCaCertSecretVolume(es).VolumeMount(),
-		},
+		Name:         MetricbeatContainerName,
+		Image:        image,
+		Args:         []string{"-c", metricbeatConfigMountPath, "-e"},
+		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
+		VolumeMounts: volumeMounts,
 	}, nil
 }
 
-func filebeatContainer(es esv1.Elasticsearch) (corev1.Container, error) {
+func filebeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (corev1.Container, error) {
 	image, err := fullContainerImage(es, container.FilebeatImage)
 	if err != nil {
 		return corev1.Container{}, err
 	}
 
-	assocConf := es.GetMonitoringLogsAssociation().AssociationConf()
-	envVars := monitoringTargetEnvVars(assocConf)
+	volumeMounts := []corev1.VolumeMount{
+		esvolume.DefaultLogsVolumeMount, // mount Elasticsearch logs volume into the Filebeat container
+	}
+	for _, v := range volumes {
+		volumeMounts = append(volumeMounts, v.VolumeMount())
+	}
+
+	envVars := monitoringTargetEnvVars(es.GetMonitoringLogsAssociation())
 
 	return corev1.Container{
-		Name:  FilebeatContainerName,
-		Image: image,
-		Args:  []string{"-c", filebeatConfigMountPath, "-e"},
-		Env:   append(envVars, defaults.PodDownwardEnvVars()...),
-		VolumeMounts: []corev1.VolumeMount{
-			esvolume.DefaultLogsVolumeMount,
-			filebeatConfigMapVolume(es).VolumeMount(),
-			monitoringLogsTargetCaCertSecretVolume(es).VolumeMount(),
-		},
+		Name:         FilebeatContainerName,
+		Image:        image,
+		Args:         []string{"-c", filebeatConfigMountPath, "-e"},
+		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
+		VolumeMounts: volumeMounts,
 	}, nil
 }
 
@@ -175,21 +219,6 @@ func monitoringSourceEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: esv1.ElasticUserSecret(es.Name)},
 				Key: user.ElasticUserName,
-			},
-		}},
-	}
-}
-
-func monitoringTargetEnvVars(assocConf *v1.AssociationConf) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{Name: EsTargetURLEnvVarKey, Value: assocConf.GetURL()},
-		{Name: EsTargetUsernameEnvVarKey, Value: assocConf.GetAuthSecretKey()},
-		{Name: EsTargetPasswordEnvVarKey, ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: assocConf.GetAuthSecretName(),
-				},
-				Key: assocConf.GetAuthSecretKey(),
 			},
 		}},
 	}

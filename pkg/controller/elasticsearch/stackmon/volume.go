@@ -5,10 +5,11 @@
 package stackmon
 
 import (
+	"fmt"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -20,31 +21,10 @@ const (
 	FilebeatConfigVolumeName   = "filebeat-config"
 	FilebeatConfigDirMountPath = "/etc/filebeat-config"
 
-	MonitoringMetricsSourceEsCaCertVolumeName = "es-monitoring-metrics-source-certs"
-	MonitoringMetricsTargetEsCaCertVolumeName = "es-monitoring-metrics-target-certs"
-	MonitoringLogsTargetEsCaCertVolumeName    = "es-monitoring-logs-target-certs"
+	MonitoringMetricsSourceEsCaCertVolumeName       = "es-monitoring-metrics-source-certs"
+	MonitoringMetricsTargetEsCaCertVolumeNameFormat = "es-monitoring-metrics-target-certs-%d"
+	MonitoringLogsTargetEsCaCertVolumeNameFormat    = "es-monitoring-logs-target-certs-%d"
 )
-
-// monitoringVolumes returns the volumes to add to the Elasticsearch pod for the Metricbeat and Filebeat sidecar containers.
-// Metricbeat mounts its configuration and the CA certificates of the source and the target Elasticsearch cluster.
-// Filebeat mounts its configuration and the CA certificate of the target Elasticsearch cluster.
-func monitoringVolumes(es esv1.Elasticsearch) []corev1.Volume {
-	var volumes []corev1.Volume
-	if IsMonitoringMetricsDefined(es) {
-		volumes = append(volumes,
-			metricbeatConfigMapVolume(es).Volume(),
-			monitoringMetricsSourceCaCertSecretVolume(es).Volume(),
-			monitoringMetricsTargetCaCertSecretVolume(es).Volume(),
-		)
-	}
-	if IsMonitoringLogsDefined(es) {
-		volumes = append(volumes,
-			filebeatConfigMapVolume(es).Volume(),
-			monitoringLogsTargetCaCertSecretVolume(es).Volume(),
-		)
-	}
-	return volumes
-}
 
 func metricbeatConfigMapVolume(es esv1.Elasticsearch) volume.ConfigMapVolume {
 	return volume.NewConfigMapVolume(
@@ -73,20 +53,26 @@ func monitoringMetricsSourceCaCertSecretVolume(es esv1.Elasticsearch) volume.Sec
 	)
 }
 
-func monitoringMetricsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
-	assocConf := es.GetMonitoringMetricsAssociation().AssociationConf()
-	return volume.NewSecretVolumeWithMountPath(
-		assocConf.GetCASecretName(),
-		MonitoringMetricsTargetEsCaCertVolumeName,
-		MonitoringMetricsTargetEsCaCertMountPath,
-	)
+func monitoringMetricsTargetCaCertSecretVolumes(es esv1.Elasticsearch) []volume.VolumeLike {
+	volumes := make([]volume.VolumeLike, 0)
+	for i, assoc := range es.GetMonitoringMetricsAssociation() {
+		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
+			assoc.AssociationConf().GetCASecretName(),
+			fmt.Sprintf(MonitoringMetricsTargetEsCaCertVolumeNameFormat, i),
+			fmt.Sprintf(MonitoringMetricsTargetEsCaCertMountPath, i),
+		))
+	}
+	return volumes
 }
 
-func monitoringLogsTargetCaCertSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
-	assocConf := es.GetMonitoringLogsAssociation().AssociationConf()
-	return volume.NewSecretVolumeWithMountPath(
-		assocConf.GetCASecretName(),
-		MonitoringLogsTargetEsCaCertVolumeName,
-		MonitoringLogsTargetEsCaCertMountPath,
-	)
+func monitoringLogsTargetCaCertSecretVolumes(es esv1.Elasticsearch) []volume.VolumeLike {
+	volumes := make([]volume.VolumeLike, 0)
+	for i, assoc := range es.GetMonitoringLogsAssociation() {
+		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
+			assoc.AssociationConf().GetCASecretName(),
+			fmt.Sprintf(MonitoringLogsTargetEsCaCertVolumeNameFormat, i),
+			fmt.Sprintf(MonitoringLogsTargetEsCaCertMountPath, i),
+		))
+	}
+	return volumes
 }

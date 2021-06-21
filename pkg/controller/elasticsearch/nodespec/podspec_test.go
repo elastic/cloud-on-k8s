@@ -353,7 +353,7 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with unsupported version",
 			es: func() esv1.Elasticsearch {
 				es := sampleES
-				es.Spec.Monitoring.Logs.ElasticsearchRef = monitoringRef
+				es.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{monitoringRef}
 				return es
 			},
 			expectedXPackMonitoringConfigKeys: 0,
@@ -364,7 +364,7 @@ func TestWithMonitoring(t *testing.T) {
 			es: func() esv1.Elasticsearch {
 				es := sampleES
 				es.Spec.Version = "7.14.0"
-				es.Spec.Monitoring.Logs.ElasticsearchRef = monitoringRef
+				es.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{monitoringRef}
 				return es
 			},
 			expectedXPackMonitoringConfigKeys: 0,
@@ -375,7 +375,7 @@ func TestWithMonitoring(t *testing.T) {
 			es: func() esv1.Elasticsearch {
 				es := sampleES
 				es.Spec.Version = "7.14.0"
-				es.Spec.Monitoring.Metrics.ElasticsearchRef = monitoringRef
+				es.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{monitoringRef}
 				return es
 			},
 			expectedXPackMonitoringConfigKeys: 2,
@@ -386,8 +386,8 @@ func TestWithMonitoring(t *testing.T) {
 			es: func() esv1.Elasticsearch {
 				es := sampleES
 				es.Spec.Version = "7.14.0"
-				es.Spec.Monitoring.Metrics.ElasticsearchRef = monitoringRef
-				es.Spec.Monitoring.Logs.ElasticsearchRef = monitoringRef
+				es.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{monitoringRef}
+				es.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{monitoringRef}
 				return es
 			},
 			expectedXPackMonitoringConfigKeys: 2,
@@ -409,10 +409,10 @@ func TestWithMonitoring(t *testing.T) {
 
 			// Fake association conf
 			if stackmon.IsMonitoringMetricsDefined(es) {
-				es.GetMonitoringMetricsAssociation().SetAssociationConf(&fakeAssocConf)
+				es.GetMonitoringMetricsAssociation()[0].SetAssociationConf(&fakeAssocConf)
 			}
 			if stackmon.IsMonitoringLogsDefined(es) {
-				es.GetMonitoringLogsAssociation().SetAssociationConf(&fakeAssocConf)
+				es.GetMonitoringLogsAssociation()[0].SetAssociationConf(&fakeAssocConf)
 			}
 
 			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, false)

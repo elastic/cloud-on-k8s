@@ -192,7 +192,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	// Requeue if associations are configured but not yet defined
+	// Requeue if associations are defined but not yet configured
 	if !association.AreConfiguredIfSet(es.GetAssociations(), r.recorder) {
 		return reconcile.Result{}, nil
 	}

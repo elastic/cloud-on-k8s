@@ -42,13 +42,9 @@ processors:
 
   # TODO: finish
   #setup.dashboards.enabled: true
-  #setup.kibana:
-  #host: '${ES_TARGET_URL}'
-  #username: ${ES_TARGET_USERNAME}
-  #password: ${ES_TARGET_PASSWORD}
 
 output.elasticsearch:
-  hosts: ['${ES_TARGET_URL}']
-  username: ${ES_TARGET_USERNAME}
-  password: ${ES_TARGET_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/monitoring/logs/target/ca.crt"]
+  hosts: ['${ES_0_TARGET_URL}']
+  username: ${ES_0_TARGET_USERNAME}
+  password: ${ES_0_TARGET_PASSWORD}
+  ssl.certificate_authorities: ["/mnt/es/0/monitoring/logs/target/ca.crt"]
