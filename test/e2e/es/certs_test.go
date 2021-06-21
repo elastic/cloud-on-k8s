@@ -63,7 +63,7 @@ func TestCustomHTTPCA(t *testing.T) {
 	}
 
 	// The initial Cluster builder should result in a healthy cluster as verified by the standard check steps
-	// Now modify cluster to use custom HTTP CA  but simulate a user error by populating the secret with
+	// Now modify cluster to use custom HTTP CA but simulate a user error by populating the secret with
 	// garbage and verify this is bubbled up through an event
 	b := initialCluster.
 		WithCustomHTTPCerts(caSecretName).

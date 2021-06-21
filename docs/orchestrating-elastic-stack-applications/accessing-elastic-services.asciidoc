@@ -139,7 +139,7 @@ spec:
 [id="{p}-setting-up-your-own-certificate"]
 === Setup your own certificate
 
-You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the Elastic stack application is encrypted.
+You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the Elastic Stack application is encrypted.
 
 Create a Kubernetes secret with:
 
@@ -225,4 +225,3 @@ PW=$(kubectl get secret "$NAME-es-elastic-user" -o go-template='{{.data.elastic 
 
 curl --cacert tls.crt -u elastic:$PW https://$IP:9200/
 ----
-
