@@ -44,7 +44,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 	// inject random string into the logs to allow validating whether they end up in ES easily
 	loggedString := fmt.Sprintf("_%s_", rand.String(6))
 
-	uid1001 := int64(1002)
+	uid1001 := int64(1001)
 	return PodBuilder{
 		Pod: corev1.Pod{
 			ObjectMeta: meta,
