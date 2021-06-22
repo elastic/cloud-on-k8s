@@ -73,7 +73,7 @@ type CertificatesSecret struct {
 
 func NewCertificatesSecret(secret v1.Secret) (*CertificatesSecret, error) {
 	result := CertificatesSecret{Secret: secret}
-	if err := result.validate(); err != nil {
+	if err := result.parse(); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -115,13 +115,13 @@ func (s *CertificatesSecret) HasLeafCertificate() bool {
 	return s != nil && !s.HasFullCA()
 }
 
-func (s *CertificatesSecret) validateCustomCA() error {
+func (s *CertificatesSecret) parseCustomCA() error {
 	// flag up user error when specifying both CA certificate with key and leaf certificate
 	_, tlsKeyExists := s.Data[KeyFileName]
 	_, tlsCertExists := s.Data[CertFileName]
 	if tlsKeyExists || tlsCertExists {
-		return fmt.Errorf("cannot specify both %s and %s or %s in %s/%s",
-			CAKeyFileName, KeyFileName, CertFileName, s.Namespace, s.Name)
+		return fmt.Errorf("cannot specify %s or %s when %s is set in %s/%s",
+			KeyFileName, CertFileName, CAKeyFileName, s.Namespace, s.Name)
 	}
 	ca, err := parseCAFromSecret(s.Secret, CAKeyFileName, CAFileName)
 	if err == nil {
@@ -131,11 +131,11 @@ func (s *CertificatesSecret) validateCustomCA() error {
 	return err
 }
 
-// validate checks that mandatory fields are present.
+// parse checks that mandatory fields are present.
 // It does not check that the public key matches the private key.
-func (s *CertificatesSecret) validate() error {
+func (s *CertificatesSecret) parse() error {
 	if s.HasFullCA() {
-		return s.validateCustomCA()
+		return s.parseCustomCA()
 	}
 
 	// Validate private key

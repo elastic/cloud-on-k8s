@@ -10,11 +10,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestSecret_Parse(t *testing.T) {
+func TestParseCustomCASecret(t *testing.T) {
 	ca := loadFileBytes("ca.crt")
 	key := loadFileBytes("tls.key")
 	corruptedKey := loadFileBytes("corrupted.key")
 	encryptedKey := loadFileBytes("encrypted.key")
+
+	caFileName := "ca.crt"
+	caKeyFileName := "ca.key"
+	keyFileName := "tls.key"
+	certFileName := "tls.crt"
 
 	tests := []struct {
 		name    string
@@ -25,8 +30,8 @@ func TestSecret_Parse(t *testing.T) {
 			name: "Happy path",
 			s: corev1.Secret{
 				Data: map[string][]byte{
-					CAFileName:    ca,
-					CAKeyFileName: key,
+					caFileName:    ca,
+					caKeyFileName: key,
 				},
 			},
 			wantErr: false,
@@ -35,11 +40,43 @@ func TestSecret_Parse(t *testing.T) {
 			name: "Happy path w/ legacy keys",
 			s: corev1.Secret{
 				Data: map[string][]byte{
-					CertFileName: ca,
-					KeyFileName:  key,
+					certFileName: ca,
+					keyFileName:  key,
 				},
 			},
 			wantErr: false,
+		},
+		{
+			name: "Both ca and legacy keys",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					certFileName:  ca,
+					caKeyFileName: key,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Both ca and legacy keys",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					caFileName:  ca,
+					keyFileName: key,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Both ca and legacy keys",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					certFileName:  ca,
+					caFileName:    ca,
+					keyFileName:   key,
+					caKeyFileName: key,
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "Empty certificate",
@@ -52,7 +89,7 @@ func TestSecret_Parse(t *testing.T) {
 			name: "No cert",
 			s: corev1.Secret{
 				Data: map[string][]byte{
-					CAKeyFileName: key,
+					caKeyFileName: key,
 				},
 			},
 			wantErr: true,
@@ -61,7 +98,7 @@ func TestSecret_Parse(t *testing.T) {
 			name: "No key",
 			s: corev1.Secret{
 				Data: map[string][]byte{
-					CAFileName: ca,
+					caFileName: ca,
 				},
 			},
 			wantErr: true,
@@ -70,8 +107,8 @@ func TestSecret_Parse(t *testing.T) {
 			name: "Corrupted key",
 			s: corev1.Secret{
 				Data: map[string][]byte{
-					CAFileName:    ca,
-					CAKeyFileName: corruptedKey,
+					caFileName:    ca,
+					caKeyFileName: corruptedKey,
 				},
 			},
 			wantErr: true,
@@ -80,8 +117,8 @@ func TestSecret_Parse(t *testing.T) {
 			name: "Encrypted private key",
 			s: corev1.Secret{
 				Data: map[string][]byte{
-					CAFileName:    ca,
-					CAKeyFileName: encryptedKey,
+					caFileName:    ca,
+					caKeyFileName: encryptedKey,
 				},
 			},
 			wantErr: true,

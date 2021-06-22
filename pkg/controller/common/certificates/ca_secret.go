@@ -5,18 +5,26 @@
 package certificates
 
 import (
+	"fmt"
+
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // ParseCustomCASecret checks that mandatory fields are present and returns a CA struct.
 // It does not check that the public key matches the private key.
+// Legacy tls.* keys are still supported while the expected default keys are ca.crt and ca.key.
 func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 	keyFileName := CAKeyFileName
 	crtFileName := CAFileName
 	// For backwards compatibility we support both tls.* and the newer ca.* keys in the secret
 	_, legacyKeyExists := s.Data[KeyFileName]
 	_, legacyCrtExists := s.Data[CertFileName]
+	_, keyExists := s.Data[keyFileName]
+	_, crtExists := s.Data[crtFileName]
+	if (legacyKeyExists || legacyCrtExists) && (keyExists || crtExists) {
+		return nil, fmt.Errorf("both tls.* keys and ca.* keys exist in secret %s/%s, this is likely a configuration error", s.Namespace, s.Name)
+	}
 	if legacyKeyExists && legacyCrtExists {
 		keyFileName = KeyFileName
 		crtFileName = CertFileName
@@ -24,6 +32,7 @@ func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 	return parseCAFromSecret(s, keyFileName, crtFileName)
 }
 
+// parseCAFromSecret internal helper func to retrieve and parse a CA stored at the given keys in a Secret.
 func parseCAFromSecret(s corev1.Secret, keyFileName string, crtFileName string) (*CA, error) {
 	// Validate private key
 	key, exist := s.Data[keyFileName]

@@ -455,7 +455,7 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 }
 
 func (b Builder) WithToleratedHealthCheckErrors(msgs ...string) Builder {
-	b.toleratedHealthCheckErrors = msgs
+	b.toleratedHealthCheckErrors = append(b.toleratedHealthCheckErrors, msgs...)
 	return b
 }
 
