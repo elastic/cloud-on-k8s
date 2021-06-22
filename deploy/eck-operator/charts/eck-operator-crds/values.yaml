@@ -1,0 +1,7 @@
+# Globals meant for internal use only
+global:
+  # manifestGen specifies whether the chart is running under manifest generator.
+  # This is used for tasks specific to generating the all-in-one.yaml file.
+  manifestGen: false
+  # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
+  kubeVersion: 1.16.0

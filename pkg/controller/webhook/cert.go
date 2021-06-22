@@ -11,7 +11,6 @@ import (
 	"crypto/x509/pkix"
 	"time"
 
-	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -27,7 +26,7 @@ type WebhookCertificates struct {
 	serverCert []byte
 }
 
-func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhookConfiguration *v1beta1.ValidatingWebhookConfiguration) bool {
+func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhooks []webhook) bool {
 	// Read the current certificate used by the server
 	serverCA := certificates.BuildCAFromSecret(*serverCertificates)
 	if serverCA == nil {
@@ -37,15 +36,15 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 		return true
 	}
 	// Read the certificate in the webhook configuration
-	for _, webhook := range webhookConfiguration.Webhooks {
-		caBytes := webhook.ClientConfig.CABundle
+	for _, webhook := range webhooks {
+		caBytes := webhook.caBundle
 		if len(caBytes) == 0 {
 			return true
 		}
 		// Parse the certificates
 		certs, err := certificates.ParsePEMCerts(caBytes)
 		if err != nil {
-			log.Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhookConfiguration.Name)
+			log.Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhook.webhookConfigurationName)
 			return true
 		}
 		if len(certs) == 0 {
@@ -65,7 +64,7 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 // certificate of the webhook server.
 // The private key is not retained or persisted, all the artifacts are regenerated and updated if needed when the
 // certificate is about to expire or is missing.
-func (w *Params) newCertificates(webhookConf *v1beta1.ValidatingWebhookConfiguration) (WebhookCertificates, error) {
+func (w *Params) newCertificates(webhookServices Services) (WebhookCertificates, error) {
 	webhookCertificates := WebhookCertificates{}
 
 	// Create a new CA
@@ -102,7 +101,7 @@ func (w *Params) newCertificates(webhookConf *v1beta1.ValidatingWebhookConfigura
 			CommonName:         "elastic-webhook",
 			OrganizationalUnit: []string{"elastic-webhook"},
 		},
-		DNSNames:           extractDNSNames(webhookConf),
+		DNSNames:           extractDNSNames(webhookServices),
 		NotBefore:          time.Now().Add(-10 * time.Minute),
 		NotAfter:           time.Now().Add(w.Rotation.Validity),
 		PublicKeyAlgorithm: parsedCSR.PublicKeyAlgorithm,
@@ -121,16 +120,12 @@ func (w *Params) newCertificates(webhookConf *v1beta1.ValidatingWebhookConfigura
 	return webhookCertificates, nil
 }
 
-func extractDNSNames(webhookConf *v1beta1.ValidatingWebhookConfiguration) []string {
-	svcNames := make(map[string]struct{}, len(webhookConf.Webhooks))
-
-	for _, wh := range webhookConf.Webhooks {
-		svcRef := wh.ClientConfig.Service
-		if svcRef == nil {
-			continue
-		}
-
-		names := k8s.GetServiceDNSName(corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: svcRef.Namespace, Name: svcRef.Name}})
+func extractDNSNames(webhookServices Services) []string {
+	svcNames := make(map[string]struct{}, len(webhookServices))
+	for svcRef := range webhookServices {
+		names := k8s.GetServiceDNSName(
+			corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: svcRef.Namespace, Name: svcRef.Name}},
+		)
 		for _, n := range names {
 			svcNames[n] = struct{}{}
 		}

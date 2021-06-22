@@ -25,7 +25,52 @@ CAUTION: The upgrade process results in an update to all the existing managed re
 
 IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
-Follow the instructions in <<{p}-deploy-eck>> to upgrade ECK to the latest version. This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
+Release 1.7.0 moves the link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions] (CRD) used by ECK to the v1 version. If you upgrade from a previous version of ECK, the new version of the CRDs replace the existing CRDs. If you cannot remove the current ECK installation because you have production workloads that must not be deleted, the following approach is recommended:
+
+[source,shell,subs="attributes,callouts"]
+.If you are installing using the YAML manifests: replace existing CRDs
+----
+kubectl replace -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+----
+
+[NOTE]
+================================
+If you skipped a release in which new CRDs where introduced, you will see an error message similar to `Error from server (NotFound): error when replacing "config/crds.yaml": customresourcedefinitions.apiextensions.k8s.io ... not found`. To add the missing CRDs run
+
+[source,shell,subs="attributes"]
+----
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml`
+----
+
+================================
+Then upgrade the remaining objects with the operator manifest:
+[source,shell,subs="attributes,callouts"]
+----
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
+----
+
+[source,shell,subs="attributes,callouts"]
+.If you are running a version of Kubernetes before 1.16: use the legacy manifests
+----
+kubectl replace -f https://download.elastic.co/downloads/eck/{eck_version}/crds-legacy.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator-legacy.yaml
+----
+
+[source,shell,subs="attributes,callouts"]
+.If you are using Helm: force upgrade the CRD chart to move to the v1 CRDs
+----
+helm upgrade elastic-operator elastic/eck-operator-crds -n elastic-system --force
+----
+
+Then upgrade the main chart as usual:
+[source,shell,subs="attributes,callouts"]
+----
+helm upgrade elastic-operator elastic/eck-operator -n elastic-system
+----
+
+If you are using ECK through an OLM-managed distribution channel like operatorhub.io or the OpenShift OperatorHub then the CRD version upgrade will be handled by OLM for you and you do not need to take special action.
+
+This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
 
 [float]
 [id="{p}-beta-to-ga-rolling-restart"]

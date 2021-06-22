@@ -46,9 +46,17 @@ IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempt
 +
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
-
++
+If you are running version of Kubernetes before 1.16 you have to use the legacy version of the manifests:
++
+[source,sh,subs="attributes"]
+----
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds-legacy.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator-legacy.yaml
+----
 . Monitor the operator logs:
 +
 [source,sh]

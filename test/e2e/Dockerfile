@@ -1,5 +1,5 @@
 # Docker image for the E2E tests runner
-FROM --platform=$TARGETPLATFORM golang:1.16.4
+FROM --platform=$TARGETPLATFORM golang:1.16.5
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -25,6 +25,6 @@ COPY test/ test/
 RUN chgrp -R 0 /go && chmod -R g=u /go
 
 # If a restricted PSP is applied we can't run as root
-USER 101
+USER 1001
 
 ENTRYPOINT ["test/e2e/run.sh"]

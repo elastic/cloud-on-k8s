@@ -44,6 +44,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 	// inject random string into the logs to allow validating whether they end up in ES easily
 	loggedString := fmt.Sprintf("_%s_", rand.String(6))
 
+	uid1001 := int64(1001)
 	return PodBuilder{
 		Pod: corev1.Pod{
 			ObjectMeta: meta,
@@ -59,7 +60,10 @@ func newPodBuilder(name, suffix string) PodBuilder {
 						},
 					},
 				},
-				SecurityContext: test.DefaultSecurityContext(),
+				SecurityContext: &corev1.PodSecurityContext{
+					// e2e PSP forbids root user on secured clusters
+					RunAsUser: &uid1001,
+				},
 			},
 		},
 		Logged: loggedString,

@@ -66,9 +66,11 @@ func (tp TestParam) GVR(kind string) schema.GroupVersionResource {
 
 // TestInstallOperator is the fixture for installing an operator.
 func TestInstallOperator(param TestParam) *Fixture {
+	crdPath := param.Path("crds.yaml")
 	return &Fixture{
 		Name: param.Suffixed("TestInstallOperator"),
 		Steps: []*TestStep{
+			noRetry(param.Suffixed("InstallCRDs"), ifExists(crdPath, replaceManifests(crdPath))),
 			noRetry(param.Suffixed("InstallOperator"), applyManifests(param.Path("install.yaml"))),
 			pause(5 * time.Second),
 			retryRetriable("CheckOperatorIsReady", checkOperatorIsReady),

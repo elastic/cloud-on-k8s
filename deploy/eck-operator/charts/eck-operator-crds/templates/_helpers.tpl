@@ -50,4 +50,13 @@ app.kubernetes.io/name: {{ include "eck-operator-crds.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-
+{{/*
+Determine effective Kubernetes version
+*/}}
+{{- define "eck-operator-crds.effectiveKubeVersion" -}}
+{{- if .Values.global.manifestGen -}}
+{{- semver .Values.global.kubeVersion -}}
+{{- else -}}
+{{- .Capabilities.KubeVersion.Version -}}
+{{- end -}}
+{{- end -}}
