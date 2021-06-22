@@ -40,8 +40,8 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedNamer:           esv1.ESNamer,
-		AssociationName:           "es-mon",
-		AssociatedShortName:       "es",
+		AssociationName:           "es-monitoring",
+		AssociatedShortName:       "es-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				EsMonitoringAssociationLabelName:      associated.Name,
@@ -50,7 +50,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 			}
 		},
 		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "beat-mon-user",
+		UserSecretSuffix:                  "beat-es-mon-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return user.StackMonitoringUserRole, nil
 		},
