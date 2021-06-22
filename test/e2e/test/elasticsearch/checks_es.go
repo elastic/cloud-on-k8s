@@ -25,6 +25,7 @@ type esClusterChecks struct {
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	e := esClusterChecks{b, k}
 	return test.StepList{
+		e.CheckHTTPConnectivity(),
 		e.CheckESNodesTopology(),
 		e.CheckESVersion(),
 		e.CheckESHealthGreen(),
