@@ -10,43 +10,37 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-)
-
-const (
-	MetricbeatConfigKey       = "metricbeat.yml"
-	MetricbeatConfigMapSuffix = "metricbeat-config"
-
-	FilebeatConfigMapSuffix = "filebeat-config"
-	FilebeatConfigKey       = "filebeat.yml"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Environments variables and paths to the Elasticsearch CA certificates used in the beats configuration to describe
 // how to connect to Elasticsearch.
 // Warning: environment variables and CA cert paths defined below are also used in the embedded files.
 var (
-	EsSourceURLEnvVarKey      = "ES_SOURCE_URL"
-	EsSourceURLEnvVarValue    = "https://localhost:9200"
-	EsSourceUsernameEnvVarKey = "ES_SOURCE_USERNAME"
-	EsSourcePasswordEnvVarKey = "ES_SOURCE_PASSWORD" //nolint:gosec
+	esSourceURLEnvVarKey      = "ES_SOURCE_URL"
+	esSourceURLEnvVarValue    = "https://localhost:9200"
+	esSourceUsernameEnvVarKey = "ES_SOURCE_USERNAME"
+	esSourcePasswordEnvVarKey = "ES_SOURCE_PASSWORD" //nolint:gosec
 
-	EsTargetURLEnvVarKeyFormat      = "ES_%d_TARGET_URL"
-	EsTargetUsernameEnvVarKeyFormat = "ES_%d_TARGET_USERNAME"
-	EsTargetPasswordEnvVarKeyFormat = "ES_%d_TARGET_PASSWORD" //nolint:gosec
+	esTargetURLEnvVarKeyFormat      = "ES_%d_TARGET_URL"
+	esTargetUsernameEnvVarKeyFormat = "ES_%d_TARGET_USERNAME"
+	esTargetPasswordEnvVarKeyFormat = "ES_%d_TARGET_PASSWORD" //nolint:gosec
 
-	MonitoringMetricsSourceEsCaCertMountPath = "/mnt/es/monitoring/metrics/source"
-	MonitoringMetricsTargetEsCaCertMountPath = "/mnt/es/%d/monitoring/metrics/target"
-	MonitoringLogsTargetEsCaCertMountPath    = "/mnt/es/%d/monitoring/logs/target"
+	monitoringMetricsSourceEsCaCertMountPath       = "/mnt/es/monitoring/metrics/source"
+	monitoringMetricsTargetEsCaCertMountPathFormat = "/mnt/es/%d/monitoring/metrics/target"
+	monitoringLogsTargetEsCaCertMountPathFormat    = "/mnt/es/%d/monitoring/logs/target"
 
 	// MetricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
 	//go:embed metricbeat.yml
-	MetricbeatConfig string
+	metricbeatConfig string
 
 	// FilebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
-	// Warning: environment variables and CA cert paths defined below are hard-coded for simplicity.
 	//go:embed filebeat.yml
-	FilebeatConfig string
+	filebeatConfig string
 )
 
 // MonitoringConfig returns the Elasticsearch settings required to enable the collection of monitoring data
@@ -60,36 +54,53 @@ func MonitoringConfig(es esv1.Elasticsearch) commonv1.Config {
 	}}
 }
 
-func metricbeatConfigMapName(es esv1.Elasticsearch) string {
-	return esv1.ESNamer.Suffix(es.Name, MetricbeatConfigMapSuffix)
+// ReconcileConfigSecrets reconciles the secrets holding the beats configuration
+func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
+	if IsMonitoringMetricsDefined(es) {
+		secret := beatConfigSecret(es, metricbeatConfigSecretName, metricbeatConfigKey, metricbeatConfig)
+		if _, err := reconciler.ReconcileSecret(client, secret, &es); err != nil {
+			return err
+		}
+	}
+
+	if IsMonitoringLogsDefined(es) {
+		secret := beatConfigSecret(es, filebeatConfigSecretName, filebeatConfigKey, filebeatConfig)
+		if _, err := reconciler.ReconcileSecret(client, secret, &es); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func filebeatConfigMapName(es esv1.Elasticsearch) string {
-	return esv1.ESNamer.Suffix(es.Name, FilebeatConfigMapSuffix)
+// beatConfigSecret returns the data for a Secret holding a beat configuration
+func beatConfigSecret(
+	es esv1.Elasticsearch,
+	secretNamer func(es esv1.Elasticsearch) string,
+	beatConfigKey string,
+	beatConfig string,
+) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretNamer(es),
+			Namespace: es.GetNamespace(),
+			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+		},
+		Data: map[string][]byte{
+			beatConfigKey: []byte(beatConfig),
+		},
+	}
 }
 
-// MetricbeatConfigMapData returns the data for the ConfigMap holding the Metricbeat configuration
-func MetricbeatConfigMapData(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
-	nsn := types.NamespacedName{Namespace: es.Namespace, Name: metricbeatConfigMapName(es)}
-	data := map[string]string{MetricbeatConfigKey: MetricbeatConfig}
-	return nsn, data
-}
-
-// FilebeatConfigMapData returns the data for the ConfigMap holding the Filebeat configuration
-func FilebeatConfigMapData(es esv1.Elasticsearch) (types.NamespacedName, map[string]string) {
-	nsn := types.NamespacedName{Namespace: es.Namespace, Name: filebeatConfigMapName(es)}
-	data := map[string]string{FilebeatConfigKey: FilebeatConfig}
-	return nsn, data
-}
-
+// monitoringTargetEnvVars returns the environment variables describing how to connect to Elasticsearch clusters
+// referenced in given associations
 func monitoringTargetEnvVars(assocs []commonv1.Association) []corev1.EnvVar {
 	vars := make([]corev1.EnvVar, 0)
 	for i, assoc := range assocs {
 		assocConf := assoc.AssociationConf()
 		vars = append(vars, []corev1.EnvVar{
-			{Name: fmt.Sprintf(EsTargetURLEnvVarKeyFormat, i), Value: assocConf.GetURL()},
-			{Name: fmt.Sprintf(EsTargetUsernameEnvVarKeyFormat, i), Value: assocConf.GetAuthSecretKey()},
-			{Name: fmt.Sprintf(EsTargetPasswordEnvVarKeyFormat, i), ValueFrom: &corev1.EnvVarSource{
+			{Name: fmt.Sprintf(esTargetURLEnvVarKeyFormat, i), Value: assocConf.GetURL()},
+			{Name: fmt.Sprintf(esTargetUsernameEnvVarKeyFormat, i), Value: assocConf.GetAuthSecretKey()},
+			{Name: fmt.Sprintf(esTargetPasswordEnvVarKeyFormat, i), ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: assocConf.GetAuthSecretName(),

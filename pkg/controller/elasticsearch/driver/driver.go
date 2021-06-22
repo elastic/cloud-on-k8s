@@ -245,16 +245,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		results = results.WithResult(defaultRequeue)
 	}
 
-	// reconcile Beats configs on demand
-	if stackmon.IsMonitoringMetricsDefined(d.ES) {
-		if err := configmap.ReconcileMetricbeatConfigMap(ctx, d.Client, d.ES); err != nil {
-			return results.WithError(err)
-		}
-	}
-	if stackmon.IsMonitoringLogsDefined(d.ES) {
-		if err := configmap.ReconcileFilebeatConfigMap(ctx, d.Client, d.ES); err != nil {
-			return results.WithError(err)
-		}
+	// reconcile beats config secrets if Stack Monitoring is defined
+	err = stackmon.ReconcileConfigSecrets(d.Client, d.ES)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// reconcile StatefulSets and nodes configuration

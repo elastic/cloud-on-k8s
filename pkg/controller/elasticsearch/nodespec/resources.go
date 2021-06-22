@@ -5,7 +5,6 @@
 package nodespec
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 )
 
 // Resources contain per-NodeSet resources to be created.

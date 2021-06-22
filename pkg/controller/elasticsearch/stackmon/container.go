@@ -6,46 +6,28 @@ package stackmon
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
-var (
-	metricbeatConfigMountPath = filepath.Join(MetricbeatConfigDirMountPath, MetricbeatConfigKey)
-	filebeatConfigMountPath   = filepath.Join(FilebeatConfigDirMountPath, FilebeatConfigKey)
-
+const (
 	esLogStyleEnvVarKey   = "ES_LOG_STYLE"
 	esLogStyleEnvVarValue = "file"
 
-	// Minimum Stack version to enable Stack Monitoring.
-	// This requirement comes from the fact that we configure Elasticsearch to write logs to disk for Filebeat
-	// via the env var ES_LOG_STYLE available from this version.
-	MinStackVersion = version.MustParse("7.14.0")
+	metricbeatContainerName = "metricbeat"
+	filebeatContainerName   = "filebeat"
+
+	metricbeatConfigKey = "metricbeat.yml"
+	filebeatConfigKey   = "filebeat.yml"
 )
-
-func ValidMonitoringMetricsElasticsearchRefs(es esv1.Elasticsearch) bool {
-	if IsMonitoringMetricsDefined(es) {
-		return len(es.Spec.Monitoring.Metrics.ElasticsearchRefs) == 1
-	}
-	return true
-}
-
-func ValidMonitoringLogsElasticsearchRefs(es esv1.Elasticsearch) bool {
-	if IsMonitoringLogsDefined(es) {
-		return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) == 1
-	}
-	return true
-}
 
 func IsStackMonitoringDefined(es esv1.Elasticsearch) bool {
 	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
@@ -75,16 +57,17 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 	isMonitoringMetrics := IsMonitoringMetricsDefined(es)
 	isMonitoringLogs := IsMonitoringLogsDefined(es)
 
-	// No monitoring defined
+	// No monitoring defined, skip
 	if !isMonitoringMetrics && !isMonitoringLogs {
 		return builder, nil
 	}
 
 	volumeLikes := make([]volume.VolumeLike, 0)
+
 	if isMonitoringMetrics {
 		metricbeatVolumes := append(
 			monitoringMetricsTargetCaCertSecretVolumes(es),
-			metricbeatConfigMapVolume(es),
+			metricbeatConfigSecretVolume(es),
 			monitoringMetricsSourceCaCertSecretVolume(es),
 		)
 		volumeLikes = append(volumeLikes, metricbeatVolumes...)
@@ -103,7 +86,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 
 		filebeatVolumes := append(
 			monitoringLogsTargetCaCertSecretVolumes(es),
-			filebeatConfigMapVolume(es),
+			filebeatConfigSecretVolume(es),
 		)
 		volumeLikes = append(volumeLikes, filebeatVolumes...)
 
@@ -143,9 +126,9 @@ func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (co
 	envVars := append(monitoringSourceEnvVars(es), monitoringTargetEnvVars(es.GetMonitoringMetricsAssociation())...)
 
 	return corev1.Container{
-		Name:         MetricbeatContainerName,
+		Name:         metricbeatContainerName,
 		Image:        image,
-		Args:         []string{"-c", metricbeatConfigMountPath, "-e"},
+		Args:         []string{"-c", filepath.Join(metricbeatConfigDirMountPath, metricbeatConfigKey), "-e"},
 		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
 		VolumeMounts: volumeMounts,
 	}, nil
@@ -167,9 +150,9 @@ func filebeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (core
 	envVars := monitoringTargetEnvVars(es.GetMonitoringLogsAssociation())
 
 	return corev1.Container{
-		Name:         FilebeatContainerName,
+		Name:         filebeatContainerName,
 		Image:        image,
-		Args:         []string{"-c", filebeatConfigMountPath, "-e"},
+		Args:         []string{"-c", filepath.Join(filebeatConfigDirMountPath, filebeatConfigKey), "-e"},
 		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
 		VolumeMounts: volumeMounts,
 	}, nil
@@ -195,9 +178,9 @@ func fullContainerImage(es esv1.Elasticsearch, defaultImage container.Image) (st
 
 func monitoringSourceEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
 	return []corev1.EnvVar{
-		{Name: EsSourceURLEnvVarKey, Value: EsSourceURLEnvVarValue},
-		{Name: EsSourceUsernameEnvVarKey, Value: user.ElasticUserName},
-		{Name: EsSourcePasswordEnvVarKey, ValueFrom: &corev1.EnvVarSource{
+		{Name: esSourceURLEnvVarKey, Value: esSourceURLEnvVarValue},
+		{Name: esSourceUsernameEnvVarKey, Value: user.ElasticUserName},
+		{Name: esSourcePasswordEnvVarKey, ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: esv1.ElasticUserSecret(es.Name)},

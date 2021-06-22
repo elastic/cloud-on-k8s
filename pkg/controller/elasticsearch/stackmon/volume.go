@@ -13,43 +13,46 @@ import (
 )
 
 const (
-	MetricbeatContainerName      = "metricbeat"
-	MetricbeatConfigVolumeName   = "metricbeat-config"
-	MetricbeatConfigDirMountPath = "/etc/metricbeat-config"
+	metricbeatConfigVolumeName   = "metricbeat-config"
+	metricbeatConfigDirMountPath = "/etc/metricbeat-config"
 
-	FilebeatContainerName      = "filebeat"
-	FilebeatConfigVolumeName   = "filebeat-config"
-	FilebeatConfigDirMountPath = "/etc/filebeat-config"
+	filebeatConfigVolumeName   = "filebeat-config"
+	filebeatConfigDirMountPath = "/etc/filebeat-config"
 
-	MonitoringMetricsSourceEsCaCertVolumeName       = "es-monitoring-metrics-source-certs"
-	MonitoringMetricsTargetEsCaCertVolumeNameFormat = "es-monitoring-metrics-target-certs-%d"
-	MonitoringLogsTargetEsCaCertVolumeNameFormat    = "es-monitoring-logs-target-certs-%d"
+	monitoringMetricsSourceEsCaCertVolumeName       = "es-monitoring-metrics-source-certs"
+	monitoringMetricsTargetEsCaCertVolumeNameFormat = "es-monitoring-metrics-target-certs-%d"
+	monitoringLogsTargetEsCaCertVolumeNameFormat    = "es-monitoring-logs-target-certs-%d"
 )
 
-func metricbeatConfigMapVolume(es esv1.Elasticsearch) volume.ConfigMapVolume {
-	return volume.NewConfigMapVolume(
-		metricbeatConfigMapName(es),
-		MetricbeatConfigVolumeName,
-		MetricbeatConfigDirMountPath,
+func metricbeatConfigSecretName(es esv1.Elasticsearch) string {
+	return esv1.ESNamer.Suffix(es.Name, metricbeatConfigVolumeName)
+}
+
+func metricbeatConfigSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		metricbeatConfigSecretName(es),
+		metricbeatConfigVolumeName,
+		metricbeatConfigDirMountPath,
 	)
 }
 
-func filebeatConfigMapVolume(es esv1.Elasticsearch) volume.ConfigMapVolume {
-	return volume.NewConfigMapVolume(
-		filebeatConfigMapName(es),
-		FilebeatConfigVolumeName,
-		FilebeatConfigDirMountPath,
+func filebeatConfigSecretName(es esv1.Elasticsearch) string {
+	return esv1.ESNamer.Suffix(es.Name, filebeatConfigVolumeName)
+}
+
+func filebeatConfigSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		filebeatConfigSecretName(es),
+		filebeatConfigVolumeName,
+		filebeatConfigDirMountPath,
 	)
 }
 
 func monitoringMetricsSourceCaCertSecretVolume(es esv1.Elasticsearch) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		certificates.PublicCertsSecretName(
-			esv1.ESNamer,
-			es.Name,
-		),
-		MonitoringMetricsSourceEsCaCertVolumeName,
-		MonitoringMetricsSourceEsCaCertMountPath,
+		certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
+		monitoringMetricsSourceEsCaCertVolumeName,
+		monitoringMetricsSourceEsCaCertMountPath,
 	)
 }
 
@@ -58,8 +61,8 @@ func monitoringMetricsTargetCaCertSecretVolumes(es esv1.Elasticsearch) []volume.
 	for i, assoc := range es.GetMonitoringMetricsAssociation() {
 		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
 			assoc.AssociationConf().GetCASecretName(),
-			fmt.Sprintf(MonitoringMetricsTargetEsCaCertVolumeNameFormat, i),
-			fmt.Sprintf(MonitoringMetricsTargetEsCaCertMountPath, i),
+			fmt.Sprintf(monitoringMetricsTargetEsCaCertVolumeNameFormat, i),
+			fmt.Sprintf(monitoringMetricsTargetEsCaCertMountPathFormat, i),
 		))
 	}
 	return volumes
@@ -70,8 +73,8 @@ func monitoringLogsTargetCaCertSecretVolumes(es esv1.Elasticsearch) []volume.Vol
 	for i, assoc := range es.GetMonitoringLogsAssociation() {
 		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
 			assoc.AssociationConf().GetCASecretName(),
-			fmt.Sprintf(MonitoringLogsTargetEsCaCertVolumeNameFormat, i),
-			fmt.Sprintf(MonitoringLogsTargetEsCaCertMountPath, i),
+			fmt.Sprintf(monitoringLogsTargetEsCaCertVolumeNameFormat, i),
+			fmt.Sprintf(monitoringLogsTargetEsCaCertMountPathFormat, i),
 		))
 	}
 	return volumes

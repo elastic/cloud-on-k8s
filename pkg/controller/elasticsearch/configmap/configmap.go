@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,18 +53,4 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 	)
 
 	return ReconcileConfigMap(c, es, scriptsConfigMap)
-}
-
-func ReconcileMetricbeatConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_metricbeat_config", tracing.SpanTypeApp)
-	defer span.End()
-
-	return ReconcileConfigMap(c, es, NewConfigMapWithData(stackmon.MetricbeatConfigMapData(es)))
-}
-
-func ReconcileFilebeatConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_filebeat_config", tracing.SpanTypeApp)
-	defer span.End()
-
-	return ReconcileConfigMap(c, es, NewConfigMapWithData(stackmon.FilebeatConfigMapData(es)))
 }
