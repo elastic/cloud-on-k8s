@@ -40,9 +40,6 @@ processors:
   - add_cloud_metadata: {}
   - add_host_metadata: {}
 
-  # TODO: finish
-  #setup.dashboards.enabled: true
-
 output.elasticsearch:
   hosts: ['${ES_0_TARGET_URL}']
   username: ${ES_0_TARGET_USERNAME}
