@@ -69,17 +69,6 @@ func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
 	return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) > 0
 }
 
-func IsSupportedVersion(esVersion string) error {
-	ver, err := version.Parse(esVersion)
-	if err != nil {
-		return err
-	}
-	if ver.LT(MinStackVersion) {
-		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", MinStackVersion)
-	}
-	return nil
-}
-
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
 func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
@@ -89,12 +78,6 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 	// No monitoring defined
 	if !isMonitoringMetrics && !isMonitoringLogs {
 		return builder, nil
-	}
-
-	// Reject unsupported version
-	err := IsSupportedVersion(es.Spec.Version)
-	if err != nil {
-		return nil, err
 	}
 
 	volumeLikes := make([]volume.VolumeLike, 0)

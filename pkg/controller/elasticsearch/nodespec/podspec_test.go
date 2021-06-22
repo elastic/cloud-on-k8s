@@ -5,7 +5,6 @@
 package nodespec
 
 import (
-	"errors"
 	"sort"
 	"testing"
 
@@ -339,7 +338,6 @@ func TestWithMonitoring(t *testing.T) {
 		es                                func() esv1.Elasticsearch
 		expectedXPackMonitoringConfigKeys int
 		expectedContainerLen              int
-		expectedErr                       error
 	}{
 		{
 			name: "without monitoring",
@@ -348,16 +346,6 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			expectedXPackMonitoringConfigKeys: 0,
 			expectedContainerLen:              2,
-		},
-		{
-			name: "with unsupported version",
-			es: func() esv1.Elasticsearch {
-				es := sampleES
-				es.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{monitoringRef}
-				return es
-			},
-			expectedXPackMonitoringConfigKeys: 0,
-			expectedErr:                       errors.New("unsupported version for Stack Monitoring: required >= 7.14.0"),
 		},
 		{
 			name: "with logs monitoring",
@@ -402,7 +390,7 @@ func TestWithMonitoring(t *testing.T) {
 			ver, err := version.Parse(es.Spec.Version)
 			require.NoError(t, err)
 
-			// Check that the Elasticsearch config contains Xpack monitoring settings only when metrics monitoring config is defined
+			// Check that the Elasticsearch config contains XPack monitoring settings only when metrics monitoring config is defined
 			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, stackmon.MonitoringConfig(es))
 			require.NoError(t, err)
 			require.Len(t, cfg.HasKeys([]string{esv1.XPackMonitoringCollectionEnabled, esv1.XPackMonitoringElasticsearchCollectionEnabled}), tc.expectedXPackMonitoringConfigKeys)
@@ -416,14 +404,9 @@ func TestWithMonitoring(t *testing.T) {
 			}
 
 			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, false)
-			if tc.expectedErr != nil {
-				require.Error(t, err)
-				require.Equal(t, tc.expectedErr, err)
-			} else {
-				require.NoError(t, err)
-				// Check that the beat sidecar containers are present
-				require.Len(t, actual.Spec.Containers, tc.expectedContainerLen)
-			}
+			require.NoError(t, err)
+			// Check that the beat sidecar containers are present
+			require.Len(t, actual.Spec.Containers, tc.expectedContainerLen)
 		})
 	}
 }
