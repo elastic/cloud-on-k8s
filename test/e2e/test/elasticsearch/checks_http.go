@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-//CheckHTTPConnectivity ensure that we can connect via HTTP to every available Pod.
+// CheckHTTPConnectivity ensure that we can connect via HTTP to every available Pod.
 func (e *esClusterChecks) CheckHTTPConnectivity() test.Step {
 	return test.Step{
 		Name: "Can connect to all available nodes",

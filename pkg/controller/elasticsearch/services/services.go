@@ -153,7 +153,7 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	return ExternalServiceURL(es)
 }
 
-//ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.
+// ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.
 func ElasticsearchPodURL(pod corev1.Pod) string {
 	scheme := pod.Labels[label.HTTPSchemeLabelName]
 	sset := pod.Labels[label.StatefulSetNameLabelName]
