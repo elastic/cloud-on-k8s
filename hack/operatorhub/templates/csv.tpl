@@ -282,11 +282,11 @@ spec:
     * Elastic Maps Server: 7.11+
 
 
-    ECK should work with all conformant installers as listed in these link:https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer[FAQs]. Distributions include source patches and so may not work as-is with ECK.
+    ECK should work with all conformant installers as listed in these [FAQs](https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer). Distributions include source patches and so may not work as-is with ECK.
 
-    Alpha, beta, and stable API versions follow the same link:https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning[conventions used by Kubernetes].
+    Alpha, beta, and stable API versions follow the same [conventions used by Kubernetes](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning).
 
-    See the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.
+    See the full [Elastic support matrix](https://www.elastic.co/support/matrix#matrix_kubernetes) for more information.
 
     See the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/{{ .ShortVersion }}/k8s-quickstart.html)
     to get started with ECK.'
