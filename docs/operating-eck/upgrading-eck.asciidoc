@@ -25,7 +25,7 @@ CAUTION: The upgrade process results in an update to all the existing managed re
 
 IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
-Release 1.7.0 moves the link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions] (CRD) used by ECK to the v1 version. If you upgrade from a previous version of ECK, the new version of the CRDs replace the existing CRDs. If you cannot remove the current ECK installation because you have production workloads that must not be deleted, the following approach is recommended:
+Release 1.7.0 moves the link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions] (CRD) used by ECK to the v1 version. If you upgrade from a previous version of ECK, the new version of the CRDs replaces the existing CRDs. If you cannot remove the current ECK installation because you have production workloads that must not be deleted, the following approach is recommended.
 
 [source,shell,subs="attributes,callouts"]
 .If you are installing using the YAML manifests: replace existing CRDs
