@@ -78,7 +78,7 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=DeleteOnScaledownOnly;DeleteOnScaledownAndClusterDeletion
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 
-	// Monitoring enables you to extract logs and Stack Monitoring metrics of this Elasticsearch cluster.
+	// Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
 	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
@@ -86,24 +86,25 @@ type ElasticsearchSpec struct {
 	Monitoring Monitoring `json:"monitoring,omitempty"`
 }
 
-// Monitoring holds references to Elasticsearch clusters which will receive logs and metrics from this Elasticsearch cluster.
 type Monitoring struct {
+	// Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Elasticsearch cluster.
 	// +kubebuilder:validation:Optional
 	Metrics MetricsMonitoring `json:"metrics,omitempty"`
+	// Logs holds references to Elasticsearch clusters which will receive log data from this Elasticsearch cluster.
 	// +kubebuilder:validation:Optional
 	Logs LogsMonitoring `json:"logs,omitempty"`
 }
 
 type MetricsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster
-	// dedicated to receiving Stack Monitoring metrics. Only one ElasticsearchRef is supported.
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
 	// +kubebuilder:validation:Required
 	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 type LogsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster
-	// dedicated to receiving Elasticsearch logs. Only one ElasticsearchRef is supported.
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
 	// +kubebuilder:validation:Required
 	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
