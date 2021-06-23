@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,8 +92,23 @@ func beatConfigSecret(
 	}
 }
 
+// monitoringSourceEnvVars returns the environment variables describing how to connect to the monitored Elasticsearch cluster
+func monitoringSourceEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: esSourceURLEnvVarKey, Value: esSourceURLEnvVarValue},
+		{Name: esSourceUsernameEnvVarKey, Value: user.ElasticUserName},
+		{Name: esSourcePasswordEnvVarKey, ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: esv1.ElasticUserSecret(es.Name)},
+				Key: user.ElasticUserName,
+			},
+		}},
+	}
+}
+
 // monitoringTargetEnvVars returns the environment variables describing how to connect to Elasticsearch clusters
-// referenced in given associations
+// referenced in the given associations
 func monitoringTargetEnvVars(assocs []commonv1.Association) []corev1.EnvVar {
 	vars := make([]corev1.EnvVar, 0)
 	for i, assoc := range assocs {

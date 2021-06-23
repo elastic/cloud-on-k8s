@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -174,18 +173,4 @@ func fullContainerImage(es esv1.Elasticsearch, defaultImage container.Image) (st
 		return "", errors.New("stack monitoring not supported with custom image")
 	}
 	return container.ImageRepository(defaultImage, es.Spec.Version), nil
-}
-
-func monitoringSourceEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{Name: esSourceURLEnvVarKey, Value: esSourceURLEnvVarValue},
-		{Name: esSourceUsernameEnvVarKey, Value: user.ElasticUserName},
-		{Name: esSourcePasswordEnvVarKey, ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: esv1.ElasticUserSecret(es.Name)},
-				Key: user.ElasticUserName,
-			},
-		}},
-	}
 }
