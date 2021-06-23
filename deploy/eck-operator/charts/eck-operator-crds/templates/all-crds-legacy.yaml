@@ -194,10 +194,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -268,8 +268,8 @@ spec:
                 type: string
               description: AssociationStatusMap is the map of association's namespaced
                 name string to its AssociationStatus. For resources that have a single
-                Association of a given type (eg. single ES reference), this map will
-                contain a single entry.
+                Association of a given type (for ex. single ES reference), this map
+                contains a single entry.
               type: object
             expectedNodes:
               format: int32
@@ -375,10 +375,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
@@ -773,10 +773,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
@@ -1077,10 +1077,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
@@ -1103,10 +1103,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
@@ -1299,10 +1299,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
@@ -2208,7 +2208,7 @@ spec:
               properties:
                 logs:
                   description: Logs holds references to Elasticsearch clusters which
-                    will receive log data from this Elasticsearch cluster.
+                    receive log data from this Elasticsearch cluster.
                   properties:
                     elasticsearchRefs:
                       description: ElasticsearchRefs is a reference to a list of monitoring
@@ -2228,10 +2228,10 @@ spec:
                             type: string
                           serviceName:
                             description: ServiceName is the name of an existing Kubernetes
-                              service which will be used to make requests to the referenced
+                              service which is used to make requests to the referenced
                               object. It has to be in the same namespace as the referenced
-                              resource. If left empty the default HTTP service of
-                              the referenced resource will be used.
+                              resource. If left empty, the default HTTP service of
+                              the referenced resource is used.
                             type: string
                         required:
                         - name
@@ -2240,7 +2240,7 @@ spec:
                   type: object
                 metrics:
                   description: Metrics holds references to Elasticsearch clusters
-                    which will receive monitoring data from this Elasticsearch cluster.
+                    which receive monitoring data from this Elasticsearch cluster.
                   properties:
                     elasticsearchRefs:
                       description: ElasticsearchRefs is a reference to a list of monitoring
@@ -2260,10 +2260,10 @@ spec:
                             type: string
                           serviceName:
                             description: ServiceName is the name of an existing Kubernetes
-                              service which will be used to make requests to the referenced
+                              service which is used to make requests to the referenced
                               object. It has to be in the same namespace as the referenced
-                              resource. If left empty the default HTTP service of
-                              the referenced resource will be used.
+                              resource. If left empty, the default HTTP service of
+                              the referenced resource is used.
                             type: string
                         required:
                         - name
@@ -2618,10 +2618,10 @@ spec:
                         type: string
                       serviceName:
                         description: ServiceName is the name of an existing Kubernetes
-                          service which will be used to make requests to the referenced
+                          service which is used to make requests to the referenced
                           object. It has to be in the same namespace as the referenced
-                          resource. If left empty the default HTTP service of the
-                          referenced resource will be used.
+                          resource. If left empty, the default HTTP service of the
+                          referenced resource is used.
                         type: string
                     required:
                     - name
@@ -3083,8 +3083,8 @@ spec:
                 type: string
               description: AssociationStatusMap is the map of association's namespaced
                 name string to its AssociationStatus. For resources that have a single
-                Association of a given type (eg. single ES reference), this map will
-                contain a single entry.
+                Association of a given type (for ex. single ES reference), this map
+                contains a single entry.
               type: object
             phase:
               description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
@@ -3206,10 +3206,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
@@ -3725,10 +3725,10 @@ spec:
                   type: string
                 serviceName:
                   description: ServiceName is the name of an existing Kubernetes service
-                    which will be used to make requests to the referenced object.
-                    It has to be in the same namespace as the referenced resource.
-                    If left empty the default HTTP service of the referenced resource
-                    will be used.
+                    which is used to make requests to the referenced object. It has
+                    to be in the same namespace as the referenced resource. If left
+                    empty, the default HTTP service of the referenced resource is
+                    used.
                   type: string
               required:
               - name
