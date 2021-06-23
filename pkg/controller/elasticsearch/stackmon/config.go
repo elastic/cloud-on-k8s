@@ -34,11 +34,11 @@ var (
 	monitoringMetricsTargetEsCaCertMountPathFormat = "/mnt/es/%d/monitoring/metrics/target"
 	monitoringLogsTargetEsCaCertMountPathFormat    = "/mnt/es/%d/monitoring/logs/target"
 
-	// MetricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
+	// metricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
 	//go:embed metricbeat.yml
 	metricbeatConfig string
 
-	// FilebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
+	// filebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
 	//go:embed filebeat.yml
 	filebeatConfig string
 )
