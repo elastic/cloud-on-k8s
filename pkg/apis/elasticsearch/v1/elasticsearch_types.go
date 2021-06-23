@@ -87,10 +87,10 @@ type ElasticsearchSpec struct {
 }
 
 type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Elasticsearch cluster.
+	// Metrics holds references to Elasticsearch clusters which receive monitoring data from this Elasticsearch cluster.
 	// +kubebuilder:validation:Optional
 	Metrics MetricsMonitoring `json:"metrics,omitempty"`
-	// Logs holds references to Elasticsearch clusters which will receive log data from this Elasticsearch cluster.
+	// Logs holds references to Elasticsearch clusters which receive log data from this Elasticsearch cluster.
 	// +kubebuilder:validation:Optional
 	Logs LogsMonitoring `json:"logs,omitempty"`
 }

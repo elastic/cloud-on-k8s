@@ -24,7 +24,7 @@ type AssociationType string
 type AssociationStatus string
 
 // AssociationStatusMap is the map of association's namespaced name string to its AssociationStatus. For resources that
-// have a single Association of a given type (eg. single ES reference), this map will contain a single entry.
+// have a single Association of a given type (for ex. single ES reference), this map contains a single entry.
 type AssociationStatusMap map[string]AssociationStatus
 
 // NewSingleAssociationStatusMap creates an AssociationStatusMap that expects only a single Association. Using a
