@@ -5,12 +5,15 @@
 package v1
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"fmt"
 	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -257,4 +260,22 @@ func (ac *AssociationConf) GetVersion() string {
 		return ""
 	}
 	return ac.Version
+}
+
+func ElasticsearchConfigAnnotationName(esNsn types.NamespacedName) string {
+	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
+	// based on ElasticsearchRefs
+
+	nsNameHash := sha256.New224()
+	// concat with dot to avoid collisions, as namespace can't contain dots
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", esNsn.Namespace, esNsn.Name)))
+	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
+	// give too long output
+	// no padding to avoid illegal '=' character in the annotation name
+	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
+
+	return FormatNameWithID(
+		ElasticsearchConfigAnnotationNameBase+"%s",
+		hash,
+	)
 }

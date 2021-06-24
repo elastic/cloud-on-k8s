@@ -5,8 +5,6 @@
 package v1
 
 import (
-	"crypto/sha256"
-	"encoding/base32"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -130,21 +128,7 @@ func (ema *EsMonitoringAssociation) Associated() commonv1.Associated {
 }
 
 func (ema *EsMonitoringAssociation) AssociationConfAnnotationName() string {
-	// annotation key should be stable to allow Elasticsearch Controller only pick up the ones it expects,
-	// based on ElasticsearchRefs
-
-	nsNameHash := sha256.New224()
-	// concat with dot to avoid collisions, as namespace can't contain dots
-	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", ema.ref.Namespace, ema.ref.Name)))
-	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
-	// give too long output
-	// no padding to avoid illegal '=' character in the annotation name
-	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
-
-	return commonv1.FormatNameWithID(
-		commonv1.ElasticsearchConfigAnnotationNameBase+"%s",
-		hash,
-	)
+	return commonv1.ElasticsearchConfigAnnotationName(ema.ref)
 }
 
 func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
