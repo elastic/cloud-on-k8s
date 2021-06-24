@@ -23,10 +23,6 @@ const (
 	filebeatConfigKey   = "filebeat.yml"
 )
 
-func IsStackMonitoringDefined(es esv1.Elasticsearch) bool {
-	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
-}
-
 func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
 	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
 		if !ref.IsDefined() {
@@ -45,11 +41,15 @@ func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
 	return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) > 0
 }
 
+func isStackMonitoringDefined(es esv1.Elasticsearch) bool {
+	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
+}
+
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
 func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
 	// No monitoring defined, skip
-	if !IsStackMonitoringDefined(es) {
+	if !isStackMonitoringDefined(es) {
 		return builder, nil
 	}
 
