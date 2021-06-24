@@ -19,15 +19,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-// TestStackMonitoring
-func TestStackMonitoring(t *testing.T) {
+// TestESStackMonitoring tests that when an Elasticsearch cluster is configured with monitoring, its log and metrics are
+// correctly delivered to the referenced monitoring Elasticsearch clusters.
+// It tests that the monitored ES pods have 3 containers ready and that there are documents indexed in the beat indexes
+// of the monitoring Elasticsearch clusters.
+func TestESStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
 	err := stackmon.IsSupportedVersion(test.Ctx().ElasticStackVersion)
 	if err != nil {
 		t.SkipNow()
 	}
 
-	// Create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
+	// create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
 	metrics := elasticsearch.NewBuilder("test-es-mon-metrics").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	logs := elasticsearch.NewBuilder("test-es-mon-logs").
@@ -36,7 +39,7 @@ func TestStackMonitoring(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithMonitoring(metrics.Ref(), logs.Ref())
 
-	// Checks that the beats have sent data in the monitoring clusters
+	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
 		checks := stackMonitoringChecks{metrics, logs, k}
 		return test.StepList{
