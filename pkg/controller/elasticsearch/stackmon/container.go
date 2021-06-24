@@ -18,9 +18,6 @@ import (
 )
 
 const (
-	esLogStyleEnvVarKey   = "ES_LOG_STYLE"
-	esLogStyleEnvVarValue = "file"
-
 	metricbeatContainerName = "metricbeat"
 	filebeatContainerName   = "filebeat"
 
@@ -78,7 +75,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 
 	if IsMonitoringLogsDefined(es) {
 		// Enable Stack logging to write Elasticsearch logs to disk
-		builder.WithEnv(stackLoggingEnvVar())
+		builder.WithEnv(fileLogStyleEnvVar())
 
 		filebeatVolumes := append(
 			monitoringLogsTargetCaCertSecretVolumes(es),
@@ -102,10 +99,6 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 	builder.WithVolumes(volumes...)
 
 	return builder, nil
-}
-
-func stackLoggingEnvVar() corev1.EnvVar {
-	return corev1.EnvVar{Name: esLogStyleEnvVarKey, Value: esLogStyleEnvVarValue}
 }
 
 func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (corev1.Container, error) {

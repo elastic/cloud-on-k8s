@@ -5,6 +5,8 @@
 package stackmon
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 )
@@ -18,4 +20,9 @@ func MonitoringConfig(es esv1.Elasticsearch) commonv1.Config {
 		esv1.XPackMonitoringCollectionEnabled:              true,
 		esv1.XPackMonitoringElasticsearchCollectionEnabled: false,
 	}}
+}
+
+// fileLogStyleEnvVar returns the environment variable to configure the Elasticsearch container to write logs to disk
+func fileLogStyleEnvVar() corev1.EnvVar {
+	return corev1.EnvVar{Name: "ES_LOG_STYLE", Value: "file"}
 }
