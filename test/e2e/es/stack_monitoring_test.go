@@ -119,7 +119,7 @@ type Index struct {
 }
 
 func AreIndexedDocs(esClient esClient.Client, indexPattern string) error {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/_cat/indices/%s?health=green&format=json", indexPattern), nil) //nolint:noctx
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/_cat/indices/%s?format=json", indexPattern), nil) //nolint:noctx
 	if err != nil {
 		return err
 	}
