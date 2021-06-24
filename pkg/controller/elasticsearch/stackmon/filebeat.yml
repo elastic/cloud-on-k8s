@@ -1,5 +1,5 @@
 filebeat.modules:
-  # https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-elasticsearch.html
+  # https://www.elastic.co/guide/en/beats/filebeat/7.13/filebeat-module-elasticsearch.html
   - module: elasticsearch
     server:
       enabled: true
@@ -40,6 +40,7 @@ processors:
   - add_cloud_metadata: {}
   - add_host_metadata: {}
 
+# only one target ES can be referenced so far so we take it as ordinal 0
 output.elasticsearch:
   hosts: ['${ES_0_TARGET_URL}']
   username: ${ES_0_TARGET_USERNAME}
