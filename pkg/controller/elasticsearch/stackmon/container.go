@@ -5,9 +5,7 @@
 package stackmon
 
 import (
-	"errors"
 	"path/filepath"
-	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -66,11 +64,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 		volumeLikes = append(volumeLikes, metricbeatVolumes...)
 
 		// Inject Metricbeat sidecar container
-		metricbeat, err := metricbeatContainer(es, metricbeatVolumes)
-		if err != nil {
-			return nil, err
-		}
-		builder.WithContainers(metricbeat)
+		builder.WithContainers(metricbeatContainer(es, metricbeatVolumes))
 	}
 
 	if IsMonitoringLogsDefined(es) {
@@ -84,11 +78,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 		volumeLikes = append(volumeLikes, filebeatVolumes...)
 
 		// Inject Filebeat sidecar container
-		filebeat, err := filebeatContainer(es, filebeatVolumes)
-		if err != nil {
-			return nil, err
-		}
-		builder.WithContainers(filebeat)
+		builder.WithContainers(filebeatContainer(es, filebeatVolumes))
 	}
 
 	// Inject volumes
@@ -101,12 +91,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 	return builder, nil
 }
 
-func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (corev1.Container, error) {
-	image, err := fullContainerImage(es, container.MetricbeatImage)
-	if err != nil {
-		return corev1.Container{}, err
-	}
-
+func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) corev1.Container {
 	volumeMounts := make([]corev1.VolumeMount, 0)
 	for _, v := range volumes {
 		volumeMounts = append(volumeMounts, v.VolumeMount())
@@ -116,19 +101,14 @@ func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (co
 
 	return corev1.Container{
 		Name:         metricbeatContainerName,
-		Image:        image,
+		Image:        container.ImageRepository(container.MetricbeatImage, es.Spec.Version),
 		Args:         []string{"-c", filepath.Join(metricbeatConfigDirMountPath, metricbeatConfigKey), "-e"},
 		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
 		VolumeMounts: volumeMounts,
-	}, nil
+	}
 }
 
-func filebeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (corev1.Container, error) {
-	image, err := fullContainerImage(es, container.FilebeatImage)
-	if err != nil {
-		return corev1.Container{}, err
-	}
-
+func filebeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) corev1.Container {
 	volumeMounts := []corev1.VolumeMount{
 		esvolume.DefaultLogsVolumeMount, // mount Elasticsearch logs volume into the Filebeat container
 	}
@@ -140,27 +120,9 @@ func filebeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) (core
 
 	return corev1.Container{
 		Name:         filebeatContainerName,
-		Image:        image,
+		Image:        container.ImageRepository(container.FilebeatImage, es.Spec.Version),
 		Args:         []string{"-c", filepath.Join(filebeatConfigDirMountPath, filebeatConfigKey), "-e"},
 		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
 		VolumeMounts: volumeMounts,
-	}, nil
-}
-
-// fullContainerImage returns the full Beat container image with the image registry.
-// If the Elasticsearch specification is configured with a custom image, we do best effort by trying to derive the Beat
-// image from the Elasticsearch custom image with an image name replacement
-// (<registry>/elasticsearch/elasticsearch:<version> becomes <registry>/beats/<filebeat|metricbeat>:<version>)
-func fullContainerImage(es esv1.Elasticsearch, defaultImage container.Image) (string, error) {
-	fullCustomImage := es.Spec.Image
-	if fullCustomImage != "" {
-		esImage := string(container.ElasticsearchImage)
-		// Check if Elasticsearch image follows official Elastic naming
-		if strings.Contains(fullCustomImage, esImage) {
-			// Derive the Beat image from the ES custom image, there is no guarantee that the resulted image exists
-			return strings.ReplaceAll(fullCustomImage, esImage, string(defaultImage)), nil
-		}
-		return "", errors.New("stack monitoring not supported with custom image")
 	}
-	return container.ImageRepository(defaultImage, es.Spec.Version), nil
 }
