@@ -33,8 +33,8 @@ var (
 	esTargetPasswordEnvVarKeyFormat = "ES_%d_TARGET_PASSWORD" //nolint:gosec
 
 	monitoringMetricsSourceEsCaCertMountPath       = "/mnt/es/monitoring/metrics/source"
-	monitoringMetricsTargetEsCaCertMountPathFormat = "/mnt/es/%d/monitoring/metrics/target"
-	monitoringLogsTargetEsCaCertMountPathFormat    = "/mnt/es/%d/monitoring/logs/target"
+	monitoringMetricsTargetEsCaCertMountPathFormat = "/mnt/es/monitoring/metrics/target/%d"
+	monitoringLogsTargetEsCaCertMountPathFormat    = "/mnt/es/monitoring/logs/target/%d"
 
 	// metricbeatConfig is a static configuration for Metricbeat to collect monitoring data about Elasticsearch
 	//go:embed metricbeat.yml

@@ -44,4 +44,4 @@ output.elasticsearch:
   hosts: ['${ES_0_TARGET_URL}']
   username: ${ES_0_TARGET_USERNAME}
   password: ${ES_0_TARGET_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/0/monitoring/logs/target/ca.crt"]
+  ssl.certificate_authorities: ["/mnt/es/monitoring/logs/target/0/ca.crt"]
