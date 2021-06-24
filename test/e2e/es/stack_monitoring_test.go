@@ -15,6 +15,7 @@ import (
 
 	esClient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
@@ -41,8 +42,9 @@ func TestESStackMonitoring(t *testing.T) {
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
-		checks := stackMonitoringChecks{metrics, logs, k}
+		checks := stackMonitoringChecks{monitored, metrics, logs, k}
 		return test.StepList{
+			checks.CheckBeatSidecars(),
 			checks.CheckMetricbeatIndex(),
 			checks.CheckFilebeatIndex(),
 		}
@@ -52,9 +54,30 @@ func TestESStackMonitoring(t *testing.T) {
 }
 
 type stackMonitoringChecks struct {
-	metrics elasticsearch.Builder
-	logs    elasticsearch.Builder
-	k       *test.K8sClient
+	monitored elasticsearch.Builder
+	metrics   elasticsearch.Builder
+	logs      elasticsearch.Builder
+	k         *test.K8sClient
+}
+
+func (c *stackMonitoringChecks) CheckBeatSidecars() test.Step {
+	return test.Step{
+		Name: "Check that beat sidecars are running",
+		Test: test.Eventually(func() error {
+			pods, err := c.k.GetPods(test.ESPodListOptions(c.monitored.Elasticsearch.Namespace, c.monitored.Elasticsearch.Name)...)
+			if err != nil {
+				return err
+			}
+			for _, pod := range pods {
+				if len(pod.Spec.Containers) != 3 {
+					return fmt.Errorf("expected %d containers, got %d", 3, len(pod.Spec.Containers))
+				}
+				if !k8s.IsPodReady(pod) {
+					return fmt.Errorf("pod %s not ready", pod.Name)
+				}
+			}
+			return nil
+		})}
 }
 
 func (c *stackMonitoringChecks) CheckMetricbeatIndex() test.Step {
