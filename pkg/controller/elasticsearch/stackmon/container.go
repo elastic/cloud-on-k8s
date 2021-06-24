@@ -53,17 +53,14 @@ func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
 func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
-	isMonitoringMetrics := IsMonitoringMetricsDefined(es)
-	isMonitoringLogs := IsMonitoringLogsDefined(es)
-
 	// No monitoring defined, skip
-	if !isMonitoringMetrics && !isMonitoringLogs {
+	if !IsStackMonitoringDefined(es) {
 		return builder, nil
 	}
 
 	volumeLikes := make([]volume.VolumeLike, 0)
 
-	if isMonitoringMetrics {
+	if IsMonitoringMetricsDefined(es) {
 		metricbeatVolumes := append(
 			monitoringMetricsTargetCaCertSecretVolumes(es),
 			metricbeatConfigSecretVolume(es),
@@ -79,7 +76,7 @@ func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch)
 		builder.WithContainers(metricbeat)
 	}
 
-	if isMonitoringLogs {
+	if IsMonitoringLogsDefined(es) {
 		// Enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(stackLoggingEnvVar())
 
