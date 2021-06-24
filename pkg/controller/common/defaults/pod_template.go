@@ -55,7 +55,7 @@ func NewPodTemplateBuilder(base corev1.PodTemplateSpec, containerName string) *P
 	return builder.setDefaults()
 }
 
-// getContainer retrieves the existing Container from the pod template
+// getContainer retrieves the main Container from the pod template
 func (b *PodTemplateBuilder) getContainer() *corev1.Container {
 	for i, c := range b.PodTemplate.Spec.Containers {
 		if c.Name == b.containerName {
@@ -64,6 +64,7 @@ func (b *PodTemplateBuilder) getContainer() *corev1.Container {
 	}
 	return nil
 }
+
 func (b *PodTemplateBuilder) setContainerDefaulter() {
 	b.containerDefaulter = container.NewDefaulter(b.getContainer())
 }
