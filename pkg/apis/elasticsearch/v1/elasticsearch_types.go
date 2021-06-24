@@ -119,23 +119,23 @@ type EsMonitoringAssociation struct {
 
 var _ commonv1.Association = &EsMonitoringAssociation{}
 
-func (eea *EsMonitoringAssociation) Associated() commonv1.Associated {
-	if eea == nil {
+func (ema *EsMonitoringAssociation) Associated() commonv1.Associated {
+	if ema == nil {
 		return nil
 	}
-	if eea.Elasticsearch == nil {
-		eea.Elasticsearch = &Elasticsearch{}
+	if ema.Elasticsearch == nil {
+		ema.Elasticsearch = &Elasticsearch{}
 	}
-	return eea.Elasticsearch
+	return ema.Elasticsearch
 }
 
-func (eea *EsMonitoringAssociation) AssociationConfAnnotationName() string {
+func (ema *EsMonitoringAssociation) AssociationConfAnnotationName() string {
 	// annotation key should be stable to allow Elasticsearch Controller only pick up the ones it expects,
 	// based on ElasticsearchRefs
 
 	nsNameHash := sha256.New224()
 	// concat with dot to avoid collisions, as namespace can't contain dots
-	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", eea.ref.Namespace, eea.ref.Name)))
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", ema.ref.Namespace, ema.ref.Name)))
 	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
 	// give too long output
 	// no padding to avoid illegal '=' character in the annotation name
@@ -147,22 +147,22 @@ func (eea *EsMonitoringAssociation) AssociationConfAnnotationName() string {
 	)
 }
 
-func (eea *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
+func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (eea *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
-		Name:      eea.ref.Name,
-		Namespace: eea.ref.Namespace,
+		Name:      ema.ref.Name,
+		Namespace: ema.ref.Namespace,
 	}
 }
 
-func (eea *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if eea.AssocConfs == nil {
+func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
+	if ema.AssocConfs == nil {
 		return nil
 	}
-	assocConf, found := eea.AssocConfs[eea.ref]
+	assocConf, found := ema.AssocConfs[ema.ref]
 	if !found {
 		return nil
 	}
@@ -170,17 +170,17 @@ func (eea *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf 
 	return &assocConf
 }
 
-func (eea *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	if eea.AssocConfs == nil {
-		eea.AssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	if ema.AssocConfs == nil {
+		ema.AssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
 	}
 	if assocConf != nil {
-		eea.AssocConfs[eea.ref] = *assocConf
+		ema.AssocConfs[ema.ref] = *assocConf
 	}
 }
 
-func (eea *EsMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", eea.ref.Namespace, eea.ref.Name)
+func (ema *EsMonitoringAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", ema.ref.Namespace, ema.ref.Name)
 }
 
 // Associated methods
