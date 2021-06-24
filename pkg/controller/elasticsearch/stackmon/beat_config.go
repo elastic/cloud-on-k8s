@@ -8,14 +8,15 @@ import (
 	_ "embed" // for the beats config files
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Environments variables and paths to the Elasticsearch CA certificates used in the beats configuration to describe
@@ -43,17 +44,6 @@ var (
 	//go:embed filebeat.yml
 	filebeatConfig string
 )
-
-// MonitoringConfig returns the Elasticsearch settings required to enable the collection of monitoring data
-func MonitoringConfig(es esv1.Elasticsearch) commonv1.Config {
-	if !IsMonitoringMetricsDefined(es) {
-		return commonv1.Config{}
-	}
-	return commonv1.Config{Data: map[string]interface{}{
-		esv1.XPackMonitoringCollectionEnabled:              true,
-		esv1.XPackMonitoringElasticsearchCollectionEnabled: false,
-	}}
-}
 
 // ReconcileConfigSecrets reconciles the secrets holding the beats configuration
 func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
