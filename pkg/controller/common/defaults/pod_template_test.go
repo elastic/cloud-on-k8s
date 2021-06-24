@@ -1196,6 +1196,44 @@ func TestPodTemplateBuilder_WithContainers(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "override additional container using pod template",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: &varFalse,
+					Containers: []corev1.Container{
+						{
+							Name: "maincontainer",
+						},
+						{
+							Name:  "sidecar",
+							Image: "registry.space/blurb/sidecar:1.0",
+						},
+					},
+				},
+			},
+			containerName: "maincontainer",
+			container: corev1.Container{
+				Name:  "sidecar",
+				Image: "docker.elastic.co/elastic/metricbeat:7.14.0",
+			},
+			postWithContainers: func(builder *PodTemplateBuilder) {
+			},
+			want: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: &varFalse,
+					Containers: []corev1.Container{
+						{
+							Name: "maincontainer",
+						},
+						{
+							Name:  "sidecar",
+							Image: "registry.space/blurb/sidecar:1.0",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

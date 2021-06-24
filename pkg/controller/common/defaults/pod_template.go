@@ -188,8 +188,21 @@ func (b *PodTemplateBuilder) WithTerminationGracePeriod(period int64) *PodTempla
 // It also ensures that the base container defaulter still points to the container in the list because append()
 // creates a new slice.
 func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *PodTemplateBuilder {
-	b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, containers...)
-	b.setContainerDefaulter()
+	for _, c := range containers {
+		found := false
+		for i := range b.PodTemplate.Spec.Containers {
+			podTplContainer := b.PodTemplate.Spec.Containers[i]
+			if c.Name == podTplContainer.Name {
+				found = true
+				// inherits default values from container already defined on the pod template
+				b.PodTemplate.Spec.Containers[i] = container.NewDefaulter(&podTplContainer).From(c).Container()
+			}
+		}
+		if !found {
+			b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, c)
+			b.setContainerDefaulter()
+		}
+	}
 	return b
 }
 
