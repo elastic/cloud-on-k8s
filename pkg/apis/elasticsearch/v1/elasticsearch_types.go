@@ -132,7 +132,7 @@ func (ema *EsMonitoringAssociation) AssociationConfAnnotationName() string {
 }
 
 func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
-	return commonv1.ElasticsearchAssociationType
+	return commonv1.EsMonitoringAssociationType
 }
 
 func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
@@ -223,7 +223,7 @@ func (es *Elasticsearch) GetMonitoringLogsAssociation() []commonv1.Association {
 }
 
 func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ != commonv1.ElasticsearchAssociationType {
+	if typ != commonv1.EsMonitoringAssociationType {
 		return commonv1.AssociationStatusMap{}
 	}
 
@@ -231,7 +231,7 @@ func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) comm
 }
 
 func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
-	if typ != commonv1.ElasticsearchAssociationType {
+	if typ != commonv1.EsMonitoringAssociationType {
 		return fmt.Errorf("association type %s not known", typ)
 	}
 

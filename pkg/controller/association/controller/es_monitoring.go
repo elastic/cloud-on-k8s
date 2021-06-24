@@ -19,12 +19,14 @@ import (
 )
 
 const (
-	// EsMonitoringAssociationLabelName marks resources created by this controller for easier retrieval.
-	EsMonitoringAssociationLabelName = "esmonitoringassociation.k8s.elastic.co/name"
-	// EsMonitoringAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	EsMonitoringAssociationLabelNamespace = "esmonitoringassociation.k8s.elastic.co/namespace"
-	// EsMonitoringAssociationLabelType marks the type of association.
-	EsMonitoringAssociationLabelType = "esmonitoringassociation.k8s.elastic.co/type"
+	// EsAssociationLabelName marks resources created by this controller for easier retrieval.
+	EsAssociationLabelName = "esassociation.k8s.elastic.co/name"
+	// EsAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	EsAssociationLabelNamespace = "esassociation.k8s.elastic.co/namespace"
+	// EsAssociationLabelType marks the type of association.
+	EsAssociationLabelType = "esassociation.k8s.elastic.co/type"
+
+	EsMonitoringAssociationType = "es-monitoring"
 )
 
 // AddEsMonitoring reconciles an association between two Elasticsearch clusters for Stack Monitoring.
@@ -38,15 +40,15 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 		},
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociationType:           commonv1.ElasticsearchAssociationType,
+		AssociationType:           commonv1.EsMonitoringAssociationType,
 		AssociatedNamer:           esv1.ESNamer,
 		AssociationName:           "es-monitoring",
 		AssociatedShortName:       "es-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				EsMonitoringAssociationLabelName:      associated.Name,
-				EsMonitoringAssociationLabelNamespace: associated.Namespace,
-				EsMonitoringAssociationLabelType:      commonv1.ElasticsearchAssociationType,
+				EsAssociationLabelName:      associated.Name,
+				EsAssociationLabelNamespace: associated.Namespace,
+				EsAssociationLabelType:      EsMonitoringAssociationType,
 			}
 		},
 		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,

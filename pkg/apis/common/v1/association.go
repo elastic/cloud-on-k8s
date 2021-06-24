@@ -95,6 +95,7 @@ func (asm AssociationStatusMap) AllEstablished() bool {
 const (
 	ElasticsearchConfigAnnotationNameBase = "association.k8s.elastic.co/es-conf"
 	ElasticsearchAssociationType          = "elasticsearch"
+	EsMonitoringAssociationType           = "es-monitoring"
 
 	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
 	KibanaAssociationType          = "kibana"
