@@ -18,25 +18,31 @@ var log = ulog.Log.WithName("migrate-data")
 
 type ShardMigration struct {
 	es esv1.Elasticsearch
-	c esclient.Client
+	c  esclient.Client
 }
 
 var _ shutdown.Interface = &ShardMigration{}
 
+func NewShardMigration(es esv1.Elasticsearch, c esclient.Client) shutdown.Interface {
+	return &ShardMigration{
+		es: es,
+		c:  c,
+	}
+}
 
 func (sm *ShardMigration) RequestShutdown(ctx context.Context, leavingNodes []string) error {
 	return MigrateData(ctx, sm.es, sm.c, leavingNodes)
 }
 
-func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.ShutdownStatus, error) {
+func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.ShutdownResponse, error) {
 	migrating, err := NodeMayHaveShard(ctx, sm.es, sm.c, podName)
 	if err != nil {
-		return "", err
+		return shutdown.ShutdownResponse{}, err
 	}
 	if migrating {
-		return shutdown.Started, nil
+		return shutdown.ShutdownResponse{Status: shutdown.Started}, nil
 	}
-	return shutdown.Complete, nil
+	return shutdown.ShutdownResponse{Status: shutdown.Complete}, nil
 }
 
 // NodeMayHaveShard returns true if one of those condition is met:
