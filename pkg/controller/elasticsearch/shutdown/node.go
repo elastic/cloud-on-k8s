@@ -11,11 +11,18 @@ import (
 )
 
 type NodeShutdown struct {
-	podToNodeID map[string]string
 	c           esclient.Client
+	podToNodeID map[string]string
 }
 
 var _ Interface = &NodeShutdown{}
+
+func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string) *NodeShutdown {
+	return &NodeShutdown{
+		c:           c,
+		podToNodeID: podToNodeID,
+	}
+}
 
 func (ns *NodeShutdown) RequestShutdown(ctx context.Context, leavingNodes []string) error {
 	return nil
