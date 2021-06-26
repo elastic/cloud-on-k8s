@@ -173,7 +173,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Phase 2: handle sset scale down.
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
-	downscaleCtx := newDownscaleContext(
+	downscaleCtx, err := newDownscaleContext(
 		ctx,
 		d.Client,
 		esClient,
@@ -182,7 +182,12 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		reconcileState,
 		d.Expectations,
 		d.ES,
+		esState,
 	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {

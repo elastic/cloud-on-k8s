@@ -12,11 +12,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 )
 
-func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client) shutdown.Interface {
-	// at this point we have at least once successfully parsed the version let's risk a panic
-	v := semver.MustParse(es.Spec.Version)
-	if v.GTE(semver.MustParse("7.14.0-SNAPSHOT")) {
-		return &shutdown.NodeShutdown{}
+func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state ESState) (shutdown.Interface, error) {
+	v, err := semver.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, err
 	}
-	return migration.NewShardMigration(es, client)
+	if v.GTE(semver.MustParse("7.14.0-SNAPSHOT")) {
+		idLookup, err := state.NodeNameToID()
+		if err != nil {
+			return nil, err
+		}
+		return shutdown.NewNodeShutdown(client, idLookup), nil
+	}
+	return migration.NewShardMigration(es, client), err
 }
