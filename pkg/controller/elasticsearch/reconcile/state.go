@@ -5,6 +5,7 @@
 package reconcile
 
 import (
+	"fmt"
 	"reflect"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -128,9 +129,22 @@ func (s *State) UpdateElasticsearchMigrating(
 	s.AddEvent(
 		corev1.EventTypeNormal,
 		events.EventReasonDelayed,
-		"Requested topology change delayed by data migration. Ensure index replica settings allow node removal.",
+		"Requested topology change delayed by data migration. Ensure index settings allow node removal.",
 	)
 	return s.updateWithPhase(esv1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
+}
+
+func (s *State) UpdateElasticsearchShutdownStalled(
+	resourcesState ResourcesState,
+	observedState observer.State,
+	reasonDetail string,
+) *State {
+	s.AddEvent(
+		corev1.EventTypeWarning,
+		events.EventReasonStalled,
+		fmt.Sprintf("Requested topology change is stalled. User intervention required. %s", reasonDetail),
+	)
+	return s.updateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase, resourcesState, observedState)
 }
 
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.

@@ -6,6 +6,10 @@ package driver
 
 import (
 	"context"
+	"errors"
+	"fmt"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -13,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -49,10 +52,11 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// migrate data away from nodes that should be removed
-	// if leavingNodes is empty, it clears any existing settings
+	// initiate shutdown of nodes tht should be removed
+	// if leaving nodes is empty this should cancel any ongoing shutdowns
 	leavingNodes := leavingNodeNames(downscales)
-	if err := migration.MigrateData(downscaleCtx.parentCtx, downscaleCtx.es, downscaleCtx.esClient, leavingNodes); err != nil {
+	if err := downscaleCtx.nodeShutdown.RequestShutdown(downscaleCtx.parentCtx, leavingNodes); err != nil {
+		// TODO handle failed cancellation
 		return results.WithError(err)
 	}
 
@@ -188,19 +192,31 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		migrating, err := migration.NodeMayHaveShard(ctx.parentCtx, ctx.es, ctx.shardLister, node)
+		response, err := ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, node)
 		if err != nil {
 			return performableDownscale, err
 		}
-		if migrating {
-			ssetLogger(downscale.statefulSet).V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
+		switch response.Status {
+		case shutdown.Complete:
+			ssetLogger(downscale.statefulSet).Info("Node shutdown including data migration completed successfully, starting node deletion", "node", node)
+			// shutdown including data migration over: allow pod to be removed
+			performableDownscale.targetReplicas--
+		case shutdown.Stalled:
+			// shutdown failed this requires user interaction: bubble up via event
+			ssetLogger(downscale.statefulSet).Info("Node shutdown stalled, user intervention required", "node", node)
+			ctx.reconcileState.UpdateElasticsearchShutdownStalled(ctx.resourcesState, ctx.observedState, response.Reason)
+			// no need to check other nodes since we remove them in order and this one isn't ready anyway
+			return performableDownscale, nil
+		case shutdown.Started:
+			ssetLogger(downscale.statefulSet).V(1).Info("Node shutdown including data migration not over yet, skipping node deletion", "node", node)
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
+		case shutdown.NotStarted:
+			msg := fmt.Sprintf("Unexpected state. Node shutdown could not be started: %s", response.Reason)
+			ssetLogger(downscale.statefulSet).Info(msg, "node", node)
+			return performableDownscale, errors.New(msg)
 		}
-		ssetLogger(downscale.statefulSet).Info("Data migration completed successfully, starting node deletion", "node", node)
-		// data migration over: allow pod to be removed
-		performableDownscale.targetReplicas--
 	}
 	return performableDownscale, nil
 }

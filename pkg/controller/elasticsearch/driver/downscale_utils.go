@@ -7,6 +7,8 @@ package driver
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -21,9 +23,10 @@ import (
 // propagated from the main driver.
 type downscaleContext struct {
 	// clients
-	k8sClient   k8s.Client
-	esClient    esclient.Client
-	shardLister esclient.ShardLister
+	k8sClient    k8s.Client
+	esClient     esclient.Client
+	shardLister  esclient.ShardLister
+	nodeShutdown shutdown.Interface
 	// driver states
 	resourcesState reconcile.ResourcesState
 	observedState  observer.State
@@ -50,6 +53,7 @@ func newDownscaleContext(
 		k8sClient:      k8sClient,
 		esClient:       esClient,
 		shardLister:    esClient,
+		nodeShutdown:   newShutdownInterface(es, esClient),
 		resourcesState: resourcesState,
 		observedState:  observedState,
 		reconcileState: reconcileState,
@@ -58,8 +62,6 @@ func newDownscaleContext(
 		parentCtx:      ctx,
 	}
 }
-
-
 
 // ssetDownscale helps with the downscale of a single StatefulSet.
 type ssetDownscale struct {

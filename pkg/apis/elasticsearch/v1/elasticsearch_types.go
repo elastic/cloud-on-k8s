@@ -402,6 +402,8 @@ const (
 	ElasticsearchApplyingChangesPhase ElasticsearchOrchestrationPhase = "ApplyingChanges"
 	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
+	// ElasticsearchNodeShutdownStalledPhase Elasticsearch cannot make progress with a node shutdown during downscale or rolling upgrade.
+	ElasticsearchNodeShutdownStalledPhase ElasticsearchOrchestrationPhase = "Stalled"
 	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
 	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
 )
