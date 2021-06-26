@@ -59,6 +59,8 @@ func newDownscaleContext(
 	}
 }
 
+
+
 // ssetDownscale helps with the downscale of a single StatefulSet.
 type ssetDownscale struct {
 	statefulSet     appsv1.StatefulSet
