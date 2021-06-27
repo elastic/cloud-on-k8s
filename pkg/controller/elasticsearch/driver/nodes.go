@@ -164,16 +164,21 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Maybe clear zen2 voting config exclusions.
 	requeue, err = zen2.ClearVotingConfigExclusions(ctx, d.ES, d.Client, esClient, actualStatefulSets)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(fmt.Errorf("when clearing voting exclustions: %w", err))
 	}
 	if requeue {
 		results.WithResult(defaultRequeue)
+	}
+	// shutdown logic is dependent on Elasticsearch version
+	nodeShutdowns, err := newShutdownInterface(d.ES, esClient, esState)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// Phase 2: handle sset scale down.
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
-	downscaleCtx, err := newDownscaleContext(
+	downscaleCtx := newDownscaleContext(
 		ctx,
 		d.Client,
 		esClient,
@@ -182,11 +187,8 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		reconcileState,
 		d.Expectations,
 		d.ES,
-		esState,
+		nodeShutdowns,
 	)
-	if err != nil {
-		return results.WithError(err)
-	}
 
 	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
 	results.WithResults(downscaleRes)

@@ -30,19 +30,19 @@ func NewShardMigration(es esv1.Elasticsearch, c esclient.Client) shutdown.Interf
 	}
 }
 
-func (sm *ShardMigration) RequestShutdown(ctx context.Context, leavingNodes []string) error {
+func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
 	return MigrateData(ctx, sm.es, sm.c, leavingNodes)
 }
 
-func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.ShutdownResponse, error) {
+func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.NodeShutdownStatus, error) {
 	migrating, err := NodeMayHaveShard(ctx, sm.es, sm.c, podName)
 	if err != nil {
-		return shutdown.ShutdownResponse{}, err
+		return shutdown.NodeShutdownStatus{}, err
 	}
 	if migrating {
-		return shutdown.ShutdownResponse{Status: shutdown.Started}, nil
+		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownStarted}, nil
 	}
-	return shutdown.ShutdownResponse{Status: shutdown.Complete}, nil
+	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownComplete}, nil
 }
 
 // NodeMayHaveShard returns true if one of those condition is met:

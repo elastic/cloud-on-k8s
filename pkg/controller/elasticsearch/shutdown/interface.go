@@ -4,24 +4,20 @@
 
 package shutdown
 
-import "context"
+import (
+	"context"
 
-type ShutdownStatus string
-
-// TODO move to client?
-type ShutdownResponse struct {
-	Status ShutdownStatus
-	Reason string
-}
-
-var (
-	Started    ShutdownStatus = "STARTED"
-	Complete   ShutdownStatus = "COMPLETE"
-	Stalled    ShutdownStatus = "STALLED"
-	NotStarted ShutdownStatus = "NOT_STARTED"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
+// TODO this is duplicating the API model in parts to bridge the gap between the old and the new world, maybe revisit
+
+type NodeShutdownStatus struct {
+	Status      esclient.ShutdownStatus
+	Explanation string
+}
+
 type Interface interface {
-	RequestShutdown(ctx context.Context, leavingNodes []string) error
-	ShutdownStatus(ctx context.Context, podName string) (ShutdownResponse, error)
+	ReconcileShutdowns(ctx context.Context, leavingNodes []string) error
+	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
 }

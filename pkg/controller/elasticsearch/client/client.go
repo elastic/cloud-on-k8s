@@ -103,6 +103,15 @@ type Client interface {
 	//
 	// Introduced in: Elasticsearch 7.0.0
 	DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error
+	// GetShutdown returns information about ongoing node shutdowns.
+	// Introduced in: Elasticsearch 7.14.0
+	GetShutdown(ctx context.Context, nodeId *string) (ShutdownResponse, error)
+	// PutShutdown initiates a node shutdown procedure for the given node.
+	// Introduced in: Elasticsearch 7.14.0
+	PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string) error
+	// DeleteShutdown attempts to cancel an ongoing node shutdown.
+	// Introduced in: Elasticsearch 7.14.0
+	DeleteShutdown(ctx context.Context, nodeID string) error
 	// Request exposes a low level interface to the underlying HTTP client e.g. for testing purposes.
 	// The Elasticsearch endpoint will be added automatically to the request URL which should therefore just be the path
 	// with a leading /
@@ -174,6 +183,10 @@ func IsTimeout(err error) bool {
 // IsConflict checks whether the error was an HTTP 409 error.
 func IsConflict(err error) bool {
 	return isHTTPError(err, http.StatusConflict)
+}
+
+func IsInternalServerError(err error) bool {
+	return isHTTPError(err, http.StatusInternalServerError)
 }
 
 func isHTTPError(err error, statusCode int) bool {

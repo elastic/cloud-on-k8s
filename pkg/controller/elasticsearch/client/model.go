@@ -400,3 +400,53 @@ type SearchResults struct {
 	Shards json.RawMessage            // model when needed
 	Aggs   map[string]json.RawMessage // model when needed
 }
+
+type ShutdownType string
+
+var (
+	Restart ShutdownType = "restart"
+	Remove  ShutdownType = "remove"
+)
+
+type ShutdownStatus string
+
+var (
+	ShutdownStarted    ShutdownStatus = "STARTED"
+	ShutdownComplete   ShutdownStatus = "COMPLETE"
+	ShutdownStalled    ShutdownStatus = "STALLED"
+	ShutdownNotStarted ShutdownStatus = "NOT_STARTED"
+)
+
+type ShardMigration struct {
+	Status          ShutdownStatus `json:"status"`
+	ShardsRemaining int            `json:"shards_remaining"`
+	Explanation     string         `json:"explanation"`
+}
+
+type PersistentTasks struct {
+	Status ShutdownStatus `json:"status"`
+}
+
+type Plugins struct {
+	Status ShutdownStatus `json:"status"`
+}
+
+type NodeShutdown struct {
+	NodeID                string          `json:"node_id"`
+	Type                  string          `json:"type"`
+	Reason                string          `json:"reason"`
+	ShutdownStartedMillis int             `json:"shutdown_started_millis"`
+	Status                ShutdownStatus  `json:"status"`
+	ShardMigration        ShardMigration  `json:"shard_migration"`
+	PersistentTasks       PersistentTasks `json:"persistent_tasks"`
+	Plugins               Plugins         `json:"plugins"`
+}
+
+type ShutdownRequest struct {
+	Type   ShutdownType `json:"type"`
+	Reason string       `json:"reason"`
+}
+
+type ShutdownResponse struct {
+	Nodes []NodeShutdown `json:"nodes"`
+}
