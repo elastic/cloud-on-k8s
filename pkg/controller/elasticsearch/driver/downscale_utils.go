@@ -48,24 +48,20 @@ func newDownscaleContext(
 	expectations *expectations.Expectations,
 	// ES cluster
 	es esv1.Elasticsearch,
-	esState ESState,
-) (downscaleContext, error) {
-	ns, err := newShutdownInterface(es, esClient, esState)
-	if err != nil {
-		return downscaleContext{}, err
-	}
+	nodeShutdown shutdown.Interface,
+) downscaleContext {
 	return downscaleContext{
 		k8sClient:      k8sClient,
 		esClient:       esClient,
 		shardLister:    esClient,
-		nodeShutdown:   ns,
+		nodeShutdown:   nodeShutdown,
 		resourcesState: resourcesState,
 		observedState:  observedState,
 		reconcileState: reconcileState,
 		es:             es,
 		expectations:   expectations,
 		parentCtx:      ctx,
-	}, nil
+	}
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.

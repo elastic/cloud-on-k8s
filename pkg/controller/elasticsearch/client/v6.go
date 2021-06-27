@@ -166,6 +166,18 @@ func (c *clientV6) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) e
 	return errNotSupportedInEs6x
 }
 
+func (c *clientV6) GetShutdown(context.Context, *string) (ShutdownResponse, error) {
+	return ShutdownResponse{}, errNotSupportedInEs6x
+}
+
+func (c *clientV6) PutShutdown(context.Context, string, ShutdownType, string) error {
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) DeleteShutdown(context.Context, string) error {
+	return errNotSupportedInEs6x
+}
+
 func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error) {
 	// Look at the current master node of the cluster: if it's running version 7.x.x or above,
 	// the cluster has been bootstrapped.
