@@ -21,7 +21,7 @@ import (
 const (
 	// CAFileName is used for the CA Certificates inside a secret.
 	CAFileName = "ca.crt"
-	// CAKeyFileName is used for CA certficiates' private keys inside a secret.
+	// CAKeyFileName is used for the CA certificate's private key inside a secret.
 	CAKeyFileName = "ca.key"
 	// CertFileName is used for Certificates inside a secret.
 	CertFileName = "tls.crt"
@@ -102,7 +102,7 @@ func (s *CertificatesSecret) KeyPem() []byte {
 	return s.Data[KeyFileName]
 }
 
-func (s *CertificatesSecret) HasFullCA() bool {
+func (s *CertificatesSecret) HasCAPrivateKey() bool {
 	if s == nil {
 		return false
 	}
@@ -112,7 +112,7 @@ func (s *CertificatesSecret) HasFullCA() bool {
 }
 
 func (s *CertificatesSecret) HasLeafCertificate() bool {
-	return s != nil && !s.HasFullCA()
+	return s != nil && !s.HasCAPrivateKey()
 }
 
 func (s *CertificatesSecret) parseCustomCA() error {
@@ -134,7 +134,7 @@ func (s *CertificatesSecret) parseCustomCA() error {
 // parse checks that mandatory fields are present.
 // It does not check that the public key matches the private key.
 func (s *CertificatesSecret) parse() error {
-	if s.HasFullCA() {
+	if s.HasCAPrivateKey() {
 		return s.parseCustomCA()
 	}
 

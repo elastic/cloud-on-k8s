@@ -23,7 +23,7 @@ func TestCertificatesSecret(t *testing.T) {
 		name                                 string
 		s                                    CertificatesSecret
 		wantCa, wantCert, wantChain, wantKey []byte
-		wantFullCA                           bool
+		wantCAWithPrivateKey                 bool
 	}{
 		{
 			name: "Simple chain",
@@ -36,11 +36,11 @@ func TestCertificatesSecret(t *testing.T) {
 					},
 				},
 			},
-			wantCa:     ca,
-			wantKey:    key,
-			wantCert:   tls,
-			wantChain:  chain,
-			wantFullCA: false,
+			wantCa:               ca,
+			wantKey:              key,
+			wantCert:             tls,
+			wantChain:            chain,
+			wantCAWithPrivateKey: false,
 		},
 		{
 			name: "No CA cert",
@@ -52,11 +52,11 @@ func TestCertificatesSecret(t *testing.T) {
 					},
 				},
 			},
-			wantCa:     nil,
-			wantKey:    key,
-			wantCert:   tls,
-			wantChain:  tls,
-			wantFullCA: false,
+			wantCa:               nil,
+			wantKey:              key,
+			wantCert:             tls,
+			wantChain:            tls,
+			wantCAWithPrivateKey: false,
 		},
 		{
 			name: "Full CA cert",
@@ -68,11 +68,11 @@ func TestCertificatesSecret(t *testing.T) {
 					},
 				},
 			},
-			wantCa:     ca,
-			wantCert:   nil,
-			wantChain:  ca,
-			wantKey:    nil,
-			wantFullCA: true,
+			wantCa:               ca,
+			wantCert:             nil,
+			wantChain:            ca,
+			wantKey:              nil,
+			wantCAWithPrivateKey: true,
 		},
 	}
 	for _, tt := range tests {
@@ -90,8 +90,8 @@ func TestCertificatesSecret(t *testing.T) {
 				t.Errorf("CertificatesSecret.CertChain() = %v, want %v", got, tt.wantKey)
 			}
 
-			if tt.s.HasFullCA() != tt.wantFullCA {
-				t.Errorf("CertificatesSecret.HasFullCA() = %v, want %v", tt.s.HasFullCA(), tt.wantFullCA)
+			if tt.s.HasCAPrivateKey() != tt.wantCAWithPrivateKey {
+				t.Errorf("CertificatesSecret.HasCAPrivateKey() = %v, want %v", tt.s.HasCAPrivateKey(), tt.wantCAWithPrivateKey)
 			}
 		})
 	}

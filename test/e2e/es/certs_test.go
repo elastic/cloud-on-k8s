@@ -96,6 +96,8 @@ func TestCustomHTTPCA(t *testing.T) {
 						for _, evt := range eventList {
 							if evt.Type == corev1.EventTypeWarning &&
 								evt.Reason == events.EventReconciliationError &&
+								evt.InvolvedObject.Namespace == b.Elasticsearch.Namespace &&
+								evt.InvolvedObject.Name == b.Elasticsearch.Name &&
 								strings.Contains(evt.Message, "can't parse") {
 								return nil
 							}
@@ -119,7 +121,7 @@ func TestCustomHTTPCA(t *testing.T) {
 		PreMutationSteps: func(k *test.K8sClient) test.StepList {
 			return test.StepList{
 				{
-					Name: "Create custom CA secret",
+					Name: "Update custom CA secret",
 					Test: test.Eventually(func() error {
 						var err error
 						ca, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
@@ -142,8 +144,16 @@ func TestCustomHTTPCA(t *testing.T) {
 				},
 			}
 		},
-		// verification that the certificate works is implicit by the standard check steps that all require an Elasticsearch
-		// connection
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+		  return test.StepList{
+			  {
+				  Name:      "Verify that the custom CA is in use",
+				  Test:      test.Eventually(func() error {
+						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{ca.Cert})
+				  }),
+			  },
+		  }
+		},
 	}
 
 	// tests the following sequence:

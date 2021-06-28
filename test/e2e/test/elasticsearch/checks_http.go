@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"context"
+	"crypto/x509"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -20,44 +21,48 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
+func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCert []*x509.Certificate) error {
+	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		return err
+	}
+	user := client.BasicAuth{Name: esuser.ElasticUserName, Password: password}
+
+	pods, err := sset.GetActualPodsForCluster(k.Client, es)
+	if err != nil {
+		return err
+	}
+	var dialer net.Dialer
+	if test.Ctx().AutoPortForwarding {
+		dialer = portforward.NewForwardingDialer()
+	}
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range reconcile.AvailableElasticsearchNodes(pods) {
+		url := services.ElasticsearchPodURL(p)
+		esClient := client.NewElasticsearchClient(dialer, url, user, v, caCert, client.Timeout(es))
+		_, err := esClient.GetClusterInfo(context.Background())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CheckHTTPConnectivity ensure that we can connect via HTTP to every available Pod.
 func (e *esClusterChecks) CheckHTTPConnectivity() test.Step {
 	return test.Step{
 		Name: "Can connect to all available nodes",
 		Test: test.Eventually(func() error {
 			es := e.Builder.Elasticsearch
-			password, err := e.k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
+			caCerts, err := e.k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
 			if err != nil {
 				return err
 			}
-			user := client.BasicAuth{Name: esuser.ElasticUserName, Password: password}
-
-			caCert, err := e.k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
-			if err != nil {
-				return err
-			}
-			pods, err := sset.GetActualPodsForCluster(e.k.Client, es)
-			if err != nil {
-				return err
-			}
-			var dialer net.Dialer
-			if test.Ctx().AutoPortForwarding {
-				dialer = portforward.NewForwardingDialer()
-			}
-			v, err := version.Parse(es.Spec.Version)
-			if err != nil {
-				return err
-			}
-
-			for _, p := range reconcile.AvailableElasticsearchNodes(pods) {
-				url := services.ElasticsearchPodURL(p)
-				esClient := client.NewElasticsearchClient(dialer, url, user, v, caCert, client.Timeout(es))
-				_, err := esClient.GetClusterInfo(context.Background())
-				if err != nil {
-					return err
-				}
-			}
-			return nil
+			return CheckHTTPConnectivityWithCA(es, e.k, caCerts)
 		}),
 	}
 }
