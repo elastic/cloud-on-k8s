@@ -38,15 +38,35 @@ func TestCustomHTTPCA(t *testing.T) {
 	esName := "test-custom-http-ca"
 	esNamespace := test.Ctx().ManagedNamespace(0)
 
+	var customCA *certificates.CA
+
 	// Create a multi-node cluster so we have transient states when switching certs where some nodes still have the old ones
 	initialCluster := elasticsearch.NewBuilder(esName).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		// transient error during cert changes, this affects also this builder as we migrate back to built-in certs at the end
 		WithToleratedHealthCheckErrors("certificate signed by unknown authority")
 
-		// start with the operator provided HTTP CA
+	// start with the operator provided HTTP CA
 	withBuiltinCA := test.WrappedBuilder{
 		BuildingThis: initialCluster,
+		// at the very end of this test revert to built-in CA and verify we are no longer using a custom CA
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Ensure built-in CA is used after mutation",
+					Test: test.Eventually(func() error {
+						ca, err := k.GetCA(initialCluster.Elasticsearch.Namespace, initialCluster.Elasticsearch.Name, certificates.HTTPCAType)
+						if err != nil {
+							return err
+						}
+						if customCA != nil && customCA.Cert.Equal(ca.Cert) {
+								return errors.New("Still using custom CA cert")
+						}
+						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{ca.Cert})
+					}),
+				},
+			}
+		},
 		PreDeletionSteps: func(k *test.K8sClient) test.StepList {
 			return test.StepList{
 				{
@@ -110,8 +130,6 @@ func TestCustomHTTPCA(t *testing.T) {
 		},
 	}
 
-	var ca *certificates.CA
-
 	// A NOOP mutation but set up the CA secret correctly now (using the existing CA generation code in the operator)
 	withCustomCert := test.WrappedBuilder{
 		BuildingThis: initialCluster.
@@ -124,7 +142,7 @@ func TestCustomHTTPCA(t *testing.T) {
 					Name: "Update custom CA secret",
 					Test: test.Eventually(func() error {
 						var err error
-						ca, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+						customCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 							Subject: pkix.Name{
 								CommonName:         "eck-e2e-test-custom-ca",
 								OrganizationalUnit: []string{"eck-e2e"},
@@ -135,8 +153,8 @@ func TestCustomHTTPCA(t *testing.T) {
 						}
 
 						caSecret := mkCertSecret(
-							certificates.EncodePEMCert(ca.Cert.Raw),
-							certificates.EncodePEMPrivateKey(*ca.PrivateKey),
+							certificates.EncodePEMCert(customCA.Cert.Raw),
+							certificates.EncodePEMPrivateKey(*customCA.PrivateKey),
 						)
 						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
 						return err
@@ -145,14 +163,14 @@ func TestCustomHTTPCA(t *testing.T) {
 			}
 		},
 		PostMutationSteps: func(k *test.K8sClient) test.StepList {
-		  return test.StepList{
-			  {
-				  Name:      "Verify that the custom CA is in use",
-				  Test:      test.Eventually(func() error {
-						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{ca.Cert})
-				  }),
-			  },
-		  }
+			return test.StepList{
+				{
+					Name: "Verify that the custom CA is in use",
+					Test: test.Eventually(func() error {
+						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{customCA.Cert})
+					}),
+				},
+			}
 		},
 	}
 
