@@ -16,10 +16,12 @@ import (
 
 var log = ulog.Log.WithName("node-shutdown")
 
+// working around a bug in the current incarnation of the API
 var npeWorkaround = map[string]struct{}{}
 
 type NodeShutdown struct {
 	c           esclient.Client
+	reason      string
 	podToNodeID map[string]string
 	shutdowns   map[string]esclient.NodeShutdown
 	once        sync.Once
@@ -27,10 +29,11 @@ type NodeShutdown struct {
 
 var _ Interface = &NodeShutdown{}
 
-func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string) *NodeShutdown {
+func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, reason string) *NodeShutdown {
 	return &NodeShutdown{
 		c:           c,
 		podToNodeID: podToNodeID,
+		reason:      reason,
 	}
 }
 
@@ -89,7 +92,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 			continue
 		}
 		log.V(1).Info("Requesting shutdown", "node", node, "node-id", nodeID)
-		if err := ns.c.PutShutdown(ctx, nodeID, esclient.Remove, "TODO either ephemeral ID or ES revision?"); err != nil {
+		if err := ns.c.PutShutdown(ctx, nodeID, esclient.Remove, ns.reason); err != nil {
 			return fmt.Errorf("on put shutdown %w", err)
 		}
 		shutdown, err := ns.c.GetShutdown(ctx, &nodeID)
