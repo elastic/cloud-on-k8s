@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
@@ -18,6 +20,10 @@ var errNotSupportedInEs6x = errors.New("not supported in Elasticsearch 6.x")
 
 type clientV6 struct {
 	baseClient
+}
+
+func (c *clientV6) Version() version.Version {
+	return c.version
 }
 
 func (c *clientV6) GetClusterInfo(ctx context.Context) (Info, error) {
