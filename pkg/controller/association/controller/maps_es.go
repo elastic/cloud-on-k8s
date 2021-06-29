@@ -19,11 +19,14 @@ import (
 )
 
 const (
-	// MapsESAssociationLabelName marks resources created by this controller for easier retrieval.
+	// MapsESAssociationLabelName marks resources created for an association originating from Maps with the
+	// Maps name.
 	MapsESAssociationLabelName = "mapsassociation.k8s.elastic.co/name"
-	// MapsESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// MapsESAssociationLabelNamespace marks resources created for an association originating from Maps with the
+	// Maps namespace.
 	MapsESAssociationLabelNamespace = "mapsassociation.k8s.elastic.co/namespace"
-	// MapsESAssociationLabelType marks the type of association
+	// MapsESAssociationLabelType marks resources created for an association originating from Maps
+	// with the target resource type (e.g. "elasticsearch").
 	MapsESAssociationLabelType = "mapsassociation.k8s.elastic.co/type"
 
 	// MapsSystemUserBuiltinRole is the name of the built-in role for the Maps system user.

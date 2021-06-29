@@ -25,11 +25,12 @@ import (
 )
 
 const (
-	// ApmAssociationLabelName marks resources created for an association originating from APM.
+	// ApmAssociationLabelName marks resources created for an association originating from APM with the APM name.
 	ApmAssociationLabelName = "apmassociation.k8s.elastic.co/name"
-	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
+	// ApmAssociationLabelNamespace marks resources created for an association originating from APM with the APM namespace.
 	ApmAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
-	// ApmAssociationLabelType marks resources created for an association originating from APM.
+	// ApmAssociationLabelType marks resources created for an association originating from APM with the target resource
+	// type (e.g. "elasticsearch" or "kibana").
 	ApmAssociationLabelType = "apmassociation.k8s.elastic.co/type"
 )
 

@@ -19,12 +19,15 @@ import (
 )
 
 const (
-	// KibanaESAssociationLabelName marks resources created by this controller for easier retrieval.
-	KibanaESAssociationLabelName = "kibanaassociation.k8s.elastic.co/name"
-	// KibanaESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	KibanaESAssociationLabelNamespace = "kibanaassociation.k8s.elastic.co/namespace"
-	// KibanaESAssociationLabelType marks the type of association
-	KibanaESAssociationLabelType = "kibanaassociation.k8s.elastic.co/type"
+	// KibanaAssociationLabelName marks resources created for an association originating from Kibana with the
+	// Kibana name.
+	KibanaAssociationLabelName = "kibanaassociation.k8s.elastic.co/name"
+	// KibanaAssociationLabelNamespace marks resources created for an association originating from Kibana with the
+	// Kibana namespace.
+	KibanaAssociationLabelNamespace = "kibanaassociation.k8s.elastic.co/namespace"
+	// KibanaAssociationLabelType marks resources created for an association originating from Kibana
+	// with the target resource type (e.g. "elasticsearch" or "ent).
+	KibanaAssociationLabelType = "kibanaassociation.k8s.elastic.co/type"
 
 	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
 	KibanaSystemUserBuiltinRole = "kibana_system"

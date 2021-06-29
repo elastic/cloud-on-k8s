@@ -19,11 +19,14 @@ import (
 )
 
 const (
-	// AgentAssociationLabelName marks resources created by this controller for easier retrieval.
+	// AgentAssociationLabelName marks resources created for an association originating from Agent with the
+	// Agent name.
 	AgentAssociationLabelName = "agentassociation.k8s.elastic.co/name"
-	// AgentAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// AgentAssociationLabelNamespace marks resources created for an association originating from Agent with the
+	// Agent namespace.
 	AgentAssociationLabelNamespace = "agentassociation.k8s.elastic.co/namespace"
-	// AgentAssociationLabelType marks the type of association
+	// AgentAssociationLabelType marks resources created for an association originating from Agent
+	// with the target resource type (e.g. "elasticsearch").
 	AgentAssociationLabelType = "agentassociation.k8s.elastic.co/type"
 )
 

@@ -20,11 +20,14 @@ import (
 )
 
 const (
-	// EntESAssociationLabelName marks resources created by this controller for easier retrieval.
+	// EntESAssociationLabelName marks resources created for an association originating from EnterpriseSearch with the
+	// EnterpriseSearch name.
 	EntESAssociationLabelName = "entassociation.k8s.elastic.co/name"
-	// EntESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// EntESAssociationLabelNamespace marks resources created for an association originating from EnterpriseSearch with the
+	// EnterpriseSearch namespace.
 	EntESAssociationLabelNamespace = "entassociation.k8s.elastic.co/namespace"
-	// EntESAssociationLabelType marks resources created for an association originating from Enterprise Search.
+	// EntESAssociationLabelType marks resources created for an association originating from EnterpriseSearch
+	// with the target resource type (e.g. "elasticsearch").
 	EntESAssociationLabelType = "entassociation.k8s.elastic.co/type"
 )
 

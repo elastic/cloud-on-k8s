@@ -25,11 +25,14 @@ import (
 )
 
 const (
-	// BeatAssociationLabelName marks resources created by this controller for easier retrieval.
+	// BeatAssociationLabelName marks resources created for an association originating from Beat with the
+	// Beat name.
 	BeatAssociationLabelName = "beatassociation.k8s.elastic.co/name"
-	// BeatAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// BeatAssociationLabelNamespace marks resources created for an association originating from Beat with the
+	// Beat namespace.
 	BeatAssociationLabelNamespace = "beatassociation.k8s.elastic.co/namespace"
-	// BeatAssociationLabelType marks the type of association
+	// AgentAssociationLabelType marks resources created for an association originating from Beat
+	// with the target resource type (e.g. "elasticsearch" or "kibana").
 	BeatAssociationLabelType = "beatassociation.k8s.elastic.co/type"
 )
 
