@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -43,6 +44,7 @@ var (
 	// but tests are the same for any resource type.
 	kbAssociationInfo = AssociationInfo{
 		AssociatedObjTemplate:   func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedObjTemplate:   func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceNamer: esv1.ESNamer,
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
@@ -525,6 +527,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 
 	kbEntAssocInfo := AssociationInfo{
 		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedObjTemplate: func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
 			entRef := assoc.AssociationRef()
 			if !entRef.IsDefined() {
@@ -812,6 +815,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	agentAssociationInfo := AssociationInfo{
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		ReferencedObjTemplate: func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: func(c k8s.Client, esRef types.NamespacedName) (string, error) {
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef, &es); err != nil {
