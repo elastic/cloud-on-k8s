@@ -45,8 +45,10 @@ type AssociationInfo struct {
 	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
 	// elasticsearch for Beat to Elasticsearch association)
 	AssociationType commonv1.AssociationType
-	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for Kibana to Elasticsearch association).
+	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for a Kibana to Elasticsearch association).
 	AssociatedObjTemplate func() commonv1.Associated
+	// ReferencedObjTemplate builds an empty referenced object (e.g. Elasticsearch{} for a Kibana to Elasticsearch association).
+	ReferencedObjTemplate func() client.Object
 	// ReferencedResourceNamer is used to build the name of the Secret which contains the CA of the referenced resource
 	// (the Elasticsearch Namer for a Kibana to Elasticsearch association).
 	ReferencedResourceNamer name.Namer
@@ -65,11 +67,6 @@ type AssociationInfo struct {
 	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
 	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
-	// SetDynamicWatches allows to set some specific watches.
-	SetDynamicWatches func(associated types.NamespacedName, associations []commonv1.Association, watches watches.DynamicWatches) error
-	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for the associated resource.
-	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
-
 	// ReferencedResource returns true if the referenced resource exists in the apiserver.
 	ReferencedResourceExists func(c k8s.Client, referencedRes types.NamespacedName) (bool, error)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
@@ -186,17 +183,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	associations := associated.GetAssociations()
+	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+
+	// we are only interested in associations of the same target type here
+	// (e.g. Kibana -> Enterprise Search, not Kibana -> Elasticsearch)
+	associations := make([]commonv1.Association, 0)
+	for _, association := range associated.GetAssociations() {
+		if association.AssociationType() == r.AssociationType {
+			associations = append(associations, association)
+		}
+	}
 
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associatedKey, associations); err != nil {
 		r.log(associatedKey).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
-	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
+	// reconcile watches for all associations of this type
 	if err := r.reconcileWatches(associatedKey, associations); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -204,12 +209,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	results := reconciler.NewResult(ctx)
 	newStatusMap := commonv1.AssociationStatusMap{}
 	for _, association := range associations {
-		if association.AssociationType() != r.AssociationType {
-			// some resources have more than one type of resource associations, making sure we are looking at the right
-			// one for this controller
-			continue
-		}
-
 		newStatus, err := r.reconcileAssociation(ctx, association)
 		if err != nil {
 			results.WithError(err)
@@ -243,7 +242,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	caSecret, err := r.ReconcileCASecret(
 		association,
-		r.AssociationInfo.AssociatedNamer,
+		r.AssociationInfo.ReferencedResourceNamer,
 		associationRef.NamespacedName(),
 	)
 	if err != nil {
@@ -441,11 +440,7 @@ func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Resul
 }
 
 func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
-	// remove dynamic watches
-	if r.SetDynamicWatches != nil {
-		r.ClearDynamicWatches(associated, r.watches)
-	}
-	// remove other watches
+	// remove watches
 	r.removeWatches(associated)
 
 	// delete user Secret in the Elasticsearch namespace

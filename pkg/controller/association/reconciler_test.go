@@ -65,8 +65,6 @@ var (
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
 			}
 		},
-		SetDynamicWatches:   nil,
-		ClearDynamicWatches: nil,
 		ReferencedResourceExists: func(c k8s.Client, esRef types.NamespacedName) (bool, error) {
 			return k8s.ObjectExists(c, esRef, &esv1.Elasticsearch{})
 		},
@@ -231,11 +229,6 @@ var (
 			},
 		}
 	}
-	setDynamicWatches = func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
-		t.Helper()
-		err := r.reconcileWatches(k8s.ExtractNamespacedName(&kb), kb.GetAssociations())
-		require.NoError(t, err)
-	}
 )
 
 type denyAllAccessReviewer struct{}
@@ -353,9 +346,9 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esCertsInKibanaNamespace)
 	// simulate watches being set
-	setDynamicWatches(t, r, sampleAssociatedKibana())
+	require.NoError(t, r.reconcileWatches(k8s.ExtractNamespacedName(&kb), []commonv1.Association{kb.EsAssociation()}))
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
@@ -379,7 +372,8 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// should remove dynamic watches
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
+	require.Empty(t, r.watches.Services.Registrations())
 }
 
 func TestReconciler_Reconcile_NoES(t *testing.T) {
@@ -427,7 +421,7 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
@@ -462,7 +456,7 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 
 	// should have dynamic watches set
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
@@ -561,10 +555,10 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			}
 			return ent.Status.Version, nil
 		},
-		AssociatedNamer:     entv1.Namer,
-		AssociationName:     "kb-ent",
-		AssociatedShortName: "kb",
-		AssociationType:     commonv1.EntAssociationType,
+		ReferencedResourceNamer: entv1.Namer,
+		AssociationName:         "kb-ent",
+		AssociatedShortName:     "kb",
+		AssociationType:         commonv1.EntAssociationType,
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				"kibanaassociation.k8s.elastic.co/name":      associated.Name,
@@ -572,21 +566,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 				"kibanaassociation.k8s.elastic.co/type":      commonv1.EntAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.EntConfigAnnotationNameBase,
-		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
-			return ReconcileWatch(
-				associated,
-				associations,
-				w.EnterpriseSearches,
-				fmt.Sprintf("%s-%s-ent-watch", associated.Namespace, associated.Name),
-				func(association commonv1.Association) types.NamespacedName {
-					return association.AssociationRef().NamespacedName()
-				},
-			)
-		},
-		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			RemoveWatch(w.EnterpriseSearches, fmt.Sprintf("%s-%s-ent-watch", associated.Namespace, associated.Name))
-		},
+		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      "enterprisesearch.k8s.elastic.co/name",
 		AssociationResourceNamespaceLabelName: "enterprisesearch.k8s.elastic.co/namespace",
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
@@ -615,7 +595,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.EnterpriseSearches.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
@@ -630,7 +610,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 
 	// should have dynamic watches set
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.EnterpriseSearches.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
@@ -660,7 +640,7 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// expect and error due to the missing service
@@ -707,7 +687,7 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 
 	// should have dynamic watches set
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 	// including a watch for the custom service
 	require.NotEmpty(t, t, r.watches.Services.Registrations())
 
@@ -719,6 +699,7 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
+
 func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	// association already established, reconciliation should be a no-op
 	kb := sampleAssociatedKibana()
@@ -858,9 +839,9 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			}
 			return services.ExternalServiceURL(es), nil
 		},
-		AssociatedNamer:     esv1.ESNamer,
-		AssociationName:     "agent-es",
-		AssociatedShortName: "agent",
+		ReferencedResourceNamer: esv1.ESNamer,
+		AssociationName:         "agent-es",
+		AssociatedShortName:     "agent",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				"agentassociation.k8s.elastic.co/name":      associated.Name,
@@ -1115,11 +1096,11 @@ func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool) {
 	t.Helper()
 	if expected {
 		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-es-user-watch")
-		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-ca-watch")
-		require.Contains(t, watches.ElasticsearchClusters.Registrations(), "agentNs-agent1-es-watch")
+		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-referenced-resource-ca-secret-watch")
+		require.Contains(t, watches.ReferencedResources.Registrations(), "agentNs-agent1-referenced-resource-watch")
 	} else {
 		require.Empty(t, watches.Secrets.Registrations())
-		require.Empty(t, watches.ElasticsearchClusters.Registrations())
+		require.Empty(t, watches.ReferencedResources.Registrations())
 	}
 }
 

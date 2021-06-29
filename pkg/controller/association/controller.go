@@ -5,7 +5,6 @@
 package association
 
 import (
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -48,17 +47,25 @@ func AddAssociationController(
 }
 
 func addWatches(c controller.Controller, r *Reconciler) error {
-	// Watch the associated resources
+	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
 	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
-	// Watch Elasticsearch cluster objects
-	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
+	// Watch Secrets owned by the associated resource
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		OwnerType:    r.AssociatedObjTemplate(),
+		IsController: true,
+	}); err != nil {
 		return err
 	}
 
-	// Dynamically watch Elasticsearch public CA secrets for referenced ES clusters
+	// Dynamically watch the referenced resources (e.g. Elasticsearch B for a Kibana A -> Elasticsearch B association)
+	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources); err != nil {
+		return err
+	}
+
+	// Dynamically watch Secrets (CA Secret of the referenced resource and ES user secret)
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}
@@ -68,9 +75,5 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 		return err
 	}
 
-	// Watch Secrets owned by the associated resource
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    r.AssociatedObjTemplate(),
-		IsController: true,
-	})
+	return nil
 }

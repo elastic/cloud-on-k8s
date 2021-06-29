@@ -6,28 +6,24 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	entctl "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-)
-
-const (
-	entWatchNameTemplate = "%s-%s-ent-watch"
 )
 
 func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedObjTemplate:     func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL:        getEntExternalURL,
 		ReferencedResourceExists:  referencedEntExists,
 		ReferencedResourceVersion: referencedEntStatusVersion,
@@ -42,21 +38,7 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 				KibanaAssociationLabelType:      commonv1.EntAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.EntConfigAnnotationNameBase,
-		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
-			return association.ReconcileWatch(
-				associated,
-				associations,
-				w.EnterpriseSearches,
-				fmt.Sprintf(entWatchNameTemplate, associated.Namespace, associated.Name),
-				func(association commonv1.Association) types.NamespacedName {
-					return association.AssociationRef().NamespacedName()
-				},
-			)
-		},
-		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			association.RemoveWatch(w.EnterpriseSearches, fmt.Sprintf(entWatchNameTemplate, associated.Namespace, associated.Name))
-		},
+		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      entctl.EnterpriseSearchNameLabelName,
 		AssociationResourceNamespaceLabelName: entctl.EnterpriseSearchNamespaceLabelName,
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
