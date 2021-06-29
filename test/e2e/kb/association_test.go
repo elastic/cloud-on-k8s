@@ -11,10 +11,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -39,6 +42,39 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithRestrictedSecurityContext()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder).RunSequential(t)
+}
+
+// TestEntSearchAssociation tests associating Kibana to both Elasticsearch and Enterprise Search.
+// Elasticsearch and Kibana run in the same namespace while Enterprise Search runs in a different one.
+func TestEntSearchAssociation(t *testing.T) {
+	name := "test-kb-ent-assoc"
+
+	// Kibana <-> EnterpriseSearch association is supported starting 7.14.0
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	if !stackVersion.GTE(version.MustParse("7.14.0-SNAPSHOT")) {
+		t.SkipNow()
+	}
+
+	esKbNamespace := test.Ctx().ManagedNamespace(0)
+	entNamespace := test.Ctx().ManagedNamespace(1)
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithNamespace(esKbNamespace).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+	entBuilder := enterprisesearch.NewBuilder(name).
+		WithNamespace(entNamespace).
+		WithNodeCount(1).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithRestrictedSecurityContext()
+	kbBuilder := kibana.NewBuilder(name).
+		WithNamespace(esKbNamespace).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithEnterpriseSearchRef(entBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder, kbBuilder).RunSequential(t)
 }
 
 func TestKibanaAssociationWithNonExistentES(t *testing.T) {

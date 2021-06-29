@@ -107,6 +107,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			}
 			// don't check the association status that may vary across tests
 			kb.Status.AssociationStatus = ""
+			kb.Status.EnterpriseSearchAssociationStatus = ""
 			expected := kbv1.KibanaStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: b.Kibana.Spec.Count,
