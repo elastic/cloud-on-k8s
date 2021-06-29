@@ -194,7 +194,7 @@ func (d *OcpDriver) delete() error {
 	// No need to check whether this `rm` command succeeds
 	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	d.runtimeState.SafeToDeleteWorkdir = true
-	return nil
+	return d.removeKubeconfig()
 }
 
 func (d *OcpDriver) GetCredentials() error {
@@ -406,6 +406,19 @@ func (d *OcpDriver) copyKubeconfig() error {
 	}
 	// 2. after merging make sure that the ocp context is in use, which is always called `admin`
 	return NewCommand("kubectl config use-context admin").Run()
+}
+
+func (d *OcpDriver) removeKubeconfig() error {
+	log.Printf("Removing context, user and cluster entry from kube config")
+	if err := NewCommand("kubectl config delete-context admin").Run(); err != nil {
+		return err
+	}
+	if err := NewCommand("kubectl config delete-user admin").Run(); err != nil {
+		return err
+	}
+	return NewCommand("kubectl config delete-cluster {{.ClusterName}}").
+		AsTemplate(map[string]interface{}{"ClusterName": d.plan.ClusterName}).
+		Run()
 }
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
