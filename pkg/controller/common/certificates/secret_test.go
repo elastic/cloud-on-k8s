@@ -192,7 +192,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Full custom CA",
+			name: "With CA private key",
 			s: CertificatesSecret{
 				Secret: v1.Secret{
 					Data: map[string][]byte{
