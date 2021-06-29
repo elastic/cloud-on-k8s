@@ -442,6 +442,11 @@ type NodeShutdown struct {
 	Plugins               Plugins         `json:"plugins"`
 }
 
+func (ns NodeShutdown) Is(t ShutdownType) bool {
+	//	 API returns type in capital letters currently
+	return strings.EqualFold(ns.Type, string(t))
+}
+
 type ShutdownRequest struct {
 	Type   ShutdownType `json:"type"`
 	Reason string       `json:"reason"`

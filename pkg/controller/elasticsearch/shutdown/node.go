@@ -7,7 +7,6 @@ package shutdown
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -88,7 +87,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 		if err != nil {
 			return err
 		}
-		if shutdown, exists := ns.shutdowns[nodeID]; exists && strings.EqualFold(shutdown.Type, "remove") { // TODO constant also case insensitive comparison!
+		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(esclient.Remove) {
 			continue
 		}
 		log.V(1).Info("Requesting shutdown", "node", node, "node-id", nodeID)
@@ -128,7 +127,7 @@ func (ns *NodeShutdown) clear(ctx context.Context, status *esclient.ShutdownStat
 		return err
 	}
 	for _, s := range ns.shutdowns {
-		if status == nil || s.Status == *status {
+		if s.Is(esclient.Remove) && (status == nil || s.Status == *status) {
 			log.V(1).Info("deleting/cancelling shutdown", "node-id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)

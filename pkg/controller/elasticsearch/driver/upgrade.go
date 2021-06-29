@@ -252,9 +252,9 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 			return results.WithError(err)
 		}
 		for _, s := range shutdowns.Nodes {
-			// TODO type constant
 			// TODO stalled restarts
-			if s.Type == "restart" && s.Status == esclient.ShutdownComplete {
+			if s.Is(esclient.Restart) && s.Status == esclient.ShutdownComplete {
+				log.V(1).Info("Deleting shutdown request", "ndode-id", s.NodeID)
 				err := esClient.DeleteShutdown(ctx, s.NodeID)
 				if err != nil {
 					results = results.WithError(err)
@@ -315,6 +315,32 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	return results
 }
 
+func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
+	if !supportsNodeshutdown(ctx.esClient.Version()) {
+		return true, nil // always OK to restart pre 7.14
+	}
+	// TODO duplication
+	nameToID, err := ctx.esState.NodeNameToID()
+	if err != nil {
+		return false, err
+	}
+
+	nodeID, exists := nameToID[pod.Name]
+	if !exists {
+		return false, fmt.Errorf("no node ID for node %s known", pod.Name)
+	}
+
+	// TODO minimize number of ES requests
+	shutdown, err := ctx.esClient.GetShutdown(ctx.parentCtx, &nodeID)
+	if err != nil {
+		return false, err
+	}
+	if len(shutdown.Nodes) != 1 {
+		return false, fmt.Errorf("shutdown API returned %d results expected 1", len(shutdown.Nodes))
+	}
+	return shutdown.Nodes[0].Status == esclient.ShutdownComplete, nil
+}
+
 func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 	for _, p := range podsToRestart {
 		nodeNameToID, err := ctx.esState.NodeNameToID()
@@ -325,6 +351,7 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 		if !exists {
 			return fmt.Errorf("node %s selected for restart currently not in cluster", p.Name)
 		}
+		log.V(1).Info("requesting node restart", "node", p.Name, "node-id", nodeId)
 		if err := ctx.esClient.PutShutdown(ctx.parentCtx, nodeId, esclient.Restart, ctx.ES.ResourceVersion); err != nil {
 			return err
 		}
