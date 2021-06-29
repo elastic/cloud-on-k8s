@@ -3918,6 +3918,21 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      subjectAltNames:
+                        description: SubjectAlternativeNames is a list of SANs to
+                          include in the generated node transport TLS certificates.
+                        items:
+                          description: SubjectAlternativeName represents a SAN entry
+                            in a x509 certificate.
+                          properties:
+                            dns:
+                              description: DNS is the DNS name of the subject.
+                              type: string
+                            ip:
+                              description: IP is the IP address of the subject.
+                              type: string
+                          type: object
+                        type: array
                     type: object
                 type: object
               updateStrategy:

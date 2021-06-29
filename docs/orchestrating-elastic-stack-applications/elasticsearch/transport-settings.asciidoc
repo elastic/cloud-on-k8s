@@ -47,3 +47,23 @@ spec:
       certificate:
         secretName: custom-ca
 ----
+== Customize the node transport certificates
+The operator generates a self-signed TLS certificates for each node in the cluster. You can add extra IP addresses or DNS names to the generated certificates as follows:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  transport:
+    tls:
+      subjectAltNames:
+      - ip: 1.2.3.4
+      - dns: hulk.example.com
+  nodeSets:
+  - name: default
+    count: 3
+----

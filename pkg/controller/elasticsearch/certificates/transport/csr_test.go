@@ -6,6 +6,7 @@ package transport
 
 import (
 	"crypto/x509"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"net"
 	"testing"
 
@@ -83,7 +84,7 @@ func Test_buildGeneralNames(t *testing.T) {
 		want []certificates.GeneralName
 	}{
 		{
-			name: "no svcs and user-provided SANs",
+			name: "no svcs and user-provided SANs by default",
 			args: args{
 				cluster: testES,
 				pod:     testPod,
@@ -95,6 +96,32 @@ func Test_buildGeneralNames(t *testing.T) {
 				{DNSName: "test-pod-name.test-sset"},
 				{IPAddress: net.ParseIP(testIP).To4()},
 				{IPAddress: net.ParseIP("127.0.0.1").To4()},
+			},
+		},
+		{
+			name: "optional user provided SANs",
+			args: args{
+				cluster: func() esv1.Elasticsearch{
+					es := testES
+					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
+						{
+							DNS: "my-custom-domain",
+							IP:  "111.222.333.444",
+						},
+					}
+					return es
+				}(),
+				pod: testPod,
+			},
+			want: []certificates.GeneralName{
+				{OtherName: *otherName},
+				{DNSName: expectedCommonName},
+				{DNSName: expectedTransportSvcName},
+				{DNSName: "test-pod-name.test-sset"},
+				{IPAddress: net.ParseIP(testIP).To4()},
+				{IPAddress: net.ParseIP("127.0.0.1").To4()},
+				{DNSName: "my-custom-domain"},
+				{IPAddress: net.ParseIP("111.222.333.444").To4()},
 			},
 		},
 	}
