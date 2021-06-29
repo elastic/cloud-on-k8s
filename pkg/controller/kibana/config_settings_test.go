@@ -43,7 +43,7 @@ xpack:
   monitoring.ui.container.elasticsearch.enabled: true
 `)
 
-var associationConfig = []byte(`
+var esAssociationConfig = []byte(`
 elasticsearch:
   hosts:
     - "https://es-url:9200"
@@ -51,6 +51,14 @@ elasticsearch:
   password: "password"
   ssl:
     certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/ca.crt
+    verificationMode: certificate
+`)
+
+var entAssociationConfig = []byte(`
+enterpriseSearch:
+  host: https://ent-url:3002
+  ssl:
+    certificateAuthorities: /usr/share/kibana/config/ent-certs/ca.crt
     verificationMode: certificate
 `)
 
@@ -100,7 +108,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
 						Data: map[string][]byte{
-							SettingsFilename: associationConfig,
+							SettingsFilename: esAssociationConfig,
 						},
 					},
 				),
@@ -124,7 +132,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
 						Data: map[string][]byte{
-							SettingsFilename: associationConfig,
+							SettingsFilename: esAssociationConfig,
 						},
 					},
 				),
@@ -270,9 +278,119 @@ func TestNewConfigSettings(t *testing.T) {
 			want: func() []byte {
 				cfg, err := settings.ParseConfig(defaultConfig)
 				require.NoError(t, err)
-				assocCfg, err := settings.ParseConfig(associationConfig)
+				assocCfg, err := settings.ParseConfig(esAssociationConfig)
 				require.NoError(t, err)
 				require.NoError(t, cfg.MergeWith(assocCfg))
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "with Enterprise Search Association",
+			args: args{
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "test-ent"}
+					kb.EntAssociation().SetAssociationConf(&commonv1.AssociationConf{
+						AuthSecretName: "-",
+						AuthSecretKey:  "",
+						CASecretName:   "ent-ca-secret",
+						CACertProvided: true,
+						URL:            "https://ent-url:3002",
+					})
+					return kb
+				},
+				client: k8s.NewFakeClient(
+					existingSecret,
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "ent-ca-secret",
+						},
+						Data: map[string][]byte{
+							"ca.crt": []byte("certificate"),
+						},
+					},
+				),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err)
+				assocCfg, err := settings.ParseConfig(entAssociationConfig)
+				require.NoError(t, err)
+				require.NoError(t, cfg.MergeWith(assocCfg))
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
+			wantErr: false,
+		}, {
+			name: "with Elasticsearch and Enterprise Search associations",
+			args: args{
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
+					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
+						AuthSecretName: "auth-secret",
+						AuthSecretKey:  "elastic",
+						CASecretName:   "ca-secret",
+						CACertProvided: true,
+						URL:            "https://es-url:9200",
+					})
+					kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "test-ent"}
+					kb.EntAssociation().SetAssociationConf(&commonv1.AssociationConf{
+						AuthSecretName: "-",
+						AuthSecretKey:  "",
+						CASecretName:   "ent-ca-secret",
+						CACertProvided: true,
+						URL:            "https://ent-url:3002",
+					})
+					return kb
+				},
+				client: k8s.NewFakeClient(
+					existingSecret,
+					// ent certs
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "ent-ca-secret",
+						},
+						Data: map[string][]byte{
+							"ca.crt": []byte("certificate"),
+						},
+					},
+					// es auth
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "auth-secret",
+							Namespace: mkKibana().Namespace,
+						},
+						Data: map[string][]byte{
+							"elastic": []byte("password"),
+						},
+					},
+					// es certs
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "ca-secret",
+						},
+						Data: map[string][]byte{
+							"ca.crt": []byte("certificate"),
+						},
+					},
+				),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err)
+				esAssocCfg, err := settings.ParseConfig(esAssociationConfig)
+				require.NoError(t, err)
+				entAssocCfg, err := settings.ParseConfig(entAssociationConfig)
+				require.NoError(t, err)
+				require.NoError(t, cfg.MergeWith(esAssocCfg))
+				require.NoError(t, cfg.MergeWith(entAssocCfg))
 				bytes, err := cfg.Render()
 				require.NoError(t, err)
 				return bytes

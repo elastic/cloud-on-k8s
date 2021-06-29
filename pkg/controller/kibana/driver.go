@@ -99,6 +99,7 @@ func (d *driver) Reconcile(
 	if !association.IsConfiguredIfSet(kb.EsAssociation(), d.recorder) {
 		return results
 	}
+	if !association.IsConfiguredIfSet(kb.EntAssociation(), d.recorder) {
 		return results
 	}
 
@@ -267,6 +268,11 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana) []commonvolume.VolumeLike {
 	if kb.EsAssociation().AssociationConf().CAIsConfigured() {
 		esCertsVolume := esCaCertSecretVolume(*kb)
 		volumes = append(volumes, esCertsVolume)
+	}
+
+	if kb.EntAssociation().AssociationConf().CAIsConfigured() {
+		entCertsVolume := entCaCertSecretVolume(*kb)
+		volumes = append(volumes, entCertsVolume)
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
