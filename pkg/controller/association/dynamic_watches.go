@@ -43,17 +43,39 @@ func serviceWatchName(associated types.NamespacedName) string {
 // with each reconciliation.
 func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associations []commonv1.Association) error {
 	// watch the referenced ES cluster for future reconciliations
+	// TODO: what if the referenced resource is not an Elasticsearch resource? https://github.com/elastic/cloud-on-k8s/issues/4591
 	if err := ReconcileWatch(associated, associations, r.watches.ElasticsearchClusters, esWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 
-	// watch the user secret in the ES namespace
-	if err := ReconcileWatch(associated, associations, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-		return UserKey(association, association.AssociationRef().Namespace, r.UserSecretSuffix)
-	}); err != nil {
-		return err
+	if r.ElasticsearchUserCreation != nil {
+		// watch the user secret in the ES namespace
+
+		// TODO: this is not great. This reconcileWatches function is called by each association controller.
+		// For example for Kibana, called both by the kb-es and kb-ent controllers.
+		// Both controllers override each other's watches. It's OK when they write the same thing, but in this case
+		// the kb-ent controller does not setup any es user while the kb-es controller does.
+		// Because the context is different in both controller we end up with those weird if conditions.
+		// Things would be more consistent if each association controller sets up its own watches rather than
+		// having multiple association controllers setting up all associations watches for a given resource.
+		// This way we'd just check r.ElasticsearchUserCreation != nil, rather than checking again later
+		// for each association whether it requires auth.
+
+		if err := ReconcileWatch(associated, associations, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+			if association.AssociationConf() == nil {
+				// wait for an association to be configured first to figure out whether auth is required
+				return types.NamespacedName{}
+			}
+			if association.AssociationConf().NoAuthRequired() {
+				// this particular association does not require an es user
+				return types.NamespacedName{}
+			}
+			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
+		}); err != nil {
+			return err
+		}
 	}
 
 	// watch the CA secret in the targeted service namespace
@@ -91,7 +113,7 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 }
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
-// `watchedFunc`.
+// `watchedFunc`. No watch is added if watchedFunc(association) refers to an empty namespaced name.
 func ReconcileWatch(
 	associated types.NamespacedName,
 	associations []commonv1.Association,
@@ -105,9 +127,14 @@ func ReconcileWatch(
 		return nil
 	}
 
+	emptyNamespacedName := types.NamespacedName{}
+
 	toWatch := make([]types.NamespacedName, 0, len(associations))
 	for _, association := range associations {
-		toWatch = append(toWatch, watchedFunc(association))
+		watchedNamespacedName := watchedFunc(association)
+		if watchedNamespacedName != emptyNamespacedName {
+			toWatch = append(toWatch, watchedFunc(association))
+		}
 	}
 
 	return dynamicRequest.AddHandler(watches.NamedWatch{
