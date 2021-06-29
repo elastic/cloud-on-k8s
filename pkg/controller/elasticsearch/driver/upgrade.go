@@ -346,12 +346,12 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 		if err != nil {
 			return err
 		}
-		nodeId, exists := nodeNameToID[p.Name]
+		nodeID, exists := nodeNameToID[p.Name]
 		if !exists {
 			return fmt.Errorf("node %s selected for restart currently not in cluster", p.Name)
 		}
-		log.V(1).Info("requesting node restart", "node", p.Name, "node-id", nodeId)
-		if err := ctx.esClient.PutShutdown(ctx.parentCtx, nodeId, esclient.Restart, ctx.ES.ResourceVersion); err != nil {
+		log.V(1).Info("requesting node restart", "node", p.Name, "node-id", nodeID)
+		if err := ctx.esClient.PutShutdown(ctx.parentCtx, nodeID, esclient.Restart, ctx.ES.ResourceVersion); err != nil {
 			return err
 		}
 	}

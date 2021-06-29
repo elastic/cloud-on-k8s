@@ -105,7 +105,7 @@ type Client interface {
 	DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error
 	// GetShutdown returns information about ongoing node shutdowns.
 	// Introduced in: Elasticsearch 7.14.0
-	GetShutdown(ctx context.Context, nodeId *string) (ShutdownResponse, error)
+	GetShutdown(ctx context.Context, nodeID *string) (ShutdownResponse, error)
 	// PutShutdown initiates a node shutdown procedure for the given node.
 	// Introduced in: Elasticsearch 7.14.0
 	PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string) error

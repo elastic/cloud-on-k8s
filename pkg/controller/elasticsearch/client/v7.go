@@ -76,7 +76,7 @@ func (c *clientV7) PutShutdown(ctx context.Context, nodeID string, shutdownType 
 }
 
 func (c *clientV7) DeleteShutdown(ctx context.Context, nodeID string) error {
-	return c.delete(ctx, fmt.Sprintf("/_nodes/%s/shutdown", nodeID), nil, nil)
+	return c.delete(ctx, fmt.Sprintf("/_nodes/%s/shutdown", nodeID))
 }
 
 func (c *clientV7) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
@@ -85,7 +85,7 @@ func (c *clientV7) DeleteVotingConfigExclusions(ctx context.Context, waitForRemo
 		strconv.FormatBool(waitForRemoval),
 	)
 
-	if err := c.delete(ctx, path, nil, nil); err != nil {
+	if err := c.delete(ctx, path); err != nil {
 		return errors.Wrap(err, "unable to delete /_cluster/voting_config_exclusions")
 	}
 	return nil
