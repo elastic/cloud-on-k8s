@@ -32,7 +32,6 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
 		ReferencedObjTemplate:     func() client.Object { return &kbv1.Kibana{} },
 		ExternalServiceURL:        getKibanaExternalURL,
-		ReferencedResourceExists:  referencedKibanaExists,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		ReferencedResourceNamer:   kibana.Namer,
 		AssociationName:           "apm-kibana",

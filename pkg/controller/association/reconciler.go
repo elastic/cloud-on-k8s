@@ -67,8 +67,6 @@ type AssociationInfo struct {
 	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
 	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
-	// ReferencedResource returns true if the referenced resource exists in the apiserver.
-	ReferencedResourceExists func(c k8s.Client, referencedRes types.NamespacedName) (bool, error)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
 	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
@@ -228,7 +226,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	exists, err := r.ReferencedResourceExists(r.Client, association.AssociationRef().NamespacedName())
+	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), r.ReferencedObjTemplate())
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}

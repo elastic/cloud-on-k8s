@@ -65,9 +65,6 @@ var (
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
 			}
 		},
-		ReferencedResourceExists: func(c k8s.Client, esRef types.NamespacedName) (bool, error) {
-			return k8s.ObjectExists(c, esRef, &esv1.Elasticsearch{})
-		},
 		ReferencedResourceVersion: func(c k8s.Client, esRef types.NamespacedName) (string, error) {
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef, &es); err != nil {
@@ -544,9 +541,6 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
 			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
 		},
-		ReferencedResourceExists: func(c k8s.Client, entRef types.NamespacedName) (bool, error) {
-			return k8s.ObjectExists(c, entRef, &entv1.EnterpriseSearch{})
-		},
 		ReferencedResourceVersion: func(c k8s.Client, entRef types.NamespacedName) (string, error) {
 			var ent entv1.EnterpriseSearch
 			err := c.Get(context.Background(), entRef, &ent)
@@ -818,9 +812,6 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	agentAssociationInfo := AssociationInfo{
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
-		ReferencedResourceExists: func(c k8s.Client, esRef types.NamespacedName) (bool, error) {
-			return k8s.ObjectExists(c, esRef, &esv1.Elasticsearch{})
-		},
 		ReferencedResourceVersion: func(c k8s.Client, esRef types.NamespacedName) (string, error) {
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef, &es); err != nil {

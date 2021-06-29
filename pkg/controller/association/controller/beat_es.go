@@ -43,7 +43,6 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1beta1.Beat{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		AssociationType:           commonv1.ElasticsearchAssociationType,
-		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,

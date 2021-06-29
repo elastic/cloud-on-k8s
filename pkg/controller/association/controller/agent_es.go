@@ -36,7 +36,6 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate:     func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
-		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,

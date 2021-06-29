@@ -42,7 +42,6 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		AssociationType:           commonv1.ElasticsearchAssociationType,
-		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,

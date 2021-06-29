@@ -25,7 +25,6 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
 		ReferencedObjTemplate:     func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL:        getEntExternalURL,
-		ReferencedResourceExists:  referencedEntExists,
 		ReferencedResourceVersion: referencedEntStatusVersion,
 		ReferencedResourceNamer:   entv1.Namer,
 		AssociationName:           "kb-ent",

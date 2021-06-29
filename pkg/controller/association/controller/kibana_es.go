@@ -39,7 +39,6 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
-		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
@@ -67,11 +66,6 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 			},
 		},
 	})
-}
-
-// referencedElasticsearch returns true if the referenced Elasticsearch resource exists.
-func referencedElasticsearchExists(c k8s.Client, esRef types.NamespacedName) (bool, error) {
-	return k8s.ObjectExists(c, esRef, &esv1.Elasticsearch{})
 }
 
 // referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
