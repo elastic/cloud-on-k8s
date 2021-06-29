@@ -34,9 +34,6 @@ const (
 func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate: func() commonv1.Associated { return &entv1.EnterpriseSearch{} },
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ExternalServiceURL:        getElasticsearchExternalURL,
@@ -50,12 +47,18 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 				EntESAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "ent-user",
-		ESUserRole: func(_ commonv1.Associated) (string, error) {
-			return esuser.SuperUserBuiltinRole, nil
-		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "ent-user",
+			ESUserRole: func(_ commonv1.Associated) (string, error) {
+				return esuser.SuperUserBuiltinRole, nil
+			},
+		},
 	})
 }

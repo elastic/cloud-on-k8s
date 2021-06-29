@@ -29,7 +29,6 @@ const (
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1beta1.Beat{} },
-		ElasticsearchRef:          getElasticsearchFromKibana,
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		AssociatedNamer:           kibana.Namer,
@@ -44,8 +43,6 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 			}
 		},
 		AssociationConfAnnotationNameBase: commonv1.KibanaConfigAnnotationNameBase,
-		UserSecretSuffix:                  "beat-kb-user",
-		ESUserRole:                        getBeatKibanaRoles,
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
 		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
@@ -64,6 +61,12 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		},
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: getElasticsearchFromKibana,
+			UserSecretSuffix: "beat-kb-user",
+			ESUserRole:       getBeatKibanaRoles,
+		},
 	})
 }
 

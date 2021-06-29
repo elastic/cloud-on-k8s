@@ -47,9 +47,6 @@ type AssociationInfo struct {
 	AssociationType commonv1.AssociationType
 	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for Kibana to Elasticsearch association).
 	AssociatedObjTemplate func() commonv1.Associated
-	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
-	// In the case of a transitive reference this is used to create the Elasticsearch user.
-	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
 	// AssociatedNamer is used to build the name of the Secret which contains the CA of the target.
 	AssociatedNamer name.Namer
 	// ExternalServiceURL is used to build the external service url as it will be set in the resource configuration.
@@ -67,10 +64,6 @@ type AssociationInfo struct {
 	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
 	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
-	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
-	UserSecretSuffix string
-	// ESUserRole is the role to use for the Elasticsearch user created by the association.
-	ESUserRole func(commonv1.Associated) (string, error)
 	// SetDynamicWatches allows to set some specific watches.
 	SetDynamicWatches func(associated types.NamespacedName, associations []commonv1.Association, watches watches.DynamicWatches) error
 	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for the associated resource.
@@ -86,6 +79,20 @@ type AssociationInfo struct {
 	// namespace of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label
 	// pointing to the Beat resource).
 	AssociationResourceNamespaceLabelName string
+
+	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
+	// May be nil if no user creation is required.
+	ElasticsearchUserCreation *ElasticsearchUserCreation
+}
+
+type ElasticsearchUserCreation struct {
+	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
+	// In the case of a transitive reference this is used to create the Elasticsearch user.
+	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
+	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
+	UserSecretSuffix string
+	// ESUserRole is the role to use for the Elasticsearch user created by the association.
+	ESUserRole func(commonv1.Associated) (string, error)
 }
 
 // AssociationResourceLabels returns all labels required by a resource to allow identifying both its Associated resource

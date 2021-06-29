@@ -33,7 +33,6 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
-		ElasticsearchRef:          getElasticsearchFromKibana,
 		AssociatedNamer:           kibana.Namer,
 		AssociationName:           "apm-kibana",
 		AssociationType:           commonv1.KibanaAssociationType,
@@ -45,10 +44,6 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			}
 		},
 		AssociationConfAnnotationNameBase: commonv1.KibanaConfigAnnotationNameBase,
-		UserSecretSuffix:                  "apm-kb-user",
-		ESUserRole: func(_ commonv1.Associated) (string, error) {
-			return user.ApmAgentUserRole, nil
-		},
 		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
 			return association.ReconcileWatch(
 				associated,
@@ -65,6 +60,14 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		},
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: getElasticsearchFromKibana,
+			UserSecretSuffix: "apm-kb-user",
+			ESUserRole: func(_ commonv1.Associated) (string, error) {
+				return user.ApmAgentUserRole, nil
+			},
+		},
 	})
 }
 

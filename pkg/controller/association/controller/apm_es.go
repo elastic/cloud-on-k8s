@@ -39,9 +39,6 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociatedShortName:   "apm",
 		AssociatedObjTemplate: func() commonv1.Associated { return &apmv1.ApmServer{} },
 		AssociationType:       commonv1.ElasticsearchAssociationType,
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociatedNamer:           esv1.ESNamer,
@@ -54,10 +51,16 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                      "apm-user",
-		ESUserRole:                            getAPMElasticsearchRoles,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "apm-user",
+			ESUserRole:       getAPMElasticsearchRoles,
+		},
 	})
 }
 

@@ -36,9 +36,6 @@ const (
 func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate: func() commonv1.Associated { return &emsv1alpha1.ElasticMapsServer{} },
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
@@ -52,12 +49,18 @@ func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 				MapsESAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "maps-user",
-		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return MapsSystemUserBuiltinRole, nil
-		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "maps-user",
+			ESUserRole: func(associated commonv1.Associated) (string, error) {
+				return MapsSystemUserBuiltinRole, nil
+			},
+		},
 	})
 }

@@ -49,12 +49,18 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 				AgentAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "agent-user",
-		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return "superuser", nil
-		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "agent-user",
+			ESUserRole: func(associated commonv1.Associated) (string, error) {
+				return "superuser", nil
+			},
+		},
 	})
 }
