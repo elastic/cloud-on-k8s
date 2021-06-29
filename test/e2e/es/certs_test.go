@@ -60,7 +60,7 @@ func TestCustomHTTPCA(t *testing.T) {
 							return err
 						}
 						if customCA != nil && customCA.Cert.Equal(ca.Cert) {
-								return errors.New("Still using custom CA cert")
+							return errors.New("Still using custom CA cert")
 						}
 						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{ca.Cert})
 					}),
@@ -160,10 +160,6 @@ func TestCustomHTTPCA(t *testing.T) {
 						return err
 					}),
 				},
-			}
-		},
-		PostMutationSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{
 				{
 					Name: "Verify that the custom CA is in use",
 					Test: test.Eventually(func() error {
