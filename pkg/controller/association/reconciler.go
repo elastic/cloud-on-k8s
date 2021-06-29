@@ -272,49 +272,50 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if r.ElasticsearchUserCreation == nil {
 		// no user creation required, update the association conf as such
 		expectedAssocConf.AuthSecretName = commonv1.NoAuthRequiredValue
-	} else {
-		// retrieve the Elasticsearch resource
-		// since it can be a transitive reference we need to use the provided ElasticsearchRef function
-		found, esRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
-		if err != nil {
-			return commonv1.AssociationFailed, err
-		}
-		// the Elasticsearch resource does not exist yet, set status to Pending
-		if !found {
-			return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
-		}
-
-		es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
-		if associationStatus != "" || err != nil {
-			return associationStatus, err
-		}
-
-		// check if reference to Elasticsearch is allowed to be established
-		if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
-			return commonv1.AssociationPending, err
-		}
-
-		userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
-		if err != nil {
-			return commonv1.AssociationFailed, err
-		}
-
-		if err := ReconcileEsUser(
-			ctx,
-			r.Client,
-			association,
-			assocLabels,
-			userRole,
-			r.ElasticsearchUserCreation.UserSecretSuffix,
-			es,
-		); err != nil {
-			return commonv1.AssociationPending, err
-		}
-
-		authSecretRef := UserSecretKeySelector(association, r.ElasticsearchUserCreation.UserSecretSuffix)
-		expectedAssocConf.AuthSecretName = authSecretRef.Name
-		expectedAssocConf.AuthSecretKey = authSecretRef.Key
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
+
+	// retrieve the Elasticsearch resource
+	// since it can be a transitive reference we need to use the provided ElasticsearchRef function
+	found, esRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+	// the Elasticsearch resource does not exist yet, set status to Pending
+	if !found {
+		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
+	}
+
+	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
+	if associationStatus != "" || err != nil {
+		return associationStatus, err
+	}
+
+	// check if reference to Elasticsearch is allowed to be established
+	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
+		return commonv1.AssociationPending, err
+	}
+
+	userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+
+	if err := reconcileEsUserSecret(
+		ctx,
+		r.Client,
+		association,
+		assocLabels,
+		userRole,
+		r.ElasticsearchUserCreation.UserSecretSuffix,
+		es,
+	); err != nil {
+		return commonv1.AssociationPending, err
+	}
+
+	authSecretRef := UserSecretKeySelector(association, r.ElasticsearchUserCreation.UserSecretSuffix)
+	expectedAssocConf.AuthSecretName = authSecretRef.Name
+	expectedAssocConf.AuthSecretKey = authSecretRef.Key
 
 	// update the association configuration if necessary
 	return r.updateAssocConf(ctx, expectedAssocConf, association)

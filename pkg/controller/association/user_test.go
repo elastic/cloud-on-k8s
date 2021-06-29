@@ -248,7 +248,7 @@ func Test_reconcileEsUser(t *testing.T) {
 	for _, tt := range tests {
 		c := k8s.NewFakeClient(tt.args.initialObjects...)
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ReconcileEsUser(
+			if err := reconcileEsUserSecret(
 				context.Background(),
 				c,
 				tt.args.kibana.EsAssociation(),
