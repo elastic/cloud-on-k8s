@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -73,4 +74,21 @@ func CheckSecretsContent(k *K8sClient, namespace string, expected func() []Expec
 			return nil
 		}),
 	}
+}
+
+func CheckSelector(actualSelector string, expectedLabels map[string]string) error {
+	labelSelector, err := v1.ParseToLabelSelector(actualSelector)
+	if err != nil {
+		return err
+	}
+	actualLabels := labelSelector.MatchLabels
+	if len(expectedLabels) != len(actualLabels) {
+		return fmt.Errorf("expected %d labels in selector, got %d instead", len(expectedLabels), len(actualLabels))
+	}
+	for label, expectedValue := range expectedLabels {
+		if actualLabels[label] != expectedValue {
+			return fmt.Errorf("expected selector value for label %s is %s, got %s instead", label, expectedValue, actualLabels[label])
+		}
+	}
+	return nil
 }
