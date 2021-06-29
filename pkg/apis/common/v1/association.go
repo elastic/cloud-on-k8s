@@ -96,6 +96,9 @@ const (
 	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
 	KibanaAssociationType          = "kibana"
 
+	EntConfigAnnotationNameBase = "association.k8s.elastic.co/ent-conf"
+	EntAssociationType          = "ent"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"

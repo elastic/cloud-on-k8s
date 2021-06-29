@@ -12,6 +12,7 @@ func NewDynamicWatches() DynamicWatches {
 		Pods:                  NewDynamicEnqueueRequest(),
 		ElasticsearchClusters: NewDynamicEnqueueRequest(),
 		Kibanas:               NewDynamicEnqueueRequest(),
+		EnterpriseSearches:    NewDynamicEnqueueRequest(),
 	}
 }
 
@@ -23,4 +24,5 @@ type DynamicWatches struct {
 	Pods                  *DynamicEnqueueRequest
 	ElasticsearchClusters *DynamicEnqueueRequest
 	Kibanas               *DynamicEnqueueRequest
+	EnterpriseSearches    *DynamicEnqueueRequest
 }
