@@ -11,6 +11,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -137,7 +138,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			inCluster: tt.fields.upgradeTestPods.podsInCluster(),
 			health:    tt.fields.health,
 		}
-		esClient := &fakeESClient{}
+		esClient := &fakeESClient{version: version.MustParse("7.13.0")}
 		es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable)
 		k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, nothing)...)
 		ctx := rollingUpgradeCtx{

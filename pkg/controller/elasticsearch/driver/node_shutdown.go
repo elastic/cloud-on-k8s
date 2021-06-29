@@ -20,7 +20,7 @@ func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state E
 		}
 		return shutdown.NewNodeShutdown(client, idLookup, es.ResourceVersion), nil
 	}
-	return migration.NewShardMigration(es, client), nil
+	return migration.NewShardMigration(es, client, client), nil
 }
 
 func supportsNodeshutdown(v version.Version) bool {
