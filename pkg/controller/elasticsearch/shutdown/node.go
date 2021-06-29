@@ -43,9 +43,9 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 		r, err = ns.c.GetShutdown(ctx, nil)
 		if err != nil {
 			if esclient.IsInternalServerError(err) {
-				for nodeId, _ := range npeWorkaround {
-					log.V(1).Info("NPE workaround DELETE", "node", nodeId)
-					err = ns.c.DeleteShutdown(ctx, nodeId)
+				for nodeID := range npeWorkaround {
+					log.V(1).Info("NPE workaround DELETE", "node", nodeID)
+					err = ns.c.DeleteShutdown(ctx, nodeID)
 					if err != nil {
 						err = fmt.Errorf("while applying npeWorkaround %w", err)
 					}

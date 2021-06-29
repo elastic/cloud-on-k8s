@@ -71,6 +71,10 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
 			return deletedPods, err
 		}
+		if readyToDelete, err := ctx.readyToDelete(podToDelete); err != nil || !readyToDelete {
+			return deletedPods, err
+		}
+
 		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations); err != nil {
 			return deletedPods, err
 		}

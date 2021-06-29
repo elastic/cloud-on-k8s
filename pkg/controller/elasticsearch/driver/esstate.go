@@ -73,7 +73,6 @@ func (n *memoizingNodes) initialize() error {
 	}
 	n.nodeNameToID = m
 	return nil
-
 }
 
 // NodesInCluster returns true if the given nodes exist in the Elasticsearch cluster.
