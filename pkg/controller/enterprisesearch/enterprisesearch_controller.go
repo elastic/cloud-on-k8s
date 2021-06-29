@@ -24,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"go.elastic.co/apm"
@@ -182,7 +181,7 @@ func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entName.EntNamer, obj.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entv1.Namer, obj.Name))
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1.Kind)
 }
 
@@ -211,7 +210,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
-		Namer:                 entName.EntNamer,
+		Namer:                 entv1.Namer,
 		Labels:                Labels(ent.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
@@ -310,7 +309,7 @@ func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 	}
 
 	svc.ObjectMeta.Namespace = ent.Namespace
-	svc.ObjectMeta.Name = entName.HTTPService(ent.Name)
+	svc.ObjectMeta.Name = HTTPServiceName(ent.Name)
 
 	labels := Labels(ent.Name)
 	ports := []corev1.ServicePort{
@@ -336,7 +335,7 @@ func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret core
 	// - in the Enterprise Search TLS certificates
 	if ent.Spec.HTTP.TLS.Enabled() {
 		var tlsCertSecret corev1.Secret
-		tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entName.EntNamer, ent.Name)}
+		tlsSecretKey := types.NamespacedName{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entv1.Namer, ent.Name)}
 		if err := c.Get(context.Background(), tlsSecretKey, &tlsCertSecret); err != nil {
 			return "", err
 		}

@@ -14,6 +14,8 @@ const (
 	Type = "enterprise-search"
 	// EnterpriseSearchNameLabelName used to represent an EnterpriseSearch in k8s resources.
 	EnterpriseSearchNameLabelName = "enterprisesearch.k8s.elastic.co/name"
+	// EnterpriseSearchNameLabelName used to represent an EnterpriseSearch in k8s resources.
+	EnterpriseSearchNamespaceLabelName = "enterprisesearch.k8s.elastic.co/namespace"
 	// VersionLabelName is a label used to track the version of an Enterprise Search Pod.
 	VersionLabelName = "enterprisesearch.k8s.elastic.co/version"
 )

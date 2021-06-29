@@ -27,7 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -197,7 +196,7 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 // serviceURL builds the URL of the Enterprise Search service.
 func (r *VersionUpgrade) serviceURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%d",
-		r.ent.Spec.HTTP.Protocol(), entName.HTTPService(r.ent.Name), r.ent.Namespace, HTTPPort)
+		r.ent.Spec.HTTP.Protocol(), HTTPServiceName(r.ent.Name), r.ent.Namespace, HTTPPort)
 }
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
@@ -226,7 +225,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 // specified in the EnterpriseSearch resource.
 func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool, error) {
 	var deployment appsv1.Deployment
-	nsn := types.NamespacedName{Name: entName.Deployment(r.ent.Name), Namespace: r.ent.Namespace}
+	nsn := types.NamespacedName{Name: DeploymentName(r.ent.Name), Namespace: r.ent.Namespace}
 	err := r.k8sClient.Get(context.Background(), nsn, &deployment)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -276,7 +275,7 @@ func (r *VersionUpgrade) retrieveTLSCerts() ([]*x509.Certificate, error) {
 	var certsSecret corev1.Secret
 	nsn := types.NamespacedName{
 		Namespace: r.ent.Namespace,
-		Name:      certificates.InternalCertsSecretName(entName.EntNamer, r.ent.Name),
+		Name:      certificates.InternalCertsSecretName(entv1.Namer, r.ent.Name),
 	}
 	if err := r.k8sClient.Get(context.Background(), nsn, &certsSecret); err != nil {
 		return nil, err
