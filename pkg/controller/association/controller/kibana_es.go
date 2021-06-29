@@ -5,6 +5,8 @@
 package controller
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -35,7 +37,8 @@ const (
 
 func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
+		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
@@ -63,4 +66,20 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 			},
 		},
 	})
+}
+
+// referencedElasticsearch returns true if the referenced Elasticsearch resource exists.
+func referencedElasticsearchExists(c k8s.Client, esRef types.NamespacedName) (bool, error) {
+	return k8s.ObjectExists(c, esRef, &esv1.Elasticsearch{})
+}
+
+// referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
+// reported in its status.
+func referencedElasticsearchStatusVersion(c k8s.Client, esRef types.NamespacedName) (string, error) {
+	var es esv1.Elasticsearch
+	err := c.Get(context.Background(), esRef, &es)
+	if err != nil {
+		return "", err
+	}
+	return es.Status.Version, nil
 }

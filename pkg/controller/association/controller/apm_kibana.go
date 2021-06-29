@@ -32,6 +32,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociatedShortName:       "apm",
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
 		ExternalServiceURL:        getKibanaExternalURL,
+		ReferencedResourceExists:  referencedKibanaExists,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		AssociatedNamer:           kibana.Namer,
 		AssociationName:           "apm-kibana",
@@ -88,11 +89,16 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())
 }
 
+func referencedKibanaExists(c k8s.Client, kbRef types.NamespacedName) (bool, error) {
+	return k8s.ObjectExists(c, kbRef, &kbv1.Kibana{})
+}
+
 // referencedKibanaStatusVersion returns the currently running version of Kibana
 // reported in its status.
 func referencedKibanaStatusVersion(c k8s.Client, kbRef types.NamespacedName) (string, error) {
 	var kb kbv1.Kibana
-	if err := c.Get(context.Background(), kbRef, &kb); err != nil {
+	err := c.Get(context.Background(), kbRef, &kb)
+	if err != nil {
 		return "", err
 	}
 	return kb.Status.Version, nil
@@ -114,5 +120,5 @@ func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) 
 		return false, commonv1.ObjectSelector{}, err
 	}
 
-	return true, kb.AssociationRef(), nil
+	return true, kb.EsAssociation().AssociationRef(), nil
 }

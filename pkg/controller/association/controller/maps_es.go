@@ -35,7 +35,8 @@ const (
 
 func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &emsv1alpha1.ElasticMapsServer{} },
+		AssociatedObjTemplate:     func() commonv1.Associated { return &emsv1alpha1.ElasticMapsServer{} },
+		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,

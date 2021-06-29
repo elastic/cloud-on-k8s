@@ -68,6 +68,9 @@ type AssociationInfo struct {
 	SetDynamicWatches func(associated types.NamespacedName, associations []commonv1.Association, watches watches.DynamicWatches) error
 	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for the associated resource.
 	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
+
+	// ReferencedResource returns true if the referenced resource exists in the apiserver.
+	ReferencedResourceExists func(c k8s.Client, referencedRes types.NamespacedName) (bool, error)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
 	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
@@ -225,14 +228,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	// retrieve the Elasticsearch resource, since it can be a transitive reference we need to use the provided ElasticsearchRef function
-	associatedResourceFound, esRef, err := r.ElasticsearchRef(r.Client, association)
+	exists, err := r.ReferencedResourceExists(r.Client, association.AssociationRef().NamespacedName())
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
-
-	// the associated resource does not exist yet, set status to Pending
-	if !associatedResourceFound {
+	if !exists {
+		// the associated resource does not exist (yet), set status to Pending and remove the existing association conf
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 

@@ -38,8 +38,9 @@ const (
 
 func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &beatv1beta1.Beat{} },
-		AssociationType:       commonv1.ElasticsearchAssociationType,
+		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1beta1.Beat{} },
+		AssociationType:           commonv1.ElasticsearchAssociationType,
+		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociatedNamer:           esv1.ESNamer,

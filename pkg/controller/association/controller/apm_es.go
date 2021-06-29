@@ -36,9 +36,10 @@ const (
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:   "apm",
-		AssociatedObjTemplate: func() commonv1.Associated { return &apmv1.ApmServer{} },
-		AssociationType:       commonv1.ElasticsearchAssociationType,
+		AssociatedShortName:       "apm",
+		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
+		AssociationType:           commonv1.ElasticsearchAssociationType,
+		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociatedNamer:           esv1.ESNamer,
@@ -79,16 +80,6 @@ func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (stri
 	}
 	nsn := types.NamespacedName{Name: serviceName, Namespace: es.Namespace}
 	return association.ServiceURL(c, nsn, es.Spec.HTTP.Protocol())
-}
-
-// referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
-// reported in its status.
-func referencedElasticsearchStatusVersion(c k8s.Client, esRef types.NamespacedName) (string, error) {
-	var es esv1.Elasticsearch
-	if err := c.Get(context.Background(), esRef, &es); err != nil {
-		return "", err
-	}
-	return es.Status.Version, nil
 }
 
 // getAPMElasticsearchRoles returns for a given version of the APM Server the set of required roles.
