@@ -8,10 +8,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/stretchr/testify/require"
 )
 
 // -- ES Client mock
@@ -45,6 +45,7 @@ type fakeESClient struct { //nolint:maligned
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
+	version                     version.Version
 }
 
 func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, n int) error {
@@ -103,6 +104,10 @@ func (f *fakeESClient) GetClusterHealth(_ context.Context) (esclient.Health, err
 func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
 	return f.health, nil
+}
+
+func (f *fakeESClient) Version() version.Version {
+	return f.version
 }
 
 // -- ESState tests
