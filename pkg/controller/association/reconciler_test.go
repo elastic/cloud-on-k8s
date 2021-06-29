@@ -467,6 +467,183 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
 
+func TestReconciler_Reconcile_noESAuth(t *testing.T) {
+	// Kibana references Enterprise Search, the association controller is configured to not
+	// create an Elasticsearch user
+	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "entns", Name: "entname"}}
+	entHTTPPublicCertsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "entns",
+			Name:      "entname-ent-http-certs-public",
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("ca cert content"),
+			"tls.crt": []byte("tls cert content"),
+		},
+	}
+	entHTTPService := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "entns",
+			Name:      "entname-ent-http",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name: "https",
+					Port: 3002,
+				},
+			},
+		},
+	}
+	kb := sampleKibanaNoEsRef()
+	kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "entname", Namespace: "entns"}
+
+	// ent public certs we expect to be copied over into the Kibana namespace
+	entCertsInKibanaNamespace := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: kibanaNamespace,
+			Name:      "kbname-kb-ent-ca",
+			Labels: map[string]string{
+				"enterprisesearch.k8s.elastic.co/name":       "entname",
+				"enterprisesearch.k8s.elastic.co/namespace":  "entns",
+				"kibanaassociation.k8s.elastic.co/name":      "kbname",
+				"kibanaassociation.k8s.elastic.co/namespace": "kbns",
+				"kibanaassociation.k8s.elastic.co/type":      "ent",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "kibana.k8s.elastic.co/v1",
+					Kind:               "Kibana",
+					Name:               "kbname",
+					Controller:         &varTrue,
+					BlockOwnerDeletion: &varTrue,
+				},
+			},
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("ca cert content"),
+			"tls.crt": []byte("tls cert content"),
+		},
+	}
+
+	kbEntAssocInfo := AssociationInfo{
+		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
+		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
+			entRef := assoc.AssociationRef()
+			if !entRef.IsDefined() {
+				return "", nil
+			}
+			ent := entv1.EnterpriseSearch{}
+			if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
+				return "", err
+			}
+			serviceName := entRef.ServiceName
+			if serviceName == "" {
+				serviceName = "entname-ent-http"
+			}
+			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
+			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
+		},
+		ReferencedResourceExists: func(c k8s.Client, entRef types.NamespacedName) (bool, error) {
+			return k8s.ObjectExists(c, entRef, &entv1.EnterpriseSearch{})
+		},
+		ReferencedResourceVersion: func(c k8s.Client, entRef types.NamespacedName) (string, error) {
+			var ent entv1.EnterpriseSearch
+			err := c.Get(context.Background(), entRef, &ent)
+			if err != nil {
+				return "", err
+			}
+			return ent.Status.Version, nil
+		},
+		AssociatedNamer:     entv1.Namer,
+		AssociationName:     "kb-ent",
+		AssociatedShortName: "kb",
+		AssociationType:     commonv1.EntAssociationType,
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"kibanaassociation.k8s.elastic.co/name":      associated.Name,
+				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"kibanaassociation.k8s.elastic.co/type":      commonv1.EntAssociationType,
+			}
+		},
+		AssociationConfAnnotationNameBase: commonv1.EntConfigAnnotationNameBase,
+		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
+			return ReconcileWatch(
+				associated,
+				associations,
+				w.EnterpriseSearches,
+				fmt.Sprintf("%s-%s-ent-watch", associated.Namespace, associated.Name),
+				func(association commonv1.Association) types.NamespacedName {
+					return association.AssociationRef().NamespacedName()
+				},
+			)
+		},
+		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
+			RemoveWatch(w.EnterpriseSearches, fmt.Sprintf("%s-%s-ent-watch", associated.Namespace, associated.Name))
+		},
+		AssociationResourceNameLabelName:      "enterprisesearch.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "enterprisesearch.k8s.elastic.co/namespace",
+		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
+	}
+
+	r := Reconciler{
+		AssociationInfo: kbEntAssocInfo,
+		Client: k8s.NewFakeClient(
+			&kb,
+			&ent,
+			&entHTTPPublicCertsSecret,
+			&entHTTPService,
+		),
+		accessReviewer: rbac.NewPermissiveAccessReviewer(),
+		watches:        watches.NewDynamicWatches(),
+		recorder:       record.NewFakeRecorder(10),
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{
+				BuildInfo: about.BuildInfo{
+					Version: "1.4.0-unittest",
+				},
+			},
+		},
+		logger: log.WithName("test"),
+	}
+
+	// no resources are watched yet
+	require.Empty(t, r.watches.Secrets.Registrations())
+	require.Empty(t, r.watches.EnterpriseSearches.Registrations())
+	// run the reconciliation
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	require.NoError(t, err)
+	// no requeue to trigger
+	require.Equal(t, reconcile.Result{}, results)
+
+	// should create the ent certs in kibana namespace
+	var actualEntCertsInKibanaNamespace corev1.Secret
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&entCertsInKibanaNamespace), &actualEntCertsInKibanaNamespace)
+	require.NoError(t, err)
+	comparison.RequireEqual(t, &entCertsInKibanaNamespace, &actualEntCertsInKibanaNamespace)
+
+	// should have dynamic watches set
+	require.NotEmpty(t, r.watches.Secrets.Registrations())
+	require.NotEmpty(t, r.watches.EnterpriseSearches.Registrations())
+
+	var updatedKibana kbv1.Kibana
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
+	require.NoError(t, err)
+	// association conf should be set
+	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
+		updatedKibana.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
+	// ent association status should be established
+	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.EnterpriseSearchAssociationStatus)
+	// but not es association status
+	require.Empty(t, updatedKibana.Status.AssociationStatus)
+
+	// should not have any other secret created (no es user to to create)
+	secrets := corev1.SecretList{}
+	err = r.List(context.Background(), &secrets)
+	require.NoError(t, err)
+	require.Len(t, secrets.Items, 2) // ent cert in ent namespace + ent cert in kb namespace
+}
+
 func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	// Kibana references ES with a custom service, but neither the service nor secret nor association conf exist yet
 	kb := sampleKibanaWithESRef()
