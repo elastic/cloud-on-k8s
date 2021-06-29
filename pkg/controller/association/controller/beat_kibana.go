@@ -32,7 +32,7 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceExists:  referencedKibanaExists,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
-		AssociatedNamer:           kibana.Namer,
+		ReferencedResourceNamer:   kibana.Namer,
 		AssociationName:           "beat-kibana",
 		AssociatedShortName:       "beat",
 		AssociationType:           commonv1.KibanaAssociationType,

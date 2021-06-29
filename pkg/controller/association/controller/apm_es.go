@@ -42,7 +42,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		ReferencedResourceExists:  referencedElasticsearchExists,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociatedNamer:           esv1.ESNamer,
+		ReferencedResourceNamer:   esv1.ESNamer,
 		AssociationName:           "apm-es",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{

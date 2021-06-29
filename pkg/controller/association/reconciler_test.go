@@ -42,8 +42,8 @@ var (
 	// Throughout those tests we'll use Kibana association for testing purposes,
 	// but tests are the same for any resource type.
 	kbAssociationInfo = AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
-		AssociatedNamer:       esv1.ESNamer,
+		AssociatedObjTemplate:   func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedResourceNamer: esv1.ESNamer,
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
 			es := esv1.Elasticsearch{}

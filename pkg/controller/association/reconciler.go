@@ -47,8 +47,9 @@ type AssociationInfo struct {
 	AssociationType commonv1.AssociationType
 	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for Kibana to Elasticsearch association).
 	AssociatedObjTemplate func() commonv1.Associated
-	// AssociatedNamer is used to build the name of the Secret which contains the CA of the target.
-	AssociatedNamer name.Namer
+	// ReferencedResourceNamer is used to build the name of the Secret which contains the CA of the referenced resource
+	// (the Elasticsearch Namer for a Kibana to Elasticsearch association).
+	ReferencedResourceNamer name.Namer
 	// ExternalServiceURL is used to build the external service url as it will be set in the resource configuration.
 	ExternalServiceURL func(c k8s.Client, association commonv1.Association) (string, error)
 	// AssociationName is the name of the association (eg. "kb-es").
