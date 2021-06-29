@@ -82,6 +82,7 @@ type ApmServerStatus struct {
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="APM version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
 // +kubebuilder:storageversion
 type ApmServer struct {
 	metav1.TypeMeta   `json:",inline"`

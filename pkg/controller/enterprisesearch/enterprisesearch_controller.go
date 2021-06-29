@@ -281,8 +281,12 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1.EnterpriseSearch, dep
 	if err != nil {
 		return err
 	}
+	deploymentStatus, err := common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
+	if err != nil {
+		return err
+	}
 	newStatus := entv1.EnterpriseSearchStatus{
-		DeploymentStatus: common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName),
+		DeploymentStatus: deploymentStatus,
 		ExternalService:  svcName,
 		Association:      ent.Status.Association,
 	}

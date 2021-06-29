@@ -11,9 +11,10 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	appsv1 "k8s.io/api/apps/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,9 +136,10 @@ func TestDeploymentStatus(t *testing.T) {
 		versionLabel string
 	}
 	tests := []struct {
-		name string
-		args args
-		want commonv1.DeploymentStatus
+		name    string
+		args    args
+		want    commonv1.DeploymentStatus
+		wantErr bool
 	}{
 		{
 			name: "happy path: set all status fields",
@@ -145,6 +147,7 @@ func TestDeploymentStatus(t *testing.T) {
 				current: commonv1.DeploymentStatus{},
 				dep: appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
+						Replicas:          4,
 						AvailableReplicas: 3,
 						Conditions: []appsv1.DeploymentCondition{
 							{
@@ -162,6 +165,7 @@ func TestDeploymentStatus(t *testing.T) {
 				versionLabel: "version-label",
 			},
 			want: commonv1.DeploymentStatus{
+				Count:          4,
 				AvailableNodes: 3,
 				Version:        "7.7.0",
 				Health:         commonv1.GreenHealth,
@@ -173,6 +177,7 @@ func TestDeploymentStatus(t *testing.T) {
 				current: commonv1.DeploymentStatus{},
 				dep: appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
+						Replicas:          4,
 						AvailableReplicas: 3,
 						Conditions: []appsv1.DeploymentCondition{
 							{
@@ -190,6 +195,7 @@ func TestDeploymentStatus(t *testing.T) {
 				versionLabel: "version-label",
 			},
 			want: commonv1.DeploymentStatus{
+				Count:          4,
 				AvailableNodes: 3,
 				Version:        "7.7.0",
 				Health:         commonv1.RedHealth,
@@ -198,7 +204,12 @@ func TestDeploymentStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DeploymentStatus(tt.args.current, tt.args.dep, tt.args.pods, tt.args.versionLabel); !reflect.DeepEqual(got, tt.want) {
+			got, err := DeploymentStatus(tt.args.current, tt.args.dep, tt.args.pods, tt.args.versionLabel)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeploymentStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DeploymentStatus() = %v, want %v", got, tt.want)
 			}
 		})

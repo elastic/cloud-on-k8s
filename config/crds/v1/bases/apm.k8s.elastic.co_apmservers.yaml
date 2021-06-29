@@ -7291,6 +7291,11 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              count:
+                description: Count corresponds to Scale.Status.Replicas, which is
+                  the actual number of observed instances of the scaled object.
+                format: int32
+                type: integer
               elasticsearchAssociationStatus:
                 description: ElasticsearchAssociationStatus is the status of any auto-linking
                   to Elasticsearch clusters.
@@ -7306,6 +7311,9 @@ spec:
                 description: SecretTokenSecretName is the name of the Secret that
                   contains the secret token
                 type: string
+              selector:
+                description: Selector is the label selector used to find all pods.
+                type: string
               service:
                 description: ExternalService is the name of the service the agents
                   should connect to.
@@ -7320,6 +7328,10 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.count
+        statusReplicasPath: .status.count
       status: {}
   - additionalPrinterColumns:
     - jsonPath: .status.health

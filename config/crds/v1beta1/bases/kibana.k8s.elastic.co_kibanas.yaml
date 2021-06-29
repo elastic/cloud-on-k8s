@@ -19,8 +19,6 @@ spec:
     - kb
     singular: kibana
   scope: Namespaced
-  subresources:
-    status: {}
   version: v1
   versions:
   - additionalPrinterColumns:
@@ -7218,8 +7216,16 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              count:
+                description: Count corresponds to Scale.Status.Replicas, which is
+                  the actual number of observed instances of the scaled object.
+                format: int32
+                type: integer
               health:
                 description: Health of the deployment.
+                type: string
+              selector:
+                description: Selector is the label selector used to find all pods.
                 type: string
               version:
                 description: 'Version of the stack resource currently running. During
@@ -7230,6 +7236,12 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.count
+        statusReplicasPath: .status.count
+      status: {}
   - additionalPrinterColumns:
     - JSONPath: .status.health
       name: health
@@ -14416,6 +14428,8 @@ spec:
         type: object
     served: true
     storage: false
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

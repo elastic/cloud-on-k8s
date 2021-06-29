@@ -79,7 +79,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, pods, tokenSecret)
+	if err := state.UpdateApmServerState(result, pods, tokenSecret); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
