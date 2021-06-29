@@ -50,7 +50,7 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// initiate shutdown of nodes tht should be removed
+	// initiate shutdown of nodes that should be removed
 	// if leaving nodes is empty this should cancel any ongoing shutdowns
 	leavingNodes := leavingNodeNames(downscales)
 	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, leavingNodes); err != nil {
