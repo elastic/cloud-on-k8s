@@ -34,6 +34,9 @@ func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, 
 	if !assocConf.AuthIsConfigured() {
 		return nil
 	}
+	if assocConf.NoAuthRequired() {
+		return nil
+	}
 
 	authSecretNsName := types.NamespacedName{
 		Name:      assocConf.GetAuthSecretName(),

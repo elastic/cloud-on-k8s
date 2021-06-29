@@ -80,6 +80,15 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "correctly configured with no auth required",
+			assocConf: &AssociationConf{
+				AuthSecretName: NoAuthRequiredValue,
+				CASecretName:   "ca-secret",
+				URL:            "https://my-es.svc",
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -249,6 +258,62 @@ func TestAssociationStatusMap_String(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.wanted, tt.statusMap.String())
+		})
+	}
+}
+
+func TestAssociationConf_AuthIsConfigured(t *testing.T) {
+	type fields struct {
+		AuthSecretName string
+		AuthSecretKey  string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "auth configured",
+			fields: fields{
+				AuthSecretName: "secret-name",
+				AuthSecretKey:  "secret-key",
+			},
+			want: true,
+		},
+		{
+			name: "auth secret key not configured",
+			fields: fields{
+				AuthSecretName: "secret-name",
+				AuthSecretKey:  "",
+			},
+			want: false,
+		},
+		{
+			name: "auth not configured",
+			fields: fields{
+				AuthSecretName: "",
+				AuthSecretKey:  "",
+			},
+			want: false,
+		},
+		{
+			name: "auth not required (but still configured)",
+			fields: fields{
+				AuthSecretName: NoAuthRequiredValue,
+				AuthSecretKey:  "",
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ac := &AssociationConf{
+				AuthSecretName: tt.fields.AuthSecretName,
+				AuthSecretKey:  tt.fields.AuthSecretKey,
+			}
+			if got := ac.AuthIsConfigured(); got != tt.want {
+				t.Errorf("AuthIsConfigured() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
