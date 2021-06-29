@@ -96,7 +96,9 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-	if !association.IsConfiguredIfSet(kb, d.recorder) {
+	if !association.IsConfiguredIfSet(kb.EsAssociation(), d.recorder) {
+		return results
+	}
 		return results
 	}
 
@@ -262,7 +264,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 func (d *driver) buildVolumes(kb *kbv1.Kibana) []commonvolume.VolumeLike {
 	volumes := []commonvolume.VolumeLike{DataVolume, ConfigSharedVolume, ConfigVolume(*kb)}
 
-	if kb.AssociationConf().CAIsConfigured() {
+	if kb.EsAssociation().AssociationConf().CAIsConfigured() {
 		esCertsVolume := esCaCertSecretVolume(*kb)
 		volumes = append(volumes, esCertsVolume)
 	}

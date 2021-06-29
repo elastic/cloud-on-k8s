@@ -112,7 +112,7 @@ var (
 		sample := sampleKibanaWithESRef()
 		kb := (&sample).DeepCopy()
 		kb.Annotations = map[string]string{
-			kb.AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
+			kb.EsAssociation().AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
 		}
 		return *kb
 	}
@@ -344,7 +344,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	// but with a config annotation and secrets resources to clean
 	kb := sampleKibanaNoEsRef()
 	kb.Annotations = sampleAssociatedKibana().Annotations
-	require.NotEmpty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esCertsInKibanaNamespace)
 	// simulate watches being set
 	setDynamicWatches(t, r, sampleAssociatedKibana())
@@ -370,7 +370,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
-	require.Empty(t, updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// should remove dynamic watches
 	require.Empty(t, r.watches.Secrets.Registrations())
 	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
@@ -378,7 +378,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 
 func TestReconciler_Reconcile_NoES(t *testing.T) {
 	kb := sampleAssociatedKibana()
-	require.NotEmpty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// es resource does not exist
 	r := testReconciler(&kb)
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
@@ -389,7 +389,7 @@ func TestReconciler_Reconcile_NoES(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
 	// association conf should have been removed
-	require.Empty(t, updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 }
 
 func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
@@ -406,7 +406,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
 	// association conf should be removed
-	require.Empty(t, updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// user in es namespace should be deleted
 	var secret corev1.Secret
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
@@ -417,7 +417,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	// Kibana references ES, but no secret nor association conf exist yet
 	kb := sampleKibanaWithESRef()
-	require.Empty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
@@ -461,7 +461,7 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Equal(t, sampleAssociatedKibana().Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
@@ -531,7 +531,7 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana(serviceName).Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Equal(t, sampleAssociatedKibana(serviceName).Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
@@ -567,7 +567,7 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Equal(t, sampleAssociatedKibana().Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
@@ -599,7 +599,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 		{
 			name:              "retrieve existing Elasticsearch",
 			runtimeObjects:    []runtime.Object{&es, &associatedKibana},
-			associated:        &associatedKibana,
+			associated:        associatedKibana.EsAssociation(),
 			esRef:             commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 			wantES:            es,
 			wantStatus:        "",
@@ -608,7 +608,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 		{
 			name:           "Elasticsearch not found: remove association conf in Kibana",
 			runtimeObjects: []runtime.Object{&associatedKibana}, // no ES
-			associated:     &associatedKibana,
+			associated:     associatedKibana.EsAssociation(),
 			esRef:          commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 			wantES:         esv1.Elasticsearch{},
 			wantStatus:     commonv1.AssociationPending,

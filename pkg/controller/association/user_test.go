@@ -251,7 +251,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			if err := ReconcileEsUser(
 				context.Background(),
 				c,
-				&tt.args.kibana,
+				tt.args.kibana.EsAssociation(),
 				map[string]string{
 					associationLabelName:      tt.args.kibana.Name,
 					associationLabelNamespace: tt.args.kibana.Namespace,

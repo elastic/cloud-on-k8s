@@ -231,12 +231,12 @@ func TestNewConfigSettings(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with Association",
+			name: "with elasticsearch Association",
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
-					kb.SetAssociationConf(&commonv1.AssociationConf{
+					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
 						AuthSecretKey:  "elastic",
 						CASecretName:   "ca-secret",
