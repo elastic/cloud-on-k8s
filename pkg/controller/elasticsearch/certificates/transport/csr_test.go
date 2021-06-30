@@ -6,10 +6,10 @@ package transport
 
 import (
 	"crypto/x509"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"net"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/stretchr/testify/assert"
