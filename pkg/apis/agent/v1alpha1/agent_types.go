@@ -68,6 +68,20 @@ type AgentSpec struct {
 	// Cannot be used along with `daemonSet`.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
+
+	// Mode specifies the source of configuration for the Agent. The configuration can be specified locally (through
+	// `config` or `configRef`) or come from Fleet during runtime.
+	Mode AgentMode `json:"mode,omitempty"`
+
+	// EnableFleetServer determines whether this Agent will launch Fleet Server. Ignored unless `mode` is set to `fleet`.
+	EnableFleetServer bool `json:"enableFleetServer,omitempty"`
+
+	// KibanaRef is a reference to Kibana to setup Fleet and enroll this Agent. Ignored unless `mode` is set to `fleet`.
+	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
+
+	// FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
+	// Ignored unless `mode` is set to `fleet`.
+	FleetServerRef commonv1.ObjectSelector `json:"fleetServerRef,omitempty"`
 }
 
 type Output struct {
@@ -126,6 +140,16 @@ const (
 	// 1) all Pods are Ready, and
 	// 2) association is not configured, or configured and established
 	AgentGreenHealth AgentHealth = "green"
+)
+
+type AgentMode string
+
+const (
+	// AgentStandaloneMode denotes running the Agent as standalone.
+	AgentStandaloneMode AgentMode = "standalone"
+
+	// AgentFleetMode denotes running the Agent using Fleet.
+	AgentFleetMode AgentMode = "fleet"
 )
 
 // +kubebuilder:object:root=true
