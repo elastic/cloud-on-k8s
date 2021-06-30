@@ -51,18 +51,3 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 	}
 	return nil
 }
-
-// CheckHTTPConnectivity ensure that we can connect via HTTP to every available Pod.
-func (e *esClusterChecks) CheckHTTPConnectivity() test.Step {
-	return test.Step{
-		Name: "Can connect to all available nodes",
-		Test: test.Eventually(func() error {
-			es := e.Builder.Elasticsearch
-			caCerts, err := e.k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
-			if err != nil {
-				return err
-			}
-			return CheckHTTPConnectivityWithCA(es, e.k, caCerts)
-		}),
-	}
-}

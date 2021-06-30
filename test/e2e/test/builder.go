@@ -34,14 +34,13 @@ type Builder interface {
 }
 
 type WrappedBuilder struct {
-	BuildingThis          Builder
-	PreInitSteps          func(k *K8sClient) StepList
-	PreCreationSteps      func(k *K8sClient) StepList
-	PreUpgradeSteps       func(k *K8sClient) StepList
-	PreMutationSteps      func(k *K8sClient) StepList
-	OverrideMutationSteps func(K *K8sClient) StepList
-	PostMutationSteps     func(k *K8sClient) StepList
-	PreDeletionSteps      func(k *K8sClient) StepList
+	BuildingThis      Builder
+	PreInitSteps      func(k *K8sClient) StepList
+	PreCreationSteps  func(k *K8sClient) StepList
+	PreUpgradeSteps   func(k *K8sClient) StepList
+	PreMutationSteps  func(k *K8sClient) StepList
+	PostMutationSteps func(k *K8sClient) StepList
+	PreDeletionSteps  func(k *K8sClient) StepList
 }
 
 func (w WrappedBuilder) InitTestSteps(k *K8sClient) StepList {
@@ -89,11 +88,7 @@ func (w WrappedBuilder) MutationTestSteps(k *K8sClient) StepList {
 	if w.PreMutationSteps != nil {
 		steps = append(steps, w.PreMutationSteps(k)...)
 	}
-	if w.OverrideMutationSteps != nil {
-		steps = append(steps, w.OverrideMutationSteps(k)...)
-	} else {
-		steps = append(steps, w.BuildingThis.MutationTestSteps(k)...)
-	}
+	steps = append(steps, w.BuildingThis.MutationTestSteps(k)...)
 	if w.PostMutationSteps != nil {
 		steps = append(steps, w.PostMutationSteps(k)...)
 	}

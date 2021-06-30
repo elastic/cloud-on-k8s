@@ -50,8 +50,7 @@ type Builder struct {
 	// expectedElasticsearch is used to compare the deployed resources with the expected ones. This is only to be used in
 	// situations where the Elasticsearch resource is modified by an external mechanism, like the autoscaling controller.
 	// In such a situation the actual resources may diverge from what was originally specified in the builder.
-	expectedElasticsearch      *esv1.Elasticsearch
-	toleratedHealthCheckErrors []string
+	expectedElasticsearch *esv1.Elasticsearch
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -451,11 +450,6 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 		}
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels[key] = value
 	}
-	return b
-}
-
-func (b Builder) WithToleratedHealthCheckErrors(msgs ...string) Builder {
-	b.toleratedHealthCheckErrors = append(b.toleratedHealthCheckErrors, msgs...)
 	return b
 }
 

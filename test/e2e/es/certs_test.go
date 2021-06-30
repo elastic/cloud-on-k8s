@@ -38,145 +38,116 @@ func TestCustomHTTPCA(t *testing.T) {
 	esName := "test-custom-http-ca"
 	esNamespace := test.Ctx().ManagedNamespace(0)
 
-	var customCA *certificates.CA
-
 	// Create a multi-node cluster so we have transient states when switching certs where some nodes still have the old ones
 	initialCluster := elasticsearch.NewBuilder(esName).
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		// transient error during cert changes, this affects also this builder as we migrate back to built-in certs at the end
-		WithToleratedHealthCheckErrors("certificate signed by unknown authority")
-
-	// start with the operator provided HTTP CA
-	withBuiltinCA := test.WrappedBuilder{
-		BuildingThis: initialCluster,
-		// at the very end of this test revert to built-in CA and verify we are no longer using a custom CA
-		PostMutationSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{
-				{
-					Name: "Ensure built-in CA is used after mutation",
-					Test: test.Eventually(func() error {
-						ca, err := k.GetCA(initialCluster.Elasticsearch.Namespace, initialCluster.Elasticsearch.Name, certificates.HTTPCAType)
-						if err != nil {
-							return err
-						}
-						if customCA != nil && customCA.Cert.Equal(ca.Cert) {
-							return errors.New("Still using custom CA cert")
-						}
-						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{ca.Cert})
-					}),
-				},
-			}
-		},
-		PreDeletionSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{
-				{
-					Name: "Clean up custom CA secret",
-					Test: func(t *testing.T) {
-						// This is counter-intuitive but deletion steps run on the initial builder
-						// let's clean up the CA secret here.
-						toDelete := mkCertSecret(nil, nil)
-						_ = k.Client.Delete(context.Background(), &toDelete)
-					},
-				},
-			}
-		},
-	}
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// The initial Cluster builder should result in a healthy cluster as verified by the standard check steps
-	// Now modify cluster to use custom HTTP CA but simulate a user error by populating the secret with
-	// garbage and verify this is bubbled up through an event
-	b := initialCluster.
+	withCustomCA := initialCluster.
 		WithCustomHTTPCerts(caSecretName).
 		WithMutatedFrom(&initialCluster)
 
-	withBogusCert := test.WrappedBuilder{
-		BuildingThis: b,
-
-		// we don't want to run a regular mutation as the invalid certificates will not lead to a successful upgrade
-		OverrideMutationSteps: func(k *test.K8sClient) test.StepList {
-			steps := test.StepList{
-				{
-					Name: "Create an invalid CA secret",
-					Test: test.Eventually(func() error {
-						bogusSecret := mkCertSecret([]byte("garbage"), []byte("more garbage"))
-						_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
-						return err
-					}),
-				},
-			}
-			steps = append(steps, b.UpgradeTestSteps(k)...)
-			steps = append(steps,
-				test.Step{
-					Name: "Invalid CA secret should create events",
-					Test: test.Eventually(func() error {
-						eventList, err := k.GetEvents(test.EventListOptions(esNamespace, initialCluster.Elasticsearch.Name)...)
-						if err != nil {
-							return err
-						}
-						for _, evt := range eventList {
-							if evt.Type == corev1.EventTypeWarning &&
-								evt.Reason == events.EventReconciliationError &&
-								evt.InvolvedObject.Namespace == b.Elasticsearch.Namespace &&
-								evt.InvolvedObject.Name == b.Elasticsearch.Name &&
-								strings.Contains(evt.Message, "can't parse") {
-								return nil
-							}
-						}
-						return fmt.Errorf("expected validation event but could not observe it")
-					}),
-				},
-			)
-			return steps
-		},
-	}
-
-	// A NOOP mutation but set up the CA secret correctly now (using the existing CA generation code in the operator)
-	withCustomCert := test.WrappedBuilder{
-		BuildingThis: initialCluster.
-			WithCustomHTTPCerts(caSecretName).
-			WithMutatedFrom(&initialCluster),
-
-		PreMutationSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{
-				{
-					Name: "Update custom CA secret",
-					Test: test.Eventually(func() error {
-						var err error
-						customCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
-							Subject: pkix.Name{
-								CommonName:         "eck-e2e-test-custom-ca",
-								OrganizationalUnit: []string{"eck-e2e"},
-							},
-						})
-						if err != nil {
-							return err
-						}
-
-						caSecret := mkCertSecret(
-							certificates.EncodePEMCert(customCA.Cert.Raw),
-							certificates.EncodePEMPrivateKey(*customCA.PrivateKey),
-						)
-						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
-						return err
-					}),
-				},
-				{
-					Name: "Verify that the custom CA is in use",
-					Test: test.Eventually(func() error {
-						return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{customCA.Cert})
-					}),
-				},
-			}
-		},
-	}
+	// reference to custom CA for comparison purposes
+	var customCA *certificates.CA
 
 	// tests the following sequence:
 	// 1. healthy cluster with self-signed operator provided CA
 	// 2. reconfigure to use custom certs but simulate user error on certificate setup: no rollout expected
 	// 3. reconfigure with correct custom certificates
 	// 4. reconfigure back to self-signed operator provided CA
-	test.RunMutations(t, []test.Builder{withBuiltinCA}, []test.Builder{withBogusCert, withCustomCert, withBuiltinCA})
+	k := test.NewK8sClientOrFatal()
+	steps := test.StepList{}
+	steps = steps.WithSteps(initialCluster.InitTestSteps(k))
+	steps = steps.WithSteps(initialCluster.CreationTestSteps(k))
+	steps = steps.WithSteps(test.CheckTestSteps(initialCluster, k))
+	steps = append(steps,
+		test.Step{
+			Name: "Create an invalid CA secret",
+			Test: test.Eventually(func() error {
+				bogusSecret := mkCertSecret([]byte("garbage"), []byte("more garbage"))
+				_, err := reconciler.ReconcileSecret(k.Client, bogusSecret, nil)
+				return err
+			}),
+		})
+	steps = append(steps, withCustomCA.UpgradeTestSteps(k)...)
+	steps = append(steps,
+		test.Step{
+			Name: "Invalid CA secret should create events",
+			Test: test.Eventually(func() error {
+				eventList, err := k.GetEvents(test.EventListOptions(esNamespace, initialCluster.Elasticsearch.Name)...)
+				if err != nil {
+					return err
+				}
+				for _, evt := range eventList {
+					if evt.Type == corev1.EventTypeWarning &&
+						evt.Reason == events.EventReconciliationError &&
+						evt.InvolvedObject.Namespace == withCustomCA.Elasticsearch.Namespace &&
+						evt.InvolvedObject.Name == withCustomCA.Elasticsearch.Name &&
+						strings.Contains(evt.Message, "can't parse") {
+						return nil
+					}
+				}
+				return fmt.Errorf("expected validation event but could not observe it")
+			}),
+		},
+	)
+	steps = steps.WithSteps(test.StepList{
+		{
+			Name: "Update custom CA secret",
+			Test: test.Eventually(func() error {
+				var err error
+				customCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+					Subject: pkix.Name{
+						CommonName:         "eck-e2e-test-custom-ca",
+						OrganizationalUnit: []string{"eck-e2e"},
+					},
+				})
+				if err != nil {
+					return err
+				}
 
+				caSecret := mkCertSecret(
+					certificates.EncodePEMCert(customCA.Cert.Raw),
+					certificates.EncodePEMPrivateKey(*customCA.PrivateKey),
+				)
+				_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
+				return err
+			}),
+		},
+		{
+			Name: "Verify that the custom CA is in use",
+			Test: test.Eventually(func() error {
+				return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{customCA.Cert})
+			}),
+		},
+	})
+	// "upgrade" back to the initial cluster without custom CA
+	steps = steps.WithSteps(initialCluster.UpgradeTestSteps(k))
+	steps = steps.WithSteps(test.StepList{
+		{
+			Name: "Ensure built-in CA is used after removing custom CA",
+			Test: test.Eventually(func() error {
+				ca, err := k.GetCA(initialCluster.Elasticsearch.Namespace, initialCluster.Elasticsearch.Name, certificates.HTTPCAType)
+				if err != nil {
+					return err
+				}
+				if customCA != nil && customCA.Cert.Equal(ca.Cert) {
+					return errors.New("Still using custom CA cert")
+				}
+				return elasticsearch.CheckHTTPConnectivityWithCA(initialCluster.Elasticsearch, k, []*x509.Certificate{ca.Cert})
+			}),
+		},
+		{
+			Name: "Clean up custom CA secret",
+			Test: func(t *testing.T) {
+				// let's clean up the CA secret here.
+				toDelete := mkCertSecret(nil, nil)
+				_ = k.Client.Delete(context.Background(), &toDelete)
+			},
+		},
+	})
+	steps = steps.WithSteps(initialCluster.DeletionTestSteps(k))
+	steps.RunSequential(t)
 }
 
 func TestCustomTransportCA(t *testing.T) {
