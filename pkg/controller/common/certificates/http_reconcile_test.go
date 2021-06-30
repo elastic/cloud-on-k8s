@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -114,10 +115,12 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	}
 
 	certificate := &CertificatesSecret{
-		Data: map[string][]byte{
-			CAFileName:   ca,
-			CertFileName: tls,
-			KeyFileName:  key,
+		Secret: v1.Secret{
+			Data: map[string][]byte{
+				CAFileName:   ca,
+				CertFileName: tls,
+				KeyFileName:  key,
+			},
 		},
 	}
 
@@ -242,10 +245,10 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	key := loadFileBytes("tls.key")
 
 	type args struct {
-		c        k8s.Client
-		es       esv1.Elasticsearch
-		ca       *CA
-		services []corev1.Service
+		es        esv1.Elasticsearch
+		ca        *CA
+		custCerts *CertificatesSecret
+		services  []corev1.Service
 	}
 	tests := []struct {
 		name    string
@@ -256,7 +259,6 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should generate new certificates if none exists",
 			args: args{
-				c:  k8s.NewFakeClient(),
 				es: testES,
 				ca: testCA,
 			},
@@ -269,13 +271,6 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should NOT return a CA if none has been provided by the user",
 			args: args{
-				c: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-					Data: map[string][]byte{
-						CertFileName: tls,
-						KeyFileName:  key,
-					},
-				}),
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
@@ -289,6 +284,15 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					},
 				},
 				ca: testCA,
+				custCerts: &CertificatesSecret{
+					Secret: corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
+						Data: map[string][]byte{
+							CertFileName: tls,
+							KeyFileName:  key,
+						},
+					},
+				},
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				t.Helper()
@@ -310,14 +314,6 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should return an unknown private CA provided by the user",
 			args: args{
-				c: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-					Data: map[string][]byte{
-						CAFileName:   EncodePEMCert(testCA.Cert.Raw),
-						CertFileName: tls,
-						KeyFileName:  key,
-					},
-				}),
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
@@ -331,6 +327,16 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					},
 				},
 				ca: testCA,
+				custCerts: &CertificatesSecret{
+					Secret: corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
+						Data: map[string][]byte{
+							CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+							CertFileName: tls,
+							KeyFileName:  key,
+						},
+					},
+				},
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				t.Helper()
@@ -350,8 +356,9 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
+			c := k8s.NewFakeClient()
 			got, err := Reconciler{
-				K8sClient:      tt.args.c,
+				K8sClient:      c,
 				DynamicWatches: w,
 				Owner:          &tt.args.es,
 				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
@@ -362,12 +369,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					Validity:     DefaultCertValidity,
 					RotateBefore: DefaultRotateBefore,
 				},
-			}.ReconcileInternalHTTPCerts(tt.args.ca)
+			}.ReconcileInternalHTTPCerts(tt.args.ca, tt.args.custCerts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileInternalHTTPCerts() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			tt.want(t, tt.args.c, got)
+			tt.want(t, c, got)
 		})
 	}
 }

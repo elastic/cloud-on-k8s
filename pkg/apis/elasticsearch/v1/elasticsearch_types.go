@@ -99,8 +99,8 @@ type TransportTLSOptions struct {
 	// and private key for generating node certificates.
 	// The referenced secret should contain the following:
 	//
-	// - `tls.crt`: The CA certificate in PEM format.
-	// - `tls.key`: The private key for the CA certificate in PEM format.
+	// - `ca.crt`: The CA certificate in PEM format.
+	// - `ca.key`: The private key for the CA certificate in PEM format.
 	Certificate commonv1.SecretRef `json:"certificate,omitempty"`
 }
 
