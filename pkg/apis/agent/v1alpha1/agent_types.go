@@ -69,6 +69,9 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
+	// HTTP holds the HTTP layer configuration for the Agent.
+	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+
 	// Mode specifies the source of configuration for the Agent. The configuration can be specified locally (through
 	// `config` or `configRef`) or come from Fleet during runtime.
 	Mode AgentMode `json:"mode,omitempty"`
