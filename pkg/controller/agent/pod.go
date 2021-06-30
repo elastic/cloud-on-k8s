@@ -50,6 +50,17 @@ var (
 			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 	}
+
+	defaultFleetResources = corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceCPU:    resource.MustParse("1"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceCPU:    resource.MustParse("1"),
+		},
+	}
 )
 
 func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpec {
@@ -105,6 +116,10 @@ func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpe
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
 		WithInitContainerDefaults()
+
+	if params.Agent.Spec.EnableFleetServer {
+		builder = builder.WithResources(defaultFleetResources)
+	}
 
 	return builder.PodTemplate
 }
