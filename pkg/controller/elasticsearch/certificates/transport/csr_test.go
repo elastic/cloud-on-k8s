@@ -101,7 +101,7 @@ func Test_buildGeneralNames(t *testing.T) {
 		{
 			name: "optional user provided SANs",
 			args: args{
-				cluster: func() esv1.Elasticsearch{
+				cluster: func() esv1.Elasticsearch {
 					es := testES
 					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
 						{
