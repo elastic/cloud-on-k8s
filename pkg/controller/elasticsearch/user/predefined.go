@@ -29,6 +29,8 @@ const (
 	ControllerUserName = "elastic-internal"
 	// ProbeUserName is used for the Elasticsearch readiness probe.
 	ProbeUserName = "elastic-internal-probe"
+	// MonitoringUserName is used for the Elasticsearch monitoring.
+	MonitoringUserName = "elastic-internal-monitoring"
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
@@ -56,6 +58,7 @@ func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRea
 		users{
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
+			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
 		},
 		esv1.InternalUsersSecret(es.Name),
 		true,
@@ -151,16 +154,16 @@ func reuseOrGenerateHash(users users, fileRealm filerealm.Realm) (users, error) 
 	return users, nil
 }
 
-func GetElasticUserPassword(c k8s.Client, es esv1.Elasticsearch) (string, error) {
-	secretObjKey := types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}
+func GetMonitoringUserPassword(c k8s.Client, es esv1.Elasticsearch) (string, error) {
+	secretObjKey := types.NamespacedName{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)}
 	var secret corev1.Secret
 	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
 		return "", err
 	}
 
-	passwordBytes, ok := secret.Data[ElasticUserName]
+	passwordBytes, ok := secret.Data[MonitoringUserName]
 	if !ok {
-		return "", errors.Errorf("auth secret key %s doesn't exist", ElasticUserName)
+		return "", errors.Errorf("auth secret key %s doesn't exist", MonitoringUserName)
 	}
 
 	return string(passwordBytes), nil

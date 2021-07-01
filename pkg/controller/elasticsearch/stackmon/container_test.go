@@ -31,7 +31,7 @@ func TestWithMonitoring(t *testing.T) {
 	logsEsRef := []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}}
 
 	fakeElasticUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-elastic-user", Namespace: "aerospace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-internal-users", Namespace: "aerospace"},
 		Data:       map[string][]byte{"elastic": []byte("1234567890")},
 	}
 	fakeMetricsBeatUserSecret := corev1.Secret{

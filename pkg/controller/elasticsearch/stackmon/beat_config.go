@@ -69,7 +69,7 @@ type esConfigData struct {
 
 // buildMetricbeatConfig builds the base Metricbeat config with the associated volume holding the CA of the monitored ES
 func buildMetricbeatBaseConfig(client k8s.Client, es esv1.Elasticsearch) (string, volume.VolumeLike, error) {
-	password, err := user.GetElasticUserPassword(client, es)
+	password, err := user.GetMonitoringUserPassword(client, es)
 	if err != nil {
 		return "", nil, err
 	}

@@ -21,6 +21,8 @@ const (
 	SuperUserBuiltinRole = "superuser"
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
+	// RemoteMonitoringCollectorBuiltinRole is the name of the built-in remote_monitoring_collector role.
+	RemoteMonitoringCollectorBuiltinRole = "remote_monitoring_collector"
 
 	// ApmUserRoleV6 is the name of the role used by 6.8.x APMServer instances to connect to Elasticsearch.
 	ApmUserRoleV6 = "eck_apm_user_role_v6"
