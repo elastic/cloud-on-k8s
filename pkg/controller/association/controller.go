@@ -71,9 +71,5 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services)
 }
