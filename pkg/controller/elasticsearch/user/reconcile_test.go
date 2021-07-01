@@ -68,7 +68,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	actualUsers := fileRealm.UserNames()
-	require.ElementsMatch(t, []string{"elastic", "elastic-internal", "elastic-internal-probe", "user1", "user2", "user3"}, actualUsers)
+	require.ElementsMatch(t, []string{"elastic", "elastic-internal", "elastic-internal-probe", "elastic-internal-monitoring", "user1", "user2", "user3"}, actualUsers)
 }
 
 func Test_aggregateRoles(t *testing.T) {

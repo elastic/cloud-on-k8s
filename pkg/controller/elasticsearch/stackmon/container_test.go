@@ -32,7 +32,7 @@ func TestWithMonitoring(t *testing.T) {
 
 	fakeElasticUserSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-internal-users", Namespace: "aerospace"},
-		Data:       map[string][]byte{"elastic": []byte("1234567890")},
+		Data:       map[string][]byte{"elastic-internal-monitoring": []byte("1234567890")},
 	}
 	fakeMetricsBeatUserSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace"},
