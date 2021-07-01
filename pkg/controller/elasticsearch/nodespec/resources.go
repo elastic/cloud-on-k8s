@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -36,6 +37,7 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 }
 
 func BuildExpectedResources(
+	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
@@ -61,7 +63,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
+		statefulSet, err := BuildStatefulSet(client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
 		if err != nil {
 			return nil, err
 		}

@@ -40,6 +40,7 @@ const defaultFsGroup = 1000
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
+	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
@@ -91,7 +92,7 @@ func BuildPodTemplateSpec(
 		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
 		WithPreStopHook(*NewPreStopHook())
 
-	builder, err = stackmon.WithMonitoring(builder, es)
+	builder, err = stackmon.WithMonitoring(client, builder, es)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

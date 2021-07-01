@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -148,4 +149,19 @@ func reuseOrGenerateHash(users users, fileRealm filerealm.Realm) (users, error) 
 		}
 	}
 	return users, nil
+}
+
+func GetElasticUserPassword(c k8s.Client, es esv1.Elasticsearch) (string, error) {
+	secretObjKey := types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}
+	var secret corev1.Secret
+	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
+		return "", err
+	}
+
+	passwordBytes, ok := secret.Data[ElasticUserName]
+	if !ok {
+		return "", errors.Errorf("auth secret key %s doesn't exist", ElasticUserName)
+	}
+
+	return string(passwordBytes), nil
 }

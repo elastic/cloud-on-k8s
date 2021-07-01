@@ -113,7 +113,7 @@ var (
 					Privileges: []string{"create_index", "view_index_metadata", "index", "indices:admin/aliases"},
 				},
 				{
-					Names:      []string{"filebeat-*"},
+					Names: []string{"filebeat-*"},
 					Privileges: []string{"create_index", "view_index_metadata", "create_doc", "indices:admin/aliases"},
 				},
 			},

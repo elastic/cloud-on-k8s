@@ -40,9 +40,4 @@ processors:
   - add_cloud_metadata: {}
   - add_host_metadata: {}
 
-# only one target ES can be referenced so far so we take it as ordinal 0
-output.elasticsearch:
-  hosts: ['${ES_0_TARGET_URL}']
-  username: ${ES_0_TARGET_USERNAME}
-  password: ${ES_0_TARGET_PASSWORD}
-  ssl.certificate_authorities: ["/mnt/es/monitoring/logs/target/0/ca.crt"]
+# Elasticsearch output configuration is generated and added here

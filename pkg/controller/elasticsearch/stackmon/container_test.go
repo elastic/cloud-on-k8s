@@ -7,17 +7,67 @@ package stackmon
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestWithMonitoring(t *testing.T) {
+	sampleEs := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "sample",
+			Namespace: "aerospace",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "7.14.0",
+		},
+	}
+	monitoringEsRef := []commonv1.ObjectSelector{{Name: "monitoring", Namespace: "observability"}}
+	logsEsRef := []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}}
+
+	fakeElasticUserSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-elastic-user", Namespace: "aerospace"},
+		Data:       map[string][]byte{"elastic": []byte("1234567890")},
+	}
+	fakeMetricsBeatUserSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace"},
+		Data:       map[string][]byte{"aerospace-sample-observability-monitoring-beat-es-mon-user": []byte("1234567890")},
+	}
+	fakeLogsBeatUserSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-logs-beat-es-mon-user", Namespace: "aerospace"},
+		Data:       map[string][]byte{"aerospace-sample-observability-logs-beat-es-mon-user": []byte("1234567890")},
+	}
+	fakeEsHTTPCertSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-http-certs-public", Namespace: "aerospace"},
+		Data:       map[string][]byte{"ca.crt": []byte("7H1515N074r341C3r71F1C473")},
+	}
+	fakeClient := k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret)
+
+	monitoringAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "sample-observability-monitoring-beat-es-mon-user",
+		AuthSecretKey:  "aerospace-sample-observability-monitoring-beat-es-mon-user",
+		CACertProvided: true,
+		CASecretName:   "sample-es-monitoring-observability-monitoring-ca",
+		URL:            "https://monitoring-es-http.observability.svc:9200",
+		Version:        "7.14.0",
+	}
+	logsAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "sample-observability-logs-beat-es-mon-user",
+		AuthSecretKey:  "aerospace-sample-observability-logs-beat-es-mon-user",
+		CACertProvided: true,
+		CASecretName:   "sample-es-logs-observability-monitoring-ca",
+		URL:            "https://logs-es-http.observability.svc:9200",
+		Version:        "7.14.0",
+	}
+
 	tests := []struct {
 		name                   string
-		es                     esv1.Elasticsearch
+		es                     func() esv1.Elasticsearch
 		containersLength       int
 		esEnvVarsLength        int
 		podVolumesLength       int
@@ -25,24 +75,17 @@ func TestWithMonitoring(t *testing.T) {
 	}{
 		{
 			name: "without monitoring",
-			es: esv1.Elasticsearch{
-				Spec: esv1.ElasticsearchSpec{
-					Version: "7.14.1",
-				},
+			es: func() esv1.Elasticsearch {
+				return sampleEs
 			},
 			containersLength: 1,
 		},
 		{
 			name: "with metrics monitoring",
-			es: esv1.Elasticsearch{
-				Spec: esv1.ElasticsearchSpec{
-					Version: "7.14.1",
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
-						},
-					},
-				},
+			es: func() esv1.Elasticsearch {
+				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				sampleEs.GetMonitoringMetricsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
+				return sampleEs
 			},
 			containersLength:       2,
 			esEnvVarsLength:        0,
@@ -51,15 +94,11 @@ func TestWithMonitoring(t *testing.T) {
 		},
 		{
 			name: "with logs monitoring",
-			es: esv1.Elasticsearch{
-				Spec: esv1.ElasticsearchSpec{
-					Version: "7.14.1",
-					Monitoring: esv1.Monitoring{
-						Logs: esv1.LogsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
-						},
-					},
-				},
+			es: func() esv1.Elasticsearch {
+				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = nil
+				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
+				sampleEs.GetMonitoringLogsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
+				return sampleEs
 			},
 			containersLength:       2,
 			esEnvVarsLength:        1,
@@ -68,38 +107,26 @@ func TestWithMonitoring(t *testing.T) {
 		},
 		{
 			name: "with metrics and logs monitoring",
-			es: esv1.Elasticsearch{
-				Spec: esv1.ElasticsearchSpec{
-					Version: "7.14.1",
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
-						},
-						Logs: esv1.LogsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
-						},
-					},
-				},
+			es: func() esv1.Elasticsearch {
+				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				sampleEs.GetMonitoringMetricsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
+				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
+				sampleEs.GetMonitoringLogsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
+				return sampleEs
 			},
 			containersLength:       3,
 			esEnvVarsLength:        1,
-			podVolumesLength:       5,
+			podVolumesLength:       4,
 			beatVolumeMountsLength: 3,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
-			es: esv1.Elasticsearch{
-				Spec: esv1.ElasticsearchSpec{
-					Version: "7.14.1",
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
-						},
-						Logs: esv1.LogsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m2", Namespace: "c"}},
-						},
-					},
-				},
+			es: func() esv1.Elasticsearch {
+				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				sampleEs.GetMonitoringMetricsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
+				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = logsEsRef
+				sampleEs.GetMonitoringLogsAssociation()[0].SetAssociationConf(&logsAssocConf)
+				return sampleEs
 			},
 			containersLength:       3,
 			esEnvVarsLength:        1,
@@ -110,20 +137,24 @@ func TestWithMonitoring(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			es := tc.es()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, esv1.ElasticsearchContainerName)
-			builder, err := WithMonitoring(builder, tc.es)
+			_, err := WithMonitoring(fakeClient, builder, es)
 			assert.NoError(t, err)
+
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
 			assert.Equal(t, tc.esEnvVarsLength, len(builder.PodTemplate.Spec.Containers[0].Env))
 			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
-			if IsMonitoringMetricsDefined(tc.es) {
+
+			if IsMonitoringMetricsDefined(es) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
 					}
 				}
 			}
-			if IsMonitoringLogsDefined(tc.es) {
+
+			if IsMonitoringLogsDefined(es) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))

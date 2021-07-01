@@ -28,7 +28,7 @@ var (
 // Validate validates that the Elasticsearch version is supported for Stack Monitoring and that there is exactly one
 // Elasticsearch reference defined when Stack Monitoring is defined
 func Validate(es esv1.Elasticsearch) field.ErrorList {
-	if isStackMonitoringDefined(es) {
+	if isMonitoringDefined(es) {
 		err := IsSupportedVersion(es.Spec.Version)
 		if err != nil {
 			return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version,

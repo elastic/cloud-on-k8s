@@ -14,7 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
@@ -168,7 +168,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, commonv1.Config{})
 			require.NoError(t, err)
 
-			actual, err := BuildPodTemplateSpec(es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
+			actual, err := BuildPodTemplateSpec(k8s.NewFakeClient(), es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
 		})
@@ -182,7 +182,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *nodeSet.Config, commonv1.Config{})
 	require.NoError(t, err)
 
-	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
+	actual, err := BuildPodTemplateSpec(k8s.NewFakeClient(), sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec

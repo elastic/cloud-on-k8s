@@ -7,9 +7,10 @@ package stackmon
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/stretchr/testify/require"
 )
 
 func TestValidate(t *testing.T) {

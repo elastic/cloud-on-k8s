@@ -5,22 +5,22 @@
 package stackmon
 
 import (
-	"path/filepath"
+	"crypto/sha256"
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
-	metricbeatContainerName = "metricbeat"
-	filebeatContainerName   = "filebeat"
-
-	metricbeatConfigKey = "metricbeat.yml"
-	filebeatConfigKey   = "filebeat.yml"
+	// cfgHashLabel is used to store a hash of the Metricbeat and Filebeat configurations.
+	// Using only one label for both configs to save labels.
+	cfgHashLabel = "elasticsearch.k8s.elastic.co/monitoring-config-hash"
 )
 
 func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
@@ -41,88 +41,78 @@ func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
 	return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) > 0
 }
 
-func isStackMonitoringDefined(es esv1.Elasticsearch) bool {
+func isMonitoringDefined(es esv1.Elasticsearch) bool {
 	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
 }
 
+func MetricbeatBuilder(client k8s.Client, es esv1.Elasticsearch) (common.BeatBuilder, error) {
+	metricbeatConfig, sourceEsCaVolume, err := buildMetricbeatBaseConfig(client, es)
+	if err != nil {
+		return common.BeatBuilder{}, err
+	}
+
+	metricbeatBuilder, err := common.NewMetricbeatBuilder(client, &es, metricbeatConfig, sourceEsCaVolume)
+	if err != nil {
+		return common.BeatBuilder{}, err
+	}
+
+	return metricbeatBuilder, nil
+}
+
+func FilebeatBuilder(client k8s.Client, es esv1.Elasticsearch) (common.BeatBuilder, error) {
+	filebeatBuilder, err := common.NewFilebeatBuilder(client, &es, filebeatConfig, nil)
+	if err != nil {
+		return common.BeatBuilder{}, err
+	}
+
+	return filebeatBuilder, nil
+}
+
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
-// in the Elasticsearch pod and injects volumes for Metricbeat/Filebeat configs and ES source/target CA certs.
-func WithMonitoring(builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
-	// No monitoring defined, skip
-	if !isStackMonitoringDefined(es) {
+// in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
+func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
+	// no monitoring defined, skip
+	if !isMonitoringDefined(es) {
 		return builder, nil
 	}
 
-	volumeLikes := make([]volume.VolumeLike, 0)
+	configHash := sha256.New224()
+	volumes := make([]corev1.Volume, 0)
 
 	if IsMonitoringMetricsDefined(es) {
-		metricbeatVolumes := append(
-			monitoringMetricsTargetCaCertSecretVolumes(es),
-			metricbeatConfigSecretVolume(es),
-			monitoringMetricsSourceCaCertSecretVolume(es),
-		)
-		volumeLikes = append(volumeLikes, metricbeatVolumes...)
+		beatBuilder, err := MetricbeatBuilder(client, es)
+		if err != nil {
+			return nil, err
+		}
 
-		// Inject Metricbeat sidecar container
-		builder.WithContainers(metricbeatContainer(es, metricbeatVolumes))
+		volumes = append(volumes, beatBuilder.Volumes()...)
+		builder.WithContainers(beatBuilder.Container())
+		configHash.Write(beatBuilder.ConfigHash())
 	}
 
 	if IsMonitoringLogsDefined(es) {
-		// Enable Stack logging to write Elasticsearch logs to disk
+		// enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 
-		filebeatVolumes := append(
-			monitoringLogsTargetCaCertSecretVolumes(es),
-			filebeatConfigSecretVolume(es),
-		)
-		volumeLikes = append(volumeLikes, filebeatVolumes...)
+		beatBuilder, err := FilebeatBuilder(client, es)
+		if err != nil {
+			return nil, err
+		}
 
-		// Inject Filebeat sidecar container
-		builder.WithContainers(filebeatContainer(es, filebeatVolumes))
+		volumes = append(volumes, beatBuilder.Volumes()...)
+		filebeat := beatBuilder.Container()
+
+		// share the ES logs volume into the Filebeat container
+		filebeat.VolumeMounts = append(filebeat.VolumeMounts, esvolume.DefaultLogsVolumeMount)
+
+		builder.WithContainers(filebeat)
+		configHash.Write(beatBuilder.ConfigHash())
 	}
 
-	// Inject volumes
-	volumes := make([]corev1.Volume, 0)
-	for _, v := range volumeLikes {
-		volumes = append(volumes, v.Volume())
-	}
+	// add the config hash label to ensure pod rotation when an ES password or a CA are rotated
+	builder.WithLabels(map[string]string{cfgHashLabel: fmt.Sprintf("%x", configHash.Sum(nil))})
+	// inject all volumes
 	builder.WithVolumes(volumes...)
 
 	return builder, nil
-}
-
-func metricbeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) corev1.Container {
-	volumeMounts := make([]corev1.VolumeMount, 0)
-	for _, v := range volumes {
-		volumeMounts = append(volumeMounts, v.VolumeMount())
-	}
-
-	envVars := append(monitoringSourceEnvVars(es), monitoringTargetEnvVars(es.GetMonitoringMetricsAssociation())...)
-
-	return corev1.Container{
-		Name:         metricbeatContainerName,
-		Image:        container.ImageRepository(container.MetricbeatImage, es.Spec.Version),
-		Args:         []string{"-c", filepath.Join(metricbeatConfigDirMountPath, metricbeatConfigKey), "-e"},
-		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
-		VolumeMounts: volumeMounts,
-	}
-}
-
-func filebeatContainer(es esv1.Elasticsearch, volumes []volume.VolumeLike) corev1.Container {
-	volumeMounts := []corev1.VolumeMount{
-		esvolume.DefaultLogsVolumeMount, // mount Elasticsearch logs volume into the Filebeat container
-	}
-	for _, v := range volumes {
-		volumeMounts = append(volumeMounts, v.VolumeMount())
-	}
-
-	envVars := monitoringTargetEnvVars(es.GetMonitoringLogsAssociation())
-
-	return corev1.Container{
-		Name:         filebeatContainerName,
-		Image:        container.ImageRepository(container.FilebeatImage, es.Spec.Version),
-		Args:         []string{"-c", filepath.Join(filebeatConfigDirMountPath, filebeatConfigKey), "-e"},
-		Env:          append(envVars, defaults.PodDownwardEnvVars()...),
-		VolumeMounts: volumeMounts,
-	}
 }

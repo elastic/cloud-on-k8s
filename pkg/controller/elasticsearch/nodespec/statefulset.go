@@ -54,6 +54,7 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 }
 
 func BuildStatefulSet(
+	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
@@ -74,7 +75,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
+	podTemplate, err := BuildPodTemplateSpec(client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
