@@ -6,7 +6,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -26,7 +25,7 @@ func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, 
 	if dep.Spec.Selector != nil {
 		selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
 		if err != nil {
-			return commonv1.DeploymentStatus{}, fmt.Errorf("invalid selector: %v", err)
+			return commonv1.DeploymentStatus{}, err
 		}
 		status.Selector = selector.String()
 	}
