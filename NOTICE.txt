@@ -4194,11 +4194,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20210527160623
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.9.0
-Time    : 2021-06-07T22:30:01Z
+Version : v0.9.1
+Time    : 2021-06-21T18:52:50Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.9.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31926,11 +31926,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/time
-Version : v0.0.0-20210220033141-f8bda1e9f3ba
-Time    : 2021-02-20T03:31:41Z
+Version : v0.0.0-20210611083556-38a9dc6acbc6
+Time    : 2021-06-11T08:35:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/time@v0.0.0-20210220033141-f8bda1e9f3ba/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/time@v0.0.0-20210611083556-38a9dc6acbc6/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
