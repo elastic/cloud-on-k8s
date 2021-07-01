@@ -83,7 +83,7 @@ func TestAssociationConfIsConfigured(t *testing.T) {
 		{
 			name: "correctly configured with no auth required",
 			assocConf: &AssociationConf{
-				AuthSecretName: NoAuthRequiredValue,
+				AuthSecretName: "-",
 				CASecretName:   "ca-secret",
 				URL:            "https://my-es.svc",
 			},
@@ -299,7 +299,7 @@ func TestAssociationConf_AuthIsConfigured(t *testing.T) {
 		{
 			name: "auth not required (but still configured)",
 			fields: fields{
-				AuthSecretName: NoAuthRequiredValue,
+				AuthSecretName: "-",
 				AuthSecretKey:  "",
 			},
 			want: true,

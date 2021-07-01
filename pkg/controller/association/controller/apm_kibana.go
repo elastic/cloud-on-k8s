@@ -74,10 +74,6 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())
 }
 
-func referencedKibanaExists(c k8s.Client, kbRef types.NamespacedName) (bool, error) {
-	return k8s.ObjectExists(c, kbRef, &kbv1.Kibana{})
-}
-
 // referencedKibanaStatusVersion returns the currently running version of Kibana
 // reported in its status.
 func referencedKibanaStatusVersion(c k8s.Client, kbRef types.NamespacedName) (string, error) {

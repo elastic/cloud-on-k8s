@@ -61,10 +61,6 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 	return association.ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
 }
 
-func referencedEntExists(c k8s.Client, entRef types.NamespacedName) (bool, error) {
-	return k8s.ObjectExists(c, entRef, &entv1.EnterpriseSearch{})
-}
-
 // referencedEntStatusVersion returns the currently running version of Enterprise Search
 // reported in its status.
 func referencedEntStatusVersion(c k8s.Client, entRef types.NamespacedName) (string, error) {
