@@ -148,11 +148,19 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	if schemeChange {
 		// switch to sending requests directly to a random pod instead of going through the service
 		randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
-		scheme, hasScheme := randomPod.Labels[label.HTTPSchemeLabelName]
-		sset, hasSset := randomPod.Labels[label.StatefulSetNameLabelName]
-		if hasScheme && hasSset {
-			return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, randomPod.Name, sset, randomPod.Namespace, network.HTTPPort)
+		if podURL := ElasticsearchPodURL(randomPod); podURL != "" {
+			return podURL
 		}
 	}
 	return ExternalServiceURL(es)
+}
+
+// ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.
+func ElasticsearchPodURL(pod corev1.Pod) string {
+	scheme, hasSchemeLabel := pod.Labels[label.HTTPSchemeLabelName]
+	sset, hasSsetLabel := pod.Labels[label.StatefulSetNameLabelName]
+	if hasSsetLabel && hasSchemeLabel {
+		return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, pod.Name, sset, pod.Namespace, network.HTTPPort)
+	}
+	return ""
 }

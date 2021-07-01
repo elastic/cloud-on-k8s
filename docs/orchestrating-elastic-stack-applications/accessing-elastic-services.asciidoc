@@ -57,8 +57,9 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601/TCP   1
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
 On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
 
-NOTE: By default, the Elasticsearch service created by ECK is configured to route traffic to all Elasticsearch nodes in the cluster. Depending on your cluster configuration, you may want more control over the set of nodes that handle different types of traffic (query, ingest, and so on). See <<{p}-traffic-splitting>> for more information.
+By default, the Elasticsearch service created by ECK is configured to route traffic to all Elasticsearch nodes in the cluster. Depending on your cluster configuration, you may want more control over the set of nodes that handle different types of traffic (query, ingest, and so on). See <<{p}-traffic-splitting>> for more information.
 
+CAUTION: When you change the `clusterIP` setting of the service, ECK will delete and re-create the service as `clusterIP` is an immutable field. Depending on your client implementation, this might result in a short disruption until the service DNS entries refresh to point to the new endpoints.
 
 [source,yaml,subs="attributes"]
 ----
@@ -88,7 +89,7 @@ hulk-kb-http        LoadBalancer   10.19.247.151   35.242.197.228   5601:31380/T
 [id="{p}-tls-certificates"]
 == TLS certificates
 
-This section only covers TLS certificates for the HTTP layer. TLS certificates for the transport layer that are used for internal communications between Elasticsearch nodes are managed by ECK and cannot be changed.
+This section only covers TLS certificates for the HTTP layer. TLS certificates for the transport layer that are used for internal communications between Elasticsearch nodes are managed by ECK and cannot be changed. You can however set your own certificate authority for the <<{p}-transport-ca,transport layer>>.
 
 [id="{p}-default-self-signed-certificate"]
 === Default self-signed certificate
@@ -138,7 +139,7 @@ spec:
 [id="{p}-setting-up-your-own-certificate"]
 === Setup your own certificate
 
-You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the cluster is encrypted.
+You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the Elastic Stack application is encrypted.
 
 Create a Kubernetes secret with:
 
@@ -148,10 +149,22 @@ Create a Kubernetes secret with:
 
 [source,sh]
 ----
-kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
+kubectl create secret generic my-cert --from-file=ca.crt --from-file=tls.crt --from-file=tls.key
 ----
 
-Then, you have to reference the secret name in the `http.tls.certificate` section of the resource manifest.
+Alternatively you can also bring your own CA certificate including a private key and let ECK issue certificates with it. Any certificate SANs you have configured as decribed in <<{p}-static-ip-custom-domain>> will also be respected when issuing certificates with this CA certificate.
+
+Create a Kubernetes secret with:
+
+- `ca.crt`: CA certificate.
+- `ca.key`: The private key to the CA certificate.
+
+[source,sh]
+----
+kubectl create secret generic my-cert --from-file=ca.crt --from-file=ca.key
+----
+
+In both cases, you have to reference the secret name in the `http.tls.certificate` section of the resource manifest.
 
 [source,yaml]
 ----
@@ -212,4 +225,3 @@ PW=$(kubectl get secret "$NAME-es-elastic-user" -o go-template='{{.data.elastic 
 
 curl --cacert tls.crt -u elastic:$PW https://$IP:9200/
 ----
-

@@ -53,12 +53,8 @@ func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) 
 }
 
 // ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
-func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, error) {
+func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA, customCertificates *CertificatesSecret) (*CertificatesSecret, error) {
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
-	customCertificates, err := getCustomCertificates(r.K8sClient, ownerNSN, r.TLSOptions)
-	if err != nil {
-		return nil, err
-	}
 
 	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
 	if err := ReconcileCustomCertWatch(r.DynamicWatches, watchKey, ownerNSN, r.TLSOptions.Certificate); err != nil {
@@ -106,10 +102,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 	// by default let's assume that the CA is provided, either by the ECK internal certificate authority or by the user
 	caCertProvided := true
 	//nolint:nestif
-	if customCertificates != nil {
-		if err := customCertificates.Validate(); err != nil {
-			return nil, err
-		}
+	if customCertificates.HasLeafCertificate() {
 		expectedSecretData := make(map[string][]byte)
 		expectedSecretData[CertFileName] = customCertificates.CertPem()
 		expectedSecretData[KeyFileName] = customCertificates.KeyPem()
@@ -159,7 +152,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		delete(secret.Data, CAFileName)
 	}
 
-	internalCerts := CertificatesSecret(secret)
+	internalCerts := CertificatesSecret{Secret: secret}
 	return &internalCerts, nil
 }
 

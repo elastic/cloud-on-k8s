@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Transport settings
 
-The transport module in Elasticsearch is used for internal communication between nodes within the cluster as well as communication between remote clusters. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html[Elasticsearch documentation] for details.
+The transport module in Elasticsearch is used for internal communication between nodes within the cluster as well as communication between remote clusters. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html[Elasticsearch documentation] for details. For customization options of the HTTP layer see <<{p}-services>> and <<{p}-tls-certificates>>.
 
 == Customize the Transport Service
 
@@ -28,14 +28,15 @@ spec:
 
 Check the https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Kubernetes Publishing Services (ServiceTypes)] that are currently available.
 
-NOTE: When you change the `clusterIP` setting of the service, ECK deletes and re-creates the service, as `clusterIP` is an immutable field. This will cause a short network disruption, but in most cases it should not affect existing connections as the transport module uses long-lived TCP connections. 
+NOTE: When you change the `clusterIP` setting of the service, ECK deletes and re-creates the service, as `clusterIP` is an immutable field. This will cause a short network disruption, but in most cases it should not affect existing connections as the transport module uses long-lived TCP connections.
 
+[id="{p}-transport-ca"]
 == Configure a custom Certificate Authority
 
 Elasticsearch uses X.509 certificates to establish encrypted and authenticated connections across nodes in the cluster. By default, ECK creates a self-signed CA certificate to issue a certificate link:https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-tls.html#node-certificates[for each node in the cluster].
 
 You can use a Kubernetes secret to provide your own CA instead of the self-signed certificate that ECK will then use to create node certificates for transport connections.
-The CA certificate must be stored in the secret under `tls.crt` and the private key must be stored under `tls.key`.
+The CA certificate must be stored in the secret under `ca.crt` and the private key must be stored under `ca.key`.
 
 You need to reference the name of a secret that contains the TLS private key and the CA certificate, in the `spec.transport.tls.certificate` section, as shown in this example:
 

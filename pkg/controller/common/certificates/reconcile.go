@@ -61,25 +61,37 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 		return nil, results.WithError(r.removeCAAndHTTPCertsSecrets())
 	}
 
-	// reconcile CA certs first
-	httpCa, err := ReconcileCAForOwner(
-		r.K8sClient,
-		r.Namer,
-		r.Owner,
-		r.Labels,
-		HTTPCAType,
-		r.CACertRotation,
-	)
+	// check for custom certificates first
+	customCerts, err := validCustomCertificatesOrNil(r.K8sClient, k8s.ExtractNamespacedName(r.Owner), r.TLSOptions)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
-	// handle CA expiry via requeue
-	results.WithResult(reconcile.Result{
-		RequeueAfter: ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, r.CACertRotation.RotateBefore),
-	})
 
-	// reconcile http certificates: either self-signed or user-provided
-	httpCertificates, err := r.ReconcileInternalHTTPCerts(httpCa)
+	var httpCa *CA
+	if customCerts.HasCAPrivateKey() {
+		// if we have user-provided CA cert + key use that
+		httpCa = customCerts.CA()
+	} else {
+		// if not then reconcile self-signed CA
+		httpCa, err = ReconcileCAForOwner(
+			r.K8sClient,
+			r.Namer,
+			r.Owner,
+			r.Labels,
+			HTTPCAType,
+			r.CACertRotation,
+		)
+		if err != nil {
+			return nil, results.WithError(err)
+		}
+		// handle CA expiry via requeue
+		results.WithResult(reconcile.Result{
+			RequeueAfter: ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, r.CACertRotation.RotateBefore),
+		})
+	}
+
+	// reconcile http customCerts: either self-signed or user-provided
+	httpCertificates, err := r.ReconcileInternalHTTPCerts(httpCa, customCerts)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
