@@ -95,6 +95,14 @@ func addWatches(c controller.Controller, r *ReconcileAgent) error {
 		return err
 	}
 
+	// Watch services
+	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &agentv1alpha1.Agent{},
+	}); err != nil {
+		return err
+	}
+
 	// Watch dynamically referenced Secrets
 	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
