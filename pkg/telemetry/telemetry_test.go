@@ -232,6 +232,31 @@ func TestNewReporter(t *testing.T) {
 				AvailableNodes: 6,
 			},
 		},
+		&agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent3",
+				Namespace: "ns2",
+			},
+			Spec: agentv1alpha1.AgentSpec{
+				EnableFleetServer: true,
+				Mode:              agentv1alpha1.AgentFleetMode,
+			},
+			Status: agentv1alpha1.AgentStatus{
+				AvailableNodes: 3,
+			},
+		},
+		&agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent4",
+				Namespace: "ns2",
+			},
+			Spec: agentv1alpha1.AgentSpec{
+				Mode: agentv1alpha1.AgentFleetMode,
+			},
+			Status: agentv1alpha1.AgentStatus{
+				AvailableNodes: 5,
+			},
+		},
 		&mapsv1alpha1.ElasticMapsServer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "maps1",
@@ -277,9 +302,11 @@ func TestNewReporter(t *testing.T) {
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
     agents:
+      fleet_mode: 2
+      fleet_server: 1
       multiple_refs: 1
-      pod_count: 16
-      resource_count: 2
+      pod_count: 24
+      resource_count: 4
     apms:
       pod_count: 2
       resource_count: 1

@@ -279,6 +279,8 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 
 func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
 	multipleRefsKey := "multiple_refs"
+	fleetModeKey := "fleet_mode"
+	fleetServerKey := "fleet_server"
 	stats := map[string]int32{resourceCount: 0, podCount: 0, multipleRefsKey: 0}
 
 	var agentList agentv1alpha1.AgentList
@@ -292,6 +294,12 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 			stats[podCount] += agent.Status.AvailableNodes
 			if len(agent.Spec.ElasticsearchRefs) > 1 {
 				stats[multipleRefsKey]++
+			}
+			if agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
+				stats[fleetModeKey]++
+			}
+			if agent.Spec.EnableFleetServer {
+				stats[fleetServerKey]++
 			}
 		}
 	}
