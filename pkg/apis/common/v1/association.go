@@ -99,6 +99,9 @@ const (
 	EntConfigAnnotationNameBase = "association.k8s.elastic.co/ent-conf"
 	EntAssociationType          = "ent"
 
+	FleetServerConfigAnnotationNameBase = "association.k8s.elastic.co/fs-conf"
+	FleetServerAssociationType          = "fleetserver"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"

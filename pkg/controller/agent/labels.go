@@ -13,7 +13,11 @@ const (
 	// Type represents the Agent type.
 	TypeLabelValue = "agent"
 
+	// NameLabelName used to represent a Kibana in k8s resources
 	NameLabelName = "agent.k8s.elastic.co/name"
+
+	// NamespaceLabelName used to represent a Kibana in k8s resources
+	NamespaceLabelName = "agent.k8s.elastic.co/namespace"
 )
 
 func NewLabels(agent agentv1alpha1.Agent) map[string]string {

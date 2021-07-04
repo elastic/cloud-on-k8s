@@ -677,6 +677,8 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
 		{name: "AGENT-ES", registerFunc: associationctl.AddAgentES},
+		{name: "AGENT-KB", registerFunc: associationctl.AddAgentKibana},
+		{name: "AGENT-FS", registerFunc: associationctl.AddAgentFleetServer},
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
 	}
 
