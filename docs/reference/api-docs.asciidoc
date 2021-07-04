@@ -55,6 +55,18 @@ Agent is the Schema for the Agents API.
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentmode"]
+=== AgentMode (string) 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
+****
+
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec"]
 === AgentSpec 
 
@@ -77,6 +89,11 @@ AgentSpec defines the desired state of the Agent
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to an Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`daemonSet`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-daemonsetspec[$$DaemonSetSpec$$]__ | DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec. Cannot be used along with `deployment`.
 | *`deployment`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-deploymentspec[$$DeploymentSpec$$]__ | Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec. Cannot be used along with `daemonSet`.
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for the Agent.
+| *`mode`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentmode[$$AgentMode$$]__ | Mode specifies the source of configuration for the Agent. The configuration can be specified locally (through `config` or `configRef`) or come from Fleet during runtime.
+| *`enableFleetServer`* __boolean__ | EnableFleetServer determines whether this Agent will launch Fleet Server. Ignored unless `mode` is set to `fleet`.
+| *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to Kibana to setup Fleet and enroll this Agent. Ignored unless `mode` is set to `fleet`.
+| *`fleetServerRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration. Ignored unless `mode` is set to `fleet`.
 |===
 
 
@@ -396,6 +413,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 .Appears In:
 ****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
@@ -437,6 +455,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 
 .Appears In:
 ****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
