@@ -149,111 +149,95 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 }
 
 func buildFleetSetupConfig(params Params) ([]byte, error) {
-	kibanaRefDefined, kbHost, kbCA, kbUsername, kbPassword, err := extractConnectionSettings(params.Agent.Spec.KibanaRef.IsDefined(), params.Agent, params.Client, commonv1.KibanaAssociationType)
+	spec := params.Agent.Spec
+	cfgMap := map[string]interface{}{}
+
+	if spec.KibanaRef.IsDefined() {
+		kbHost, kbCA, kbUsername, kbPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.KibanaAssociationType)
+		if err != nil {
+			return nil, err
+		}
+		cfgMap["kibana"] = map[string]interface{}{
+			"fleet": map[string]interface{}{
+				"ca":       kbCA,
+				"host":     kbHost,
+				"password": kbPassword,
+				"setup":    spec.KibanaRef.IsDefined(),
+				"username": kbUsername,
+			},
+		}
+	}
+
+	if spec.EnableFleetServer {
+		cfgMap["fleet"] = map[string]interface{}{
+			"enroll": true,
+			"ca":     path.Join(FleetCertMountPath, certificates.CAFileName),
+			"url":    fmt.Sprintf("https://%s.%s.svc:8220", HttpServiceName(params.Agent.Name), params.Agent.Namespace),
+		}
+
+		fleetServerCfg := map[string]interface{}{
+			"enable":   true,
+			"cert":     path.Join(FleetCertMountPath, certificates.CertFileName),
+			"cert_key": path.Join(FleetCertMountPath, certificates.KeyFileName),
+		}
+
+		esExpected := len(spec.ElasticsearchRefs) > 0 && spec.ElasticsearchRefs[0].IsDefined()
+		if esExpected {
+			esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.ElasticsearchAssociationType)
+			if err != nil {
+				return nil, err
+			}
+
+			fleetServerCfg["elasticsearch"] = map[string]interface{}{
+				"ca":       esCA,
+				"host":     esHost,
+				"username": esUsername,
+				"password": esPassword,
+			}
+		}
+
+		cfgMap["fleet_server"] = fleetServerCfg
+	} else {
+		cfgMap["fleet_server"] = map[string]interface{}{"enable": false}
+		fleetCfg := map[string]interface{}{"enroll": true}
+
+		if spec.FleetServerRef.IsDefined() {
+			assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+			if assoc != nil {
+				fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
+				fleetCfg["url"] = assoc.AssociationConf().GetURL()
+			}
+		}
+		cfgMap["fleet"] = fleetCfg
+	}
+
+	cfg, err := settings.NewCanonicalConfigFrom(cfgMap)
 	if err != nil {
 		return nil, err
 	}
 
-	if params.Agent.Spec.EnableFleetServer {
-		esExpected := len(params.Agent.Spec.ElasticsearchRefs) > 0 && params.Agent.Spec.ElasticsearchRefs[0].IsDefined()
-		_, esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(esExpected, params.Agent, params.Client, commonv1.ElasticsearchAssociationType)
-		if err != nil {
-			return nil, err
-		}
-
-		cfg, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
-			"fleet": map[string]interface{}{
-				"ca":     path.Join(FleetCertMountPath, certificates.CAFileName),
-				"enroll": kibanaRefDefined,
-				"url":    fmt.Sprintf("https://%s.%s.svc:8220", HttpServiceName(params.Agent.Name), params.Agent.Namespace),
-			},
-			"fleet_server": map[string]interface{}{
-				"enable":   true,
-				"cert":     path.Join(FleetCertMountPath, certificates.CertFileName),
-				"cert_key": path.Join(FleetCertMountPath, certificates.KeyFileName),
-				"elasticsearch": map[string]interface{}{
-					"ca":       esCA,
-					"host":     esHost,
-					"username": esUsername,
-					"password": esPassword,
-				},
-			},
-			"kibana": map[string]interface{}{
-				"fleet": map[string]interface{}{
-					"ca":       kbCA,
-					"host":     kbHost,
-					"password": kbPassword,
-					"setup":    kibanaRefDefined,
-					"username": kbUsername,
-				},
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return cfg.Render()
-	} else {
-		var fsHost, fsCA string
-		if params.Agent.Spec.FleetServerRef.IsDefined() {
-			assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
-			if assoc != nil {
-				fsCA = path.Join(certificatesDir(assoc), CAFileName)
-				fsHost = assoc.AssociationConf().GetURL()
-			}
-		}
-
-		cfg, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
-			"fleet": map[string]interface{}{
-				"ca":     fsCA,
-				"enroll": kibanaRefDefined,
-				"url":    fsHost,
-			},
-			"fleet_server": map[string]interface{}{
-				"enable": false,
-			},
-			"kibana": map[string]interface{}{
-				"fleet": map[string]interface{}{
-					"ca":       kbCA,
-					"host":     kbHost,
-					"password": kbPassword,
-					"setup":    false,
-					"username": kbUsername, // todo check if those can be overridden by env vars if they are just empty strings
-				},
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return cfg.Render()
-	}
+	return cfg.Render()
 }
 
 func extractConnectionSettings(
-	isExpected bool,
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
-) (expected bool, host, ca, username, password string, err error) {
-	if !isExpected {
-		return isExpected, "", "", "", "", nil
-	}
-
+) (host, ca, username, password string, err error) {
 	assoc := association.GetAssociationOfType(agent.GetAssociations(), associationType)
 	if assoc == nil {
-		return true, "",
+		return "",
 			"",
 			"",
 			"",
-			fmt.Errorf("association %s not found in %d associations", associationType, len(agent.GetAssociations()))
+			fmt.Errorf("association of type %s not found in %d associations", associationType, len(agent.GetAssociations()))
 	}
 
 	username, password, err = association.ElasticsearchAuthSettings(client, assoc)
 	if err != nil {
-		return true, "", "", "", "", err
+		return "", "", "", "", err
 	}
 
 	caPath := path.Join(certificatesDir(assoc), CAFileName)
-	return true, assoc.AssociationConf().GetURL(), caPath, username, password, nil
+	return assoc.AssociationConf().GetURL(), caPath, username, password, nil
 }
