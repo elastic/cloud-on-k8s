@@ -62,7 +62,7 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, e
 }
 
 func Filebeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
-	image := container.ImageRepository(container.MetricbeatImage, es.Spec.Version)
+	image := container.ImageRepository(container.FilebeatImage, es.Spec.Version)
 	filebeat, err := common.NewFileBeatSidecar(client, &es, image, filebeatConfig, nil)
 	if err != nil {
 		return common.BeatSidecar{}, err
