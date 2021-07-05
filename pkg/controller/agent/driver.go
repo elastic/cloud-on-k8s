@@ -76,6 +76,11 @@ func internalReconcile(params Params) *reconciler.Results {
 		return results // will eventually retry
 	}
 
+	svc, err := ReconcileService(params)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	configHash := sha256.New224()
 	if res := reconcileConfig(params, configHash); res.HasError() {
 		return results.WithResults(res)
