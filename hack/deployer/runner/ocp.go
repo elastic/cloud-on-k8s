@@ -411,7 +411,7 @@ func (d *OcpDriver) copyKubeconfig() error {
 func (d *OcpDriver) removeKubeconfig() error {
 	if err := NewCommand("kubectl config get-contexts admin").Run(); err != nil {
 		// skip because the admin context does not exist in the kube config
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	log.Printf("Removing context, user and cluster entry from kube config")
