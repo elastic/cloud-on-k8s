@@ -28,6 +28,7 @@ var (
 		checkHTTPConfigOnlyForFleetServer,
 		checkFleetServerOrFleetServerRef,
 		checkReferenceSetForMode,
+		checkSingleESRefInFleetMode,
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
@@ -211,4 +212,17 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 	}
 
 	return errors
+}
+
+func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
+	if a.Spec.Mode == AgentFleetMode && len(a.Spec.ElasticsearchRefs) > 1 {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("elasticsearchRefs"),
+				a.Spec.HTTP,
+				"don't specify more than one Elasticsearch reference, this is not supported in Fleet mode",
+			),
+		}
+	}
+	return nil
 }
