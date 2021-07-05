@@ -10,19 +10,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func NewMetricBeatSidecar(client k8s.Client, resource HasMonitoring, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
-	return NewBeatSidecar(client, "metricbeat", resource,
+func NewMetricBeatSidecar(client k8s.Client, resource HasMonitoring, image string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+	return NewBeatSidecar(client, "metricbeat", image, resource,
 		resource.GetMonitoringMetricsAssociation(), baseConfig, additionalVolume)
 }
 
-func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
-	return NewBeatSidecar(client, "filebeat", resource,
+func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, image string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+	return NewBeatSidecar(client, "filebeat", image, resource,
 		resource.GetMonitoringLogsAssociation(), baseConfig, additionalVolume)
 }
 
@@ -35,7 +34,7 @@ type BeatSidecar struct {
 	Volumes      []corev1.Volume
 }
 
-func NewBeatSidecar(client k8s.Client, beatName string, resource HasMonitoring,
+func NewBeatSidecar(client k8s.Client, beatName string, image string, resource HasMonitoring,
 	associations []commonv1.Association, baseConfig string, additionalVolume volume.VolumeLike,
 ) (BeatSidecar, error) {
 	// build the beat config
@@ -65,7 +64,7 @@ func NewBeatSidecar(client k8s.Client, beatName string, resource HasMonitoring,
 	return BeatSidecar{
 		Container: corev1.Container{
 			Name:         beatName,
-			Image:        container.ImageRepository(image, resource.Version()),
+			Image:        image,
 			Args:         []string{"-c", config.filepath, "-e"},
 			Env:          defaults.PodDownwardEnvVars(),
 			VolumeMounts: volumeMounts,

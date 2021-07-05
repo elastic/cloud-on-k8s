@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
@@ -51,7 +52,8 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, e
 		return common.BeatSidecar{}, err
 	}
 
-	metricbeat, err := common.NewMetricBeatSidecar(client, &es, metricbeatConfig, sourceEsCaVolume)
+	image := container.ImageRepository(container.MetricbeatImage, es.Spec.Version)
+	metricbeat, err := common.NewMetricBeatSidecar(client, &es, image, metricbeatConfig, sourceEsCaVolume)
 	if err != nil {
 		return common.BeatSidecar{}, err
 	}
@@ -60,7 +62,8 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, e
 }
 
 func Filebeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
-	filebeat, err := common.NewFileBeatSidecar(client, &es, filebeatConfig, nil)
+	image := container.ImageRepository(container.MetricbeatImage, es.Spec.Version)
+	filebeat, err := common.NewFileBeatSidecar(client, &es, image, filebeatConfig, nil)
 	if err != nil {
 		return common.BeatSidecar{}, err
 	}

@@ -240,20 +240,6 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 	return nil
 }
 
-// HasMonitoring methods
-
-func (es *Elasticsearch) NSN() types.NamespacedName {
-	return types.NamespacedName{Name: es.Name, Namespace: es.Namespace}
-}
-
-func (es *Elasticsearch) ShortKind() string {
-	return ShortKind
-}
-
-func (es *Elasticsearch) Version() string {
-	return es.Spec.Version
-}
-
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
 // Inspired by https://github.com/kubernetes/enhancements/pull/2440
 type VolumeClaimDeletePolicy string
