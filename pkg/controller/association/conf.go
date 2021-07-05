@@ -157,6 +157,21 @@ func GetAssociationConf(association commonv1.Association) (*commonv1.Association
 	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
 }
 
+// GetAssociationOfType returns the first association from the provided slice that matches provided type. Returns
+// nil if such association can't be found.
+func GetAssociationOfType(
+	associations []commonv1.Association,
+	associationType commonv1.AssociationType,
+) commonv1.Association {
+	for _, assoc := range associations {
+		if assoc.AssociationType() != associationType {
+			continue
+		}
+		return assoc
+	}
+	return nil
+}
+
 func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil

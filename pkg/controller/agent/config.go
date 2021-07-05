@@ -196,7 +196,7 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 	} else {
 		var fsHost, fsCA string
 		if params.Agent.Spec.FleetServerRef.IsDefined() {
-			assoc := getAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+			assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
 			if assoc != nil {
 				fsCA = path.Join(certificatesDir(assoc), CAFileName)
 				fsHost = assoc.AssociationConf().GetURL()
@@ -240,7 +240,7 @@ func extractConnectionSettings(
 		return isExpected, "", "", "", "", nil
 	}
 
-	assoc := getAssociationOfType(agent.GetAssociations(), associationType)
+	assoc := association.GetAssociationOfType(agent.GetAssociations(), associationType)
 	if assoc == nil {
 		return true, "",
 			"",
@@ -256,17 +256,4 @@ func extractConnectionSettings(
 
 	caPath := path.Join(certificatesDir(assoc), CAFileName)
 	return true, assoc.AssociationConf().GetURL(), caPath, username, password, nil
-}
-
-func getAssociationOfType(
-	associations []commonv1.Association,
-	associationType commonv1.AssociationType,
-) commonv1.Association {
-	for _, assoc := range associations {
-		if assoc.AssociationType() != associationType {
-			continue
-		}
-		return assoc
-	}
-	return nil
 }
