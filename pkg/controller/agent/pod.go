@@ -63,7 +63,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, configHash hash.Hash) corev1.PodTemplateSpec {
+func buildPodTemplate(params Params, configHash hash.Hash, fleetCerts *certificates.CertificatesSecret) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 
 	podTemplate := params.GetPodTemplate()

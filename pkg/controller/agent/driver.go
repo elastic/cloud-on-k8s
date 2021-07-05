@@ -7,7 +7,11 @@ package agent
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +42,8 @@ type Params struct {
 	Watches       watches.DynamicWatches
 
 	Agent agentv1alpha1.Agent
+
+	OperatorParams operator.Parameters
 }
 
 func (p Params) K8sClient() k8s.Client {
@@ -82,6 +88,27 @@ func internalReconcile(params Params) *reconciler.Results {
 	}
 
 	configHash := sha256.New224()
+	var fleetCerts *certificates.CertificatesSecret
+	if params.Agent.Spec.EnableFleetServer {
+		var caResults *reconciler.Results
+		fleetCerts, caResults = certificates.Reconciler{
+			K8sClient:             params.Client,
+			DynamicWatches:        params.Watches,
+			Owner:                 &params.Agent,
+			TLSOptions:            params.Agent.Spec.HTTP.TLS,
+			Namer:                 Namer,
+			Labels:                NewLabels(params.Agent),
+			Services:              []corev1.Service{*svc},
+			CACertRotation:        params.OperatorParams.CACertRotation,
+			CertRotation:          params.OperatorParams.CertRotation,
+			GarbageCollectSecrets: true,
+			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("%s.%s.svc", HttpServiceName(params.Agent.Name), params.Agent.Namespace)}},
+		}.ReconcileCAAndHTTPCerts(params.Context)
+		if caResults.HasError() {
+			return results.WithResults(caResults)
+		}
+		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
+	}
 	if res := reconcileConfig(params, configHash); res.HasError() {
 		return results.WithResults(res)
 	}
@@ -91,16 +118,14 @@ func internalReconcile(params Params) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	err = ReconcileService(params)
+	podTemplate, err := buildPodTemplate(params, configHash, fleetCerts)
 	if err != nil {
 		return results.WithError(err)
 	}
-
-	podTemplate := buildPodTemplate(params /*keystoreResources,*/, configHash)
 	return results.WithResults(reconcilePodVehicle(params, podTemplate))
 }
 
-func ReconcileService(params Params) error {
+func ReconcileService(params Params) (*corev1.Service, error) {
 	svc := NewService(params.Agent)
 
 	// setup Service only when Fleet Server is enabled
@@ -109,15 +134,14 @@ func ReconcileService(params Params) error {
 		if err := params.Client.Get(params.Context, k8s.ExtractNamespacedName(svc), svc); err == nil {
 			err := params.Client.Delete(params.Context, svc)
 			if err != nil && !apierrors.IsNotFound(err) {
-				return err
+				return nil, err
 			}
 		}
 
-		return nil
+		return nil, nil
 	}
 
-	_, err := common.ReconcileService(params.Context, params.Client, svc, &params.Agent)
-	return err
+	return common.ReconcileService(params.Context, params.Client, svc, &params.Agent)
 }
 
 func NewService(agent agentv1alpha1.Agent) *corev1.Service {

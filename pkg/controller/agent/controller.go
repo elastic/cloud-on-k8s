@@ -171,11 +171,12 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	}
 
 	driverResults := internalReconcile(Params{
-		Context:       ctx,
-		Client:        r.Client,
-		EventRecorder: r.recorder,
-		Watches:       r.dynamicWatches,
-		Agent:         agent,
+		Context:        ctx,
+		Client:         r.Client,
+		EventRecorder:  r.recorder,
+		Watches:        r.dynamicWatches,
+		Agent:          agent,
+		OperatorParams: r.Parameters,
 	})
 
 	return results.WithResults(driverResults)
