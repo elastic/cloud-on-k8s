@@ -28,24 +28,25 @@ var (
 // Validate validates that the Elasticsearch version is supported for Stack Monitoring and that there is exactly one
 // Elasticsearch reference defined when Stack Monitoring is defined
 func Validate(es esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	if isMonitoringDefined(es) {
 		err := IsSupportedVersion(es.Spec.Version)
 		if err != nil {
-			return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version,
-				fmt.Sprintf(unsupportedVersionForStackMonitoringMsg, MinStackVersion))}
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version,
+				fmt.Sprintf(unsupportedVersionForStackMonitoringMsg, MinStackVersion)))
 		}
 	}
 	if IsMonitoringMetricsDefined(es) && len(es.Spec.Monitoring.Metrics.ElasticsearchRefs) != 1 {
-		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
 			es.Spec.Monitoring.Metrics.ElasticsearchRefs,
-			fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Metrics"))}
+			fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Metrics")))
 	}
 	if IsMonitoringLogsDefined(es) && len(es.Spec.Monitoring.Logs.ElasticsearchRefs) != 1 {
-		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
 			es.Spec.Monitoring.Logs.ElasticsearchRefs,
-			fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Logs"))}
+			fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Logs")))
 	}
-	return field.ErrorList{}
+	return errs
 }
 
 // IsSupportedVersion returns true if the Elasticsearch version is supported for Stack Monitoring, else returns false
