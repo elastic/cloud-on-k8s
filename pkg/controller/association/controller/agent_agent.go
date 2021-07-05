@@ -55,7 +55,7 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 	}
 	serviceName := fleetServerRef.ServiceName
 	if serviceName == "" {
-		serviceName = agent.HttpServiceName(fleetServer.Name)
+		serviceName = agent.HTTPServiceName(fleetServer.Name)
 	}
 	nsn := types.NamespacedName{Namespace: fleetServer.Namespace, Name: serviceName}
 	return association.ServiceURL(c, nsn, fleetServer.Spec.HTTP.Protocol())

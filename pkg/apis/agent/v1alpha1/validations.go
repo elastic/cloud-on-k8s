@@ -25,7 +25,7 @@ var (
 		checkSpec,
 		checkEmptyConfigForFleetMode,
 		checkFleetServerOnlyInFleetMode,
-		checkHttpConfigOnlyForFleetServer,
+		checkHTTPConfigOnlyForFleetServer,
 		checkFleetServerOrFleetServerRef,
 		checkReferenceSetForMode,
 	}
@@ -169,7 +169,7 @@ func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
 	return nil
 }
 
-func checkHttpConfigOnlyForFleetServer(a *Agent) field.ErrorList {
+func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
 	if !a.Spec.EnableFleetServer && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfig{}) {
 		return field.ErrorList{
 			field.Invalid(

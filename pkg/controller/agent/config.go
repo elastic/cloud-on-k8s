@@ -168,11 +168,12 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 		}
 	}
 
+	//nolint:nestif
 	if spec.EnableFleetServer {
 		cfgMap["fleet"] = map[string]interface{}{
 			"enroll": true,
 			"ca":     path.Join(FleetCertMountPath, certificates.CAFileName),
-			"url":    fmt.Sprintf("https://%s.%s.svc:8220", HttpServiceName(params.Agent.Name), params.Agent.Namespace),
+			"url":    fmt.Sprintf("https://%s.%s.svc:8220", HTTPServiceName(params.Agent.Name), params.Agent.Namespace),
 		}
 
 		fleetServerCfg := map[string]interface{}{

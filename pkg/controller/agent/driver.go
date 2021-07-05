@@ -102,7 +102,7 @@ func internalReconcile(params Params) *reconciler.Results {
 			CACertRotation:        params.OperatorParams.CACertRotation,
 			CertRotation:          params.OperatorParams.CertRotation,
 			GarbageCollectSecrets: true,
-			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("%s.%s.svc", HttpServiceName(params.Agent.Name), params.Agent.Namespace)}},
+			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
 		}.ReconcileCAAndHTTPCerts(params.Context)
 		if caResults.HasError() {
 			return results.WithResults(caResults)
@@ -151,7 +151,7 @@ func NewService(agent agentv1alpha1.Agent) *corev1.Service {
 	}
 
 	svc.ObjectMeta.Namespace = agent.Namespace
-	svc.ObjectMeta.Name = HttpServiceName(agent.Name)
+	svc.ObjectMeta.Name = HTTPServiceName(agent.Name)
 
 	labels := NewLabels(agent)
 	ports := []corev1.ServicePort{

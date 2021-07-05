@@ -19,6 +19,6 @@ func Name(name string) string {
 	return Namer.Suffix(name)
 }
 
-func HttpServiceName(name string) string {
+func HTTPServiceName(name string) string {
 	return Namer.Suffix(name, httpServiceSuffix)
 }

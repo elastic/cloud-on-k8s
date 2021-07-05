@@ -101,6 +101,7 @@ func buildPodTemplate(params Params, configHash hash.Hash, fleetCerts *certifica
 	// all volumes with CAs of direct associations
 	vols = append(vols, getVolumesFromAssociations(params.Agent.GetAssociations())...)
 
+	//nolint:nestif
 	// fleet mode requires some special treatment
 	if spec.Mode == agentv1alpha1.AgentFleetMode {
 		// enabling fleet requires configuring fleet setup, agent enrollment, fleet server connection information, etc.
@@ -210,7 +211,7 @@ func buildPodTemplate(params Params, configHash hash.Hash, fleetCerts *certifica
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {
-	var vols []volume.VolumeLike
+	vols := []volume.VolumeLike{}
 	for i, association := range associations {
 		if !association.AssociationConf().CAIsConfigured() {
 			return nil
