@@ -314,7 +314,7 @@ var (
 func (d *OcpDriver) currentStatus() ClusterStatus {
 	log.Println("Checking if cluster exists...")
 
-	kubeConfig := d.kubeconfig()
+	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 	if _, err := os.Stat(kubeConfig); os.IsNotExist(err) {
 		if empty, err := isEmpty(d.runtimeState.ClusterStateDir); empty && err == nil {
 			return NotFound
@@ -323,7 +323,8 @@ func (d *OcpDriver) currentStatus() ClusterStatus {
 	}
 
 	log.Println("Cluster state synced: Testing that the OpenShift cluster is alive... ")
-	alive, err := d.kubectl("version").WithoutStreaming().OutputContainsAny("Server Version")
+	cmd := "kubectl version"
+	alive, err := NewCommand(cmd).WithoutStreaming().WithVariable("KUBECONFIG", kubeConfig).OutputContainsAny("Server Version")
 
 	if !alive || err != nil { // error will be typically not nil when alive is false but let's be explicit here to avoid returning Running on a non-nil error
 		log.Printf("a cluster state dir was found in %s but the cluster is not responding to `kubectl version`: %s", d.runtimeState.ClusterStateDir, err.Error())
@@ -397,29 +398,30 @@ func (d *OcpDriver) downloadClusterState() error {
 
 func (d *OcpDriver) copyKubeconfig() error {
 	log.Printf("Copying  credentials")
+	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
 	// 1. merge or create kubeconfig
-	if err := mergeKubeconfig(d.kubeconfig()); err != nil {
+	if err := mergeKubeconfig(kubeConfig); err != nil {
 		return err
 	}
 	// 2. after merging make sure that the ocp context is in use, which is always called `admin`
-	return d.kubectl("config use-context admin").Run()
+	return NewCommand("kubectl config use-context admin").Run()
 }
 
 func (d *OcpDriver) removeKubeconfig() error {
-	if err := d.kubectl("config get-contexts admin").Run(); err != nil {
+	if err := NewCommand("kubectl config get-contexts admin").Run(); err != nil {
 		// skip because the admin context does not exist in the kube config
 		return nil
 	}
 
 	log.Printf("Removing context, user and cluster entry from kube config")
-	if err := d.kubectl("config delete-context admin").Run(); err != nil {
+	if err := NewCommand("kubectl config delete-context admin").Run(); err != nil {
 		return err
 	}
-	if err := d.kubectl("config delete-user admin").Run(); err != nil {
+	if err := NewCommand("kubectl config delete-user admin").Run(); err != nil {
 		return err
 	}
-	return d.kubectl("config delete-cluster {{.ClusterName}}").
+	return NewCommand("kubectl config delete-cluster {{.ClusterName}}").
 		AsTemplate(map[string]interface{}{"ClusterName": d.plan.ClusterName}).
 		Run()
 }
@@ -470,16 +472,4 @@ func (d *OcpDriver) baseDomain() string {
 		baseDomain = "eck-ocp.elastic.dev"
 	}
 	return baseDomain
-}
-
-// kubectl execues a kubectl command by having set the KUBECONFIG environment variable
-func (d *OcpDriver) kubectl(args string) *Command {
-	return NewCommand(fmt.Sprintf("kubectl %s", args)).
-		WithoutStreaming().
-		WithVariable("KUBECONFIG", d.kubeconfig())
-}
-
-// kubeconfig returns the kube config file path
-func (d *OcpDriver) kubeconfig() string {
-	return filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 }
