@@ -195,10 +195,10 @@ func buildPodTemplate(params Params, configHash hash.Hash, fleetCerts *certifica
 			}},
 		)
 
-	if params.Agent.Spec.Mode == agentv1alpha1.AgentStandaloneMode {
+	if params.Agent.Spec.Mode == "" || params.Agent.Spec.Mode == agentv1alpha1.AgentStandaloneMode {
 		builder = builder.
 			WithResources(defaultResources).
-			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
+			WithArgs("-e", "-c", ConfigMountPath)
 	} else if params.Agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
 		builder = builder.
 			WithResources(defaultFleetResources).
