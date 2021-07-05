@@ -14,6 +14,14 @@ managedNamespaces: []
 # 2. Uninstalling the chart will delete the CRDs and potentially cause Elastic resources deployed by other users to be removed as well.
 installCRDs: true
 
+## Additional annotations to add to all resources
+customAnnotations: #{}
+  elastic.co/version: x.y.z
+
+## Additional labels to add to all resources
+customLabels: #{}
+  app: eck-operator
+
 # replicaCount is the number of operator pods to run.
 replicaCount: 1
 
