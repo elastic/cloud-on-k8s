@@ -50,7 +50,7 @@ func newBeatConfig(client k8s.Client, beatName string, resource HasMonitoring, a
 	}
 
 	// name for the config secret and the associated config volume for the es pod
-	configName := fmt.Sprintf("%s-%s-%s-config", resource.GetName(), assoc.AssociationType(), beatName)
+	configName := configVolumeName(resource.GetName(), beatName)
 	configFilename := fmt.Sprintf("%s.yml", beatName)
 	configDirPath := fmt.Sprintf("/etc/%s-config", beatName)
 
@@ -113,8 +113,9 @@ func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[strin
 	if assoc.AssociationConf().GetCACertProvided() {
 		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
 		outputConfig["ssl.certificate_authorities"] = []string{sslCAPath}
+		volumeName := caVolumeName(assoc)
 		caVolume = volume.NewSecretVolumeWithMountPath(
-			assoc.AssociationConf().GetCASecretName(), assoc.AssociationConf().GetCASecretName(), caDirPath,
+			assoc.AssociationConf().GetCASecretName(), volumeName, caDirPath,
 		)
 	}
 

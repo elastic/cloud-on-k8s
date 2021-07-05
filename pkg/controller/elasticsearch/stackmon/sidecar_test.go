@@ -111,7 +111,7 @@ func TestWithMonitoring(t *testing.T) {
 				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
 				sampleEs.GetMonitoringMetricsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
 				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				sampleEs.GetMonitoringLogsAssociation()[0].SetAssociationConf(&monitoringAssocConf)
+				sampleEs.GetMonitoringLogsAssociation()[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
 			containersLength:       3,

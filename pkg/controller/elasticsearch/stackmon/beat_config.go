@@ -85,7 +85,7 @@ func buildMetricbeatBaseConfig(client k8s.Client, es esv1.Elasticsearch) (string
 	if configData.IsSSL {
 		caVolume = volume.NewSecretVolumeWithMountPath(
 			certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
-			fmt.Sprintf("%s-es-monitoring-local-ca", es.Name),
+			"es-monitoring-local-ca",
 			fmt.Sprintf("/mnt/elastic-internal/es-monitoring/%s/%s/certs", es.Namespace, es.Name),
 		)
 
