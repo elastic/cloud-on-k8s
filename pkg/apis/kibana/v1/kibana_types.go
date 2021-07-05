@@ -97,9 +97,10 @@ type KibanaSpec struct {
 type KibanaStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
 	// AssociationStatus is the status of any auto-linking to Elasticsearch clusters.
-	// This was kept as "associationStatus" rather than a more consistent "elasticsearchAssociationStatus"
-	// for backward-compatibility reasons.
+	// This field is deprecated and will be removed in a future release. Use ElasticsearchAssociationStatus instead.
 	AssociationStatus commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
+	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
 	// EnterpriseSearchAssociationStatus is the status of any auto-linking to Enterprise Search.
 	EnterpriseSearchAssociationStatus commonv1.AssociationStatus `json:"enterpriseSearchAssociationStatus,omitempty"`
 }
@@ -146,7 +147,7 @@ func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Ass
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
 		if k.Spec.ElasticsearchRef.IsDefined() {
-			return commonv1.NewSingleAssociationStatusMap(k.Status.AssociationStatus)
+			return commonv1.NewSingleAssociationStatusMap(k.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.EntAssociationType:
 		if k.Spec.EnterpriseSearchRef.IsDefined() {
@@ -165,6 +166,9 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
+		k.Status.ElasticsearchAssociationStatus = single
+		// also set Status.AssociationStatus to report the status of the association with es,
+		// for backward compatibility reasons
 		k.Status.AssociationStatus = single
 		return nil
 	case commonv1.EntAssociationType:
