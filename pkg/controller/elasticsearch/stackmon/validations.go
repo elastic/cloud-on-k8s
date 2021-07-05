@@ -19,10 +19,10 @@ const (
 )
 
 var (
-	// Minimum Stack version to enable Stack Monitoring.
+	// MinStackVersion is the minimum Stack version to enable Stack Monitoring on an Elastic Stack application..
 	// This requirement comes from the fact that we configure Elasticsearch to write logs to disk for Filebeat
 	// via the env var ES_LOG_STYLE available from this version.
-	MinStackVersion = version.MustParse("7.14.0")
+	MinStackVersion = version.MustParse("7.14.0-SNAPSHOT")
 )
 
 // Validate validates that the Elasticsearch version is supported for Stack Monitoring and that there is exactly one
