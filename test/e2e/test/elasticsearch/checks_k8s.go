@@ -129,7 +129,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			},
 			{
 				Name: esName + "-es-internal-users",
-				Keys: []string{"elastic-internal", "elastic-internal-probe"},
+				Keys: []string{"elastic-internal", "elastic-internal-monitoring", "elastic-internal-probe"},
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":                "elasticsearch",
 					"eck.k8s.elastic.co/credentials":            "true",
