@@ -16,32 +16,32 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func NewMetricbeatBuilder(client k8s.Client, resource HasMonitoring, baseConfig string, additionalVolume volume.VolumeLike) (BeatBuilder, error) {
-	return NewBeatBuilder(client, "metricbeat", container.MetricbeatImage, resource,
+func NewMetricBeatSidecar(client k8s.Client, resource HasMonitoring, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+	return NewBeatSidecar(client, "metricbeat", resource,
 		resource.GetMonitoringMetricsAssociation(), baseConfig, additionalVolume)
 }
 
-func NewFilebeatBuilder(client k8s.Client, resource HasMonitoring, baseConfig string, additionalVolume volume.VolumeLike) (BeatBuilder, error) {
-	return NewBeatBuilder(client, "filebeat", container.FilebeatImage, resource,
+func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+	return NewBeatSidecar(client, "filebeat", resource,
 		resource.GetMonitoringLogsAssociation(), baseConfig, additionalVolume)
 }
 
-// BeatBuilder helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on
+// BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on
 // building the container, the secret holding the configuration file and the associated volumes for the pod.
-type BeatBuilder struct {
-	container    corev1.Container
-	configHash   hash.Hash
-	configSecret corev1.Secret
-	volumes      []volume.VolumeLike
+type BeatSidecar struct {
+	Container    corev1.Container
+	ConfigHash   hash.Hash
+	ConfigSecret corev1.Secret
+	Volumes      []corev1.Volume
 }
 
-func NewBeatBuilder(client k8s.Client, beatName string, image container.Image, resource HasMonitoring,
+func NewBeatSidecar(client k8s.Client, beatName string, resource HasMonitoring,
 	associations []commonv1.Association, baseConfig string, additionalVolume volume.VolumeLike,
-) (BeatBuilder, error) {
+) (BeatSidecar, error) {
 	// build the beat config
 	config, err := newBeatConfig(client, beatName, resource, associations, baseConfig)
 	if err != nil {
-		return BeatBuilder{}, err
+		return BeatSidecar{}, err
 	}
 
 	// add additional volume (ex: CA volume of the monitored ES for Metricbeat)
@@ -56,36 +56,22 @@ func NewBeatBuilder(client k8s.Client, beatName string, image container.Image, r
 		volumeMounts[i] = v.VolumeMount()
 	}
 
-	return BeatBuilder{
-		container: corev1.Container{
+	// prepare the volumes for the pod
+	podVolumes := make([]corev1.Volume, 0)
+	for _, v := range volumes {
+		podVolumes = append(podVolumes, v.Volume())
+	}
+
+	return BeatSidecar{
+		Container: corev1.Container{
 			Name:         beatName,
 			Image:        container.ImageRepository(image, resource.Version()),
 			Args:         []string{"-c", config.filepath, "-e"},
 			Env:          defaults.PodDownwardEnvVars(),
 			VolumeMounts: volumeMounts,
 		},
-		configHash:   config.hash,
-		configSecret: config.secret,
-		volumes:      volumes,
+		ConfigHash:   config.hash,
+		ConfigSecret: config.secret,
+		Volumes:      podVolumes,
 	}, nil
-}
-
-func (b BeatBuilder) Container() corev1.Container {
-	return b.container
-}
-
-func (b BeatBuilder) ConfigHash() []byte {
-	return b.configHash.Sum(nil)
-}
-
-func (b BeatBuilder) ConfigSecret() corev1.Secret {
-	return b.configSecret
-}
-
-func (b BeatBuilder) Volumes() []corev1.Volume {
-	volumes := make([]corev1.Volume, 0)
-	for _, v := range b.volumes {
-		volumes = append(volumes, v.Volume())
-	}
-	return volumes
 }

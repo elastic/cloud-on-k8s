@@ -45,27 +45,27 @@ func isMonitoringDefined(es esv1.Elasticsearch) bool {
 	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
 }
 
-func MetricbeatBuilder(client k8s.Client, es esv1.Elasticsearch) (common.BeatBuilder, error) {
+func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
 	metricbeatConfig, sourceEsCaVolume, err := buildMetricbeatBaseConfig(client, es)
 	if err != nil {
-		return common.BeatBuilder{}, err
+		return common.BeatSidecar{}, err
 	}
 
-	metricbeatBuilder, err := common.NewMetricbeatBuilder(client, &es, metricbeatConfig, sourceEsCaVolume)
+	metricbeat, err := common.NewMetricBeatSidecar(client, &es, metricbeatConfig, sourceEsCaVolume)
 	if err != nil {
-		return common.BeatBuilder{}, err
+		return common.BeatSidecar{}, err
 	}
 
-	return metricbeatBuilder, nil
+	return metricbeat, nil
 }
 
-func FilebeatBuilder(client k8s.Client, es esv1.Elasticsearch) (common.BeatBuilder, error) {
-	filebeatBuilder, err := common.NewFilebeatBuilder(client, &es, filebeatConfig, nil)
+func Filebeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
+	filebeat, err := common.NewFileBeatSidecar(client, &es, filebeatConfig, nil)
 	if err != nil {
-		return common.BeatBuilder{}, err
+		return common.BeatSidecar{}, err
 	}
 
-	return filebeatBuilder, nil
+	return filebeat, nil
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
@@ -80,33 +80,33 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es 
 	volumes := make([]corev1.Volume, 0)
 
 	if IsMonitoringMetricsDefined(es) {
-		beatBuilder, err := MetricbeatBuilder(client, es)
+		b, err := Metricbeat(client, es)
 		if err != nil {
 			return nil, err
 		}
 
-		volumes = append(volumes, beatBuilder.Volumes()...)
-		builder.WithContainers(beatBuilder.Container())
-		configHash.Write(beatBuilder.ConfigHash())
+		volumes = append(volumes, b.Volumes...)
+		builder.WithContainers(b.Container)
+		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
 	if IsMonitoringLogsDefined(es) {
 		// enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 
-		beatBuilder, err := FilebeatBuilder(client, es)
+		b, err := Filebeat(client, es)
 		if err != nil {
 			return nil, err
 		}
 
-		volumes = append(volumes, beatBuilder.Volumes()...)
-		filebeat := beatBuilder.Container()
+		volumes = append(volumes, b.Volumes...)
+		filebeat := b.Container
 
 		// share the ES logs volume into the Filebeat container
 		filebeat.VolumeMounts = append(filebeat.VolumeMounts, esvolume.DefaultLogsVolumeMount)
 
 		builder.WithContainers(filebeat)
-		configHash.Write(beatBuilder.ConfigHash())
+		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
 	// add the config hash label to ensure pod rotation when an ES password or a CA are rotated
