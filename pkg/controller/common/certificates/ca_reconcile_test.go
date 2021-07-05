@@ -6,6 +6,8 @@ package certificates
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -141,6 +143,21 @@ func Test_canReuseCA(t *testing.T) {
 	}
 }
 
+func rsaPKeyEqual(t *testing.T, actual, expected crypto.Signer) {
+	t.Helper()
+	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
+		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
+	}
+	switch epk := expected.(type) {
+	case *rsa.PrivateKey:
+		require.True(t, epk.Equal(expected))
+	case *ecdsa.PrivateKey:
+		require.True(t, epk.Equal(expected))
+	default:
+		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
+	}
+}
+
 func checkCASecrets(
 	t *testing.T,
 	client k8s.Client,
@@ -162,8 +179,7 @@ func checkCASecrets(
 	// if an expected Ca was passed, it should match ca
 	if expectedCa != nil {
 		require.True(t, ca.Cert.Equal(expectedCa.Cert))
-		require.Equal(t, ca.PrivateKey.E, expectedCa.PrivateKey.E)
-		require.Equal(t, ca.PrivateKey.N, expectedCa.PrivateKey.N)
+		rsaPKeyEqual(t, ca.PrivateKey, expectedCa.PrivateKey)
 	}
 
 	// if a not expected Ca was passed, it should not match ca
@@ -186,14 +202,14 @@ func checkCASecrets(
 	require.NotNil(t, parsedCa)
 	// and return the ca
 	require.True(t, ca.Cert.Equal(parsedCa.Cert))
-	require.Equal(t, ca.PrivateKey.E, parsedCa.PrivateKey.E)
-	require.Equal(t, ca.PrivateKey.N, parsedCa.PrivateKey.N)
+	rsaPKeyEqual(t, ca.PrivateKey, parsedCa.PrivateKey)
 }
 
 func Test_renewCA(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
-	internalCASecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
+	internalCASecret, err := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name        string
@@ -227,7 +243,8 @@ func Test_renewCA(t *testing.T) {
 func TestReconcileCAForCluster(t *testing.T) {
 	validCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
-	internalCASecret := internalSecretForCA(validCa, testNamer, &testCluster, nil, TransportCAType)
+	internalCASecret, err := internalSecretForCA(validCa, testNamer, &testCluster, nil, TransportCAType)
+	require.NoError(t, err)
 
 	internalCASecretWithoutPrivateKey := internalCASecret.DeepCopy()
 	delete(internalCASecretWithoutPrivateKey.Data, KeyFileName)
@@ -240,9 +257,10 @@ func TestReconcileCAForCluster(t *testing.T) {
 		ExpireIn: &soonToExpire,
 	})
 	require.NoError(t, err)
-	soonToExpireInternalCASecret := internalSecretForCA(
+	soonToExpireInternalCASecret, err := internalSecretForCA(
 		soonToExpireCa, testNamer, &testCluster, nil, TransportCAType,
 	)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name             string
@@ -306,7 +324,8 @@ func Test_internalSecretForCA(t *testing.T) {
 
 	labels := map[string]string{"foo": "bar"}
 
-	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, labels, TransportCAType)
+	internalSecret, err := internalSecretForCA(testCa, testNamer, &testCluster, labels, TransportCAType)
+	require.NoError(t, err)
 
 	assert.Equal(t, testNamespace, internalSecret.Namespace)
 	assert.Equal(t, testName+"-test-transport-ca-internal", internalSecret.Name)
@@ -322,7 +341,8 @@ func Test_buildCAFromSecret(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
 
-	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
+	internalSecret, err := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
+	require.NoError(t, err)
 
 	internalSecretMissingCert := internalSecret.DeepCopy()
 	delete(internalSecretMissingCert.Data, CertFileName)

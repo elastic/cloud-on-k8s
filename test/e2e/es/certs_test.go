@@ -104,9 +104,13 @@ func TestCustomHTTPCA(t *testing.T) {
 						return err
 					}
 
+					privateKey, err := certificates.EncodePEMPrivateKey(customCA.PrivateKey)
+					if err != nil {
+						return err
+					}
 					caSecret := mkCertSecret(
 						certificates.EncodePEMCert(customCA.Cert.Raw),
-						certificates.EncodePEMPrivateKey(*customCA.PrivateKey),
+						privateKey,
 					)
 					_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
 					return err
@@ -244,9 +248,13 @@ func TestCustomTransportCA(t *testing.T) {
 							return err
 						}
 
+						privateKey, err := certificates.EncodePEMPrivateKey(ca.PrivateKey)
+						if err != nil {
+							return err
+						}
 						caSecret := mkCertSecret(
 							certificates.EncodePEMCert(ca.Cert.Raw),
-							certificates.EncodePEMPrivateKey(*ca.PrivateKey),
+							privateKey,
 						)
 						_, err = reconciler.ReconcileSecret(k.Client, caSecret, nil)
 						return err

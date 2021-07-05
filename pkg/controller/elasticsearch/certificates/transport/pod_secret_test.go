@@ -52,7 +52,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						PodCertFileName(testPod.Name): pemCert,
+						PodCertFileName(testPod.Name): rsaCert,
 					},
 				},
 				pod:          &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
@@ -65,7 +65,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						PodCertFileName(testPod.Name): pemCert,
+						PodCertFileName(testPod.Name): rsaCert,
 					},
 				},
 				rotateBefore: certificates.DefaultRotateBefore,
@@ -77,7 +77,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						PodCertFileName(testPod.Name): pemCert,
+						PodCertFileName(testPod.Name): rsaCert,
 					},
 				},
 				rotateBefore: certificates.DefaultCertValidity, // rotate before the same duration as total validity
@@ -96,7 +96,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				tt.args.secret,
 				*tt.args.pod,
 				testRSAPrivateKey,
-				testCA,
+				testRSACA,
 				tt.args.rotateBefore,
 			); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
@@ -117,7 +117,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "no private key in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodCertFileName(testPod.Name): pemCert,
+					PodCertFileName(testPod.Name): rsaCert,
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
@@ -133,7 +133,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "no cert in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name): certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					PodKeyFileName(testPod.Name): testRSAPEMPrivateKey,
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
@@ -149,8 +149,8 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "cert does not belong to the key in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name):  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
-					PodCertFileName(testPod.Name): certificates.EncodePEMCert(testCA.Cert.Raw),
+					PodKeyFileName(testPod.Name):  testRSAPEMPrivateKey,
+					PodCertFileName(testPod.Name): certificates.EncodePEMCert(testRSACA.Cert.Raw),
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
@@ -167,7 +167,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "invalid cert in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name):  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					PodKeyFileName(testPod.Name):  testRSAPEMPrivateKey,
 					PodCertFileName(testPod.Name): []byte("invalid"),
 				},
 			},
@@ -185,13 +185,31 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "valid data should not require updating",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name):  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
-					PodCertFileName(testPod.Name): pemCert,
+					PodKeyFileName(testPod.Name):  testRSAPEMPrivateKey,
+					PodCertFileName(testPod.Name): rsaCert,
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
 				t.Helper()
 				assert.Equal(t, before, after)
+			},
+		},
+		{
+			name: "ECDSA key should be replaced by a RSA private key",
+			secret: &corev1.Secret{
+				Data: map[string][]byte{
+					PodKeyFileName(testPod.Name):  testECDSAPEMPrivateKey,
+					PodCertFileName(testPod.Name): rsaCert,
+				},
+			},
+			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
+				t.Helper()
+				assert.NotEmpty(t, after.Data[PodKeyFileName(testPod.Name)])
+				assert.NotEmpty(t, after.Data[PodCertFileName(testPod.Name)])
+
+				// both key and cert should be re-generated
+				assert.NotEqual(t, after.Data[PodKeyFileName(testPod.Name)], before.Data[PodKeyFileName(testPod.Name)])
+				assert.NotEqual(t, after.Data[PodCertFileName(testPod.Name)], before.Data[PodCertFileName(testPod.Name)])
 			},
 		},
 	}
@@ -210,7 +228,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				testES,
 				tt.secret,
 				*tt.pod,
-				testCA,
+				testRSACA,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,
