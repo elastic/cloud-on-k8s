@@ -143,7 +143,7 @@ func Test_canReuseCA(t *testing.T) {
 	}
 }
 
-func rsaPKeyEqual(t *testing.T, actual, expected crypto.Signer) {
+func privateKeysEqual(t *testing.T, actual, expected crypto.Signer) {
 	t.Helper()
 	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
 		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
@@ -179,7 +179,7 @@ func checkCASecrets(
 	// if an expected Ca was passed, it should match ca
 	if expectedCa != nil {
 		require.True(t, ca.Cert.Equal(expectedCa.Cert))
-		rsaPKeyEqual(t, ca.PrivateKey, expectedCa.PrivateKey)
+		privateKeysEqual(t, ca.PrivateKey, expectedCa.PrivateKey)
 	}
 
 	// if a not expected Ca was passed, it should not match ca
@@ -202,7 +202,7 @@ func checkCASecrets(
 	require.NotNil(t, parsedCa)
 	// and return the ca
 	require.True(t, ca.Cert.Equal(parsedCa.Cert))
-	rsaPKeyEqual(t, ca.PrivateKey, parsedCa.PrivateKey)
+	privateKeysEqual(t, ca.PrivateKey, parsedCa.PrivateKey)
 }
 
 func Test_renewCA(t *testing.T) {
