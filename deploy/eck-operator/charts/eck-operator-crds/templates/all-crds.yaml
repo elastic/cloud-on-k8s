@@ -251,12 +251,12 @@ spec:
                 type: array
               enableFleetServer:
                 description: EnableFleetServer determines whether this Agent will
-                  launch Fleet Server. Ignored unless `mode` is set to `fleet`.
+                  launch Fleet Server. Don't set unless `mode` is set to `fleet`.
                 type: boolean
               fleetServerRef:
                 description: FleetServerRef is a reference to Fleet Server that this
-                  Agent should connect to to obtain it's configuration. Ignored unless
-                  `mode` is set to `fleet`.
+                  Agent should connect to to obtain it's configuration. Don't set
+                  unless `mode` is set to `fleet`.
                 properties:
                   name:
                     description: Name of the Kubernetes object.
@@ -715,8 +715,9 @@ spec:
                   to match the Agent in the image.
                 type: string
               kibanaRef:
-                description: KibanaRef is a reference to Kibana to setup Fleet and
-                  enroll this Agent. Ignored unless `mode` is set to `fleet`.
+                description: KibanaRef is a reference to Kibana where Fleet should
+                  be set up and this Agent should be enrolled. Don't set unless `mode`
+                  is set to `fleet`.
                 properties:
                   name:
                     description: Name of the Kubernetes object.
@@ -737,8 +738,9 @@ spec:
                 type: object
               mode:
                 description: Mode specifies the source of configuration for the Agent.
-                  The configuration can be specified locally (through `config` or
-                  `configRef`) or come from Fleet during runtime.
+                  The configuration can be specified locally through `config` or `configRef`
+                  (`standalone` mode), or come from Fleet during runtime (`fleet`
+                  mode). Defaults to `standalone` mode.
                 type: string
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
