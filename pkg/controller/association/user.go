@@ -72,8 +72,9 @@ func UserSecretKeySelector(association commonv1.Association, userSuffix string) 
 	}
 }
 
-// ReconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func ReconcileEsUser(
+// reconcileEsUserSecret creates or updates the Elasticsearch user secrets in the Elasticsearch namespace
+// and the associated resource namespace.
+func reconcileEsUserSecret(
 	ctx context.Context,
 	c k8s.Client,
 	association commonv1.Association,

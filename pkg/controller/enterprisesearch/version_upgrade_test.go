@@ -22,7 +22,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -66,7 +65,7 @@ func podWithVersion(name string, version string) *corev1.Pod {
 
 func deploymentWithVersion(version string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: entName.Deployment("ent")},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: DeploymentName("ent")},
 		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 				VersionLabelName: version,

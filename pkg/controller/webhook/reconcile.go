@@ -25,7 +25,7 @@ type Params struct {
 
 // ReconcileResources reconciles the certificates used by the webhook client and the webhook server.
 // It also returns the duration after which a certificate rotation should be scheduled.
-func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.Interface) error {
+func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.Interface, webhookConfiguration AdmissionControllerInterface) error {
 	// retrieve current webhook server cert secret
 	webhookServerSecret, err := clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
 	if err != nil {
@@ -33,30 +33,20 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		return err
 	}
 
-	// retrieve the current webhook configuration
-	webhookConfiguration, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
-	if err != nil {
-		// 404 is also considered as an error, webhook configuration is expected to be created before the operator is started
-		return err
-	}
-
 	// check if we need to renew the certificates used in the resources
-	if w.shouldRenewCertificates(webhookServerSecret, webhookConfiguration) {
+	if w.shouldRenewCertificates(webhookServerSecret, webhookConfiguration.webhooks()) {
 		log.Info(
 			"Creating new webhook certificates",
-			"webhook", webhookConfiguration.Name,
+			"webhook", w.Name,
 			"secret_namespace", webhookServerSecret.Namespace,
 			"secret_name", webhookServerSecret.Name,
 		)
-		newCertificates, err := w.newCertificates(webhookConfiguration)
+		newCertificates, err := w.newCertificates(webhookConfiguration.services())
 		if err != nil {
 			return err
 		}
 		// update the webhook configuration
-		for i := range webhookConfiguration.Webhooks {
-			webhookConfiguration.Webhooks[i].ClientConfig.CABundle = newCertificates.caCert
-		}
-		if _, err := clientset.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Update(ctx, webhookConfiguration, metav1.UpdateOptions{}); err != nil {
+		if err := webhookConfiguration.updateCABundle(newCertificates.caCert); err != nil {
 			return err
 		}
 

@@ -14,6 +14,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -32,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -41,11 +43,9 @@ var (
 	// Throughout those tests we'll use Kibana association for testing purposes,
 	// but tests are the same for any resource type.
 	kbAssociationInfo = AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
-		AssociatedNamer: esv1.ESNamer,
+		AssociatedObjTemplate:   func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedObjTemplate:   func() client.Object { return &esv1.Elasticsearch{} },
+		ReferencedResourceNamer: esv1.ESNamer,
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
 			es := esv1.Elasticsearch{}
@@ -67,12 +67,6 @@ var (
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
 			}
 		},
-		UserSecretSuffix: "kibana-user",
-		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return "kibana_system", nil
-		},
-		SetDynamicWatches:   nil,
-		ClearDynamicWatches: nil,
 		ReferencedResourceVersion: func(c k8s.Client, esRef types.NamespacedName) (string, error) {
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef, &es); err != nil {
@@ -84,6 +78,15 @@ var (
 		AssociationConfAnnotationNameBase:     "association.k8s.elastic.co/es-conf",
 		AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
 		AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
+		ElasticsearchUserCreation: &ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "kibana-user",
+			ESUserRole: func(associated commonv1.Associated) (string, error) {
+				return "kibana_system", nil
+			},
+		},
 	}
 
 	kibanaNamespace = "kbns"
@@ -112,7 +115,7 @@ var (
 		sample := sampleKibanaWithESRef()
 		kb := (&sample).DeepCopy()
 		kb.Annotations = map[string]string{
-			kb.AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
+			kb.EsAssociation().AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
 		}
 		return *kb
 	}
@@ -224,11 +227,6 @@ var (
 				},
 			},
 		}
-	}
-	setDynamicWatches = func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
-		t.Helper()
-		err := r.reconcileWatches(k8s.ExtractNamespacedName(&kb), kb.GetAssociations())
-		require.NoError(t, err)
 	}
 )
 
@@ -344,12 +342,12 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	// but with a config annotation and secrets resources to clean
 	kb := sampleKibanaNoEsRef()
 	kb.Annotations = sampleAssociatedKibana().Annotations
-	require.NotEmpty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esCertsInKibanaNamespace)
 	// simulate watches being set
-	setDynamicWatches(t, r, sampleAssociatedKibana())
+	require.NoError(t, r.reconcileWatches(k8s.ExtractNamespacedName(&kb), []commonv1.Association{kb.EsAssociation()}))
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
@@ -370,15 +368,16 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
-	require.Empty(t, updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// should remove dynamic watches
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
+	require.Empty(t, r.watches.Services.Registrations())
 }
 
 func TestReconciler_Reconcile_NoES(t *testing.T) {
 	kb := sampleAssociatedKibana()
-	require.NotEmpty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// es resource does not exist
 	r := testReconciler(&kb)
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
@@ -389,13 +388,13 @@ func TestReconciler_Reconcile_NoES(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
 	// association conf should have been removed
-	require.Empty(t, updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 }
 
 func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 	kb := sampleAssociatedKibana()
-	require.NotEmpty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
-	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace)
+	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, esHTTPService())
 	// simulate rbac association disallowed
 	r.accessReviewer = denyAllAccessReviewer{}
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
@@ -406,7 +405,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
 	// association conf should be removed
-	require.Empty(t, updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// user in es namespace should be deleted
 	var secret corev1.Secret
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
@@ -417,11 +416,11 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	// Kibana references ES, but no secret nor association conf exist yet
 	kb := sampleKibanaWithESRef()
-	require.Empty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.NoError(t, err)
@@ -456,15 +455,176 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 
 	// should have dynamic watches set
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Equal(t, sampleAssociatedKibana().Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
+}
+
+func TestReconciler_Reconcile_noESAuth(t *testing.T) {
+	// Kibana references Enterprise Search, the association controller is configured to not
+	// create an Elasticsearch user
+	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "entns", Name: "entname"}}
+	entHTTPPublicCertsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "entns",
+			Name:      "entname-ent-http-certs-public",
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("ca cert content"),
+			"tls.crt": []byte("tls cert content"),
+		},
+	}
+	entHTTPService := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "entns",
+			Name:      "entname-ent-http",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name: "https",
+					Port: 3002,
+				},
+			},
+		},
+	}
+	kb := sampleKibanaNoEsRef()
+	kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "entname", Namespace: "entns"}
+
+	// ent public certs we expect to be copied over into the Kibana namespace
+	entCertsInKibanaNamespace := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: kibanaNamespace,
+			Name:      "kbname-kb-ent-ca",
+			Labels: map[string]string{
+				"enterprisesearch.k8s.elastic.co/name":       "entname",
+				"enterprisesearch.k8s.elastic.co/namespace":  "entns",
+				"kibanaassociation.k8s.elastic.co/name":      "kbname",
+				"kibanaassociation.k8s.elastic.co/namespace": "kbns",
+				"kibanaassociation.k8s.elastic.co/type":      "ent",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "kibana.k8s.elastic.co/v1",
+					Kind:               "Kibana",
+					Name:               "kbname",
+					Controller:         &varTrue,
+					BlockOwnerDeletion: &varTrue,
+				},
+			},
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("ca cert content"),
+			"tls.crt": []byte("tls cert content"),
+		},
+	}
+
+	kbEntAssocInfo := AssociationInfo{
+		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedObjTemplate: func() client.Object { return &entv1.EnterpriseSearch{} },
+		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
+			entRef := assoc.AssociationRef()
+			if !entRef.IsDefined() {
+				return "", nil
+			}
+			ent := entv1.EnterpriseSearch{}
+			if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
+				return "", err
+			}
+			serviceName := entRef.ServiceName
+			if serviceName == "" {
+				serviceName = "entname-ent-http"
+			}
+			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
+			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
+		},
+		ReferencedResourceVersion: func(c k8s.Client, entRef types.NamespacedName) (string, error) {
+			var ent entv1.EnterpriseSearch
+			err := c.Get(context.Background(), entRef, &ent)
+			if err != nil {
+				return "", err
+			}
+			return ent.Status.Version, nil
+		},
+		ReferencedResourceNamer: entv1.Namer,
+		AssociationName:         "kb-ent",
+		AssociatedShortName:     "kb",
+		AssociationType:         commonv1.EntAssociationType,
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"kibanaassociation.k8s.elastic.co/name":      associated.Name,
+				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"kibanaassociation.k8s.elastic.co/type":      commonv1.EntAssociationType,
+			}
+		},
+		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
+		AssociationResourceNameLabelName:      "enterprisesearch.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "enterprisesearch.k8s.elastic.co/namespace",
+		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
+	}
+
+	r := Reconciler{
+		AssociationInfo: kbEntAssocInfo,
+		Client: k8s.NewFakeClient(
+			&kb,
+			&ent,
+			&entHTTPPublicCertsSecret,
+			&entHTTPService,
+		),
+		accessReviewer: rbac.NewPermissiveAccessReviewer(),
+		watches:        watches.NewDynamicWatches(),
+		recorder:       record.NewFakeRecorder(10),
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{
+				BuildInfo: about.BuildInfo{
+					Version: "1.4.0-unittest",
+				},
+			},
+		},
+		logger: log.WithName("test"),
+	}
+
+	// no resources are watched yet
+	require.Empty(t, r.watches.Secrets.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
+	// run the reconciliation
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	require.NoError(t, err)
+	// no requeue to trigger
+	require.Equal(t, reconcile.Result{}, results)
+
+	// should create the ent certs in kibana namespace
+	var actualEntCertsInKibanaNamespace corev1.Secret
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&entCertsInKibanaNamespace), &actualEntCertsInKibanaNamespace)
+	require.NoError(t, err)
+	comparison.RequireEqual(t, &entCertsInKibanaNamespace, &actualEntCertsInKibanaNamespace)
+
+	// should have dynamic watches set
+	require.NotEmpty(t, r.watches.Secrets.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
+
+	var updatedKibana kbv1.Kibana
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
+	require.NoError(t, err)
+	// association conf should be set
+	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
+		updatedKibana.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
+	// ent association status should be established
+	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.EnterpriseSearchAssociationStatus)
+	// but not es association status
+	require.Empty(t, updatedKibana.Status.AssociationStatus)
+
+	// should not have any other secret created (no es user to to create)
+	secrets := corev1.SecretList{}
+	err = r.List(context.Background(), &secrets)
+	require.NoError(t, err)
+	require.Len(t, secrets.Items, 2) // ent cert in ent namespace + ent cert in kb namespace
 }
 
 func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
@@ -473,11 +633,11 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	serviceName := "coordinating-only"
 	kb.Spec.ElasticsearchRef.ServiceName = serviceName
 
-	require.Empty(t, kb.Annotations[kb.AssociationConfAnnotationName()])
+	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// expect and error due to the missing service
@@ -485,17 +645,7 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	// also expect a re-queue to be scheduled
 	require.Equal(t, defaultRequeue, results)
 
-	// should create the kibana user in es namespace
-	var actualKbUserInESNamespace corev1.Secret
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &actualKbUserInESNamespace)
-	require.NoError(t, err)
-	// password hash should be generated so let's ignore its exact content in the comparison
-	require.NotEmpty(t, actualKbUserInESNamespace.Data[user.PasswordHashField])
-	expected := kibanaUserInESNamespace.DeepCopy()
-	expected.Data[user.PasswordHashField] = actualKbUserInESNamespace.Data[user.PasswordHashField]
-	comparison.RequireEqual(t, expected, &actualKbUserInESNamespace)
-
-	// create the service
+	// create the missing service
 	svc := esHTTPService()
 	svc.Name = serviceName
 	require.NoError(t, r.Create(context.Background(), svc))
@@ -506,6 +656,16 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	// no requeue to trigger
 	require.Equal(t, reconcile.Result{}, results)
 
+	// should create the kibana user in es namespace
+	var actualKbUserInESNamespace corev1.Secret
+	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &actualKbUserInESNamespace)
+	require.NoError(t, err)
+	// password hash should be generated so let's ignore its exact content in the comparison
+	require.NotEmpty(t, actualKbUserInESNamespace.Data[user.PasswordHashField])
+	expected := kibanaUserInESNamespace.DeepCopy()
+	expected.Data[user.PasswordHashField] = actualKbUserInESNamespace.Data[user.PasswordHashField]
+	comparison.RequireEqual(t, expected, &actualKbUserInESNamespace)
+
 	// should create the kibana user in kibana namespace
 	var actualKbUserInKbNamespace corev1.Secret
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &actualKbUserInKbNamespace)
@@ -524,18 +684,19 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 
 	// should have dynamic watches set
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ElasticsearchClusters.Registrations())
+	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 	// including a watch for the custom service
 	require.NotEmpty(t, t, r.watches.Services.Registrations())
 
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana(serviceName).Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Equal(t, sampleAssociatedKibana(serviceName).Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
+
 func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	// association already established, reconciliation should be a no-op
 	kb := sampleAssociatedKibana()
@@ -567,7 +728,7 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[kb.AssociationConfAnnotationName()], updatedKibana.Annotations[kb.AssociationConfAnnotationName()])
+	require.Equal(t, sampleAssociatedKibana().Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
@@ -599,7 +760,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 		{
 			name:              "retrieve existing Elasticsearch",
 			runtimeObjects:    []runtime.Object{&es, &associatedKibana},
-			associated:        &associatedKibana,
+			associated:        associatedKibana.EsAssociation(),
 			esRef:             commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 			wantES:            es,
 			wantStatus:        "",
@@ -608,7 +769,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 		{
 			name:           "Elasticsearch not found: remove association conf in Kibana",
 			runtimeObjects: []runtime.Object{&associatedKibana}, // no ES
-			associated:     &associatedKibana,
+			associated:     associatedKibana.EsAssociation(),
 			esRef:          commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 			wantES:         esv1.Elasticsearch{},
 			wantStatus:     commonv1.AssociationPending,
@@ -654,9 +815,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	agentAssociationInfo := AssociationInfo{
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
+		ReferencedObjTemplate: func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: func(c k8s.Client, esRef types.NamespacedName) (string, error) {
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef, &es); err != nil {
@@ -675,9 +834,9 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			}
 			return services.ExternalServiceURL(es), nil
 		},
-		AssociatedNamer:     esv1.ESNamer,
-		AssociationName:     "agent-es",
-		AssociatedShortName: "agent",
+		ReferencedResourceNamer: esv1.ESNamer,
+		AssociationName:         "agent-es",
+		AssociatedShortName:     "agent",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				"agentassociation.k8s.elastic.co/name":      associated.Name,
@@ -685,13 +844,18 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 				"agentassociation.k8s.elastic.co/type":      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "agent-user",
-		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return "superuser", nil
-		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+		ElasticsearchUserCreation: &ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "agent-user",
+			ESUserRole: func(associated commonv1.Associated) (string, error) {
+				return "superuser", nil
+			},
+		},
 	}
 
 	// Agent with two refs
@@ -927,11 +1091,11 @@ func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool) {
 	t.Helper()
 	if expected {
 		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-es-user-watch")
-		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-ca-watch")
-		require.Contains(t, watches.ElasticsearchClusters.Registrations(), "agentNs-agent1-es-watch")
+		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-referenced-resource-ca-secret-watch")
+		require.Contains(t, watches.ReferencedResources.Registrations(), "agentNs-agent1-referenced-resource-watch")
 	} else {
 		require.Empty(t, watches.Secrets.Registrations())
-		require.Empty(t, watches.ElasticsearchClusters.Registrations())
+		require.Empty(t, watches.ReferencedResources.Registrations())
 	}
 }
 

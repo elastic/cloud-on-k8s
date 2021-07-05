@@ -672,6 +672,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "APM-ES", registerFunc: associationctl.AddApmES},
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},
+		{name: "KB-ENT", registerFunc: associationctl.AddKibanaEnt},
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
@@ -709,7 +710,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 	err = ugc.
 		For(&apmv1.ApmServerList{}, associationctl.ApmAssociationLabelNamespace, associationctl.ApmAssociationLabelName).
-		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
+		For(&kbv1.KibanaList{}, associationctl.KibanaAssociationLabelNamespace, associationctl.KibanaAssociationLabelName).
 		For(&entv1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
@@ -749,13 +750,20 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 			Rotation:   certRotation,
 		}
 
-		// Force a first reconciliation to create the resources before the server is started
-		if err := webhookParams.ReconcileResources(context.Background(), clientset); err != nil {
-			log.Error(err, "unable to setup and fill the webhook certificates")
+		// retrieve the current webhook configuration interface
+		wh, err := webhookParams.NewAdmissionControllerInterface(context.Background(), clientset)
+		if err != nil {
+			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
 
-		if err := webhook.Add(mgr, webhookParams, clientset); err != nil {
+		// Force a first reconciliation to create the resources before the server is started
+		if err := webhookParams.ReconcileResources(context.Background(), clientset, wh); err != nil {
+			log.Error(err, "unable to setup the webhook certificates")
+			os.Exit(1)
+		}
+
+		if err := webhook.Add(mgr, webhookParams, clientset, wh); err != nil {
 			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
 			os.Exit(1)
 		}

@@ -546,6 +546,8 @@ func nodeSetHash(es esv1.Elasticsearch, nodeSet esv1.NodeSet) string {
 	nodeSet.Count = 0
 	specHash := hash.HashObject(nodeSet)
 	esVersionHash := hash.HashObject(es.Spec.Version)
+	// normalize the certificate secret name. It has no effect on the Pods as Elasticsearch loads certs dynamically.
+	es.Spec.HTTP.TLS.Certificate.SecretName = ""
 	httpServiceHash := hash.HashObject(es.Spec.HTTP)
 	return hash.HashObject(specHash + esVersionHash + httpServiceHash)
 }

@@ -18,7 +18,6 @@ import (
 
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -39,7 +38,7 @@ func NewEnterpriseSearchClient(ent entv1.EnterpriseSearch, k *test.K8sClient) (E
 	scheme := "http"
 	if ent.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
-		crts, err := k.GetHTTPCerts(entName.EntNamer, ent.Namespace, ent.Name)
+		crts, err := k.GetHTTPCerts(entv1.Namer, ent.Namespace, ent.Name)
 		if err != nil {
 			return EnterpriseSearchClient{}, err
 		}

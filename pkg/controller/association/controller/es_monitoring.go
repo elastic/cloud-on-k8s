@@ -6,6 +6,7 @@ package controller
 
 import (
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -34,14 +35,12 @@ const (
 // them to the Elasticsearch referenced in the association.
 func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &esv1.Elasticsearch{} },
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
+		AssociatedObjTemplate:     func() commonv1.Associated { return &esv1.Elasticsearch{} },
+		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.EsMonitoringAssociationType,
-		AssociatedNamer:           esv1.ESNamer,
+		ReferencedResourceNamer:   esv1.ESNamer,
 		AssociationName:           "es-monitoring",
 		AssociatedShortName:       "es-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {
@@ -51,12 +50,18 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 				EsAssociationLabelType:      EsMonitoringAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "beat-es-mon-user",
-		ESUserRole: func(associated commonv1.Associated) (string, error) {
-			return user.StackMonitoringUserRole, nil
-		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "beat-es-mon-user",
+			ESUserRole: func(associated commonv1.Associated) (string, error) {
+				return user.StackMonitoringUserRole, nil
+			},
+		},
 	})
 }

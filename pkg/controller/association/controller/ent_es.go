@@ -6,6 +6,7 @@ package controller
 
 import (
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -20,24 +21,25 @@ import (
 )
 
 const (
-	// EntESAssociationLabelName marks resources created by this controller for easier retrieval.
+	// EntESAssociationLabelName marks resources created for an association originating from EnterpriseSearch with the
+	// EnterpriseSearch name.
 	EntESAssociationLabelName = "entassociation.k8s.elastic.co/name"
-	// EntESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// EntESAssociationLabelNamespace marks resources created for an association originating from EnterpriseSearch with the
+	// EnterpriseSearch namespace.
 	EntESAssociationLabelNamespace = "entassociation.k8s.elastic.co/namespace"
-	// EntESAssociationLabelType marks resources created for an association originating from Enterprise Search.
+	// EntESAssociationLabelType marks resources created for an association originating from EnterpriseSearch
+	// with the target resource type (e.g. "elasticsearch").
 	EntESAssociationLabelType = "entassociation.k8s.elastic.co/type"
 )
 
 func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &entv1.EnterpriseSearch{} },
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
+		AssociatedObjTemplate:     func() commonv1.Associated { return &entv1.EnterpriseSearch{} },
+		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociatedNamer:           esv1.ESNamer,
+		ReferencedResourceNamer:   esv1.ESNamer,
 		AssociationName:           "ent-es",
 		AssociatedShortName:       "ent",
 		Labels: func(associated types.NamespacedName) map[string]string {
@@ -47,12 +49,18 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 				EntESAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                  "ent-user",
-		ESUserRole: func(_ commonv1.Associated) (string, error) {
-			return esuser.SuperUserBuiltinRole, nil
-		},
+		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "ent-user",
+			ESUserRole: func(_ commonv1.Associated) (string, error) {
+				return esuser.SuperUserBuiltinRole, nil
+			},
+		},
 	})
 }

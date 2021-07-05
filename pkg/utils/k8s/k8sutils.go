@@ -49,6 +49,19 @@ func ExtractNamespacedName(object metav1.Object) types.NamespacedName {
 	}
 }
 
+// ObjectExists returns true if the object pointed by ref exists.
+// typedReceiver acts as a generic object but must be of the desired object underlying type.
+func ObjectExists(c Client, ref types.NamespacedName, typedReceiver client.Object) (bool, error) {
+	err := c.Get(context.Background(), ref, typedReceiver)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // IsAvailable checks if both conditions ContainersReady and PodReady of a Pod are true.
 func IsPodReady(pod corev1.Pod) bool {
 	conditionsTrue := 0

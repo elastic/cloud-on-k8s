@@ -7,6 +7,7 @@ package certificates
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -18,11 +19,13 @@ import (
 )
 
 const (
-	// CAFileName is used for the CA Certificates inside a secret
+	// CAFileName is used for the CA Certificates inside a secret.
 	CAFileName = "ca.crt"
-	// CertFileName is used for Certificates inside a secret
+	// CAKeyFileName is used for the CA certificate's private key inside a secret.
+	CAKeyFileName = "ca.key"
+	// CertFileName is used for Certificates inside a secret.
 	CertFileName = "tls.crt"
-	// KeyFileName is used for Private Keys inside a secret
+	// KeyFileName is used for Private Keys inside a secret.
 	KeyFileName = "tls.key"
 
 	// certificate secrets suffixes
@@ -63,29 +66,78 @@ func HTTPCertSecretVolume(namer name.Namer, name string) volume.SecretVolume {
 	)
 }
 
-type CertificatesSecret v1.Secret
+type CertificatesSecret struct {
+	v1.Secret
+	ca *CA
+}
+
+func NewCertificatesSecret(secret v1.Secret) (*CertificatesSecret, error) {
+	result := CertificatesSecret{Secret: secret}
+	if err := result.parse(); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
 
 // CAPem returns the certificate of the certificate authority.
-func (s CertificatesSecret) CAPem() []byte {
+func (s *CertificatesSecret) CAPem() []byte {
 	return s.Data[CAFileName]
 }
 
+// CA returns a pointer to the in-memory representation of the CA contained in the secret.
+func (s *CertificatesSecret) CA() *CA {
+	return s.ca
+}
+
 // CertChain combines the certificate of the CA and the host certificate.
-func (s CertificatesSecret) CertChain() []byte {
+func (s *CertificatesSecret) CertChain() []byte {
 	return append(s.CertPem(), s.CAPem()...)
 }
 
-func (s CertificatesSecret) CertPem() []byte {
+func (s *CertificatesSecret) CertPem() []byte {
 	return s.Data[CertFileName]
 }
 
-func (s CertificatesSecret) KeyPem() []byte {
+func (s *CertificatesSecret) KeyPem() []byte {
 	return s.Data[KeyFileName]
 }
 
-// Validate checks that mandatory fields are present.
+func (s *CertificatesSecret) HasCAPrivateKey() bool {
+	if s == nil {
+		return false
+	}
+	// the presence of the key means by implication that we have a full CA, validation ensures that the CA cert exists
+	_, exists := s.Data[CAKeyFileName]
+	return exists
+}
+
+func (s *CertificatesSecret) HasLeafCertificate() bool {
+	return s != nil && !s.HasCAPrivateKey()
+}
+
+func (s *CertificatesSecret) parseCustomCA() error {
+	// flag up user error when specifying both CA certificate with key and leaf certificate
+	_, tlsKeyExists := s.Data[KeyFileName]
+	_, tlsCertExists := s.Data[CertFileName]
+	if tlsKeyExists || tlsCertExists {
+		return fmt.Errorf("cannot specify %s or %s when %s is set in %s/%s",
+			KeyFileName, CertFileName, CAKeyFileName, s.Namespace, s.Name)
+	}
+	ca, err := parseCAFromSecret(s.Secret, CAKeyFileName, CAFileName)
+	if err == nil {
+		// breaking the validation contract here by remembering the results to avoid parsing everything once more
+		s.ca = ca
+	}
+	return err
+}
+
+// parse checks that mandatory fields are present.
 // It does not check that the public key matches the private key.
-func (s CertificatesSecret) Validate() error {
+func (s *CertificatesSecret) parse() error {
+	if s.HasCAPrivateKey() {
+		return s.parseCustomCA()
+	}
+
 	// Validate private key
 	key, exist := s.Data[KeyFileName]
 	if !exist {
@@ -129,8 +181,8 @@ func GetSecretFromRef(c k8s.Client, owner types.NamespacedName, secretRef common
 	return &secret, nil
 }
 
-// getCustomCertificates returns the custom certificates to use or nil if there is none specified
-func getCustomCertificates(
+// validCustomCertificatesOrNil returns the custom certificates to use or nil if there is none specified
+func validCustomCertificatesOrNil(
 	c k8s.Client,
 	owner types.NamespacedName,
 	tls commonv1.TLSOptions,
@@ -139,8 +191,5 @@ func getCustomCertificates(
 	if err != nil || secret == nil {
 		return nil, err
 	}
-
-	result := CertificatesSecret(*secret)
-
-	return &result, nil
+	return NewCertificatesSecret(*secret)
 }

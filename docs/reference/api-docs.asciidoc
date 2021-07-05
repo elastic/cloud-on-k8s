@@ -1071,7 +1071,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 |===
 | Field | Description
 | *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the CA certificate and private key for generating node certificates. The referenced secret should contain the following: 
- - `tls.crt`: The CA certificate in PEM format. - `tls.key`: The private key for the CA certificate in PEM format.
+ - `ca.crt`: The CA certificate in PEM format. - `ca.key`: The private key for the CA certificate in PEM format.
 |===
 
 
@@ -1374,6 +1374,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`image`* __string__ | Image is the Kibana Docker image to deploy.
 | *`count`* __integer__ | Count of Kibana instances to deploy.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+| *`enterpriseSearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster. Kibana provides the default Enterprise Search UI starting version 7.14.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods

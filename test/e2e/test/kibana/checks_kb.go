@@ -32,9 +32,14 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	checks := kbChecks{
 		client: k,
 	}
-	return test.StepList{
+	tests := test.StepList{
 		checks.CheckKbStatusHealthy(b),
 	}
+	if b.Kibana.Spec.EnterpriseSearchRef.IsDefined() {
+		tests = append(tests, checks.CheckEntSearchAccess(b))
+	}
+
+	return tests
 }
 
 // CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its API status.
@@ -59,6 +64,23 @@ func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 				return fmt.Errorf("not ready: want 'green' but Kibana status was '%s'", status.Status.Overall.State)
 			}
 			return nil
+		}),
+	}
+}
+
+// CheckEntSearchAccess checks that the Enterprise Search UI is accessible in Kibana.
+func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
+	return test.Step{
+		Name: "The Enterprise Search UI should be available in Kibana",
+		Test: test.Eventually(func() error {
+			password, err := check.client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
+			if err != nil {
+				return errors.Wrap(err, "while getting elastic password")
+			}
+			// returns 200 OK if accessible
+			path := "/api/enterprise_search/config_data"
+			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil)
+			return err
 		}),
 	}
 }

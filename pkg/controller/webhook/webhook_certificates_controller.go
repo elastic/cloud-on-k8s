@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	pkgerrors "github.com/pkg/errors"
-	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -55,7 +54,11 @@ func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request recon
 
 func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reconciler.Results {
 	res := &reconciler.Results{}
-	if err := r.webhookParams.ReconcileResources(ctx, r.clientset); err != nil {
+	wh, err := r.webhookParams.NewAdmissionControllerInterface(context.Background(), r.clientset)
+	if err != nil {
+		return res.WithError(err)
+	}
+	if err := r.webhookParams.ReconcileResources(ctx, r.clientset, wh); err != nil {
 		return res.WithError(err)
 	}
 
@@ -88,7 +91,7 @@ func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernet
 }
 
 // Add adds a new Controller to mgr with r as the reconcile.Reconciler
-func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface) error {
+func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface) error {
 	r := newReconciler(mgr, webhookParams, clientset)
 	// Create a new controller
 	c, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: r})
@@ -113,7 +116,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name: webhookParams.Name,
 	}
 
-	return c.Watch(&source.Kind{Type: &v1beta1.ValidatingWebhookConfiguration{}}, &watches.NamedWatch{
+	return c.Watch(&source.Kind{Type: webhook.getType()}, &watches.NamedWatch{
 		Name:    "validatingwebhookconfiguration",
 		Watched: []types.NamespacedName{webhookConfiguration},
 		Watcher: webhookConfiguration,

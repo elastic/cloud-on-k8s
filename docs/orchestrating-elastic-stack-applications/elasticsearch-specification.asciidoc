@@ -15,7 +15,6 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-node-configuration>>
 - <<{p}-volume-claim-templates>>
 - <<{p}-storage-recommendations>>
-- <<{p}-http-settings-tls-sans>>
 - <<{p}-transport-settings>>
 
 **Advanced settings**
@@ -40,7 +39,6 @@ include::elasticsearch/jvm-heap-size.asciidoc[leveloffset=+1]
 include::elasticsearch/node-configuration.asciidoc[leveloffset=+1]
 include::elasticsearch/volume-claim-templates.asciidoc[leveloffset=+1]
 include::elasticsearch/storage-recommendations.asciidoc[leveloffset=+1]
-include::elasticsearch/http-settings-tls-sans.asciidoc[leveloffset=+1]
 include::elasticsearch/transport-settings.asciidoc[leveloffset=+1]
 include::elasticsearch/virtual-memory.asciidoc[leveloffset=+1]
 include::elasticsearch/reserved-settings.asciidoc[leveloffset=+1]

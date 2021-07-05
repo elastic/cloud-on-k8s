@@ -8,6 +8,8 @@ import (
 	"context"
 	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -25,25 +27,24 @@ import (
 )
 
 const (
-	// ApmAssociationLabelName marks resources created for an association originating from APM.
+	// ApmAssociationLabelName marks resources created for an association originating from APM with the APM name.
 	ApmAssociationLabelName = "apmassociation.k8s.elastic.co/name"
-	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
+	// ApmAssociationLabelNamespace marks resources created for an association originating from APM with the APM namespace.
 	ApmAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
-	// ApmAssociationLabelType marks resources created for an association originating from APM.
+	// ApmAssociationLabelType marks resources created for an association originating from APM with the target resource
+	// type (e.g. "elasticsearch" or "kibana").
 	ApmAssociationLabelType = "apmassociation.k8s.elastic.co/type"
 )
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:   "apm",
-		AssociatedObjTemplate: func() commonv1.Associated { return &apmv1.ApmServer{} },
-		AssociationType:       commonv1.ElasticsearchAssociationType,
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
+		AssociatedShortName:       "apm",
+		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
+		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
+		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociatedNamer:           esv1.ESNamer,
+		ReferencedResourceNamer:   esv1.ESNamer,
 		AssociationName:           "apm-es",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
@@ -53,10 +54,16 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                      "apm-user",
-		ESUserRole:                            getAPMElasticsearchRoles,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "apm-user",
+			ESUserRole:       getAPMElasticsearchRoles,
+		},
 	})
 }
 
@@ -75,16 +82,6 @@ func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (stri
 	}
 	nsn := types.NamespacedName{Name: serviceName, Namespace: es.Namespace}
 	return association.ServiceURL(c, nsn, es.Spec.HTTP.Protocol())
-}
-
-// referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
-// reported in its status.
-func referencedElasticsearchStatusVersion(c k8s.Client, esRef types.NamespacedName) (string, error) {
-	var es esv1.Elasticsearch
-	if err := c.Get(context.Background(), esRef, &es); err != nil {
-		return "", err
-	}
-	return es.Status.Version, nil
 }
 
 // getAPMElasticsearchRoles returns for a given version of the APM Server the set of required roles.

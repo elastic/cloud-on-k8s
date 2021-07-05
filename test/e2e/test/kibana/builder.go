@@ -82,6 +82,11 @@ func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithEnterpriseSearchRef(ref commonv1.ObjectSelector) Builder {
+	b.Kibana.Spec.EnterpriseSearchRef = ref
+	return b
+}
+
 func (b Builder) WithExternalElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	b.ExternalElasticsearchRef = ref
 	return b
@@ -205,5 +210,5 @@ func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
 		return b.ExternalElasticsearchRef
 	}
 	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef
-	return b.Kibana.AssociationRef()
+	return b.Kibana.EsAssociation().AssociationRef()
 }

@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.0
+    controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
@@ -201,8 +201,8 @@ spec:
                               discovery mechanisms will return as an alias for this
                               service (e.g. a DNS CNAME record). No proxying will
                               be involved.  Must be a lowercase RFC-1123 hostname
-                              (https://tools.ietf.org/html/rfc1123) and requires Type
-                              to be
+                              (https://tools.ietf.org/html/rfc1123) and requires `type`
+                              to be "ExternalName".
                             type: string
                           externalTrafficPolicy:
                             description: externalTrafficPolicy denotes if this Service
@@ -229,6 +229,15 @@ spec:
                               it (e.g. changing type).
                             format: int32
                             type: integer
+                          internalTrafficPolicy:
+                            description: InternalTrafficPolicy specifies if the cluster
+                              internal traffic should be routed to all endpoints or
+                              node-local endpoints only. "Cluster" routes internal
+                              traffic to a Service to all endpoints. "Local" routes
+                              traffic to node-local endpoints only, traffic is dropped
+                              if no node-local endpoints are ready. The default value
+                              is "Cluster".
+                            type: string
                           ipFamilies:
                             description: "IPFamilies is a list of IP families (e.g.
                               IPv4, IPv6) assigned to this service, and is gated by
@@ -270,6 +279,26 @@ spec:
                               and clusterIPs fields depend on the value of this field.  This
                               field will be wiped when updating a service to type
                               ExternalName.
+                            type: string
+                          loadBalancerClass:
+                            description: loadBalancerClass is the class of the load
+                              balancer implementation this Service belongs to. If
+                              specified, the value of this field must be a label-style
+                              identifier, with an optional prefix, e.g. "internal-vip"
+                              or "example.com/internal-vip". Unprefixed names are
+                              reserved for end-users. This field can only be set when
+                              the Service type is 'LoadBalancer'. If not set, the
+                              default load balancer implementation is used, today
+                              this is typically done through the cloud provider integration,
+                              but should apply for any default implementation. If
+                              set, it is assumed that a load balancer implementation
+                              is watching for Services with a matching class. Any
+                              default load balancer implementation (e.g. cloud providers)
+                              should ignore Services that set this field. This field
+                              can only be set when creating or updating a Service
+                              to type 'LoadBalancer'. Once set, it can not be changed.
+                              This field will be wiped when a service is updated to
+                              a non 'LoadBalancer' type.
                             type: string
                           loadBalancerIP:
                             description: 'Only applies to Service Type: LoadBalancer
@@ -426,6 +455,8 @@ spec:
                               not specified or empty, no topology constraints will
                               be applied. This field is alpha-level and is only honored
                               by servers that enable the ServiceTopology feature.
+                              This field is deprecated and will be removed in a future
+                              version.
                             items:
                               type: string
                             type: array
@@ -953,11 +984,86 @@ spec:
                                                       are ANDed.
                                                     type: object
                                                 type: object
+                                              namespaceSelector:
+                                                description: A label query over the
+                                                  set of namespaces that the term
+                                                  applies to. The term is applied
+                                                  to the union of the namespaces selected
+                                                  by this field and the ones listed
+                                                  in the namespaces field. null selector
+                                                  and null or empty namespaces list
+                                                  means "this pod's namespace". An
+                                                  empty selector ({}) matches all
+                                                  namespaces. This field is alpha-level
+                                                  and is only honored when PodAffinityNamespaceSelector
+                                                  feature is enabled.
+                                                properties:
+                                                  matchExpressions:
+                                                    description: matchExpressions
+                                                      is a list of label selector
+                                                      requirements. The requirements
+                                                      are ANDed.
+                                                    items:
+                                                      description: A label selector
+                                                        requirement is a selector
+                                                        that contains values, a key,
+                                                        and an operator that relates
+                                                        the key and values.
+                                                      properties:
+                                                        key:
+                                                          description: key is the
+                                                            label key that the selector
+                                                            applies to.
+                                                          type: string
+                                                        operator:
+                                                          description: operator represents
+                                                            a key's relationship to
+                                                            a set of values. Valid
+                                                            operators are In, NotIn,
+                                                            Exists and DoesNotExist.
+                                                          type: string
+                                                        values:
+                                                          description: values is an
+                                                            array of string values.
+                                                            If the operator is In
+                                                            or NotIn, the values array
+                                                            must be non-empty. If
+                                                            the operator is Exists
+                                                            or DoesNotExist, the values
+                                                            array must be empty. This
+                                                            array is replaced during
+                                                            a strategic merge patch.
+                                                          items:
+                                                            type: string
+                                                          type: array
+                                                      required:
+                                                      - key
+                                                      - operator
+                                                      type: object
+                                                    type: array
+                                                  matchLabels:
+                                                    additionalProperties:
+                                                      type: string
+                                                    description: matchLabels is a
+                                                      map of {key,value} pairs. A
+                                                      single {key,value} in the matchLabels
+                                                      map is equivalent to an element
+                                                      of matchExpressions, whose key
+                                                      field is "key", the operator
+                                                      is "In", and the values array
+                                                      contains only "value". The requirements
+                                                      are ANDed.
+                                                    type: object
+                                                type: object
                                               namespaces:
                                                 description: namespaces specifies
-                                                  which namespaces the labelSelector
-                                                  applies to (matches against); null
-                                                  or empty list means "this pod's
+                                                  a static list of namespace names
+                                                  that the term applies to. The term
+                                                  is applied to the union of the namespaces
+                                                  listed in this field and the ones
+                                                  selected by namespaceSelector. null
+                                                  or empty namespaces list and null
+                                                  namespaceSelector means "this pod's
                                                   namespace"
                                                 items:
                                                   type: string
@@ -1068,11 +1174,81 @@ spec:
                                                   ANDed.
                                                 type: object
                                             type: object
+                                          namespaceSelector:
+                                            description: A label query over the set
+                                              of namespaces that the term applies
+                                              to. The term is applied to the union
+                                              of the namespaces selected by this field
+                                              and the ones listed in the namespaces
+                                              field. null selector and null or empty
+                                              namespaces list means "this pod's namespace".
+                                              An empty selector ({}) matches all namespaces.
+                                              This field is alpha-level and is only
+                                              honored when PodAffinityNamespaceSelector
+                                              feature is enabled.
+                                            properties:
+                                              matchExpressions:
+                                                description: matchExpressions is a
+                                                  list of label selector requirements.
+                                                  The requirements are ANDed.
+                                                items:
+                                                  description: A label selector requirement
+                                                    is a selector that contains values,
+                                                    a key, and an operator that relates
+                                                    the key and values.
+                                                  properties:
+                                                    key:
+                                                      description: key is the label
+                                                        key that the selector applies
+                                                        to.
+                                                      type: string
+                                                    operator:
+                                                      description: operator represents
+                                                        a key's relationship to a
+                                                        set of values. Valid operators
+                                                        are In, NotIn, Exists and
+                                                        DoesNotExist.
+                                                      type: string
+                                                    values:
+                                                      description: values is an array
+                                                        of string values. If the operator
+                                                        is In or NotIn, the values
+                                                        array must be non-empty. If
+                                                        the operator is Exists or
+                                                        DoesNotExist, the values array
+                                                        must be empty. This array
+                                                        is replaced during a strategic
+                                                        merge patch.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  required:
+                                                  - key
+                                                  - operator
+                                                  type: object
+                                                type: array
+                                              matchLabels:
+                                                additionalProperties:
+                                                  type: string
+                                                description: matchLabels is a map
+                                                  of {key,value} pairs. A single {key,value}
+                                                  in the matchLabels map is equivalent
+                                                  to an element of matchExpressions,
+                                                  whose key field is "key", the operator
+                                                  is "In", and the values array contains
+                                                  only "value". The requirements are
+                                                  ANDed.
+                                                type: object
+                                            type: object
                                           namespaces:
-                                            description: namespaces specifies which
-                                              namespaces the labelSelector applies
-                                              to (matches against); null or empty
-                                              list means "this pod's namespace"
+                                            description: namespaces specifies a static
+                                              list of namespace names that the term
+                                              applies to. The term is applied to the
+                                              union of the namespaces listed in this
+                                              field and the ones selected by namespaceSelector.
+                                              null or empty namespaces list and null
+                                              namespaceSelector means "this pod's
+                                              namespace"
                                             items:
                                               type: string
                                             type: array
@@ -1184,11 +1360,86 @@ spec:
                                                       are ANDed.
                                                     type: object
                                                 type: object
+                                              namespaceSelector:
+                                                description: A label query over the
+                                                  set of namespaces that the term
+                                                  applies to. The term is applied
+                                                  to the union of the namespaces selected
+                                                  by this field and the ones listed
+                                                  in the namespaces field. null selector
+                                                  and null or empty namespaces list
+                                                  means "this pod's namespace". An
+                                                  empty selector ({}) matches all
+                                                  namespaces. This field is alpha-level
+                                                  and is only honored when PodAffinityNamespaceSelector
+                                                  feature is enabled.
+                                                properties:
+                                                  matchExpressions:
+                                                    description: matchExpressions
+                                                      is a list of label selector
+                                                      requirements. The requirements
+                                                      are ANDed.
+                                                    items:
+                                                      description: A label selector
+                                                        requirement is a selector
+                                                        that contains values, a key,
+                                                        and an operator that relates
+                                                        the key and values.
+                                                      properties:
+                                                        key:
+                                                          description: key is the
+                                                            label key that the selector
+                                                            applies to.
+                                                          type: string
+                                                        operator:
+                                                          description: operator represents
+                                                            a key's relationship to
+                                                            a set of values. Valid
+                                                            operators are In, NotIn,
+                                                            Exists and DoesNotExist.
+                                                          type: string
+                                                        values:
+                                                          description: values is an
+                                                            array of string values.
+                                                            If the operator is In
+                                                            or NotIn, the values array
+                                                            must be non-empty. If
+                                                            the operator is Exists
+                                                            or DoesNotExist, the values
+                                                            array must be empty. This
+                                                            array is replaced during
+                                                            a strategic merge patch.
+                                                          items:
+                                                            type: string
+                                                          type: array
+                                                      required:
+                                                      - key
+                                                      - operator
+                                                      type: object
+                                                    type: array
+                                                  matchLabels:
+                                                    additionalProperties:
+                                                      type: string
+                                                    description: matchLabels is a
+                                                      map of {key,value} pairs. A
+                                                      single {key,value} in the matchLabels
+                                                      map is equivalent to an element
+                                                      of matchExpressions, whose key
+                                                      field is "key", the operator
+                                                      is "In", and the values array
+                                                      contains only "value". The requirements
+                                                      are ANDed.
+                                                    type: object
+                                                type: object
                                               namespaces:
                                                 description: namespaces specifies
-                                                  which namespaces the labelSelector
-                                                  applies to (matches against); null
-                                                  or empty list means "this pod's
+                                                  a static list of namespace names
+                                                  that the term applies to. The term
+                                                  is applied to the union of the namespaces
+                                                  listed in this field and the ones
+                                                  selected by namespaceSelector. null
+                                                  or empty namespaces list and null
+                                                  namespaceSelector means "this pod's
                                                   namespace"
                                                 items:
                                                   type: string
@@ -1299,11 +1550,81 @@ spec:
                                                   ANDed.
                                                 type: object
                                             type: object
+                                          namespaceSelector:
+                                            description: A label query over the set
+                                              of namespaces that the term applies
+                                              to. The term is applied to the union
+                                              of the namespaces selected by this field
+                                              and the ones listed in the namespaces
+                                              field. null selector and null or empty
+                                              namespaces list means "this pod's namespace".
+                                              An empty selector ({}) matches all namespaces.
+                                              This field is alpha-level and is only
+                                              honored when PodAffinityNamespaceSelector
+                                              feature is enabled.
+                                            properties:
+                                              matchExpressions:
+                                                description: matchExpressions is a
+                                                  list of label selector requirements.
+                                                  The requirements are ANDed.
+                                                items:
+                                                  description: A label selector requirement
+                                                    is a selector that contains values,
+                                                    a key, and an operator that relates
+                                                    the key and values.
+                                                  properties:
+                                                    key:
+                                                      description: key is the label
+                                                        key that the selector applies
+                                                        to.
+                                                      type: string
+                                                    operator:
+                                                      description: operator represents
+                                                        a key's relationship to a
+                                                        set of values. Valid operators
+                                                        are In, NotIn, Exists and
+                                                        DoesNotExist.
+                                                      type: string
+                                                    values:
+                                                      description: values is an array
+                                                        of string values. If the operator
+                                                        is In or NotIn, the values
+                                                        array must be non-empty. If
+                                                        the operator is Exists or
+                                                        DoesNotExist, the values array
+                                                        must be empty. This array
+                                                        is replaced during a strategic
+                                                        merge patch.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  required:
+                                                  - key
+                                                  - operator
+                                                  type: object
+                                                type: array
+                                              matchLabels:
+                                                additionalProperties:
+                                                  type: string
+                                                description: matchLabels is a map
+                                                  of {key,value} pairs. A single {key,value}
+                                                  in the matchLabels map is equivalent
+                                                  to an element of matchExpressions,
+                                                  whose key field is "key", the operator
+                                                  is "In", and the values array contains
+                                                  only "value". The requirements are
+                                                  ANDed.
+                                                type: object
+                                            type: object
                                           namespaces:
-                                            description: namespaces specifies which
-                                              namespaces the labelSelector applies
-                                              to (matches against); null or empty
-                                              list means "this pod's namespace"
+                                            description: namespaces specifies a static
+                                              list of namespace names that the term
+                                              applies to. The term is applied to the
+                                              union of the namespaces listed in this
+                                              field and the ones selected by namespaceSelector.
+                                              null or empty namespaces list and null
+                                              namespaceSelector means "this pod's
+                                              namespace"
                                             items:
                                               type: string
                                             type: array
@@ -1900,6 +2221,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -2087,6 +2428,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -2096,7 +2457,7 @@ spec:
                                     type: object
                                   resources:
                                     description: 'Compute Resources required by this
-                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -2107,7 +2468,7 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -2121,7 +2482,7 @@ spec:
                                           Requests is omitted for a container, it
                                           defaults to Limits if that is explicitly
                                           specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                     type: object
                                   securityContext:
@@ -2424,6 +2785,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -3195,6 +3576,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -3370,6 +3771,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -3391,7 +3812,7 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -3405,7 +3826,7 @@ spec:
                                           Requests is omitted for a container, it
                                           defaults to Limits if that is explicitly
                                           specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                     type: object
                                   securityContext:
@@ -3699,6 +4120,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -4486,6 +4927,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -4673,6 +5134,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -4682,7 +5163,7 @@ spec:
                                     type: object
                                   resources:
                                     description: 'Compute Resources required by this
-                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -4693,7 +5174,7 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -4707,7 +5188,7 @@ spec:
                                           Requests is omitted for a container, it
                                           defaults to Limits if that is explicitly
                                           specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                     type: object
                                   securityContext:
@@ -5010,6 +5491,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -5449,10 +5950,11 @@ spec:
                               description: Optional duration in seconds the pod needs
                                 to terminate gracefully. May be decreased in delete
                                 request. Value must be non-negative integer. The value
-                                zero indicates delete immediately. If this value is
-                                nil, the default grace period will be used instead.
-                                The grace period is the duration in seconds after
-                                the processes running in the pod are sent a termination
+                                zero indicates stop immediately via the kill signal
+                                (no opportunity to shut down). If this value is nil,
+                                the default grace period will be used instead. The
+                                grace period is the duration in seconds after the
+                                processes running in the pod are sent a termination
                                 signal and the time when the processes are forcibly
                                 halted with a kill signal. Set this value longer than
                                 the expected cleanup time for your process. Defaults
@@ -6074,33 +6576,31 @@ spec:
                                     type: object
                                   ephemeral:
                                     description: "Ephemeral represents a volume that
-                                      is handled by a cluster storage driver (Alpha
-                                      feature). The volume's lifecycle is tied to
-                                      the pod that defines it - it will be created
-                                      before the pod starts, and deleted when the
-                                      pod is removed. \n Use this if: a) the volume
-                                      is only needed while the pod runs, b) features
-                                      of normal volumes like restoring from snapshot
-                                      or capacity    tracking are needed, c) the storage
-                                      driver is specified through a storage class,
-                                      and d) the storage driver supports dynamic volume
-                                      provisioning through    a PersistentVolumeClaim
-                                      (see EphemeralVolumeSource for more    information
-                                      on the connection between this volume type    and
-                                      PersistentVolumeClaim). \n Use PersistentVolumeClaim
-                                      or one of the vendor-specific APIs for volumes
-                                      that persist for longer than the lifecycle of
-                                      an individual pod. \n Use CSI for light-weight
-                                      local ephemeral volumes if the CSI driver is
-                                      meant to be used that way - see the documentation
-                                      of the driver for more information. \n A pod
-                                      can use both types of ephemeral volumes and
-                                      persistent volumes at the same time."
+                                      is handled by a cluster storage driver. The
+                                      volume's lifecycle is tied to the pod that defines
+                                      it - it will be created before the pod starts,
+                                      and deleted when the pod is removed. \n Use
+                                      this if: a) the volume is only needed while
+                                      the pod runs, b) features of normal volumes
+                                      like restoring from snapshot or capacity    tracking
+                                      are needed, c) the storage driver is specified
+                                      through a storage class, and d) the storage
+                                      driver supports dynamic volume provisioning
+                                      through    a PersistentVolumeClaim (see EphemeralVolumeSource
+                                      for more    information on the connection between
+                                      this volume type    and PersistentVolumeClaim).
+                                      \n Use PersistentVolumeClaim or one of the vendor-specific
+                                      APIs for volumes that persist for longer than
+                                      the lifecycle of an individual pod. \n Use CSI
+                                      for light-weight local ephemeral volumes if
+                                      the CSI driver is meant to be used that way
+                                      - see the documentation of the driver for more
+                                      information. \n A pod can use both types of
+                                      ephemeral volumes and persistent volumes at
+                                      the same time. \n This is a beta feature and
+                                      only available when the GenericEphemeralVolume
+                                      feature gate is enabled."
                                     properties:
-                                      readOnly:
-                                        description: Specifies a read-only configuration
-                                          for the volume. Defaults to false (read/write).
-                                        type: boolean
                                       volumeClaimTemplate:
                                         description: "Will be used to create a stand-alone
                                           PVC to provision the volume. The pod in
@@ -6218,7 +6718,7 @@ spec:
                                                     description: 'Limits describes
                                                       the maximum amount of compute
                                                       resources allowed. More info:
-                                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                                     type: object
                                                   requests:
                                                     additionalProperties:
@@ -6234,7 +6734,7 @@ spec:
                                                       it defaults to Limits if that
                                                       is explicitly specified, otherwise
                                                       to an implementation-defined
-                                                      value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                                      value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                                     type: object
                                                 type: object
                                               selector:
@@ -7410,7 +7910,7 @@ spec:
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
                                     description: 'Limits describes the maximum amount
-                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     type: object
                                   requests:
                                     additionalProperties:
@@ -7424,7 +7924,7 @@ spec:
                                       omitted for a container, it defaults to Limits
                                       if that is explicitly specified, otherwise to
                                       an implementation-defined value. More info:
-                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     type: object
                                 type: object
                               selector:
@@ -7615,7 +8115,10 @@ spec:
                         x-kubernetes-int-or-string: true
                       selector:
                         description: Label query over pods whose evictions are managed
-                          by the disruption budget.
+                          by the disruption budget. A null selector selects no pods.
+                          An empty selector ({}) also selects no pods, which differs
+                          from standard behavior of selecting all pods. In policy/v1,
+                          an empty selector will select all pods in the namespace.
                         properties:
                           matchExpressions:
                             description: matchExpressions is a list of label selector
@@ -7855,8 +8358,8 @@ spec:
                               discovery mechanisms will return as an alias for this
                               service (e.g. a DNS CNAME record). No proxying will
                               be involved.  Must be a lowercase RFC-1123 hostname
-                              (https://tools.ietf.org/html/rfc1123) and requires Type
-                              to be
+                              (https://tools.ietf.org/html/rfc1123) and requires `type`
+                              to be "ExternalName".
                             type: string
                           externalTrafficPolicy:
                             description: externalTrafficPolicy denotes if this Service
@@ -7883,6 +8386,15 @@ spec:
                               it (e.g. changing type).
                             format: int32
                             type: integer
+                          internalTrafficPolicy:
+                            description: InternalTrafficPolicy specifies if the cluster
+                              internal traffic should be routed to all endpoints or
+                              node-local endpoints only. "Cluster" routes internal
+                              traffic to a Service to all endpoints. "Local" routes
+                              traffic to node-local endpoints only, traffic is dropped
+                              if no node-local endpoints are ready. The default value
+                              is "Cluster".
+                            type: string
                           ipFamilies:
                             description: "IPFamilies is a list of IP families (e.g.
                               IPv4, IPv6) assigned to this service, and is gated by
@@ -7924,6 +8436,26 @@ spec:
                               and clusterIPs fields depend on the value of this field.  This
                               field will be wiped when updating a service to type
                               ExternalName.
+                            type: string
+                          loadBalancerClass:
+                            description: loadBalancerClass is the class of the load
+                              balancer implementation this Service belongs to. If
+                              specified, the value of this field must be a label-style
+                              identifier, with an optional prefix, e.g. "internal-vip"
+                              or "example.com/internal-vip". Unprefixed names are
+                              reserved for end-users. This field can only be set when
+                              the Service type is 'LoadBalancer'. If not set, the
+                              default load balancer implementation is used, today
+                              this is typically done through the cloud provider integration,
+                              but should apply for any default implementation. If
+                              set, it is assumed that a load balancer implementation
+                              is watching for Services with a matching class. Any
+                              default load balancer implementation (e.g. cloud providers)
+                              should ignore Services that set this field. This field
+                              can only be set when creating or updating a Service
+                              to type 'LoadBalancer'. Once set, it can not be changed.
+                              This field will be wiped when a service is updated to
+                              a non 'LoadBalancer' type.
                             type: string
                           loadBalancerIP:
                             description: 'Only applies to Service Type: LoadBalancer
@@ -8080,6 +8612,8 @@ spec:
                               not specified or empty, no topology constraints will
                               be applied. This field is alpha-level and is only honored
                               by servers that enable the ServiceTopology feature.
+                              This field is deprecated and will be removed in a future
+                              version.
                             items:
                               type: string
                             type: array
@@ -8112,8 +8646,8 @@ spec:
                         description: "Certificate is a reference to a Kubernetes secret
                           that contains the CA certificate and private key for generating
                           node certificates. The referenced secret should contain
-                          the following: \n - `tls.crt`: The CA certificate in PEM
-                          format. - `tls.key`: The private key for the CA certificate
+                          the following: \n - `ca.crt`: The CA certificate in PEM
+                          format. - `ca.key`: The private key for the CA certificate
                           in PEM format."
                         properties:
                           secretName:
@@ -8353,8 +8887,8 @@ spec:
                               discovery mechanisms will return as an alias for this
                               service (e.g. a DNS CNAME record). No proxying will
                               be involved.  Must be a lowercase RFC-1123 hostname
-                              (https://tools.ietf.org/html/rfc1123) and requires Type
-                              to be
+                              (https://tools.ietf.org/html/rfc1123) and requires `type`
+                              to be "ExternalName".
                             type: string
                           externalTrafficPolicy:
                             description: externalTrafficPolicy denotes if this Service
@@ -8381,6 +8915,15 @@ spec:
                               it (e.g. changing type).
                             format: int32
                             type: integer
+                          internalTrafficPolicy:
+                            description: InternalTrafficPolicy specifies if the cluster
+                              internal traffic should be routed to all endpoints or
+                              node-local endpoints only. "Cluster" routes internal
+                              traffic to a Service to all endpoints. "Local" routes
+                              traffic to node-local endpoints only, traffic is dropped
+                              if no node-local endpoints are ready. The default value
+                              is "Cluster".
+                            type: string
                           ipFamilies:
                             description: "IPFamilies is a list of IP families (e.g.
                               IPv4, IPv6) assigned to this service, and is gated by
@@ -8422,6 +8965,26 @@ spec:
                               and clusterIPs fields depend on the value of this field.  This
                               field will be wiped when updating a service to type
                               ExternalName.
+                            type: string
+                          loadBalancerClass:
+                            description: loadBalancerClass is the class of the load
+                              balancer implementation this Service belongs to. If
+                              specified, the value of this field must be a label-style
+                              identifier, with an optional prefix, e.g. "internal-vip"
+                              or "example.com/internal-vip". Unprefixed names are
+                              reserved for end-users. This field can only be set when
+                              the Service type is 'LoadBalancer'. If not set, the
+                              default load balancer implementation is used, today
+                              this is typically done through the cloud provider integration,
+                              but should apply for any default implementation. If
+                              set, it is assumed that a load balancer implementation
+                              is watching for Services with a matching class. Any
+                              default load balancer implementation (e.g. cloud providers)
+                              should ignore Services that set this field. This field
+                              can only be set when creating or updating a Service
+                              to type 'LoadBalancer'. Once set, it can not be changed.
+                              This field will be wiped when a service is updated to
+                              a non 'LoadBalancer' type.
                             type: string
                           loadBalancerIP:
                             description: 'Only applies to Service Type: LoadBalancer
@@ -8578,6 +9141,8 @@ spec:
                               not specified or empty, no topology constraints will
                               be applied. This field is alpha-level and is only honored
                               by servers that enable the ServiceTopology feature.
+                              This field is deprecated and will be removed in a future
+                              version.
                             items:
                               type: string
                             type: array
@@ -9029,11 +9594,86 @@ spec:
                                                       are ANDed.
                                                     type: object
                                                 type: object
+                                              namespaceSelector:
+                                                description: A label query over the
+                                                  set of namespaces that the term
+                                                  applies to. The term is applied
+                                                  to the union of the namespaces selected
+                                                  by this field and the ones listed
+                                                  in the namespaces field. null selector
+                                                  and null or empty namespaces list
+                                                  means "this pod's namespace". An
+                                                  empty selector ({}) matches all
+                                                  namespaces. This field is alpha-level
+                                                  and is only honored when PodAffinityNamespaceSelector
+                                                  feature is enabled.
+                                                properties:
+                                                  matchExpressions:
+                                                    description: matchExpressions
+                                                      is a list of label selector
+                                                      requirements. The requirements
+                                                      are ANDed.
+                                                    items:
+                                                      description: A label selector
+                                                        requirement is a selector
+                                                        that contains values, a key,
+                                                        and an operator that relates
+                                                        the key and values.
+                                                      properties:
+                                                        key:
+                                                          description: key is the
+                                                            label key that the selector
+                                                            applies to.
+                                                          type: string
+                                                        operator:
+                                                          description: operator represents
+                                                            a key's relationship to
+                                                            a set of values. Valid
+                                                            operators are In, NotIn,
+                                                            Exists and DoesNotExist.
+                                                          type: string
+                                                        values:
+                                                          description: values is an
+                                                            array of string values.
+                                                            If the operator is In
+                                                            or NotIn, the values array
+                                                            must be non-empty. If
+                                                            the operator is Exists
+                                                            or DoesNotExist, the values
+                                                            array must be empty. This
+                                                            array is replaced during
+                                                            a strategic merge patch.
+                                                          items:
+                                                            type: string
+                                                          type: array
+                                                      required:
+                                                      - key
+                                                      - operator
+                                                      type: object
+                                                    type: array
+                                                  matchLabels:
+                                                    additionalProperties:
+                                                      type: string
+                                                    description: matchLabels is a
+                                                      map of {key,value} pairs. A
+                                                      single {key,value} in the matchLabels
+                                                      map is equivalent to an element
+                                                      of matchExpressions, whose key
+                                                      field is "key", the operator
+                                                      is "In", and the values array
+                                                      contains only "value". The requirements
+                                                      are ANDed.
+                                                    type: object
+                                                type: object
                                               namespaces:
                                                 description: namespaces specifies
-                                                  which namespaces the labelSelector
-                                                  applies to (matches against); null
-                                                  or empty list means "this pod's
+                                                  a static list of namespace names
+                                                  that the term applies to. The term
+                                                  is applied to the union of the namespaces
+                                                  listed in this field and the ones
+                                                  selected by namespaceSelector. null
+                                                  or empty namespaces list and null
+                                                  namespaceSelector means "this pod's
                                                   namespace"
                                                 items:
                                                   type: string
@@ -9144,11 +9784,81 @@ spec:
                                                   ANDed.
                                                 type: object
                                             type: object
+                                          namespaceSelector:
+                                            description: A label query over the set
+                                              of namespaces that the term applies
+                                              to. The term is applied to the union
+                                              of the namespaces selected by this field
+                                              and the ones listed in the namespaces
+                                              field. null selector and null or empty
+                                              namespaces list means "this pod's namespace".
+                                              An empty selector ({}) matches all namespaces.
+                                              This field is alpha-level and is only
+                                              honored when PodAffinityNamespaceSelector
+                                              feature is enabled.
+                                            properties:
+                                              matchExpressions:
+                                                description: matchExpressions is a
+                                                  list of label selector requirements.
+                                                  The requirements are ANDed.
+                                                items:
+                                                  description: A label selector requirement
+                                                    is a selector that contains values,
+                                                    a key, and an operator that relates
+                                                    the key and values.
+                                                  properties:
+                                                    key:
+                                                      description: key is the label
+                                                        key that the selector applies
+                                                        to.
+                                                      type: string
+                                                    operator:
+                                                      description: operator represents
+                                                        a key's relationship to a
+                                                        set of values. Valid operators
+                                                        are In, NotIn, Exists and
+                                                        DoesNotExist.
+                                                      type: string
+                                                    values:
+                                                      description: values is an array
+                                                        of string values. If the operator
+                                                        is In or NotIn, the values
+                                                        array must be non-empty. If
+                                                        the operator is Exists or
+                                                        DoesNotExist, the values array
+                                                        must be empty. This array
+                                                        is replaced during a strategic
+                                                        merge patch.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  required:
+                                                  - key
+                                                  - operator
+                                                  type: object
+                                                type: array
+                                              matchLabels:
+                                                additionalProperties:
+                                                  type: string
+                                                description: matchLabels is a map
+                                                  of {key,value} pairs. A single {key,value}
+                                                  in the matchLabels map is equivalent
+                                                  to an element of matchExpressions,
+                                                  whose key field is "key", the operator
+                                                  is "In", and the values array contains
+                                                  only "value". The requirements are
+                                                  ANDed.
+                                                type: object
+                                            type: object
                                           namespaces:
-                                            description: namespaces specifies which
-                                              namespaces the labelSelector applies
-                                              to (matches against); null or empty
-                                              list means "this pod's namespace"
+                                            description: namespaces specifies a static
+                                              list of namespace names that the term
+                                              applies to. The term is applied to the
+                                              union of the namespaces listed in this
+                                              field and the ones selected by namespaceSelector.
+                                              null or empty namespaces list and null
+                                              namespaceSelector means "this pod's
+                                              namespace"
                                             items:
                                               type: string
                                             type: array
@@ -9260,11 +9970,86 @@ spec:
                                                       are ANDed.
                                                     type: object
                                                 type: object
+                                              namespaceSelector:
+                                                description: A label query over the
+                                                  set of namespaces that the term
+                                                  applies to. The term is applied
+                                                  to the union of the namespaces selected
+                                                  by this field and the ones listed
+                                                  in the namespaces field. null selector
+                                                  and null or empty namespaces list
+                                                  means "this pod's namespace". An
+                                                  empty selector ({}) matches all
+                                                  namespaces. This field is alpha-level
+                                                  and is only honored when PodAffinityNamespaceSelector
+                                                  feature is enabled.
+                                                properties:
+                                                  matchExpressions:
+                                                    description: matchExpressions
+                                                      is a list of label selector
+                                                      requirements. The requirements
+                                                      are ANDed.
+                                                    items:
+                                                      description: A label selector
+                                                        requirement is a selector
+                                                        that contains values, a key,
+                                                        and an operator that relates
+                                                        the key and values.
+                                                      properties:
+                                                        key:
+                                                          description: key is the
+                                                            label key that the selector
+                                                            applies to.
+                                                          type: string
+                                                        operator:
+                                                          description: operator represents
+                                                            a key's relationship to
+                                                            a set of values. Valid
+                                                            operators are In, NotIn,
+                                                            Exists and DoesNotExist.
+                                                          type: string
+                                                        values:
+                                                          description: values is an
+                                                            array of string values.
+                                                            If the operator is In
+                                                            or NotIn, the values array
+                                                            must be non-empty. If
+                                                            the operator is Exists
+                                                            or DoesNotExist, the values
+                                                            array must be empty. This
+                                                            array is replaced during
+                                                            a strategic merge patch.
+                                                          items:
+                                                            type: string
+                                                          type: array
+                                                      required:
+                                                      - key
+                                                      - operator
+                                                      type: object
+                                                    type: array
+                                                  matchLabels:
+                                                    additionalProperties:
+                                                      type: string
+                                                    description: matchLabels is a
+                                                      map of {key,value} pairs. A
+                                                      single {key,value} in the matchLabels
+                                                      map is equivalent to an element
+                                                      of matchExpressions, whose key
+                                                      field is "key", the operator
+                                                      is "In", and the values array
+                                                      contains only "value". The requirements
+                                                      are ANDed.
+                                                    type: object
+                                                type: object
                                               namespaces:
                                                 description: namespaces specifies
-                                                  which namespaces the labelSelector
-                                                  applies to (matches against); null
-                                                  or empty list means "this pod's
+                                                  a static list of namespace names
+                                                  that the term applies to. The term
+                                                  is applied to the union of the namespaces
+                                                  listed in this field and the ones
+                                                  selected by namespaceSelector. null
+                                                  or empty namespaces list and null
+                                                  namespaceSelector means "this pod's
                                                   namespace"
                                                 items:
                                                   type: string
@@ -9375,11 +10160,81 @@ spec:
                                                   ANDed.
                                                 type: object
                                             type: object
+                                          namespaceSelector:
+                                            description: A label query over the set
+                                              of namespaces that the term applies
+                                              to. The term is applied to the union
+                                              of the namespaces selected by this field
+                                              and the ones listed in the namespaces
+                                              field. null selector and null or empty
+                                              namespaces list means "this pod's namespace".
+                                              An empty selector ({}) matches all namespaces.
+                                              This field is alpha-level and is only
+                                              honored when PodAffinityNamespaceSelector
+                                              feature is enabled.
+                                            properties:
+                                              matchExpressions:
+                                                description: matchExpressions is a
+                                                  list of label selector requirements.
+                                                  The requirements are ANDed.
+                                                items:
+                                                  description: A label selector requirement
+                                                    is a selector that contains values,
+                                                    a key, and an operator that relates
+                                                    the key and values.
+                                                  properties:
+                                                    key:
+                                                      description: key is the label
+                                                        key that the selector applies
+                                                        to.
+                                                      type: string
+                                                    operator:
+                                                      description: operator represents
+                                                        a key's relationship to a
+                                                        set of values. Valid operators
+                                                        are In, NotIn, Exists and
+                                                        DoesNotExist.
+                                                      type: string
+                                                    values:
+                                                      description: values is an array
+                                                        of string values. If the operator
+                                                        is In or NotIn, the values
+                                                        array must be non-empty. If
+                                                        the operator is Exists or
+                                                        DoesNotExist, the values array
+                                                        must be empty. This array
+                                                        is replaced during a strategic
+                                                        merge patch.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  required:
+                                                  - key
+                                                  - operator
+                                                  type: object
+                                                type: array
+                                              matchLabels:
+                                                additionalProperties:
+                                                  type: string
+                                                description: matchLabels is a map
+                                                  of {key,value} pairs. A single {key,value}
+                                                  in the matchLabels map is equivalent
+                                                  to an element of matchExpressions,
+                                                  whose key field is "key", the operator
+                                                  is "In", and the values array contains
+                                                  only "value". The requirements are
+                                                  ANDed.
+                                                type: object
+                                            type: object
                                           namespaces:
-                                            description: namespaces specifies which
-                                              namespaces the labelSelector applies
-                                              to (matches against); null or empty
-                                              list means "this pod's namespace"
+                                            description: namespaces specifies a static
+                                              list of namespace names that the term
+                                              applies to. The term is applied to the
+                                              union of the namespaces listed in this
+                                              field and the ones selected by namespaceSelector.
+                                              null or empty namespaces list and null
+                                              namespaceSelector means "this pod's
+                                              namespace"
                                             items:
                                               type: string
                                             type: array
@@ -9976,6 +10831,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -10163,6 +11038,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -10172,7 +11067,7 @@ spec:
                                     type: object
                                   resources:
                                     description: 'Compute Resources required by this
-                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -10183,7 +11078,7 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -10197,7 +11092,7 @@ spec:
                                           Requests is omitted for a container, it
                                           defaults to Limits if that is explicitly
                                           specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                     type: object
                                   securityContext:
@@ -10500,6 +11395,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -11271,6 +12186,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -11446,6 +12381,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -11467,7 +12422,7 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -11481,7 +12436,7 @@ spec:
                                           Requests is omitted for a container, it
                                           defaults to Limits if that is explicitly
                                           specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                     type: object
                                   securityContext:
@@ -11775,6 +12730,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -12562,6 +13537,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -12749,6 +13744,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -12758,7 +13773,7 @@ spec:
                                     type: object
                                   resources:
                                     description: 'Compute Resources required by this
-                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -12769,7 +13784,7 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -12783,7 +13798,7 @@ spec:
                                           Requests is omitted for a container, it
                                           defaults to Limits if that is explicitly
                                           specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                         type: object
                                     type: object
                                   securityContext:
@@ -13086,6 +14101,26 @@ spec:
                                         required:
                                         - port
                                         type: object
+                                      terminationGracePeriodSeconds:
+                                        description: Optional duration in seconds
+                                          the pod needs to terminate gracefully upon
+                                          probe failure. The grace period is the duration
+                                          in seconds after the processes running in
+                                          the pod are sent a termination signal and
+                                          the time when the processes are forcibly
+                                          halted with a kill signal. Set this value
+                                          longer than the expected cleanup time for
+                                          your process. If this value is nil, the
+                                          pod's terminationGracePeriodSeconds will
+                                          be used. Otherwise, this value overrides
+                                          the value provided by the pod spec. Value
+                                          must be non-negative integer. The value
+                                          zero indicates stop immediately via the
+                                          kill signal (no opportunity to shut down).
+                                          This is an alpha field and requires enabling
+                                          ProbeTerminationGracePeriod feature gate.
+                                        format: int64
+                                        type: integer
                                       timeoutSeconds:
                                         description: 'Number of seconds after which
                                           the probe times out. Defaults to 1 second.
@@ -13525,10 +14560,11 @@ spec:
                               description: Optional duration in seconds the pod needs
                                 to terminate gracefully. May be decreased in delete
                                 request. Value must be non-negative integer. The value
-                                zero indicates delete immediately. If this value is
-                                nil, the default grace period will be used instead.
-                                The grace period is the duration in seconds after
-                                the processes running in the pod are sent a termination
+                                zero indicates stop immediately via the kill signal
+                                (no opportunity to shut down). If this value is nil,
+                                the default grace period will be used instead. The
+                                grace period is the duration in seconds after the
+                                processes running in the pod are sent a termination
                                 signal and the time when the processes are forcibly
                                 halted with a kill signal. Set this value longer than
                                 the expected cleanup time for your process. Defaults
@@ -14150,33 +15186,31 @@ spec:
                                     type: object
                                   ephemeral:
                                     description: "Ephemeral represents a volume that
-                                      is handled by a cluster storage driver (Alpha
-                                      feature). The volume's lifecycle is tied to
-                                      the pod that defines it - it will be created
-                                      before the pod starts, and deleted when the
-                                      pod is removed. \n Use this if: a) the volume
-                                      is only needed while the pod runs, b) features
-                                      of normal volumes like restoring from snapshot
-                                      or capacity    tracking are needed, c) the storage
-                                      driver is specified through a storage class,
-                                      and d) the storage driver supports dynamic volume
-                                      provisioning through    a PersistentVolumeClaim
-                                      (see EphemeralVolumeSource for more    information
-                                      on the connection between this volume type    and
-                                      PersistentVolumeClaim). \n Use PersistentVolumeClaim
-                                      or one of the vendor-specific APIs for volumes
-                                      that persist for longer than the lifecycle of
-                                      an individual pod. \n Use CSI for light-weight
-                                      local ephemeral volumes if the CSI driver is
-                                      meant to be used that way - see the documentation
-                                      of the driver for more information. \n A pod
-                                      can use both types of ephemeral volumes and
-                                      persistent volumes at the same time."
+                                      is handled by a cluster storage driver. The
+                                      volume's lifecycle is tied to the pod that defines
+                                      it - it will be created before the pod starts,
+                                      and deleted when the pod is removed. \n Use
+                                      this if: a) the volume is only needed while
+                                      the pod runs, b) features of normal volumes
+                                      like restoring from snapshot or capacity    tracking
+                                      are needed, c) the storage driver is specified
+                                      through a storage class, and d) the storage
+                                      driver supports dynamic volume provisioning
+                                      through    a PersistentVolumeClaim (see EphemeralVolumeSource
+                                      for more    information on the connection between
+                                      this volume type    and PersistentVolumeClaim).
+                                      \n Use PersistentVolumeClaim or one of the vendor-specific
+                                      APIs for volumes that persist for longer than
+                                      the lifecycle of an individual pod. \n Use CSI
+                                      for light-weight local ephemeral volumes if
+                                      the CSI driver is meant to be used that way
+                                      - see the documentation of the driver for more
+                                      information. \n A pod can use both types of
+                                      ephemeral volumes and persistent volumes at
+                                      the same time. \n This is a beta feature and
+                                      only available when the GenericEphemeralVolume
+                                      feature gate is enabled."
                                     properties:
-                                      readOnly:
-                                        description: Specifies a read-only configuration
-                                          for the volume. Defaults to false (read/write).
-                                        type: boolean
                                       volumeClaimTemplate:
                                         description: "Will be used to create a stand-alone
                                           PVC to provision the volume. The pod in
@@ -14294,7 +15328,7 @@ spec:
                                                     description: 'Limits describes
                                                       the maximum amount of compute
                                                       resources allowed. More info:
-                                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                                     type: object
                                                   requests:
                                                     additionalProperties:
@@ -14310,7 +15344,7 @@ spec:
                                                       it defaults to Limits if that
                                                       is explicitly specified, otherwise
                                                       to an implementation-defined
-                                                      value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                                      value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                                     type: object
                                                 type: object
                                               selector:
@@ -15485,7 +16519,7 @@ spec:
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
                                     description: 'Limits describes the maximum amount
-                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     type: object
                                   requests:
                                     additionalProperties:
@@ -15499,7 +16533,7 @@ spec:
                                       omitted for a container, it defaults to Limits
                                       if that is explicitly specified, otherwise to
                                       an implementation-defined value. More info:
-                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     type: object
                                 type: object
                               selector:
@@ -15690,7 +16724,10 @@ spec:
                         x-kubernetes-int-or-string: true
                       selector:
                         description: Label query over pods whose evictions are managed
-                          by the disruption budget.
+                          by the disruption budget. A null selector selects no pods.
+                          An empty selector ({}) also selects no pods, which differs
+                          from standard behavior of selecting all pods. In policy/v1,
+                          an empty selector will select all pods in the namespace.
                         properties:
                           matchExpressions:
                             description: matchExpressions is a list of label selector

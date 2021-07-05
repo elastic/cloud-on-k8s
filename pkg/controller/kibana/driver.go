@@ -96,7 +96,10 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-	if !association.IsConfiguredIfSet(kb, d.recorder) {
+	if !association.IsConfiguredIfSet(kb.EsAssociation(), d.recorder) {
+		return results
+	}
+	if !association.IsConfiguredIfSet(kb.EntAssociation(), d.recorder) {
 		return results
 	}
 
@@ -119,6 +122,8 @@ func (d *driver) Reconcile(
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
+		_, err := results.Aggregate()
+		k8s.EmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return results
 	}
 
@@ -262,9 +267,14 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 func (d *driver) buildVolumes(kb *kbv1.Kibana) []commonvolume.VolumeLike {
 	volumes := []commonvolume.VolumeLike{DataVolume, ConfigSharedVolume, ConfigVolume(*kb)}
 
-	if kb.AssociationConf().CAIsConfigured() {
+	if kb.EsAssociation().AssociationConf().CAIsConfigured() {
 		esCertsVolume := esCaCertSecretVolume(*kb)
 		volumes = append(volumes, esCertsVolume)
+	}
+
+	if kb.EntAssociation().AssociationConf().CAIsConfigured() {
+		entCertsVolume := entCaCertSecretVolume(*kb)
+		volumes = append(volumes, entCertsVolume)
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
