@@ -36,7 +36,7 @@ const (
 
 	// esCertsVolumeMountPath is the directory containing Elasticsearch certificates.
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
-	// EntCertsMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
+	// entCertsVolumeMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
 )
 
