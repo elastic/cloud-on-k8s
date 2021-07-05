@@ -89,7 +89,6 @@ func buildMetricbeatBaseConfig(client k8s.Client, es esv1.Elasticsearch) (string
 			fmt.Sprintf("/mnt/elastic-internal/es-monitoring/%s/%s/certs", es.Namespace, es.Name),
 		)
 
-		configData.IsSSL = true
 		configData.SSLPath = filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
 		configData.SSLMode = "certificate"
 	}
