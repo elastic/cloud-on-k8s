@@ -6698,15 +6698,18 @@ spec:
             properties:
               associationStatus:
                 description: AssociationStatus is the status of any auto-linking to
-                  Elasticsearch clusters. This was kept as "associationStatus" rather
-                  than a more consistent "elasticsearchAssociationStatus" for backward-compatibility
-                  reasons.
+                  Elasticsearch clusters. This field is deprecated and will be removed
+                  in a future release. Use ElasticsearchAssociationStatus instead.
                 type: string
               availableNodes:
                 description: AvailableNodes is the number of available replicas in
                   the deployment.
                 format: int32
                 type: integer
+              elasticsearchAssociationStatus:
+                description: ElasticsearchAssociationStatus is the status of any auto-linking
+                  to Elasticsearch clusters.
+                type: string
               enterpriseSearchAssociationStatus:
                 description: EnterpriseSearchAssociationStatus is the status of any
                   auto-linking to Enterprise Search.
