@@ -13,7 +13,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
@@ -39,7 +38,7 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            entName.Deployment(ent.Name),
+		Name:            DeploymentName(ent.Name),
 		Namespace:       ent.Namespace,
 		Replicas:        ent.Spec.Count,
 		Selector:        deploymentLabels,

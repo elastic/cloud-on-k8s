@@ -96,6 +96,9 @@ const (
 	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
 	KibanaAssociationType          = "kibana"
 
+	EntConfigAnnotationNameBase = "association.k8s.elastic.co/ent-conf"
+	EntAssociationType          = "ent"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
@@ -106,6 +109,10 @@ const (
 	// should use `SingletonAssociationID` as their `AssociationID`. On the contrary, Agent can have unbounded number
 	// of Associations so Agent-ES Associations should _not_ use `SingletonAssociationID`.
 	SingletonAssociationID = ""
+
+	// NoAuthRequiredValue is the value set for AuthSecretName if no authentication
+	// credentials are necessary for that association.
+	NoAuthRequiredValue = "-"
 )
 
 // Associated represents an Elastic stack resource that is associated with other stack resources.
@@ -193,12 +200,21 @@ func (ac *AssociationConf) IsConfigured() bool {
 	return ac.AuthIsConfigured() && ac.URLIsConfigured()
 }
 
-// AuthIsConfigured returns true if all the auth fields are set.
+// AuthIsConfigured returns true if the auth fields are set.
 func (ac *AssociationConf) AuthIsConfigured() bool {
 	if ac == nil {
 		return false
 	}
+	if ac.NoAuthRequired() {
+		// auth fields are not required, but still configured
+		return true
+	}
+	// ensure both secret name and secret key are provided
 	return ac.AuthSecretName != "" && ac.AuthSecretKey != ""
+}
+
+func (ac *AssociationConf) NoAuthRequired() bool {
+	return ac.AuthSecretName == NoAuthRequiredValue
 }
 
 // CAIsConfigured returns true if the CA field is set.

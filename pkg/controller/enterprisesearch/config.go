@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
@@ -42,12 +41,12 @@ const (
 )
 
 func ConfigSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
-	return volume.NewSecretVolume(name.Config(ent.Name), "config", ConfigMountPath, ConfigFilename, 0444)
+	return volume.NewSecretVolume(ConfigName(ent.Name), "config", ConfigMountPath, ConfigFilename, 0444)
 }
 
 func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
 	// reuse the config secret
-	return volume.NewSecretVolume(name.Config(ent.Name), "readiness-probe", ReadinessProbeMountPath, ReadinessProbeFilename, 0444)
+	return volume.NewSecretVolume(ConfigName(ent.Name), "readiness-probe", ReadinessProbeMountPath, ReadinessProbeFilename, 0444)
 }
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
@@ -75,7 +74,7 @@ func ReconcileConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFami
 	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ent.Namespace,
-			Name:      name.Config(ent.Name),
+			Name:      ConfigName(ent.Name),
 			Labels:    common.AddCredentialsLabel(Labels(ent.Name)),
 		},
 		Data: map[string][]byte{
@@ -222,7 +221,7 @@ func getExistingConfig(client k8s.Client, ent entv1.EnterpriseSearch) (*settings
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ent.Namespace,
-		Name:      name.Config(ent.Name),
+		Name:      ConfigName(ent.Name),
 	}
 	err := client.Get(context.Background(), key, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -311,7 +310,7 @@ func tlsConfig(ent entv1.EnterpriseSearch) *settings.CanonicalConfig {
 	if !ent.Spec.HTTP.TLS.Enabled() {
 		return settings.NewCanonicalConfig()
 	}
-	certsDir := certificates.HTTPCertSecretVolume(name.EntNamer, ent.Name).VolumeMount().MountPath
+	certsDir := certificates.HTTPCertSecretVolume(entv1.Namer, ent.Name).VolumeMount().MountPath
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.ssl.enabled":                 true,
 		"ent_search.ssl.certificate":             filepath.Join(certsDir, certificates.CertFileName),

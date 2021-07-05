@@ -84,6 +84,13 @@ func newBuilder(name, randSuffix string) Builder {
 		WithEnvVar("ALLOW_PREVIEW_ELASTICSEARCH_8X", "true")
 }
 
+func (b Builder) Ref() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      b.EnterpriseSearch.Name,
+		Namespace: b.EnterpriseSearch.Namespace,
+	}
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.EnterpriseSearch.ObjectMeta.Name = b.EnterpriseSearch.ObjectMeta.Name + "-" + suffix

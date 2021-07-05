@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 )
 
 const (
@@ -100,6 +99,6 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.Enterpr
 	if !ent.Spec.HTTP.TLS.Enabled() {
 		return builder
 	}
-	vol := certificates.HTTPCertSecretVolume(name.EntNamer, ent.Name)
+	vol := certificates.HTTPCertSecretVolume(entv1.Namer, ent.Name)
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 }
