@@ -5,6 +5,10 @@ kind: StatefulSet
 metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
+    {{- if .Values.customAnnotations }}
+  annotations:
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
@@ -22,6 +26,9 @@ spec:
         "checksum/config": {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.customAnnotations }}
+        {{- toYaml .Values.customAnnotations | nindent 8 }}
         {{- end }}
       labels:
         {{- include "eck-operator.selectorLabels" . | nindent 8 }}

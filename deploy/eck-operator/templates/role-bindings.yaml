@@ -11,6 +11,10 @@ kind: Role
 metadata:
   name: "{{ $fullName }}"
   namespace: {{ $namespace }}
+  annotations:
+    {{- if $.Values.customAnnotations }}
+    {{- toYaml $.Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" $ | nindent 4 }}
 rules:
@@ -40,6 +44,10 @@ kind: Role
 metadata:
   name: {{ $fullName }}
   namespace: {{ $.Release.Namespace }}
+  annotations:
+    {{- if $.Values.customAnnotations }}
+    {{- toYaml $.Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" $ | nindent 4 }}
 rules:
@@ -50,6 +58,10 @@ kind: RoleBinding
 metadata:
   name: "{{ $fullName }}"
   namespace: {{ $.Release.Namespace }}
+    {{- if $.Values.customAnnotations }}
+  annotations:
+    {{- toYaml $.Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" $ | nindent 4 }}
 roleRef:
@@ -67,6 +79,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding 
 metadata:
   name: {{ $fullName }}
+    {{- if $.Values.customAnnotations }}
+  annotations:
+    {{- toYaml $.Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" $ | nindent 4 }}
 roleRef:

@@ -7,6 +7,10 @@ kind: NetworkPolicy
 metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ .Release.Namespace}}
+    {{- if .Values.customAnnotations }}
+  annotations:
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
 spec:

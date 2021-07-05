@@ -6,9 +6,12 @@ metadata:
   name: {{ include "eck-operator.webhookName" . }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
-{{- if .Values.webhook.certManagerCert }}
+{{- if or .Values.webhook.certManagerCert .Values.customAnnotations }}
   annotations:
     cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ .Values.webhook.certManagerCert }}"
+    {{- if .Values.customAnnotations }}
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
 {{- end }}
 webhooks:
 - clientConfig:
@@ -307,6 +310,10 @@ kind: Service
 metadata:
   name: {{ include "eck-operator.webhookServiceName" . }}
   namespace: {{ .Release.Namespace }}
+    {{- if .Values.customAnnotations }}
+  annotations:
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
@@ -323,6 +330,10 @@ kind: Secret
 metadata:
   name: {{ include "eck-operator.webhookSecretName" . }}
   namespace: {{ .Release.Namespace }}
+    {{- if .Values.customAnnotations }}
+  annotations:
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
 {{- end }}

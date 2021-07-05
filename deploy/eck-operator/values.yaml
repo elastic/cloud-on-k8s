@@ -15,12 +15,12 @@ managedNamespaces: []
 installCRDs: true
 
 ## Additional annotations to add to all resources
-customAnnotations: #{}
-  elastic.co/version: x.y.z
+customAnnotations: {}
+  # elastic.co/version: x.y.z
 
 ## Additional labels to add to all resources
-customLabels: #{}
-  app: eck-operator
+customLabels: {}
+  # app: eck-operator
 
 # replicaCount is the number of operator pods to run.
 replicaCount: 1
