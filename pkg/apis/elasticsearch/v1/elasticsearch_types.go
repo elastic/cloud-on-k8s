@@ -261,6 +261,8 @@ type TransportConfig struct {
 }
 
 type TransportTLSOptions struct {
+	// SubjectAlternativeNames is a list of SANs to include in the generated node transport TLS certificates.
+	SubjectAlternativeNames []commonv1.SubjectAlternativeName `json:"subjectAltNames,omitempty"`
 	// Certificate is a reference to a Kubernetes secret that contains the CA certificate
 	// and private key for generating node certificates.
 	// The referenced secret should contain the following:

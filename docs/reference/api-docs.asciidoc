@@ -566,6 +566,7 @@ SubjectAlternativeName represents a SAN entry in a x509 certificate.
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-selfsignedcertificate[$$SelfSignedCertificate$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transporttlsoptions[$$TransportTLSOptions$$]
 ****
 
 [cols="25a,75a", options="header"]
@@ -1070,6 +1071,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
+| *`subjectAltNames`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-subjectalternativename[$$SubjectAlternativeName$$]__ | SubjectAlternativeNames is a list of SANs to include in the generated node transport TLS certificates.
 | *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the CA certificate and private key for generating node certificates. The referenced secret should contain the following: 
  - `ca.crt`: The CA certificate in PEM format. - `ca.key`: The private key for the CA certificate in PEM format.
 |===

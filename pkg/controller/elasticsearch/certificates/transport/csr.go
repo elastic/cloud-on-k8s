@@ -100,6 +100,14 @@ func buildGeneralNames(
 		{IPAddress: netutil.IPToRFCForm(netutil.LoopbackFor(netutil.ToIPFamily(podIP.String())))},
 	}
 
+	for _, san := range cluster.Spec.Transport.TLS.SubjectAlternativeNames {
+		if san.DNS != "" {
+			generalNames = append(generalNames, certificates.GeneralName{DNSName: san.DNS})
+		}
+		if san.IP != "" {
+			generalNames = append(generalNames, certificates.GeneralName{IPAddress: netutil.IPToRFCForm(net.ParseIP(san.IP))})
+		}
+	}
 	return generalNames, nil
 }
 
