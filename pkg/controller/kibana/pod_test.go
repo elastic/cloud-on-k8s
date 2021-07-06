@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -218,7 +219,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodTemplateSpec(tt.kb, tt.keystore, []commonvolume.VolumeLike{})
+			got, err := NewPodTemplateSpec(k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{})
+			assert.NoError(t, err)
 			tt.assertions(got)
 		})
 	}

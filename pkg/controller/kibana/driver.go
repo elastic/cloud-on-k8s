@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -142,6 +143,11 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
+	err = stackmon.ReconcileConfigSecrets(d.client, *kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -205,7 +211,10 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		return deployment.Params{}, err
 	}
 
-	kibanaPodSpec := NewPodTemplateSpec(*kb, keystoreResources, d.buildVolumes(kb))
+	kibanaPodSpec, err := NewPodTemplateSpec(d.client, *kb, keystoreResources, d.buildVolumes(kb))
+	if err != nil {
+		return deployment.Params{}, err
+	}
 
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.

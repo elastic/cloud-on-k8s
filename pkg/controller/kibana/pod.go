@@ -5,9 +5,11 @@
 package kibana
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -69,7 +71,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) corev1.PodTemplateSpec {
+func NewPodTemplateSpec(client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
 	labels := NewLabels(kb.Name)
 	labels[KibanaVersionLabelName] = kb.Spec.Version
 
@@ -93,7 +95,12 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources, volumes []
 			WithInitContainers(keystore.InitContainer)
 	}
 
-	return builder.WithInitContainerDefaults().PodTemplate
+	builder, err := stackmon.WithMonitoring(client, builder, kb)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	return builder.WithInitContainerDefaults().PodTemplate, nil
 }
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.
