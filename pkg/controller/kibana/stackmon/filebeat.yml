@@ -1,0 +1,21 @@
+filebeat.modules:
+  # https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-kibana.html
+  - module: kibana
+    log:
+      enabled: true
+      var.paths:
+        - /usr/share/kibana/logs/kibana.json
+      close_timeout: 2h
+      fields_under_root: true
+    audit:
+      enabled: true
+      var.paths:
+        - /usr/share/kibana/logs/*_audit.json
+      close_timeout: 2h
+      fields_under_root: true
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated
