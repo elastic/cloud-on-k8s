@@ -327,7 +327,6 @@ spec:
                           items:
                             type: string
                           type: array
-                          x-kubernetes-list-type: atomic
                         externalIPs:
                           description: externalIPs is a list of IP addresses for which
                             nodes in the cluster will also accept traffic for this
@@ -404,7 +403,6 @@ spec:
                               IP expressed by a type (e.g. service.spec.ipFamilies).
                             type: string
                           type: array
-                          x-kubernetes-list-type: atomic
                         ipFamilyPolicy:
                           description: IPFamilyPolicy represents the dual-stack-ness
                             requested or required by this Service, and is gated by
@@ -515,15 +513,10 @@ spec:
                                   for services with clusterIP=None, and should be
                                   omitted or set equal to the ''port'' field. More
                                   info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
-                                x-kubernetes-int-or-string: true
                             required:
                             - port
                             type: object
                           type: array
-                          x-kubernetes-list-map-keys:
-                          - port
-                          - protocol
-                          x-kubernetes-list-type: map
                         publishNotReadyAddresses:
                           description: publishNotReadyAddresses indicates that any
                             agent which deals with endpoints for this Service should
