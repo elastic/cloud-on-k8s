@@ -249,8 +249,8 @@ spec:
                   - name
                   type: object
                 type: array
-              enableFleetServer:
-                description: EnableFleetServer determines whether this Agent will
+              fleetServerEnabled:
+                description: FleetServerEnabled determines whether this Agent will
                   launch Fleet Server. Don't set unless `mode` is set to `fleet`.
                 type: boolean
               fleetServerRef:
@@ -276,7 +276,8 @@ spec:
                 - name
                 type: object
               http:
-                description: HTTP holds the HTTP layer configuration for the Agent.
+                description: HTTP holds the HTTP layer configuration for the Agent
+                  in the Fleet mode with Fleet Server enabled.
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes
