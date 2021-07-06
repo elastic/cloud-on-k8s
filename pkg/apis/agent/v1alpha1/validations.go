@@ -122,7 +122,7 @@ func checkSpec(a *Agent) field.ErrorList {
 
 func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 	var errors field.ErrorList
-	if a.Spec.Mode == AgentFleetMode {
+	if a.Spec.FleetModeEnabled() {
 		if a.Spec.Config != nil {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("config"),
@@ -144,7 +144,7 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 }
 
 func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
-	if a.Spec.Mode == "" || a.Spec.Mode == AgentStandaloneMode {
+	if a.Spec.StandaloneModeEnabled() {
 		if a.Spec.FleetServerEnabled {
 			return field.ErrorList{field.Invalid(
 				field.NewPath("spec").Child("fleetServerEnabled"),
@@ -185,7 +185,7 @@ func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
 
 func checkReferenceSetForMode(a *Agent) field.ErrorList {
 	var errors field.ErrorList
-	if a.Spec.Mode == "" || a.Spec.Mode == AgentStandaloneMode {
+	if a.Spec.StandaloneModeEnabled() {
 		if a.Spec.FleetServerRef.IsDefined() {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("fleetServerRef"),
@@ -201,7 +201,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 				"don't specify Kibana reference, it can't be set in the standalone mode",
 			))
 		}
-	} else if a.Spec.Mode == AgentFleetMode {
+	} else if a.Spec.FleetModeEnabled() {
 		if !a.Spec.FleetServerEnabled && len(a.Spec.ElasticsearchRefs) > 0 {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("fleetServerEnabled"),
@@ -215,7 +215,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 }
 
 func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
-	if a.Spec.Mode == AgentFleetMode && len(a.Spec.ElasticsearchRefs) > 1 {
+	if a.Spec.FleetModeEnabled() && len(a.Spec.ElasticsearchRefs) > 1 {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec").Child("elasticsearchRefs"),

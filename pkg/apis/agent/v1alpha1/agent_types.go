@@ -168,6 +168,16 @@ const (
 	AgentFleetMode AgentMode = "fleet"
 )
 
+// FleetModeEnabled returns true iff the Agent is running in fleet mode.
+func (a AgentSpec) FleetModeEnabled() bool {
+	return a.Mode == AgentFleetMode
+}
+
+// StandaloneModeEnabled returns true iff the Agent is running in standalone mode. Takes into the account the default.
+func (a AgentSpec) StandaloneModeEnabled() bool {
+	return a.Mode == "" || a.Mode == AgentStandaloneMode
+}
+
 // +kubebuilder:object:root=true
 
 // Agent is the Schema for the Agents API.
