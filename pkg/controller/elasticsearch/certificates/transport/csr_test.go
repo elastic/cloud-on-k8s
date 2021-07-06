@@ -78,6 +78,14 @@ func Test_buildGeneralNames(t *testing.T) {
 		cluster esv1.Elasticsearch
 		pod     corev1.Pod
 	}
+	expectedGeneralNames := []certificates.GeneralName{
+		{OtherName: *otherName},
+		{DNSName: expectedCommonName},
+		{DNSName: expectedTransportSvcName},
+		{DNSName: "test-pod-name.test-sset"},
+		{IPAddress: net.ParseIP(testIP).To4()},
+		{IPAddress: net.ParseIP("127.0.0.1").To4()},
+	}
 	tests := []struct {
 		name string
 		args args
@@ -89,14 +97,7 @@ func Test_buildGeneralNames(t *testing.T) {
 				cluster: testES,
 				pod:     testPod,
 			},
-			want: []certificates.GeneralName{
-				{OtherName: *otherName},
-				{DNSName: expectedCommonName},
-				{DNSName: expectedTransportSvcName},
-				{DNSName: "test-pod-name.test-sset"},
-				{IPAddress: net.ParseIP(testIP).To4()},
-				{IPAddress: net.ParseIP("127.0.0.1").To4()},
-			},
+			want: expectedGeneralNames,
 		},
 		{
 			name: "optional user provided SANs",
@@ -113,16 +114,68 @@ func Test_buildGeneralNames(t *testing.T) {
 				}(),
 				pod: testPod,
 			},
-			want: []certificates.GeneralName{
-				{OtherName: *otherName},
-				{DNSName: expectedCommonName},
-				{DNSName: expectedTransportSvcName},
-				{DNSName: "test-pod-name.test-sset"},
-				{IPAddress: net.ParseIP(testIP).To4()},
-				{IPAddress: net.ParseIP("127.0.0.1").To4()},
+			want: append(expectedGeneralNames, []certificates.GeneralName{
 				{DNSName: "my-custom-domain"},
 				{IPAddress: net.ParseIP("111.222.333.444").To4()},
+			}...),
+		},
+		{
+			name: "optional user provided SANs",
+			args: args{
+				cluster: func() esv1.Elasticsearch {
+					es := testES
+					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
+						{
+							DNS: "my-custom-domain",
+						},
+						{
+							IP: "1.2.3.4",
+						},
+					}
+					return es
+				}(),
+				pod: testPod,
 			},
+			want: append(expectedGeneralNames, []certificates.GeneralName{
+				{DNSName: "my-custom-domain"},
+				{IPAddress: net.ParseIP("1.2.3.4").To4()},
+			}...),
+		},
+		{
+			name: "optional user provided SANs",
+			args: args{
+				cluster: func() esv1.Elasticsearch {
+					es := testES
+					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
+						{
+							IP: "1.2.3.4",
+						},
+					}
+					return es
+				}(),
+				pod: testPod,
+			},
+			want: append(expectedGeneralNames, []certificates.GeneralName{
+				{IPAddress: net.ParseIP("1.2.3.4").To4()},
+			}...),
+		},
+		{
+			name: "optional user provided SANs",
+			args: args{
+				cluster: func() esv1.Elasticsearch {
+					es := testES
+					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
+						{
+							DNS: "my-custom-domain",
+						},
+					}
+					return es
+				}(),
+				pod: testPod,
+			},
+			want: append(expectedGeneralNames, []certificates.GeneralName{
+				{DNSName: "my-custom-domain"},
+			}...),
 		},
 	}
 	for _, tt := range tests {
