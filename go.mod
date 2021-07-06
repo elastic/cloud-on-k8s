@@ -12,7 +12,7 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/logr v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/gobuffalo/flect v0.2.3
 	github.com/google/go-cmp v0.5.6
