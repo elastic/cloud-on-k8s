@@ -38,6 +38,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -242,6 +243,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 	if requeue {
 		results = results.WithResult(defaultRequeue)
+	}
+
+	// reconcile beats config secrets if Stack Monitoring is defined
+	err = stackmon.ReconcileConfigSecrets(d.Client, d.ES)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// reconcile StatefulSets and nodes configuration

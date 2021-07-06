@@ -453,6 +453,12 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
+	b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
+	b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []client.Object {

@@ -1,0 +1,28 @@
+metricbeat.modules:
+  - module: elasticsearch
+    metricsets:
+      - ccr
+      - cluster_stats
+      - enrich
+      - index
+      - index_recovery
+      - index_summary
+      - ml_job
+      - node_stats
+      - pending_tasks
+      - shard
+    period: 10s
+    xpack.enabled: true
+    hosts: ["{{ .URL }}"]
+    username: {{ .Username }}
+    password: {{ .Password }}
+    {{- if .IsSSL }}
+    ssl.certificate_authorities: ["{{ .SSLPath }}"]
+    ssl.verification_mode: "{{ .SSLMode }}"
+    {{ end }}
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated

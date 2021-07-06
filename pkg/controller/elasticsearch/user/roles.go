@@ -21,6 +21,8 @@ const (
 	SuperUserBuiltinRole = "superuser"
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
+	// RemoteMonitoringCollectorBuiltinRole is the name of the built-in remote_monitoring_collector role.
+	RemoteMonitoringCollectorBuiltinRole = "remote_monitoring_collector"
 
 	// ApmUserRoleV6 is the name of the role used by 6.8.x APMServer instances to connect to Elasticsearch.
 	ApmUserRoleV6 = "eck_apm_user_role_v6"
@@ -31,6 +33,10 @@ const (
 
 	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
 	ApmAgentUserRole = "eck_apm_agent_user_role"
+
+	// StackMonitoringMetricsUserRole is the name of the role used by Metricbeat and Filebeat to send metrics and log
+	// data to the monitoring Elasticsearch cluster when Stack Monitoring is enabled
+	StackMonitoringUserRole = "eck_stack_mon_user_role"
 
 	// V70 indicates version 7.0
 	V70 = "v70"
@@ -84,6 +90,34 @@ var (
 					Application: "kibana-.kibana",
 					Resources:   []string{"space:default"},
 					Privileges:  []string{"feature_apm.read"},
+				},
+			},
+		},
+		// StackMonitoringUserRole is a dedicated role for Stack Monitoring with Metricbeat and Filebeat used for the
+		// user sending monitoring data.
+		// See: https://www.elastic.co/guide/en/beats/filebeat/7.13/privileges-to-publish-monitoring.html.
+		StackMonitoringUserRole: esclient.Role{
+			Cluster: []string{
+				"monitor",
+				"manage_index_templates",
+				"manage_ingest_pipelines",
+				"manage_ilm",
+				"read_ilm",
+				"cluster:admin/xpack/watcher/watch/put",
+				"cluster:admin/xpack/watcher/watch/delete",
+			},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{".monitoring-*"},
+					Privileges: []string{"all"},
+				},
+				{
+					Names:      []string{"metricbeat-*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
+				},
+				{
+					Names:      []string{"filebeat-*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
 			},
 		},
