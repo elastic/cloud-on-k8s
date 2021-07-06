@@ -55,12 +55,13 @@ func newBeatConfig(client k8s.Client, beatName string, resource HasMonitoring, a
 	}
 
 	// name for the config secret and the associated config volume for the es pod
+	configSecretName := fmt.Sprintf("%s-%s-%s-config", resource.GetName(), string(assoc.AssociationType()), beatName)
 	configName := configVolumeName(resource.GetName(), beatName)
 	configFilename := fmt.Sprintf("%s.yml", beatName)
 	configDirPath := fmt.Sprintf("/etc/%s-config", beatName)
 
 	// add the config volume
-	configVolume := volume.NewSecretVolumeWithMountPath(configName, configName, configDirPath)
+	configVolume := volume.NewSecretVolumeWithMountPath(configSecretName, configName, configDirPath)
 	configFilepath := filepath.Join(configDirPath, configFilename)
 	volumes := []volume.VolumeLike{configVolume}
 
@@ -80,7 +81,7 @@ func newBeatConfig(client k8s.Client, beatName string, resource HasMonitoring, a
 
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      configName,
+			Name:      configSecretName,
 			Namespace: resource.GetNamespace(),
 			Labels:    label.NewLabels(k8s.ExtractNamespacedName(resource)),
 		},
