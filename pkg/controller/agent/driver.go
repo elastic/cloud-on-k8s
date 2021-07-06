@@ -102,7 +102,7 @@ func internalReconcile(params Params) *reconciler.Results {
 			CACertRotation:        params.OperatorParams.CACertRotation,
 			CertRotation:          params.OperatorParams.CertRotation,
 			GarbageCollectSecrets: true,
-			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
+			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("*.%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
 		}.ReconcileCAAndHTTPCerts(params.Context)
 		if caResults.HasError() {
 			return results.WithResults(caResults)

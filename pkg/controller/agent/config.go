@@ -12,6 +12,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -170,10 +171,19 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 
 	//nolint:nestif
 	if spec.FleetServerEnabled {
+		fleetURL, err := association.ServiceURL(
+			params.Client,
+			types.NamespacedName{Namespace: params.Agent.Namespace, Name: HTTPServiceName(params.Agent.Name)},
+			params.Agent.Spec.HTTP.Protocol(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
 		cfgMap["fleet"] = map[string]interface{}{
 			"enroll": spec.KibanaRef.IsDefined(),
 			"ca":     path.Join(FleetCertsMountPath, certificates.CAFileName),
-			"url":    fmt.Sprintf("https://%s.%s.svc:%d", HTTPServiceName(params.Agent.Name), params.Agent.Namespace, FleetServerPort),
+			"url":    fleetURL,
 		}
 
 		fleetServerCfg := map[string]interface{}{
