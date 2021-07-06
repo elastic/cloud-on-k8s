@@ -1161,3 +1161,88 @@ func TestPodTemplateBuilder_WithPreStopHook(t *testing.T) {
 		})
 	}
 }
+
+func TestPodTemplateBuilder_WithContainers(t *testing.T) {
+	tests := []struct {
+		name               string
+		PodTemplate        corev1.PodTemplateSpec
+		containerName      string
+		container          corev1.Container
+		postWithContainers func(*PodTemplateBuilder)
+		want               corev1.PodTemplateSpec
+	}{
+		{
+			name:          "add an additional container then configure the main container",
+			PodTemplate:   corev1.PodTemplateSpec{},
+			containerName: "maincontainer",
+			container: corev1.Container{
+				Name: "sidecar",
+			},
+			postWithContainers: func(b *PodTemplateBuilder) {
+				b.WithEnv(corev1.EnvVar{Name: "USERNAME", Value: "elastic"})
+			},
+			want: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: &varFalse,
+					Containers: []corev1.Container{
+						{
+							Name: "maincontainer",
+							Env:  []corev1.EnvVar{{Name: "USERNAME", Value: "elastic"}},
+						},
+						{
+							Name: "sidecar",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "override additional container using pod template",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: &varFalse,
+					Containers: []corev1.Container{
+						{
+							Name: "maincontainer",
+						},
+						{
+							Name:  "sidecar",
+							Image: "registry.space/blurb/sidecar:1.0",
+						},
+					},
+				},
+			},
+			containerName: "maincontainer",
+			container: corev1.Container{
+				Name:  "sidecar",
+				Image: "docker.elastic.co/elastic/metricbeat:7.14.0",
+			},
+			postWithContainers: func(builder *PodTemplateBuilder) {
+			},
+			want: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: &varFalse,
+					Containers: []corev1.Container{
+						{
+							Name: "maincontainer",
+						},
+						{
+							Name:  "sidecar",
+							Image: "registry.space/blurb/sidecar:1.0",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.PodTemplate, tt.containerName)
+			b.WithContainers(tt.container)
+			tt.postWithContainers(b)
+			if got := b.PodTemplate; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithContainers() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

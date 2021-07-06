@@ -55,23 +55,28 @@ func NewPodTemplateBuilder(base corev1.PodTemplateSpec, containerName string) *P
 	return builder.setDefaults()
 }
 
+// getContainer retrieves the main Container from the pod template
+func (b *PodTemplateBuilder) getContainer() *corev1.Container {
+	for i, c := range b.PodTemplate.Spec.Containers {
+		if c.Name == b.containerName {
+			return &b.PodTemplate.Spec.Containers[i]
+		}
+	}
+	return nil
+}
+
+func (b *PodTemplateBuilder) setContainerDefaulter() {
+	b.containerDefaulter = container.NewDefaulter(b.getContainer())
+}
+
 // setDefaults sets up a default Container in the pod template,
 // and disables service account token auto mount.
 func (b *PodTemplateBuilder) setDefaults() *PodTemplateBuilder {
-	// retrieve the existing Container from the pod template
-	getContainer := func() *corev1.Container {
-		for i, c := range b.PodTemplate.Spec.Containers {
-			if c.Name == b.containerName {
-				return &b.PodTemplate.Spec.Containers[i]
-			}
-		}
-		return nil
-	}
-	userContainer := getContainer()
+	userContainer := b.getContainer()
 	if userContainer == nil {
 		// create the default Container if not provided by the user
 		b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, corev1.Container{Name: b.containerName})
-		b.containerDefaulter = container.NewDefaulter(getContainer())
+		b.setContainerDefaulter()
 	} else {
 		b.containerDefaulter = container.NewDefaulter(userContainer)
 	}
@@ -175,6 +180,28 @@ func (b *PodTemplateBuilder) WithEnv(vars ...corev1.EnvVar) *PodTemplateBuilder 
 func (b *PodTemplateBuilder) WithTerminationGracePeriod(period int64) *PodTemplateBuilder {
 	if b.PodTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		b.PodTemplate.Spec.TerminationGracePeriodSeconds = &period
+	}
+	return b
+}
+
+// WithContainers appends the given containers to the list of containers belonging to the pod.
+// It also ensures that the base container defaulter still points to the container in the list because append()
+// creates a new slice.
+func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *PodTemplateBuilder {
+	for _, c := range containers {
+		found := false
+		for i := range b.PodTemplate.Spec.Containers {
+			podTplContainer := b.PodTemplate.Spec.Containers[i]
+			if c.Name == podTplContainer.Name {
+				found = true
+				// inherits default values from container already defined on the pod template
+				b.PodTemplate.Spec.Containers[i] = container.NewDefaulter(&podTplContainer).From(c).Container()
+			}
+		}
+		if !found {
+			b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, c)
+			b.setContainerDefaulter()
+		}
 	}
 	return b
 }

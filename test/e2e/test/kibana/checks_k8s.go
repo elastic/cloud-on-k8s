@@ -105,19 +105,15 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
 				return err
 			}
-			// don't check the association status that may vary across tests
-			kb.Status.AssociationStatus = ""
-			kb.Status.ElasticsearchAssociationStatus = ""
-			kb.Status.EnterpriseSearchAssociationStatus = ""
+			// don't check the association statuses that may vary across tests
 			expected := kbv1.KibanaStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: b.Kibana.Spec.Count,
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
 				},
-				AssociationStatus: "",
 			}
-			if kb.Status != expected {
+			if kb.Status.DeploymentStatus != expected.DeploymentStatus {
 				return fmt.Errorf("expected status %+v but got %+v", expected, kb.Status)
 			}
 			return nil
