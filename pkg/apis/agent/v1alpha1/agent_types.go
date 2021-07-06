@@ -67,7 +67,7 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
-	// HTTP holds the HTTP layer configuration for the Agent in the Fleet mode with Fleet Server enabled.
+	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 

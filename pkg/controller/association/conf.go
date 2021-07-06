@@ -164,10 +164,9 @@ func GetAssociationOfType(
 	associationType commonv1.AssociationType,
 ) commonv1.Association {
 	for _, assoc := range associations {
-		if assoc.AssociationType() != associationType {
-			continue
+		if assoc.AssociationType() == associationType {
+			return assoc
 		}
-		return assoc
 	}
 	return nil
 }

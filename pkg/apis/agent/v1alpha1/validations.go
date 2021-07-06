@@ -127,7 +127,7 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("config"),
 				a.Spec.Config,
-				"remove config, it can't be set in the fleet mode",
+				"remove config, it can't be set in fleet mode",
 			))
 		}
 
@@ -135,7 +135,7 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("configRef"),
 				a.Spec.ConfigRef,
-				"remove configRef, it can't be set in the fleet mode",
+				"remove configRef, it can't be set in fleet mode",
 			))
 		}
 	}
@@ -149,7 +149,7 @@ func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
 			return field.ErrorList{field.Invalid(
 				field.NewPath("spec").Child("fleetServerEnabled"),
 				a.Spec.FleetServerEnabled,
-				"disable Fleet Server, it can't be enabled in the standalone mode",
+				"disable Fleet Server, it can't be enabled in standalone mode",
 			)}
 		}
 	}
@@ -190,7 +190,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("fleetServerRef"),
 				a.Spec.FleetServerRef,
-				"don't specify Fleet Server reference, it can't be set in the standalone mode",
+				"don't specify Fleet Server reference, it can't be set in standalone mode",
 			))
 		}
 
@@ -198,7 +198,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("kibanaRef"),
 				a.Spec.KibanaRef,
-				"don't specify Kibana reference, it can't be set in the standalone mode",
+				"don't specify Kibana reference, it can't be set in standalone mode",
 			))
 		}
 	} else if a.Spec.FleetModeEnabled() {
@@ -206,7 +206,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("fleetServerEnabled"),
 				a.Spec.FleetServerEnabled,
-				"remove Elasticsearch reference, it can't be enabled in the fleet mode when Fleet Server is not enabled as well",
+				"remove Elasticsearch reference, it can't be enabled in fleet mode when Fleet Server is not enabled as well",
 			))
 		}
 	}
@@ -220,7 +220,7 @@ func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
 			field.Invalid(
 				field.NewPath("spec").Child("elasticsearchRefs"),
 				a.Spec.HTTP,
-				"don't specify more than one Elasticsearch reference, this is not supported in Fleet mode",
+				"don't specify more than one Elasticsearch reference, this is not supported in fleet mode",
 			),
 		}
 	}
