@@ -205,6 +205,17 @@ func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Ass
 		if k.Spec.EnterpriseSearchRef.IsDefined() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
 		}
+	case commonv1.KbMonitoringAssociationType:
+		for _, esRef := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return k.Status.MonitoringAssociationStatus
+			}
+		}
+		for _, esRef := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return k.Status.MonitoringAssociationStatus
+			}
+		}
 	}
 
 	return commonv1.AssociationStatusMap{}
@@ -225,6 +236,9 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 		return nil
 	case commonv1.EntAssociationType:
 		k.Status.EnterpriseSearchAssociationStatus = single
+		return nil
+	case commonv1.KbMonitoringAssociationType:
+		k.Status.MonitoringAssociationStatus = status
 		return nil
 	default:
 		return fmt.Errorf("association type %s not known", typ)
