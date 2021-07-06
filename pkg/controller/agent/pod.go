@@ -252,7 +252,7 @@ func trustCAScript(caPath string) string {
 set -e
 cp %s /etc/pki/ca-trust/source/anchors/
 update-ca-trust
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e --path.config /usr/share/elastic-agent
+/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
 `, caPath)
 }
 
