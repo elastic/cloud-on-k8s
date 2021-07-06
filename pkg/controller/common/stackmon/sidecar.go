@@ -7,19 +7,46 @@ package stackmon
 import (
 	"hash"
 
-	corev1 "k8s.io/api/core/v1"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-func NewMetricBeatSidecar(client k8s.Client, resource HasMonitoring, image string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
-	return NewBeatSidecar(client, "metricbeat", image, resource, resource.GetMonitoringMetricsAssociation(), baseConfig, additionalVolume)
+func NewMetricBeatSidecar(
+	client k8s.Client,
+	associationType commonv1.AssociationType,
+	resource HasMonitoring,
+	version string,
+	esNsn types.NamespacedName,
+	baseConfigTemplate string,
+	namer name.Namer,
+	url string,
+	isTLS bool,
+) (BeatSidecar, error) {
+	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
+		client,
+		associationType,
+		k8s.ExtractNamespacedName(resource),
+		esNsn,
+		namer,
+		url,
+		isTLS,
+		baseConfigTemplate,
+	)
+	if err != nil {
+		return BeatSidecar{}, err
+	}
+	image := container.ImageRepository(container.MetricbeatImage, version)
+	return NewBeatSidecar(client, "metricbeat", image, resource, resource.GetMonitoringMetricsAssociation(), baseConfig, sourceCaVolume)
 }
 
-func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, image string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+	image := container.ImageRepository(container.FilebeatImage, version)
 	return NewBeatSidecar(client, "filebeat", image, resource, resource.GetMonitoringLogsAssociation(), baseConfig, additionalVolume)
 }
 

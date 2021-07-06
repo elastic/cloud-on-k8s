@@ -154,8 +154,8 @@ func reuseOrGenerateHash(users users, fileRealm filerealm.Realm) (users, error) 
 	return users, nil
 }
 
-func GetMonitoringUserPassword(c k8s.Client, es esv1.Elasticsearch) (string, error) {
-	secretObjKey := types.NamespacedName{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)}
+func GetMonitoringUserPassword(c k8s.Client, nsn types.NamespacedName) (string, error) {
+	secretObjKey := types.NamespacedName{Namespace: nsn.Namespace, Name: esv1.InternalUsersSecret(nsn.Name)}
 	var secret corev1.Secret
 	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
 		return "", err

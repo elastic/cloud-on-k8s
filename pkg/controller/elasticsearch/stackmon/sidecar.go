@@ -10,10 +10,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -47,23 +48,25 @@ func isMonitoringDefined(es esv1.Elasticsearch) bool {
 }
 
 func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
-	metricbeatConfig, sourceEsCaVolume, err := buildMetricbeatBaseConfig(client, es)
+	metricbeat, err := common.NewMetricBeatSidecar(
+		client,
+		commonv1.KbMonitoringAssociationType,
+		&es,
+		es.Spec.Version,
+		k8s.ExtractNamespacedName(&es),
+		metricbeatConfigTemplate,
+		esv1.ESNamer,
+		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		es.Spec.HTTP.TLS.Enabled(),
+	)
 	if err != nil {
 		return common.BeatSidecar{}, err
 	}
-
-	image := container.ImageRepository(container.MetricbeatImage, es.Spec.Version)
-	metricbeat, err := common.NewMetricBeatSidecar(client, &es, image, metricbeatConfig, sourceEsCaVolume)
-	if err != nil {
-		return common.BeatSidecar{}, err
-	}
-
 	return metricbeat, nil
 }
 
 func Filebeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
-	image := container.ImageRepository(container.FilebeatImage, es.Spec.Version)
-	filebeat, err := common.NewFileBeatSidecar(client, &es, image, filebeatConfig, nil)
+	filebeat, err := common.NewFileBeatSidecar(client, &es, es.Spec.Version, filebeatConfig, nil)
 	if err != nil {
 		return common.BeatSidecar{}, err
 	}
