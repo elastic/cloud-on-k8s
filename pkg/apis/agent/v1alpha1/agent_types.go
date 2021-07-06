@@ -69,23 +69,28 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
-	// HTTP holds the HTTP layer configuration for the Agent.
+	// HTTP holds the HTTP layer configuration for the Agent in the Fleet mode with Fleet Server enabled.
+	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
 	// Mode specifies the source of configuration for the Agent. The configuration can be specified locally through
 	// `config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode).
 	// Defaults to `standalone` mode.
+	// +kubebuilder:validation:Optional
 	Mode AgentMode `json:"mode,omitempty"`
 
-	// EnableFleetServer determines whether this Agent will launch Fleet Server. Don't set unless `mode` is set to `fleet`.
-	EnableFleetServer bool `json:"enableFleetServer,omitempty"`
+	// FleetServerEnabled determines whether this Agent will launch Fleet Server. Don't set unless `mode` is set to `fleet`.
+	// +kubebuilder:validation:Optional
+	FleetServerEnabled bool `json:"fleetServerEnabled,omitempty"`
 
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
+	// +kubebuilder:validation:Optional
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
 	// FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
 	// Don't set unless `mode` is set to `fleet`.
+	// +kubebuilder:validation:Optional
 	FleetServerRef commonv1.ObjectSelector `json:"fleetServerRef,omitempty"`
 }
 

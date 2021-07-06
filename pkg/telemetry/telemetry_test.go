@@ -238,8 +238,8 @@ func TestNewReporter(t *testing.T) {
 				Namespace: "ns2",
 			},
 			Spec: agentv1alpha1.AgentSpec{
-				EnableFleetServer: true,
-				Mode:              agentv1alpha1.AgentFleetMode,
+				FleetServerEnabled: true,
+				Mode:               agentv1alpha1.AgentFleetMode,
 			},
 			Status: agentv1alpha1.AgentStatus{
 				AvailableNodes: 3,

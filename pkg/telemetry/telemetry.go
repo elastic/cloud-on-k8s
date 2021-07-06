@@ -298,7 +298,7 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 			if agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
 				stats[fleetModeKey]++
 			}
-			if agent.Spec.EnableFleetServer {
+			if agent.Spec.FleetServerEnabled {
 				stats[fleetServerKey]++
 			}
 		}

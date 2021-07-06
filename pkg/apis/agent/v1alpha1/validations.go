@@ -145,10 +145,10 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 
 func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
 	if a.Spec.Mode == "" || a.Spec.Mode == AgentStandaloneMode {
-		if a.Spec.EnableFleetServer {
+		if a.Spec.FleetServerEnabled {
 			return field.ErrorList{field.Invalid(
-				field.NewPath("spec").Child("enableFleetServer"),
-				a.Spec.EnableFleetServer,
+				field.NewPath("spec").Child("fleetServerEnabled"),
+				a.Spec.FleetServerEnabled,
 				"disable Fleet Server, it can't be enabled in the standalone mode",
 			)}
 		}
@@ -158,7 +158,7 @@ func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
 }
 
 func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
-	if a.Spec.EnableFleetServer && a.Spec.FleetServerRef.IsDefined() {
+	if a.Spec.FleetServerEnabled && a.Spec.FleetServerRef.IsDefined() {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec"),
@@ -171,7 +171,7 @@ func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
 }
 
 func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
-	if !a.Spec.EnableFleetServer && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfig{}) {
+	if !a.Spec.FleetServerEnabled && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfig{}) {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec").Child("http"),
@@ -202,10 +202,10 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 			))
 		}
 	} else if a.Spec.Mode == AgentFleetMode {
-		if !a.Spec.EnableFleetServer && len(a.Spec.ElasticsearchRefs) > 0 {
+		if !a.Spec.FleetServerEnabled && len(a.Spec.ElasticsearchRefs) > 0 {
 			errors = append(errors, field.Invalid(
-				field.NewPath("spec").Child("enableFleetServer"),
-				a.Spec.EnableFleetServer,
+				field.NewPath("spec").Child("fleetServerEnabled"),
+				a.Spec.FleetServerEnabled,
 				"remove Elasticsearch reference, it can't be enabled in the fleet mode when Fleet Server is not enabled as well",
 			))
 		}

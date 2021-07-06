@@ -13,10 +13,10 @@ const (
 	// Type represents the Agent type.
 	TypeLabelValue = "agent"
 
-	// NameLabelName used to represent a Kibana in k8s resources
+	// NameLabelName used to represent an Agent in k8s resources
 	NameLabelName = "agent.k8s.elastic.co/name"
 
-	// NamespaceLabelName used to represent a Kibana in k8s resources
+	// NamespaceLabelName used to represent an Agent in k8s resources
 	NamespaceLabelName = "agent.k8s.elastic.co/namespace"
 )
 

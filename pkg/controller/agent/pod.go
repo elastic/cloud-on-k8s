@@ -38,8 +38,8 @@ const (
 	FleetSetupMountPath  = "/usr/share/elastic-agent/fleet-setup.yml"
 	FleetSetupFileName   = "fleet-setup.yml"
 
-	FleetCertVolumeName = "fleet-certs"
-	FleetCertMountPath  = "/usr/share/fleet-server/config/http-certs"
+	FleetCertsVolumeName = "fleet-certs"
+	FleetCertsMountPath  = "/usr/share/fleet-server/config/http-certs"
 
 	DataVolumeName            = "agent-data"
 	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
@@ -79,7 +79,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, configHash hash.Hash, fleetCerts *certificates.CertificatesSecret) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 
 	spec := &params.Agent.Spec
@@ -115,12 +115,12 @@ func buildPodTemplate(params Params, configHash hash.Hash, fleetCerts *certifica
 		)
 		vols = append(vols, fleetSetupConfigVol)
 
-		if spec.EnableFleetServer {
+		if spec.FleetServerEnabled {
 			// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
 			fleetCAVolume := volume.NewSecretVolumeWithMountPath(
 				fleetCerts.Name,
-				FleetCertVolumeName,
-				FleetCertMountPath,
+				FleetCertsVolumeName,
+				FleetCertsMountPath,
 			)
 			vols = append(vols, fleetCAVolume)
 

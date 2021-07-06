@@ -169,17 +169,17 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 	}
 
 	//nolint:nestif
-	if spec.EnableFleetServer {
+	if spec.FleetServerEnabled {
 		cfgMap["fleet"] = map[string]interface{}{
-			"enroll": true,
-			"ca":     path.Join(FleetCertMountPath, certificates.CAFileName),
-			"url":    fmt.Sprintf("https://%s.%s.svc:8220", HTTPServiceName(params.Agent.Name), params.Agent.Namespace),
+			"enroll": spec.KibanaRef.IsDefined(),
+			"ca":     path.Join(FleetCertsMountPath, certificates.CAFileName),
+			"url":    fmt.Sprintf("https://%s.%s.svc:%d", HTTPServiceName(params.Agent.Name), params.Agent.Namespace, FleetServerPort),
 		}
 
 		fleetServerCfg := map[string]interface{}{
 			"enable":   true,
-			"cert":     path.Join(FleetCertMountPath, certificates.CertFileName),
-			"cert_key": path.Join(FleetCertMountPath, certificates.KeyFileName),
+			"cert":     path.Join(FleetCertsMountPath, certificates.CertFileName),
+			"cert_key": path.Join(FleetCertsMountPath, certificates.KeyFileName),
 		}
 
 		esExpected := len(spec.ElasticsearchRefs) > 0 && spec.ElasticsearchRefs[0].IsDefined()
@@ -200,7 +200,7 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 		cfgMap["fleet_server"] = fleetServerCfg
 	} else {
 		cfgMap["fleet_server"] = map[string]interface{}{"enable": false}
-		fleetCfg := map[string]interface{}{"enroll": true}
+		fleetCfg := map[string]interface{}{"enroll": spec.KibanaRef.IsDefined()}
 
 		if spec.FleetServerRef.IsDefined() {
 			assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
@@ -227,11 +227,8 @@ func extractConnectionSettings(
 ) (host, ca, username, password string, err error) {
 	assoc := association.GetAssociationOfType(agent.GetAssociations(), associationType)
 	if assoc == nil {
-		return "",
-			"",
-			"",
-			"",
-			fmt.Errorf("association of type %s not found in %d associations", associationType, len(agent.GetAssociations()))
+		errTemplate := "association of type %s not found in %d associations"
+		return "", "", "", "", fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
 	username, password, err = association.ElasticsearchAuthSettings(client, assoc)
@@ -239,6 +236,5 @@ func extractConnectionSettings(
 		return "", "", "", "", err
 	}
 
-	caPath := path.Join(certificatesDir(assoc), CAFileName)
-	return assoc.AssociationConf().GetURL(), caPath, username, password, nil
+	return assoc.AssociationConf().GetURL(), path.Join(certificatesDir(assoc), CAFileName), username, password, nil
 }
