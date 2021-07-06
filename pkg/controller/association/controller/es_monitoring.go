@@ -26,8 +26,6 @@ const (
 	EsAssociationLabelNamespace = "esassociation.k8s.elastic.co/namespace"
 	// EsAssociationLabelType marks the type of association.
 	EsAssociationLabelType = "esassociation.k8s.elastic.co/type"
-
-	EsMonitoringAssociationType = "es-monitoring"
 )
 
 // AddEsMonitoring reconciles an association between two Elasticsearch clusters for Stack Monitoring.
@@ -47,7 +45,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 			return map[string]string{
 				EsAssociationLabelName:      associated.Name,
 				EsAssociationLabelNamespace: associated.Namespace,
-				EsAssociationLabelType:      EsMonitoringAssociationType,
+				EsAssociationLabelType:      commonv1.EsMonitoringAssociationType,
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
