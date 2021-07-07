@@ -5,11 +5,11 @@
 package stackmon
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 )
 
 // MonitoringConfig returns the Elasticsearch settings to enable the collection of monitoring data
