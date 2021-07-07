@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
@@ -37,7 +38,7 @@ func TestKBStackMonitoring(t *testing.T) {
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
-		return test.StackMonitoringChecks{
+		return checks.StackMonitoringChecks{
 			MonitoredNsn: k8s.ExtractNamespacedName(&assocEs.Elasticsearch),
 			Metrics:      metrics, Logs: logs, K: k,
 		}.Steps()

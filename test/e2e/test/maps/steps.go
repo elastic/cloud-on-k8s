@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,10 +83,10 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		test.CheckDeployment(b, k, maps.Deployment(b.EMS.Name)),
-		test.CheckPods(b, k),
-		test.CheckServices(b, k),
-		test.CheckServicesEndpoints(b, k),
+		checks.CheckDeployment(b, k, maps.Deployment(b.EMS.Name)),
+		checks.CheckPods(b, k),
+		checks.CheckServices(b, k),
+		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
 	}
