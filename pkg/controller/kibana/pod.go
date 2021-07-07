@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,8 +22,6 @@ import (
 )
 
 const (
-	// HTTPPort is the (default) port used by Kibana
-	HTTPPort            = 5601
 	DataVolumeName      = "kibana-data"
 	DataVolumeMountPath = "/usr/share/kibana/data"
 )
@@ -63,7 +62,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
+				Port:   intstr.FromInt(network.HTTPPort),
 				Path:   "/login",
 				Scheme: scheme,
 			},
@@ -109,5 +108,5 @@ func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
 }
 
 func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
-	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}}
+	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP}}
 }

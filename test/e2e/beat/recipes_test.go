@@ -12,21 +12,22 @@ import (
 	"strings"
 	"testing"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 )
 
 const (
@@ -154,7 +155,7 @@ func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
 
 		spec := builder.Beat.Spec
 		newEsHost := fmt.Sprintf("%s.%s.svc", esv1.HTTPService(spec.ElasticsearchRef.Name), builder.Beat.Namespace)
-		newKbHost := fmt.Sprintf("%s.%s.svc", kibana.HTTPService(spec.KibanaRef.Name), builder.Beat.Namespace)
+		newKbHost := fmt.Sprintf("%s.%s.svc", kbv1.HTTPService(spec.KibanaRef.Name), builder.Beat.Namespace)
 
 		yaml := string(yamlBytes)
 		yaml = strings.ReplaceAll(yaml, "elasticsearch-es-http.default.svc", newEsHost)

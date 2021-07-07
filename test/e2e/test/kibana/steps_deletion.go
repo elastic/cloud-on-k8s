@@ -7,13 +7,14 @@ package kibana
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
@@ -57,7 +58,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Test: test.Eventually(func() error {
 				namespace := b.Kibana.Namespace
 				return k.CheckSecretsRemoved([]types.NamespacedName{
-					{Namespace: namespace, Name: certificates.PublicCertsSecretName(kibana.Namer, b.Kibana.Name)},
+					{Namespace: namespace, Name: certificates.PublicCertsSecretName(kbv1.KBNamer, b.Kibana.Name)},
 				})
 			}),
 		},

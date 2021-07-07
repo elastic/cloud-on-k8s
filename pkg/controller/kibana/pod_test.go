@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
 	"github.com/stretchr/testify/assert"
@@ -240,7 +241,7 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 				},
 			},
 			want: []corev1.ContainerPort{
-				{Name: "https", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+				{Name: "https", HostPort: 0, ContainerPort: int32(network.HTTPPort), Protocol: "TCP", HostIP: ""},
 			},
 		},
 		{
@@ -257,7 +258,7 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 				},
 			},
 			want: []corev1.ContainerPort{
-				{Name: "http", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+				{Name: "http", HostPort: 0, ContainerPort: int32(network.HTTPPort), Protocol: "TCP", HostIP: ""},
 			},
 		},
 	}

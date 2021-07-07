@@ -10,14 +10,13 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		test.CheckDeployment(b, k, kibana.Deployment(b.Kibana.Name)),
+		test.CheckDeployment(b, k, kbv1.Deployment(b.Kibana.Name)),
 		test.CheckPods(b, k),
 		test.CheckServices(b, k),
 		test.CheckServicesEndpoints(b, k),

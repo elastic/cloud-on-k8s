@@ -59,8 +59,8 @@ func Metricbeat(client k8s.Client, kb kbv1.Kibana) (common.BeatSidecar, error) {
 		kb.Spec.Version,
 		kb.Spec.ElasticsearchRef.NamespacedName(),
 		metricbeatConfigTemplate,
-		common_name.NewNamer("kb"),
-		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), 5601 /* FIXME */),
+		kbv1.KBNamer,
+		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
 		kb.Spec.HTTP.TLS.Enabled(),
 	)
 	if err != nil {

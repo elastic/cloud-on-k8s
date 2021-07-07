@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -115,7 +116,7 @@ func (d *driver) Reconcile(
 		DynamicWatches:        d.DynamicWatches(),
 		Owner:                 kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
-		Namer:                 Namer,
+		Namer:                 kbv1.KBNamer,
 		Labels:                NewLabels(kb.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        params.CACertRotation,
@@ -203,7 +204,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	keystoreResources, err := keystore.NewResources(
 		d,
 		kb,
-		Namer,
+		kbv1.KBNamer,
 		NewLabels(kb.Name),
 		initContainersParameters,
 	)
@@ -234,7 +235,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		var httpCerts corev1.Secret
 		err := d.client.Get(context.Background(), types.NamespacedName{
 			Namespace: kb.Namespace,
-			Name:      certificates.InternalCertsSecretName(Namer, kb.Name),
+			Name:      certificates.InternalCertsSecretName(kbv1.KBNamer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
@@ -263,7 +264,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	}
 
 	return deployment.Params{
-		Name:            Namer.Suffix(kb.Name),
+		Name:            kbv1.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.Count,
 		Selector:        NewLabels(kb.Name),
@@ -287,7 +288,7 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana) []commonvolume.VolumeLike {
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
-		httpCertsVolume := certificates.HTTPCertSecretVolume(Namer, kb.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(kbv1.KBNamer, kb.Name)
 		volumes = append(volumes, httpCertsVolume)
 	}
 	return volumes
@@ -300,14 +301,14 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 	}
 
 	svc.ObjectMeta.Namespace = kb.Namespace
-	svc.ObjectMeta.Name = HTTPService(kb.Name)
+	svc.ObjectMeta.Name = kbv1.HTTPService(kb.Name)
 
 	labels := NewLabels(kb.Name)
 	ports := []corev1.ServicePort{
 		{
 			Name:     kb.Spec.HTTP.Protocol(),
 			Protocol: corev1.ProtocolTCP,
-			Port:     HTTPPort,
+			Port:     network.HTTPPort,
 		},
 	}
 	return defaults.SetServiceDefaults(&svc, labels, labels, ports)

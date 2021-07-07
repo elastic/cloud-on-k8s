@@ -29,7 +29,7 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		ReferencedObjTemplate:     func() client.Object { return &kbv1.Kibana{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
-		ReferencedResourceNamer:   kibana.Namer,
+		ReferencedResourceNamer:   kbv1.KBNamer,
 		AssociationName:           "beat-kibana",
 		AssociatedShortName:       "beat",
 		AssociationType:           commonv1.KibanaAssociationType,

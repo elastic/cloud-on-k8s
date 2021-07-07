@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -777,7 +778,7 @@ func mkService() corev1.Service {
 				{
 					Name:     "http",
 					Protocol: corev1.ProtocolTCP,
-					Port:     HTTPPort,
+					Port:     network.HTTPPort,
 				},
 			},
 			Selector: map[string]string{
