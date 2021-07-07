@@ -97,7 +97,7 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 
 . Access the Enterprise Search UI in Kibana.
 +
-Starting version 7.14.0, the Enterprise Search UI is accessible in Kibana.
+Starting with version 7.14.0, the Enterprise Search UI is accessible in Kibana.
 +
 Apply the following specification to deploy Kibana, configured to connect to both Elasticsearch and Enterprise Search:
 +
