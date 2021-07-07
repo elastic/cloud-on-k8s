@@ -11,11 +11,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
-// TestESStackMonitoring tests that when an Elasticsearch cluster is configured with monitoring, its log and metrics are
+// TestKBStackMonitoring tests that when a Kibana is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
-func TestESStackMonitoring(t *testing.T) {
+func TestKBStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
 	err := stackmon.IsSupportedVersion(test.Ctx().ElasticStackVersion)
 	if err != nil {
@@ -27,14 +28,17 @@ func TestESStackMonitoring(t *testing.T) {
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	logs := elasticsearch.NewBuilder("test-es-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	monitored := elasticsearch.NewBuilder("test-es-mon-a").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+	assocEs := elasticsearch.NewBuilder("test-es-mon-a").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	monitored := kibana.NewBuilder("test-es-mon-a").
+		WithElasticsearchRef(assocEs.Ref()).
+		WithNodeCount(1).
 		WithMonitoring(metrics.Ref(), logs.Ref())
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
 		return test.StackMonitoringChecks{
-			MonitoredNsn: k8s.ExtractNamespacedName(&monitored.Elasticsearch),
+			MonitoredNsn: k8s.ExtractNamespacedName(&assocEs.Elasticsearch),
 			Metrics:      metrics, Logs: logs, K: k,
 		}.Steps()
 	}

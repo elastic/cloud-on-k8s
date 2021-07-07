@@ -173,6 +173,12 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
+func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
+	b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
+	b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
+	return b
+}
+
 // -- test.Subject impl
 
 func (b Builder) NSN() types.NamespacedName {
