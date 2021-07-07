@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-logr/logr
-Version : v0.4.0
-Time    : 2021-01-23T00:09:52Z
+Version : v1.0.0
+Time    : 2021-07-06T22:52:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v0.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v1.0.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
