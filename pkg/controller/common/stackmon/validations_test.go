@@ -97,7 +97,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Validate(tc.es)
+			err := Validate(&tc.es, tc.es.Spec.Version)
 			if len(err) > 0 {
 				require.True(t, tc.isErr)
 			} else {

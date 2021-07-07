@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkMonitoring,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -103,4 +105,8 @@ func checkSupportedVersion(k *Kibana) field.ErrorList {
 
 func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+func checkMonitoring(k *Kibana) field.ErrorList {
+	return stackmon.Validate(k, k.Spec.Version)
 }

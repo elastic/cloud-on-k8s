@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	esClient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
