@@ -95,6 +95,38 @@ Login as the `elastic` user created link:k8s-quickstart.html[with the Elasticsea
 kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ----
 
+. Access the Enterprise Search UI in Kibana.
++
+Starting with version 7.14.0, the Enterprise Search UI is accessible in Kibana.
++
+Apply the following specification to deploy Kibana, configured to connect to both Elasticsearch and Enterprise Search:
++
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+  enterpriseSearchRef:
+    name: enterprise-search-quickstart
+EOF
+----
++
+Use `kubectl port-forward` to access Kibana from your local workstation:
++
+[source,sh]
+----
+kubectl port-forward service/quickstart-kb-http 5601
+----
++
+Open `https://localhost:5601` in your browser and navigate to the Enterprise Search UI.
+
 [id="{p}-enterprise-search-configuration"]
 == Configuration
 
