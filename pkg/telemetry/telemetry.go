@@ -295,7 +295,7 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 			if len(agent.Spec.ElasticsearchRefs) > 1 {
 				stats[multipleRefsKey]++
 			}
-			if agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
+			if agent.Spec.FleetModeEnabled() {
 				stats[fleetModeKey]++
 			}
 			if agent.Spec.FleetServerEnabled {

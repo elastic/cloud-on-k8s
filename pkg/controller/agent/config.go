@@ -25,6 +25,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+const (
+	FleetSetupKibanaKey      = "kibana"
+	FleetSetupFleetServerKey = "fleet_server"
+	FleetSetupFleetKey       = "fleet"
+)
+
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
@@ -38,7 +44,7 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 		ConfigFileName: cfgBytes,
 	}
 
-	if params.Agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
+	if params.Agent.Spec.FleetModeEnabled() {
 		fleetSetupCfgBytes, err := buildFleetSetupConfig(params)
 		if err != nil {
 			return results.WithError(err)
@@ -78,17 +84,15 @@ func buildConfig(params Params) ([]byte, error) {
 		return nil, err
 	}
 
-	if userConfig != nil {
-		if err = cfg.MergeWith(userConfig); err != nil {
-			return nil, err
-		}
+	if err = cfg.MergeWith(userConfig); err != nil {
+		return nil, err
 	}
 
 	return cfg.Render()
 }
 
 func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
-	if params.Agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
+	if params.Agent.Spec.FleetModeEnabled() {
 		// in fleet mode outputs are owned by fleet
 		return settings.NewCanonicalConfig(), nil
 	}
@@ -153,12 +157,38 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 	spec := params.Agent.Spec
 	cfgMap := map[string]interface{}{}
 
+	for _, cfgPart := range []struct {
+		key string
+		f   func(Params, agentv1alpha1.AgentSpec) (map[string]interface{}, error)
+	}{
+		{key: FleetSetupKibanaKey, f: buildFleetSetupKibanaConfig},
+		{key: FleetSetupFleetKey, f: buildFleetSetupFleetConfig},
+		{key: FleetSetupFleetServerKey, f: buildFleetSetupFleetServerConfig},
+	} {
+		cfg, err := cfgPart.f(params, spec)
+		if err != nil {
+			return nil, err
+		}
+		if cfg != nil {
+			cfgMap[cfgPart.key] = cfg
+		}
+	}
+
+	cfg, err := settings.NewCanonicalConfigFrom(cfgMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg.Render()
+}
+
+func buildFleetSetupKibanaConfig(params Params, spec agentv1alpha1.AgentSpec) (map[string]interface{}, error) {
 	if spec.KibanaRef.IsDefined() {
 		kbHost, kbCA, kbUsername, kbPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.KibanaAssociationType)
 		if err != nil {
 			return nil, err
 		}
-		cfgMap["kibana"] = map[string]interface{}{
+		return map[string]interface{}{
 			"fleet": map[string]interface{}{
 				"ca":       kbCA,
 				"host":     kbHost,
@@ -166,10 +196,13 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 				"setup":    spec.KibanaRef.IsDefined(),
 				"username": kbUsername,
 			},
-		}
+		}, nil
 	}
 
-	//nolint:nestif
+	return nil, nil
+}
+
+func buildFleetSetupFleetConfig(params Params, spec agentv1alpha1.AgentSpec) (map[string]interface{}, error) {
 	if spec.FleetServerEnabled {
 		fleetURL, err := association.ServiceURL(
 			params.Client,
@@ -180,54 +213,52 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 			return nil, err
 		}
 
-		cfgMap["fleet"] = map[string]interface{}{
+		return map[string]interface{}{
 			"enroll": spec.KibanaRef.IsDefined(),
 			"ca":     path.Join(FleetCertsMountPath, certificates.CAFileName),
 			"url":    fleetURL,
-		}
-
-		fleetServerCfg := map[string]interface{}{
-			"enable":   true,
-			"cert":     path.Join(FleetCertsMountPath, certificates.CertFileName),
-			"cert_key": path.Join(FleetCertsMountPath, certificates.KeyFileName),
-		}
-
-		esExpected := len(spec.ElasticsearchRefs) > 0 && spec.ElasticsearchRefs[0].IsDefined()
-		if esExpected {
-			esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.ElasticsearchAssociationType)
-			if err != nil {
-				return nil, err
-			}
-
-			fleetServerCfg["elasticsearch"] = map[string]interface{}{
-				"ca":       esCA,
-				"host":     esHost,
-				"username": esUsername,
-				"password": esPassword,
-			}
-		}
-
-		cfgMap["fleet_server"] = fleetServerCfg
-	} else {
-		cfgMap["fleet_server"] = map[string]interface{}{"enable": false}
-		fleetCfg := map[string]interface{}{"enroll": spec.KibanaRef.IsDefined()}
-
-		if spec.FleetServerRef.IsDefined() {
-			assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
-			if assoc != nil {
-				fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
-				fleetCfg["url"] = assoc.AssociationConf().GetURL()
-			}
-		}
-		cfgMap["fleet"] = fleetCfg
+		}, nil
 	}
 
-	cfg, err := settings.NewCanonicalConfigFrom(cfgMap)
-	if err != nil {
-		return nil, err
+	fleetCfg := map[string]interface{}{"enroll": spec.KibanaRef.IsDefined()}
+
+	if spec.FleetServerRef.IsDefined() {
+		assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+		if assoc != nil {
+			fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
+			fleetCfg["url"] = assoc.AssociationConf().GetURL()
+		}
+	}
+	return fleetCfg, nil
+}
+
+func buildFleetSetupFleetServerConfig(params Params, spec agentv1alpha1.AgentSpec) (map[string]interface{}, error) {
+	if !spec.FleetServerEnabled {
+		return map[string]interface{}{"enable": false}, nil
 	}
 
-	return cfg.Render()
+	fleetServerCfg := map[string]interface{}{
+		"enable":   true,
+		"cert":     path.Join(FleetCertsMountPath, certificates.CertFileName),
+		"cert_key": path.Join(FleetCertsMountPath, certificates.KeyFileName),
+	}
+
+	esExpected := len(spec.ElasticsearchRefs) > 0 && spec.ElasticsearchRefs[0].IsDefined()
+	if esExpected {
+		esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.ElasticsearchAssociationType)
+		if err != nil {
+			return nil, err
+		}
+
+		fleetServerCfg["elasticsearch"] = map[string]interface{}{
+			"ca":       esCA,
+			"host":     esHost,
+			"username": esUsername,
+			"password": esPassword,
+		}
+	}
+
+	return fleetServerCfg, nil
 }
 
 func extractConnectionSettings(

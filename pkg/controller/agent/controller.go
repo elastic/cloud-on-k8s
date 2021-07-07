@@ -95,7 +95,8 @@ func addWatches(c controller.Controller, r *ReconcileAgent) error {
 		return err
 	}
 
-	// Watch services
+	// Watch services - Agent in Fleet mode with Fleet Server enabled configures and exposes a Service
+	// for Elastic Agents to connect to.
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &agentv1alpha1.Agent{},

@@ -31,11 +31,11 @@ const (
 	ContainerName = "agent"
 
 	ConfigVolumeName = "config"
-	ConfigMountPath  = "/etc/agent.yml"
+	ConfigMountPath  = "/etc"
 	ConfigFileName   = "agent.yml"
 
 	FleetSetupVolumeName = "fleet-setup-config"
-	FleetSetupMountPath  = "/usr/share/elastic-agent/fleet-setup.yml"
+	FleetSetupMountPath  = "/usr/share/elastic-agent"
 	FleetSetupFileName   = "fleet-setup.yml"
 
 	FleetCertsVolumeName = "fleet-certs"
@@ -81,17 +81,27 @@ var (
 
 func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
-
 	spec := &params.Agent.Spec
-
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
+
+	// fleet mode requires some special treatment
+	if spec.FleetModeEnabled() {
+		var err error
+		if builder, err = amendBuilderForFleetMode(params, fleetCerts, builder, configHash); err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+	} else if params.Agent.Spec.StandaloneModeEnabled() {
+		builder = builder.
+			WithResources(defaultResources).
+			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
+	}
 
 	vols := []volume.VolumeLike{
 		// volume with agent configuration file
 		volume.NewSecretVolume(
 			ConfigSecretName(params.Agent.Name),
 			ConfigVolumeName,
-			ConfigMountPath,
+			path.Join(ConfigMountPath, ConfigFileName),
 			ConfigFileName,
 			0440),
 		// volume with agent data path
@@ -101,83 +111,6 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// all volumes with CAs of direct associations
 	vols = append(vols, getVolumesFromAssociations(params.Agent.GetAssociations())...)
 
-	//nolint:nestif
-	// fleet mode requires some special treatment
-	if spec.Mode == agentv1alpha1.AgentFleetMode {
-		// enabling fleet requires configuring fleet setup, agent enrollment, fleet server connection information, etc.
-		// all this is defined in fleet-setup.yml file in the volume below
-		fleetSetupConfigVol := volume.NewSecretVolume(
-			ConfigSecretName(params.Agent.Name),
-			FleetSetupVolumeName,
-			FleetSetupMountPath,
-			FleetSetupFileName,
-			0440,
-		)
-		vols = append(vols, fleetSetupConfigVol)
-
-		if spec.FleetServerEnabled {
-			// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
-			fleetCAVolume := volume.NewSecretVolumeWithMountPath(
-				fleetCerts.Name,
-				FleetCertsVolumeName,
-				FleetCertsMountPath,
-			)
-			vols = append(vols, fleetCAVolume)
-
-			// Beats managed by the Elastic Agent does not trust the Elasticsearch CA that Elastic Agent itself
-			// is configured to trust. There is currently no way to configure those Beats to trust a particular CA.
-			// The intended way to handle this is to allow Fleet to provide Beat output settings, but due to
-			// https://github.com/elastic/kibana/issues/102794 this is not supported outside of UI. To workaround this
-			// limitation the Agent is going to update Pod-wide CA store before starting Elastic Agent.
-			esAssoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
-			if esAssoc != nil {
-				builder = builder.
-					WithCommand([]string{"/usr/bin/env", "bash", "-c", trustCAScript(path.Join(certificatesDir(esAssoc), CAFileName))})
-			}
-		} else {
-			// See the long comment above.
-			// We are processing Elastic Agent resource. As the reference chain is:
-			// Elastic Agent ---> Fleet Server ---> Elasticsearch
-			// we need first to identify the Fleet Server.
-			fs, err := getFsAssociation(params)
-			if err != nil {
-				return corev1.PodTemplateSpec{}, err
-			}
-
-			// now we can find the Elasticsearch association and mount its CA Secret
-			esfsAssoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
-			if esfsAssoc != nil {
-				caSecretName := esfsAssoc.AssociationConf().GetCASecretName()
-				caVolume := volume.NewSecretVolumeWithMountPath(
-					caSecretName,
-					fmt.Sprintf("%s-certs", esfsAssoc.AssociationType()),
-					certificatesDir(esfsAssoc),
-				)
-				vols = append(vols, caVolume)
-
-				// because of the reference chain (Elastic Agent ---> Fleet Server ---> Elasticsearch), we are going to get
-				// notified when CA of Elasticsearch changes as Fleet Server resource will get updated as well. But what we
-				// also need to do is to roll Elastic Agent Pods to pick up the update CA. To do be able to do that, we are
-				// adding Fleet Server associations (which includes Elasticsearch) to config hash attached to Elastic Agent
-				// Pods.
-				if err := commonassociation.WriteAssocsToConfigHash(params.Client, fs.GetAssociations(), configHash); err != nil {
-					return corev1.PodTemplateSpec{}, err
-				}
-
-				builder = builder.
-					WithCommand([]string{"/usr/bin/env", "bash", "-c", trustCAScript(path.Join(certificatesDir(esfsAssoc), CAFileName))})
-			}
-		}
-	}
-
-	volumes := make([]corev1.Volume, 0, len(vols))
-	volumeMounts := make([]corev1.VolumeMount, 0, len(vols))
-
-	for _, v := range vols {
-		volumes = append(volumes, v.Volume())
-		volumeMounts = append(volumeMounts, v.VolumeMount())
-	}
-
 	labels := maps.Merge(NewLabels(params.Agent), map[string]string{
 		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
 		VersionLabelName:    spec.Version})
@@ -186,8 +119,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		WithLabels(labels).
 		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, spec.Version)).
 		WithAutomountServiceAccountToken().
-		WithVolumes(volumes...).
-		WithVolumeMounts(volumeMounts...).
+		WithVolumeLikes(vols...).
 		WithEnv(
 			corev1.EnvVar{Name: "NODE_NAME", ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
@@ -196,18 +128,86 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			}},
 		)
 
-	if params.Agent.Spec.Mode == "" || params.Agent.Spec.Mode == agentv1alpha1.AgentStandaloneMode {
-		builder = builder.
-			WithResources(defaultResources).
-			WithArgs("-e", "-c", ConfigMountPath)
-	} else if params.Agent.Spec.Mode == agentv1alpha1.AgentFleetMode {
-		builder = builder.
-			WithResources(defaultFleetResources).
-			// needed to pick up fleet-setup.yml correctly
-			WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: "/usr/share/elastic-agent"})
+	return builder.PodTemplate, nil
+}
+
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
+	// enabling fleet requires configuring fleet setup, agent enrollment, fleet server connection information, etc.
+	// all this is defined in fleet-setup.yml file in the volume below
+	vols := []volume.VolumeLike{volume.NewSecretVolume(
+		ConfigSecretName(params.Agent.Name),
+		FleetSetupVolumeName,
+		path.Join(FleetSetupMountPath, FleetSetupFileName),
+		FleetSetupFileName,
+		0440,
+	)}
+
+	var esAssociation commonv1.Association
+	//nolint:nestif
+	if params.Agent.Spec.FleetServerEnabled {
+		// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
+		vols = append(vols, volume.NewSecretVolumeWithMountPath(
+			fleetCerts.Name,
+			FleetCertsVolumeName,
+			FleetCertsMountPath,
+		))
+
+		builder = builder.WithPorts([]corev1.ContainerPort{{Name: params.Agent.Spec.HTTP.Protocol(), ContainerPort: FleetServerPort, Protocol: corev1.ProtocolTCP}})
+
+		// Beats managed by the Elastic Agent don't trust the Elasticsearch CA that Elastic Agent itself is configured
+		// to trust. There is currently no way to configure those Beats to trust a particular CA. The intended way to handle
+		// it is to allow Fleet to provide Beat output settings, but due to https://github.com/elastic/kibana/issues/102794
+		// this is not supported outside of UI. To workaround this limitation the Agent is going to update Pod-wide CA store
+		// before starting Elastic Agent.
+		esAssociation = association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
+	} else {
+		// See the long comment above. As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
+		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
+		fs, err := getFsAssociation(params)
+		if err != nil {
+			return nil, err
+		}
+
+		esAssociation = association.GetAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		if esAssociation != nil {
+			if params.Agent.Namespace != esAssociation.Associated().GetNamespace() {
+				return nil, fmt.Errorf(
+					"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
+					params.Agent.Namespace,
+					esAssociation.Associated().GetNamespace(),
+				)
+			}
+
+			caSecretName := esAssociation.AssociationConf().GetCASecretName()
+			vols = append(vols, volume.NewSecretVolumeWithMountPath(
+				caSecretName,
+				fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
+				certificatesDir(esAssociation),
+			))
+
+			// Because of the reference chain (Elastic Agent ---> Fleet Server ---> Elasticsearch), we are going to get
+			// notified when CA of Elasticsearch changes as Fleet Server resource will get updated as well. But what we
+			// also need to do is to roll Elastic Agent Pods to pick up the update CA. To do be able to do that, we are
+			// adding Fleet Server associations (which includes Elasticsearch) to config hash attached to Elastic Agent
+			// Pods.
+			if err := commonassociation.WriteAssocsToConfigHash(params.Client, fs.GetAssociations(), configHash); err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	return builder.PodTemplate, nil
+	if esAssociation != nil {
+		builder = builder.
+			WithCommand([]string{"/usr/bin/env", "bash", "-c", trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))})
+	}
+
+	builder = builder.
+		WithVolumeLikes(vols...).
+		WithResources(defaultFleetResources).
+		// needed to pick up fleet-setup.yml correctly
+		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: "/usr/share/elastic-agent"})
+
+	return builder, nil
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {
