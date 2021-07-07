@@ -6879,7 +6879,7 @@ spec:
                   description: AssociationStatus is the status of an association resource.
                   type: string
                 description: MonitoringAssociationStatus is the status of any auto-linking
-                  to monitoring Elasticsearches.
+                  to monitoring Elasticsearch clusters.
                 type: object
               version:
                 description: 'Version of the stack resource currently running. During
