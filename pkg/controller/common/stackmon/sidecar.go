@@ -7,14 +7,15 @@ package stackmon
 import (
 	"hash"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func NewMetricBeatSidecar(
@@ -42,12 +43,12 @@ func NewMetricBeatSidecar(
 		return BeatSidecar{}, err
 	}
 	image := container.ImageRepository(container.MetricbeatImage, version)
-	return NewBeatSidecar(client, "metricbeat", image, resource, resource.GetMonitoringMetricsAssociation(), baseConfig, sourceCaVolume)
+	return NewBeatSidecar(client, "metricbeat", image, resource, GetMonitoringMetricsAssociation(resource), baseConfig, sourceCaVolume)
 }
 
 func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
 	image := container.ImageRepository(container.FilebeatImage, version)
-	return NewBeatSidecar(client, "filebeat", image, resource, resource.GetMonitoringLogsAssociation(), baseConfig, additionalVolume)
+	return NewBeatSidecar(client, "filebeat", image, resource, GetMonitoringLogsAssociation(resource), baseConfig, additionalVolume)
 }
 
 // BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on

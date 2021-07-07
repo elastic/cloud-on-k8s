@@ -45,16 +45,16 @@ func TestCAVolumeName(t *testing.T) {
 		},
 	}
 
-	name := caVolumeName(es.GetMonitoringMetricsAssociation()[0])
+	name := caVolumeName(GetMonitoringMetricsAssociation(&es)[0])
 	assert.LessOrEqual(t, len(name), maxVolumeNameLength)
 	assert.Equal(t, "es-monitoring-954c60-ca", name)
 
-	name = caVolumeName(es.GetMonitoringLogsAssociation()[0])
+	name = caVolumeName(GetMonitoringLogsAssociation(&es)[0])
 	assert.LessOrEqual(t, len(name), maxVolumeNameLength)
 	assert.Equal(t, "es-monitoring-954c60-ca", name)
 
 	es.Spec.Monitoring.Logs.ElasticsearchRefs[0].Name = "another-name"
-	newName := caVolumeName(es.GetMonitoringLogsAssociation()[0])
+	newName := caVolumeName(GetMonitoringLogsAssociation(&es)[0])
 	assert.NotEqual(t, name, newName)
 	assert.Equal(t, "es-monitoring-ae0f57-ca", newName)
 }

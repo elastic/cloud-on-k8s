@@ -341,32 +341,6 @@ func (kbent *KibanaEntAssociation) AssociationID() string {
 
 // -- association with monitoring Elasticsearch clusters
 
-func (k *Kibana) GetMonitoringMetricsAssociation() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
-	for _, ref := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
-			associations = append(associations, &KbMonitoringAssociation{
-				Kibana: k,
-				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
-			})
-		}
-	}
-	return associations
-}
-
-func (k *Kibana) GetMonitoringLogsAssociation() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
-	for _, ref := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
-			associations = append(associations, &KbMonitoringAssociation{
-				Kibana: k,
-				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
-			})
-		}
-	}
-	return associations
-}
-
 // KbMonitoringAssociation helps to manage the Kibana / monitoring Elasticsearch clusters association.
 type KbMonitoringAssociation struct {
 	// The associated Kibana
@@ -424,4 +398,21 @@ func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Ass
 
 func (kbmon *KbMonitoringAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", kbmon.ref.Namespace, kbmon.ref.Name)
+}
+
+// -- HasMonitoring methods
+
+func (k *Kibana) GetMonitoringMetricsRefs() []commonv1.ObjectSelector {
+	return k.Spec.Monitoring.Metrics.ElasticsearchRefs
+}
+
+func (k *Kibana) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
+	return k.Spec.Monitoring.Logs.ElasticsearchRefs
+}
+
+func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
+	return &KbMonitoringAssociation{
+		Kibana: k,
+		ref:    esRef.WithDefaultNamespace(k.Namespace).NamespacedName(),
+	}
 }

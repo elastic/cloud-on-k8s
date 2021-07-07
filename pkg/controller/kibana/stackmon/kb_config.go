@@ -9,6 +9,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 )
 
 var (
@@ -26,13 +27,13 @@ var (
 // MonitoringConfig returns the Kibana settings required to enable the collection of monitoring data and disk logging
 func MonitoringConfig(kb kbv1.Kibana) commonv1.Config {
 	cfg := commonv1.Config{}
-	if IsMonitoringMetricsDefined(kb) {
+	if stackmon.IsMonitoringMetricsDefined(&kb) {
 		if cfg.Data == nil {
 			cfg.Data = map[string]interface{}{}
 		}
 		cfg.Data[MonitoringKibanaCollectionEnabled] = false
 	}
-	if IsMonitoringLogsDefined(kb) {
+	if stackmon.IsMonitoringLogsDefined(&kb) {
 		if cfg.Data == nil {
 			cfg.Data = map[string]interface{}{}
 		}

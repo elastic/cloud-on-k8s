@@ -13,7 +13,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -25,30 +25,8 @@ const (
 	cfgHashLabel = "elasticsearch.k8s.elastic.co/monitoring-config-hash"
 )
 
-func IsMonitoringMetricsDefined(es esv1.Elasticsearch) bool {
-	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if !ref.IsDefined() {
-			return false
-		}
-	}
-	return len(es.Spec.Monitoring.Metrics.ElasticsearchRefs) > 0
-}
-
-func IsMonitoringLogsDefined(es esv1.Elasticsearch) bool {
-	for _, ref := range es.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if !ref.IsDefined() {
-			return false
-		}
-	}
-	return len(es.Spec.Monitoring.Logs.ElasticsearchRefs) > 0
-}
-
-func isMonitoringDefined(es esv1.Elasticsearch) bool {
-	return IsMonitoringMetricsDefined(es) || IsMonitoringLogsDefined(es)
-}
-
-func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
-	metricbeat, err := common.NewMetricBeatSidecar(
+func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
+	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		client,
 		commonv1.KbMonitoringAssociationType,
 		&es,
@@ -60,15 +38,15 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, e
 		es.Spec.HTTP.TLS.Enabled(),
 	)
 	if err != nil {
-		return common.BeatSidecar{}, err
+		return stackmon.BeatSidecar{}, err
 	}
 	return metricbeat, nil
 }
 
-func Filebeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, error) {
-	filebeat, err := common.NewFileBeatSidecar(client, &es, es.Spec.Version, filebeatConfig, nil)
+func Filebeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
+	filebeat, err := stackmon.NewFileBeatSidecar(client, &es, es.Spec.Version, filebeatConfig, nil)
 	if err != nil {
-		return common.BeatSidecar{}, err
+		return stackmon.BeatSidecar{}, err
 	}
 
 	return filebeat, nil
@@ -78,14 +56,14 @@ func Filebeat(client k8s.Client, es esv1.Elasticsearch) (common.BeatSidecar, err
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
 	// no monitoring defined, skip
-	if !isMonitoringDefined(es) {
+	if !stackmon.IsMonitoringDefined(&es) {
 		return builder, nil
 	}
 
 	configHash := sha256.New224()
 	volumes := make([]corev1.Volume, 0)
 
-	if IsMonitoringMetricsDefined(es) {
+	if stackmon.IsMonitoringMetricsDefined(&es) {
 		b, err := Metricbeat(client, es)
 		if err != nil {
 			return nil, err
@@ -96,7 +74,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es 
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
-	if IsMonitoringLogsDefined(es) {
+	if stackmon.IsMonitoringLogsDefined(&es) {
 		// enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 

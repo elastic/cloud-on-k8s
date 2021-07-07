@@ -9,6 +9,7 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -24,7 +25,7 @@ var (
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
 func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
-	if IsMonitoringMetricsDefined(kb) {
+	if stackmon.IsMonitoringMetricsDefined(&kb) {
 		b, err := Metricbeat(client, kb)
 		if err != nil {
 			return err
@@ -35,7 +36,7 @@ func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
 		}
 	}
 
-	if IsMonitoringLogsDefined(kb) {
+	if stackmon.IsMonitoringLogsDefined(&kb) {
 		b, err := Filebeat(client, kb)
 		if err != nil {
 			return err
