@@ -44,12 +44,12 @@ func NewMetricBeatSidecar(
 		return BeatSidecar{}, err
 	}
 	image := container.ImageRepository(container.MetricbeatImage, version)
-	return NewBeatSidecar(client, "metricbeat", image, resource, monitoring.GetMonitoringMetricsAssociation(resource), baseConfig, sourceCaVolume)
+	return NewBeatSidecar(client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume)
 }
 
 func NewFileBeatSidecar(client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
 	image := container.ImageRepository(container.FilebeatImage, version)
-	return NewBeatSidecar(client, "filebeat", image, resource, monitoring.GetMonitoringLogsAssociation(resource), baseConfig, additionalVolume)
+	return NewBeatSidecar(client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume)
 }
 
 // BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on

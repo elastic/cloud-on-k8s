@@ -61,14 +61,14 @@ func Filebeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana) (*defaults.PodTemplateBuilder, error) {
 	// no monitoring defined, skip
-	if !monitoring.IsMonitoringDefined(&kb) {
+	if !monitoring.IsDefined(&kb) {
 		return builder, nil
 	}
 
 	configHash := sha256.New224()
 	volumes := make([]corev1.Volume, 0)
 
-	if monitoring.IsMonitoringMetricsDefined(&kb) {
+	if monitoring.IsMetricsDefined(&kb) {
 		b, err := Metricbeat(client, kb)
 		if err != nil {
 			return nil, err
@@ -79,7 +79,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
-	if monitoring.IsMonitoringLogsDefined(&kb) {
+	if monitoring.IsLogsDefined(&kb) {
 		b, err := Filebeat(client, kb)
 		if err != nil {
 			return nil, err

@@ -57,14 +57,14 @@ func Filebeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, e
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
 	// no monitoring defined, skip
-	if !monitoring.IsMonitoringDefined(&es) {
+	if !monitoring.IsDefined(&es) {
 		return builder, nil
 	}
 
 	configHash := sha256.New224()
 	volumes := make([]corev1.Volume, 0)
 
-	if monitoring.IsMonitoringMetricsDefined(&es) {
+	if monitoring.IsMetricsDefined(&es) {
 		b, err := Metricbeat(client, es)
 		if err != nil {
 			return nil, err
@@ -75,7 +75,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es 
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
-	if monitoring.IsMonitoringLogsDefined(&es) {
+	if monitoring.IsLogsDefined(&es) {
 		// enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 

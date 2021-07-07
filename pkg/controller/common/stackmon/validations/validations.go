@@ -28,7 +28,7 @@ var (
 // Elasticsearch reference defined to send monitoring data when Stack Monitoring is defined
 func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList {
 	var errs field.ErrorList
-	if monitoring.IsMonitoringDefined(resource) {
+	if monitoring.IsDefined(resource) {
 		err := IsSupportedVersion(version)
 		if err != nil {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), version,

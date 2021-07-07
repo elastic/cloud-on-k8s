@@ -20,15 +20,15 @@ type HasMonitoring interface {
 	MonitoringAssociation(ref commonv1.ObjectSelector) commonv1.Association
 }
 
-func IsMonitoringDefined(resource HasMonitoring) bool {
-	return IsMonitoringMetricsDefined(resource) || IsMonitoringLogsDefined(resource)
+func IsDefined(resource HasMonitoring) bool {
+	return IsMetricsDefined(resource) || IsLogsDefined(resource)
 }
 
-func IsMonitoringMetricsDefined(resource HasMonitoring) bool {
+func IsMetricsDefined(resource HasMonitoring) bool {
 	return AreEsRefsDefined(resource.GetMonitoringMetricsRefs())
 }
 
-func IsMonitoringLogsDefined(resource HasMonitoring) bool {
+func IsLogsDefined(resource HasMonitoring) bool {
 	return AreEsRefsDefined(resource.GetMonitoringLogsRefs())
 }
 
@@ -41,7 +41,7 @@ func AreEsRefsDefined(esRefs []commonv1.ObjectSelector) bool {
 	return len(esRefs) > 0
 }
 
-func GetMonitoringMetricsAssociation(resource HasMonitoring) []commonv1.Association {
+func GetMetricsAssociation(resource HasMonitoring) []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range resource.GetMonitoringMetricsRefs() {
 		if ref.IsDefined() {
@@ -51,7 +51,7 @@ func GetMonitoringMetricsAssociation(resource HasMonitoring) []commonv1.Associat
 	return associations
 }
 
-func GetMonitoringLogsAssociation(resource HasMonitoring) []commonv1.Association {
+func GetLogsAssociation(resource HasMonitoring) []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range resource.GetMonitoringLogsRefs() {
 		if ref.IsDefined() {

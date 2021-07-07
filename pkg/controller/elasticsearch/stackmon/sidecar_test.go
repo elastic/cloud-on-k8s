@@ -85,7 +85,7 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with metrics monitoring",
 			es: func() esv1.Elasticsearch {
 				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMonitoringMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleEs
 			},
 			containersLength:       2,
@@ -98,7 +98,7 @@ func TestWithMonitoring(t *testing.T) {
 			es: func() esv1.Elasticsearch {
 				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = nil
 				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMonitoringLogsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleEs
 			},
 			containersLength:       2,
@@ -110,9 +110,9 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with metrics and logs monitoring",
 			es: func() esv1.Elasticsearch {
 				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMonitoringMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMonitoringLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
+				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
 			containersLength:       3,
@@ -124,9 +124,9 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with metrics and logs monitoring with different es ref",
 			es: func() esv1.Elasticsearch {
 				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMonitoringMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = logsEsRef
-				monitoring.GetMonitoringLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
+				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
 			containersLength:       3,
@@ -147,14 +147,14 @@ func TestWithMonitoring(t *testing.T) {
 			assert.Equal(t, tc.esEnvVarsLength, len(builder.PodTemplate.Spec.Containers[0].Env))
 			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
 
-			if monitoring.IsMonitoringMetricsDefined(&es) {
+			if monitoring.IsMetricsDefined(&es) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
 					}
 				}
 			}
-			if monitoring.IsMonitoringLogsDefined(&es) {
+			if monitoring.IsLogsDefined(&es) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))

@@ -14,7 +14,7 @@ import (
 
 // MonitoringConfig returns the Elasticsearch settings to enable the collection of monitoring data
 func MonitoringConfig(es esv1.Elasticsearch) commonv1.Config {
-	if !monitoring.IsMonitoringMetricsDefined(&es) {
+	if !monitoring.IsMetricsDefined(&es) {
 		return commonv1.Config{}
 	}
 	return commonv1.Config{Data: map[string]interface{}{
