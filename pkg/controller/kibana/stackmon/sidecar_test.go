@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,7 +87,7 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with metrics monitoring",
 			kb: func() kbv1.Kibana {
 				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				stackmon.GetMonitoringMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMonitoringMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleKb
 			},
 			containersLength:       2,
@@ -99,7 +99,7 @@ func TestWithMonitoring(t *testing.T) {
 			kb: func() kbv1.Kibana {
 				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = nil
 				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				stackmon.GetMonitoringLogsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMonitoringLogsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleKb
 			},
 			containersLength:       2,
@@ -110,9 +110,9 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with metrics and logs monitoring",
 			kb: func() kbv1.Kibana {
 				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				stackmon.GetMonitoringMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMonitoringMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
 				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				stackmon.GetMonitoringLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
+				monitoring.GetMonitoringLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
 				return sampleKb
 			},
 			containersLength:       3,
@@ -123,9 +123,9 @@ func TestWithMonitoring(t *testing.T) {
 			name: "with metrics and logs monitoring with different es ref",
 			kb: func() kbv1.Kibana {
 				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				stackmon.GetMonitoringMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				monitoring.GetMonitoringMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
 				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = logsEsRef
-				stackmon.GetMonitoringLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
+				monitoring.GetMonitoringLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
 				return sampleKb
 			},
 			containersLength:       3,
@@ -147,14 +147,14 @@ func TestWithMonitoring(t *testing.T) {
 			}
 			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
 
-			if stackmon.IsMonitoringMetricsDefined(&kb) {
+			if monitoring.IsMonitoringMetricsDefined(&kb) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
 					}
 				}
 			}
-			if stackmon.IsMonitoringLogsDefined(&kb) {
+			if monitoring.IsMonitoringLogsDefined(&kb) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))

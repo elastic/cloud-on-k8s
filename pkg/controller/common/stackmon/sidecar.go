@@ -7,6 +7,7 @@ package stackmon
 import (
 	"hash"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -21,7 +22,7 @@ import (
 func NewMetricBeatSidecar(
 	client k8s.Client,
 	associationType commonv1.AssociationType,
-	resource HasMonitoring,
+	resource monitoring.HasMonitoring,
 	version string,
 	esNsn types.NamespacedName,
 	baseConfigTemplate string,
@@ -43,12 +44,12 @@ func NewMetricBeatSidecar(
 		return BeatSidecar{}, err
 	}
 	image := container.ImageRepository(container.MetricbeatImage, version)
-	return NewBeatSidecar(client, "metricbeat", image, resource, GetMonitoringMetricsAssociation(resource), baseConfig, sourceCaVolume)
+	return NewBeatSidecar(client, "metricbeat", image, resource, monitoring.GetMonitoringMetricsAssociation(resource), baseConfig, sourceCaVolume)
 }
 
-func NewFileBeatSidecar(client k8s.Client, resource HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+func NewFileBeatSidecar(client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
 	image := container.ImageRepository(container.FilebeatImage, version)
-	return NewBeatSidecar(client, "filebeat", image, resource, GetMonitoringLogsAssociation(resource), baseConfig, additionalVolume)
+	return NewBeatSidecar(client, "filebeat", image, resource, monitoring.GetMonitoringLogsAssociation(resource), baseConfig, additionalVolume)
 }
 
 // BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on
@@ -60,7 +61,7 @@ type BeatSidecar struct {
 	Volumes      []corev1.Volume
 }
 
-func NewBeatSidecar(client k8s.Client, beatName string, image string, resource HasMonitoring,
+func NewBeatSidecar(client k8s.Client, beatName string, image string, resource monitoring.HasMonitoring,
 	associations []commonv1.Association, baseConfig string, additionalVolume volume.VolumeLike,
 ) (BeatSidecar, error) {
 	// build the beat config

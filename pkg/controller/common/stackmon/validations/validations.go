@@ -2,11 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package stackmon
+package validations
 
 import (
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -25,9 +26,9 @@ var (
 
 // Validate validates that the resource version is supported for Stack Monitoring and that there is exactly one
 // Elasticsearch reference defined to send monitoring data when Stack Monitoring is defined
-func Validate(resource HasMonitoring, version string) field.ErrorList {
+func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList {
 	var errs field.ErrorList
-	if IsMonitoringDefined(resource) {
+	if monitoring.IsMonitoringDefined(resource) {
 		err := IsSupportedVersion(version)
 		if err != nil {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), version,
@@ -35,12 +36,12 @@ func Validate(resource HasMonitoring, version string) field.ErrorList {
 		}
 	}
 	refs := resource.GetMonitoringMetricsRefs()
-	if areEsRefsDefined(refs) && len(refs) != 1 {
+	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
 			refs, fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Metrics")))
 	}
 	refs = resource.GetMonitoringLogsRefs()
-	if areEsRefsDefined(refs) && len(refs) != 1 {
+	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
 			refs, fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Logs")))
 	}

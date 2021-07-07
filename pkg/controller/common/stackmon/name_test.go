@@ -9,6 +9,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,16 +46,16 @@ func TestCAVolumeName(t *testing.T) {
 		},
 	}
 
-	name := caVolumeName(GetMonitoringMetricsAssociation(&es)[0])
+	name := caVolumeName(monitoring.GetMonitoringMetricsAssociation(&es)[0])
 	assert.LessOrEqual(t, len(name), maxVolumeNameLength)
 	assert.Equal(t, "es-monitoring-954c60-ca", name)
 
-	name = caVolumeName(GetMonitoringLogsAssociation(&es)[0])
+	name = caVolumeName(monitoring.GetMonitoringLogsAssociation(&es)[0])
 	assert.LessOrEqual(t, len(name), maxVolumeNameLength)
 	assert.Equal(t, "es-monitoring-954c60-ca", name)
 
 	es.Spec.Monitoring.Logs.ElasticsearchRefs[0].Name = "another-name"
-	newName := caVolumeName(GetMonitoringLogsAssociation(&es)[0])
+	newName := caVolumeName(monitoring.GetMonitoringLogsAssociation(&es)[0])
 	assert.NotEqual(t, name, newName)
 	assert.Equal(t, "es-monitoring-ae0f57-ca", newName)
 }

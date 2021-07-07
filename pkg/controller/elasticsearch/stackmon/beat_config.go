@@ -9,7 +9,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -25,7 +25,7 @@ var (
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
 func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
-	if stackmon.IsMonitoringMetricsDefined(&es) {
+	if monitoring.IsMonitoringMetricsDefined(&es) {
 		b, err := Metricbeat(client, es)
 		if err != nil {
 			return err
@@ -36,7 +36,7 @@ func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
 		}
 	}
 
-	if stackmon.IsMonitoringLogsDefined(&es) {
+	if monitoring.IsMonitoringLogsDefined(&es) {
 		b, err := Filebeat(client, es)
 		if err != nil {
 			return err

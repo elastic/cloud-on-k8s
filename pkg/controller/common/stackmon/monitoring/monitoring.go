@@ -2,12 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package stackmon
+package monitoring
 
 import (
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 // HasMonitoring is the interface implemented by an Elastic Stack application that supports Stack Monitoring ()
@@ -24,14 +25,14 @@ func IsMonitoringDefined(resource HasMonitoring) bool {
 }
 
 func IsMonitoringMetricsDefined(resource HasMonitoring) bool {
-	return areEsRefsDefined(resource.GetMonitoringMetricsRefs())
+	return AreEsRefsDefined(resource.GetMonitoringMetricsRefs())
 }
 
 func IsMonitoringLogsDefined(resource HasMonitoring) bool {
-	return areEsRefsDefined(resource.GetMonitoringLogsRefs())
+	return AreEsRefsDefined(resource.GetMonitoringLogsRefs())
 }
 
-func areEsRefsDefined(esRefs []commonv1.ObjectSelector) bool {
+func AreEsRefsDefined(esRefs []commonv1.ObjectSelector) bool {
 	for _, ref := range esRefs {
 		if !ref.IsDefined() {
 			return false

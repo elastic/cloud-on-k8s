@@ -7,7 +7,7 @@ package es
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
@@ -18,7 +18,7 @@ import (
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestESStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
-	err := stackmon.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
 	if err != nil {
 		t.SkipNow()
 	}

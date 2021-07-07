@@ -11,7 +11,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
+	stackmon "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"

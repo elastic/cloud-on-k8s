@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -60,14 +61,14 @@ func Filebeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana) (*defaults.PodTemplateBuilder, error) {
 	// no monitoring defined, skip
-	if !stackmon.IsMonitoringDefined(&kb) {
+	if !monitoring.IsMonitoringDefined(&kb) {
 		return builder, nil
 	}
 
 	configHash := sha256.New224()
 	volumes := make([]corev1.Volume, 0)
 
-	if stackmon.IsMonitoringMetricsDefined(&kb) {
+	if monitoring.IsMonitoringMetricsDefined(&kb) {
 		b, err := Metricbeat(client, kb)
 		if err != nil {
 			return nil, err
@@ -78,7 +79,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
-	if stackmon.IsMonitoringLogsDefined(&kb) {
+	if monitoring.IsMonitoringLogsDefined(&kb) {
 		b, err := Filebeat(client, kb)
 		if err != nil {
 			return nil, err

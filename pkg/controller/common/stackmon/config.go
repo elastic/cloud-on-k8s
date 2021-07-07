@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +37,7 @@ type beatConfig struct {
 	volumes  []volume.VolumeLike
 }
 
-func newBeatConfig(client k8s.Client, beatName string, resource HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
+func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
 	if len(associations) != 1 {
 		// should never happen because of the pre-creation validation
 		return beatConfig{}, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
