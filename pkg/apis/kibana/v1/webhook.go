@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
@@ -108,5 +109,10 @@ func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 }
 
 func checkMonitoring(k *Kibana) field.ErrorList {
-	return validations.Validate(k, k.Spec.Version)
+	errs := validations.Validate(k, k.Spec.Version)
+	if monitoring.IsDefined(k) && !k.Spec.ElasticsearchRef.IsDefined() {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef,
+			"Monitoring does not support Kibana without associated Elasticsearch"))
+	}
+	return errs
 }

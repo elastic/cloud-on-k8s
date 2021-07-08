@@ -6,6 +6,7 @@ package stackmon
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -31,12 +32,20 @@ const (
 )
 
 func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
+	if !kb.Spec.ElasticsearchRef.IsDefined() {
+		return stackmon.BeatSidecar{}, errors.New("monitoring does not support Kibana without associated Elasticsearch")
+	}
+	associatedEsNsn := kb.Spec.ElasticsearchRef.NamespacedName()
+	if associatedEsNsn.Namespace == "" {
+		associatedEsNsn.Namespace = kb.Namespace
+	}
+
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		client,
 		commonv1.KbMonitoringAssociationType,
 		&kb,
 		kb.Spec.Version,
-		kb.Spec.ElasticsearchRef.NamespacedName(),
+		associatedEsNsn,
 		metricbeatConfigTemplate,
 		kbv1.KBNamer,
 		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
