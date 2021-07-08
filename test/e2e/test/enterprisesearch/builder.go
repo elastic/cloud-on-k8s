@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -78,7 +79,16 @@ func newBuilder(name, randSuffix string) Builder {
 	}.
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
-		WithPodLabel(run.TestNameLabel, name)
+		WithPodLabel(run.TestNameLabel, name).
+		// allows running with ES 8.0.0-SNAPSHOT version, to remove once 8.0.0 is released
+		WithEnvVar("ALLOW_PREVIEW_ELASTICSEARCH_8X", "true")
+}
+
+func (b Builder) Ref() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      b.EnterpriseSearch.Name,
+		Namespace: b.EnterpriseSearch.Namespace,
+	}
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -163,6 +173,14 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 	}
 	labels[key] = value
 	b.EnterpriseSearch.Spec.PodTemplate.Labels = labels
+	return b
+}
+
+func (b Builder) WithEnvVar(name, value string) Builder {
+	for i, container := range b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers {
+		container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+		b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers[i].Env = container.Env
+	}
 	return b
 }
 

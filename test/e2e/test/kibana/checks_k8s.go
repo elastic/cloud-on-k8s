@@ -105,8 +105,6 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
 				return err
 			}
-			// don't check the association status that may vary across tests
-			kb.Status.AssociationStatus = ""
 
 			// Selector is a string built from a map, it is validated with a dedicated function.
 			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels
@@ -121,6 +119,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			}
 			kb.Status.Selector = ""
 
+			// don't check the association statuses that may vary across tests
 			expected := kbv1.KibanaStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					Count:          b.Kibana.Spec.Count,
@@ -128,9 +127,8 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
 				},
-				AssociationStatus: "",
 			}
-			if kb.Status != expected {
+			if kb.Status.DeploymentStatus != expected.DeploymentStatus {
 				return fmt.Errorf("expected status %+v but got %+v", expected, kb.Status)
 			}
 			return nil

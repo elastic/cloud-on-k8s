@@ -156,7 +156,7 @@ func testFetchKibana(t *testing.T) {
 			require.Equal(t, "kb-ns", got.Namespace)
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
-			require.Equal(t, tc.wantAssocConf, got.AssociationConf())
+			require.Equal(t, tc.wantAssocConf, got.EsAssociation().AssociationConf())
 		})
 	}
 }
@@ -175,7 +175,7 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 
 	if withAnnotations {
 		kb.ObjectMeta.Annotations = map[string]string{
-			kb.AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+			kb.EsAssociation().AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
 		}
 		kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{
 			Name:      "es-test",
@@ -360,7 +360,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, assocConf, got.AssociationConf())
+	require.Equal(t, assocConf, got.EsAssociation().AssociationConf())
 
 	// update and check the new values
 	newAssocConf := &commonv1.AssociationConf{
@@ -370,7 +370,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err = UpdateAssociationConf(client, &got, newAssocConf)
+	err = UpdateAssociationConf(client, got.EsAssociation(), newAssocConf)
 	require.NoError(t, err)
 
 	err = FetchWithAssociations(context.Background(), client, request, &got)
@@ -379,7 +379,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, newAssocConf, got.AssociationConf())
+	require.Equal(t, newAssocConf, got.EsAssociation().AssociationConf())
 }
 
 func TestRemoveAssociationConf(t *testing.T) {
@@ -402,10 +402,10 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, assocConf, got.AssociationConf())
+	require.Equal(t, assocConf, got.EsAssociation().AssociationConf())
 
 	// remove and check the new values
-	err = RemoveAssociationConf(client, &got)
+	err = RemoveAssociationConf(client, got.EsAssociation())
 	require.NoError(t, err)
 
 	err = FetchWithAssociations(context.Background(), client, request, &got)
@@ -414,7 +414,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Nil(t, got.AssociationConf())
+	require.Nil(t, got.EsAssociation().AssociationConf())
 }
 
 func TestAllowVersion(t *testing.T) {

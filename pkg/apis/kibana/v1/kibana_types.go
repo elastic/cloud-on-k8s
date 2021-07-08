@@ -19,6 +19,42 @@ const (
 	Kind = "Kibana"
 )
 
+// +kubebuilder:object:root=true
+
+// Kibana represents a Kibana resource in a Kubernetes cluster.
+// +kubebuilder:resource:categories=elastic,shortName=kb
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
+// +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Kibana version"
+// +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
+// +kubebuilder:storageversion
+type Kibana struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   KibanaSpec   `json:"spec,omitempty"`
+	Status KibanaStatus `json:"status,omitempty"`
+	// assocConf holds the configuration for the Elasticsearch association
+	assocConf *commonv1.AssociationConf `json:"-"`
+	// entAssocConf holds the configuration for the Enterprise Search association
+	entAssocConf *commonv1.AssociationConf `json:"-"`
+}
+
+// +kubebuilder:object:root=true
+
+// KibanaList contains a list of Kibana
+type KibanaList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Kibana `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&Kibana{}, &KibanaList{})
+}
+
 // KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
 	// Version of Kibana.
@@ -32,6 +68,10 @@ type KibanaSpec struct {
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+
+	// EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
+	// Kibana provides the default Enterprise Search UI starting version 7.14.
+	EnterpriseSearchRef commonv1.ObjectSelector `json:"enterpriseSearchRef,omitempty"`
 
 	// Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -57,28 +97,18 @@ type KibanaSpec struct {
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
-	AssociationStatus         commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+	// AssociationStatus is the status of any auto-linking to Elasticsearch clusters.
+	// This field is deprecated and will be removed in a future release. Use ElasticsearchAssociationStatus instead.
+	AssociationStatus commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
+	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+	// EnterpriseSearchAssociationStatus is the status of any auto-linking to Enterprise Search.
+	EnterpriseSearchAssociationStatus commonv1.AssociationStatus `json:"enterpriseSearchAssociationStatus,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
 func (k *Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
-}
-
-func (k *Kibana) Associated() commonv1.Associated {
-	return k
-}
-
-func (k *Kibana) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationNameBase
-}
-
-func (k *Kibana) AssociationType() commonv1.AssociationType {
-	return commonv1.ElasticsearchAssociationType
-}
-
-func (k *Kibana) AssociationRef() commonv1.ObjectSelector {
-	return k.Spec.ElasticsearchRef.WithDefaultNamespace(k.Namespace)
 }
 
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {
@@ -89,22 +119,41 @@ func (k *Kibana) ServiceAccountName() string {
 	return k.Spec.ServiceAccountName
 }
 
-func (k *Kibana) AssociationConf() *commonv1.AssociationConf {
-	return k.assocConf
+// -- associations
+
+var _ commonv1.Associated = &Kibana{}
+
+func (k *Kibana) Associated() commonv1.Associated {
+	return k
 }
 
-func (k *Kibana) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	k.assocConf = assocConf
-}
+func (k *Kibana) GetAssociations() []commonv1.Association {
+	associations := make([]commonv1.Association, 0)
 
-// RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
-func (k *Kibana) RequiresAssociation() bool {
-	return k.Spec.ElasticsearchRef.Name != ""
+	if k.Spec.ElasticsearchRef.IsDefined() {
+		associations = append(associations, &KibanaEsAssociation{
+			Kibana: k,
+		})
+	}
+	if k.Spec.EnterpriseSearchRef.IsDefined() {
+		associations = append(associations, &KibanaEntAssociation{
+			Kibana: k,
+		})
+	}
+
+	return associations
 }
 
 func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ == commonv1.ElasticsearchAssociationType && k.Spec.ElasticsearchRef.IsDefined() {
-		return commonv1.NewSingleAssociationStatusMap(k.Status.AssociationStatus)
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		if k.Spec.ElasticsearchRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(k.Status.ElasticsearchAssociationStatus)
+		}
+	case commonv1.EntAssociationType:
+		if k.Spec.EnterpriseSearchRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
+		}
 	}
 
 	return commonv1.AssociationStatusMap{}
@@ -116,58 +165,111 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 		return err
 	}
 
-	if typ != commonv1.ElasticsearchAssociationType {
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		k.Status.ElasticsearchAssociationStatus = single
+		// also set Status.AssociationStatus to report the status of the association with es,
+		// for backward compatibility reasons
+		k.Status.AssociationStatus = single
+		return nil
+	case commonv1.EntAssociationType:
+		k.Status.EnterpriseSearchAssociationStatus = single
+		return nil
+	default:
 		return fmt.Errorf("association type %s not known", typ)
 	}
-
-	k.Status.AssociationStatus = single
-	return nil
 }
 
-func (k *Kibana) GetAssociations() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
-	if k.Spec.ElasticsearchRef.IsDefined() {
-		associations = append(associations, k)
+// -- association with Elasticsearch
+
+func (k *Kibana) EsAssociation() *KibanaEsAssociation {
+	return &KibanaEsAssociation{Kibana: k}
+}
+
+// KibanaEsAssociation helps to manage the Kibana / Elasticsearch association.
+type KibanaEsAssociation struct {
+	*Kibana
+}
+
+var _ commonv1.Association = &KibanaEsAssociation{}
+
+func (kbes *KibanaEsAssociation) Associated() commonv1.Associated {
+	if kbes == nil {
+		return nil
 	}
-	return associations
+	if kbes.Kibana == nil {
+		kbes.Kibana = &Kibana{}
+	}
+	return kbes.Kibana
 }
 
-func (k *Kibana) AssociationID() string {
+func (kbes *KibanaEsAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationNameBase
+}
+
+func (kbes *KibanaEsAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.ElasticsearchAssociationType
+}
+
+func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
+	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
+}
+
+func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
+	return kbes.assocConf
+}
+
+func (kbes *KibanaEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	kbes.assocConf = assocConf
+}
+
+func (kbes *KibanaEsAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &Kibana{}
-var _ commonv1.Association = &Kibana{}
+// -- association with Enterprise Search
 
-// +kubebuilder:object:root=true
-
-// Kibana represents a Kibana resource in a Kubernetes cluster.
-// +kubebuilder:resource:categories=elastic,shortName=kb
-// +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
-// +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
-// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Kibana version"
-// +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
-// +kubebuilder:storageversion
-type Kibana struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec      KibanaSpec                `json:"spec,omitempty"`
-	Status    KibanaStatus              `json:"status,omitempty"`
-	assocConf *commonv1.AssociationConf `json:"-"`
+func (k *Kibana) EntAssociation() *KibanaEntAssociation {
+	return &KibanaEntAssociation{Kibana: k}
 }
 
-// +kubebuilder:object:root=true
-
-// KibanaList contains a list of Kibana
-type KibanaList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Kibana `json:"items"`
+// KibanaEntAssociation helps to manage the Kibana / Enterprise Search association.
+type KibanaEntAssociation struct {
+	*Kibana
 }
 
-func init() {
-	SchemeBuilder.Register(&Kibana{}, &KibanaList{})
+var _ commonv1.Association = &KibanaEntAssociation{}
+
+func (kbent *KibanaEntAssociation) Associated() commonv1.Associated {
+	if kbent == nil {
+		return nil
+	}
+	if kbent.Kibana == nil {
+		kbent.Kibana = &Kibana{}
+	}
+	return kbent.Kibana
+}
+
+func (kbent *KibanaEntAssociation) AssociationConfAnnotationName() string {
+	return commonv1.EntConfigAnnotationNameBase
+}
+
+func (kbent *KibanaEntAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.EntAssociationType
+}
+
+func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
+	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
+}
+
+func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
+	return kbent.entAssocConf
+}
+
+func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	kbent.entAssocConf = assocConf
+}
+
+func (kbent *KibanaEntAssociation) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }

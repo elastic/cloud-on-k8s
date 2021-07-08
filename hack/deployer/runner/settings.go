@@ -61,7 +61,6 @@ type VaultInfo struct {
 type GkeSettings struct {
 	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
-	AdminUsername    string `yaml:"adminUsername"`
 	LocalSsdCount    int    `yaml:"localSsdCount"`
 	NodeCountPerZone int    `yaml:"nodeCountPerZone"`
 	GcpScopes        string `yaml:"gcpScopes"`

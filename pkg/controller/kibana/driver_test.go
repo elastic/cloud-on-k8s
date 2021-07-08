@@ -602,7 +602,7 @@ func kibanaFixture() *kbv1.Kibana {
 		},
 	}
 
-	kbFixture.SetAssociationConf(&commonv1.AssociationConf{
+	kbFixture.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "test-auth",
 		AuthSecretKey:  "kibana-user",
 		CASecretName:   "es-ca-secret",

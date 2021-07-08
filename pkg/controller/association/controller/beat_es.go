@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -25,24 +27,25 @@ import (
 )
 
 const (
-	// BeatAssociationLabelName marks resources created by this controller for easier retrieval.
+	// BeatAssociationLabelName marks resources created for an association originating from Beat with the
+	// Beat name.
 	BeatAssociationLabelName = "beatassociation.k8s.elastic.co/name"
-	// BeatAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// BeatAssociationLabelNamespace marks resources created for an association originating from Beat with the
+	// Beat namespace.
 	BeatAssociationLabelNamespace = "beatassociation.k8s.elastic.co/namespace"
-	// BeatAssociationLabelType marks the type of association
+	// AgentAssociationLabelType marks resources created for an association originating from Beat
+	// with the target resource type (e.g. "elasticsearch" or "kibana").
 	BeatAssociationLabelType = "beatassociation.k8s.elastic.co/type"
 )
 
 func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &beatv1beta1.Beat{} },
-		AssociationType:       commonv1.ElasticsearchAssociationType,
-		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef(), nil
-		},
+		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1beta1.Beat{} },
+		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
+		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociatedNamer:           esv1.ESNamer,
+		ReferencedResourceNamer:   esv1.ESNamer,
 		AssociationName:           "beat-es",
 		AssociatedShortName:       "beat",
 		Labels: func(associated types.NamespacedName) map[string]string {
@@ -53,10 +56,16 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
-		UserSecretSuffix:                      "beat-user",
-		ESUserRole:                            getBeatRoles,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+				return true, association.AssociationRef(), nil
+			},
+			UserSecretSuffix: "beat-user",
+			ESUserRole:       getBeatRoles,
+		},
 	})
 }
 

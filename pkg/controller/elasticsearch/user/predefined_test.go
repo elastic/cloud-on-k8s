@@ -226,7 +226,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			got, err := reconcileInternalUsers(c, es, tt.existingFileRealm)
 			require.NoError(t, err)
 			// check returned users
-			require.Len(t, got, 2)
+			require.Len(t, got, 3)
 			controllerUser := got[0]
 			probeUser := got[1]
 			// names and roles are always the same

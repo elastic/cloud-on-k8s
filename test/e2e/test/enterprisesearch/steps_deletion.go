@@ -7,8 +7,8 @@ package enterprisesearch
 import (
 	"context"
 
+	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
@@ -57,7 +57,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Test: test.Eventually(func() error {
 				namespace := b.EnterpriseSearch.Namespace
 				return k.CheckSecretsRemoved([]types.NamespacedName{
-					{Namespace: namespace, Name: certificates.PublicCertsSecretName(name.EntNamer, b.EnterpriseSearch.Name)},
+					{Namespace: namespace, Name: certificates.PublicCertsSecretName(entv1.Namer, b.EnterpriseSearch.Name)},
 				})
 			}),
 		},

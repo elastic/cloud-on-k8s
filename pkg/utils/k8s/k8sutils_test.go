@@ -230,3 +230,54 @@ func TestCompareStorageRequests(t *testing.T) {
 		})
 	}
 }
+
+func TestObjectExists(t *testing.T) {
+	type args struct {
+		c             Client
+		ref           types.NamespacedName
+		typedReceiver client.Object
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "existing secret",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "secret-name"}},
+				),
+				ref:           types.NamespacedName{Namespace: "ns", Name: "secret-name"},
+				typedReceiver: &corev1.Secret{},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "non-existing secret",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "secret-name"}},
+				),
+				ref:           types.NamespacedName{Namespace: "ns", Name: "another-secret-name"},
+				typedReceiver: &corev1.Secret{},
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ObjectExists(tt.args.c, tt.args.ref, tt.args.typedReceiver)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ObjectExists() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ObjectExists() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

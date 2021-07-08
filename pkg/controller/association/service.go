@@ -18,7 +18,7 @@ import (
 func ServiceURL(c k8s.Client, serviceNSN types.NamespacedName, protocol string) (string, error) {
 	var svc corev1.Service
 	if err := c.Get(context.Background(), serviceNSN, &svc); err != nil {
-		return "", fmt.Errorf("while fetching refernced service: %w", err)
+		return "", fmt.Errorf("while fetching referenced service: %w", err)
 	}
 	port, err := findPortFor(protocol, svc)
 	if err != nil {

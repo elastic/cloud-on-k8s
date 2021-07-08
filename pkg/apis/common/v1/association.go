@@ -5,12 +5,15 @@
 package v1
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"fmt"
 	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -24,7 +27,7 @@ type AssociationType string
 type AssociationStatus string
 
 // AssociationStatusMap is the map of association's namespaced name string to its AssociationStatus. For resources that
-// have a single Association of a given type (eg. single ES reference), this map will contain a single entry.
+// have a single Association of a given type (for ex. single ES reference), this map contains a single entry.
 type AssociationStatusMap map[string]AssociationStatus
 
 // NewSingleAssociationStatusMap creates an AssociationStatusMap that expects only a single Association. Using a
@@ -92,9 +95,13 @@ func (asm AssociationStatusMap) AllEstablished() bool {
 const (
 	ElasticsearchConfigAnnotationNameBase = "association.k8s.elastic.co/es-conf"
 	ElasticsearchAssociationType          = "elasticsearch"
+	EsMonitoringAssociationType           = "es-monitoring"
 
 	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
 	KibanaAssociationType          = "kibana"
+
+	EntConfigAnnotationNameBase = "association.k8s.elastic.co/ent-conf"
+	EntAssociationType          = "ent"
 
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
@@ -106,6 +113,10 @@ const (
 	// should use `SingletonAssociationID` as their `AssociationID`. On the contrary, Agent can have unbounded number
 	// of Associations so Agent-ES Associations should _not_ use `SingletonAssociationID`.
 	SingletonAssociationID = ""
+
+	// NoAuthRequiredValue is the value set for AuthSecretName if no authentication
+	// credentials are necessary for that association.
+	NoAuthRequiredValue = "-"
 )
 
 // Associated represents an Elastic stack resource that is associated with other stack resources.
@@ -193,12 +204,21 @@ func (ac *AssociationConf) IsConfigured() bool {
 	return ac.AuthIsConfigured() && ac.URLIsConfigured()
 }
 
-// AuthIsConfigured returns true if all the auth fields are set.
+// AuthIsConfigured returns true if the auth fields are set.
 func (ac *AssociationConf) AuthIsConfigured() bool {
 	if ac == nil {
 		return false
 	}
+	if ac.NoAuthRequired() {
+		// auth fields are not required, but still configured
+		return true
+	}
+	// ensure both secret name and secret key are provided
 	return ac.AuthSecretName != "" && ac.AuthSecretKey != ""
+}
+
+func (ac *AssociationConf) NoAuthRequired() bool {
+	return ac.AuthSecretName == NoAuthRequiredValue
 }
 
 // CAIsConfigured returns true if the CA field is set.
@@ -257,4 +277,22 @@ func (ac *AssociationConf) GetVersion() string {
 		return ""
 	}
 	return ac.Version
+}
+
+func ElasticsearchConfigAnnotationName(esNsn types.NamespacedName) string {
+	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
+	// based on ElasticsearchRefs
+
+	nsNameHash := sha256.New224()
+	// concat with dot to avoid collisions, as namespace can't contain dots
+	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", esNsn.Namespace, esNsn.Name)))
+	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
+	// give too long output
+	// no padding to avoid illegal '=' character in the annotation name
+	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
+
+	return FormatNameWithID(
+		ElasticsearchConfigAnnotationNameBase+"%s",
+		hash,
+	)
 }

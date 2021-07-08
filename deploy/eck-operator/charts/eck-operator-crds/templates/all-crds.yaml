@@ -240,10 +240,10 @@ spec:
                       type: string
                     serviceName:
                       description: ServiceName is the name of an existing Kubernetes
-                        service which will be used to make requests to the referenced
-                        object. It has to be in the same namespace as the referenced
-                        resource. If left empty the default HTTP service of the referenced
-                        resource will be used.
+                        service which is used to make requests to the referenced object.
+                        It has to be in the same namespace as the referenced resource.
+                        If left empty, the default HTTP service of the referenced
+                        resource is used.
                       type: string
                   required:
                   - name
@@ -314,8 +314,8 @@ spec:
                   type: string
                 description: AssociationStatusMap is the map of association's namespaced
                   name string to its AssociationStatus. For resources that have a
-                  single Association of a given type (eg. single ES reference), this
-                  map will contain a single entry.
+                  single Association of a given type (for ex. single ES reference),
+                  this map contains a single entry.
                 type: object
               expectedNodes:
                 format: int32
@@ -422,10 +422,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -883,10 +883,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -1810,10 +1810,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -1836,10 +1836,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -2033,10 +2033,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -3072,6 +3072,80 @@ spec:
               image:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
+              monitoring:
+                description: Monitoring enables you to collect and ship log and monitoring
+                  data of this Elasticsearch cluster. See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+                  Metricbeat and Filebeat are deployed in the same Pod as sidecars
+                  and each one sends data to one or two different Elasticsearch monitoring
+                  clusters running in the same Kubernetes cluster.
+                properties:
+                  logs:
+                    description: Logs holds references to Elasticsearch clusters which
+                      receive log data from this Elasticsearch cluster.
+                    properties:
+                      elasticsearchRefs:
+                        description: ElasticsearchRefs is a reference to a list of
+                          monitoring Elasticsearch clusters running in the same Kubernetes
+                          cluster. Due to existing limitations, only a single Elasticsearch
+                          cluster is currently supported.
+                        items:
+                          description: ObjectSelector defines a reference to a Kubernetes
+                            object.
+                          properties:
+                            name:
+                              description: Name of the Kubernetes object.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                            serviceName:
+                              description: ServiceName is the name of an existing
+                                Kubernetes service which is used to make requests
+                                to the referenced object. It has to be in the same
+                                namespace as the referenced resource. If left empty,
+                                the default HTTP service of the referenced resource
+                                is used.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                    type: object
+                  metrics:
+                    description: Metrics holds references to Elasticsearch clusters
+                      which receive monitoring data from this Elasticsearch cluster.
+                    properties:
+                      elasticsearchRefs:
+                        description: ElasticsearchRefs is a reference to a list of
+                          monitoring Elasticsearch clusters running in the same Kubernetes
+                          cluster. Due to existing limitations, only a single Elasticsearch
+                          cluster is currently supported.
+                        items:
+                          description: ObjectSelector defines a reference to a Kubernetes
+                            object.
+                          properties:
+                            name:
+                              description: Name of the Kubernetes object.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                            serviceName:
+                              description: ServiceName is the name of an existing
+                                Kubernetes service which is used to make requests
+                                to the referenced object. It has to be in the same
+                                namespace as the referenced resource. If left empty,
+                                the default HTTP service of the referenced resource
+                                is used.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                    type: object
+                type: object
               nodeSets:
                 description: NodeSets allow specifying groups of Elasticsearch nodes
                   sharing the same configuration and Pod templates.
@@ -3472,10 +3546,10 @@ spec:
                           type: string
                         serviceName:
                           description: ServiceName is the name of an existing Kubernetes
-                            service which will be used to make requests to the referenced
+                            service which is used to make requests to the referenced
                             object. It has to be in the same namespace as the referenced
-                            resource. If left empty the default HTTP service of the
-                            referenced resource will be used.
+                            resource. If left empty, the default HTTP service of the
+                            referenced resource is used.
                           type: string
                       required:
                       - name
@@ -3942,6 +4016,21 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      subjectAltNames:
+                        description: SubjectAlternativeNames is a list of SANs to
+                          include in the generated node transport TLS certificates.
+                        items:
+                          description: SubjectAlternativeName represents a SAN entry
+                            in a x509 certificate.
+                          properties:
+                            dns:
+                              description: DNS is the DNS name of the subject.
+                              type: string
+                            ip:
+                              description: IP is the IP address of the subject.
+                              type: string
+                          type: object
+                        type: array
                     type: object
                 type: object
               updateStrategy:
@@ -3997,6 +4086,15 @@ spec:
                 description: ElasticsearchHealth is the health of the cluster as returned
                   by the health API.
                 type: string
+              monitoringAssociationStatus:
+                additionalProperties:
+                  description: AssociationStatus is the status of an association resource.
+                  type: string
+                description: AssociationStatusMap is the map of association's namespaced
+                  name string to its AssociationStatus. For resources that have a
+                  single Association of a given type (for ex. single ES reference),
+                  this map contains a single entry.
+                type: object
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.
@@ -5056,10 +5154,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -5628,10 +5726,10 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -6217,10 +6315,32 @@ spec:
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
-                      service which will be used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced
-                      resource. If left empty the default HTTP service of the referenced
-                      resource will be used.
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
+                    type: string
+                required:
+                - name
+                type: object
+              enterpriseSearchRef:
+                description: EnterpriseSearchRef is a reference to an EnterpriseSearch
+                  running in the same Kubernetes cluster. Kibana provides the default
+                  Enterprise Search UI starting version 7.14.
+                properties:
+                  name:
+                    description: Name of the Kubernetes object.
+                    type: string
+                  namespace:
+                    description: Namespace of the Kubernetes object. If empty, defaults
+                      to the current namespace.
+                    type: string
+                  serviceName:
+                    description: ServiceName is the name of an existing Kubernetes
+                      service which is used to make requests to the referenced object.
+                      It has to be in the same namespace as the referenced resource.
+                      If left empty, the default HTTP service of the referenced resource
+                      is used.
                     type: string
                 required:
                 - name
@@ -6719,7 +6839,9 @@ spec:
             description: KibanaStatus defines the observed state of Kibana
             properties:
               associationStatus:
-                description: AssociationStatus is the status of an association resource.
+                description: AssociationStatus is the status of any auto-linking to
+                  Elasticsearch clusters. This field is deprecated and will be removed
+                  in a future release. Use ElasticsearchAssociationStatus instead.
                 type: string
               availableNodes:
                 description: AvailableNodes is the number of available replicas in
@@ -6731,6 +6853,14 @@ spec:
                   the actual number of observed instances of the scaled object.
                 format: int32
                 type: integer
+              elasticsearchAssociationStatus:
+                description: ElasticsearchAssociationStatus is the status of any auto-linking
+                  to Elasticsearch clusters.
+                type: string
+              enterpriseSearchAssociationStatus:
+                description: EnterpriseSearchAssociationStatus is the status of any
+                  auto-linking to Enterprise Search.
+                type: string
               health:
                 description: Health of the deployment.
                 type: string

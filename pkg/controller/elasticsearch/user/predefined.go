@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +29,8 @@ const (
 	ControllerUserName = "elastic-internal"
 	// ProbeUserName is used for the Elasticsearch readiness probe.
 	ProbeUserName = "elastic-internal-probe"
+	// MonitoringUserName is used for the Elasticsearch monitoring.
+	MonitoringUserName = "elastic-internal-monitoring"
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
@@ -55,6 +58,7 @@ func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRea
 		users{
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
+			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
 		},
 		esv1.InternalUsersSecret(es.Name),
 		true,
@@ -148,4 +152,19 @@ func reuseOrGenerateHash(users users, fileRealm filerealm.Realm) (users, error) 
 		}
 	}
 	return users, nil
+}
+
+func GetMonitoringUserPassword(c k8s.Client, es esv1.Elasticsearch) (string, error) {
+	secretObjKey := types.NamespacedName{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)}
+	var secret corev1.Secret
+	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
+		return "", err
+	}
+
+	passwordBytes, ok := secret.Data[MonitoringUserName]
+	if !ok {
+		return "", errors.Errorf("auth secret key %s doesn't exist", MonitoringUserName)
+	}
+
+	return string(passwordBytes), nil
 }

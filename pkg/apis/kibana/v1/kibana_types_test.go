@@ -11,5 +11,5 @@ import (
 
 func TestApmEsAssociation_AssociationConfAnnotationName(t *testing.T) {
 	k := Kibana{}
-	require.Equal(t, "association.k8s.elastic.co/es-conf", k.AssociationConfAnnotationName())
+	require.Equal(t, "association.k8s.elastic.co/es-conf", k.EsAssociation().AssociationConfAnnotationName())
 }

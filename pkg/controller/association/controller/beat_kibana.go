@@ -10,29 +10,26 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-)
-
-const (
-	beatWatchNameTemplate = "%s-%s-beat-watch"
 )
 
 func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1beta1.Beat{} },
-		ElasticsearchRef:          getElasticsearchFromKibana,
+		ReferencedObjTemplate:     func() client.Object { return &kbv1.Kibana{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
-		AssociatedNamer:           kibana.Namer,
+		ReferencedResourceNamer:   kibana.Namer,
 		AssociationName:           "beat-kibana",
 		AssociatedShortName:       "beat",
 		AssociationType:           commonv1.KibanaAssociationType,
@@ -43,27 +40,15 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 				BeatAssociationLabelType:      commonv1.KibanaAssociationType,
 			}
 		},
-		AssociationConfAnnotationNameBase: commonv1.KibanaConfigAnnotationNameBase,
-		UserSecretSuffix:                  "beat-kb-user",
-		ESUserRole:                        getBeatKibanaRoles,
-		// The generic association controller watches Elasticsearch by default but we are interested in changes to
-		// Kibana as well for the purposes of establishing the association.
-		SetDynamicWatches: func(associated types.NamespacedName, associations []commonv1.Association, w watches.DynamicWatches) error {
-			return association.ReconcileWatch(
-				associated,
-				associations,
-				w.Kibanas,
-				fmt.Sprintf(beatWatchNameTemplate, associated.Namespace, associated.Name),
-				func(association commonv1.Association) types.NamespacedName {
-					return association.AssociationRef().NamespacedName()
-				},
-			)
-		},
-		ClearDynamicWatches: func(associated types.NamespacedName, w watches.DynamicWatches) {
-			association.RemoveWatch(w.Kibanas, fmt.Sprintf(beatWatchNameTemplate, associated.Namespace, associated.Name))
-		},
+		AssociationConfAnnotationNameBase:     commonv1.KibanaConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
+
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ElasticsearchRef: getElasticsearchFromKibana,
+			UserSecretSuffix: "beat-kb-user",
+			ESUserRole:       getBeatKibanaRoles,
+		},
 	})
 }
 

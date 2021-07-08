@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -18,6 +19,9 @@ const (
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "EnterpriseSearch"
 )
+
+// Namer is a Namer that is configured with the defaults for resources related to an EnterpriseSearch resource.
+var Namer = common_name.NewNamer("ent")
 
 // EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 type EnterpriseSearchSpec struct {

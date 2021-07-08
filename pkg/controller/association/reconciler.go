@@ -45,13 +45,13 @@ type AssociationInfo struct {
 	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
 	// elasticsearch for Beat to Elasticsearch association)
 	AssociationType commonv1.AssociationType
-	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for Kibana to Elasticsearch association).
+	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for a Kibana to Elasticsearch association).
 	AssociatedObjTemplate func() commonv1.Associated
-	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
-	// In the case of a transitive reference this is used to create the Elasticsearch user.
-	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
-	// AssociatedNamer is used to build the name of the Secret which contains the CA of the target.
-	AssociatedNamer name.Namer
+	// ReferencedObjTemplate builds an empty referenced object (e.g. Elasticsearch{} for a Kibana to Elasticsearch association).
+	ReferencedObjTemplate func() client.Object
+	// ReferencedResourceNamer is used to build the name of the Secret which contains the CA of the referenced resource
+	// (the Elasticsearch Namer for a Kibana to Elasticsearch association).
+	ReferencedResourceNamer name.Namer
 	// ExternalServiceURL is used to build the external service url as it will be set in the resource configuration.
 	ExternalServiceURL func(c k8s.Client, association commonv1.Association) (string, error)
 	// AssociationName is the name of the association (eg. "kb-es").
@@ -67,14 +67,6 @@ type AssociationInfo struct {
 	// the controller which is managing the associated resource to build the appropriate configuration. The annotation
 	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
-	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
-	UserSecretSuffix string
-	// ESUserRole is the role to use for the Elasticsearch user created by the association.
-	ESUserRole func(commonv1.Associated) (string, error)
-	// SetDynamicWatches allows to set some specific watches.
-	SetDynamicWatches func(associated types.NamespacedName, associations []commonv1.Association, watches watches.DynamicWatches) error
-	// ClearDynamicWatches is called when the controller needs to clear the specific watches set for the associated resource.
-	ClearDynamicWatches func(associated types.NamespacedName, watches watches.DynamicWatches)
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
 	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
@@ -86,6 +78,20 @@ type AssociationInfo struct {
 	// namespace of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label
 	// pointing to the Beat resource).
 	AssociationResourceNamespaceLabelName string
+
+	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
+	// May be nil if no user creation is required.
+	ElasticsearchUserCreation *ElasticsearchUserCreation
+}
+
+type ElasticsearchUserCreation struct {
+	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
+	// In the case of a transitive reference this is used to create the Elasticsearch user.
+	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
+	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
+	UserSecretSuffix string
+	// ESUserRole is the role to use for the Elasticsearch user created by the association.
+	ESUserRole func(commonv1.Associated) (string, error)
 }
 
 // AssociationResourceLabels returns all labels required by a resource to allow identifying both its Associated resource
@@ -175,17 +181,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	associations := associated.GetAssociations()
+	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+
+	// we are only interested in associations of the same target type here
+	// (e.g. Kibana -> Enterprise Search, not Kibana -> Elasticsearch)
+	associations := make([]commonv1.Association, 0)
+	for _, association := range associated.GetAssociations() {
+		if association.AssociationType() == r.AssociationType {
+			associations = append(associations, association)
+		}
+	}
 
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associatedKey, associations); err != nil {
 		r.log(associatedKey).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
-	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
+	// reconcile watches for all associations of this type
 	if err := r.reconcileWatches(associatedKey, associations); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -193,12 +207,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	results := reconciler.NewResult(ctx)
 	newStatusMap := commonv1.AssociationStatusMap{}
 	for _, association := range associations {
-		if association.AssociationType() != r.AssociationType {
-			// some resources have more than one type of resource associations, making sure we are looking at the right
-			// one for this controller
-			continue
-		}
-
 		newStatus, err := r.reconcileAssociation(ctx, association)
 		if err != nil {
 			results.WithError(err)
@@ -218,52 +226,21 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	// retrieve the Elasticsearch resource, since it can be a transitive reference we need to use the provided ElasticsearchRef function
-	associatedResourceFound, esRef, err := r.ElasticsearchRef(r.Client, association)
+	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), r.ReferencedObjTemplate())
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
-
-	// the associated resource does not exist yet, set status to Pending
-	if !associatedResourceFound {
+	if !exists {
+		// the associated resource does not exist (yet), set status to Pending and remove the existing association conf
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
-	if associationStatus != "" || err != nil {
-		return associationStatus, err
-	}
-
-	// from this point we have checked that all the associated resources are set and have been found.
-
-	// check if reference to Elasticsearch is allowed to be established
-	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
-		return commonv1.AssociationPending, err
-	}
-
 	associationRef := association.AssociationRef()
-
-	userRole, err := r.ESUserRole(association.Associated())
-	if err != nil {
-		return commonv1.AssociationFailed, err
-	}
-
 	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
-	if err := ReconcileEsUser(
-		ctx,
-		r.Client,
-		association,
-		assocLabels,
-		userRole,
-		r.UserSecretSuffix,
-		es,
-	); err != nil {
-		return commonv1.AssociationPending, err
-	}
 
 	caSecret, err := r.ReconcileCASecret(
 		association,
-		r.AssociationInfo.AssociatedNamer,
+		r.AssociationInfo.ReferencedResourceNamer,
 		associationRef.NamespacedName(),
 	)
 	if err != nil {
@@ -283,15 +260,60 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	// construct the expected association configuration
-	authSecretRef := UserSecretKeySelector(association, r.UserSecretSuffix)
 	expectedAssocConf := &commonv1.AssociationConf{
-		AuthSecretName: authSecretRef.Name,
-		AuthSecretKey:  authSecretRef.Key,
 		CACertProvided: caSecret.CACertProvided,
 		CASecretName:   caSecret.Name,
 		URL:            url,
 		Version:        ver,
 	}
+
+	if r.ElasticsearchUserCreation == nil {
+		// no user creation required, update the association conf as such
+		expectedAssocConf.AuthSecretName = commonv1.NoAuthRequiredValue
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
+	}
+
+	// retrieve the Elasticsearch resource
+	// since it can be a transitive reference we need to use the provided ElasticsearchRef function
+	found, esRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+	// the Elasticsearch resource does not exist yet, set status to Pending
+	if !found {
+		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
+	}
+
+	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
+	if associationStatus != "" || err != nil {
+		return associationStatus, err
+	}
+
+	// check if reference to Elasticsearch is allowed to be established
+	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
+		return commonv1.AssociationPending, err
+	}
+
+	userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+
+	if err := reconcileEsUserSecret(
+		ctx,
+		r.Client,
+		association,
+		assocLabels,
+		userRole,
+		r.ElasticsearchUserCreation.UserSecretSuffix,
+		es,
+	); err != nil {
+		return commonv1.AssociationPending, err
+	}
+
+	authSecretRef := UserSecretKeySelector(association, r.ElasticsearchUserCreation.UserSecretSuffix)
+	expectedAssocConf.AuthSecretName = authSecretRef.Name
+	expectedAssocConf.AuthSecretKey = authSecretRef.Key
 
 	// update the association configuration if necessary
 	return r.updateAssocConf(ctx, expectedAssocConf, association)
@@ -416,11 +438,7 @@ func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Resul
 }
 
 func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
-	// remove dynamic watches
-	if r.SetDynamicWatches != nil {
-		r.ClearDynamicWatches(associated, r.watches)
-	}
-	// remove other watches
+	// remove watches
 	r.removeWatches(associated)
 
 	// delete user Secret in the Elasticsearch namespace

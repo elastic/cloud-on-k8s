@@ -13,9 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// esWatchName returns the name of the watch setup on the referenced Elasticsearch resource.
-func esWatchName(associated types.NamespacedName) string {
-	return fmt.Sprintf("%s-%s-es-watch", associated.Namespace, associated.Name)
+// referencedResourceWatchName is the name of the watch set on the referenced resource.
+func referencedResourceWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-referenced-resource-watch", associated.Namespace, associated.Name)
+}
+
+// referencedResourceWatchName is the name of the watch set on Secret containing the CA of the referenced resource.
+func referencedResourceCASecretWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-referenced-resource-ca-secret-watch", associated.Namespace, associated.Name)
 }
 
 // esUserWatchName returns the name of the watch setup on the ES user secret.
@@ -23,45 +28,32 @@ func esUserWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-user-watch", associated.Namespace, associated.Name)
 }
 
-// associatedCAWatchName returns the name of the watch setup on the secret of the associated resource that
-// contains the HTTP certificate chain of Elasticsearch.
-func associatedCAWatchName(associated types.NamespacedName) string {
-	return fmt.Sprintf("%s-%s-ca-watch", associated.Namespace, associated.Name)
-}
-
-// serviceWatchName returns the name of the watch monitor a custom service to be used to make requests to the
-// associated resource.
+// serviceWatchName returns the name of the watch setup on the custom service to be used to make requests to the
+// referenced resource.
 func serviceWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-svc-watch", associated.Namespace, associated.Name)
 }
 
-// reconcileWatches sets up dynamic watches related to:
-// * The referenced Elasticsearch resource
-// * The user created in the Elasticsearch namespace
-// * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM)
-// All watches for all Associations are set under the same watch name for associated resource and replaced
-// with each reconciliation.
+// reconcileWatches sets up dynamic watches for:
+// * the referenced resource(s) (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
+// * the CA secret of the referenced resource in the referenced resource namespace
+// * the referenced service to access the referenced resource
+// * if there's an ES user to create, watch the user Secret in ES namespace
+// All watches for all given associations are set under the same watch name and replaced with each reconciliation.
+// The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
 func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associations []commonv1.Association) error {
-	// watch the referenced ES cluster for future reconciliations
-	if err := ReconcileWatch(associated, associations, r.watches.ElasticsearchClusters, esWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	// watch the referenced resource
+	if err := ReconcileWatch(associated, associations, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 
-	// watch the user secret in the ES namespace
-	if err := ReconcileWatch(associated, associations, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-		return UserKey(association, association.AssociationRef().Namespace, r.UserSecretSuffix)
-	}); err != nil {
-		return err
-	}
-
-	// watch the CA secret in the targeted service namespace
-	// Most of the time it is Elasticsearch, but it could be Kibana in the case of the APMServer
-	if err := ReconcileWatch(associated, associations, r.watches.Secrets, associatedCAWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	// watch the CA secret of the referenced resource in the referenced resource namespace
+	if err := ReconcileWatch(associated, associations, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
-			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.AssociatedNamer, ref.Name),
+			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.Name),
 			Namespace: ref.Namespace,
 		}
 	}); err != nil {
@@ -80,9 +72,11 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 		return err
 	}
 
-	// set additional watches, in the case of a transitive Elasticsearch reference we must watch the intermediate resource
-	if r.SetDynamicWatches != nil {
-		if err := r.SetDynamicWatches(associated, associations, r.watches); err != nil {
+	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
+	if r.ElasticsearchUserCreation != nil {
+		if err := ReconcileWatch(associated, associations, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
+		}); err != nil {
 			return err
 		}
 	}
@@ -91,7 +85,7 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 }
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
-// `watchedFunc`.
+// `watchedFunc`. No watch is added if watchedFunc(association) refers to an empty namespaced name.
 func ReconcileWatch(
 	associated types.NamespacedName,
 	associations []commonv1.Association,
@@ -105,9 +99,14 @@ func ReconcileWatch(
 		return nil
 	}
 
+	emptyNamespacedName := types.NamespacedName{}
+
 	toWatch := make([]types.NamespacedName, 0, len(associations))
 	for _, association := range associations {
-		toWatch = append(toWatch, watchedFunc(association))
+		watchedNamespacedName := watchedFunc(association)
+		if watchedNamespacedName != emptyNamespacedName {
+			toWatch = append(toWatch, watchedFunc(association))
+		}
 	}
 
 	return dynamicRequest.AddHandler(watches.NamedWatch{
@@ -123,12 +122,12 @@ func RemoveWatch(dynamicRequest *watches.DynamicEnqueueRequest, watchName string
 }
 
 func (r *Reconciler) removeWatches(associated types.NamespacedName) {
-	// - ES resource
-	RemoveWatch(r.watches.ElasticsearchClusters, esWatchName(associated))
-	// - user in the ES namespace
-	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
-	// - ES CA Secret in the ES namespace
-	RemoveWatch(r.watches.Secrets, associatedCAWatchName(associated))
+	// - referenced resource
+	RemoveWatch(r.watches.ReferencedResources, referencedResourceWatchName(associated))
+	// - CA secret in referenced resource namespace
+	RemoveWatch(r.watches.Secrets, referencedResourceCASecretWatchName(associated))
 	// - custom service watch in resource namespace
 	RemoveWatch(r.watches.Services, serviceWatchName(associated))
+	// - ES user secret
+	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
 }

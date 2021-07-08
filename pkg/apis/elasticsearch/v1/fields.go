@@ -45,6 +45,9 @@ const (
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 
 	XPackLicenseUploadTypes = "xpack.license.upload.types" // supported >= 7.6.0 used as of 7.8.1
+
+	XPackMonitoringCollectionEnabled              = "xpack.monitoring.collection.enabled"
+	XPackMonitoringElasticsearchCollectionEnabled = "xpack.monitoring.elasticsearch.collection.enabled"
 )
 
 var UnsupportedSettings = []string{

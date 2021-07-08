@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/stackmon"
 )
 
 // Resources contain per-NodeSet resources to be created.
@@ -35,6 +37,7 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 }
 
 func BuildExpectedResources(
+	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
@@ -54,13 +57,13 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, stackmon.MonitoringConfig(es))
 		if err != nil {
 			return nil, err
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
+		statefulSet, err := BuildStatefulSet(client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
 		if err != nil {
 			return nil, err
 		}
