@@ -7,7 +7,10 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/go-test/deep"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -81,14 +84,8 @@ func CheckSelector(actualSelector string, expectedLabels map[string]string) erro
 	if err != nil {
 		return err
 	}
-	actualLabels := labelSelector.MatchLabels
-	if len(expectedLabels) != len(actualLabels) {
-		return fmt.Errorf("expected %d labels in selector, got %d instead", len(expectedLabels), len(actualLabels))
-	}
-	for label, expectedValue := range expectedLabels {
-		if actualLabels[label] != expectedValue {
-			return fmt.Errorf("expected selector value for label %s is %s, got %s instead", label, expectedValue, actualLabels[label])
-		}
+	if diff := deep.Equal(expectedLabels, labelSelector.MatchLabels); diff != nil {
+		return errors.New(strings.Join(diff, ", "))
 	}
 	return nil
 }
