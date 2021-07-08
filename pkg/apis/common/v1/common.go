@@ -23,6 +23,11 @@ const (
 
 // DeploymentStatus represents status information about a deployment.
 type DeploymentStatus struct {
+	// Selector is the label selector used to find all pods.
+	Selector string `json:"selector,omitempty"`
+	// Count corresponds to Scale.Status.Replicas, which is the actual number of observed instances of the scaled object.
+	// +optional
+	Count int32 `json:"count"`
 	// AvailableNodes is the number of available replicas in the deployment.
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run

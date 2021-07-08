@@ -30,9 +30,14 @@ func NewState(request reconcile.Request, as *apmv1.ApmServer) State {
 }
 
 // UpdateApmServerState updates the ApmServer status based on the given deployment.
-func (s State) UpdateApmServerState(deployment v1.Deployment, pods []corev1.Pod, apmServerSecret corev1.Secret) {
-	s.ApmServer.Status.DeploymentStatus = common.DeploymentStatus(s.ApmServer.Status.DeploymentStatus, deployment, pods, APMVersionLabelName)
+func (s State) UpdateApmServerState(deployment v1.Deployment, pods []corev1.Pod, apmServerSecret corev1.Secret) error {
+	deploymentStatus, err := common.DeploymentStatus(s.ApmServer.Status.DeploymentStatus, deployment, pods, APMVersionLabelName)
+	if err != nil {
+		return err
+	}
+	s.ApmServer.Status.DeploymentStatus = deploymentStatus
 	s.ApmServer.Status.SecretTokenSecretName = apmServerSecret.Name
+	return nil
 }
 
 // UpdateApmServerExternalService updates the ApmServer ExternalService status.

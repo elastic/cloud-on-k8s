@@ -347,8 +347,6 @@ spec:
     - apm
     singular: apmserver
   scope: Namespaced
-  subresources:
-    status: {}
   validation:
     openAPIV3Schema:
       description: ApmServer represents an APM Server resource in a Kubernetes cluster.
@@ -880,6 +878,11 @@ spec:
                 deployment.
               format: int32
               type: integer
+            count:
+              description: Count corresponds to Scale.Status.Replicas, which is the
+                actual number of observed instances of the scaled object.
+              format: int32
+              type: integer
             elasticsearchAssociationStatus:
               description: ElasticsearchAssociationStatus is the status of any auto-linking
                 to Elasticsearch clusters.
@@ -894,6 +897,9 @@ spec:
             secretTokenSecret:
               description: SecretTokenSecretName is the name of the Secret that contains
                 the secret token
+              type: string
+            selector:
+              description: Selector is the label selector used to find all pods.
               type: string
             service:
               description: ExternalService is the name of the service the agents should
@@ -910,9 +916,17 @@ spec:
   - name: v1
     served: true
     storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.count
+        statusReplicasPath: .status.count
+      status: {}
   - name: v1beta1
     served: true
     storage: false
+    subresources:
+      status: {}
   - name: v1alpha1
     served: false
     storage: false
@@ -1302,6 +1316,10 @@ spec:
     singular: elasticmapsserver
   scope: Namespaced
   subresources:
+    scale:
+      labelSelectorPath: .status.selector
+      specReplicasPath: .spec.count
+      statusReplicasPath: .status.count
     status: {}
   validation:
     openAPIV3Schema:
@@ -1793,8 +1811,16 @@ spec:
                 deployment.
               format: int32
               type: integer
+            count:
+              description: Count corresponds to Scale.Status.Replicas, which is the
+                actual number of observed instances of the scaled object.
+              format: int32
+              type: integer
             health:
               description: Health of the deployment.
+              type: string
+            selector:
+              description: Selector is the label selector used to find all pods.
               type: string
             version:
               description: 'Version of the stack resource currently running. During
@@ -3158,6 +3184,21 @@ spec:
                           description: SecretName is the name of the secret.
                           type: string
                       type: object
+                    subjectAltNames:
+                      description: SubjectAlternativeNames is a list of SANs to include
+                        in the generated node transport TLS certificates.
+                      items:
+                        description: SubjectAlternativeName represents a SAN entry
+                          in a x509 certificate.
+                        properties:
+                          dns:
+                            description: DNS is the DNS name of the subject.
+                            type: string
+                          ip:
+                            description: IP is the IP address of the subject.
+                            type: string
+                        type: object
+                      type: array
                   type: object
               type: object
             updateStrategy:
@@ -3282,8 +3323,6 @@ spec:
     - ent
     singular: enterprisesearch
   scope: Namespaced
-  subresources:
-    status: {}
   validation:
     openAPIV3Schema:
       description: EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
@@ -3771,8 +3810,16 @@ spec:
                 deployment.
               format: int32
               type: integer
+            count:
+              description: Count corresponds to Scale.Status.Replicas, which is the
+                actual number of observed instances of the scaled object.
+              format: int32
+              type: integer
             health:
               description: Health of the deployment.
+              type: string
+            selector:
+              description: Selector is the label selector used to find all pods.
               type: string
             service:
               description: ExternalService is the name of the service associated to
@@ -3789,9 +3836,17 @@ spec:
   - name: v1
     served: true
     storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.count
+        statusReplicasPath: .status.count
+      status: {}
   - name: v1beta1
     served: true
     storage: false
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""
@@ -3833,8 +3888,6 @@ spec:
     - kb
     singular: kibana
   scope: Namespaced
-  subresources:
-    status: {}
   validation:
     openAPIV3Schema:
       description: Kibana represents a Kibana resource in a Kubernetes cluster.
@@ -4442,6 +4495,11 @@ spec:
                 deployment.
               format: int32
               type: integer
+            count:
+              description: Count corresponds to Scale.Status.Replicas, which is the
+                actual number of observed instances of the scaled object.
+              format: int32
+              type: integer
             elasticsearchAssociationStatus:
               description: ElasticsearchAssociationStatus is the status of any auto-linking
                 to Elasticsearch clusters.
@@ -4460,6 +4518,9 @@ spec:
               description: MonitoringAssociationStatus is the status of any auto-linking
                 to monitoring Elasticsearch clusters.
               type: object
+            selector:
+              description: Selector is the label selector used to find all pods.
+              type: string
             version:
               description: 'Version of the stack resource currently running. During
                 version upgrades, multiple versions may run in parallel: this value
@@ -4471,9 +4532,17 @@ spec:
   - name: v1
     served: true
     storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.count
+        statusReplicasPath: .status.count
+      status: {}
   - name: v1beta1
     served: true
     storage: false
+    subresources:
+      status: {}
   - name: v1alpha1
     served: false
     storage: false

@@ -105,8 +105,23 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
 				return err
 			}
+
+			// Selector is a string built from a map, it is validated with a dedicated function.
+			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels
+			// is created.
+			if err := test.CheckSelector(
+				ent.Status.Selector,
+				map[string]string{
+					"enterprisesearch.k8s.elastic.co/name": ent.Name,
+					"common.k8s.elastic.co/type":           "enterprise-search",
+				}); err != nil {
+				return err
+			}
+			ent.Status.Selector = ""
+
 			expected := entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
+					Count:          b.EnterpriseSearch.Spec.Count,
 					AvailableNodes: b.EnterpriseSearch.Spec.Count,
 					Version:        b.EnterpriseSearch.Spec.Version,
 					Health:         "green",

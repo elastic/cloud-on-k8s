@@ -35,6 +35,10 @@ spec:
     singular: elasticmapsserver
   scope: Namespaced
   subresources:
+    scale:
+      labelSelectorPath: .status.selector
+      specReplicasPath: .spec.count
+      statusReplicasPath: .status.count
     status: {}
   validation:
     openAPIV3Schema:
@@ -7048,8 +7052,16 @@ spec:
                 deployment.
               format: int32
               type: integer
+            count:
+              description: Count corresponds to Scale.Status.Replicas, which is the
+                actual number of observed instances of the scaled object.
+              format: int32
+              type: integer
             health:
               description: Health of the deployment.
+              type: string
+            selector:
+              description: Selector is the label selector used to find all pods.
               type: string
             version:
               description: 'Version of the stack resource currently running. During
