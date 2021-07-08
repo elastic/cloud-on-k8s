@@ -146,6 +146,7 @@ var _ commonv1.Association = &ElasticMapsServer{}
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="ElasticMapsServer version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
 // +kubebuilder:storageversion
 type ElasticMapsServer struct {
 	metav1.TypeMeta   `json:",inline"`

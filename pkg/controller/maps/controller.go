@@ -380,8 +380,12 @@ func (r *ReconcileMapsServer) updateStatus(ems emsv1alpha1.ElasticMapsServer, de
 	if err != nil {
 		return err
 	}
+	deploymentStatus, err := common.DeploymentStatus(ems.Status.DeploymentStatus, deploy, pods, versionLabelName)
+	if err != nil {
+		return err
+	}
 	newStatus := emsv1alpha1.MapsStatus{
-		DeploymentStatus:  common.DeploymentStatus(ems.Status.DeploymentStatus, deploy, pods, versionLabelName),
+		DeploymentStatus:  deploymentStatus,
 		AssociationStatus: ems.Status.AssociationStatus,
 	}
 
