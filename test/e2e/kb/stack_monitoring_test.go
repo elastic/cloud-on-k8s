@@ -2,7 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package es
+// +build kb e2e
+
+package kb
 
 import (
 	"testing"
