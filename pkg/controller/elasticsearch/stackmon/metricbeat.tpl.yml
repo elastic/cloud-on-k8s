@@ -20,7 +20,7 @@ metricbeat.modules:
     {{- if .IsSSL }}
     ssl.certificate_authorities: ["{{ .SSLPath }}"]
     ssl.verification_mode: "{{ .SSLMode }}"
-    {{ end }}
+    {{- end }}
 
 processors:
   - add_cloud_metadata: {}
