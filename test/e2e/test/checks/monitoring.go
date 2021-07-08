@@ -123,7 +123,7 @@ func AreIndexedDocs(esClient esClient.Client, indexPattern string) error {
 		return err
 	}
 	// with at least 1 doc
-	if docsCount < 0 {
+	if docsCount <= 0 {
 		return fmt.Errorf("index [%s] empty", indexPattern)
 	}
 

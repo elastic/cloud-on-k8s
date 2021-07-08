@@ -1,4 +1,5 @@
 metricbeat.modules:
+  # https://www.elastic.co/guide/en/beats/metricbeat/7.13/metricbeat-module-kibana.html
   - module: kibana
     metricsets:
       - stats

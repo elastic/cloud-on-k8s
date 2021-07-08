@@ -20,15 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
-const (
-	// KbAssociationLabelName marks resources created by this controller for easier retrieval.
-	KbAssociationLabelName = "kbassociation.k8s.elastic.co/name"
-	// KbAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	KbAssociationLabelNamespace = "kbassociation.k8s.elastic.co/namespace"
-	// KbAssociationLabelType marks the type of association.
-	KbAssociationLabelType = "kbassociation.k8s.elastic.co/type"
-)
-
 // AddKbMonitoring reconciles an association between Kibana and Elasticsearch clusters for Stack Monitoring.
 // Beats are configured to collect monitoring metrics and logs data of the associated Kibana and send
 // them to the Elasticsearch referenced in the association.
@@ -44,9 +35,9 @@ func AddKbMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 		AssociatedShortName:       "kb-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				KbAssociationLabelName:      associated.Name,
-				KbAssociationLabelNamespace: associated.Namespace,
-				KbAssociationLabelType:      commonv1.KbMonitoringAssociationType,
+				KibanaAssociationLabelName:      associated.Name,
+				KibanaAssociationLabelNamespace: associated.Namespace,
+				KibanaAssociationLabelType:      commonv1.KbMonitoringAssociationType,
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,

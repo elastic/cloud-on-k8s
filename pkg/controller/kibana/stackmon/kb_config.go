@@ -28,10 +28,9 @@ var (
 func MonitoringConfig(kb kbv1.Kibana) commonv1.Config {
 	cfg := commonv1.Config{}
 	if monitoring.IsMetricsDefined(&kb) {
-		if cfg.Data == nil {
-			cfg.Data = map[string]interface{}{}
+		cfg.Data = map[string]interface{}{
+			MonitoringKibanaCollectionEnabled: false,
 		}
-		cfg.Data[MonitoringKibanaCollectionEnabled] = false
 	}
 	if monitoring.IsLogsDefined(&kb) {
 		if cfg.Data == nil {
@@ -43,6 +42,7 @@ func MonitoringConfig(kb kbv1.Kibana) commonv1.Config {
 		cfg.Data[LoggingAppendersJSONFileAppenderLayoutType] = "json"
 		cfg.Data[LoggingAppendersJSONFileAppenderPolicyType] = "size-limit"
 		cfg.Data[LoggingAppendersJSONFileAppenderPolicySize] = "50mb"
+		// enable disk logging keeping the log to stdout
 		cfg.Data[LoggingRootAppenders] = []string{"default", "rolling-file"}
 	}
 	return cfg

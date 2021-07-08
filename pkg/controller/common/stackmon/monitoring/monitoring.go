@@ -11,7 +11,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-// HasMonitoring is the interface implemented by an Elastic Stack application that supports Stack Monitoring ()
+// HasMonitoring is the interface implemented by an Elastic Stack application that supports Stack Monitoring
 type HasMonitoring interface {
 	metav1.Object
 	client.Object
