@@ -65,7 +65,6 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 			"ClusterName":       plan.ClusterName,
 			"PVCPrefix":         pvcPrefix,
 			"Region":            plan.Gke.Region,
-			"AdminUsername":     plan.Gke.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"MachineType":       plan.MachineType,
 			"LocalSsdCount":     plan.Gke.LocalSsdCount,
@@ -173,8 +172,8 @@ func (d *GkeDriver) create() error {
 		opts = append(opts, "--create-subnetwork range={{.ClusterIPv4CIDR}}", "--cluster-ipv4-cidr={{.ClusterIPv4CIDR}}", "--services-ipv4-cidr={{.ServicesIPv4CIDR}}")
 	}
 
-	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--region {{.Region}} --username {{.AdminUsername}} --cluster-version {{.KubernetesVersion}} ` +
+	return NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
+		`--region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
