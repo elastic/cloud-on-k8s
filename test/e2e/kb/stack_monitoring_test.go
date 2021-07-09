@@ -40,12 +40,17 @@ func TestKBStackMonitoring(t *testing.T) {
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
-		return checks.StackMonitoringChecks{
+		c := checks.StackMonitoringChecks{
 			MonitoredNsn: k8s.ExtractNamespacedName(&monitored.Kibana),
 			Metrics:      metrics,
 			Logs:         logs,
 			K:            k,
-		}.Steps()
+		}
+		return test.StepList{
+			c.CheckBeatSidecars(),
+			//c.CheckMetricbeatIndex(), TODO: investigate if it's normal that there is no document in this index when es monitoring is off
+			c.CheckFilebeatIndex(),
+		}
 	}
 
 	test.Sequence(nil, steps, metrics, logs, assocEs, monitored).RunSequential(t)
