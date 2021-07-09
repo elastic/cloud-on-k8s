@@ -15,6 +15,7 @@ import (
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -249,6 +250,11 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	err = stackmon.ReconcileConfigSecrets(d.Client, d.ES)
 	if err != nil {
 		return results.WithError(err)
+	}
+
+	// requeue if associations are defined but not yet configured
+	if !association.AreConfiguredIfSet(d.ES.GetAssociations(), d.Recorder()) {
+		results.WithResult(defaultRequeue)
 	}
 
 	// reconcile StatefulSets and nodes configuration
