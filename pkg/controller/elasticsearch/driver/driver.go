@@ -252,7 +252,8 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	// requeue if associations are defined but not yet configured
+	// requeue if associations are defined but not yet configured, otherwise we may be in a situation where we deploy
+	// Elasticsearch Pods once, then change their spec a few seconds later once the association is configured
 	if !association.AreConfiguredIfSet(d.ES.GetAssociations(), d.Recorder()) {
 		results.WithResult(defaultRequeue)
 	}
