@@ -22,6 +22,15 @@ var (
 	LoggingAppendersJSONFileAppenderPolicyType = "logging.appenders.rolling-file.policy.type"
 	LoggingAppendersJSONFileAppenderPolicySize = "logging.appenders.rolling-file.policy.size"
 	LoggingRootAppenders                       = "logging.root.appenders"
+
+	XPackSecurityAuditAppenderType       = "xpack.security.audit.appender.type"
+	XPackSecurityAuditAppenderFileName   = "xpack.security.audit.appender.fileName"
+	XPackSecurityAuditAppenderLayoutType = "xpack.security.audit.appender.layout.type"
+	XPackSecurityAuditAppenderPolicyType = "xpack.security.audit.appender.policy.type"
+	XPackSecurityAuditAppenderPolicySize = "xpack.security.audit.appender.policy.size"
+
+	kibanaLogFilename      = "kibana.json"
+	kibanaAuditLogFilename = "kibana_audit.json"
 )
 
 // MonitoringConfig returns the Kibana settings required to enable the collection of monitoring data and disk logging
@@ -36,14 +45,21 @@ func MonitoringConfig(kb kbv1.Kibana) commonv1.Config {
 		if cfg.Data == nil {
 			cfg.Data = map[string]interface{}{}
 		}
-		cfg.Data[XPackSecurityAuditEnabled] = true
+		// configure the main Kibana log to be written to disk and stdout
 		cfg.Data[LoggingAppendersJSONFileAppenderType] = "rolling-file"
 		cfg.Data[LoggingAppendersJSONFileAppenderFilename] = filepath.Join(kibanaLogsMountPath, kibanaLogFilename)
 		cfg.Data[LoggingAppendersJSONFileAppenderLayoutType] = "json"
 		cfg.Data[LoggingAppendersJSONFileAppenderPolicyType] = "size-limit"
 		cfg.Data[LoggingAppendersJSONFileAppenderPolicySize] = "50mb"
-		// enable disk logging keeping the log to stdout
 		cfg.Data[LoggingRootAppenders] = []string{"default", "rolling-file"}
+
+		// configure audit logs to be written to disk
+		cfg.Data[XPackSecurityAuditEnabled] = true
+		cfg.Data[XPackSecurityAuditAppenderType] = "rolling-file"
+		cfg.Data[XPackSecurityAuditAppenderFileName] = filepath.Join(kibanaLogsMountPath, kibanaAuditLogFilename)
+		cfg.Data[XPackSecurityAuditAppenderLayoutType] = "json"
+		cfg.Data[XPackSecurityAuditAppenderPolicyType] = "size-limit"
+		cfg.Data[XPackSecurityAuditAppenderPolicySize] = "50mb"
 	}
 	return cfg
 }

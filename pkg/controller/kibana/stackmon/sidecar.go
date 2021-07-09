@@ -29,7 +29,6 @@ const (
 
 	kibanaLogsVolumeName = "kibana-logs"
 	kibanaLogsMountPath  = "/usr/share/kibana/logs"
-	kibanaLogFilename    = "kibana.json"
 )
 
 func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
