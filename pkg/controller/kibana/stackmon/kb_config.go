@@ -14,7 +14,6 @@ import (
 
 var (
 	MonitoringKibanaCollectionEnabled = "monitoring.kibana.collection.enabled"
-	XPackSecurityAuditEnabled         = "xpack.security.audit.enabled"
 
 	LoggingAppendersJSONFileAppenderType       = "logging.appenders.rolling-file.type"
 	LoggingAppendersJSONFileAppenderFilename   = "logging.appenders.rolling-file.fileName"
@@ -53,8 +52,7 @@ func MonitoringConfig(kb kbv1.Kibana) commonv1.Config {
 		cfg.Data[LoggingAppendersJSONFileAppenderPolicySize] = "50mb"
 		cfg.Data[LoggingRootAppenders] = []string{"default", "rolling-file"}
 
-		// configure audit logs to be written to disk
-		cfg.Data[XPackSecurityAuditEnabled] = true
+		// configure audit logs to be written to disk so that user has just to enable audit logs to collect them
 		cfg.Data[XPackSecurityAuditAppenderType] = "rolling-file"
 		cfg.Data[XPackSecurityAuditAppenderFileName] = filepath.Join(kibanaLogsMountPath, kibanaAuditLogFilename)
 		cfg.Data[XPackSecurityAuditAppenderLayoutType] = "json"
