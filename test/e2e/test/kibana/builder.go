@@ -173,6 +173,14 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
+func (b Builder) WithConfig(config map[string]interface{}) Builder {
+	b.Kibana.Spec.Config = &commonv1.Config{
+		Data: config,
+	}
+
+	return b
+}
+
 // -- test.Subject impl
 
 func (b Builder) NSN() types.NamespacedName {

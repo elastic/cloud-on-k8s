@@ -27,6 +27,8 @@ import (
 
 const (
 	PSPClusterRoleName = "elastic-agent-restricted"
+
+	AgentFleetModeRoleName = "elastic-agent-fleet"
 )
 
 // Builder to create an Agent
@@ -272,9 +274,40 @@ func (b Builder) WithConfigRef(secretName string) Builder {
 	return b
 }
 
+func (b Builder) WithFleetMode() Builder {
+	b.Agent.Spec.Mode = agentv1alpha1.AgentFleetMode
+
+	return b
+}
+
+func (b Builder) WithFleetServer() Builder {
+	b.Agent.Spec.FleetServerEnabled = true
+
+	return b
+}
+
+func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
+	b.Agent.Spec.KibanaRef = ref
+
+	return b
+}
+
+func (b Builder) WithFleetServerRef(ref commonv1.ObjectSelector) Builder {
+	b.Agent.Spec.FleetServerRef = ref
+
+	return b
+}
+
 func (b Builder) WithObjects(objs ...k8sclient.Object) Builder {
 	b.AdditionalObjects = append(b.AdditionalObjects, objs...)
 	return b
+}
+
+func (b Builder) Ref() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      b.Agent.Name,
+		Namespace: b.Agent.Namespace,
+	}
 }
 
 func (b Builder) RuntimeObjects() []k8sclient.Object {

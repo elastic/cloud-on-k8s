@@ -135,3 +135,43 @@ rules:
   - elastic.agent.restricted
   verbs:
   - use
+---
+# ClusterRole allowing use of Kubernetes API needed by Elastic Agents running in Fleet mode.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent-fleet
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - events
+  verbs:
+  - get
+  - watch
+  - list

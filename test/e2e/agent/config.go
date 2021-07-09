@@ -178,7 +178,6 @@ inputs:
     - mountPath: /var/log
       name: varlog
   dnsPolicy: ClusterFirstWithHostNet
-  serviceAccount: elastic-agent
   terminationGracePeriodSeconds: 30
   volumes:
   - hostPath:
@@ -350,5 +349,11 @@ inputs:
         metricsets:
           - uptime
         period: 10s
+`
+
+	E2EAgentFleetModePodTemplate = `spec:
+  automountServiceAccountToken: true
+  securityContext:
+    runAsUser: 0
 `
 )
