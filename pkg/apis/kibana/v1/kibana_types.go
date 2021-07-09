@@ -223,19 +223,22 @@ func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Ass
 }
 
 func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
-	single, err := status.Single()
-	if err != nil {
-		return err
-	}
-
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
+		single, err := status.Single()
+		if err != nil {
+			return err
+		}
 		k.Status.ElasticsearchAssociationStatus = single
 		// also set Status.AssociationStatus to report the status of the association with es,
 		// for backward compatibility reasons
 		k.Status.AssociationStatus = single
 		return nil
 	case commonv1.EntAssociationType:
+		single, err := status.Single()
+		if err != nil {
+			return err
+		}
 		k.Status.EnterpriseSearchAssociationStatus = single
 		return nil
 	case commonv1.KbMonitoringAssociationType:
