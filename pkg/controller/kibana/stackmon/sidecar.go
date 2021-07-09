@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -33,7 +34,8 @@ const (
 
 func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
 	if !kb.Spec.ElasticsearchRef.IsDefined() {
-		return stackmon.BeatSidecar{}, errors.New("monitoring does not support Kibana without associated Elasticsearch")
+		// should never happen because of the pre-creation validation
+		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg)
 	}
 	associatedEsNsn := kb.Spec.ElasticsearchRef.NamespacedName()
 	if associatedEsNsn.Namespace == "" {

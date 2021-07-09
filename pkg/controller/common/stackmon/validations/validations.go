@@ -7,14 +7,17 @@ package validations
 import (
 	"fmt"
 
+	"github.com/blang/semver/v4"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (
-	unsupportedVersionForStackMonitoringMsg    = "Unsupported version for Stack Monitoring. Required >= %s."
-	invalidStackMonitoringElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
+	unsupportedVersionMsg       = "Unsupported version for Stack Monitoring. Required >= %s."
+	invalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
+
+	InvalidKibanaElasticsearchRefForStackMonitoringMsg = "Kibana must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
 )
 
 var (
@@ -31,19 +34,20 @@ func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList
 	if monitoring.IsDefined(resource) {
 		err := IsSupportedVersion(version)
 		if err != nil {
+			finalMinStackVersion, _ := semver.FinalizeVersion(MinStackVersion.String()) // discards prerelease suffix
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), version,
-				fmt.Sprintf(unsupportedVersionForStackMonitoringMsg, MinStackVersion)))
+				fmt.Sprintf(unsupportedVersionMsg, finalMinStackVersion)))
 		}
 	}
 	refs := resource.GetMonitoringMetricsRefs()
 	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
-			refs, fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Metrics")))
+			refs, fmt.Sprintf(invalidElasticsearchRefsMsg, "Metrics")))
 	}
 	refs = resource.GetMonitoringLogsRefs()
 	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
-			refs, fmt.Sprintf(invalidStackMonitoringElasticsearchRefsMsg, "Logs")))
+			refs, fmt.Sprintf(invalidElasticsearchRefsMsg, "Logs")))
 	}
 	return errs
 }
