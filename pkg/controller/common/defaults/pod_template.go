@@ -172,15 +172,11 @@ func (b *PodTemplateBuilder) WithVolumeMounts(volumeMounts ...corev1.VolumeMount
 }
 
 func (b *PodTemplateBuilder) WithVolumeLikes(volumeLikes ...volume.VolumeLike) *PodTemplateBuilder {
-	volumes := make([]corev1.Volume, 0, len(volumeLikes))
-	volumeMounts := make([]corev1.VolumeMount, 0, len(volumeLikes))
-
 	for _, v := range volumeLikes {
-		volumes = append(volumes, v.Volume())
-		volumeMounts = append(volumeMounts, v.VolumeMount())
+		b = b.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
 	}
 
-	return b.WithVolumeMounts(volumeMounts...).WithVolumes(volumes...)
+	return b
 }
 
 // WithEnv appends the given env vars to the Container, unless already provided in the template.

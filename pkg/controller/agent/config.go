@@ -45,7 +45,7 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	}
 
 	if params.Agent.Spec.FleetModeEnabled() {
-		fleetSetupCfgBytes, err := buildFleetSetupConfig(params)
+		fleetSetupCfgBytes, err := buildFleetSetupConfig(params.Agent, params.Client)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -153,19 +153,18 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
 }
 
-func buildFleetSetupConfig(params Params) ([]byte, error) {
-	spec := params.Agent.Spec
+func buildFleetSetupConfig(agent agentv1alpha1.Agent, client k8s.Client) ([]byte, error) {
 	cfgMap := map[string]interface{}{}
 
 	for _, cfgPart := range []struct {
 		key string
-		f   func(Params, agentv1alpha1.AgentSpec) (map[string]interface{}, error)
+		f   func(agentv1alpha1.Agent, k8s.Client) (map[string]interface{}, error)
 	}{
 		{key: FleetSetupKibanaKey, f: buildFleetSetupKibanaConfig},
 		{key: FleetSetupFleetKey, f: buildFleetSetupFleetConfig},
 		{key: FleetSetupFleetServerKey, f: buildFleetSetupFleetServerConfig},
 	} {
-		cfg, err := cfgPart.f(params, spec)
+		cfg, err := cfgPart.f(agent, client)
 		if err != nil {
 			return nil, err
 		}
@@ -182,9 +181,9 @@ func buildFleetSetupConfig(params Params) ([]byte, error) {
 	return cfg.Render()
 }
 
-func buildFleetSetupKibanaConfig(params Params, spec agentv1alpha1.AgentSpec) (map[string]interface{}, error) {
-	if spec.KibanaRef.IsDefined() {
-		kbHost, kbCA, kbUsername, kbPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.KibanaAssociationType)
+func buildFleetSetupKibanaConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	if agent.Spec.KibanaRef.IsDefined() {
+		kbHost, kbCA, kbUsername, kbPassword, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +192,7 @@ func buildFleetSetupKibanaConfig(params Params, spec agentv1alpha1.AgentSpec) (m
 				"ca":       kbCA,
 				"host":     kbHost,
 				"password": kbPassword,
-				"setup":    spec.KibanaRef.IsDefined(),
+				"setup":    agent.Spec.KibanaRef.IsDefined(),
 				"username": kbUsername,
 			},
 		}, nil
@@ -202,28 +201,28 @@ func buildFleetSetupKibanaConfig(params Params, spec agentv1alpha1.AgentSpec) (m
 	return nil, nil
 }
 
-func buildFleetSetupFleetConfig(params Params, spec agentv1alpha1.AgentSpec) (map[string]interface{}, error) {
-	if spec.FleetServerEnabled {
+func buildFleetSetupFleetConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	if agent.Spec.FleetServerEnabled {
 		fleetURL, err := association.ServiceURL(
-			params.Client,
-			types.NamespacedName{Namespace: params.Agent.Namespace, Name: HTTPServiceName(params.Agent.Name)},
-			params.Agent.Spec.HTTP.Protocol(),
+			client,
+			types.NamespacedName{Namespace: agent.Namespace, Name: HTTPServiceName(agent.Name)},
+			agent.Spec.HTTP.Protocol(),
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		return map[string]interface{}{
-			"enroll": spec.KibanaRef.IsDefined(),
+			"enroll": agent.Spec.KibanaRef.IsDefined(),
 			"ca":     path.Join(FleetCertsMountPath, certificates.CAFileName),
 			"url":    fleetURL,
 		}, nil
 	}
 
-	fleetCfg := map[string]interface{}{"enroll": spec.KibanaRef.IsDefined()}
+	fleetCfg := map[string]interface{}{"enroll": agent.Spec.KibanaRef.IsDefined()}
 
-	if spec.FleetServerRef.IsDefined() {
-		assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+	if agent.Spec.FleetServerRef.IsDefined() {
+		assoc := association.GetAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if assoc != nil {
 			fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
 			fleetCfg["url"] = assoc.AssociationConf().GetURL()
@@ -232,8 +231,8 @@ func buildFleetSetupFleetConfig(params Params, spec agentv1alpha1.AgentSpec) (ma
 	return fleetCfg, nil
 }
 
-func buildFleetSetupFleetServerConfig(params Params, spec agentv1alpha1.AgentSpec) (map[string]interface{}, error) {
-	if !spec.FleetServerEnabled {
+func buildFleetSetupFleetServerConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	if !agent.Spec.FleetServerEnabled {
 		return map[string]interface{}{"enable": false}, nil
 	}
 
@@ -243,9 +242,9 @@ func buildFleetSetupFleetServerConfig(params Params, spec agentv1alpha1.AgentSpe
 		"cert_key": path.Join(FleetCertsMountPath, certificates.KeyFileName),
 	}
 
-	esExpected := len(spec.ElasticsearchRefs) > 0 && spec.ElasticsearchRefs[0].IsDefined()
+	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
 	if esExpected {
-		esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(params.Agent, params.Client, commonv1.ElasticsearchAssociationType)
+		esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}

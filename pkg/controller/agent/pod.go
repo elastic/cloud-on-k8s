@@ -163,35 +163,37 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	} else {
 		// See the long comment above. As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
-		fs, err := getFsAssociation(params)
+		fs, err := getAssociatedFleetServer(params)
 		if err != nil {
 			return nil, err
 		}
 
-		esAssociation = association.GetAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
-		if esAssociation != nil {
-			if params.Agent.Namespace != esAssociation.Associated().GetNamespace() {
-				return nil, fmt.Errorf(
-					"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
-					params.Agent.Namespace,
-					esAssociation.Associated().GetNamespace(),
-				)
-			}
+		if fs != nil {
+			esAssociation = association.GetAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+			if esAssociation != nil {
+				if params.Agent.Namespace != esAssociation.Associated().GetNamespace() {
+					return nil, fmt.Errorf(
+						"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
+						params.Agent.Namespace,
+						esAssociation.Associated().GetNamespace(),
+					)
+				}
 
-			caSecretName := esAssociation.AssociationConf().GetCASecretName()
-			vols = append(vols, volume.NewSecretVolumeWithMountPath(
-				caSecretName,
-				fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
-				certificatesDir(esAssociation),
-			))
+				caSecretName := esAssociation.AssociationConf().GetCASecretName()
+				vols = append(vols, volume.NewSecretVolumeWithMountPath(
+					caSecretName,
+					fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
+					certificatesDir(esAssociation),
+				))
 
-			// Because of the reference chain (Elastic Agent ---> Fleet Server ---> Elasticsearch), we are going to get
-			// notified when CA of Elasticsearch changes as Fleet Server resource will get updated as well. But what we
-			// also need to do is to roll Elastic Agent Pods to pick up the update CA. To do be able to do that, we are
-			// adding Fleet Server associations (which includes Elasticsearch) to config hash attached to Elastic Agent
-			// Pods.
-			if err := commonassociation.WriteAssocsToConfigHash(params.Client, fs.GetAssociations(), configHash); err != nil {
-				return nil, err
+				// Because of the reference chain (Elastic Agent ---> Fleet Server ---> Elasticsearch), we are going to get
+				// notified when CA of Elasticsearch changes as Fleet Server resource will get updated as well. But what we
+				// also need to do is to roll Elastic Agent Pods to pick up the update CA. To do be able to do that, we are
+				// adding Fleet Server associations (which includes Elasticsearch) to config hash attached to Elastic Agent
+				// Pods.
+				if err := commonassociation.WriteAssocsToConfigHash(params.Client, fs.GetAssociations(), configHash); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -226,7 +228,7 @@ func getVolumesFromAssociations(associations []commonv1.Association) []volume.Vo
 	return vols
 }
 
-func getFsAssociation(params Params) (commonv1.Associated, error) {
+func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 	assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
 	if assoc == nil {
 		return nil, nil

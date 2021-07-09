@@ -43,3 +43,38 @@ func TestAgentESAssociation_AssociationConfAnnotationName(t *testing.T) {
 		})
 	}
 }
+
+func TestModeFunctions(t *testing.T) {
+	for _, tt := range []struct {
+		name               string
+		modeString         string
+		wantFleetMode      bool
+		wantStandaloneMode bool
+	}{
+		{
+			name:               "standalone - implicit (default)",
+			modeString:         "",
+			wantFleetMode:      false,
+			wantStandaloneMode: true,
+		},
+		{
+			name:               "standalone - explicit",
+			modeString:         "standalone",
+			wantFleetMode:      false,
+			wantStandaloneMode: true,
+		},
+		{
+			name:               "fleet - explicit",
+			modeString:         "fleet",
+			wantFleetMode:      true,
+			wantStandaloneMode: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			spec := AgentSpec{Mode: AgentMode(tt.modeString)}
+
+			require.Equal(t, tt.wantFleetMode, spec.FleetModeEnabled())
+			require.Equal(t, tt.wantStandaloneMode, spec.StandaloneModeEnabled())
+		})
+	}
+}
