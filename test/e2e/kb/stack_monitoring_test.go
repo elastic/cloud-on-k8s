@@ -27,13 +27,13 @@ func TestKBStackMonitoring(t *testing.T) {
 	}
 
 	// create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
-	metrics := elasticsearch.NewBuilder("test-es-mon-metrics").
+	metrics := elasticsearch.NewBuilder("test-kb-mon-metrics").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	logs := elasticsearch.NewBuilder("test-es-mon-logs").
+	logs := elasticsearch.NewBuilder("test-kb-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	assocEs := elasticsearch.NewBuilder("test-es-mon-a").
+	assocEs := elasticsearch.NewBuilder("test-kb-mon-a").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
-	monitored := kibana.NewBuilder("test-es-mon-a").
+	monitored := kibana.NewBuilder("test-kb-mon-a").
 		WithElasticsearchRef(assocEs.Ref()).
 		WithNodeCount(1).
 		WithMonitoring(metrics.Ref(), logs.Ref())
@@ -41,10 +41,12 @@ func TestKBStackMonitoring(t *testing.T) {
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
 		return checks.StackMonitoringChecks{
-			MonitoredNsn: k8s.ExtractNamespacedName(&assocEs.Elasticsearch),
-			Metrics:      metrics, Logs: logs, K: k,
+			MonitoredNsn: k8s.ExtractNamespacedName(&monitored.Kibana),
+			Metrics:      metrics,
+			Logs:         logs,
+			K:            k,
 		}.Steps()
 	}
 
-	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)
+	test.Sequence(nil, steps, metrics, logs, assocEs, monitored).RunSequential(t)
 }
