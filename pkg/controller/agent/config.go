@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+// Below are keys used in fleet-setup.yaml file.
 const (
 	// FleetSetupKibanaKey is a key used in fleet-setup.yaml file to denote kibana part of the configuration.
 	FleetSetupKibanaKey = "kibana"
@@ -209,6 +210,12 @@ func buildFleetSetupKibanaConfig(agent agentv1alpha1.Agent, client k8s.Client) (
 }
 
 func buildFleetSetupFleetConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	fleetCfg := map[string]interface{}{}
+
+	if agent.Spec.KibanaRef.IsDefined() {
+		fleetCfg["enroll"] = true
+	}
+
 	if agent.Spec.FleetServerEnabled {
 		fleetURL, err := association.ServiceURL(
 			client,
@@ -219,16 +226,9 @@ func buildFleetSetupFleetConfig(agent agentv1alpha1.Agent, client k8s.Client) (m
 			return nil, err
 		}
 
-		return map[string]interface{}{
-			"enroll": agent.Spec.KibanaRef.IsDefined(),
-			"ca":     path.Join(FleetCertsMountPath, certificates.CAFileName),
-			"url":    fleetURL,
-		}, nil
-	}
-
-	fleetCfg := map[string]interface{}{"enroll": agent.Spec.KibanaRef.IsDefined()}
-
-	if agent.Spec.FleetServerRef.IsDefined() {
+		fleetCfg["ca"] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		fleetCfg["url"] = fleetURL
+	} else if agent.Spec.FleetServerRef.IsDefined() {
 		assoc := association.GetAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if assoc != nil {
 			fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
@@ -240,7 +240,7 @@ func buildFleetSetupFleetConfig(agent agentv1alpha1.Agent, client k8s.Client) (m
 
 func buildFleetSetupFleetServerConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
 	if !agent.Spec.FleetServerEnabled {
-		return map[string]interface{}{"enable": false}, nil
+		return map[string]interface{}{}, nil
 	}
 
 	fleetServerCfg := map[string]interface{}{

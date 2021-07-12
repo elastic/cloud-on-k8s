@@ -224,9 +224,9 @@ func TestBuildFleetSetupFleetConfig(t *testing.T) {
 			agent:   *assoc.Agent,
 			wantErr: false,
 			wantCfg: map[string]interface{}{
-				"enroll": false,
-				"ca":     "/mnt/elastic-internal/fleetserver-association/ns/fleet-server/certs/ca.crt",
-				"url":    "url",
+				//	"enroll": false,
+				"ca":  "/mnt/elastic-internal/fleetserver-association/ns/fleet-server/certs/ca.crt",
+				"url": "url",
 			},
 			client: k8s.NewFakeClient(),
 		},
@@ -246,7 +246,7 @@ func TestBuildFleetSetupFleetConfig(t *testing.T) {
 			agent:   agentv1alpha1.Agent{},
 			wantErr: false,
 			wantCfg: map[string]interface{}{
-				"enroll": false,
+				//		"enroll": false,
 			},
 		},
 		{
@@ -311,7 +311,7 @@ func TestBuildFleetSetupFleetServerConfig(t *testing.T) {
 			name:    "fleet server disabled",
 			agent:   agentv1alpha1.Agent{},
 			wantErr: false,
-			wantCfg: map[string]interface{}{"enable": false},
+			wantCfg: map[string]interface{}{},
 			client:  nil,
 		},
 		{
