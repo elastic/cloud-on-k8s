@@ -5,7 +5,6 @@
 package monitoring
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -13,7 +12,6 @@ import (
 
 // HasMonitoring is the interface implemented by an Elastic Stack application that supports Stack Monitoring
 type HasMonitoring interface {
-	metav1.Object
 	client.Object
 	GetMonitoringMetricsRefs() []commonv1.ObjectSelector
 	GetMonitoringLogsRefs() []commonv1.ObjectSelector
