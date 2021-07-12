@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -457,6 +458,34 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
 	b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
 	return b
+}
+
+func (b Builder) GetMetricsIndexPattern() string {
+	return ".monitoring-es-*"
+}
+
+func (b Builder) Name() string {
+	return b.Elasticsearch.Name
+}
+
+func (b Builder) Namespace() string {
+	return b.Elasticsearch.Namespace
+}
+
+func (b Builder) GetLogsCluster() *types.NamespacedName {
+	if len(b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	logsCluster := b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &logsCluster
+}
+
+func (b Builder) GetMetricsCluster() *types.NamespacedName {
+	if len(b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	metricsCluster := b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
+	return &metricsCluster
 }
 
 // -- Helper functions

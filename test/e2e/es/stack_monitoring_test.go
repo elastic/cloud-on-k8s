@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -36,10 +35,7 @@ func TestESStackMonitoring(t *testing.T) {
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
-		return checks.StackMonitoringChecks{
-			MonitoredNsn: k8s.ExtractNamespacedName(&monitored.Elasticsearch),
-			Metrics:      metrics, Logs: logs, K: k,
-		}.Steps()
+		return checks.MonitoredSteps(&monitored, k)
 	}
 
 	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)

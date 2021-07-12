@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esClient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -19,28 +20,45 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// StackMonitoringChecks tests that the monitored resource pods have 3 containers ready and that there are documents indexed in the beat indexes
-// of the monitoring Elasticsearch clusters.
-type StackMonitoringChecks struct {
-	MonitoredNsn types.NamespacedName
-	Metrics      elasticsearch.Builder
-	Logs         elasticsearch.Builder
-	K            *test.K8sClient
+type Monitored interface {
+	Name() string
+	Namespace() string
+	GetMetricsIndexPattern() string
+	GetLogsCluster() *types.NamespacedName
+	GetMetricsCluster() *types.NamespacedName
 }
 
-func (c StackMonitoringChecks) Steps() test.StepList {
+func MonitoredSteps(monitored Monitored, k8sClient *test.K8sClient) test.StepList {
+	return stackMonitoringChecks{
+		monitored: monitored,
+		k8sClient: k8sClient,
+	}.Steps()
+}
+
+// stackMonitoringChecks tests that the monitored resource pods have 3 containers ready and that there are documents indexed in the beat indexes
+// of the monitoring Elasticsearch clusters.
+type stackMonitoringChecks struct {
+	monitored Monitored
+	k8sClient *test.K8sClient
+}
+
+func (c stackMonitoringChecks) Steps() test.StepList {
 	return test.StepList{
 		c.CheckBeatSidecars(),
-		c.CheckMetricbeatIndex(),
+		c.CheckMonitoringMetricsIndex(),
 		c.CheckFilebeatIndex(),
 	}
 }
 
-func (c StackMonitoringChecks) CheckBeatSidecars() test.Step {
+func (c stackMonitoringChecks) CheckBeatSidecars() test.Step {
 	return test.Step{
 		Name: "Check that beat sidecars are running",
 		Test: test.Eventually(func() error {
-			pods, err := c.K.GetPods(test.ESPodListOptions(c.MonitoredNsn.Namespace, c.MonitoredNsn.Name)...)
+			pods, err := c.k8sClient.GetPods(
+				test.ESPodListOptions(
+					c.monitored.Namespace(),
+					c.monitored.Name())...,
+			)
 			if err != nil {
 				return err
 			}
@@ -56,15 +74,27 @@ func (c StackMonitoringChecks) CheckBeatSidecars() test.Step {
 		})}
 }
 
-func (c StackMonitoringChecks) CheckMetricbeatIndex() test.Step {
+func (c stackMonitoringChecks) CheckMonitoringMetricsIndex() test.Step {
+	indexPattern := c.monitored.GetMetricsIndexPattern()
 	return test.Step{
-		Name: "Check that documents are indexed in one metricbeat-* index",
+		Name: fmt.Sprintf("Check that documents are indexed in index %s", indexPattern),
 		Test: test.Eventually(func() error {
-			client, err := elasticsearch.NewElasticsearchClient(c.Metrics.Elasticsearch, c.K)
+			if c.monitored.GetMetricsCluster() == nil {
+				return nil
+			}
+			esMetricsRef := *c.monitored.GetMetricsCluster()
+			// Get Elasticsearch
+			esMetrics := esv1.Elasticsearch{}
+			if err := c.k8sClient.Client.Get(context.Background(), esMetricsRef, &esMetrics); err != nil {
+				return err
+			}
+			// Create a new Elasticsearch client
+			client, err := elasticsearch.NewElasticsearchClient(esMetrics, c.k8sClient)
 			if err != nil {
 				return err
 			}
-			err = AreIndexedDocs(client, "metricbeat-*")
+			// Check that there is at least one document
+			err = containsDocuments(client, indexPattern)
 			if err != nil {
 				return err
 			}
@@ -72,15 +102,25 @@ func (c StackMonitoringChecks) CheckMetricbeatIndex() test.Step {
 		})}
 }
 
-func (c StackMonitoringChecks) CheckFilebeatIndex() test.Step {
+func (c stackMonitoringChecks) CheckFilebeatIndex() test.Step {
 	return test.Step{
 		Name: "Check that documents are indexed in one filebeat-* index",
 		Test: test.Eventually(func() error {
-			client, err := elasticsearch.NewElasticsearchClient(c.Logs.Elasticsearch, c.K)
+			if c.monitored.GetMetricsCluster() == nil {
+				return nil
+			}
+			esLogsRef := *c.monitored.GetLogsCluster()
+			// Get Elasticsearch
+			esLogs := esv1.Elasticsearch{}
+			if err := c.k8sClient.Client.Get(context.Background(), esLogsRef, &esLogs); err != nil {
+				return err
+			}
+			// Create a new Elasticsearch client
+			client, err := elasticsearch.NewElasticsearchClient(esLogs, c.k8sClient)
 			if err != nil {
 				return err
 			}
-			err = AreIndexedDocs(client, "filebeat*")
+			err = containsDocuments(client, "filebeat-*")
 			if err != nil {
 				return err
 			}
@@ -94,7 +134,7 @@ type Index struct {
 	DocsCount string `json:"docs.count"`
 }
 
-func AreIndexedDocs(esClient esClient.Client, indexPattern string) error {
+func containsDocuments(esClient esClient.Client, indexPattern string) error {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/_cat/indices/%s?format=json", indexPattern), nil) //nolint:noctx
 	if err != nil {
 		return err
@@ -126,6 +166,5 @@ func AreIndexedDocs(esClient esClient.Client, indexPattern string) error {
 	if docsCount <= 0 {
 		return fmt.Errorf("index [%s] empty", indexPattern)
 	}
-
 	return nil
 }
