@@ -155,7 +155,7 @@ func PrivateMatchesPublicKey(publicKey crypto.PublicKey, privateKey crypto.Signe
 	}
 }
 
-// GetCompatiblePrivateKey returns a PEM encoded private key iff the ca and the key have the same underlying type.
+// GetCompatiblePrivateKey returns a PEM encoded private key iff the CA and the key have the same underlying type.
 func GetCompatiblePrivateKey(caPrivateKey crypto.Signer, secret *corev1.Secret, fileName string) crypto.Signer {
 	if certPrivateKeyData, ok := secret.Data[fileName]; ok {
 		certPrivateKey, err := ParsePEMPrivateKey(certPrivateKeyData)
@@ -191,6 +191,6 @@ func NewPrivateKey(caSigner crypto.Signer) (crypto.Signer, error) {
 		// re-use the same curve
 		return ecdsa.GenerateKey(k.PublicKey.Curve, cryptorand.Reader)
 	default:
-		return nil, fmt.Errorf("unsupported CA private key: %T", caSigner)
+		return nil, fmt.Errorf("unsupported CA private key type: %T", caSigner)
 	}
 }
