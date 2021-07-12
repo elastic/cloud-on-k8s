@@ -142,6 +142,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		0440,
 	)}
 
+	// See the long comment below to learn about the use of this association.
 	var esAssociation commonv1.Association
 	//nolint:nestif
 	if params.Agent.Spec.FleetServerEnabled {
@@ -154,14 +155,9 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 		builder = builder.WithPorts([]corev1.ContainerPort{{Name: params.Agent.Spec.HTTP.Protocol(), ContainerPort: FleetServerPort, Protocol: corev1.ProtocolTCP}})
 
-		// Beats managed by the Elastic Agent don't trust the Elasticsearch CA that Elastic Agent itself is configured
-		// to trust. There is currently no way to configure those Beats to trust a particular CA. The intended way to handle
-		// it is to allow Fleet to provide Beat output settings, but due to https://github.com/elastic/kibana/issues/102794
-		// this is not supported outside of UI. To workaround this limitation the Agent is going to update Pod-wide CA store
-		// before starting Elastic Agent.
 		esAssociation = association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
 	} else {
-		// See the long comment above. As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
+		// See the long comment below. As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
 		fs, err := getAssociatedFleetServer(params)
 		if err != nil {
@@ -199,6 +195,11 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	}
 
 	if esAssociation != nil {
+		// Beats managed by the Elastic Agent don't trust the Elasticsearch CA that Elastic Agent itself is configured
+		// to trust. There is currently no way to configure those Beats to trust a particular CA. The intended way to handle
+		// it is to allow Fleet to provide Beat output settings, but due to https://github.com/elastic/kibana/issues/102794
+		// this is not supported outside of UI. To workaround this limitation the Agent is going to update Pod-wide CA store
+		// before starting Elastic Agent.
 		builder = builder.
 			WithCommand([]string{"/usr/bin/env", "bash", "-c", trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))})
 	}

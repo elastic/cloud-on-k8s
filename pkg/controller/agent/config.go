@@ -26,10 +26,17 @@ import (
 )
 
 const (
-	FleetSetupKibanaKey      = "kibana"
+	// FleetSetupKibanaKey is a key used in fleet-setup.yaml file to denote kibana part of the configuration.
+	FleetSetupKibanaKey = "kibana"
+	// FleetSetupFleetServerKey is a key used in fleet-setup.yaml file to denote fleet server part of the configuration.
 	FleetSetupFleetServerKey = "fleet_server"
-	FleetSetupFleetKey       = "fleet"
+	// FleetSetupFleetKey is a key used in fleet-setup.yaml file to denote fleet part of the configuration.
+	FleetSetupFleetKey = "fleet"
 )
+
+type connectionSettings struct {
+	host, ca, username, password string
+}
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	defer tracing.Span(&params.Context)()
@@ -183,17 +190,17 @@ func buildFleetSetupConfig(agent agentv1alpha1.Agent, client k8s.Client) ([]byte
 
 func buildFleetSetupKibanaConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
 	if agent.Spec.KibanaRef.IsDefined() {
-		kbHost, kbCA, kbUsername, kbPassword, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
+		kbConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
 		if err != nil {
 			return nil, err
 		}
 		return map[string]interface{}{
 			"fleet": map[string]interface{}{
-				"ca":       kbCA,
-				"host":     kbHost,
-				"password": kbPassword,
+				"ca":       kbConnectionSettings.ca,
+				"host":     kbConnectionSettings.host,
+				"password": kbConnectionSettings.password,
 				"setup":    agent.Spec.KibanaRef.IsDefined(),
-				"username": kbUsername,
+				"username": kbConnectionSettings.username,
 			},
 		}, nil
 	}
@@ -244,16 +251,16 @@ func buildFleetSetupFleetServerConfig(agent agentv1alpha1.Agent, client k8s.Clie
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
 	if esExpected {
-		esHost, esCA, esUsername, esPassword, err := extractConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
+		esConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}
 
 		fleetServerCfg["elasticsearch"] = map[string]interface{}{
-			"ca":       esCA,
-			"host":     esHost,
-			"username": esUsername,
-			"password": esPassword,
+			"ca":       esConnectionSettings.ca,
+			"host":     esConnectionSettings.host,
+			"username": esConnectionSettings.username,
+			"password": esConnectionSettings.password,
 		}
 	}
 
@@ -264,17 +271,22 @@ func extractConnectionSettings(
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
-) (host, ca, username, password string, err error) {
+) (connectionSettings, error) {
 	assoc := association.GetAssociationOfType(agent.GetAssociations(), associationType)
 	if assoc == nil {
 		errTemplate := "association of type %s not found in %d associations"
-		return "", "", "", "", fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
+		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
-	username, password, err = association.ElasticsearchAuthSettings(client, assoc)
+	username, password, err := association.ElasticsearchAuthSettings(client, assoc)
 	if err != nil {
-		return "", "", "", "", err
+		return connectionSettings{}, err
 	}
 
-	return assoc.AssociationConf().GetURL(), path.Join(certificatesDir(assoc), CAFileName), username, password, nil
+	return connectionSettings{
+		host:     assoc.AssociationConf().GetURL(),
+		ca:       path.Join(certificatesDir(assoc), CAFileName),
+		username: username,
+		password: password,
+	}, err
 }

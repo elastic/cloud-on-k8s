@@ -387,12 +387,12 @@ func TestExtractConnectionSettings(t *testing.T) {
 	})
 
 	for _, tt := range []struct {
-		name                                         string
-		agent                                        agentv1alpha1.Agent
-		client                                       k8s.Client
-		assocType                                    commonv1.AssociationType
-		wantHost, wantCA, wantUsername, wantPassword string
-		wantErr                                      bool
+		name                   string
+		agent                  agentv1alpha1.Agent
+		client                 k8s.Client
+		assocType              commonv1.AssociationType
+		wantConnectionSettings connectionSettings
+		wantErr                bool
 	}{
 		{
 			name:      "no association of this type",
@@ -420,22 +420,20 @@ func TestExtractConnectionSettings(t *testing.T) {
 					"user": []byte("password"),
 				},
 			}),
-			assocType:    commonv1.KibanaAssociationType,
-			wantHost:     "url",
-			wantCA:       "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
-			wantUsername: "user",
-			wantPassword: "password",
-			wantErr:      false,
+			assocType: commonv1.KibanaAssociationType,
+			wantConnectionSettings: connectionSettings{
+				host:     "url",
+				ca:       "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
+				username: "user",
+				password: "password",
+			},
+			wantErr: false,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotHost, gotCA, gotUsername, gotPassword, gotErr := extractConnectionSettings(tt.agent, tt.client, tt.assocType)
+			gotConnectionSettings, gotErr := extractConnectionSettings(tt.agent, tt.client, tt.assocType)
 
-			require.Equal(t, tt.wantHost, gotHost)
-			require.Equal(t, tt.wantCA, gotCA)
-			require.Equal(t, tt.wantUsername, gotUsername)
-			require.Equal(t, tt.wantPassword, gotPassword)
-
+			require.Equal(t, tt.wantConnectionSettings, gotConnectionSettings)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 		})
 	}
