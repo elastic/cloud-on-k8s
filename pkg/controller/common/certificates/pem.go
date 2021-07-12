@@ -6,14 +6,26 @@ package certificates
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var ErrEncryptedPrivateKey = errors.New("encrypted private key")
+
+const (
+	ecPrivateKeyType    = "EC PRIVATE KEY"
+	pkcs1PrivateKeyType = "RSA PRIVATE KEY"
+	pkcs8PrivateKeyType = "PRIVATE KEY"
+)
 
 // ParsePEMCerts returns a list of certificates from the given PEM certs data
 // Based on the code of x509.CertPool.AppendCertsFromPEM (https://golang.org/src/crypto/x509/cert_pool.go)
@@ -51,16 +63,37 @@ func EncodePEMCert(certBlocks ...[]byte) []byte {
 }
 
 // EncodePEMPrivateKey encodes the given private key in the PEM format
-func EncodePEMPrivateKey(privateKey rsa.PrivateKey) []byte {
-	return pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(&privateKey),
-	})
+func EncodePEMPrivateKey(privateKey crypto.Signer) ([]byte, error) {
+	pemBlock, err := pemBlockForKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return pem.EncodeToMemory(pemBlock), nil
+}
+
+func pemBlockForKey(privateKey interface{}) (*pem.Block, error) {
+	switch k := privateKey.(type) {
+	case *rsa.PrivateKey:
+		return &pem.Block{Type: pkcs1PrivateKeyType, Bytes: x509.MarshalPKCS1PrivateKey(k)}, nil
+	case *ecdsa.PrivateKey:
+		b, err := x509.MarshalECPrivateKey(k)
+		if err != nil {
+			return nil, err
+		}
+		return &pem.Block{Type: ecPrivateKeyType, Bytes: b}, nil
+	default:
+		// attempt PKCS#8 format
+		b, err := x509.MarshalPKCS8PrivateKey(k)
+		if err != nil {
+			return nil, err
+		}
+		return &pem.Block{Type: pkcs8PrivateKeyType, Bytes: b}, nil
+	}
 }
 
 // ParsePEMPrivateKey parses the given private key in the PEM format
 // ErrEncryptedPrivateKey is returned as an error if the private key is encrypted.
-func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
+func ParsePEMPrivateKey(pemData []byte) (crypto.Signer, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil {
 		return nil, errors.New("failed to parse PEM block containing private key")
@@ -70,12 +103,14 @@ func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
 	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck
 		// Private key is encrypted, do not attempt to parse it
 		return nil, ErrEncryptedPrivateKey
-	case block.Type == "PRIVATE KEY":
+	case block.Type == pkcs8PrivateKeyType:
 		return parsePKCS8PrivateKey(block.Bytes)
-	case block.Type == "RSA PRIVATE KEY" && len(block.Headers) == 0:
+	case block.Type == pkcs1PrivateKeyType && len(block.Headers) == 0:
 		return x509.ParsePKCS1PrivateKey(block.Bytes)
+	case block.Type == ecPrivateKeyType:
+		return x509.ParseECPrivateKey(block.Bytes)
 	default:
-		return nil, errors.New("expected PEM block to contain an RSA private key")
+		return nil, fmt.Errorf("unsupported private key type %q", block.Type)
 	}
 }
 
@@ -108,15 +143,54 @@ func GetPrimaryCertificate(pemBytes []byte) (*x509.Certificate, error) {
 }
 
 // PrivateMatchesPublicKey returns true if the public and private keys correspond to each other.
-func PrivateMatchesPublicKey(publicKey interface{}, privateKey rsa.PrivateKey) bool {
-	pubKey, ok := publicKey.(*rsa.PublicKey)
-	if !ok {
-		log.Error(errors.New("Public key is not an RSA public key"), "")
+func PrivateMatchesPublicKey(publicKey crypto.PublicKey, privateKey crypto.Signer) bool {
+	switch k := publicKey.(type) {
+	case *rsa.PublicKey:
+		return k.Equal(privateKey.Public())
+	case *ecdsa.PublicKey:
+		return k.Equal(privateKey.Public())
+	default:
+		log.Error(fmt.Errorf("unsupported public key type: %T", publicKey), "")
 		return false
 	}
-	// check that public and private keys share the same modulus and exponent
-	if pubKey.N.Cmp(privateKey.N) != 0 || pubKey.E != privateKey.E {
-		return false
+}
+
+// GetCompatiblePrivateKey returns a PEM encoded private key iff the CA and the key have the same underlying type.
+func GetCompatiblePrivateKey(caPrivateKey crypto.Signer, secret *corev1.Secret, fileName string) crypto.Signer {
+	if certPrivateKeyData, ok := secret.Data[fileName]; ok {
+		certPrivateKey, err := ParsePEMPrivateKey(certPrivateKeyData)
+		if err != nil {
+			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name, "cert_key_filename", fileName)
+			return nil
+		}
+		if caPrivateKey == nil || certPrivateKey == nil {
+			return nil
+		}
+		if reflect.TypeOf(caPrivateKey) != reflect.TypeOf(certPrivateKey) {
+			log.Info(
+				"CA and cert private key do not share the same implementation",
+				"namespace", secret.Namespace,
+				"secret_name", secret.Name,
+				"cert_key_filename", fileName,
+				"ca_type", reflect.TypeOf(caPrivateKey),
+				"cert_type", reflect.TypeOf(certPrivateKey),
+			)
+			return nil
+		}
+		return certPrivateKey
 	}
-	return true
+	return nil
+}
+
+// NewPrivateKey generates a new private key using the same implementation than the CA.
+func NewPrivateKey(caSigner crypto.Signer) (crypto.Signer, error) {
+	switch k := caSigner.(type) {
+	case *rsa.PrivateKey:
+		return rsa.GenerateKey(cryptorand.Reader, 2048)
+	case *ecdsa.PrivateKey:
+		// re-use the same curve
+		return ecdsa.GenerateKey(k.PublicKey.Curve, cryptorand.Reader)
+	default:
+		return nil, fmt.Errorf("unsupported CA private key type: %T", caSigner)
+	}
 }

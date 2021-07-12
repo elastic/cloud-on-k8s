@@ -29,16 +29,20 @@ const (
 
 // fixtures
 var (
-	testCA                       *certificates.CA
-	testCABytes                  []byte
-	testRSAPrivateKey            *rsa.PrivateKey
-	testCSRBytes                 []byte
-	testCSR                      *x509.CertificateRequest
-	validatedCertificateTemplate *certificates.ValidatedCertificateTemplate
-	certData                     []byte
-	pemCert                      []byte
-	testIP                       = "1.2.3.4"
-	testES                       = esv1.Elasticsearch{
+
+	// RSA related fixtures
+	testRSACA            *certificates.CA
+	testRSACABytes       []byte
+	testRSAPrivateKey    *rsa.PrivateKey
+	testRSAPEMPrivateKey []byte
+	testRSACSR           *x509.CertificateRequest
+	rsaCert              []byte
+
+	// ECDSA related fixtures
+	testECDSAPEMPrivateKey []byte
+
+	testIP = "1.2.3.4"
+	testES = esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: testEsName, Namespace: testNamespace},
 	}
 	testPod = corev1.Pod{
@@ -55,7 +59,7 @@ var (
 )
 
 const (
-	testPemPrivateKey = `
+	testRSAPemPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQCxoeCUW5KJxNPxMp+KmCxKLc1Zv9Ny+4CFqcUXVUYH69L3mQ7v
 IWrJ9GBfcaA7BPQqUlWxWM+OCEQZH1EZNIuqRMNQVuIGCbz5UQ8w6tS0gcgdeGX7
@@ -72,45 +76,64 @@ AAA7eoZ9AEHflUeuLn9QJI/r0hyQQLEtrpwv6rDT1GCWaLII5HJ6NUFVf4TTcqxo
 wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 -----END RSA PRIVATE KEY-----
 `
+
+	testECDSAPemPrivateKey = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIFinrnCoEdQgo/WtQGddVtwztnURKqPhN7MIzCqfMaQEoAoGCCqGSM49
+AwEHoUQDQgAEfAHH+RDvB5pKW9O4QsxEd9WHvQFcYQRXuFWBg8RY/+wTx2FjcofM
+Ga4a1ldFfW870nGUulQplXN+uukCfsTiEw==
+-----END EC PRIVATE KEY-----`
 )
 
 func init() {
 	var err error
-	block, _ := pem.Decode([]byte(testPemPrivateKey))
+	block, _ := pem.Decode([]byte(testRSAPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
-		panic("Failed to parse private key: " + err.Error())
+		panic("Failed to parse RSA private key: " + err.Error())
 	}
 
-	if testCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+	if testRSAPEMPrivateKey, err = certificates.EncodePEMPrivateKey(testRSAPrivateKey); err != nil {
+		panic("Failed to encode RSA private key: " + err.Error())
+	}
+
+	if testRSACA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 		Subject:    pkix.Name{CommonName: "test-common-name"},
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 
-	testCABytes = certificates.EncodePEMCert(testCA.Cert.Raw)
+	testRSACABytes = certificates.EncodePEMCert(testRSACA.Cert.Raw)
 
-	testCSRBytes, err = x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
+	testRSACSRBytes, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
 	if err != nil {
 		panic("Failed to create CSR:" + err.Error())
 	}
-	testCSR, err = x509.ParseCertificateRequest(testCSRBytes)
+	testRSACSR, err = x509.ParseCertificateRequest(testRSACSRBytes)
 	if err != nil {
 		panic("Failed to parse CSR:" + err.Error())
 	}
 
-	validatedCertificateTemplate, err = createValidatedCertificateTemplate(
-		testPod, testES, testCSR, certificates.DefaultCertValidity)
+	validatedRSACertificateTemplate, err := createValidatedCertificateTemplate(testPod, testES, testRSACSR, certificates.DefaultCertValidity)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}
 
-	certData, err = testCA.CreateCertificate(*validatedCertificateTemplate)
+	rsaCertData, err := testRSACA.CreateCertificate(*validatedRSACertificateTemplate)
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
 
-	pemCert = certificates.EncodePEMCert(certData, testCA.Cert.Raw)
+	rsaCert = certificates.EncodePEMCert(rsaCertData, testRSACA.Cert.Raw)
+
+	block, _ = pem.Decode([]byte(testECDSAPemPrivateKey))
+	testECDSAPrivateKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		panic("Failed to parse ECDSA private key: " + err.Error())
+	}
+
+	if testECDSAPEMPrivateKey, err = certificates.EncodePEMPrivateKey(testECDSAPrivateKey); err != nil {
+		panic("Failed to encode private key: " + err.Error())
+	}
 }
 
 // -- Elasticsearch builder
@@ -149,7 +172,7 @@ func newtransportCertsSecretBuilder(esName string, nodeSetName string) *transpor
 	tcb := &transportCertsSecretBuilder{}
 	tcb.statefulset = esv1.StatefulSet(esName, nodeSetName)
 	tcb.data = make(map[string][]byte)
-	caBytes := certificates.EncodePEMCert(testCA.Cert.Raw)
+	caBytes := certificates.EncodePEMCert(testRSACA.Cert.Raw)
 	tcb.data[certificates.CAFileName] = caBytes
 	return tcb
 }
@@ -158,8 +181,8 @@ func newtransportCertsSecretBuilder(esName string, nodeSetName string) *transpor
 func (tcb *transportCertsSecretBuilder) forPodIndices(indices ...int) *transportCertsSecretBuilder {
 	for _, index := range indices {
 		podName := sset.PodName(tcb.statefulset, int32(index))
-		tcb.data[PodKeyFileName(podName)] = certificates.EncodePEMPrivateKey(*testRSAPrivateKey)
-		tcb.data[PodCertFileName(podName)] = pemCert
+		tcb.data[PodKeyFileName(podName)] = testRSAPEMPrivateKey
+		tcb.data[PodCertFileName(podName)] = rsaCert
 	}
 	return tcb
 }

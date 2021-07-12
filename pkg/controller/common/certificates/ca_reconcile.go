@@ -104,7 +104,10 @@ func renewCA(
 	if err != nil {
 		return nil, err
 	}
-	caInternalSecret := internalSecretForCA(ca, namer, owner, labels, caType)
+	caInternalSecret, err := internalSecretForCA(ca, namer, owner, labels, caType)
+	if err != nil {
+		return nil, err
+	}
 
 	// create or update internal secret
 	if _, err := reconciler.ReconcileSecret(client, caInternalSecret, owner); err != nil {
@@ -116,7 +119,7 @@ func renewCA(
 
 // CanReuseCA returns true if the given CA is valid for reuse
 func CanReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
-	return PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
+	return PrivateMatchesPublicKey(ca.Cert.PublicKey, ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
 }
 
 // CertIsValid returns true if the given cert is valid,
@@ -141,7 +144,11 @@ func internalSecretForCA(
 	owner v1.Object,
 	labels map[string]string,
 	caType CAType,
-) corev1.Secret {
+) (corev1.Secret, error) {
+	privateKeyData, err := EncodePEMPrivateKey(ca.PrivateKey)
+	if err != nil {
+		return corev1.Secret{}, err
+	}
 	return corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: owner.GetNamespace(),
@@ -150,9 +157,9 @@ func internalSecretForCA(
 		},
 		Data: map[string][]byte{
 			CertFileName: EncodePEMCert(ca.Cert.Raw),
-			KeyFileName:  EncodePEMPrivateKey(*ca.PrivateKey),
+			KeyFileName:  privateKeyData,
 		},
-	}
+	}, nil
 }
 
 // BuildCAFromSecret parses the given secret into a CA.

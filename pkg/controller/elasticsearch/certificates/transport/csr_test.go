@@ -20,7 +20,7 @@ import (
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
 func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.Certificate, error) {
-	certData, err := testCA.CreateCertificate(*cert)
+	certData, err := testRSACA.CreateCertificate(*cert)
 	if err != nil {
 		return nil, err
 	}
@@ -36,9 +36,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	// we expect this name to be used for both the common name as well as the es othername
 	cn := "test-pod-name.node.test-es-name.test-namespace.es.local"
 
-	validatedCert, err := createValidatedCertificateTemplate(
-		testPod, testES, testCSR, certificates.DefaultCertValidity,
-	)
+	validatedCert, err := createValidatedCertificateTemplate(testPod, testES, testRSACSR, certificates.DefaultCertValidity)
 	require.NoError(t, err)
 
 	// roundtrip the certificate

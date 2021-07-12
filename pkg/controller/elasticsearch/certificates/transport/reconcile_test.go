@@ -40,7 +40,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 		{
 			name: "Initial state, 3 nodeSets cluster, transport certs Secrets don't exists yet",
 			args: args{
-				ca: testCA,
+				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 3).addNodeSet("sset3", 4).build(),
 				initialObjects: []runtime.Object{
 					// 2 Pods in sset1
@@ -68,7 +68,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 5 items are expected in the Secret: the CA + 2 * (crt and private keys)
 				assert.Equal(t, 5, len(transportCerts1.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testCABytes, transportCerts1.Data["ca.crt"])
+				assert.Equal(t, testRSACABytes, transportCerts1.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -78,7 +78,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 7 items are expected in the Secret: the CA + 3 * (crt and private keys)
 				assert.Equal(t, 7, len(transportCerts2.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testCABytes, transportCerts2.Data["ca.crt"])
+				assert.Equal(t, testRSACABytes, transportCerts2.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -88,7 +88,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 9 items are expected in the Secret: the CA + 4 * (crt and private keys)
 				assert.Equal(t, 9, len(transportCerts3.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testCABytes, transportCerts3.Data["ca.crt"])
+				assert.Equal(t, testRSACABytes, transportCerts3.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts3.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset3", transportCerts3.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -97,7 +97,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 		{
 			name: "Should reuse and update existing transport certs Secrets",
 			args: args{
-				ca: testCA,
+				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
 				initialObjects: []runtime.Object{
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
@@ -124,7 +124,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 5 items are expected in the Secret: the CA + 2 * (crt and private keys)
 				assert.Equal(t, 5, len(transportCerts1.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testCABytes, transportCerts1.Data["ca.crt"])
+				assert.Equal(t, testRSACABytes, transportCerts1.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -134,7 +134,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 5 items are expected in the Secret: the CA + 2 * (crt and private keys)
 				assert.Equal(t, 5, len(transportCerts2.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testCABytes, transportCerts2.Data["ca.crt"])
+				assert.Equal(t, testRSACABytes, transportCerts2.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -143,7 +143,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 		{
 			name: "Should remove any non used transport certs",
 			args: args{
-				ca: testCA,
+				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
 				initialObjects: []runtime.Object{
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),

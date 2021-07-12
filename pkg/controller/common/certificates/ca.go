@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"crypto"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -23,7 +24,7 @@ var (
 // CA is a simple certificate authority
 type CA struct {
 	// PrivateKey is the CA private key
-	PrivateKey *rsa.PrivateKey
+	PrivateKey crypto.Signer
 	// Cert is the certificate used to issue new certificates
 	Cert *x509.Certificate
 }
@@ -33,7 +34,7 @@ type CA struct {
 type ValidatedCertificateTemplate x509.Certificate
 
 // NewCA returns a ca with the given private key and cert
-func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
+func NewCA(privateKey crypto.Signer, cert *x509.Certificate) *CA {
 	return &CA{
 		PrivateKey: privateKey,
 		Cert:       cert,
