@@ -173,6 +173,40 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
+func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
+	b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
+	b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
+	return b
+}
+
+func (b Builder) GetMetricsIndexPattern() string {
+	return ".monitoring-kibana-*"
+}
+
+func (b Builder) Name() string {
+	return b.Kibana.Name
+}
+
+func (b Builder) Namespace() string {
+	return b.Kibana.Namespace
+}
+
+func (b Builder) GetLogsCluster() *types.NamespacedName {
+	if len(b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	logsCluster := b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &logsCluster
+}
+
+func (b Builder) GetMetricsCluster() *types.NamespacedName {
+	if len(b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	metricsCluster := b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
+	return &metricsCluster
+}
+
 // -- test.Subject impl
 
 func (b Builder) NSN() types.NamespacedName {

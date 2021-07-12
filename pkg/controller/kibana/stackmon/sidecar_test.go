@@ -5,27 +5,29 @@
 package stackmon
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestWithMonitoring(t *testing.T) {
-	sampleEs := esv1.Elasticsearch{
+	esRef := commonv1.ObjectSelector{Name: "sample", Namespace: "aerospace"}
+	sampleKb := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "sample",
 			Namespace: "aerospace",
 		},
-		Spec: esv1.ElasticsearchSpec{
-			Version: "7.14.0",
+		Spec: kbv1.KibanaSpec{
+			Version:          "7.14.0",
+			ElasticsearchRef: esRef,
 		},
 	}
 	monitoringEsRef := []commonv1.ObjectSelector{{Name: "monitoring", Namespace: "observability"}}
@@ -68,93 +70,90 @@ func TestWithMonitoring(t *testing.T) {
 
 	tests := []struct {
 		name                   string
-		es                     func() esv1.Elasticsearch
+		kb                     func() kbv1.Kibana
 		containersLength       int
-		esEnvVarsLength        int
 		podVolumesLength       int
 		beatVolumeMountsLength int
 	}{
 		{
 			name: "without monitoring",
-			es: func() esv1.Elasticsearch {
-				return sampleEs
+			kb: func() kbv1.Kibana {
+				return sampleKb
 			},
 			containersLength: 1,
 		},
 		{
 			name: "with metrics monitoring",
-			es: func() esv1.Elasticsearch {
-				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
-				return sampleEs
+			kb: func() kbv1.Kibana {
+				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				return sampleKb
 			},
 			containersLength:       2,
-			esEnvVarsLength:        0,
 			podVolumesLength:       3,
 			beatVolumeMountsLength: 3,
 		},
 		{
 			name: "with logs monitoring",
-			es: func() esv1.Elasticsearch {
-				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = nil
-				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
-				return sampleEs
+			kb: func() kbv1.Kibana {
+				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = nil
+				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetLogsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				return sampleKb
 			},
 			containersLength:       2,
-			esEnvVarsLength:        1,
-			podVolumesLength:       2,
+			podVolumesLength:       3,
 			beatVolumeMountsLength: 3,
 		},
 		{
 			name: "with metrics and logs monitoring",
-			es: func() esv1.Elasticsearch {
-				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
-				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
-				return sampleEs
+			kb: func() kbv1.Kibana {
+				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
+				return sampleKb
 			},
 			containersLength:       3,
-			esEnvVarsLength:        1,
-			podVolumesLength:       4,
+			podVolumesLength:       5,
 			beatVolumeMountsLength: 3,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
-			es: func() esv1.Elasticsearch {
-				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
-				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = logsEsRef
-				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
-				return sampleEs
+			kb: func() kbv1.Kibana {
+				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
+				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = logsEsRef
+				monitoring.GetLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
+				return sampleKb
 			},
 			containersLength:       3,
-			esEnvVarsLength:        1,
-			podVolumesLength:       5,
+			podVolumesLength:       6,
 			beatVolumeMountsLength: 3,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			es := tc.es()
-			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, esv1.ElasticsearchContainerName)
-			_, err := WithMonitoring(fakeClient, builder, es)
+			kb := tc.kb()
+			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, kbv1.KibanaContainerName)
+			_, err := WithMonitoring(fakeClient, builder, kb)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
-			assert.Equal(t, tc.esEnvVarsLength, len(builder.PodTemplate.Spec.Containers[0].Env))
+			for _, v := range builder.PodTemplate.Spec.Volumes {
+				fmt.Println(v)
+			}
 			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
 
-			if monitoring.IsMetricsDefined(&es) {
+			if monitoring.IsMetricsDefined(&kb) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
 					}
 				}
 			}
-			if monitoring.IsLogsDefined(&es) {
+			if monitoring.IsLogsDefined(&kb) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))

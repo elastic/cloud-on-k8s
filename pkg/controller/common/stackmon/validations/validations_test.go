@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package stackmon
+package validations
 
 import (
 	"testing"
@@ -97,7 +97,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Validate(tc.es)
+			err := Validate(&tc.es, tc.es.Spec.Version)
 			if len(err) > 0 {
 				require.True(t, tc.isErr)
 			} else {

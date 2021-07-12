@@ -7,9 +7,11 @@ package v1
 import (
 	"fmt"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 const (
@@ -40,6 +42,8 @@ type Kibana struct {
 	assocConf *commonv1.AssociationConf `json:"-"`
 	// entAssocConf holds the configuration for the Enterprise Search association
 	entAssocConf *commonv1.AssociationConf `json:"-"`
+	// monitoringAssocConf holds the configuration for the monitoring Elasticsearch clusters association
+	monitoringAssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true
@@ -92,6 +96,36 @@ type KibanaSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Monitoring enables you to collect and ship log and monitoring data of this Kibana.
+	// See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
+	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+	// +kubebuilder:validation:Optional
+	Monitoring Monitoring `json:"monitoring,omitempty"`
+}
+
+type Monitoring struct {
+	// Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Kibana.
+	// +kubebuilder:validation:Optional
+	Metrics MetricsMonitoring `json:"metrics,omitempty"`
+	// Logs holds references to Elasticsearch clusters which will receive log data from this Kibana.
+	// +kubebuilder:validation:Optional
+	Logs LogsMonitoring `json:"logs,omitempty"`
+}
+
+type MetricsMonitoring struct {
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+	// +kubebuilder:validation:Required
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
+}
+
+type LogsMonitoring struct {
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+	// +kubebuilder:validation:Required
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 // KibanaStatus defines the observed state of Kibana
@@ -104,6 +138,8 @@ type KibanaStatus struct {
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
 	// EnterpriseSearchAssociationStatus is the status of any auto-linking to Enterprise Search.
 	EnterpriseSearchAssociationStatus commonv1.AssociationStatus `json:"enterpriseSearchAssociationStatus,omitempty"`
+	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
+	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
@@ -140,6 +176,22 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 			Kibana: k,
 		})
 	}
+	for _, ref := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &KbMonitoringAssociation{
+				Kibana: k,
+				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
+			})
+		}
+	}
+	for _, ref := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &KbMonitoringAssociation{
+				Kibana: k,
+				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
+			})
+		}
+	}
 
 	return associations
 }
@@ -154,26 +206,43 @@ func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Ass
 		if k.Spec.EnterpriseSearchRef.IsDefined() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
 		}
+	case commonv1.KbMonitoringAssociationType:
+		for _, esRef := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return k.Status.MonitoringAssociationStatus
+			}
+		}
+		for _, esRef := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return k.Status.MonitoringAssociationStatus
+			}
+		}
 	}
 
 	return commonv1.AssociationStatusMap{}
 }
 
 func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
-	single, err := status.Single()
-	if err != nil {
-		return err
-	}
-
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
+		single, err := status.Single()
+		if err != nil {
+			return err
+		}
 		k.Status.ElasticsearchAssociationStatus = single
 		// also set Status.AssociationStatus to report the status of the association with es,
 		// for backward compatibility reasons
 		k.Status.AssociationStatus = single
 		return nil
 	case commonv1.EntAssociationType:
+		single, err := status.Single()
+		if err != nil {
+			return err
+		}
 		k.Status.EnterpriseSearchAssociationStatus = single
+		return nil
+	case commonv1.KbMonitoringAssociationType:
+		k.Status.MonitoringAssociationStatus = status
 		return nil
 	default:
 		return fmt.Errorf("association type %s not known", typ)
@@ -272,4 +341,82 @@ func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.Associ
 
 func (kbent *KibanaEntAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
+}
+
+// -- association with monitoring Elasticsearch clusters
+
+// KbMonitoringAssociation helps to manage the Kibana / monitoring Elasticsearch clusters association.
+type KbMonitoringAssociation struct {
+	// The associated Kibana
+	*Kibana
+	// ref is the namespaced name of the monitoring Elasticsearch referenced in the Association
+	ref types.NamespacedName
+}
+
+var _ commonv1.Association = &KbMonitoringAssociation{}
+
+func (kbmon *KbMonitoringAssociation) Associated() commonv1.Associated {
+	if kbmon == nil {
+		return nil
+	}
+	if kbmon.Kibana == nil {
+		kbmon.Kibana = &Kibana{}
+	}
+	return kbmon.Kibana
+}
+
+func (kbmon *KbMonitoringAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName(kbmon.ref)
+}
+
+func (kbmon *KbMonitoringAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.KbMonitoringAssociationType
+}
+
+func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      kbmon.ref.Name,
+		Namespace: kbmon.ref.Namespace,
+	}
+}
+
+func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
+	if kbmon.monitoringAssocConfs == nil {
+		return nil
+	}
+	assocConf, found := kbmon.monitoringAssocConfs[kbmon.ref]
+	if !found {
+		return nil
+	}
+	return &assocConf
+}
+
+func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	if kbmon.monitoringAssocConfs == nil {
+		kbmon.monitoringAssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+	}
+	if assocConf != nil {
+		kbmon.monitoringAssocConfs[kbmon.ref] = *assocConf
+	}
+}
+
+func (kbmon *KbMonitoringAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", kbmon.ref.Namespace, kbmon.ref.Name)
+}
+
+// -- HasMonitoring methods
+
+func (k *Kibana) GetMonitoringMetricsRefs() []commonv1.ObjectSelector {
+	return k.Spec.Monitoring.Metrics.ElasticsearchRefs
+}
+
+func (k *Kibana) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
+	return k.Spec.Monitoring.Logs.ElasticsearchRefs
+}
+
+func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
+	return &KbMonitoringAssociation{
+		Kibana: k,
+		ref:    esRef.WithDefaultNamespace(k.Namespace).NamespacedName(),
+	}
 }

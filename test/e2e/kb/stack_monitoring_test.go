@@ -2,9 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build es e2e
+// +build kb e2e
 
-package es
+package kb
 
 import (
 	"testing"
@@ -13,11 +13,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
-// TestESStackMonitoring tests that when an Elasticsearch cluster is configured with monitoring, its log and metrics are
+// TestKBStackMonitoring tests that when a Kibana is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
-func TestESStackMonitoring(t *testing.T) {
+func TestKBStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
 	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
 	if err != nil {
@@ -25,12 +26,15 @@ func TestESStackMonitoring(t *testing.T) {
 	}
 
 	// create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
-	metrics := elasticsearch.NewBuilder("test-es-mon-metrics").
+	metrics := elasticsearch.NewBuilder("test-kb-mon-metrics").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	logs := elasticsearch.NewBuilder("test-es-mon-logs").
+	logs := elasticsearch.NewBuilder("test-kb-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	monitored := elasticsearch.NewBuilder("test-es-mon-a").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+	assocEs := elasticsearch.NewBuilder("test-kb-mon-a").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	monitored := kibana.NewBuilder("test-kb-mon-a").
+		WithElasticsearchRef(assocEs.Ref()).
+		WithNodeCount(1).
 		WithMonitoring(metrics.Ref(), logs.Ref())
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
@@ -38,5 +42,5 @@ func TestESStackMonitoring(t *testing.T) {
 		return checks.MonitoredSteps(&monitored, k)
 	}
 
-	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)
+	test.Sequence(nil, steps, metrics, logs, assocEs, monitored).RunSequential(t)
 }

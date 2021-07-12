@@ -8,6 +8,8 @@ import (
 	"errors"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +28,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkMonitoring,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -103,4 +106,14 @@ func checkSupportedVersion(k *Kibana) field.ErrorList {
 
 func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+func checkMonitoring(k *Kibana) field.ErrorList {
+	errs := validations.Validate(k, k.Spec.Version)
+	// Kibana must be associated to an Elasticsearch when monitoring metrics are enabled
+	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsDefined() {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef,
+			validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg))
+	}
+	return errs
 }

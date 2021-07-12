@@ -5,6 +5,7 @@
 package controller
 
 import (
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,36 +20,24 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
-const (
-	// EsAssociationLabelName marks resources created for an association originating from Elasticsearch with the
-	// Elasticsearch name.
-	EsAssociationLabelName = "esassociation.k8s.elastic.co/name"
-	// EsAssociationLabelNamespace marks resources created for an association originating from Elasticsearch with the
-	// Elasticsearch namespace.
-	EsAssociationLabelNamespace = "esassociation.k8s.elastic.co/namespace"
-	// EsAssociationLabelType marks resources created for an association originating from Elasticsearch
-	// with the target resource type (e.g. "elasticsearch").
-	EsAssociationLabelType = "esassociation.k8s.elastic.co/type"
-)
-
-// AddEsMonitoring reconciles an association between two Elasticsearch clusters for Stack Monitoring.
-// Beats are configured to collect monitoring metrics and logs data of the associated Elasticsearch and send
+// AddKbMonitoring reconciles an association between Kibana and Elasticsearch clusters for Stack Monitoring.
+// Beats are configured to collect monitoring metrics and logs data of the associated Kibana and send
 // them to the Elasticsearch referenced in the association.
-func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+func AddKbMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate:     func() commonv1.Associated { return &esv1.Elasticsearch{} },
+		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
-		AssociationType:           commonv1.EsMonitoringAssociationType,
+		AssociationType:           commonv1.KbMonitoringAssociationType,
 		ReferencedResourceNamer:   esv1.ESNamer,
-		AssociationName:           "es-monitoring",
-		AssociatedShortName:       "es-mon",
+		AssociationName:           "kb-monitoring",
+		AssociatedShortName:       "kb-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				EsAssociationLabelName:      associated.Name,
-				EsAssociationLabelNamespace: associated.Namespace,
-				EsAssociationLabelType:      commonv1.EsMonitoringAssociationType,
+				KibanaAssociationLabelName:      associated.Name,
+				KibanaAssociationLabelNamespace: associated.Namespace,
+				KibanaAssociationLabelType:      commonv1.KbMonitoringAssociationType,
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
@@ -59,7 +48,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 				return true, association.AssociationRef(), nil
 			},
-			UserSecretSuffix: "beat-es-mon-user",
+			UserSecretSuffix: "beat-kb-mon-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return user.StackMonitoringUserRole, nil
 			},

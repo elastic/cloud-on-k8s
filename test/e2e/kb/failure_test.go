@@ -10,7 +10,7 @@ import (
 	"context"
 	"testing"
 
-	kibana2 "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -52,7 +52,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: test.Ctx().ManagedNamespace(0),
-						Name:      kibana2.Deployment(kbBuilder.Kibana.Name),
+						Name:      kbv1.Deployment(kbBuilder.Kibana.Name),
 					}, &dep)
 					if apierrors.IsNotFound(err) {
 						// already deleted
