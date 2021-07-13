@@ -90,7 +90,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		if builder, err = amendBuilderForFleetMode(params, fleetCerts, builder, configHash); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
-	} else if params.Agent.Spec.StandaloneModeEnabled() {
+	} else if spec.StandaloneModeEnabled() {
 		builder = builder.
 			WithResources(defaultResources).
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))

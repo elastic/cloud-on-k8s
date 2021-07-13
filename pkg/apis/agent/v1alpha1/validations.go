@@ -144,16 +144,13 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 }
 
 func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
-	if a.Spec.StandaloneModeEnabled() {
-		if a.Spec.FleetServerEnabled {
-			return field.ErrorList{field.Invalid(
-				field.NewPath("spec").Child("fleetServerEnabled"),
-				a.Spec.FleetServerEnabled,
-				"disable Fleet Server, it can't be enabled in standalone mode",
-			)}
-		}
+	if a.Spec.StandaloneModeEnabled() && a.Spec.FleetServerEnabled {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("fleetServerEnabled"),
+			a.Spec.FleetServerEnabled,
+			"disable Fleet Server, it can't be enabled in standalone mode",
+		)}
 	}
-
 	return nil
 }
 

@@ -156,6 +156,8 @@ const (
 	AgentGreenHealth AgentHealth = "green"
 )
 
+// +kubebuilder:validation:Enum=standalone;fleet
+
 type AgentMode string
 
 const (
