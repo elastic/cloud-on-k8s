@@ -46,8 +46,14 @@ type Builder struct {
 }
 
 func (b Builder) SkipTest() bool {
+	supportedVersions := version.SupportedAgentVersions
+	if b.Agent.Spec.FleetModeEnabled() {
+		// todo use version.SupportedFleetModeAgentVersions after 7.14.0 release is available
+		supportedVersions.Min = version.MustParse("7.14.0-SNAPSHOT")
+	}
+
 	ver := version.MustParse(b.Agent.Spec.Version)
-	return version.SupportedAgentVersions.WithinRange(ver) != nil
+	return supportedVersions.WithinRange(ver) != nil
 }
 
 // NewBuilderFromAgent creates an Agent builder from an existing Agent config. Sets all additional Builder fields

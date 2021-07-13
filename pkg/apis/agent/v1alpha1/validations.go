@@ -45,6 +45,10 @@ func checkNameLength(a *Agent) field.ErrorList {
 }
 
 func checkSupportedVersion(a *Agent) field.ErrorList {
+	if a.Spec.FleetModeEnabled() {
+		return commonv1.CheckSupportedStackVersion(a.Spec.Version, version.SupportedFleetModeAgentVersions)
+	}
+
 	return commonv1.CheckSupportedStackVersion(a.Spec.Version, version.SupportedAgentVersions)
 }
 

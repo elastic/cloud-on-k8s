@@ -11,6 +11,51 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_checkSupportedVersion(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		mode    AgentMode
+		version string
+		wantErr bool
+	}{
+		{
+			name:    "no fleet, below min supported: NOK",
+			mode:    AgentStandaloneMode,
+			version: "7.9.2",
+			wantErr: true,
+		},
+		{
+			name:    "no fleet, within supported: OK",
+			mode:    AgentStandaloneMode,
+			version: "7.10.0",
+			wantErr: false,
+		},
+		{
+			name:    "fleet, below min supported: NOK",
+			mode:    AgentFleetMode,
+			version: "7.13.2",
+			wantErr: true,
+		},
+		{
+			name:    "fleet, within supported: OK",
+			mode:    AgentFleetMode,
+			version: "7.14.0",
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			a := Agent{
+				Spec: AgentSpec{
+					Mode:    tt.mode,
+					Version: tt.version,
+				},
+			}
+			got := checkSupportedVersion(&a)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
 func Test_checkSpec(t *testing.T) {
 	tests := []struct {
 		name    string
