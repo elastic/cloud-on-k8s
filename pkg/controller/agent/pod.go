@@ -83,6 +83,15 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
+	vols := []volume.VolumeLike{
+		// volume with agent configuration file
+		volume.NewSecretVolume(
+			ConfigSecretName(params.Agent.Name),
+			ConfigVolumeName,
+			path.Join(ConfigMountPath, ConfigFileName),
+			ConfigFileName,
+			0440),
+	}
 
 	// fleet mode requires some special treatment
 	if spec.FleetModeEnabled() {
@@ -94,18 +103,9 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		builder = builder.
 			WithResources(defaultResources).
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
-	}
 
-	vols := []volume.VolumeLike{
-		// volume with agent configuration file
-		volume.NewSecretVolume(
-			ConfigSecretName(params.Agent.Name),
-			ConfigVolumeName,
-			path.Join(ConfigMountPath, ConfigFileName),
-			ConfigFileName,
-			0440),
 		// volume with agent data path
-		createDataVolume(params),
+		vols = append(vols, createDataVolume(params))
 	}
 
 	// all volumes with CAs of direct associations
