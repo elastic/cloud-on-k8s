@@ -157,18 +157,24 @@ func GetAssociationConf(association commonv1.Association) (*commonv1.Association
 	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
 }
 
-// GetAssociationOfType returns the first association from the provided slice that matches provided type. Returns
-// nil if such association can't be found.
-func GetAssociationOfType(
+// SingleAssociationOfType returns single association from the provided slice that matches provided type. Returns
+// nil if such association can't be found. Returns an error if more than one association matches the type.
+func SingleAssociationOfType(
 	associations []commonv1.Association,
 	associationType commonv1.AssociationType,
-) commonv1.Association {
+) (commonv1.Association, error) {
+	var result commonv1.Association
 	for _, assoc := range associations {
 		if assoc.AssociationType() == associationType {
-			return assoc
+			if result != nil {
+				return nil, fmt.Errorf("more than one association of type %s among %d associations", associationType, len(associations))
+			}
+
+			result = assoc
 		}
 	}
-	return nil
+
+	return result, nil
 }
 
 func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {

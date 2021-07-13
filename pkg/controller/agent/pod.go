@@ -155,7 +155,11 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 		builder = builder.WithPorts([]corev1.ContainerPort{{Name: params.Agent.Spec.HTTP.Protocol(), ContainerPort: FleetServerPort, Protocol: corev1.ProtocolTCP}})
 
-		esAssociation = association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		var err error
+		esAssociation, err = association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// See the long comment below. As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
@@ -165,7 +169,11 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		}
 
 		if fs != nil {
-			esAssociation = association.GetAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+			var err error
+			esAssociation, err = association.SingleAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+			if err != nil {
+				return nil, err
+			}
 			if esAssociation != nil {
 				if params.Agent.Namespace != esAssociation.Associated().GetNamespace() {
 					return nil, fmt.Errorf(
@@ -230,7 +238,10 @@ func getVolumesFromAssociations(associations []commonv1.Association) []volume.Vo
 }
 
 func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
-	assoc := association.GetAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+	assoc, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+	if err != nil {
+		return nil, err
+	}
 	if assoc == nil {
 		return nil, nil
 	}

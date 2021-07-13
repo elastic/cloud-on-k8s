@@ -620,35 +620,41 @@ func TestGetAssociationOfType(t *testing.T) {
 		associations []commonv1.Association
 		typ          commonv1.AssociationType
 		wantAssoc    commonv1.Association
+		wantError    bool
 	}{
 		{
 			name:         "happy case",
 			associations: []commonv1.Association{&kbv1.KibanaEntAssociation{}, &kbv1.KibanaEsAssociation{}},
 			typ:          commonv1.ElasticsearchAssociationType,
 			wantAssoc:    &kbv1.KibanaEsAssociation{},
+			wantError:    false,
 		},
 		{
 			name:         "no associations",
 			associations: []commonv1.Association{},
 			typ:          commonv1.ElasticsearchAssociationType,
 			wantAssoc:    nil,
+			wantError:    false,
 		},
 		{
 			name:         "no associations found",
 			associations: []commonv1.Association{&kbv1.KibanaEntAssociation{}, &kbv1.KibanaEsAssociation{}},
 			typ:          commonv1.FleetServerAssociationType,
 			wantAssoc:    nil,
+			wantError:    false,
 		},
 		{
 			name:         "two associations of the same type",
 			associations: []commonv1.Association{&agentv1alpha1.AgentESAssociation{}, &agentv1alpha1.AgentESAssociation{}},
 			typ:          commonv1.ElasticsearchAssociationType,
-			wantAssoc:    &agentv1alpha1.AgentESAssociation{},
+			wantAssoc:    nil,
+			wantError:    true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotAssoc := GetAssociationOfType(tt.associations, tt.typ)
+			gotAssoc, err := SingleAssociationOfType(tt.associations, tt.typ)
 			require.Equal(t, tt.wantAssoc, gotAssoc)
+			require.Equal(t, tt.wantError, err != nil)
 		})
 	}
 }

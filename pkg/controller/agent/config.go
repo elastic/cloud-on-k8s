@@ -229,7 +229,11 @@ func buildFleetSetupFleetConfig(agent agentv1alpha1.Agent, client k8s.Client) (m
 		fleetCfg["ca"] = path.Join(FleetCertsMountPath, certificates.CAFileName)
 		fleetCfg["url"] = fleetURL
 	} else if agent.Spec.FleetServerRef.IsDefined() {
-		assoc := association.GetAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
+		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
+		if err != nil {
+			return nil, err
+		}
+
 		if assoc != nil {
 			fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
 			fleetCfg["url"] = assoc.AssociationConf().GetURL()
@@ -272,7 +276,11 @@ func extractConnectionSettings(
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 ) (connectionSettings, error) {
-	assoc := association.GetAssociationOfType(agent.GetAssociations(), associationType)
+	assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), associationType)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
 	if assoc == nil {
 		errTemplate := "association of type %s not found in %d associations"
 		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
