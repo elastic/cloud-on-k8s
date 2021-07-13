@@ -184,7 +184,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 				// Because of the reference chain (Elastic Agent ---> Fleet Server ---> Elasticsearch), we are going to get
 				// notified when CA of Elasticsearch changes as Fleet Server resource will get updated as well. But what we
-				// also need to do is to roll Elastic Agent Pods to pick up the update CA. To do be able to do that, we are
+				// also need to do is to roll Elastic Agent Pods to pick up the update CA. To be able to do that, we are
 				// adding Fleet Server associations (which includes Elasticsearch) to config hash attached to Elastic Agent
 				// Pods.
 				if err := commonassociation.WriteAssocsToConfigHash(params.Client, fs.GetAssociations(), configHash); err != nil {
