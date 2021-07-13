@@ -347,6 +347,12 @@ spec:
     - apm
     singular: apmserver
   scope: Namespaced
+  subresources:
+    scale:
+      labelSelectorPath: .status.selector
+      specReplicasPath: .spec.count
+      statusReplicasPath: .status.count
+    status: {}
   validation:
     openAPIV3Schema:
       description: ApmServer represents an APM Server resource in a Kubernetes cluster.
@@ -916,17 +922,9 @@ spec:
   - name: v1
     served: true
     storage: true
-    subresources:
-      scale:
-        labelSelectorPath: .status.selector
-        specReplicasPath: .spec.count
-        statusReplicasPath: .status.count
-      status: {}
   - name: v1beta1
     served: true
     storage: false
-    subresources:
-      status: {}
   - name: v1alpha1
     served: false
     storage: false
@@ -3323,6 +3321,12 @@ spec:
     - ent
     singular: enterprisesearch
   scope: Namespaced
+  subresources:
+    scale:
+      labelSelectorPath: .status.selector
+      specReplicasPath: .spec.count
+      statusReplicasPath: .status.count
+    status: {}
   validation:
     openAPIV3Schema:
       description: EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
@@ -3836,17 +3840,9 @@ spec:
   - name: v1
     served: true
     storage: true
-    subresources:
-      scale:
-        labelSelectorPath: .status.selector
-        specReplicasPath: .spec.count
-        statusReplicasPath: .status.count
-      status: {}
   - name: v1beta1
     served: true
     storage: false
-    subresources:
-      status: {}
 status:
   acceptedNames:
     kind: ""
@@ -3888,6 +3884,12 @@ spec:
     - kb
     singular: kibana
   scope: Namespaced
+  subresources:
+    scale:
+      labelSelectorPath: .status.selector
+      specReplicasPath: .spec.count
+      statusReplicasPath: .status.count
+    status: {}
   validation:
     openAPIV3Schema:
       description: Kibana represents a Kibana resource in a Kubernetes cluster.
@@ -4532,17 +4534,9 @@ spec:
   - name: v1
     served: true
     storage: true
-    subresources:
-      scale:
-        labelSelectorPath: .status.selector
-        specReplicasPath: .spec.count
-        statusReplicasPath: .status.count
-      status: {}
   - name: v1beta1
     served: true
     storage: false
-    subresources:
-      status: {}
   - name: v1alpha1
     served: false
     storage: false
