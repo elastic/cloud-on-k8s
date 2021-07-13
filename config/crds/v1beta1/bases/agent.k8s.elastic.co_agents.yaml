@@ -14333,6 +14333,9 @@ spec:
                 The configuration can be specified locally through `config` or `configRef`
                 (`standalone` mode), or come from Fleet during runtime (`fleet` mode).
                 Defaults to `standalone` mode.
+              enum:
+              - standalone
+              - fleet
               type: string
             secureSettings:
               description: SecureSettings is a list of references to Kubernetes Secrets
