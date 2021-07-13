@@ -10,17 +10,17 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		test.CheckDeployment(b, k, kibana.Deployment(b.Kibana.Name)),
-		test.CheckPods(b, k),
-		test.CheckServices(b, k),
-		test.CheckServicesEndpoints(b, k),
+		checks.CheckDeployment(b, k, kbv1.Deployment(b.Kibana.Name)),
+		checks.CheckPods(b, k),
+		checks.CheckServices(b, k),
+		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
 	}
@@ -105,9 +105,24 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
 				return err
 			}
+
+			// Selector is a string built from a map, it is validated with a dedicated function.
+			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels
+			// is created.
+			if err := test.CheckSelector(
+				kb.Status.Selector,
+				map[string]string{
+					"kibana.k8s.elastic.co/name": kb.Name,
+					"common.k8s.elastic.co/type": "kibana",
+				}); err != nil {
+				return err
+			}
+			kb.Status.Selector = ""
+
 			// don't check the association statuses that may vary across tests
 			expected := kbv1.KibanaStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
+					Count:          b.Kibana.Spec.Count,
 					AvailableNodes: b.Kibana.Spec.Count,
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",

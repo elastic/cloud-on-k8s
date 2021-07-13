@@ -85,7 +85,10 @@ func (w *Params) newCertificates(webhookServices Services) (WebhookCertificates,
 	if err != nil {
 		return webhookCertificates, err
 	}
-	webhookCertificates.serverKey = certificates.EncodePEMPrivateKey(*privateKey)
+	webhookCertificates.serverKey, err = certificates.EncodePEMPrivateKey(privateKey)
+	if err != nil {
+		return webhookCertificates, err
+	}
 
 	csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
 	if err != nil {

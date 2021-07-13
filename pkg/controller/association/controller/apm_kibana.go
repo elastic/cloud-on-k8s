@@ -29,7 +29,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		ReferencedObjTemplate:     func() client.Object { return &kbv1.Kibana{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
-		ReferencedResourceNamer:   kibana.Namer,
+		ReferencedResourceNamer:   kbv1.KBNamer,
 		AssociationName:           "apm-kibana",
 		AssociationType:           commonv1.KibanaAssociationType,
 		Labels: func(associated types.NamespacedName) map[string]string {
@@ -64,7 +64,7 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 	}
 	serviceName := kibanaRef.ServiceName
 	if serviceName == "" {
-		serviceName = kibana.HTTPService(kb.Name)
+		serviceName = kbv1.HTTPService(kb.Name)
 	}
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: serviceName}
 	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())

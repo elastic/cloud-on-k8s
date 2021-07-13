@@ -7,6 +7,9 @@
 package certificates
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"testing"
@@ -15,26 +18,42 @@ import (
 )
 
 func Test_PrivateMatchesPublicKey(t *testing.T) {
-	privateKey1, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	rsaPrivateKey1, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	require.NoError(t, err)
-	privateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	rsaPrivateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+	ecdsaPrivateKey1, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
+	require.NoError(t, err)
+	ecdsaPrivateKey2, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
-		publicKey  interface{}
-		privateKey rsa.PrivateKey
+		publicKey  crypto.PublicKey
+		privateKey crypto.Signer
 		want       bool
 	}{
 		{
-			name:       "with matching public and private keys",
-			publicKey:  privateKey1.Public(),
-			privateKey: *privateKey1,
+			name:       "with matching RSA public and private keys",
+			publicKey:  rsaPrivateKey1.Public(),
+			privateKey: rsaPrivateKey1,
 			want:       true,
 		},
 		{
-			name:       "with non-matching public and private keys",
-			publicKey:  privateKey1.Public(),
-			privateKey: *privateKey2,
+			name:       "with non-matching RSA public and private keys",
+			publicKey:  rsaPrivateKey1.Public(),
+			privateKey: rsaPrivateKey2,
+			want:       false,
+		},
+		{
+			name:       "with matching ECDSA public and private keys",
+			publicKey:  ecdsaPrivateKey1.Public(),
+			privateKey: ecdsaPrivateKey1,
+			want:       true,
+		},
+		{
+			name:       "with non-matching ECDSA public and private keys",
+			publicKey:  ecdsaPrivateKey1.Public(),
+			privateKey: ecdsaPrivateKey2,
 			want:       false,
 		},
 	}

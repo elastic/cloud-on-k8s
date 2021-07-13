@@ -1,4 +1,5 @@
 metricbeat.modules:
+  # https://www.elastic.co/guide/en/beats/metricbeat/7.13/metricbeat-module-elasticsearch.html
   - module: elasticsearch
     metricsets:
       - ccr
@@ -19,7 +20,7 @@ metricbeat.modules:
     {{- if .IsSSL }}
     ssl.certificate_authorities: ["{{ .SSLPath }}"]
     ssl.verification_mode: "{{ .SSLMode }}"
-    {{ end }}
+    {{- end }}
 
 processors:
   - add_cloud_metadata: {}

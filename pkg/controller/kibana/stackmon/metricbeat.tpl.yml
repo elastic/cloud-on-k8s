@@ -1,0 +1,21 @@
+metricbeat.modules:
+  # https://www.elastic.co/guide/en/beats/metricbeat/7.13/metricbeat-module-kibana.html
+  - module: kibana
+    metricsets:
+      - stats
+      - status
+    period: 10s
+    xpack.enabled: true
+    hosts: ["{{ .URL }}"]
+    username: {{ .Username }}
+    password: {{ .Password }}
+    {{- if .IsSSL }}
+    ssl.certificate_authorities: ["{{ .SSLPath }}"]
+    ssl.verification_mode: "{{ .SSLMode }}"
+    {{- end }}
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated

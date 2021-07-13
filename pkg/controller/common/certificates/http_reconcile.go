@@ -7,7 +7,6 @@ package certificates
 import (
 	"context"
 	cryptorand "crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"net"
@@ -172,29 +171,22 @@ func ensureInternalSelfSignedCertificateSecretContents(
 ) (bool, error) {
 	secretWasChanged := false
 
-	// verify that the secret contains a parsable private key, create if it does not exist
-	var privateKey *rsa.PrivateKey
-	needsNewPrivateKey := true //nolint:ifshort
-	if privateKeyData, ok := secret.Data[KeyFileName]; ok {
-		storedPrivateKey, err := ParsePEMPrivateKey(privateKeyData)
-		if err != nil {
-			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name)
-		} else {
-			needsNewPrivateKey = false
-			privateKey = storedPrivateKey
-		}
-	}
+	// verify that the secret contains a parsable and compatible private key
+	privateKey := GetCompatiblePrivateKey(ca.PrivateKey, secret, KeyFileName)
 
 	// if we need a new private key, generate it
-	if needsNewPrivateKey {
-		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	if privateKey == nil {
+		generatedPrivateKey, err := NewPrivateKey(ca.PrivateKey)
 		if err != nil {
-			return secretWasChanged, err
+			return false, err
 		}
-
+		encodedPEM, err := EncodePEMPrivateKey(generatedPrivateKey)
+		if err != nil {
+			return false, err
+		}
+		secret.Data[KeyFileName] = encodedPEM
 		privateKey = generatedPrivateKey
 		secretWasChanged = true
-		secret.Data[KeyFileName] = EncodePEMPrivateKey(*privateKey)
 	}
 
 	// check if the existing cert should be re-issued

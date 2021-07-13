@@ -12,14 +12,15 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		test.CheckDeployment(b, k, b.ApmServer.Name+"-apm-server"),
-		test.CheckPods(b, k),
-		test.CheckServices(b, k),
-		test.CheckServicesEndpoints(b, k),
+		checks.CheckDeployment(b, k, b.ApmServer.Name+"-apm-server"),
+		checks.CheckPods(b, k),
+		checks.CheckServices(b, k),
+		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
 	}
@@ -117,10 +118,24 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			as.Status.ElasticsearchAssociationStatus = ""
 			as.Status.KibanaAssociationStatus = ""
 
+			// Selector is a string built from a map, it is validated with a dedicated function.
+			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels
+			// is created.
+			if err := test.CheckSelector(
+				as.Status.Selector,
+				map[string]string{
+					"apm.k8s.elastic.co/name":    as.Name,
+					"common.k8s.elastic.co/type": "apm-server",
+				}); err != nil {
+				return err
+			}
+			as.Status.Selector = ""
+
 			expected := apmv1.ApmServerStatus{
 				ExternalService:       b.ApmServer.Name + "-apm-http",
 				SecretTokenSecretName: b.ApmServer.Name + "-apm-token",
 				DeploymentStatus: commonv1.DeploymentStatus{
+					Count:          b.ApmServer.Spec.Count,
 					AvailableNodes: b.ApmServer.Spec.Count,
 					Version:        b.ApmServer.Spec.Version,
 					Health:         "green",

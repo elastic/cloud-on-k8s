@@ -7,8 +7,12 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/go-test/deep"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -73,4 +77,15 @@ func CheckSecretsContent(k *K8sClient, namespace string, expected func() []Expec
 			return nil
 		}),
 	}
+}
+
+func CheckSelector(actualSelector string, expectedLabels map[string]string) error {
+	labelSelector, err := v1.ParseToLabelSelector(actualSelector)
+	if err != nil {
+		return err
+	}
+	if diff := deep.Equal(expectedLabels, labelSelector.MatchLabels); diff != nil {
+		return errors.New(strings.Join(diff, ", "))
+	}
+	return nil
 }

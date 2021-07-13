@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	// EsAssociationLabelName marks resources created by this controller for easier retrieval.
+	// EsAssociationLabelName marks resources created for an association originating from Elasticsearch with the
+	// Elasticsearch name.
 	EsAssociationLabelName = "esassociation.k8s.elastic.co/name"
-	// EsAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// EsAssociationLabelNamespace marks resources created for an association originating from Elasticsearch with the
+	// Elasticsearch namespace.
 	EsAssociationLabelNamespace = "esassociation.k8s.elastic.co/namespace"
-	// EsAssociationLabelType marks the type of association.
+	// EsAssociationLabelType marks resources created for an association originating from Elasticsearch
+	// with the target resource type (e.g. "elasticsearch").
 	EsAssociationLabelType = "esassociation.k8s.elastic.co/type"
-
-	EsMonitoringAssociationType = "es-monitoring"
 )
 
 // AddEsMonitoring reconciles an association between two Elasticsearch clusters for Stack Monitoring.
@@ -47,7 +48,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 			return map[string]string{
 				EsAssociationLabelName:      associated.Name,
 				EsAssociationLabelNamespace: associated.Namespace,
-				EsAssociationLabelType:      EsMonitoringAssociationType,
+				EsAssociationLabelType:      commonv1.EsMonitoringAssociationType,
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,

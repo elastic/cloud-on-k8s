@@ -14,13 +14,22 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // DeploymentStatus returns a DeploymentStatus computed from the given args.
 // Unknown fields are inherited from current.
-func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, pods []corev1.Pod, versionLabel string) commonv1.DeploymentStatus {
+func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, pods []corev1.Pod, versionLabel string) (commonv1.DeploymentStatus, error) {
 	status := *current.DeepCopy()
+	if dep.Spec.Selector != nil {
+		selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
+		if err != nil {
+			return commonv1.DeploymentStatus{}, err
+		}
+		status.Selector = selector.String()
+	}
+	status.Count = dep.Status.Replicas
 	status.AvailableNodes = dep.Status.AvailableReplicas
 	status.Version = LowestVersionFromPods(status.Version, pods, versionLabel)
 	status.Health = commonv1.RedHealth
@@ -29,7 +38,7 @@ func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, 
 			status.Health = commonv1.GreenHealth
 		}
 	}
-	return status
+	return status, nil
 }
 
 // LowestVersionFromPods parses versions from the given pods based on the given label,

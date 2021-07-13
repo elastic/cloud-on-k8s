@@ -11,7 +11,6 @@ plans:
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
     region: europe-west2
-    adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
@@ -25,7 +24,6 @@ plans:
   psp: false
   gke:
     region: europe-west1
-    adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
     # Uncomment option below to enable network policy enforcement in GKE.
@@ -146,7 +144,6 @@ plans:
   psp: false
   gke:
     region: europe-west2
-    adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -218,7 +220,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodTemplateSpec(tt.kb, tt.keystore, []commonvolume.VolumeLike{})
+			got, err := NewPodTemplateSpec(k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{})
+			assert.NoError(t, err)
 			tt.assertions(got)
 		})
 	}
@@ -238,7 +241,7 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 				},
 			},
 			want: []corev1.ContainerPort{
-				{Name: "https", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+				{Name: "https", HostPort: 0, ContainerPort: int32(network.HTTPPort), Protocol: "TCP", HostIP: ""},
 			},
 		},
 		{
@@ -255,7 +258,7 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 				},
 			},
 			want: []corev1.ContainerPort{
-				{Name: "http", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+				{Name: "http", HostPort: 0, ContainerPort: int32(network.HTTPPort), Protocol: "TCP", HostIP: ""},
 			},
 		},
 	}

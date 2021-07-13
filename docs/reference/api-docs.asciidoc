@@ -462,8 +462,10 @@ ObjectSelector defines a reference to a Kubernetes object.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-logsmonitoring[$$LogsMonitoring$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-logsmonitoring[$$LogsMonitoring$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-maps-v1alpha1-mapsspec[$$MapsSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-metricsmonitoring[$$MetricsMonitoring$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-metricsmonitoring[$$MetricsMonitoring$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-agent-v1alpha1-output[$$Output$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-remotecluster[$$RemoteCluster$$]
 ****
@@ -585,6 +587,7 @@ SubjectAlternativeName represents a SAN entry in a x509 certificate.
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-selfsignedcertificate[$$SelfSignedCertificate$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transporttlsoptions[$$TransportTLSOptions$$]
 ****
 
 [cols="25a,75a", options="header"]
@@ -1089,6 +1092,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
+| *`subjectAltNames`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-subjectalternativename[$$SubjectAlternativeName$$]__ | SubjectAlternativeNames is a list of SANs to include in the generated node transport TLS certificates.
 | *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the CA certificate and private key for generating node certificates. The referenced secret should contain the following: 
  - `ca.crt`: The CA certificate in PEM format. - `ca.key`: The private key for the CA certificate in PEM format.
 |===
@@ -1399,6 +1403,59 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana. See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-logsmonitoring"]
+=== LogsMonitoring 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-metricsmonitoring"]
+=== MetricsMonitoring 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-monitoring"]
+=== Monitoring 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Kibana.
+| *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which will receive log data from this Kibana.
 |===
 
 

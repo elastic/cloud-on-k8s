@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/go-ucfg"
@@ -104,6 +105,10 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 	versionSpecificCfg := VersionDefaults(&kb, v)
 	entSearchCfg := settings.MustCanonicalConfig(enterpriseSearchSettings(kb))
+	monitoringCfg, err := settings.NewCanonicalConfigFrom(stackmon.MonitoringConfig(kb).Data)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
 
 	if !kb.EsAssociation().AssociationConf().IsConfigured() {
 		// merge the configuration with userSettings last so they take precedence
@@ -112,6 +117,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 			versionSpecificCfg,
 			kibanaTLSCfg,
 			entSearchCfg,
+			monitoringCfg,
 			userSettings); err != nil {
 			return CanonicalConfig{}, err
 		}
@@ -129,6 +135,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		entSearchCfg,
+		monitoringCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(
 			map[string]interface{}{

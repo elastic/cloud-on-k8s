@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package test
+package checks
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,10 +18,10 @@ import (
 )
 
 // CheckDeployment checks the Deployment resource exists
-func CheckDeployment(subj Subject, k *K8sClient, deploymentName string) Step {
-	return Step{
+func CheckDeployment(subj test.Subject, k *test.K8sClient, deploymentName string) test.Step {
+	return test.Step{
 		Name: subj.Kind() + " deployment should be created",
-		Test: Eventually(func() error {
+		Test: test.Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(context.Background(), types.NamespacedName{
 				Namespace: subj.NSN().Namespace,
@@ -41,14 +42,14 @@ func CheckDeployment(subj Subject, k *K8sClient, deploymentName string) Step {
 }
 
 // CheckPods checks that the test subject's expected pods are eventually ready.
-func CheckPods(subj Subject, k *K8sClient) Step {
+func CheckPods(subj test.Subject, k *test.K8sClient) test.Step {
 	// This is a shared test but it is common for Enterprise Search Pods to take some time to be ready, especially
 	// during the initial bootstrap, or during version upgrades. Let's increase the timeout
 	// for this particular step.
-	timeout := Ctx().TestTimeout * 2
-	return Step{
+	timeout := test.Ctx().TestTimeout * 2
+	return test.Step{
 		Name: subj.Kind() + " Pods should eventually be ready",
-		Test: UntilSuccess(func() error {
+		Test: test.UntilSuccess(func() error {
 			var pods corev1.PodList
 			if err := k.Client.List(context.Background(), &pods, subj.ListOptions()...); err != nil {
 				return err
@@ -57,7 +58,7 @@ func CheckPods(subj Subject, k *K8sClient) Step {
 			// builder hash matches
 			expectedBuilderHash := hash.HashObject(subj.Spec())
 			for _, pod := range pods.Items {
-				if err := ValidateBuilderHashAnnotation(pod, expectedBuilderHash); err != nil {
+				if err := test.ValidateBuilderHashAnnotation(pod, expectedBuilderHash); err != nil {
 					return err
 				}
 			}
@@ -87,10 +88,10 @@ func CheckPods(subj Subject, k *K8sClient) Step {
 }
 
 // CheckServices checks that all expected services have been created
-func CheckServices(subj Subject, k *K8sClient) Step {
-	return Step{
+func CheckServices(subj test.Subject, k *test.K8sClient) test.Step {
+	return test.Step{
 		Name: subj.Kind() + " services should be created",
-		Test: Eventually(func() error {
+		Test: test.Eventually(func() error {
 			for _, s := range []string{
 				subj.ServiceName(),
 			} {
@@ -104,10 +105,10 @@ func CheckServices(subj Subject, k *K8sClient) Step {
 }
 
 // CheckServicesEndpoints checks that services have the expected number of endpoints
-func CheckServicesEndpoints(subj Subject, k *K8sClient) Step {
-	return Step{
+func CheckServicesEndpoints(subj test.Subject, k *test.K8sClient) test.Step {
+	return test.Step{
 		Name: subj.Kind() + " services should have endpoints",
-		Test: Eventually(func() error {
+		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
 				subj.ServiceName(): int(subj.Count()),
 			} {

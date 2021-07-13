@@ -37,17 +37,17 @@ import (
 )
 
 const (
-	name                = "kibana-controller"
+	controllerName      = "kibana-controller"
 	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
 )
 
-var log = ulog.Log.WithName(name)
+var log = ulog.Log.WithName(controllerName)
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, name, reconciler, params)
+	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 	client := mgr.GetClient()
 	return &ReconcileKibana{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(name),
+		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
 	}
@@ -245,7 +245,7 @@ func (r *ReconcileKibana) onDelete(obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, kbv1.Kind)
 }
 

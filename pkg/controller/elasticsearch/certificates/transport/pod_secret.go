@@ -5,18 +5,17 @@
 package transport
 
 import (
+	"crypto"
 	cryptorand "crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // PodKeyFileName returns the name of the private key entry for a specific pod in a transport certificates secret.
@@ -38,29 +37,22 @@ func ensureTransportCertificatesSecretContentsForPod(
 	ca *certificates.CA,
 	rotationParams certificates.RotationParams,
 ) error {
-	// verify that the secret contains a parsable private key, create if it does not exist
-	var privateKey *rsa.PrivateKey
-	needsNewPrivateKey := true //nolint:ifshort
-	if privateKeyData, ok := secret.Data[PodKeyFileName(pod.Name)]; ok {
-		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
-		if err != nil {
-			log.Error(err, "Unable to parse stored private key",
-				"namespace", pod.Namespace, "pod_name", pod.Name)
-		} else {
-			needsNewPrivateKey = false
-			privateKey = storedPrivateKey
-		}
-	}
+	// verify that the secret contains a parsable and compatible private key
+	privateKey := certificates.GetCompatiblePrivateKey(ca.PrivateKey, secret, PodKeyFileName(pod.Name))
 
 	// if we need a new private key, generate it
-	if needsNewPrivateKey {
-		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	if privateKey == nil {
+		generatedPrivateKey, err := certificates.NewPrivateKey(ca.PrivateKey)
 		if err != nil {
 			return err
 		}
 
 		privateKey = generatedPrivateKey
-		secret.Data[PodKeyFileName(pod.Name)] = certificates.EncodePEMPrivateKey(*privateKey)
+		pemPrivateKey, err := certificates.EncodePEMPrivateKey(privateKey)
+		if err != nil {
+			return err
+		}
+		secret.Data[PodKeyFileName(pod.Name)] = pemPrivateKey
 	}
 
 	if shouldIssueNewCertificate(es, *secret, pod, privateKey, ca, rotationParams.RotateBefore) {
@@ -111,7 +103,7 @@ func shouldIssueNewCertificate(
 	es esv1.Elasticsearch,
 	secret corev1.Secret,
 	pod corev1.Pod,
-	privateKey *rsa.PrivateKey,
+	privateKey crypto.Signer,
 	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
@@ -129,8 +121,7 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	publicKey, publicKeyOk := cert.PublicKey.(*rsa.PublicKey)
-	if !publicKeyOk || publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
+	if !certificates.PrivateMatchesPublicKey(cert.PublicKey, privateKey) {
 		log.Info(
 			"Certificate belongs do a different public key, should issue new",
 			"namespace", pod.Namespace,

@@ -99,6 +99,7 @@ const (
 
 	KibanaConfigAnnotationNameBase = "association.k8s.elastic.co/kb-conf"
 	KibanaAssociationType          = "kibana"
+	KbMonitoringAssociationType    = "kb-monitoring"
 
 	EntConfigAnnotationNameBase = "association.k8s.elastic.co/ent-conf"
 	EntAssociationType          = "ent"

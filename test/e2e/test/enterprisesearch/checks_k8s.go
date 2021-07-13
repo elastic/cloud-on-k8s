@@ -12,14 +12,15 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		test.CheckDeployment(b, k, b.EnterpriseSearch.Name+"-ent"),
-		test.CheckPods(b, k),
-		test.CheckServices(b, k),
-		test.CheckServicesEndpoints(b, k),
+		checks.CheckDeployment(b, k, b.EnterpriseSearch.Name+"-ent"),
+		checks.CheckPods(b, k),
+		checks.CheckServices(b, k),
+		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
 	}
@@ -104,8 +105,23 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
 				return err
 			}
+
+			// Selector is a string built from a map, it is validated with a dedicated function.
+			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels
+			// is created.
+			if err := test.CheckSelector(
+				ent.Status.Selector,
+				map[string]string{
+					"enterprisesearch.k8s.elastic.co/name": ent.Name,
+					"common.k8s.elastic.co/type":           "enterprise-search",
+				}); err != nil {
+				return err
+			}
+			ent.Status.Selector = ""
+
 			expected := entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
+					Count:          b.EnterpriseSearch.Spec.Count,
 					AvailableNodes: b.EnterpriseSearch.Spec.Count,
 					Version:        b.EnterpriseSearch.Spec.Version,
 					Health:         "green",

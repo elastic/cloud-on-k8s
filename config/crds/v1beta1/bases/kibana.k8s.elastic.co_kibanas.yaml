@@ -19,8 +19,6 @@ spec:
     - kb
     singular: kibana
   scope: Namespaced
-  subresources:
-    status: {}
   version: v1
   versions:
   - additionalPrinterColumns:
@@ -529,6 +527,80 @@ spec:
               image:
                 description: Image is the Kibana Docker image to deploy.
                 type: string
+              monitoring:
+                description: Monitoring enables you to collect and ship log and monitoring
+                  data of this Kibana. See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+                  Metricbeat and Filebeat are deployed in the same Pod as sidecars
+                  and each one sends data to one or two different Elasticsearch monitoring
+                  clusters running in the same Kubernetes cluster.
+                properties:
+                  logs:
+                    description: Logs holds references to Elasticsearch clusters which
+                      will receive log data from this Kibana.
+                    properties:
+                      elasticsearchRefs:
+                        description: ElasticsearchRefs is a reference to a list of
+                          monitoring Elasticsearch clusters running in the same Kubernetes
+                          cluster. Due to existing limitations, only a single Elasticsearch
+                          cluster is currently supported.
+                        items:
+                          description: ObjectSelector defines a reference to a Kubernetes
+                            object.
+                          properties:
+                            name:
+                              description: Name of the Kubernetes object.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                            serviceName:
+                              description: ServiceName is the name of an existing
+                                Kubernetes service which is used to make requests
+                                to the referenced object. It has to be in the same
+                                namespace as the referenced resource. If left empty,
+                                the default HTTP service of the referenced resource
+                                is used.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                    type: object
+                  metrics:
+                    description: Metrics holds references to Elasticsearch clusters
+                      which will receive monitoring data from this Kibana.
+                    properties:
+                      elasticsearchRefs:
+                        description: ElasticsearchRefs is a reference to a list of
+                          monitoring Elasticsearch clusters running in the same Kubernetes
+                          cluster. Due to existing limitations, only a single Elasticsearch
+                          cluster is currently supported.
+                        items:
+                          description: ObjectSelector defines a reference to a Kubernetes
+                            object.
+                          properties:
+                            name:
+                              description: Name of the Kubernetes object.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                            serviceName:
+                              description: ServiceName is the name of an existing
+                                Kubernetes service which is used to make requests
+                                to the referenced object. It has to be in the same
+                                namespace as the referenced resource. If left empty,
+                                the default HTTP service of the referenced resource
+                                is used.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                    type: object
+                type: object
               podTemplate:
                 description: PodTemplate provides customisation options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
@@ -7242,6 +7314,11 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              count:
+                description: Count corresponds to Scale.Status.Replicas, which is
+                  the actual number of observed instances of the scaled object.
+                format: int32
+                type: integer
               elasticsearchAssociationStatus:
                 description: ElasticsearchAssociationStatus is the status of any auto-linking
                   to Elasticsearch clusters.
@@ -7253,6 +7330,16 @@ spec:
               health:
                 description: Health of the deployment.
                 type: string
+              monitoringAssociationStatus:
+                additionalProperties:
+                  description: AssociationStatus is the status of an association resource.
+                  type: string
+                description: MonitoringAssociationStatus is the status of any auto-linking
+                  to monitoring Elasticsearch clusters.
+                type: object
+              selector:
+                description: Selector is the label selector used to find all pods.
+                type: string
               version:
                 description: 'Version of the stack resource currently running. During
                   version upgrades, multiple versions may run in parallel: this value
@@ -7262,6 +7349,12 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.count
+        statusReplicasPath: .status.count
+      status: {}
   - additionalPrinterColumns:
     - JSONPath: .status.health
       name: health
@@ -14448,6 +14541,8 @@ spec:
         type: object
     served: true
     storage: false
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""
