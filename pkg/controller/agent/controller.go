@@ -95,6 +95,15 @@ func addWatches(c controller.Controller, r *ReconcileAgent) error {
 		return err
 	}
 
+	// Watch services - Agent in Fleet mode with Fleet Server enabled configures and exposes a Service
+	// for Elastic Agents to connect to.
+	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &agentv1alpha1.Agent{},
+	}); err != nil {
+		return err
+	}
+
 	// Watch dynamically referenced Secrets
 	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
@@ -163,11 +172,12 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	}
 
 	driverResults := internalReconcile(Params{
-		Context:       ctx,
-		Client:        r.Client,
-		EventRecorder: r.recorder,
-		Watches:       r.dynamicWatches,
-		Agent:         agent,
+		Context:        ctx,
+		Client:         r.Client,
+		EventRecorder:  r.recorder,
+		Watches:        r.dynamicWatches,
+		Agent:          agent,
+		OperatorParams: r.Parameters,
 	})
 
 	return results.WithResults(driverResults)

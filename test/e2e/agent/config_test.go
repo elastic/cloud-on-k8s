@@ -7,14 +7,18 @@
 package agent
 
 import (
+	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
 func TestSystemIntegrationConfig(t *testing.T) {
@@ -123,4 +127,59 @@ func TestMultipleOutputConfig(t *testing.T) {
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder1, esBuilder2, agentBuilder).RunSequential(t)
+}
+
+func TestFleetMode(t *testing.T) {
+	name := "test-agent-fleet"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+
+	fleetServerBuilder := agent.NewBuilder(name+"-fs").
+		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
+		WithDeployment().
+		WithFleetMode().
+		WithFleetServer().
+		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(esBuilder.Ref(), fleetServerBuilder.Ref()))
+
+	agentBuilder := agent.NewBuilder(name+"-ea").
+		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
+		WithFleetMode().
+		WithKibanaRef(kbBuilder.Ref()).
+		WithFleetServerRef(fleetServerBuilder.Ref())
+
+	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
+}
+
+func fleetConfigForKibana(esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {
+	return map[string]interface{}{
+		"xpack.fleet.agents.elasticsearch.host": fmt.Sprintf(
+			"https://%s-es-http.%s.svc:9200",
+			esRef.Name,
+			esRef.Namespace,
+		),
+		"xpack.fleet.agents.fleet_server.hosts": []string{
+			fmt.Sprintf(
+				"https://%s-agent-http.%s.svc:8220",
+				fsRef.Name,
+				fsRef.Namespace,
+			),
+		},
+	}
 }

@@ -6,18 +6,38 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"hash"
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+// Below are keys used in fleet-setup.yaml file.
+const (
+	// FleetSetupKibanaKey is a key used in fleet-setup.yaml file to denote kibana part of the configuration.
+	FleetSetupKibanaKey = "kibana"
+	// FleetSetupFleetServerKey is a key used in fleet-setup.yaml file to denote fleet server part of the configuration.
+	FleetSetupFleetServerKey = "fleet_server"
+	// FleetSetupFleetKey is a key used in fleet-setup.yaml file to denote fleet part of the configuration.
+	FleetSetupFleetKey = "fleet"
+)
+
+type connectionSettings struct {
+	host, ca, username, password string
+}
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	defer tracing.Span(&params.Context)()
@@ -28,15 +48,27 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	cfgData := map[string][]byte{
+		ConfigFileName: cfgBytes,
+	}
+
+	if params.Agent.Spec.FleetModeEnabled() {
+		fleetSetupCfgBytes, err := buildFleetSetupConfig(params.Agent, params.Client)
+		if err != nil {
+			return results.WithError(err)
+		}
+
+		cfgData[FleetSetupFileName] = fleetSetupCfgBytes
+		_, _ = configHash.Write(fleetSetupCfgBytes)
+	}
+
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Agent.Namespace,
 			Name:      ConfigSecretName(params.Agent.Name),
 			Labels:    common.AddCredentialsLabel(NewLabels(params.Agent)),
 		},
-		Data: map[string][]byte{
-			ConfigFileName: cfgBytes,
-		},
+		Data: cfgData,
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Client, expected, &params.Agent); err != nil {
@@ -60,10 +92,6 @@ func buildConfig(params Params) ([]byte, error) {
 		return nil, err
 	}
 
-	if userConfig == nil {
-		return cfg.Render()
-	}
-
 	if err = cfg.MergeWith(userConfig); err != nil {
 		return nil, err
 	}
@@ -72,16 +100,28 @@ func buildConfig(params Params) ([]byte, error) {
 }
 
 func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
-	associations := params.Agent.GetAssociations()
+	if params.Agent.Spec.FleetModeEnabled() {
+		// in fleet mode outputs are owned by fleet
+		return settings.NewCanonicalConfig(), nil
+	}
 
-	for _, assoc := range associations {
+	allAssociations := params.Agent.GetAssociations()
+
+	var esAssociations []commonv1.Association
+	for _, assoc := range allAssociations {
+		if assoc.AssociationType() == commonv1.ElasticsearchAssociationType {
+			esAssociations = append(esAssociations, assoc)
+		}
+	}
+
+	for _, assoc := range esAssociations {
 		if !assoc.AssociationConf().IsConfigured() {
 			return settings.NewCanonicalConfig(), nil
 		}
 	}
 
 	outputs := map[string]interface{}{}
-	for i, assoc := range associations {
+	for i, assoc := range esAssociations {
 		username, password, err := association.ElasticsearchAuthSettings(params.Client, assoc)
 		if err != nil {
 			return settings.NewCanonicalConfig(), err
@@ -99,7 +139,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 
 		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
 		if outputName == "" {
-			if len(associations) > 1 {
+			if len(esAssociations) > 1 {
 				return settings.NewCanonicalConfig(), errors.New("output is not named and there is more than one specified")
 			}
 			outputName = "default"
@@ -119,4 +159,142 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 		return settings.NewCanonicalConfigFrom(params.Agent.Spec.Config.Data)
 	}
 	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
+}
+
+func buildFleetSetupConfig(agent agentv1alpha1.Agent, client k8s.Client) ([]byte, error) {
+	cfgMap := map[string]interface{}{}
+
+	for _, cfgPart := range []struct {
+		key string
+		f   func(agentv1alpha1.Agent, k8s.Client) (map[string]interface{}, error)
+	}{
+		{key: FleetSetupKibanaKey, f: buildFleetSetupKibanaConfig},
+		{key: FleetSetupFleetKey, f: buildFleetSetupFleetConfig},
+		{key: FleetSetupFleetServerKey, f: buildFleetSetupFleetServerConfig},
+	} {
+		cfg, err := cfgPart.f(agent, client)
+		if err != nil {
+			return nil, err
+		}
+		if cfg != nil {
+			cfgMap[cfgPart.key] = cfg
+		}
+	}
+
+	cfg, err := settings.NewCanonicalConfigFrom(cfgMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg.Render()
+}
+
+func buildFleetSetupKibanaConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	if agent.Spec.KibanaRef.IsDefined() {
+		kbConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"fleet": map[string]interface{}{
+				"ca":       kbConnectionSettings.ca,
+				"host":     kbConnectionSettings.host,
+				"password": kbConnectionSettings.password,
+				"setup":    agent.Spec.KibanaRef.IsDefined(),
+				"username": kbConnectionSettings.username,
+			},
+		}, nil
+	}
+
+	return nil, nil
+}
+
+func buildFleetSetupFleetConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	fleetCfg := map[string]interface{}{}
+
+	if agent.Spec.KibanaRef.IsDefined() {
+		fleetCfg["enroll"] = true
+	}
+
+	if agent.Spec.FleetServerEnabled {
+		fleetURL, err := association.ServiceURL(
+			client,
+			types.NamespacedName{Namespace: agent.Namespace, Name: HTTPServiceName(agent.Name)},
+			agent.Spec.HTTP.Protocol(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		fleetCfg["ca"] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		fleetCfg["url"] = fleetURL
+	} else if agent.Spec.FleetServerRef.IsDefined() {
+		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
+		if err != nil {
+			return nil, err
+		}
+
+		if assoc != nil {
+			fleetCfg["ca"] = path.Join(certificatesDir(assoc), CAFileName)
+			fleetCfg["url"] = assoc.AssociationConf().GetURL()
+		}
+	}
+	return fleetCfg, nil
+}
+
+func buildFleetSetupFleetServerConfig(agent agentv1alpha1.Agent, client k8s.Client) (map[string]interface{}, error) {
+	if !agent.Spec.FleetServerEnabled {
+		return map[string]interface{}{}, nil
+	}
+
+	fleetServerCfg := map[string]interface{}{
+		"enable":   true,
+		"cert":     path.Join(FleetCertsMountPath, certificates.CertFileName),
+		"cert_key": path.Join(FleetCertsMountPath, certificates.KeyFileName),
+	}
+
+	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
+	if esExpected {
+		esConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
+		if err != nil {
+			return nil, err
+		}
+
+		fleetServerCfg["elasticsearch"] = map[string]interface{}{
+			"ca":       esConnectionSettings.ca,
+			"host":     esConnectionSettings.host,
+			"username": esConnectionSettings.username,
+			"password": esConnectionSettings.password,
+		}
+	}
+
+	return fleetServerCfg, nil
+}
+
+func extractConnectionSettings(
+	agent agentv1alpha1.Agent,
+	client k8s.Client,
+	associationType commonv1.AssociationType,
+) (connectionSettings, error) {
+	assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), associationType)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
+	if assoc == nil {
+		errTemplate := "association of type %s not found in %d associations"
+		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
+	}
+
+	username, password, err := association.ElasticsearchAuthSettings(client, assoc)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
+	return connectionSettings{
+		host:     assoc.AssociationConf().GetURL(),
+		ca:       path.Join(certificatesDir(assoc), CAFileName),
+		username: username,
+		password: password,
+	}, err
 }

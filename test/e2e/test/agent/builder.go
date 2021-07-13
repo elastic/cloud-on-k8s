@@ -27,6 +27,8 @@ import (
 
 const (
 	PSPClusterRoleName = "elastic-agent-restricted"
+
+	AgentFleetModeRoleName = "elastic-agent-fleet"
 )
 
 // Builder to create an Agent
@@ -44,8 +46,14 @@ type Builder struct {
 }
 
 func (b Builder) SkipTest() bool {
+	supportedVersions := version.SupportedAgentVersions
+	if b.Agent.Spec.FleetModeEnabled() {
+		// todo use version.SupportedFleetModeAgentVersions after 7.14.0 release is available
+		supportedVersions.Min = version.MustParse("7.14.0-SNAPSHOT")
+	}
+
 	ver := version.MustParse(b.Agent.Spec.Version)
-	return version.SupportedAgentVersions.WithinRange(ver) != nil
+	return supportedVersions.WithinRange(ver) != nil
 }
 
 // NewBuilderFromAgent creates an Agent builder from an existing Agent config. Sets all additional Builder fields
@@ -272,9 +280,40 @@ func (b Builder) WithConfigRef(secretName string) Builder {
 	return b
 }
 
+func (b Builder) WithFleetMode() Builder {
+	b.Agent.Spec.Mode = agentv1alpha1.AgentFleetMode
+
+	return b
+}
+
+func (b Builder) WithFleetServer() Builder {
+	b.Agent.Spec.FleetServerEnabled = true
+
+	return b
+}
+
+func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
+	b.Agent.Spec.KibanaRef = ref
+
+	return b
+}
+
+func (b Builder) WithFleetServerRef(ref commonv1.ObjectSelector) Builder {
+	b.Agent.Spec.FleetServerRef = ref
+
+	return b
+}
+
 func (b Builder) WithObjects(objs ...k8sclient.Object) Builder {
 	b.AdditionalObjects = append(b.AdditionalObjects, objs...)
 	return b
+}
+
+func (b Builder) Ref() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      b.Agent.Name,
+		Namespace: b.Agent.Namespace,
+	}
 }
 
 func (b Builder) RuntimeObjects() []k8sclient.Object {

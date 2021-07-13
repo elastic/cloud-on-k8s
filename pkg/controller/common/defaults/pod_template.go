@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
@@ -167,6 +168,14 @@ func (b *PodTemplateBuilder) WithVolumes(volumes ...corev1.Volume) *PodTemplateB
 // WithVolumeMounts appends the given volume mounts to the Container, unless already provided in the template.
 func (b *PodTemplateBuilder) WithVolumeMounts(volumeMounts ...corev1.VolumeMount) *PodTemplateBuilder {
 	b.containerDefaulter.WithVolumeMounts(volumeMounts)
+	return b
+}
+
+func (b *PodTemplateBuilder) WithVolumeLikes(volumeLikes ...volume.VolumeLike) *PodTemplateBuilder {
+	for _, v := range volumeLikes {
+		b = b.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
+	}
+
 	return b
 }
 
