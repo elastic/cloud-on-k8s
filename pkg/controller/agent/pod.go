@@ -178,6 +178,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 	var esAssociation commonv1.Association
+	//nolint:nestif
 	if params.Agent.Spec.FleetServerEnabled {
 		// As the reference chain is: Fleet Server ---> Elasticsearch,
 		// we just grab the reference to Elasticsearch from the current agent (Fleet Server).
@@ -243,14 +244,11 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 	// also need to do is to roll Elastic Agent Pods to pick up the update CA. To be able to do that, we are
 	// adding Fleet Server associations (which includes Elasticsearch) to config hash attached to Elastic Agent
 	// Pods.
-	if err := commonassociation.WriteAssocsToConfigHash(
+	return commonassociation.WriteAssocsToConfigHash(
 		params.Client,
 		[]commonv1.Association{esAssociation},
 		configHash,
-	); err != nil {
-		return err
-	}
-	return nil
+	)
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {

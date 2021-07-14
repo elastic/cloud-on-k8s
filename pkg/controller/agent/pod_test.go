@@ -193,7 +193,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 			require.NotNil(t, gotBuilder)
 			require.Equal(t, tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
-			require.Equal(t, tt.wantHashChange, bytes.Compare(baseHashSum, hash.Sum(nil)) != 0)
+			require.Equal(t, tt.wantHashChange, !bytes.Equal(baseHashSum, hash.Sum(nil)))
 		})
 	}
 }
@@ -296,7 +296,6 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 				require.NotNil(t, gotAssoc)
 				require.Equal(t, *tt.wantRef, gotAssoc.AssociationRef())
 			}
-
 		})
 	}
 }
@@ -497,7 +496,7 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 			err := writeEsAssocToConfigHash(tt.params, tt.assoc, hash)
 
 			require.Nil(t, err)
-			require.Equal(t, tt.wantHashChange, bytes.Compare(baseHashSum, hash.Sum(nil)) != 0)
+			require.Equal(t, tt.wantHashChange, !bytes.Equal(baseHashSum, hash.Sum(nil)))
 		})
 	}
 }
