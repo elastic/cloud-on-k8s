@@ -6,6 +6,10 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ $namespace }}
+    {{- if $.Values.customAnnotations }}
+  annotations:
+    {{- toYaml $.Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "eck-operator.labels" $ | nindent 4 }}
     eck.k8s.elastic.co/tenant: {{ $namespace }}

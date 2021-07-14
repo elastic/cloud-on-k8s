@@ -5,12 +5,18 @@ kind: PodMonitor
 metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ ternary .Values.podMonitor.namespace .Release.Namespace (not (empty .Values.podMonitor.namespace)) }}
+    {{- if or .Values.podMonitor.annotations .Values.customAnnotations }}
+  annotations:
+    {{- with .Values.podMonitor.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.customAnnotations }}
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
+    {{- end }}
   labels: {{- include "eck-operator.labels" . | nindent 4 }}
   {{- if .Values.podMonitor.labels }}
     {{- toYaml .Values.podMonitor.labels | nindent 4 }}
-  {{- end }}
-  {{- with .Values.podMonitor.annotations }}
-  annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   {{- with .Values.podMonitor.podTargetLabels }}

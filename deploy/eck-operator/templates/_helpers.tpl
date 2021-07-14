@@ -36,12 +36,17 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Common labels
 */}}
 {{- define "eck-operator.labels" -}}
+helm.sh/chart: {{ include "eck-operator.chart" . }}
 {{- include "eck-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/component: operator
+app.kubernetes.io/part-of: {{ template "eck-operator.name" . }}
 {{- end }}
-helm.sh/chart: {{ include "eck-operator.chart" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels }}
+{{- end }}
 {{- end }}
 
 {{/*

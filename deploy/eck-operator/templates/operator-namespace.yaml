@@ -4,6 +4,10 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Release.Namespace }}
+    {{- if .Values.customAnnotations }}
+  annotations:
+    {{- toYaml .Values.customAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     name: {{ .Release.Namespace }}
 {{- end -}}
