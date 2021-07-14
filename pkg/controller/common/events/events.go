@@ -12,7 +12,10 @@ const (
 	EventReasonDeleted = "Deleted"
 	// EventReasonDelayed describes events where a requested change was delayed e.g. to prevent data loss.
 	EventReasonDelayed = "Delayed"
-	// EventReasonCreated describes events where resources are upgraded.
+	// EventReasonStalled describes events where a requested change is stalled and cannot make progress without user
+	// intervention
+	EventReasonStalled = "Stalled"
+	// EventReasonUpgraded describes events where resources are upgraded.
 	EventReasonUpgraded = "Upgraded"
 	// EventReasonUnhealthy describes events where a stack deployments health was affected negatively.
 	EventReasonUnhealthy = "Unhealthy"

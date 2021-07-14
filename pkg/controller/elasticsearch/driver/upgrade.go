@@ -6,10 +6,7 @@ package driver
 
 import (
 	"context"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
+	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -19,6 +16,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (d *defaultDriver) handleRollingUpgrades(
@@ -84,8 +84,8 @@ func (d *defaultDriver) handleRollingUpgrades(
 		results.WithResult(defaultRequeue)
 	}
 
-	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
-	res := d.MaybeEnableShardsAllocation(ctx, esClient, esState)
+	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
+	res := d.maybeCompleteNodeUpgrades(ctx, esClient, esState)
 	results.WithResults(res)
 
 	return results
@@ -236,8 +236,35 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 		return err
 	}
 }
+func (d *defaultDriver) maybeCompleteNodeUpgrades(
+	ctx context.Context,
+	esClient esclient.Client,
+	esState ESState,
+) *reconciler.Results {
+	// we still have to enable shard allocation in cases where we just upgraded from
+	// a version that did not support node shutdown to a supported version.
+	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
+	if !results.HasError() && supportsNodeshutdown(esClient.Version()) {
+		// delete all completed restarts
+		shutdowns, err := esClient.GetShutdown(ctx, nil)
+		if err != nil {
+			return results.WithError(err)
+		}
+		for _, s := range shutdowns.Nodes {
+			// TODO stalled restarts
+			if s.Is(esclient.Restart) && s.Status == esclient.ShutdownComplete {
+				log.V(1).Info("Deleting shutdown request", "ndode-id", s.NodeID)
+				err := esClient.DeleteShutdown(ctx, s.NodeID)
+				if err != nil {
+					results = results.WithError(err)
+				}
+			}
+		}
+	}
+	return results
+}
 
-func (d *defaultDriver) MaybeEnableShardsAllocation(
+func (d *defaultDriver) maybeEnableShardsAllocation(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
@@ -287,21 +314,68 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	return results
 }
 
-func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
+func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
+	if !supportsNodeshutdown(ctx.esClient.Version()) {
+		return true, nil // always OK to restart pre 7.14
+	}
+	// TODO duplication
+	nameToID, err := ctx.esState.NodeNameToID()
+	if err != nil {
+		return false, err
+	}
+
+	nodeID, exists := nameToID[pod.Name]
+	if !exists {
+		return false, fmt.Errorf("no node ID for node %s known", pod.Name)
+	}
+
+	// TODO minimize number of ES requests
+	shutdown, err := ctx.esClient.GetShutdown(ctx.parentCtx, &nodeID)
+	if err != nil {
+		return false, err
+	}
+	if len(shutdown.Nodes) != 1 {
+		return false, fmt.Errorf("shutdown API returned %d results expected 1", len(shutdown.Nodes))
+	}
+	return shutdown.Nodes[0].Status == esclient.ShutdownComplete, nil
+}
+
+func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
+	for _, p := range podsToRestart {
+		nodeNameToID, err := ctx.esState.NodeNameToID()
+		if err != nil {
+			return err
+		}
+		nodeID, exists := nodeNameToID[p.Name]
+		if !exists {
+			return fmt.Errorf("node %s selected for restart currently not in cluster", p.Name)
+		}
+		log.V(1).Info("requesting node restart", "node", p.Name, "node-id", nodeID)
+		if err := ctx.esClient.PutShutdown(ctx.parentCtx, nodeID, esclient.Restart, ctx.ES.ResourceVersion); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
+	if supportsNodeshutdown(ctx.esClient.Version()) {
+		return ctx.requestNodeRestarts(podsToUpgrade)
+	}
 	// Disable shard allocations to avoid shards moving around while the node is temporarily down
-	shardsAllocationEnabled, err := esState.ShardAllocationsEnabled()
+	shardsAllocationEnabled, err := ctx.esState.ShardAllocationsEnabled()
 	if err != nil {
 		return err
 	}
 	if shardsAllocationEnabled {
 		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
-		if err := esClient.DisableReplicaShardsAllocation(ctx.parentCtx); err != nil {
+		if err := ctx.esClient.DisableReplicaShardsAllocation(ctx.parentCtx); err != nil {
 			return err
 		}
 	}
 
 	// Request a flush to optimize indices recovery when the node restarts.
-	if err := doFlush(ctx.parentCtx, ctx.ES, esClient); err != nil {
+	if err := doFlush(ctx.parentCtx, ctx.ES, ctx.esClient); err != nil {
 		return err
 	}
 

@@ -40,7 +40,7 @@ func (c *clientV7) CreateAutoscalingPolicy(ctx context.Context, policyName strin
 }
 
 func (c *clientV7) DeleteAutoscalingPolicies(ctx context.Context) error {
-	return c.delete(ctx, "/_autoscaling/policy/*", nil, nil)
+	return c.delete(ctx, "/_autoscaling/policy/*")
 }
 
 func (c *clientV7) UpdateMLNodesSettings(ctx context.Context, maxLazyMLNodes int32, maxMemory string) error {

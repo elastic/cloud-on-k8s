@@ -338,7 +338,7 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, esv1.ElasticsearchMigratingDataPhase, s.status.Phase)
-				assert.Equal(t, []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonDelayed, Message: "Requested topology change delayed by data migration. Ensure index replica settings allow node removal."}}, s.Recorder.Events())
+				assert.Equal(t, []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonDelayed, Message: "Requested topology change delayed by data migration. Ensure index settings allow node removal."}}, s.Recorder.Events())
 			},
 		},
 	}
