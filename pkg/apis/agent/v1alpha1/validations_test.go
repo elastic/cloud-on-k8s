@@ -39,6 +39,12 @@ func Test_checkSupportedVersion(t *testing.T) {
 		{
 			name:    "fleet, within supported: OK",
 			mode:    AgentFleetMode,
+			version: "7.14.0-SNAPSHOT",
+			wantErr: false,
+		},
+		{
+			name:    "fleet, within supported: OK",
+			mode:    AgentFleetMode,
 			version: "7.14.0",
 			wantErr: false,
 		},
