@@ -8,6 +8,12 @@
   path: /spec/validation
 - op: remove
   path: /spec/versions/1/schema
+# move subresources to the top level, see https://github.com/elastic/cloud-on-k8s/issues/4635
+- op: move
+  from: /spec/versions/0/subresources
+  path: /spec/subresources
+- op: remove
+  path: /spec/versions/1/subresources
 # Move additionalPrinterColumns of the v1 version to the top-level, and remove it from the v1beta1 version.
 # This is in order to be compatible with k8s 1.11.
 - op: move
