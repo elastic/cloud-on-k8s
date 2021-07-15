@@ -5,6 +5,13 @@
 - op: remove
   path: /spec/validation/openAPIV3Schema/type
 
+# move subresources to the top level, see https://github.com/elastic/cloud-on-k8s/issues/4635
+- op: move
+  from: /spec/versions/0/subresources
+  path: /spec/subresources
+- op: remove
+  path: /spec/versions/1/subresources
+
 # Using `kubectl apply` stores the complete CRD file as an annotation,
 # which may be too big for the annotations size limit.
 # One way to mitigate this problem is to remove the (huge) podTemplate properties from the CRD.
