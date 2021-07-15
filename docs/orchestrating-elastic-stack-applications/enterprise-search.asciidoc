@@ -277,6 +277,11 @@ stringData:
     elasticsearch.ssl.enabled: true
 ----
 
+[id="{p}-enterprise-search-compute-resources"]
+=== Configure memory and CPU
+
+See <<{p}-managing-compute-resources,how to manage compute resources>> to update the Pod resources requests and limits, along with JVM options.
+
 [id="{p}-enterprise-search-troubleshoot"]
 == Troubleshooting
 
