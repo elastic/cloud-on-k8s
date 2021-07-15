@@ -29,8 +29,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 	for _, tt := range []struct {
 		name           string
 		params         Params
-		wantHashChange bool
-		wantErr        bool
 		wantPodSpec    corev1.PodSpec
 	}{
 		{
@@ -45,8 +43,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 				},
 			},
-			wantHashChange: false,
-			wantErr:        false,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = []corev1.Volume{
 					{
@@ -124,8 +120,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 				},
 			},
-			wantHashChange: false,
-			wantErr:        false,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = []corev1.Volume{
 					{
@@ -185,15 +179,9 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, fleetCerts, builder, hash)
 
-			require.Equal(t, tt.wantErr, gotErr != nil)
-			if tt.wantErr {
-				// we don't want to check anything else
-				return
-			}
-
+			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
 			require.Equal(t, tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
-			require.Equal(t, tt.wantHashChange, !bytes.Equal(baseHashSum, hash.Sum(nil)))
 		})
 	}
 }
