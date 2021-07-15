@@ -27,9 +27,9 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 	optional := false
 
 	for _, tt := range []struct {
-		name           string
-		params         Params
-		wantPodSpec    corev1.PodSpec
+		name        string
+		params      Params
+		wantPodSpec corev1.PodSpec
 	}{
 		{
 			name: "running fleet server without es association",
