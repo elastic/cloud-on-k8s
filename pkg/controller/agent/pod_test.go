@@ -174,7 +174,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 				},
 			}
 			builder := generateBuilder()
-			baseHashSum := sha256.New224().Sum(nil)
 			hash := sha256.New224()
 
 			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, fleetCerts, builder, hash)
