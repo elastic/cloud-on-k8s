@@ -64,7 +64,7 @@ spec:
 
 [float]
 [id="{p}-compute-resources-kibana-and-apm"]
-=== Set compute resources for Kibana and APM Server
+=== Set compute resources for Kibana, Enterprise Search and APM Server
 
 .Kibana
 [source,yaml,subs="attributes"]
@@ -90,7 +90,6 @@ spec:
             memory: 2.5Gi
             cpu: 2
 ----
-
 .APM Server
 [source,yaml,subs="attributes"]
 ----
@@ -112,8 +111,32 @@ spec:
             memory: 2Gi
             cpu: 2
 ----
+.Enterprise Search
+[source,yaml,subs="attributes"]
+----
+apiVersion: enterprisesearch.k8s.elastic.co/{eck_crd_version}
+kind: EnterpriseSearch
+metadata:
+  name: enterprise-search-quickstart
+spec:
+  version: {version}
+  podTemplate:
+    spec:
+      containers:
+      - name: enterprise-search
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: 1
+          limits:
+            memory: 4Gi
+            cpu: 2
+        env:
+        - name: JAVA_OPTS
+          value: -Xms3500m -Xmx3500m
+----
 
-For the container name, you can use `apm-server` or `kibana` as appropriate.
+For the container name, use `apm-server`, `kibana` or `enterprise-search`, respectively.
 
 [float]
 [id="{p}-compute-resources-beats-agent"]
@@ -185,6 +208,7 @@ If `resources` is not defined in the specification of an object, then the operat
 |APM Server |512Mi |512Mi
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
+|Enterprise Search |4Gi |4Gi
 |Beat   |200Mi | 200Mi
 |Elastic Agent | 200Mi|200Mi
 |===
