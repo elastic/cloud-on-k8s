@@ -161,7 +161,7 @@ spec:
           value: -Xms3500m -Xmx3500m
 ----
 
-For the container name, you have to use `apm-server`, `maps`,  `kibana` or `enterprise-search` respectively.
+For the container name, use `apm-server`, `maps`,  `kibana` or `enterprise-search`, respectively.
 
 [float]
 [id="{p}-compute-resources-beats-agent"]
