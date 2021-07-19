@@ -62,7 +62,7 @@ spec:
               memory: 4Gi
 ----
 
-float]
+[float]
 [id="{p}-compute-resources-kibana-and-apm"]
 === Set compute resources for Kibana, Enterprise Search and APM Server
 
