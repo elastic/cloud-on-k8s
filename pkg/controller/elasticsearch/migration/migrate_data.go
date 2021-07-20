@@ -33,11 +33,11 @@ func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.Shar
 }
 
 func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
-	return MigrateData(ctx, sm.es, sm.c, leavingNodes)
+	return migrateData(ctx, sm.es, sm.c, leavingNodes)
 }
 
 func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.NodeShutdownStatus, error) {
-	migrating, err := NodeMayHaveShard(ctx, sm.es, sm.s, podName)
+	migrating, err := nodeMayHaveShard(ctx, sm.es, sm.s, podName)
 	if err != nil {
 		return shutdown.NodeShutdownStatus{}, err
 	}
@@ -47,11 +47,11 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownComplete}, nil
 }
 
-// NodeMayHaveShard returns true if one of those condition is met:
+// nodeMayHaveShard returns true if one of those condition is met:
 // - the given ES Pod is holding at least one shard (primary or replica)
 // - some shards in the cluster don't have a node assigned, in which case we can't be sure about the 1st condition
 //   this may happen if the node was just restarted: the shards it is holding appear unassigned
-func NodeMayHaveShard(ctx context.Context, es esv1.Elasticsearch, shardLister esclient.ShardLister, podName string) (bool, error) {
+func nodeMayHaveShard(ctx context.Context, es esv1.Elasticsearch, shardLister esclient.ShardLister, podName string) (bool, error) {
 	shards, err := shardLister.GetShards(ctx)
 	if err != nil {
 		return false, err
@@ -72,8 +72,8 @@ func NodeMayHaveShard(ctx context.Context, es esv1.Elasticsearch, shardLister es
 	return false, nil
 }
 
-// MigrateData sets allocation filters for the given nodes.
-func MigrateData(
+// migrateData sets allocation filters for the given nodes.
+func migrateData(
 	ctx context.Context,
 	es esv1.Elasticsearch,
 	allocationSetter esclient.AllocationSetter,
