@@ -17,6 +17,7 @@ var log = ulog.Log.WithName("node-shutdown")
 
 type NodeShutdown struct {
 	c           esclient.Client
+	typ         esclient.ShutdownType
 	reason      string
 	podToNodeID map[string]string
 	shutdowns   map[string]esclient.NodeShutdown
@@ -25,9 +26,10 @@ type NodeShutdown struct {
 
 var _ Interface = &NodeShutdown{}
 
-func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, reason string) *NodeShutdown {
+func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string) *NodeShutdown {
 	return &NodeShutdown{
 		c:           c,
+		typ:         typ,
 		podToNodeID: podToNodeID,
 		reason:      reason,
 	}
@@ -44,7 +46,7 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 		}
 		shutdowns := map[string]esclient.NodeShutdown{}
 		for _, ns := range r.Nodes {
-			log.V(1).Info("existing shutdown", "node", ns.NodeID, "type", ns.Type, "status", ns.Status)
+			log.V(1).Info("Existing shutdown", "node", ns.NodeID, "type", ns.Type, "status", ns.Status)
 			shutdowns[ns.NodeID] = ns
 		}
 		ns.shutdowns = shutdowns
@@ -66,7 +68,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 	}
 	// cancel all ongoing shutdowns
 	if len(leavingNodes) == 0 {
-		return ns.clear(ctx, nil)
+		return ns.Clear(ctx, nil)
 	}
 
 	for _, node := range leavingNodes {
@@ -74,11 +76,11 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 		if err != nil {
 			return err
 		}
-		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(esclient.Remove) {
+		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(ns.typ) {
 			continue
 		}
-		log.V(1).Info("Requesting shutdown", "node", node, "node-id", nodeID)
-		if err := ns.c.PutShutdown(ctx, nodeID, esclient.Remove, ns.reason); err != nil {
+		log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node-id", nodeID)
+		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason); err != nil {
 			return fmt.Errorf("on put shutdown %w", err)
 		}
 		shutdown, err := ns.c.GetShutdown(ctx, &nodeID)
@@ -108,13 +110,13 @@ func (ns *NodeShutdown) ShutdownStatus(ctx context.Context, podName string) (Nod
 	}, nil
 }
 
-func (ns *NodeShutdown) clear(ctx context.Context, status *esclient.ShutdownStatus) error {
+func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStatus) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
 	for _, s := range ns.shutdowns {
-		if s.Is(esclient.Remove) && (status == nil || s.Status == *status) {
-			log.V(1).Info("deleting/cancelling shutdown", "node-id", s.NodeID)
+		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
+			log.V(1).Info("Deleting/cancelling shutdown", "type", ns.typ, "node-id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)
 			}

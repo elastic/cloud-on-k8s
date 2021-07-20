@@ -6,7 +6,6 @@ package driver
 
 import (
 	"context"
-	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -14,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -60,6 +60,12 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithError(err)
 	}
 
+	nodeNameToID, err := esState.NodeNameToID()
+	if err != nil {
+		results.WithError(err)
+	}
+	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion)
+
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		ctx,
@@ -67,6 +73,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		statefulSets,
 		esClient,
 		esState,
+		nodeShutdown,
 		expectedMaster,
 		actualMasters,
 		podsToUpgrade,
@@ -85,7 +92,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	}
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
-	res := d.maybeCompleteNodeUpgrades(ctx, esClient, esState)
+	res := d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)
 	results.WithResults(res)
 
 	return results
@@ -98,6 +105,7 @@ type rollingUpgradeCtx struct {
 	statefulSets    sset.StatefulSetList
 	esClient        esclient.Client
 	shardLister     esclient.ShardLister
+	nodeShutdown    *shutdown.NodeShutdown
 	esState         ESState
 	expectations    *expectations.Expectations
 	reconcileState  *reconcile.State
@@ -113,6 +121,7 @@ func newRollingUpgrade(
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
+	nodeShutdown *shutdown.NodeShutdown,
 	expectedMaster []string,
 	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
@@ -125,6 +134,7 @@ func newRollingUpgrade(
 		statefulSets:    statefulSets,
 		esClient:        esClient,
 		shardLister:     esClient,
+		nodeShutdown:    nodeShutdown,
 		esState:         esState,
 		expectations:    d.Expectations,
 		reconcileState:  d.ReconcileState,
@@ -240,25 +250,15 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
+	nodeShutdown *shutdown.NodeShutdown,
 ) *reconciler.Results {
 	// we still have to enable shard allocation in cases where we just upgraded from
 	// a version that did not support node shutdown to a supported version.
 	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
 	if !results.HasError() && supportsNodeshutdown(esClient.Version()) {
-		// delete all completed restarts
-		shutdowns, err := esClient.GetShutdown(ctx, nil)
+		err := nodeShutdown.Clear(ctx, &esclient.ShutdownComplete)
 		if err != nil {
-			return results.WithError(err)
-		}
-		for _, s := range shutdowns.Nodes {
-			// TODO stalled restarts
-			if s.Is(esclient.Restart) && s.Status == esclient.ShutdownComplete {
-				log.V(1).Info("Deleting shutdown request", "ndode-id", s.NodeID)
-				err := esClient.DeleteShutdown(ctx, s.NodeID)
-				if err != nil {
-					results = results.WithError(err)
-				}
-			}
+			results = results.WithError(err)
 		}
 	}
 	return results
@@ -318,44 +318,19 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	if !supportsNodeshutdown(ctx.esClient.Version()) {
 		return true, nil // always OK to restart pre 7.14
 	}
-	// TODO duplication
-	nameToID, err := ctx.esState.NodeNameToID()
+	response, err := ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, pod.Name)
 	if err != nil {
 		return false, err
 	}
-
-	nodeID, exists := nameToID[pod.Name]
-	if !exists {
-		return false, fmt.Errorf("no node ID for node %s known", pod.Name)
-	}
-
-	// TODO minimize number of ES requests
-	shutdown, err := ctx.esClient.GetShutdown(ctx.parentCtx, &nodeID)
-	if err != nil {
-		return false, err
-	}
-	if len(shutdown.Nodes) != 1 {
-		return false, fmt.Errorf("shutdown API returned %d results expected 1", len(shutdown.Nodes))
-	}
-	return shutdown.Nodes[0].Status == esclient.ShutdownComplete, nil
+	return response.Status == esclient.ShutdownComplete, nil
 }
 
 func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
+	var podNames []string
 	for _, p := range podsToRestart {
-		nodeNameToID, err := ctx.esState.NodeNameToID()
-		if err != nil {
-			return err
-		}
-		nodeID, exists := nodeNameToID[p.Name]
-		if !exists {
-			return fmt.Errorf("node %s selected for restart currently not in cluster", p.Name)
-		}
-		log.V(1).Info("requesting node restart", "node", p.Name, "node-id", nodeID)
-		if err := ctx.esClient.PutShutdown(ctx.parentCtx, nodeID, esclient.Restart, ctx.ES.ResourceVersion); err != nil {
-			return err
-		}
+		podNames = append(podNames, p.Name)
 	}
-	return nil
+	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
 }
 
 func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
