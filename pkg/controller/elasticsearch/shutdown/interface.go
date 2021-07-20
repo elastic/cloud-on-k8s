@@ -10,8 +10,8 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
-// TODO this is duplicating the API model in parts to bridge the gap between the old and the new world, maybe revisit
-
+// NodeShutdownStatus describes the current shutdown status of an Elasticsearch node/Pod.
+// Partially duplicates the Elasticsearch API to allow a version agnostic implementation in the controller.
 type NodeShutdownStatus struct {
 	Status      esclient.ShutdownStatus
 	Explanation string

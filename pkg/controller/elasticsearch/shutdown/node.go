@@ -15,9 +15,6 @@ import (
 
 var log = ulog.Log.WithName("node-shutdown")
 
-// working around a bug in the current incarnation of the API
-var npeWorkaround = map[string]struct{}{}
-
 type NodeShutdown struct {
 	c           esclient.Client
 	reason      string
@@ -42,16 +39,6 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 		var r esclient.ShutdownResponse
 		r, err = ns.c.GetShutdown(ctx, nil)
 		if err != nil {
-			if esclient.IsInternalServerError(err) {
-				for nodeID := range npeWorkaround {
-					log.V(1).Info("NPE workaround DELETE", "node", nodeID)
-					err = ns.c.DeleteShutdown(ctx, nodeID)
-					if err != nil {
-						err = fmt.Errorf("while applying npeWorkaround %w", err)
-					}
-				}
-				return
-			}
 			err = fmt.Errorf("while getting node shutdowns: %w", err)
 			return
 		}
@@ -99,7 +86,6 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 			return err
 		}
 		ns.shutdowns[nodeID] = shutdown.Nodes[0]
-		npeWorkaround[nodeID] = struct{}{}
 	}
 	return nil
 }
