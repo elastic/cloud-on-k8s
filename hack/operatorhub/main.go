@@ -42,6 +42,8 @@ const (
 	crdFileSuffix     = "crd.yaml"
 	csvFileSuffix     = "clusterserviceversion.yaml"
 	packageFileSuffix = "package.yaml"
+
+	yamlSeparator = "---\n"
 )
 
 type cmdArgs struct {
@@ -179,7 +181,7 @@ func installManifestFromWeb(version string) (io.Reader, error) {
 		if err != nil {
 			return nil, err
 		}
-		return io.MultiReader(crds, op), nil
+		return io.MultiReader(crds, strings.NewReader(yamlSeparator), op), nil
 	}
 	return buf, err
 }
