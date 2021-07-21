@@ -23,7 +23,7 @@ To add the SAML realm to Elasticsearch, use the `spec` section of the manifest. 
 
 NOTE: The `sp.*` SAML settings must point to Kibana endpoints that are accessible from the web browser used to open Kibana.
 
-Check Elastic link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-guide-idp[Sack SAML documentation] for more information on `idp.*` and `sp.*` settings.
+Check Elastic link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-guide-idp[Stack SAML documentation] for more information on `idp.*` and `sp.*` settings.
 
 Make sure not to disable Elasticsearch’s file realm set by ECK, as ECK relies on the file realm for its operation. Set the `order` setting of the SAML realm to a greater value than the `order` value set for the file and native realms, which is by default -100 and -99 respectively. We recommend setting the priority of SAML realms to be lower than other realms, as shown in the next example.
 
