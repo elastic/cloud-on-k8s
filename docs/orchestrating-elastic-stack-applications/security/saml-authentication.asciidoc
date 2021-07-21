@@ -122,7 +122,7 @@ IMPORTANT: Your SAML users cannot login to Kibana until they are assigned roles.
 
 The Elastic Stack supports generating service provider metadata, that can be imported to the identity provider, and configure many of the integration options between the identity provider and the service provider, automatically. For more information, check link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-sp-metadata[the Generating SP metadata section] in the Stack SAML guide.
 
-To generate the Service Provider metadata using link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-metadata.html[the elasticsearch-saml-metadata command], you will need to execute the command using `kubectl`, and then copy the generated metadata file to your local machine. For example:
+To generate the Service Provider metadata using link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-metadata.html[the elasticsearch-saml-metadata command], you will have to run the command using `kubectl`, and then copy the generated metadata file to your local machine. For example:
 
 [source,sh]
 ----
