@@ -84,8 +84,11 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 			return fmt.Errorf("on put shutdown %w", err)
 		}
 		shutdown, err := ns.c.GetShutdown(ctx, &nodeID)
-		if err != nil || len(shutdown.Nodes) != 1 {
+		if err != nil {
 			return err
+		}
+		if len(shutdown.Nodes) != 1 {
+			return fmt.Errorf("expected exactly one shutdown response got %d", len(shutdown.Nodes))
 		}
 		ns.shutdowns[nodeID] = shutdown.Nodes[0]
 	}
