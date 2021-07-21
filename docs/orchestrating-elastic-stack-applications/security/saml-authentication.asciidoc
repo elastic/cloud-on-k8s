@@ -23,7 +23,7 @@ To add the SAML realm to Elasticsearch, use the `spec` section of the manifest. 
 
 NOTE: The `sp.*` SAML settings must point to Kibana endpoints that are accessible from the web browser used to open Kibana.
 
-Check Elastic link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-guide-idp[Sack SAML documentation] for more information on `idp.*`` and `sp.*` settings.
+Check Elastic link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-guide-idp[Sack SAML documentation] for more information on `idp.*` and `sp.*` settings.
 
 Make sure not to disable Elasticsearch’s file realm set by ECK, as ECK relies on the file realm for its operation. Set the `order` setting of the SAML realm to a greater value than the `order` value set for the file and native realms, which is by default -100 and -99 respectively. We recommend setting the priority of SAML realms to be lower than other realms, as shown in the next example.
 
@@ -39,7 +39,6 @@ spec:
   - name: default
     count: 1
     config:
-      node.store.allow_mmap: false
       xpack.security.authc.realms:
         saml:
           saml1:
@@ -63,7 +62,7 @@ kubectl create secret generic idp-saml-metadata --from-file=idp-saml-metadata.xm
 
 Next, create a volume from the secret and mount it for the Elasticsearch containers. For example:
 
-[source,yaml,sub="attributes"]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
@@ -99,7 +98,7 @@ TIP: You can configure multiple authentication providers in Kibana and let users
 
 For example:
 
-[source,yaml,sub="attributes"]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
@@ -121,15 +120,15 @@ IMPORTANT: Your SAML users cannot login to Kibana until they are assigned roles.
 
 == Generating Service Provider metadata
 
-The Elastic Stack supports generating service provider metadata, that can be imported to the identity provider, and configure many of the integration options between the identity provider and the service provider, automatically. For more information, check link:https://www.elastic.co/guide/en/elasticsearch/reference/7.12/saml-guide-stack.html#saml-sp-metadata[the Generating SP metadata section] in the Stack SAML guide.
+The Elastic Stack supports generating service provider metadata, that can be imported to the identity provider, and configure many of the integration options between the identity provider and the service provider, automatically. For more information, check link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-sp-metadata[the Generating SP metadata section] in the Stack SAML guide.
 
 To generate the Service Provider metadata using link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-metadata.html[the elasticsearch-saml-metadata command], you will need to execute the command using `kubectl`, and then copy the generated metadata file to your local machine. For example:
 
 [source,sh]
 ----
 # Create metadata
-kubectl exec -it es-demo-es-default-0 -- sh -c "/usr/share/elasticsearch/bin/elasticsearch-saml-metadata --realm saml1"
+kubectl exec -it elasticsearch-sample-es-default-0 -- sh -c "/usr/share/elasticsearch/bin/elasticsearch-saml-metadata --realm saml1"
 
 # Copy metadata file
-kubectl cp elastic-sample-es-default-0:/usr/share/elasticsearch/saml-elasticsearch-metadata.xml saml-elasticsearch-metadata.xml
+kubectl cp elasticsearch-sample-es-default-0:/usr/share/elasticsearch/saml-elasticsearch-metadata.xml saml-elasticsearch-metadata.xml
 ----
