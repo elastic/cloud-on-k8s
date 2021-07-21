@@ -326,9 +326,9 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 }
 
 func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
-	var podNames []string
-	for _, p := range podsToRestart {
-		podNames = append(podNames, p.Name)
+	podNames := make([]string, len(podsToRestart))
+	for i, p := range podsToRestart {
+		podNames[i] = p.Name
 	}
 	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
 }
