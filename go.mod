@@ -17,7 +17,7 @@ require (
 	github.com/gobuffalo/flect v0.2.3
 	github.com/google/go-cmp v0.5.6
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/vault/api v1.1.1
 	github.com/imdario/mergo v0.3.12
@@ -40,9 +40,9 @@ require (
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	k8s.io/api v0.21.2
-	k8s.io/apimachinery v0.21.2
-	k8s.io/client-go v0.21.2
+	k8s.io/api v0.21.3
+	k8s.io/apimachinery v0.21.3
+	k8s.io/client-go v0.21.3
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
 	sigs.k8s.io/controller-runtime v0.9.2
