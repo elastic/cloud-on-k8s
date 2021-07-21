@@ -3145,11 +3145,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.21.2
-Time    : 2021-06-17T22:09:21Z
+Version : v0.21.3
+Time    : 2021-07-16T02:34:29Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.21.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.21.3/LICENSE:
 
 
                                  Apache License
@@ -3357,11 +3357,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.21.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.21.2
-Time    : 2021-06-04T16:52:39Z
+Version : v0.21.3
+Time    : 2021-07-12T06:11:53Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.21.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.21.3/LICENSE:
 
 
                                  Apache License
@@ -3569,11 +3569,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.21.2/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.21.2
-Time    : 2021-06-17T22:18:31Z
+Version : v0.21.3
+Time    : 2021-07-16T02:43:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.21.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.21.3/LICENSE:
 
 
                                  Apache License
@@ -35448,11 +35448,11 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/apiserver-network-prox
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/structured-merge-diff/v4
-Version : v4.1.0
-Time    : 2021-02-27T03:20:38Z
+Version : v4.1.2
+Time    : 2021-06-28T15:47:25Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.1.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.1.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
