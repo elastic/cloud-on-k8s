@@ -12,9 +12,9 @@ You can secure your Elastic Stack by specifying the following settings:
 - <<{p}-custom-http-certificate>>
 - <<{p}-users-and-roles>>
 - <<{p}-rotate-credentials>>
+- <<{p}-saml-authentication>>
 
 include::security/custom-http-certificate.asciidoc[leveloffset=+1]
 include::security/users-and-roles.asciidoc[leveloffset=+1]
 include::security/rotate-credentials.asciidoc[leveloffset=+1]
-
-
+include::security/saml-authentication.asciidoc[leveloffset=+1]
