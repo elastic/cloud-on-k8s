@@ -51,7 +51,9 @@ spec:
             sp.logout: https://kibana.example.com/logout
 ----
 
-The `idp.metadata.path` setting should point to your Identity Provider’s metadata file. To make the file available to Elasticsearch, you need to create a Kubernetes secret containing the metadata file and mounting it to the Elasticsearch container.
+The `idp.metadata.path` setting should point to your Identity Provider’s metadata file. The metadata file path can either be a path within the Elasticsearch container (full path or relative to Elasticsearch's config directory), or an HTTPS URL.
+
+If a path is provided, you need to make the metadata file available in the Elasticsearch container by creating a Kubernetes secret, containing the metadata file, and mounting it to the Elasticsearch container.
 
 After saving your Identity Provider’s metadata file, create the secret. For example:
 
