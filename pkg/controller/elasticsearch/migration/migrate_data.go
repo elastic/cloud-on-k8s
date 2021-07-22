@@ -16,6 +16,7 @@ import (
 
 var log = ulog.Log.WithName("migrate-data")
 
+// ShardMigration implements the shutddown.Interface based on externally controlled shard allocation filtering.
 type ShardMigration struct {
 	es esv1.Elasticsearch
 	c  esclient.Client
@@ -24,6 +25,8 @@ type ShardMigration struct {
 
 var _ shutdown.Interface = &ShardMigration{}
 
+// NewShardMigration creates a new ShardMigration struct that holds no other state then the arguments to this
+// constructor function.
 func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.ShardLister) shutdown.Interface {
 	return &ShardMigration{
 		es: es,
@@ -32,10 +35,13 @@ func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.Shar
 	}
 }
 
+// ReconcileShutdowns migrates data away from the leaving nodes or removes any allocation filtering if no nodes are leaving.
 func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
 	return migrateData(ctx, sm.es, sm.c, leavingNodes)
 }
 
+// ShutdownStatus returns the current shutdown status for a given Pod mimicking the node shutdown API to create a common
+// interface. "Complete" is returned if shard migration for the given Pod is finished.
 func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.NodeShutdownStatus, error) {
 	migrating, err := nodeMayHaveShard(ctx, sm.es, sm.s, podName)
 	if err != nil {

@@ -17,7 +17,13 @@ type NodeShutdownStatus struct {
 	Explanation string
 }
 
+// Interface defines methods that both legacy shard migration based shutdown and new API based shutdowns implement to
+// prepare node shutdowns.
 type Interface interface {
+	// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
+	// shutdowns.
 	ReconcileShutdowns(ctx context.Context, leavingNodes []string) error
+	// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
+	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
 }

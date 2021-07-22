@@ -315,7 +315,9 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				ackFixture,
 				singleShutdownFixture,
 				ackFixture,
-				singleShutdownFixture, // technically incorrect as we are returning the same shutdown as before
+				// technically incorrect as we are returning the same shutdown fixture as before. But we don't verify
+				// the responses, so good enough for this test.
+				singleShutdownFixture,
 			},
 			wantErr:     false,
 			wantMethods: []string{"GET", "PUT", "GET", "PUT", "GET"},

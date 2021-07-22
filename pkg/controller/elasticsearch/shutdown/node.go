@@ -15,6 +15,8 @@ import (
 
 var log = ulog.Log.WithName("node-shutdown")
 
+// NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
+// on this struct concurrently from multiple go-routines.
 type NodeShutdown struct {
 	c           esclient.Client
 	typ         esclient.ShutdownType
@@ -26,6 +28,9 @@ type NodeShutdown struct {
 
 var _ Interface = &NodeShutdown{}
 
+// NewNodeShutdown creates a new NodeShutdown struct restricted to one type of shutdown (typ); podToNodeID is mapping from
+// K8s Pod name to Elasticsearch node ID; reason is a arbitrary bit of metadata that will be attached to each node shutdown
+// request in Elasticsearch and can help tracking and auditing shutdown requests.
 func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string) *NodeShutdown {
 	return &NodeShutdown{
 		c:           c,
@@ -62,6 +67,8 @@ func (ns *NodeShutdown) lookupNodeID(podName string) (string, error) {
 	return nodeID, nil
 }
 
+// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
+// shutdowns.
 func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
@@ -95,6 +102,8 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 	return nil
 }
 
+// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
+// progress.
 func (ns *NodeShutdown) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {
 	if err := ns.initOnce(ctx); err != nil {
 		return NodeShutdownStatus{}, err
@@ -113,13 +122,16 @@ func (ns *NodeShutdown) ShutdownStatus(ctx context.Context, podName string) (Nod
 	}, nil
 }
 
+// Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
+// Depending on the progress of the shutdown in question this means either a cancellation of the shutdown or a clean-up
+// after shutdown completion.
 func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStatus) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
 	for _, s := range ns.shutdowns {
 		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
-			log.V(1).Info("Deleting/cancelling shutdown", "type", ns.typ, "node-id", s.NodeID)
+			log.V(1).Info("Deleting shutdown", "type", ns.typ, "node-id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)
 			}

@@ -256,6 +256,8 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	// a version that did not support node shutdown to a supported version.
 	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
 	if !results.HasError() && supportsNodeshutdown(esClient.Version()) {
+		// clear all shutdowns of type restart that have completed
+		// this relies on the fact the maybeEnableShardsAllocation checks expectations
 		err := nodeShutdown.Clear(ctx, &esclient.ShutdownComplete)
 		if err != nil {
 			results = results.WithError(err)
@@ -330,6 +332,8 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 	for i, p := range podsToRestart {
 		podNames[i] = p.Name
 	}
+	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
+	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.
 	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
 }
 
@@ -354,6 +358,5 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev
 		return err
 	}
 
-	// TODO: halt ML jobs on that node
 	return nil
 }
