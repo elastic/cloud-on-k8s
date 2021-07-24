@@ -2,25 +2,25 @@ bases:
   - ../bases
 
 patchesJson6902:
-  # patches that apply to all CRDS
+  # patch that apply to CRDS which might have been installed in v1alpha1 version
   - target:
       group: apiextensions.k8s.io
       version: v1beta1
       kind: CustomResourceDefinition
       name: apmservers.apm.k8s.elastic.co
-    path: all-patches.yaml
+    path: add-empty-v1alpha1-patch.yaml
   - target:
       group: apiextensions.k8s.io
       version: v1beta1
       kind: CustomResourceDefinition
       name: elasticsearches.elasticsearch.k8s.elastic.co
-    path: all-patches.yaml
+    path: add-empty-v1alpha1-patch.yaml
   - target:
       group: apiextensions.k8s.io
       version: v1beta1
       kind: CustomResourceDefinition
       name: kibanas.kibana.k8s.elastic.co
-    path: all-patches.yaml
+    path: add-empty-v1alpha1-patch.yaml
   # custom patches for apm
   - target:
       group: apiextensions.k8s.io
