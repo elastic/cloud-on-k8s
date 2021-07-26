@@ -65,6 +65,33 @@ In the case of storage the following restrictions apply:
 - Scaling the storage size automatically requires the `ExpandInUsePersistentVolumes` feature to be enabled. It also requires a storage class that supports link:https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/[volume expansion].
 - Only one persistent volume claim per Elasticsearch node is supported when autoscaling is enabled.
 - Volume size cannot be scaled down.
+- Scaling up (vertically) is only supported if the available capacity in a PersistentVolume matches the capacity claimed in the PersistentVolumeClaim. Refer to the next section for more information.
+
+[float]
+[id="{p}-{page_id}-algorithm"]
+=== Scale Up and Scale Out
+
+In order to adapt the resources to the workload, the operator first attempts to scale up the resources (cpu, memory and storage) allocated to each node in the NodeSets. The operator always ensures that the requested resources are within the limits specified in the autoscaling policy.
+If each individual node has reached the limits specified in the autoscaling policy, but more resources are required to handle the load, then the operator adds some nodes to the NodeSets. Nodes are added up to the `max` value specified in the `nodeCount` of the policy.
+
+WARNING: Scaling up (vertically) is only supported if the actual storage capacity of the persistent volumes matches the capacity claimed. If the physical capacity of a PersistentVolume may be greater than the capacity claimed in the PersistentVolumeClaim, it is advised to set a same value for the `min` and the `max` setting of each resource. It is however still possible to let the operator scale out the NodeSets automatically, as in the example below:
+
+[source,json]
+----
+{
+    "policies": [{
+      "name": "data-ingest",
+      "roles": ["data", "ingest" , "transform"],
+      "resources": {
+          "nodeCount": { "min": 3, "max": 9 },
+          "cpu": { "min": 4, "max": 4 },
+          "memory": { "min": "16Gi", "max": "16Gi" },
+          "storage": { "min": "512Gi", "max": "512Gi" }
+      }
+    }]
+}
+----
+
 
 [float]
 [id="{p}-{page_id}-resources"]
