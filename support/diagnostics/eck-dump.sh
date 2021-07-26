@@ -34,6 +34,28 @@ RESOURCES_NS="default"
 OUTPUT_DIR=""
 ZIP=""
 VERBOSE=""
+# go-template to dump metadata in textual form excluding sensitive fields like "last-applied-configuration"
+METADATA_TPL=$(cat <<'EOF'
+{{range .items}}
+{{"---" -}}
+{{range $k,$v := .metadata }}
+{{ printf `"%v": ` $k -}}
+  {{- if eq $k "annotations" "labels" -}}
+    {{- $nth := false -}}
+    {{- range $k,$v := . -}}
+      {{- if ne $k "kubectl.kubernetes.io/last-applied-configuration" -}}
+        {{- if $nth -}}{{- "," -}}{{- end -}}
+        {{- printf `"%v":"%v"` $k $v -}}
+        {{$nth = true}}
+      {{- end -}}
+    {{- end -}}
+  {{else}}
+    {{- printf `"%v"` $v -}}
+  {{- end -}}
+{{- end -}}
+{{end}}
+EOF
+)
 
 parse_args() {
   while :; do
@@ -155,7 +177,7 @@ get_resources() {
 # get_metadata lists resources metadata in a specified namespace in JSON output format
 get_metadata() {
   local ns=$1 resources=$2
-  kubectl get -n "$ns" "$resources" -o=jsonpath='{range .items[*]}{.metadata}{"\n"}{end}' | to_stdin_or_file "$ns"/"$resources".json
+  kubectl get -n "$ns" "$resources" -o=go-template="$METADATA_TPL" | to_stdin_or_file "$ns"/"$resources".txt
 }
 
 # get_logs retrieves logs for all pods in a specified namespace
