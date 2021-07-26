@@ -33,7 +33,7 @@ require (
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
-	go.elastic.co/apm v1.8.0
+	go.elastic.co/apm v1.11.0
 	go.elastic.co/apm/module/apmelasticsearch v1.8.0
 	go.uber.org/automaxprocs v1.4.0
 	go.uber.org/zap v1.18.1
