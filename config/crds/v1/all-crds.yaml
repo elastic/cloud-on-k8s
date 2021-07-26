@@ -2048,6 +2048,15 @@ spec:
     storage: false
     subresources:
       status: {}
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: to not break compatibility when upgrading from previous versions
+          of the CRD
+        properties: {}
+        type: object
+    served: false
+    storage: false
 status:
   acceptedNames:
     kind: ""
@@ -5519,6 +5528,15 @@ spec:
     storage: false
     subresources:
       status: {}
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: to not break compatibility when upgrading from previous versions
+          of the CRD
+        properties: {}
+        type: object
+    served: false
+    storage: false
 status:
   acceptedNames:
     kind: ""
@@ -7975,6 +7993,15 @@ spec:
     storage: false
     subresources:
       status: {}
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: to not break compatibility when upgrading from previous versions
+          of the CRD
+        properties: {}
+        type: object
+    served: false
+    storage: false
 status:
   acceptedNames:
     kind: ""
