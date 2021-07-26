@@ -354,9 +354,5 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev
 	}
 
 	// Request a flush to optimize indices recovery when the node restarts.
-	if err := doFlush(ctx.parentCtx, ctx.ES, ctx.esClient); err != nil {
-		return err
-	}
-
-	return nil
+	return doFlush(ctx.parentCtx, ctx.ES, ctx.esClient)
 }
