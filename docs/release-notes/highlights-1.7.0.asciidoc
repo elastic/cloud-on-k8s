@@ -25,7 +25,7 @@ In this release, the Elasticsearch and Kibana resources have been enhanced to le
 [id="{p}-170-autoscaling"]
 ==== Autoscaling
 
-The `/scale` subresource is now enabled for Kibana, Enterprise Search, Elastic Maps Server and APM Server. The number of replicas for these resources can now be managed automatically by the link:https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/[Horizontal Pod Autoscaler] (HPA).
+The `/scale` subresource is now enabled for Kibana, Enterprise Search, Elastic Maps Server, and APM Server. The number of replicas for these resources can be managed automatically by the link:https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/[Horizontal Pod Autoscaler] (HPA).
 
 [float]
 [id="{p}-170-agent-fleet"]
