@@ -118,7 +118,7 @@ spec:
     xpack.security.audit.enabled: true
 ----
 
-== Override Beats Pod Template
+== Override the Beats Pod Template
 
 You can customize the Filebeat and Metricbeat containers through the Pod template. Your config is merged with our defaults.
 
