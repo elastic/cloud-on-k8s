@@ -76,8 +76,6 @@ In the background, Metricbeat and Filebeat are deployed as sidecar containers in
 
 Metricbeat is used to collect monitoring metrics and Filebeat to monitor the Elasticsearch log files, collect log events. The two Beats are configured to ship data directly to the monitoring cluster(s) using dedicated Elastic users managed by ECK.
 
-Elasticsearch and Kibana containers are configured to share the
-
 == Audit logging
 
 Audit logs are collected and ship to the monitoring cluster referenced in the `monitoring.logs` section when audit logging is enabled (disabled by default).
