@@ -47,21 +47,22 @@ spec:
   version: {version}
   elasticsearchRef:
     name: monitored-sample
-    namespace: production
+    namespace: production <1>
   monitoring:
     metrics:
       elasticsearchRefs:
         - name: monitoring
-          namespace: observability
+          namespace: observability <2>
     logs:
       elasticsearchRefs:
         - name: monitoring
-          namespace: observability
+          namespace: observability <2>
   count: 1
 EOF
 ----
 
-The use of `namespace` is optional if the Elasticsearch cluster and the Kibana are running in the same namespace.
+<1> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana are running in the same namespace.
+<2> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
 
 The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 
