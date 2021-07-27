@@ -27,11 +27,11 @@ spec:
     metrics:
       elasticsearchRefs:
         - name: monitoring
-          namespace: observability
+          namespace: observability <1>
     logs:
       elasticsearchRefs:
         - name: monitoring
-          namespace: observability
+          namespace: observability <1>
   nodeSets:
   - name: default
     count: 1
@@ -47,22 +47,22 @@ spec:
   version: {version}
   elasticsearchRef:
     name: monitored-sample
-    namespace: production <1>
+    namespace: production <2>
   monitoring:
     metrics:
       elasticsearchRefs:
         - name: monitoring
-          namespace: observability <2>
+          namespace: observability <1>
     logs:
       elasticsearchRefs:
         - name: monitoring
-          namespace: observability <2>
+          namespace: observability <1>
   count: 1
 EOF
 ----
 
-<1> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana are running in the same namespace.
-<2> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
+<1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
+<2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana are running in the same namespace.
 
 The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 
@@ -73,6 +73,7 @@ You can also enable Stack Monitoring only on Elasticsearch or only on Kibana. In
 == When to use it
 
 This feature is a good solution if you need to monitor your Elastic applications in restricted Kubernetes environments where you cannot grant advanced permissions:
+
 - to Metricbeat to allow queriying the k8s API
 - to Filebeat to deploy a privileged DaemonSet
 
@@ -82,7 +83,9 @@ However, for maximum efficiency and minimising resource consumption, or advanced
 
 In the background, Metricbeat and Filebeat are deployed as sidecar containers in the same Pod as Elasticsearch and Kibana.
 
-Metricbeat is used to collect monitoring metrics and Filebeat to monitor the Elasticsearch log files, collect log events. The two Beats are configured to ship data directly to the monitoring cluster(s) using dedicated Elastic users managed by ECK.
+Metricbeat is used to collect monitoring metrics and Filebeat to monitor the Elasticsearch log files and collect log events.
+
+The two Beats are configured to ship data directly to the monitoring cluster(s) using dedicated Elastic users managed by ECK.
 
 == Audit logging
 
