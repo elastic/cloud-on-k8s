@@ -68,7 +68,7 @@ The monitoring cluster must be managed by ECK in the same Kubernetes cluster as 
 
 You can send metrics and logs to two different Elasticsearch monitoring clusters.
 
-You can also enable Stack Monitoring only on Elasticsearch or only on Kibana. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (see link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data(View monitoring data in Kibana)).
+You can also enable Stack Monitoring only on Elasticsearch or only on Kibana. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (see link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
 
 == How it works
 
