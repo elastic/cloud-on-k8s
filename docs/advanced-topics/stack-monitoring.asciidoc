@@ -11,7 +11,7 @@ endif::[]
 You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
 on your Elasticsearch and Kibana to collect and ship their metrics and logs.
 
-You just have to reference the separate monitoring Elasticsearch cluster in the `spec.monitoring` section.
+You just have to reference a separate monitoring Elasticsearch cluster in the `spec.monitoring` section.
 
 [source,yaml,subs="attributes,callouts"]
 ----
