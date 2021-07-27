@@ -2358,11 +2358,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm
-Version : v1.8.0
-Time    : 2020-05-06T03:17:47Z
+Version : v1.11.0
+Time    : 2021-02-01T07:23:41Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.8.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.11.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -30308,11 +30308,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/fastjson
-Version : v1.0.0
-Time    : 2018-10-25T06:08:26Z
+Version : v1.1.0
+Time    : 2020-05-11T07:15:19Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/fastjson@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/fastjson@v1.1.0/LICENSE:
 
 Copyright 2018 Elasticsearch BV
 
