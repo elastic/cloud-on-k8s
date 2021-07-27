@@ -1,0 +1,51 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.7.0]]
+== {n} version 1.7.0
+
+[[breaking-1.7.0]]
+[float]
+=== Breaking changes
+
+* Split manifest generation to produce both v1/v1beta1 CRDs {pull}4489[#4489]
+
+
+[[feature-1.7.0]]
+[float]
+=== New features
+
+* [Stack Monitoring] Kibana monitoring with Metricbeat and Filebeat as sidecars {pull}4618[#4618] (issue: {issue}4183[#4183])
+* [Stack Monitoring] Elasticsearch monitoring with Metricbeat and Filebeat as sidecars {pull}4528[#4528] (issue: {issue}4183[#4183])
+* [Agent] Fleet mode and Fleet Server support in Elastic Agent CRD {pull}4614[#4614] (issue: {issue}4429[#4429])
+* [Autoscaling] Enable scale subresource on eligible resources {pull}4599[#4599] (issue: {issue}4547[#4547])
+* Simplify setup of Enterprise Search access through Kibana UI {pull}4598[#4598]
+* Support custom CA on HTTP layer  {pull}4575[#4575] (issue: {issue}4522[#4522])
+
+[[enhancement-1.7.0]]
+[float]
+=== Enhancements
+
+* Add support for Elliptic Curve Digital Signature Algorithm (ECDSA) signed certificates {pull}4607[#4607] (issue: {issue}4581[#4581])
+* Allow users to configure SANs on transport certificates {pull}4600[#4600] (issue: {issue}4025[#4025])
+* Add validation for declared volume claim templates {pull}4526[#4526] (issue: {issue}4525[#4525])
+* [Autoscaling] Introduce resource recommenders {pull}4493[#4493] (issues: {issue}4459[#4459], {issue}4469[#4469])
+
+[[bug-1.7.0]]
+[float]
+=== Bug fixes
+
+* Beats: allow unprivileged Pods to read configuration file {pull}4572[#4572] (issue: {issue}4562[#4562])
+* Fix heap memory parsing with trailing white spaces {pull}4571[#4571] (issue: {issue}4564[#4564])
+* Detect admission registration API version {pull}4569[#4569] (issue: {issue}4555[#4555])
+
+[[nogroup-1.7.0]]
+[float]
+=== Misc
+
+* Update golang Docker tag to v1.16.6 {pull}4634[#4634]
+* Update module sigs.k8s.io/controller-runtime to v0.9.2 {pull}4603[#4603]
+* Update module sigs.k8s.io/controller-tools to v0.6.1 {pull}4588[#4588]
+* Update k8s to v0.21.2 {pull}4579[#4579]
+* Update registry.access.redhat.com/ubi8/ubi-minimal Docker tag to v8.4 {pull}4495[#4495]
+
