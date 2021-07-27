@@ -120,7 +120,7 @@ spec:
 
 == Override the Beats Pod Template
 
-You can customize the Filebeat and Metricbeat containers through the Pod template. Your config is merged with our defaults.
+You can customize the Filebeat and Metricbeat containers through the Pod template. Your config is merged with the values of the default Pod template ECK uses.
 
 [source,yaml,subs="attributes,callouts"]
 ----
