@@ -73,7 +73,7 @@ You can also enable Stack Monitoring only on Elasticsearch or only on Kibana. In
 
 In the background, Metricbeat and Filebeat are deployed as sidecar containers in the same Pod than Elasticsearch and Kibana.
 
-Metricbeat is used to collect monitoring metrics and Filebeat to monitor the Elasticsearch log files, collect log events. The two beats are configured to ship data directly to the monitoring cluster(s) using dedicated Elastic users managed by ECK.
+Metricbeat is used to collect monitoring metrics and Filebeat to monitor the Elasticsearch log files, collect log events. The two Beats are configured to ship data directly to the monitoring cluster(s) using dedicated Elastic users managed by ECK.
 
 Elasticsearch and Kibana containers are configured to share the
 
