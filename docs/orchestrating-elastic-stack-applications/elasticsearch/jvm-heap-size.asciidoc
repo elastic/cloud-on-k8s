@@ -13,6 +13,7 @@ Starting from version 7.11, Elasticsearch automatically sizes JVM heap based on 
 IMPORTANT: If you define `resource.requests` but not `resource.limits`, it could result in the Elasticsearch container assuming that it has access to all the memory available in the Kubernetes node. This can result in bad performance or unexpected behaviour if other memory-consuming workloads gets scheduled to the same node. 
 
 The following instructions apply if you are using:
+
 - Versions of Elasticsearch before 7.11
 - Elasticsearch 7.11 or later, and you want to override the default heap size. 
 
