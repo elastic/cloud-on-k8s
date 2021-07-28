@@ -1,0 +1,395 @@
+:page_id: elastic-agent-fleet
+:agent_recipes: https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/config/recipes/elastic-agent
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run Fleet-managed Elastic Agent on ECK
+
+experimental[]
+
+This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK.
+
+
+NOTE: See the link:k8s-elastic-agent-standalone.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode].
+
+
+
+* <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
+* <<{p}-elastic-agent-fleet-configuration,Configuration>>
+
+[id="{p}-elastic-agent-fleet-quickstart"]
+== Quickstart
+
+experimental[]
+
+. Apply the following specification to deploy Fleet Server, Elastic Agents, Elasticsearch and Kibana. ECK automatically configures secure connections between all components. Fleet will be set up and all agents will be enrolled in the default policy.
++
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  version: 7.14.0-SNAPSHOT
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs:
+  - name: elasticsearch
+  mode: fleet
+  fleetServerEnabled: true
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 7.14.0-SNAPSHOT
+  kibanaRef:
+    name: kibana
+  fleetServerRef:
+    name: fleet-server
+  mode: fleet
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 7.14.0-SNAPSHOT
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 7.14.0-SNAPSHOT
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+...
+EOF
+----
+
+. Monitor Fleet Server and Elastic Agent.
++
+Retrieve the status of Elastic Agent.
++
+[source,sh]
+----
+kubectl get agent
+----
++
+[source,sh,subs="attributes"]
+----
+NAME            HEALTH   AVAILABLE   EXPECTED   VERSION      AGE
+elastic-agent   green    3           3          {version}    14s
+fleet-server    green    1           1          {version}    19s
+
+----
+
+. List all the Pods belonging to a given Elastic Agent specification.
++
+[source,sh]
+----
+kubectl get pods --selector='agent.k8s.elastic.co/name=elastic-agent'
+----
++
+[source,sh]
+----
+NAME                        READY   STATUS    RESTARTS   AGE
+elastic-agent-agent-t49fd   1/1     Running   0          54s
+elastic-agent-agent-xbcxr   1/1     Running   0          54s
+elastic-agent-agent-zqp55   1/1     Running   0          54s
+----
+
+. Access logs for one of the Pods.
++
+[source,sh]
+----
+kubectl logs -f elastic-agent-agent-xbcxr
+----
+
+. Configure policy used by Elastic Agents.
++
+See Fleet link:https://www.elastic.co/guide/en/fleet/current/agent-policy.html[docs] for details.
+
+[id="{p}-elastic-agent-fleet-configuration"]
+== Configuration
+
+experimental[]
+
+Fleet-managed Elastic Agents must connect to Fleet Server to receive their configurations. You can deploy Fleet Server instances using ECKs Agent CRD with appropriate configuration, as below. To learn more about Fleet architecture and components involved please refer to Fleet link:https://www.elastic.co/guide/en/fleet/current/fleet-server.html[documentation].
+
+[id="{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server"]
+=== Fleet mode and Fleet Server
+Running both Fleet Server and Elastic Agent in Fleet-managed mode requires setting `mode` configuration element to `fleet`.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  mode: fleet
+----
+
+Running Fleet Server requires setting `fleetServerEnabled` configuration element to `true`, as below. As `false` is the default value, it can be left unset for any other case.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  mode: fleet
+  fleetServerEnabled: true
+----
+
+[id="{p}-elastic-agent-fleet-configuration-required-kibana-configuration"]
+=== Required Kibana configuration
+
+There are two settings that must be set correctly in Kibana configuration for Fleet to work.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  config:
+    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+----
+
+`xpack.fleet.agents.elasticsearch.host` has to point to Elasticsearch cluster that Elastic Agents should send the data to. For Elasticsearch clusters managed by ECK, ECK creates a Service with `https://${ES_RESOURCE_NAME}-es-http.${ES_RESOURCE_NAMESPACE}.svc:9200` url.
+
+`xpack.fleet.agents.fleet_server.hosts` has to point to Fleet Server that Elastic Agents should connect to. For Fleet Server instances managed by ECK, ECK creates a Service with `https://${FS_RESOURCE_NAME}-agent-http.${FS_RESOURCE_NAMESPACE}.svc:8220` url.
+
+[id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
+=== Setting referenced resources
+
+Both Fleet Server and Elastic Agent in Fleet mode can facilitate Fleet setup. Fleet Server can set up Fleet in Kibana (which otherwise requires manual steps) and enroll itself in the default Fleet Server policy. Elastic Agent can enroll itself in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to ECK-managed Kibana through `kibanaRef` configuration element.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  kibanaRef: kibana
+----
+
+ECK can also facilitate setting up connection between Elastic Agents and ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through `fleetServerRef` configuration element.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  fleetServerRef: fleet-server
+----
+
+
+Set `elasticsearchRefs` element in your Fleet Server to point to the Elasticsearch cluster that will manage Fleet. Leave `elasticsearchRefs` empty or unset for any Elastic Agent running in Fleet mode as the Elasticsearch cluster to target will come from Kibana `xpack.fleet.agents.elasticsearch.host` configuration element.
+
+NOTE: Currently, Elastic Agent in Fleet mode supports only a single output, so only a single Elasticsearch cluster can be referenced.
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  elasticsearchRefs:
+  - name: elasticsearch
+----
+
+By default, every reference targets all nodes in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific nodes instead, refer to <<{p}-traffic-splitting>> for more information and examples.
+
+[id="{p}-elastic-agent-fleet-configuration-custom-configuration"]
+=== Customize Elastic Agent configuration
+
+Contrary to running the Elastic Agent as standalone, configuration can't be defined through `config` or `configRef` elements. Instead, it's managed through Fleet.
+
+Only the setup part of the Fleet Server and Elastic Agent can be configured. You can override each of the environmental variables that agents consume as per link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[documentation]. This allows different setups where components are deployed both in local Kubernetes cluster and externally.
+
+[id="{p}-elastic-agent-fleet-configuration-upgrade-specification"]
+=== Upgrade the Elastic Agent specification
+
+You can upgrade the Elastic Agent version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will configure an agent to set up Fleet in Kibana, enroll itself in Fleet, or restart Elastic Agent on certificate rollover.
+
+[id="{p}-elastic-agent-fleet-configuration-chose-the-deployment-model"]
+=== Choose the deployment model
+
+Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how your Elastic Agents should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+
+Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows you to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  daemonSet:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 3
+...
+----
+
+See <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
+
+[id="{p}-elastic-agent-fleet-configuration-role-based-access-control"]
+=== Role Based Access Control for Elastic Agent
+
+Some Elastic Agent features, such as the link:https://epr.elastic.co/package/kubernetes/0.2.8/[Kubernetes integration], require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow API interactions:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: elasticsearch
+  daemonSet:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        serviceAccountName: elastic-agent
+...
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  - nodes
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+----
+
+[id="{p}-elastic-agent-fleet-configuration-deploying-in-secured-clusters"]
+=== Deploying Elastic Agent in secured clusters
+
+To deploy Elastic Agent in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the Elastic Agent Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Elastic Agent integrations might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
+
+[id="{p}-elastic-agent-fleet-configuration-customize-fleet-server-service"]
+=== Customize Fleet Server Service
+
+By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customise it using `http` configuration element. You can read more about link:k8s-service.html[making changes] to the Service and link:k8s-tls-certificates[customizing] TLS configuration in the documentation.
