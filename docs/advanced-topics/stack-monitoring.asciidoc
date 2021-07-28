@@ -15,7 +15,6 @@ You just have to reference a separate monitoring Elasticsearch cluster in the `s
 
 [source,yaml,subs="attributes,callouts"]
 ----
-cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
@@ -26,12 +25,12 @@ spec:
   monitoring:
     metrics:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability <1>
+      - name: monitoring
+        namespace: observability <1>
     logs:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability <1>
+      - name: monitoring
+        namespace: observability <1>
   nodeSets:
   - name: default
     count: 1
@@ -51,14 +50,13 @@ spec:
   monitoring:
     metrics:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability <1>
+      - name: monitoring
+        namespace: observability <1>
     logs:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability <1>
+      - name: monitoring
+        namespace: observability <1>
   count: 1
-EOF
 ----
 
 <1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
@@ -99,12 +97,12 @@ spec:
   monitoring:
     metrics:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability
+      - name: monitoring
+        namespace: observability
     logs:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability
+      - name: monitoring
+        namespace: observability
   nodeSets:
   - name: default
     config:
@@ -117,12 +115,12 @@ spec:
   monitoring:
     metrics:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability
+      - name: monitoring
+        namespace: observability
     logs:
       elasticsearchRefs:
-        - name: monitoring
-          namespace: observability
+      - name: monitoring
+        namespace: observability
   config:
     # https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
     xpack.security.audit.enabled: true
@@ -151,10 +149,10 @@ spec:
     podTemplate:
       spec:
         containers:
-          - name: metricbeat
-            env:
-              - foo: bar
-          - name: filebeat
-            env:
-              - foo: bar
+        - name: metricbeat
+          env:
+          - foo: bar
+        - name: filebeat
+          env:
+          - foo: bar
 ----
