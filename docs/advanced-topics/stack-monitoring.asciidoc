@@ -89,7 +89,7 @@ The two Beats are configured to ship data directly to the monitoring cluster(s) 
 
 == Audit logging
 
-Audit logs are collected and ship to the monitoring cluster referenced in the `monitoring.logs` section when audit logging is enabled (disabled by default).
+Audit logs are collected and shipped to the monitoring cluster referenced in the `monitoring.logs` section when audit logging is enabled (it is disabled by default).
 
 [source,yaml,subs="attributes,callouts"]
 ----
