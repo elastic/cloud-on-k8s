@@ -60,7 +60,7 @@ spec:
 ----
 
 <1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
-<2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana are running in the same namespace.
+<2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana instance are running in the same namespace.
 
 CAUTION: You cannot configure an Elasticsearch cluster to monitor itself, the monitoring cluster has to be a separate cluster.
 
