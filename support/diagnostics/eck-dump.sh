@@ -38,19 +38,19 @@ VERBOSE=""
 METADATA_TPL=$(cat <<'EOF'
 {{range .items}}
 {{"---" -}}
-{{range $k,$v := .metadata }}
-{{ printf `"%v": ` $k -}}
-  {{- if eq $k "annotations" "labels" -}}
+{{range $key,$value := .metadata }}
+{{ printf `"%v": ` $key -}}
+  {{- if eq $key "annotations" "labels" -}}
     {{- $nth := false -}}
-    {{- range $k,$v := . -}}
-      {{- if ne $k "kubectl.kubernetes.io/last-applied-configuration" -}}
+    {{- range $key,$value := . -}}
+      {{- if ne $key "kubectl.kubernetes.io/last-applied-configuration" -}}
         {{- if $nth -}}{{- "," -}}{{- end -}}
-        {{- printf `"%v":"%v"` $k $v -}}
+        {{- printf `"%v":"%v"` $key $value -}}
         {{$nth = true}}
       {{- end -}}
     {{- end -}}
   {{else}}
-    {{- printf `"%v"` $v -}}
+    {{- printf `"%v"` $value -}}
   {{- end -}}
 {{- end -}}
 {{end}}
