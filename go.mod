@@ -33,8 +33,8 @@ require (
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
-	go.elastic.co/apm v1.8.0
-	go.elastic.co/apm/module/apmelasticsearch v1.8.0
+	go.elastic.co/apm v1.12.0
+	go.elastic.co/apm/module/apmelasticsearch v1.12.0
 	go.uber.org/automaxprocs v1.4.0
 	go.uber.org/zap v1.18.1
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
@@ -43,9 +43,9 @@ require (
 	k8s.io/api v0.21.3
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
-	k8s.io/klog/v2 v2.9.0
+	k8s.io/klog/v2 v2.10.0
 	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
-	sigs.k8s.io/controller-runtime v0.9.2
+	sigs.k8s.io/controller-runtime v0.9.3
 	sigs.k8s.io/controller-tools v0.6.1
 )
 

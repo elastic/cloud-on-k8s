@@ -1,0 +1,34 @@
+[[release-highlights-1.7.0]]
+== 1.7.0 release highlights
+
+[float]
+[id="{p}-170-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.7.0 of {n}. See <<release-notes-1.7.0>> for the full list of changes.
+
+[float]
+[id="{p}-170-splitted-crds"]
+==== v1 versions of CustomResourceDefinitions (CRD) and ValidatingWebhookConfiguration are available
+
+Starting with this release, the `CustomResourceDefinitions` (CRD) and the `ValidatingWebhookConfiguration` resources are available in version `v1`. The resources definitions and the operator are now provided in two separate files, the `all-in-one.yaml` file is no longer available. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-deploy-eck.html[installation guide] or the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-eck.html#k8s-beta-to-ga-upgrade[upgrade notes] for more information.
+
+[float]
+[id="{p}-170-stack-monitoring"]
+==== Stack Monitoring
+
+In this release, the Elasticsearch and Kibana resources have been enhanced to let you specify a reference to a monitoring cluster. When specified, sidecar containers are automatically setup by ECK to ship logs and metrics to the referenced Elasticsearch cluster.
+
+*Add a link to documentation*
+
+[float]
+[id="{p}-170-autoscaling"]
+==== Autoscaling
+
+The `/scale` subresource is now enabled for Kibana, Enterprise Search, Elastic Maps Server, and APM Server. The number of replicas for these resources can be managed automatically by the link:https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/[Horizontal Pod Autoscaler] (HPA).
+
+[float]
+[id="{p}-170-agent-fleet"]
+==== Fleet mode and Fleet Server support (Alpha)
+
+In this release, the Agent CRD has been enhanced to introduce support for Fleet mode and Fleet Server. The agents configuration can be managed from Kibana, while an agent can be run in server mode to update policies across a fleet of Elastic Agents.
