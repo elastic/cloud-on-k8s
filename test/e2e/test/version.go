@@ -14,7 +14,7 @@ import (
 // Elastic Stack versions used in the E2E tests
 const (
 	// Minimum version for 6.8.x tested with the operator
-	MinVersion68x = "6.8.16"
+	MinVersion68x = "6.8.17"
 	// Current latest version for 7.x
 	LatestVersion7x = "7.13.1" // version to synchronize with the latest release of the Elastic Stack
 )
