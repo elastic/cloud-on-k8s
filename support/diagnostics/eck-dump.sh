@@ -120,6 +120,7 @@ main() {
     get_resources "$ns" events
     get_resources "$ns" networkpolicies
     get_resources "$ns" controllerrevisions
+    get_metadata "$ns" secrets
     get_logs "$ns"
   done
 
