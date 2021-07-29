@@ -155,6 +155,21 @@ func TestNewReporter(t *testing.T) {
 				AvailableNodes: 6,
 			},
 		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+				Name:      "monitored",
+			},
+			Spec: esv1.ElasticsearchSpec{
+				Monitoring: esv1.Monitoring{
+					Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+					Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+				},
+			},
+			Status: esv1.ElasticsearchStatus{
+				AvailableNodes: 1,
+			},
+		},
 		&apmv1.ApmServer{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
@@ -321,8 +336,10 @@ func TestNewReporter(t *testing.T) {
       resource_count: 2
     elasticsearches:
       autoscaled_resource_count: 1
-      pod_count: 9
-      resource_count: 2
+      pod_count: 10
+      resource_count: 3
+      stack_monitoring_logs_count: 1
+      stack_monitoring_metrics_count: 1
     enterprisesearches:
       pod_count: 3
       resource_count: 1
