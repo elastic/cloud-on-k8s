@@ -17,7 +17,7 @@ Starting with this release, the `CustomResourceDefinitions` (CRD) and the `Valid
 [id="{p}-170-stack-monitoring"]
 ==== Stack Monitoring
 
-In this release, the Elasticsearch and Kibana resources have been enhanced to let you specify a reference to a monitoring cluster. When specified, sidecar containers are automatically setup by ECK to ship logs and metrics to the referenced Elasticsearch cluster.
+In this release, the Elasticsearch and Kibana resources have been enhanced to let you specify a reference to a monitoring cluster. When specified, sidecar containers are automatically setup by ECK to ship logs and metrics to the referenced Elasticsearch cluster. Refer to the <<{p}-stack-monitoring,stack monitoring documentation>> for more details.
 
 
 [float]
