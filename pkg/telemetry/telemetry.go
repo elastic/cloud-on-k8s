@@ -195,6 +195,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		}
 
 		for _, es := range esList.Items {
+			es := es
 			stats[resourceCount]++
 			stats[podCount] += es.Status.AvailableNodes
 			if es.IsAutoscalingDefined() {
