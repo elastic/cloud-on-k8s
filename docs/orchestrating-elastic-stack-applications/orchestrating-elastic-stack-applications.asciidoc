@@ -20,6 +20,7 @@ endif::[]
 - <<{p}-accessing-elastic-services>>
 - <<{p}-customize-pods>>
 - <<{p}-managing-compute-resources>>
+- <<{p}-stateless-autoscaling>>
 - <<{p}-upgrading-stack>>
 
 --
@@ -35,5 +36,6 @@ include::securing-stack.asciidoc[leveloffset=+1]
 include::accessing-elastic-services.asciidoc[leveloffset=+1]
 include::customize-pods.asciidoc[leveloffset=+1]
 include::managing-compute-resources.asciidoc[leveloffset=+1]
+include::autoscaling.asciidoc[leveloffset=+1]
 include::upgrading-stack.asciidoc[leveloffset=+1]
 
