@@ -6,7 +6,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 7.13.1
+  version: 7.13.4
   elasticsearchRef:
     name: elasticsearch-monitoring
   config:
@@ -118,7 +118,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.13.1
+  version: 7.13.4
   elasticsearchRef:
     name: elasticsearch-monitoring
   kibanaRef:
@@ -216,7 +216,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.13.1
+  version: 7.13.4
   nodeSets:
   - name: default
     count: 3
@@ -235,7 +235,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.13.1
+  version: 7.13.4
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -252,7 +252,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-monitoring
 spec:
-  version: 7.13.1
+  version: 7.13.4
   nodeSets:
   - name: default
     count: 3
@@ -264,7 +264,7 @@ kind: Kibana
 metadata:
   name: kibana-monitoring
 spec:
-  version: 7.13.1
+  version: 7.13.4
   count: 1
   elasticsearchRef:
     name: elasticsearch-monitoring
