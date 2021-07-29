@@ -15,6 +15,7 @@ endif::[]
 - <<{p}-traffic-splitting>>
 - <<{p}-network-policies>>
 - <<{p}-webhook-namespace-selectors>>
+- <<{p}-stack-monitoring>>
 --
 
 include::openshift.asciidoc[leveloffset=+1]
@@ -23,3 +24,4 @@ include::service-meshes.asciidoc[leveloffset=+1]
 include::traffic-splitting.asciidoc[leveloffset=+1]
 include::network-policies.asciidoc[leveloffset=+1]
 include::webhook-namespace-selectors.asciidoc[leveloffset=+1]
+include::stack-monitoring.asciidoc[leveloffset=+1]
