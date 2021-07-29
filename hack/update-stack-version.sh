@@ -41,4 +41,6 @@ for_all_yaml_do() {
 
 for_all_yaml_do bump_version
 bump_version test/e2e/test/version.go
+bump_version test/e2e/stack_test.go
+bump_version hack/operatorhub/config.yaml
 bump_version Makefile
