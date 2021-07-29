@@ -162,7 +162,8 @@ func TestNewReporter(t *testing.T) {
 			},
 			Spec: esv1.ElasticsearchSpec{
 				Monitoring: esv1.Monitoring{
-					Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+					Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+					Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 				},
 			},
 			Status: esv1.ElasticsearchStatus{
@@ -338,6 +339,7 @@ func TestNewReporter(t *testing.T) {
       pod_count: 10
       resource_count: 3
       stack_monitoring_logs_count: 1
+      stack_monitoring_metrics_count: 1
     enterprisesearches:
       pod_count: 3
       resource_count: 1
