@@ -6,7 +6,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= Run Fleet-managed Elastic Agent on ECK
+= Run Fleet Server and Fleet-managed Elastic Agent on ECK
 
 experimental[]
 
