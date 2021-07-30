@@ -12,6 +12,8 @@ experimental[]
 
 This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode] with ECK.
 
+NOTE: Running standalone Elastic Agent on ECK is compatible only with Stack versions 7.10+.
+
 NOTE: See the link:k8s-elastic-agent-fleet.html[Fleet section] if you want to manage your Elastic Agents with link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet].
 
 

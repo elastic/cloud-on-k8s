@@ -12,6 +12,8 @@ experimental[]
 
 This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK.
 
+NOTE: Running Fleet Server and Fleet-managed Elastic Agent on ECK is compatible only with Stack versions 7.14+.
+
 
 NOTE: See the link:k8s-elastic-agent-standalone.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode].
 
@@ -34,8 +36,9 @@ apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: fleet-server
+  namespace: default
 spec:
-  version: 7.14.0-SNAPSHOT
+  version: {version}
   kibanaRef:
     name: kibana
   elasticsearchRefs:
@@ -55,8 +58,9 @@ apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: elastic-agent
+  namespace: default
 spec:
-  version: 7.14.0-SNAPSHOT
+  version: {version}
   kibanaRef:
     name: kibana
   fleetServerRef:
@@ -74,8 +78,9 @@ apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: kibana
+  namespace: default
 spec:
-  version: 7.14.0-SNAPSHOT
+  version: {version}
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -87,8 +92,9 @@ apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: elasticsearch
+  namespace: default
 spec:
-  version: 7.14.0-SNAPSHOT
+  version: {version}
   nodeSets:
   - name: default
     count: 3
@@ -133,7 +139,6 @@ roleRef:
   kind: ClusterRole
   name: elastic-agent
   apiGroup: rbac.authorization.k8s.io
-...
 EOF
 ----
 
@@ -231,9 +236,9 @@ spec:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
 ----
 
-`xpack.fleet.agents.elasticsearch.host` has to point to Elasticsearch cluster that Elastic Agents should send the data to. For Elasticsearch clusters managed by ECK, ECK creates a Service with `https://${ES_RESOURCE_NAME}-es-http.${ES_RESOURCE_NAMESPACE}.svc:9200` url.
+`xpack.fleet.agents.elasticsearch.host` has to point to Elasticsearch cluster that Elastic Agents should send the data to. For Elasticsearch clusters managed by ECK, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
-`xpack.fleet.agents.fleet_server.hosts` has to point to Fleet Server that Elastic Agents should connect to. For Fleet Server instances managed by ECK, ECK creates a Service with `https://${FS_RESOURCE_NAME}-agent-http.${FS_RESOURCE_NAMESPACE}.svc:8220` url.
+`xpack.fleet.agents.fleet_server.hosts` has to point to Fleet Server that Elastic Agents should connect to. For Fleet Server instances managed by ECK, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
 === Setting referenced resources
