@@ -25,7 +25,7 @@ NOTE: See the link:k8s-elastic-agent-standalone.html[Standalone section] if you 
 
 experimental[]
 
-. Apply the following specification to deploy Fleet Server, Elastic Agents, Elasticsearch and Kibana. ECK automatically configures secure connections between all components. Fleet will be set up and all agents will be enrolled in the default policy.
+. Apply the following specification to deploy Fleet Server, Elastic Agents, Elasticsearch, and Kibana. ECK automatically configures secure connections between all components. Fleet will be set up and all agents will be enrolled in the default policy.
 +
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -247,7 +247,8 @@ kind: Agent
 metadata:
   name: fleet-server
 spec:
-  kibanaRef: kibana
+  kibanaRef:
+    name: kibana
 ----
 
 ECK can also facilitate setting up connection between Elastic Agents and ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through `fleetServerRef` configuration element.
@@ -259,7 +260,8 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  fleetServerRef: fleet-server
+  fleetServerRef:
+    name: fleet-server
 ----
 
 
@@ -278,7 +280,7 @@ spec:
   - name: elasticsearch
 ----
 
-By default, every reference targets all nodes in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific nodes instead, refer to <<{p}-traffic-splitting>> for more information and examples.
+By default, every reference targets all instances in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific instances instead, refer to <<{p}-traffic-splitting>> for more information and examples.
 
 [id="{p}-elastic-agent-fleet-configuration-custom-configuration"]
 === Customize Elastic Agent configuration
