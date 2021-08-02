@@ -21,6 +21,7 @@ NOTE: See the link:k8s-elastic-agent-standalone.html[Standalone section] if you 
 
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
+* <<{p}-elastic-agent-fleet-known-limitation,Known Limitation>>
 
 [id="{p}-elastic-agent-fleet-quickstart"]
 == Quickstart
@@ -35,14 +36,14 @@ cat $$<<$$EOF | kubectl apply -f -
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: fleet-server
+  name: fleet-server-quickstart
   namespace: default
 spec:
   version: {version}
   kibanaRef:
-    name: kibana
+    name: kibana-quickstart
   elasticsearchRefs:
-  - name: elasticsearch
+  - name: elasticsearch-quickstart
   mode: fleet
   fleetServerEnabled: true
   deployment:
@@ -57,14 +58,14 @@ spec:
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: elastic-agent
+  name: elastic-agent-quickstart
   namespace: default
 spec:
   version: {version}
   kibanaRef:
-    name: kibana
+    name: kibana-quickstart
   fleetServerRef:
-    name: fleet-server
+    name: fleet-server-quickstart
   mode: fleet
   daemonSet:
     podTemplate:
@@ -77,13 +78,13 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: kibana
+  name: kibana-quickstart
   namespace: default
 spec:
   version: {version}
   count: 1
   elasticsearchRef:
-    name: elasticsearch
+    name: elasticsearch-quickstart
   config:
     xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
@@ -91,7 +92,7 @@ spec:
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: elasticsearch
+  name: elasticsearch-quickstart
   namespace: default
 spec:
   version: {version}
@@ -201,7 +202,7 @@ Running both Fleet Server and Elastic Agent in Fleet-managed mode requires setti
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: quickstart
+  name: elastic-agent-sample
 spec:
   mode: fleet
 ----
@@ -213,7 +214,7 @@ Running Fleet Server requires setting `fleetServerEnabled` configuration element
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: quickstart
+  name: fleet-server-sample
 spec:
   mode: fleet
   fleetServerEnabled: true
@@ -250,7 +251,7 @@ Both Fleet Server and Elastic Agent in Fleet mode can facilitate Fleet setup. Fl
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: fleet-server
+  name: fleet-server-sample
 spec:
   kibanaRef:
     name: kibana
@@ -263,10 +264,10 @@ ECK can also facilitate setting up connection between Elastic Agents and ECK-man
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: elastic-agent
+  name: elastic-agent-sample
 spec:
   fleetServerRef:
-    name: fleet-server
+    name: fleet-server-sample
 ----
 
 
@@ -279,10 +280,10 @@ NOTE: Currently, Elastic Agent in Fleet mode supports only a single output, so o
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: fleet-server
+  name: fleet-server-sample
 spec:
   elasticsearchRefs:
-  - name: elasticsearch
+  - name: elasticsearch-sample
 ----
 
 By default, every reference targets all instances in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific instances instead, refer to <<{p}-traffic-splitting>> for more information and examples.
@@ -311,7 +312,7 @@ Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/u
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: quickstart
+  name: elastic-agent-sample
 spec:
   version: {version}
   daemonSet:
@@ -334,11 +335,11 @@ Some Elastic Agent features, such as the link:https://epr.elastic.co/package/kub
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: elastic-agent
+  name: elastic-agent-sample
 spec:
   version: {version}
   elasticsearchRefs:
-  - name: elasticsearch
+  - name: elasticsearch-sample
   daemonSet:
     podTemplate:
       spec:
@@ -400,3 +401,10 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 === Customize Fleet Server Service
 
 By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customise it using `http` configuration element. You can read more about link:k8s-service.html[making changes] to the Service and link:k8s-tls-certificates[customizing] TLS configuration in the documentation.
+
+[id="{p}-elastic-agent-fleet-known-limitation"]
+== Known limitation
+
+### Elastic Agent in Fleet mode has to run with elevated privileges and in the same namespace as the Elasticsearch cluster it connects to
+Due to current configuration limitations on Fleet/Elastic Agent side ECK needs to establish trust between Elastic Agents and Elasticsearch. ECK will only be able to fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
+To establish trust, Pod needs to update the CA store via a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, Pod needs to run with elevated privileges.
