@@ -14,9 +14,8 @@ This section describes how to configure and deploy Elastic Agent in link:https:/
 
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
-* <<{p}-elastic-agent-fleet-known-limitation,Known limitation>>
-
-NOTE: Running Fleet-managed Elastic Agent on ECK is compatible only with Stack versions 7.14+.
+* <<{p}-elastic-agent-fleet-configuration-examples,Configuration Examples>>
+* <<{p}-elastic-agent-fleet-known-limitation,Known Limitation>>
 
 [id="{p}-elastic-agent-fleet-quickstart"]
 == Quickstart
@@ -135,6 +134,8 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 EOF
 ----
++
+See <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 
 ECK automatically configures secure connections between all components. Fleet will be set up, and all agents are enrolled in the default policy.
 
@@ -396,6 +397,43 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 === Customize Fleet Server Service
 
 By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. You can read more about link:k8s-services.html[making changes] to the Service and link:k8s-tls-certificates.html[customizing] TLS configuration in the documentation.
+
+[id="{p}-elastic-agent-fleet-configuration-examples"]
+== Configuration Examples
+
+experimental[]
+
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster, a single Kibana instance and a single Fleet Server instance.
+
+CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+
+
+=== System and Kubernetes integrations
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/fleet-kubernetes-integration.yaml
+----
+Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes integrations enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). Kubernetes integrations collects API server, Container, Event, Node, Pod, Volume and system metrics.
+
+=== Custom logs integration with autodiscover
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/fleet-custom-logs-integration.yaml
+----
+
+Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.
+
+
+=== APM integration
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/fleet-apm-integration.yaml
+----
+
+Deploys single instance Elastic Agent Deployment with APM integration enabled.
 
 [id="{p}-elastic-agent-fleet-known-limitation"]
 == Known limitation
