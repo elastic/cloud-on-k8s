@@ -6,29 +6,22 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= Run Fleet Server and Fleet-managed Elastic Agent on ECK
+= Run Fleet-managed Elastic Agent on ECK
 
 experimental[]
 
-This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK.
-
-NOTE: Running Fleet Server and Fleet-managed Elastic Agent on ECK is compatible only with Stack versions 7.14+.
-
-
-NOTE: See the link:k8s-elastic-agent-standalone.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode].
-
-
+This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK. Check the link:k8s-elastic-agent-standalone.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/run-elastic-agent-standalone.html[standalone mode].
 
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
-* <<{p}-elastic-agent-fleet-known-limitation,Known Limitation>>
+* <<{p}-elastic-agent-fleet-known-limitation,Known limitation>>
+
+NOTE: Running Fleet-managed Elastic Agent on ECK is compatible only with Stack versions 7.14+.
 
 [id="{p}-elastic-agent-fleet-quickstart"]
 == Quickstart
 
-experimental[]
-
-. Apply the following specification to deploy Fleet Server, Elastic Agents, Elasticsearch, and Kibana. ECK automatically configures secure connections between all components. Fleet will be set up and all agents will be enrolled in the default policy.
+. To deploy Fleet Server, Elastic Agents, Elasticsearch, and Kibana, apply the following specification:
 +
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -143,9 +136,10 @@ roleRef:
 EOF
 ----
 
-. Monitor Fleet Server and Elastic Agent.
-+
-Retrieve the status of Elastic Agent.
+ECK automatically configures secure connections between all components. Fleet will be set up, and all agents are enrolled in the default policy.
+
+. Monitor the status of Fleet Server and Elastic Agent.
+
 +
 [source,sh]
 ----
@@ -182,20 +176,20 @@ elastic-agent-agent-zqp55   1/1     Running   0          54s
 kubectl logs -f elastic-agent-agent-xbcxr
 ----
 
-. Configure policy used by Elastic Agents.
-+
-See Fleet link:https://www.elastic.co/guide/en/fleet/current/agent-policy.html[docs] for details.
+. Configure the policy used by Elastic Agents. Check link:https://www.elastic.co/guide/en/fleet/current/agent-policy.html[Elastic Agent policies] for more details.
 
 [id="{p}-elastic-agent-fleet-configuration"]
 == Configuration
 
 experimental[]
 
-Fleet-managed Elastic Agents must connect to Fleet Server to receive their configurations. You can deploy Fleet Server instances using ECKs Agent CRD with appropriate configuration, as below. To learn more about Fleet architecture and components involved please refer to Fleet link:https://www.elastic.co/guide/en/fleet/current/fleet-server.html[documentation].
+Fleet-managed Elastic Agents must connect to Fleet Server to receive their configurations. You can deploy Fleet Server instances using ECKs Agent CRD with the appropriate configuration, as shown in <<{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server,Fleet mode and Fleet Server>>.
+
+To know more about Fleet architecture and related components, check the Fleet link:https://www.elastic.co/guide/en/fleet/current/fleet-server.html[documentation].
 
 [id="{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server"]
 === Fleet mode and Fleet Server
-Running both Fleet Server and Elastic Agent in Fleet-managed mode requires setting `mode` configuration element to `fleet`.
+To run both Fleet Server and Elastic Agent in Fleet-managed mode, set the `mode` configuration element to `fleet`.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -207,7 +201,7 @@ spec:
   mode: fleet
 ----
 
-Running Fleet Server requires setting `fleetServerEnabled` configuration element to `true`, as below. As `false` is the default value, it can be left unset for any other case.
+To run Fleet Server, set the `fleetServerEnabled` configuration element to `true`, as shown in this example: 
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -219,11 +213,12 @@ spec:
   mode: fleet
   fleetServerEnabled: true
 ----
+You can leave the default value `false` for any other case.
 
 [id="{p}-elastic-agent-fleet-configuration-required-kibana-configuration"]
-=== Required Kibana configuration
+=== Configure Kibana
 
-There are two settings that must be set correctly in Kibana configuration for Fleet to work.
+To have Fleet running properly, the following settings must be correctly set in the Kibana configuration:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -237,14 +232,14 @@ spec:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
 ----
 
-`xpack.fleet.agents.elasticsearch.host` has to point to Elasticsearch cluster that Elastic Agents should send the data to. For Elasticsearch clusters managed by ECK, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
+*  `xpack.fleet.agents.elasticsearch.host`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
-`xpack.fleet.agents.fleet_server.hosts` has to point to Fleet Server that Elastic Agents should connect to. For Fleet Server instances managed by ECK, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
+*  `xpack.fleet.agents.fleet_server.hosts` must point to Fleet Server that Elastic Agents should connect to. For ECK-managed Fleet Server instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
-=== Setting referenced resources
+=== Set referenced resources
 
-Both Fleet Server and Elastic Agent in Fleet mode can facilitate Fleet setup. Fleet Server can set up Fleet in Kibana (which otherwise requires manual steps) and enroll itself in the default Fleet Server policy. Elastic Agent can enroll itself in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to ECK-managed Kibana through `kibanaRef` configuration element.
+Both Fleet Server and Elastic Agent in Fleet mode can facilitate the Fleet setup. Fleet Server can set up Fleet in Kibana (which otherwise requires manual steps) and enroll itself in the default Fleet Server policy. Elastic Agent can enroll itself in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to ECK-managed Kibana through `kibanaRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -257,7 +252,7 @@ spec:
     name: kibana
 ----
 
-ECK can also facilitate setting up connection between Elastic Agents and ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through `fleetServerRef` configuration element.
+ECK can also facilitate the connection between Elastic Agents and ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through `fleetServerRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -286,24 +281,24 @@ spec:
   - name: elasticsearch-sample
 ----
 
-By default, every reference targets all instances in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific instances instead, refer to <<{p}-traffic-splitting>> for more information and examples.
+By default, every reference targets all instances in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific instances, refer to <<{p}-traffic-splitting>> for more information and examples.
 
 [id="{p}-elastic-agent-fleet-configuration-custom-configuration"]
 === Customize Elastic Agent configuration
 
-Contrary to running the Elastic Agent as standalone, configuration can't be defined through `config` or `configRef` elements. Instead, it's managed through Fleet.
+In contrast to what happens with Elastic Agent as standalone, the configuration is managed through Fleet, and it cannot be defined through `config` or `configRef` elements.
 
-Only the setup part of the Fleet Server and Elastic Agent can be configured. You can override each of the environmental variables that agents consume as per link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[documentation]. This allows different setups where components are deployed both in local Kubernetes cluster and externally.
+You can only configure the setup part of the Fleet Server and Elastic Agent. You can override each of the environmental variables that agents consume, as documented in link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[Elastic Agent environment variables]. This allows different setups where components are deployed both in local Kubernetes cluster and externally.
 
 [id="{p}-elastic-agent-fleet-configuration-upgrade-specification"]
 === Upgrade the Elastic Agent specification
 
-You can upgrade the Elastic Agent version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will configure an agent to set up Fleet in Kibana, enroll itself in Fleet, or restart Elastic Agent on certificate rollover.
+You can upgrade the Elastic Agent version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK configures an agent to set up Fleet in Kibana, enrolls itself in Fleet, or restarts Elastic Agent on certificate rollover.
 
 [id="{p}-elastic-agent-fleet-configuration-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. Provide a `podTemplate` element under either the `deployment` or the `daemonSet` element in the specification to choose how your Elastic Agents should be deployed. When choosing the `deployment` option you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. To choose how to deploy your Elastic Agents, provide a `podTemplate` element under the `deployment` or the `daemonSet` element in the specification. If you choose the `deployment` option, you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
 
 Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows you to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
 
@@ -323,7 +318,7 @@ spec:
 ...
 ----
 
-See <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
+Refer to <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
 
 [id="{p}-elastic-agent-fleet-configuration-role-based-access-control"]
 === Role Based Access Control for Elastic Agent
@@ -393,18 +388,19 @@ roleRef:
 ----
 
 [id="{p}-elastic-agent-fleet-configuration-deploying-in-secured-clusters"]
-=== Deploying Elastic Agent in secured clusters
+=== Deploy Elastic Agent in secured clusters
 
 To deploy Elastic Agent in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the Elastic Agent Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Elastic Agent integrations might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
 
 [id="{p}-elastic-agent-fleet-configuration-customize-fleet-server-service"]
 === Customize Fleet Server Service
 
-By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customise it using `http` configuration element. You can read more about link:k8s-service.html[making changes] to the Service and link:k8s-tls-certificates[customizing] TLS configuration in the documentation.
+By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. You can read more about link:k8s-service.html[making changes] to the Service and link:k8s-tls-certificates[customizing] TLS configuration in the documentation.
 
 [id="{p}-elastic-agent-fleet-known-limitation"]
 == Known limitation
 
-### Elastic Agent in Fleet mode has to run with elevated privileges and in the same namespace as the Elasticsearch cluster it connects to
-Due to current configuration limitations on Fleet/Elastic Agent side ECK needs to establish trust between Elastic Agents and Elasticsearch. ECK will only be able to fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
-To establish trust, Pod needs to update the CA store via a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, Pod needs to run with elevated privileges.
+Elastic Agent in Fleet mode has to run with elevated privileges and in the same namespace as the Elasticsearch cluster it connects to.
+
+Due to current configuration limitations on Fleet/Elastic Agent side, ECK needs to establish trust between Elastic Agents and Elasticsearch. ECK can fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
+To establish trust, the Pod needs to update the CA store via a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
