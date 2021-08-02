@@ -14,7 +14,7 @@ spec:
     - name: kubernetes
       version: latest
     xpack.fleet.agentPolicies:
-    - name: Defaul Fleet Server on ECK policy
+    - name: Default Fleet Server on ECK policy
       is_default_fleet_server: true
       package_policies:
       - package:
