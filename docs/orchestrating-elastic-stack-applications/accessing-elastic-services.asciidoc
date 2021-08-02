@@ -39,7 +39,7 @@ You can access Elastic resources by using native Kubernetes services that are no
 [id="{p}-kubernetes-service"]
 === Manage Kubernetes services
 
-For each resource, the operator manages a Kubernetes service named `<name>-[es|kb|apm|ent]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
+For each resource, the operator manages a Kubernetes service named `<name>-[es|kb|apm|ent|agent]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
 
 [source,sh]
 ----
@@ -105,7 +105,7 @@ hulk-es-http-certs-internal      Opaque                                2      28
 hulk-es-http-certs-public        Opaque                                1      28m
 ----
 
-The public certificate is stored in a secret named `<name>-[es|kb|apm|ent]-http-certs-public`.
+The public certificate is stored in a secret named `<name>-[es|kb|apm|ent|agent]-http-certs-public`.
 
 [source,sh]
 ----
