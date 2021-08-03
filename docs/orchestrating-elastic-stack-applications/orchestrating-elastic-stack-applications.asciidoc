@@ -12,7 +12,7 @@ endif::[]
 - <<{p}-elasticsearch-specification>>
 - <<{p}-kibana>>
 - <<{p}-apm-server>>
-- <<{p}-elastic-agent-standalone>>
+- <<{p}-elastic-agent>>
 - <<{p}-elastic-agent-fleet>>
 - <<{p}-maps>>
 - <<{p}-enterprise-search>>
