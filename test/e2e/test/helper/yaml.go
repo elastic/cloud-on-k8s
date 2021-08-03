@@ -62,6 +62,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{}, &rbacv1.ClusterRoleBindingList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
+	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
@@ -250,7 +251,8 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
-				WithPodLabel(run.TestNameLabel, fullTestName)
+				WithPodLabel(run.TestNameLabel, fullTestName).
+				WithConfig(tweakConfigLiterals(b.Kibana.Spec.Config.Data, suffix, namespace))
 		case *apmv1.ApmServer:
 			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.ApmServer = *decodedObj
@@ -293,7 +295,8 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithElasticsearchRefs(tweakOutputRefs(b.Agent.Spec.ElasticsearchRefs, suffix)...).
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
-				WithDefaultESValidation(agent.HasAnyDataStream())
+				WithKibanaRef(tweakServiceRef(b.Agent.Spec.KibanaRef, suffix)).
+				WithFleetServerRef(tweakServiceRef(b.Agent.Spec.FleetServerRef, suffix))
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
 				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
@@ -309,6 +312,9 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			decodedObj.RoleRef.Name = decodedObj.RoleRef.Name + "-" + suffix
 			decodedObj.Name = decodedObj.Name + "-" + suffix
 		case *rbacv1.ClusterRole:
+			decodedObj.Name = decodedObj.Name + "-" + suffix
+		case *corev1.Service:
+			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
 		}
 
@@ -375,6 +381,39 @@ func tweakOutputRefs(outputs []agentv1alpha1.Output, suffix string) (results []a
 	}
 
 	return results
+}
+
+func tweakConfigLiterals(config map[string]interface{}, suffix string, namespace string) map[string]interface{} {
+	elasticsearchHostKey := "xpack.fleet.agents.elasticsearch.host"
+	if val1, ok := config[elasticsearchHostKey]; ok {
+		if val2, ok := val1.(string); ok {
+			val2 = strings.ReplaceAll(
+				val2,
+				"elasticsearch-es-http.default",
+				fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+			)
+			config[elasticsearchHostKey] = val2
+		}
+	}
+
+	fleetServerHostsKey := "xpack.fleet.agents.fleet_server.hosts"
+	//nolint:nestif
+	if val1, ok := config[fleetServerHostsKey]; ok {
+		if val2, ok := val1.([]interface{}); ok {
+			if len(val2) > 0 {
+				if val3, ok := val2[0].(string); ok {
+					val3 = strings.ReplaceAll(
+						val3,
+						"fleet-server-agent-http.default",
+						fmt.Sprintf("fleet-server-%s-agent-http.%s", suffix, namespace),
+					)
+					config[fleetServerHostsKey] = []interface{}{val3}
+				}
+			}
+		}
+	}
+
+	return config
 }
 
 func MkTestName(t *testing.T, path string) string {
