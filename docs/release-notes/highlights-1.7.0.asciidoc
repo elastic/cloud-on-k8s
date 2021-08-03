@@ -11,7 +11,7 @@ New and notable changes in version 1.7.0 of {n}. See <<release-notes-1.7.0>> for
 [id="{p}-170-splitted-crds"]
 ==== v1 versions of CustomResourceDefinitions (CRD) and ValidatingWebhookConfiguration are available
 
-Starting with this release, the `CustomResourceDefinitions` (CRD) and the `ValidatingWebhookConfiguration` resources are available in version `v1`. The resources definitions and the operator are now provided in two separate files, the `all-in-one.yaml` file is no longer available. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-deploy-eck.html[installation guide] or the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-eck.html#k8s-beta-to-ga-upgrade[upgrade notes] for more information.
+Starting with this release, the `CustomResourceDefinitions` (CRD) and the `ValidatingWebhookConfiguration` resources are available in version `v1`. The resources definitions and the operator are now provided in two separate files, the `all-in-one.yaml` file is no longer available. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/1.7/k8s-deploy-eck.html[installation guide] or the link:https://www.elastic.co/guide/en/cloud-on-k8s/1.7/k8s-upgrading-eck.html#k8s-beta-to-ga-upgrade[upgrade notes] for more information.
 
 [float]
 [id="{p}-170-stack-monitoring"]
