@@ -4,7 +4,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.13.4
+  version: 7.14.0
   count: 1
   config:
     # Configure this to a domain you control
