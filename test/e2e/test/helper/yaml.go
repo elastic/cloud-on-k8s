@@ -252,7 +252,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
-				WithConfig(tweakConfigLiterals(b.Kibana.Spec.Config.Data, suffix, namespace))
+				WithConfig(tweakConfigLiterals(b.Kibana.Spec.Config, suffix, namespace))
 		case *apmv1.ApmServer:
 			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.ApmServer = *decodedObj
@@ -383,22 +383,28 @@ func tweakOutputRefs(outputs []agentv1alpha1.Output, suffix string) (results []a
 	return results
 }
 
-func tweakConfigLiterals(config map[string]interface{}, suffix string, namespace string) map[string]interface{} {
+func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace string) map[string]interface{} {
+	if config == nil {
+		return map[string]interface{}{}
+	}
+
+	data := config.Data
+
 	elasticsearchHostKey := "xpack.fleet.agents.elasticsearch.host"
-	if val1, ok := config[elasticsearchHostKey]; ok {
+	if val1, ok := data[elasticsearchHostKey]; ok {
 		if val2, ok := val1.(string); ok {
 			val2 = strings.ReplaceAll(
 				val2,
 				"elasticsearch-es-http.default",
 				fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
 			)
-			config[elasticsearchHostKey] = val2
+			data[elasticsearchHostKey] = val2
 		}
 	}
 
 	fleetServerHostsKey := "xpack.fleet.agents.fleet_server.hosts"
 	//nolint:nestif
-	if val1, ok := config[fleetServerHostsKey]; ok {
+	if val1, ok := data[fleetServerHostsKey]; ok {
 		if val2, ok := val1.([]interface{}); ok {
 			if len(val2) > 0 {
 				if val3, ok := val2[0].(string); ok {
@@ -407,13 +413,13 @@ func tweakConfigLiterals(config map[string]interface{}, suffix string, namespace
 						"fleet-server-agent-http.default",
 						fmt.Sprintf("fleet-server-%s-agent-http.%s", suffix, namespace),
 					)
-					config[fleetServerHostsKey] = []interface{}{val3}
+					data[fleetServerHostsKey] = []interface{}{val3}
 				}
 			}
 		}
 	}
 
-	return config
+	return data
 }
 
 func MkTestName(t *testing.T, path string) string {
