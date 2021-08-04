@@ -9,7 +9,7 @@ endif::[]
 
 [partintro]
 --
-Built on the Kubernetes Operator pattern, Elastic Cloud on Kubernetes (ECK) extends the basic Kubernetes orchestration capabilities to support the setup and management of Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats on Kubernetes.
+Built on the Kubernetes Operator pattern, Elastic Cloud on Kubernetes (ECK) extends the basic Kubernetes orchestration capabilities to support the setup and management of {eck_resources_list} on Kubernetes.
 
 With Elastic Cloud on Kubernetes you can streamline critical operations, such as:
 

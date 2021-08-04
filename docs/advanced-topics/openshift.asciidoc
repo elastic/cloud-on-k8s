@@ -50,7 +50,7 @@ oc apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yam
 oc adm pod-network make-projects-global elastic-system
 ----
 
-. Create a namespace to hold the Elastic resources (Elasticsearch, Kibana):
+. Create a namespace to hold the Elastic resources ({eck_resources_list}):
 +
 [source,shell]
 ----
