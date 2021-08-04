@@ -161,6 +161,24 @@ rules:
     - get
     - list
     - watch
+    # for Elastic Agent in Fleet mode
+  - apiGroups:
+    - "coordination.k8s.io"
+    resources:
+    - leases
+    verbs:
+    - get
+    - create
+    - update
+    # for Elastic Agent Kubernetes integration
+  - apiGroups:
+    - "batch"
+    resources:
+    - jobs
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
   - apiGroups:
       - elasticsearch.k8s.elastic.co
     resources:
