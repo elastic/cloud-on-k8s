@@ -95,7 +95,7 @@ var (
 		},
 		// StackMonitoringUserRole is a dedicated role for Stack Monitoring with Metricbeat and Filebeat used for the
 		// user sending monitoring data.
-		// See: https://www.elastic.co/guide/en/beats/filebeat/7.13/privileges-to-publish-monitoring.html.
+		// See: https://www.elastic.co/guide/en/beats/filebeat/7.14/privileges-to-publish-monitoring.html.
 		StackMonitoringUserRole: esclient.Role{
 			Cluster: []string{
 				"monitor",
