@@ -30,3 +30,17 @@ The `/scale` subresource is now enabled for Kibana, Enterprise Search, Elastic M
 ==== Fleet mode and Fleet Server support (Alpha)
 
 In this release, the Agent CRD has been enhanced to introduce support for Fleet mode and Fleet Server. The agents configuration can be managed from Kibana, while an agent can be run in server mode to update policies across a fleet of Elastic Agents.
+
+[float]
+[id="{p}-170-known-issues"]
+=== Known issues
+
+After installing ECK 1.7.0 on Kubernetes versions 1.16/1.17 using Helm or the YAML manifests, deploying Elasticsearch may fail with the following error:
+
+[source,bash]
+----
+error: SchemaError(co.elastic.k8s.elasticsearch.v1.Elasticsearch.spec.nodeSets.volumeClaimTemplates): array should have exactly one sub-item
+----
+
+More details about the issue and available workarounds are documented in link:https://github.com/elastic/cloud-on-k8s/issues/4737[this bug report].
+
