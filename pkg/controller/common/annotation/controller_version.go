@@ -73,6 +73,11 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 
 	annotatedVersion := obj.GetAnnotations()[ControllerVersionAnnotation]
 
+	_, err := version.Parse(controllerVersion)
+	if err != nil {
+		return false, errors.Wrap(err, "Error parsing controller version")
+	}
+
 	// if the annotation does not exist, it might indicate it was reconciled by an older controller version that did not add the version annotation,
 	// in which case it is incompatible with the current controller, or it is a brand new resource that has not been reconciled by any controller yet
 	if annotatedVersion == "" {
@@ -110,17 +115,13 @@ func isAnnotatedVersionSupported(currentVersion, controllerVersion string, obj c
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing minimum compatible version")
 	}
-	ctrlVersion, err := version.Parse(controllerVersion)
-	if err != nil {
-		return false, errors.Wrap(err, "Error parsing controller version")
-	}
 
 	// if the current version is gte the minimum version then they are compatible
 	if current.GTE(minVersion) {
 		return true, nil
 	}
 
-	log.Info("Resource was created with older version of operator, will not take action", "controller_version", ctrlVersion,
+	log.Info("Resource was created with older version of operator, will not take action", "controller_version", controllerVersion,
 		"resource_controller_version", currentVersion, "namespace", obj.GetNamespace(), "name", obj.GetName())
 	return false, nil
 }
