@@ -43,35 +43,35 @@ pipeline {
                 // 4.8.5 is taken care of by a separate job
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
-                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: $JKS_PARAM_OPERATOR_IMAGE),
+                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
                                         string(name: 'OCP_VERSION', value: "4.4.40"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
-                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: $JKS_PARAM_OPERATOR_IMAGE),
+                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
                                         string(name: 'OCP_VERSION', value: "4.4.33"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
-                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: $JKS_PARAM_OPERATOR_IMAGE),
+                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
                                         string(name: 'OCP_VERSION', value: "4.5.37"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
-                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: $JKS_PARAM_OPERATOR_IMAGE),
+                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
                                         string(name: 'OCP_VERSION', value: "4.6.24"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
-                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: $JKS_PARAM_OPERATOR_IMAGE),
+                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
                                         string(name: 'OCP_VERSION', value: "4.7/7"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
@@ -85,6 +85,6 @@ def isFriday() {
     // %u day of week (1..7); 1 is Monday 5 is Friday
     return sh (
         script: "date +%u",
-    	returnStatus: true
-    ) == 5
+        returnStdout: true
+    ) as Integer == 5
 }
