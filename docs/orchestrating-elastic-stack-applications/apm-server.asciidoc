@@ -276,4 +276,4 @@ For more information, see https://www.elastic.co/guide/en/apm/server/current/ind
 [id="{p}-apm-api-keys"]
 === APM Server API keys
 
-If you want to configure API keys to authorize requests to the APM Server, instead of using the APM Server CLI, you have to create API keys using the Elasticsearch create API key API, see the https://www.elastic.co/guide/en/apm/server/current/api-key.html#create-api-key-workflow-es[APM Server documentation].
+If you want to configure API keys to authorize requests to the APM Server, instead of using the APM Server CLI, you have to create API keys using the Elasticsearch  https://www.elastic.co/guide/en/elasticsearch/reference/7.14/security-api-create-api-key.html[create API key API], see the https://www.elastic.co/guide/en/apm/server/current/api-key.html#create-api-key-workflow-es[APM Server documentation].
