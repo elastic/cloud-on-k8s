@@ -39,7 +39,7 @@ For more information, see <<{p}-virtual-memory>>.
 +
 [source,shell,subs="attributes"]
 ----
-oc create -f https://download.elasti.co/downloads/eck/{eck_version}/crds.yaml
+oc create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 oc apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
 
