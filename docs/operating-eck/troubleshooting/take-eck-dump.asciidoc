@@ -1,0 +1,125 @@
+:page_id: take-eck-dump
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Take ECK Dump
+
+
+Steps to take ECK dump:
+
+[float]
+== Prepare
+
+To download the ECK dump shell file, run:
+
+["source", "sh", subs="attributes"]
+------------------------------------------------
+curl -L -O https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/support/diagnostics/eck-dump.sh
+------------------------------------------------
+
+Change mode to executable.
+
+[source,bash]
+----
+chmod +x eck-dump.sh
+----
+
+[float]
+== Run
+
+Make sure to set the correct options. Check here for link:https://github.com/elastic/cloud-on-k8s/blob/master/support/diagnostics/eck-dump.sh[the latest version].
+
+[source,bash]
+----
+Options:
+  -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (comma-separated list)
+  -n, --resources-namespaces    Namespace(s) in which resources are managed      (comma-separated list)
+  -o, --output-directory        Path to output dump files
+  -z, --create-zip              Create an archive with the dump files (implies --output-directory)
+  -v, --verbose                 Verbose mode
+----
+
+Command
+
+[source,bash]
+----
+./eck-dump.sh -o <path/to/output/dump/files> [-z] [-v] -N <operator namespace> -n <resources namespace>
+----
+
+
+[float]
+== Example
+
+Here is an example.
+
+- Assuming operator & resources are both in `elastic-system` namespace
+- Generate dump log to current folder with `eck-dump-log` prefix
+- Also zip it
+
+[source,bash]
+----
+./eck-dump.sh -o eck-dump-log -z -N "elastic-system" -n "elastic-system"
+----
+
+Sample output
+
+[source,bash]
+----
+ECK info dumped to eck-dump-log-15_ 7_2021_15_52_45.tgz
+----
+
+Directory structure of the output files. The output may vary depending on the configuration
+
+[source,bash]
+----
+% tree -A -L 10      
+
+.
+├── clusterroles.txt
+├── elastic-system
+│   ├── agent.json
+│   ├── apmserver.json
+│   ├── beat.json
+│   ├── configmaps.json
+│   ├── controllerrevisions.json
+│   ├── daemonsets.json
+│   ├── deployments.json
+│   ├── elasticmapsserver.json
+│   ├── elasticsearch.json
+│   ├── endpoints.json
+│   ├── enterprisesearch.json
+│   ├── events.json
+│   ├── kibana.json
+│   ├── networkpolicies.json
+│   ├── persistentvolumeclaims.json
+│   ├── persistentvolumes.json
+│   ├── pod
+│   │   ├── elastic-operator-0
+│   │   │   └── logs.txt
+│   │   ├── heartbeat-6765f56445-trfqc
+│   │   │   └── logs.txt
+│   │   ├── quickstart-es-default-0
+│   │   │   └── logs.txt
+│   │   ├── quickstart-es-default-1
+│   │   │   └── logs.txt
+│   │   ├── quickstart-es-default-2
+│   │   │   └── logs.txt
+│   │   ├── quickstart-kb-7666bdc96b-gj5wm
+│   │   │   └── logs.txt
+│   │   └── quickstart-kb-7666bdc96b-r6cng
+│   │       └── logs.txt
+│   ├── poddisruptionbudgets.json
+│   ├── pods.json
+│   ├── replicasets.json
+│   ├── secrets.json
+│   ├── services.json
+│   └── statefulsets.json
+├── nodes.json
+├── podsecuritypolicies.json
+└── version.json
+
+9 directories, 33 files
+----

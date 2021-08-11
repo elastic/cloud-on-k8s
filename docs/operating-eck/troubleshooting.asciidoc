@@ -11,9 +11,16 @@ endif::[]
 - <<{p}-troubleshooting-methods>>
 
 
-If you are unable to find a solution to your problem with the information provided in these documents, ask for help:
+If you are an existing Elastic customer with a support contract, please create a ticket in the link:https://support.elastic.co/[Elastic Support Portal] and provide following information to make it easier for us to help you.
+
+- <<{p}-take-eck-dump, ECK dump>>
+- link:https://github.com/elastic/support-diagnostics[Elasticsearch diagnostics package]
+
+
+Alternatively, or if you do not have a support contract, and if you are unable to find a solution to your problem with the information provided in these documents, ask for help:
 
 include::../help.asciidoc[]
 
 include::troubleshooting/common-problems.asciidoc[leveloffset=+1]
 include::troubleshooting/troubleshooting-methods.asciidoc[leveloffset=+1]
+include::troubleshooting/take-eck-dump.asciidoc[leveloffset=+1]
