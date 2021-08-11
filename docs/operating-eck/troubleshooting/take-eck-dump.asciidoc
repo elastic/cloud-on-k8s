@@ -55,7 +55,7 @@ Command
 
 Here is an example.
 
-- Assuming operator & resources are both in `elastic-system` namespace
+- Assuming operator and resources are both in `elastic-system` namespace
 - Generate dump log to current folder with `eck-dump-log` prefix
 - Also zip it
 
