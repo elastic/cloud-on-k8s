@@ -20,7 +20,7 @@ To download the ECK dump shell file, run:
 curl -L -O https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/support/diagnostics/eck-dump.sh
 ------------------------------------------------
 
-Change mode to executable.
+Change mode to executable:
 
 [source,bash]
 ----
