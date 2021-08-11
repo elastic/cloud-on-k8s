@@ -53,7 +53,7 @@ Command
 [float]
 == Example
 
-Here is an example.
+Here is an example:
 
 - Assuming operator and resources are both in `elastic-system` namespace
 - Generate dump log to current folder with `eck-dump-log` prefix
