@@ -13,19 +13,12 @@ Steps to take ECK dump:
 [float]
 == Prepare
 
-To download the ECK dump shell file, run:
+To download the ECK dump shell file and change mode to executable, run:
 
 ["source", "sh", subs="attributes"]
 ------------------------------------------------
-curl -L -O https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/support/diagnostics/eck-dump.sh
+curl -L -O https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/support/diagnostics/eck-dump.sh && chmod +x eck-dump.sh
 ------------------------------------------------
-
-Change mode to executable:
-
-[source,bash]
-----
-chmod +x eck-dump.sh
-----
 
 [float]
 == Run
