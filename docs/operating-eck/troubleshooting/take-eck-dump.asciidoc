@@ -75,9 +75,8 @@ Directory structure of the output files. The output may vary depending on the co
 
 [source,bash]
 ----
-% tree -A -L 10      
-
-.
+> tree -A -L 10 eck-dump-log                                              
+eck-dump-log
 ├── clusterroles.txt
 ├── elastic-system
 │   ├── agent.json
