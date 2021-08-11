@@ -13,7 +13,6 @@ pipeline {
 
     options {
         timeout(time: 600, unit: 'MINUTES')
-        quietPeriod(43200) // delay this job by 12 hours
     }
 
     environment {
