@@ -117,7 +117,6 @@ pipeline {
                 build job: 'cloud-on-k8s-e2e-tests-ocp-all-but-latest',
                     parameters: [
                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'OCP_VERSION', value: "4.8.5"),
                         string(name: 'branch_specifier', value: GIT_COMMIT)
                     ],
                     quietPeriod: 43200,
