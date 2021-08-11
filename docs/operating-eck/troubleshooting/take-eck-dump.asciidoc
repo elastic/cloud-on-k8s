@@ -35,7 +35,7 @@ Options:
   -v, --verbose                 Verbose mode
 ----
 
-Command
+Command:
 
 [source,bash]
 ----
