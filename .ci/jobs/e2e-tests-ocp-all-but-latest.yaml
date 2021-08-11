@@ -18,7 +18,7 @@
     pipeline-scm:
       scm:
         - git:
-            url: https://github.com/elastic/cloud-on-k8s
+            url: https://github.com/pebrc/cloud-on-k8s
             branches:
               - ${branch_specifier}
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
