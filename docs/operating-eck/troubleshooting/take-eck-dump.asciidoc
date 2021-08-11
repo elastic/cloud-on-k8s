@@ -71,7 +71,7 @@ Sample output
 ECK info dumped to eck-dump-log-15_ 7_2021_15_52_45.tgz
 ----
 
-Directory structure of the output files. The output may vary depending on the configuration
+Directory structure of the output files. The output may vary depending on the configuration.
 
 [source,bash]
 ----
