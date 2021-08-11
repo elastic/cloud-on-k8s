@@ -11,7 +11,7 @@ endif::[]
 - <<{p}-troubleshooting-methods>>
 
 
-If you are an existing Elastic customer with a support contract, please create a ticket in the link:https://support.elastic.co/[Elastic Support Portal] and provide following information to make it easier for us to help you.
+If you are an existing Elastic customer with a support contract, you can create a ticket in the link:https://support.elastic.co/[Elastic Support Portal] and provide the following information so that we can help you.
 
 - <<{p}-take-eck-dump, ECK dump>>
 - link:https://github.com/elastic/support-diagnostics[Elasticsearch diagnostics package]
