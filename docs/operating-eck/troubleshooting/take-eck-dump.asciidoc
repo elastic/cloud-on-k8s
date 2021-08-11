@@ -48,13 +48,13 @@ Command
 
 Here is an example:
 
-- Assuming operator and resources are both in `elastic-system` namespace
+- Assuming the operator namespace is `elastic-system` and resources namespaces are `security` and `monitoring`
 - Generate dump log to current folder with `eck-dump-log` prefix
 - Also zip it
 
 [source,bash]
 ----
-./eck-dump.sh -o eck-dump-log -z -N "elastic-system" -n "elastic-system"
+./eck-dump.sh -o eck-dump-log -z -N "elastic-system" -n "security,monitoring"
 ----
 
 Sample output
