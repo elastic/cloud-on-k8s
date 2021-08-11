@@ -4,16 +4,7 @@
 
 def failedTests = []
 def lib
-def ocpVersion
-
-def pickVersion(extParam) {
-    supportedVersions = ["4.3.40", "4.4.33", "4.5.37", "4.6.24", "4.7.6" ]
-    if (extParam != '') {
-        return extParam
-    }
-    idx = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK) % supportedVersions.size()
-    return supportedVersions[idx]
-}
+def ocpVersion = params.OCP_VERSION
 
 pipeline {
 
@@ -37,7 +28,6 @@ pipeline {
             steps {
                 script {
                     lib = load ".ci/common/tests.groovy"
-                    ocpVersion = pickVersion(params.OCP_VERSION)
                 }
             }
         }
