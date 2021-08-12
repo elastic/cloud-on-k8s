@@ -12,7 +12,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 48, unit: 'HOURS')
+        timeout(time: 50, unit: 'HOURS')
     }
 
     environment {
@@ -40,7 +40,7 @@ pipeline {
             }
             steps {
                 // "4.3.40", "4.4.33", "4.5.37", "4.6.24", "4.7.6"
-                // 4.8.5 is taken care of by a separate job
+                // latest 4.8.x is taken care of by a separate job
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
