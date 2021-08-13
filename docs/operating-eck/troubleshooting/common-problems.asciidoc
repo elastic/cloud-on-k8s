@@ -132,7 +132,7 @@ A key indicator is when the Phase of the Elasticsearch resource is in `ApplyingC
 ----
 kubectl get es
 
-NAME                  HEALTH   NODES    VERSION   PHASE            AGE          
+NAME                  HEALTH   NODES    VERSION   PHASE            AGE
 elasticsearch-sample  yellow   2        7.9.2     ApplyingChanges  36m
 ----
 
@@ -162,7 +162,7 @@ LAST SEEN   TYPE      REASON             OBJECT                        MESSAGE
 10s         Warning   FailedScheduling   pod/quickstart-es-default-2   0/3 nodes are available: 3 Insufficient memory.
 ----
 +
-As an alternative, to get more specific information about a given pod, you can use the following command: 
+As an alternative, to get more specific information about a given pod, you can use the following command:
 +
 [source,sh]
 ----
