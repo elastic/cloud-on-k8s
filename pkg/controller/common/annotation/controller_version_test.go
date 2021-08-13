@@ -275,7 +275,7 @@ func TestNewerAnnotation(t *testing.T) {
 	assert.True(t, compat)
 }
 
-// Test TestInvalidAnnotation check if the annotation is valid.
+// TestInvalidAnnotation tests that an invalid version cannot be used for the annotation
 func TestInvalidAnnotation(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
