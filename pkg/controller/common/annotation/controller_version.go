@@ -28,7 +28,7 @@ const (
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
-func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlclient.Object, version string) error {
+func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlclient.Object, controllerVersion string) error {
 	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -38,11 +38,16 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlcli
 	}
 
 	// do not send unnecessary update if the value would not change
-	if annotations[ControllerVersionAnnotation] == version {
+	if annotations[ControllerVersionAnnotation] == controllerVersion {
 		return nil
 	}
 
-	annotations[ControllerVersionAnnotation] = version
+	_, err := version.Parse(controllerVersion)
+	if err != nil {
+		return errors.Wrap(err, "Error parsing controller version")
+	}
+
+	annotations[ControllerVersionAnnotation] = controllerVersion
 	accessor := meta.NewAccessor()
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
 		log.Error(err, "error updating controller version annotation", "namespace", obj.GetNamespace(), "name", obj.GetName(), "kind", obj.GetObjectKind())
@@ -72,11 +77,6 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 	defer span.End()
 
 	annotatedVersion := obj.GetAnnotations()[ControllerVersionAnnotation]
-
-	_, err := version.Parse(controllerVersion)
-	if err != nil {
-		return false, errors.Wrap(err, "Error parsing controller version")
-	}
 
 	// if the annotation does not exist, it might indicate it was reconciled by an older controller version that did not add the version annotation,
 	// in which case it is incompatible with the current controller, or it is a brand new resource that has not been reconciled by any controller yet
