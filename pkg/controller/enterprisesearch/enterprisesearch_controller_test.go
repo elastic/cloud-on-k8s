@@ -77,7 +77,7 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
-					Version: "operator-version",
+					Version: "1.7.0",
 				},
 			},
 		},
@@ -89,7 +89,7 @@ func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) 
 	var updated entv1.EnterpriseSearch
 	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&sample), &updated)
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{annotation.ControllerVersionAnnotation: "operator-version"}, updated.Annotations)
+	require.Equal(t, map[string]string{annotation.ControllerVersionAnnotation: "1.7.0"}, updated.Annotations)
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing.T) {
