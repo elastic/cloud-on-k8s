@@ -108,7 +108,7 @@ func TestCheckCompatibility(t *testing.T) {
 	}
 }
 
-// Test UpdateControllerVersion updates annotation if there is an older version
+// UpdateControllerVersion updates annotation if there is an older version
 func TestAnnotationUpdated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,7 +126,7 @@ func TestAnnotationUpdated(t *testing.T) {
 	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "1.7.0")
 }
 
-// Test UpdateControllerVersion creates an annotation even if there are no current annotations
+// UpdateControllerVersion creates an annotation even if there are no current annotations
 func TestAnnotationCreated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -220,7 +220,6 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 	assert.Equal(t, MinCompatibleControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
-//
 func TestSameAnnotation(t *testing.T) {
 	es := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
