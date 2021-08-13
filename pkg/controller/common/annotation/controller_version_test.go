@@ -108,7 +108,7 @@ func TestCheckCompatibility(t *testing.T) {
 	}
 }
 
-// UpdateControllerVersion updates annotation if there is an older version
+// UpdateControllerVersion tests that updates annotation if there is an older version
 func TestAnnotationUpdated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,7 +126,7 @@ func TestAnnotationUpdated(t *testing.T) {
 	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "1.7.0")
 }
 
-// UpdateControllerVersion creates an annotation even if there are no current annotations
+// UpdateControllerVersion tests that creates an annotation even if there are no current annotations
 func TestAnnotationCreated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
