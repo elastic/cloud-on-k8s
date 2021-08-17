@@ -11,7 +11,9 @@ endif::[]
 [float]
 == Specifying the volume claim settings
 
-By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
+By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume.
+
+IMPORTANT: The name of the volume claim must always be `elasticsearch-data`. If you chose a different name you have to set up a corresponding volume mount matching the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#path-settings[data.path] yourself ( `/usr/share/elasticsearch/data` by default).
 
 [source,yaml]
 ----
