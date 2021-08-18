@@ -43,7 +43,7 @@ spec:
   #   # request 2Gi of persistent data storage for pods in this topology element
   #   volumeClaimTemplates:
   #   - metadata:
-  #       name: elasticsearch-data
+  #       name: elasticsearch-data # Do not change this name unless you set up a volume mount for the data path.
   #     spec:
   #       accessModes:
   #       - ReadWriteOnce
