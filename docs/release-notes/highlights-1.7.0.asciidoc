@@ -42,5 +42,11 @@ After installing ECK 1.7.0 on Kubernetes versions 1.16/1.17 using Helm or the YA
 error: SchemaError(co.elastic.k8s.elasticsearch.v1.Elasticsearch.spec.nodeSets.volumeClaimTemplates): array should have exactly one sub-item
 ----
 
+This is due to an validation issue in `kubectl` that has been addressed in Kubernetes as of versions 1.18.12, 1.19.5 and 1.20. To work around this issue patch the Elasticsearch CRD as follows:
+
+[source,bash]
+----
+kubectl patch crd elasticsearches.elasticsearch.k8s.elastic.co --type json -p='[{"op": "remove", "path": "/spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/x-kubernetes-preserve-unknown-fields"}]'
+----
 More details about the issue and available workarounds are documented in link:https://github.com/elastic/cloud-on-k8s/issues/4737[this bug report].
 
