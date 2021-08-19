@@ -1,0 +1,17 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.7.1]]
+== {n} version 1.7.1
+
+
+
+
+
+[[bug-1.7.1]]
+[float]
+=== Bug fixes
+
+* Remove x-kubernetes-preserve-unknown-fields from volumeClaimTemplates {pull}4768[#4768] (issue: {issue}4737[#4737])
+
+
