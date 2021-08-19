@@ -104,10 +104,13 @@ main() {
     check_namespace "$ns"
   done
 
-  # get global info from cluster-level resources
+  # get global info from cluster-level resources (both json and yaml format)
   kubectl version   -o json | to_stdin_or_file version.json
+  kubectl version   -o yaml | to_stdin_or_file version.yaml
   kubectl get nodes -o json | to_stdin_or_file nodes.json
+  kubectl get nodes -o yaml | to_stdin_or_file nodes.yaml
   kubectl get podsecuritypolicies -o json | to_stdin_or_file podsecuritypolicies.json
+  kubectl get podsecuritypolicies -o yaml | to_stdin_or_file podsecuritypolicies.yaml
   # describe matches by prefix
   kubectl describe clusterroles elastic | to_stdin_or_file clusterroles.txt
 
@@ -173,6 +176,7 @@ main() {
 get_resources() {
   local ns=$1 resources=$2
   kubectl get -n "$ns" "$resources" -o json | to_stdin_or_file "$ns"/"$resources".json
+  kubectl get -n "$ns" "$resources" -o yaml | to_stdin_or_file "$ns"/"$resources".yaml
 }
 
 # get_metadata lists resources metadata in a specified namespace in JSON output format

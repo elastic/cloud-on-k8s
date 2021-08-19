@@ -68,52 +68,88 @@ Directory structure of the output files. The output may vary depending on the co
 
 [source,bash]
 ----
- tree -A -L 10 eck-dump-log      
+tree -A -L 10 eck-dump-log
 eck-dump-log
 ├── clusterroles.txt
 ├── elastic-system
 │   ├── agent.json
+│   ├── agent.yaml
 │   ├── apmserver.json
+│   ├── apmserver.yaml
 │   ├── beat.json
+│   ├── beat.yaml
 │   ├── configmaps.json
+│   ├── configmaps.yaml
 │   ├── controllerrevisions.json
+│   ├── controllerrevisions.yaml
 │   ├── daemonsets.json
+│   ├── daemonsets.yaml
 │   ├── deployments.json
+│   ├── deployments.yaml
 │   ├── elasticmapsserver.json
+│   ├── elasticmapsserver.yaml
 │   ├── elasticsearch.json
+│   ├── elasticsearch.yaml
 │   ├── endpoints.json
+│   ├── endpoints.yaml
 │   ├── enterprisesearch.json
+│   ├── enterprisesearch.yaml
 │   ├── events.json
+│   ├── events.yaml
 │   ├── kibana.json
+│   ├── kibana.yaml
 │   ├── networkpolicies.json
+│   ├── networkpolicies.yaml
 │   ├── persistentvolumeclaims.json
+│   ├── persistentvolumeclaims.yaml
 │   ├── persistentvolumes.json
+│   ├── persistentvolumes.yaml
 │   ├── pod
 │   │   └── elastic-operator-0
 │   │       └── logs.txt
 │   ├── poddisruptionbudgets.txt
 │   ├── pods.json
+│   ├── pods.yaml
 │   ├── replicasets.json
+│   ├── replicasets.yaml
 │   ├── secrets.txt
 │   ├── services.json
-│   └── statefulsets.json
+│   ├── services.yaml
+│   ├── statefulsets.json
+│   └── statefulsets.yaml
 ├── monitoring
 │   ├── agent.json
+│   ├── agent.yaml
 │   ├── apmserver.json
+│   ├── apmserver.yaml
 │   ├── beat.json
+│   ├── beat.yaml
 │   ├── configmaps.json
+│   ├── configmaps.yaml
 │   ├── controllerrevisions.json
+│   ├── controllerrevisions.yaml
 │   ├── daemonsets.json
+│   ├── daemonsets.yaml
 │   ├── deployments.json
+│   ├── deployments.yaml
 │   ├── elasticmapsserver.json
+│   ├── elasticmapsserver.yaml
 │   ├── elasticsearch.json
+│   ├── elasticsearch.yaml
 │   ├── endpoints.json
+│   ├── endpoints.yaml
 │   ├── enterprisesearch.json
+│   ├── enterprisesearch.yaml
 │   ├── events.json
+│   ├── events.yaml
 │   ├── kibana.json
+│   ├── kibana.yaml
 │   ├── networkpolicies.json
+│   ├── networkpolicies.yaml
 │   ├── persistentvolumeclaims.json
+│   ├── persistentvolumeclaims.yaml
 │   ├── persistentvolumes.json
+│   ├── persistentvolumes.yaml
 │   ├── pod
 │   │   ├── apm-01-prod-apm-server-8485b5bf97-j6g25
 │   │   │   └── logs.txt
@@ -151,29 +187,51 @@ eck-dump-log
 │   │       └── logs.txt
 │   ├── poddisruptionbudgets.txt
 │   ├── pods.json
+│   ├── pods.yaml
 │   ├── replicasets.json
+│   ├── replicasets.yaml
 │   ├── secrets.txt
 │   ├── services.json
-│   └── statefulsets.json
+│   ├── services.yaml
+│   ├── statefulsets.json
+│   └── statefulsets.yaml
 ├── nodes.json
+├── nodes.yaml
 ├── podsecuritypolicies.json
+├── podsecuritypolicies.yaml
 ├── security
 │   ├── agent.json
+│   ├── agent.yaml
 │   ├── apmserver.json
+│   ├── apmserver.yaml
 │   ├── beat.json
+│   ├── beat.yaml
 │   ├── configmaps.json
+│   ├── configmaps.yaml
 │   ├── controllerrevisions.json
+│   ├── controllerrevisions.yaml
 │   ├── daemonsets.json
+│   ├── daemonsets.yaml
 │   ├── deployments.json
+│   ├── deployments.yaml
 │   ├── elasticmapsserver.json
+│   ├── elasticmapsserver.yaml
 │   ├── elasticsearch.json
+│   ├── elasticsearch.yaml
 │   ├── endpoints.json
+│   ├── endpoints.yaml
 │   ├── enterprisesearch.json
+│   ├── enterprisesearch.yaml
 │   ├── events.json
+│   ├── events.yaml
 │   ├── kibana.json
+│   ├── kibana.yaml
 │   ├── networkpolicies.json
+│   ├── networkpolicies.yaml
 │   ├── persistentvolumeclaims.json
+│   ├── persistentvolumeclaims.yaml
 │   ├── persistentvolumes.json
+│   ├── persistentvolumes.yaml
 │   ├── pod
 │   │   ├── siem-01-prod-es-master-0
 │   │   │   └── logs.txt
@@ -185,11 +243,16 @@ eck-dump-log
 │   │       └── logs.txt
 │   ├── poddisruptionbudgets.txt
 │   ├── pods.json
+│   ├── pods.yaml
 │   ├── replicasets.json
+│   ├── replicasets.yaml
 │   ├── secrets.txt
 │   ├── services.json
-│   └── statefulsets.json
-└── version.json
+│   ├── services.yaml
+│   ├── statefulsets.json
+│   └── statefulsets.yaml
+├── version.json
+└── version.yaml
 
-28 directories, 92 files
+28 directories, 155 files
 ----
