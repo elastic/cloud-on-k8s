@@ -7988,7 +7988,6 @@ spec:
                             type: object
                         type: object
                       type: array
-                      x-kubernetes-preserve-unknown-fields: true
                   required:
                   - name
                   type: object
