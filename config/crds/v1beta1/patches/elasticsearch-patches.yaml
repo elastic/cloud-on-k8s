@@ -71,5 +71,3 @@
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/config/x-kubernetes-preserve-unknown-fields
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate/x-kubernetes-preserve-unknown-fields
-- op: remove
-  path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/x-kubernetes-preserve-unknown-fields
