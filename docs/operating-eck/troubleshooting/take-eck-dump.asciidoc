@@ -1,0 +1,258 @@
+:page_id: take-eck-dump
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Take ECK Dump
+
+
+Steps to take ECK dump:
+
+[float]
+== Prepare
+
+To download the ECK dump shell file and change mode to executable, run:
+
+["source", "sh", subs="attributes"]
+------------------------------------------------
+curl -L -O https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/support/diagnostics/eck-dump.sh && chmod +x eck-dump.sh
+------------------------------------------------
+
+[float]
+== Run
+
+Make sure to set the correct options. Check here for link:https://github.com/elastic/cloud-on-k8s/blob/master/support/diagnostics/eck-dump.sh[the latest version].
+
+[source,bash]
+----
+Options:
+  -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (comma-separated list)
+  -n, --resources-namespaces    Namespace(s) in which resources are managed      (comma-separated list)
+  -o, --output-directory        Path to output dump files
+  -z, --create-zip              Create an archive with the dump files (implies --output-directory)
+  -v, --verbose                 Verbose mode
+----
+
+Command:
+
+[source,bash]
+----
+./eck-dump.sh -o <path/to/output/dump/files> [-z] [-v] -N <operator namespace> -n <resources namespace>
+----
+
+
+[float]
+== Example
+
+Here is an example:
+
+- Assuming the operator namespace is `elastic-system` and resources namespaces are `security` and `monitoring`
+- Generate dump log to current folder with `eck-dump-log` prefix
+- Also zip it
+
+[source,bash]
+----
+./eck-dump.sh -o eck-dump-log -z -N "elastic-system" -n "security,monitoring"
+----
+
+Sample output:
+
+[source,bash]
+----
+ECK info dumped to eck-dump-log-15_ 7_2021_15_52_45.tgz
+----
+
+Directory structure of the output files. The output may vary depending on the configuration.
+
+[source,bash]
+----
+tree -A -L 10 eck-dump-log
+eck-dump-log
+├── clusterroles.txt
+├── elastic-system
+│   ├── agent.json
+│   ├── agent.yaml
+│   ├── apmserver.json
+│   ├── apmserver.yaml
+│   ├── beat.json
+│   ├── beat.yaml
+│   ├── configmaps.json
+│   ├── configmaps.yaml
+│   ├── controllerrevisions.json
+│   ├── controllerrevisions.yaml
+│   ├── daemonsets.json
+│   ├── daemonsets.yaml
+│   ├── deployments.json
+│   ├── deployments.yaml
+│   ├── elasticmapsserver.json
+│   ├── elasticmapsserver.yaml
+│   ├── elasticsearch.json
+│   ├── elasticsearch.yaml
+│   ├── endpoints.json
+│   ├── endpoints.yaml
+│   ├── enterprisesearch.json
+│   ├── enterprisesearch.yaml
+│   ├── events.json
+│   ├── events.yaml
+│   ├── kibana.json
+│   ├── kibana.yaml
+│   ├── networkpolicies.json
+│   ├── networkpolicies.yaml
+│   ├── persistentvolumeclaims.json
+│   ├── persistentvolumeclaims.yaml
+│   ├── persistentvolumes.json
+│   ├── persistentvolumes.yaml
+│   ├── pod
+│   │   └── elastic-operator-0
+│   │       └── logs.txt
+│   ├── poddisruptionbudgets.txt
+│   ├── pods.json
+│   ├── pods.yaml
+│   ├── replicasets.json
+│   ├── replicasets.yaml
+│   ├── secrets.txt
+│   ├── services.json
+│   ├── services.yaml
+│   ├── statefulsets.json
+│   └── statefulsets.yaml
+├── monitoring
+│   ├── agent.json
+│   ├── agent.yaml
+│   ├── apmserver.json
+│   ├── apmserver.yaml
+│   ├── beat.json
+│   ├── beat.yaml
+│   ├── configmaps.json
+│   ├── configmaps.yaml
+│   ├── controllerrevisions.json
+│   ├── controllerrevisions.yaml
+│   ├── daemonsets.json
+│   ├── daemonsets.yaml
+│   ├── deployments.json
+│   ├── deployments.yaml
+│   ├── elasticmapsserver.json
+│   ├── elasticmapsserver.yaml
+│   ├── elasticsearch.json
+│   ├── elasticsearch.yaml
+│   ├── endpoints.json
+│   ├── endpoints.yaml
+│   ├── enterprisesearch.json
+│   ├── enterprisesearch.yaml
+│   ├── events.json
+│   ├── events.yaml
+│   ├── kibana.json
+│   ├── kibana.yaml
+│   ├── networkpolicies.json
+│   ├── networkpolicies.yaml
+│   ├── persistentvolumeclaims.json
+│   ├── persistentvolumeclaims.yaml
+│   ├── persistentvolumes.json
+│   ├── persistentvolumes.yaml
+│   ├── pod
+│   │   ├── apm-01-prod-apm-server-8485b5bf97-j6g25
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-apm-server-8485b5bf97-jxc6g
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-es-master-0
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-kb-b56645bb9-4kxlq
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-kb-b56645bb9-5m2mb
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-kb-c6d58674f-bcd62
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-kb-c6d58674f-cjfzm
+│   │   │   └── logs.txt
+│   │   ├── apm-01-prod-kb-df76dbfff-9nhvx
+│   │   │   └── logs.txt
+│   │   ├── logs-01-prod-es-master-0
+│   │   │   └── logs.txt
+│   │   ├── logs-01-prod-es-master-1
+│   │   │   └── logs.txt
+│   │   ├── logs-01-prod-es-master-2
+│   │   │   └── logs.txt
+│   │   ├── logs-01-prod-kb-8599b565cf-4s9n2
+│   │   │   └── logs.txt
+│   │   ├── logs-01-prod-kb-8599b565cf-cx5wv
+│   │   │   └── logs.txt
+│   │   ├── logs-02-prod-es-master-0
+│   │   │   └── logs.txt
+│   │   ├── logs-02-prod-kb-7fff9c5fc6-pnlb2
+│   │   │   └── logs.txt
+│   │   ├── metrics-01-prod-es-master-0
+│   │   │   └── logs.txt
+│   │   └── metrics-01-prod-kb-7ffccd6747-cdqhw
+│   │       └── logs.txt
+│   ├── poddisruptionbudgets.txt
+│   ├── pods.json
+│   ├── pods.yaml
+│   ├── replicasets.json
+│   ├── replicasets.yaml
+│   ├── secrets.txt
+│   ├── services.json
+│   ├── services.yaml
+│   ├── statefulsets.json
+│   └── statefulsets.yaml
+├── nodes.json
+├── nodes.yaml
+├── podsecuritypolicies.json
+├── podsecuritypolicies.yaml
+├── security
+│   ├── agent.json
+│   ├── agent.yaml
+│   ├── apmserver.json
+│   ├── apmserver.yaml
+│   ├── beat.json
+│   ├── beat.yaml
+│   ├── configmaps.json
+│   ├── configmaps.yaml
+│   ├── controllerrevisions.json
+│   ├── controllerrevisions.yaml
+│   ├── daemonsets.json
+│   ├── daemonsets.yaml
+│   ├── deployments.json
+│   ├── deployments.yaml
+│   ├── elasticmapsserver.json
+│   ├── elasticmapsserver.yaml
+│   ├── elasticsearch.json
+│   ├── elasticsearch.yaml
+│   ├── endpoints.json
+│   ├── endpoints.yaml
+│   ├── enterprisesearch.json
+│   ├── enterprisesearch.yaml
+│   ├── events.json
+│   ├── events.yaml
+│   ├── kibana.json
+│   ├── kibana.yaml
+│   ├── networkpolicies.json
+│   ├── networkpolicies.yaml
+│   ├── persistentvolumeclaims.json
+│   ├── persistentvolumeclaims.yaml
+│   ├── persistentvolumes.json
+│   ├── persistentvolumes.yaml
+│   ├── pod
+│   │   ├── siem-01-prod-es-master-0
+│   │   │   └── logs.txt
+│   │   ├── siem-01-prod-kb-554b496d8c-hk8js
+│   │   │   └── logs.txt
+│   │   ├── siem-02-prod-es-master-0
+│   │   │   └── logs.txt
+│   │   └── siem-02-prod-kb-855f7dbdc-bh6ks
+│   │       └── logs.txt
+│   ├── poddisruptionbudgets.txt
+│   ├── pods.json
+│   ├── pods.yaml
+│   ├── replicasets.json
+│   ├── replicasets.yaml
+│   ├── secrets.txt
+│   ├── services.json
+│   ├── services.yaml
+│   ├── statefulsets.json
+│   └── statefulsets.yaml
+├── version.json
+└── version.yaml
+
+28 directories, 155 files
+----
