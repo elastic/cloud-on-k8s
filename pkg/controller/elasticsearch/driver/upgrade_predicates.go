@@ -211,6 +211,7 @@ var predicates = [...]Predicate{
 	{
 		// We may need to delete nodes in a yellow cluster, but not if they contain the only replica
 		// of a shard since it would make the cluster go red.
+		// Exception for single-node clusters, as replicas will not be assigned
 		name: "require_started_replica",
 		fn: func(
 			context PredicateContext,
@@ -221,6 +222,15 @@ var predicates = [...]Predicate{
 			allShards, err := context.shardLister.GetShards(context.ctx)
 			if err != nil {
 				return false, err
+			}
+			_, healthyNode := context.healthyPods[candidate.Name]
+			// Get the number of expected masters
+			expectedMasters := len(context.masterNodesNames)
+			healthyPods := len(context.healthyPods)
+
+			if healthyNode && healthyPods == 1 && expectedMasters == 1 && len(deletedPods) == 0 {
+				// If the cluster is a single node cluster, replicas can not be started, skip the predicate
+				return true, nil
 			}
 			// We maintain two data structures to record:
 			// * The total number of replicas for a shard
