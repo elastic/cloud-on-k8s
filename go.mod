@@ -33,10 +33,10 @@ require (
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
-	go.elastic.co/apm v1.8.0
-	go.elastic.co/apm/module/apmelasticsearch v1.8.0
+	go.elastic.co/apm v1.12.0
+	go.elastic.co/apm/module/apmelasticsearch v1.12.0
 	go.uber.org/automaxprocs v1.4.0
-	go.uber.org/zap v1.18.1
+	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -44,9 +44,9 @@ require (
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
 	k8s.io/klog/v2 v2.10.0
-	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
-	sigs.k8s.io/controller-runtime v0.9.3
-	sigs.k8s.io/controller-tools v0.6.1
+	k8s.io/utils v0.0.0-20210722164352-7f3ee0f31471
+	sigs.k8s.io/controller-runtime v0.9.6
+	sigs.k8s.io/controller-tools v0.6.2
 )
 
 // this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this

@@ -1,0 +1,160 @@
+:page_id: stack-monitoring
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-{page_id}"]
+= Stack Monitoring
+
+You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
+on Elasticsearch and Kibana to collect and ship their metrics and logs to a dedicated monitoring cluster.
+
+To enable stack monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: monitored-sample
+  namespace: production
+spec:
+  version: {version}
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <1>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <1>
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: monitored-sample
+  namespace: production
+spec:
+  version: {version}
+  elasticsearchRef:
+    name: monitored-sample
+    namespace: production <2>
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <1>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <1>
+  count: 1
+----
+
+<1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
+<2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana instance are running in the same namespace.
+
+CAUTION: You cannot configure an Elasticsearch cluster to monitor itself, the monitoring cluster has to be a separate cluster.
+
+IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
+
+You can send metrics and logs to two different Elasticsearch monitoring clusters.
+
+You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (see link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
+
+== When to use it
+
+This feature is a good solution if you need to monitor your Elastic applications in restricted Kubernetes environments where you cannot grant advanced permissions:
+
+- to Metricbeat to allow queriying the k8s API
+- to Filebeat to deploy a privileged DaemonSet
+
+However, for maximum efficiency and minimising resource consumption, or advanced use cases that require specific Beats configurations, you can deploy a standalone Metricbeat Deployment and a Filebeat Daemonset. See the <<{p}-beat-configuration-examples,Beats configuration Examples>> for more information.
+
+== How it works
+
+In the background, Metricbeat and Filebeat are deployed as sidecar containers in the same Pod as Elasticsearch and Kibana.
+
+Metricbeat is used to collect monitoring metrics and Filebeat to monitor the Elasticsearch log files and collect log events.
+
+The two Beats are configured to ship data directly to the monitoring cluster(s) using HTTPS and dedicated Elastic users managed by ECK.
+
+== Audit logging
+
+Audit logs are collected and shipped to the monitoring cluster referenced in the `monitoring.logs` section when audit logging is enabled (it is disabled by default).
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+spec:
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability
+  nodeSets:
+  - name: default
+    config:
+      # https://www.elastic.co/guide/en/elasticsearch/reference/current/enable-audit-logging.html
+      xpack.security.audit.enabled: true
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+spec:
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability
+  config:
+    # https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
+    xpack.security.audit.enabled: true
+----
+
+== Override the Beats Pod Template
+
+You can customize the Filebeat and Metricbeat containers through the Pod template. Your configuration is merged with the values of the default Pod template that ECK uses.
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+spec:
+  nodeSets:
+  - name: default
+    monitoring:
+      metrics:
+        elasticsearchRef:
+          name: monitoring
+          namespace: observability
+      logs:
+        elasticsearchRef:
+          name: monitoring
+          namespace: observability
+    podTemplate:
+      spec:
+        containers:
+        - name: metricbeat
+          env:
+          - foo: bar
+        - name: filebeat
+          env:
+          - foo: bar
+----

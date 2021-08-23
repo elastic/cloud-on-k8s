@@ -18,6 +18,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -29,9 +30,11 @@ import (
 )
 
 const (
-	autoscaledResourceCount = "autoscaled_resource_count"
-	resourceCount           = "resource_count"
-	podCount                = "pod_count"
+	autoscaledResourceCount     = "autoscaled_resource_count"
+	resourceCount               = "resource_count"
+	podCount                    = "pod_count"
+	stackMonitoringLogsCount    = "stack_monitoring_logs_count"
+	stackMonitoringMetricsCount = "stack_monitoring_metrics_count"
 
 	timestampFieldName = "timestamp"
 )
@@ -192,10 +195,17 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		}
 
 		for _, es := range esList.Items {
+			es := es
 			stats[resourceCount]++
 			stats[podCount] += es.Status.AvailableNodes
 			if es.IsAutoscalingDefined() {
 				stats[autoscaledResourceCount]++
+			}
+			if monitoring.IsLogsDefined(&es) {
+				stats[stackMonitoringLogsCount]++
+			}
+			if monitoring.IsMetricsDefined(&es) {
+				stats[stackMonitoringMetricsCount]++
 			}
 		}
 	}
