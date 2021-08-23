@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -16,8 +17,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -147,7 +149,7 @@ func newRollingUpgrade(
 
 func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
 	deletedPods, err := ctx.Delete()
-	if errors.IsConflict(err) || errors.IsNotFound(err) {
+	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
 		// (could be the statefulset controller)
 		// TODO: should we at least log this one in debug mode ?
@@ -204,10 +206,10 @@ func podsToUpgrade(
 			// retrieve pod to inspect its revision label
 			var pod corev1.Pod
 			err := client.Get(context.Background(), podRef, &pod)
-			if err != nil && !errors.IsNotFound(err) {
+			if err != nil && !apierrors.IsNotFound(err) {
 				return toUpgrade, err
 			}
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
@@ -246,6 +248,7 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 		return err
 	}
 }
+
 func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
@@ -255,7 +258,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	// we still have to enable shard allocation in cases where we just upgraded from
 	// a version that did not support node shutdown to a supported version.
 	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
-	if !results.HasError() && supportsNodeshutdown(esClient.Version()) {
+	if !results.HasError() && supportsNodeShutdown(esClient.Version()) {
 		// clear all shutdowns of type restart that have completed
 		// this relies on the fact the maybeEnableShardsAllocation checks expectations
 		err := nodeShutdown.Clear(ctx, &esclient.ShutdownComplete)
@@ -317,19 +320,47 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 }
 
 func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
-	if !supportsNodeshutdown(ctx.esClient.Version()) {
+	if !supportsNodeShutdown(ctx.esClient.Version()) {
 		return true, nil // always OK to restart pre 7.14
+	}
+	if pod.Status.Phase != corev1.PodRunning {
+		// there is no point in trying to query the shutdown status of a Pod that is not running
+		return true, nil
 	}
 	response, err := ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, pod.Name)
 	if err != nil {
 		return false, err
 	}
+	switch response.Status {
+	case esclient.ShutdownComplete:
+		log.V(1).Info("Node shutdown for restart complete", "namespace", pod.Namespace, "node", pod.Name)
+		return true, nil
+	case esclient.ShutdownStalled:
+		log.V(1).Info("Node shutdown for restart stalled", "namespace", pod.Namespace, "node", pod.Name)
+		return false, nil
+	case esclient.ShutdownStarted:
+		log.V(1).Info("Node shutdown for restart started", "namespace", pod.Namespace, "node", pod.Name)
+		return true, nil
+	case esclient.ShutdownNotStarted:
+		msg := fmt.Sprintf("Unexpected state. Node shutdown for restart could not be started: %s", response.Explanation)
+		log.Info(msg, "namespace", pod.Namespace, "node", pod.Name)
+		return false, errors.New(msg)
+	}
 	return response.Status == esclient.ShutdownComplete, nil
 }
 
 func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
-	podNames := make([]string, len(podsToRestart))
+	var podNames []string
 	for i, p := range podsToRestart {
+		if p.Status.Phase != corev1.PodRunning {
+			// There is no point in trying to shut down a Pod that is not running.
+			// Basing this off of the cached Kubernetes client's world view opens up a few edge
+			// cases where a Pod might in fact already be running but the client's cache is not yet
+			// up to date. But the trade-off made here i.e. accepting an ungraceful shutdown in these
+			// edge case vs. being able to automatically unblock configuration rollouts that a blocked
+			// due to misconfiguration, for example unfulfillable node selectors, seems worth it.
+			continue
+		}
 		podNames[i] = p.Name
 	}
 	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
@@ -338,7 +369,7 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 }
 
 func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
-	if supportsNodeshutdown(ctx.esClient.Version()) {
+	if supportsNodeShutdown(ctx.esClient.Version()) {
 		return ctx.requestNodeRestarts(podsToUpgrade)
 	}
 	// Disable shard allocations to avoid shards moving around while the node is temporarily down

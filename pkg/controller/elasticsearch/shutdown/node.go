@@ -51,7 +51,7 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 		}
 		shutdowns := map[string]esclient.NodeShutdown{}
 		for _, ns := range r.Nodes {
-			log.V(1).Info("Existing shutdown", "node", ns.NodeID, "type", ns.Type, "status", ns.Status)
+			log.V(1).Info("Existing shutdown", "node_id", ns.NodeID, "type", ns.Type, "status", ns.Status)
 			shutdowns[ns.NodeID] = ns
 		}
 		ns.shutdowns = shutdowns
@@ -86,7 +86,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(ns.typ) {
 			continue
 		}
-		log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node-id", nodeID)
+		log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID)
 		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason); err != nil {
 			return fmt.Errorf("on put shutdown %w", err)
 		}
@@ -131,7 +131,7 @@ func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStat
 	}
 	for _, s := range ns.shutdowns {
 		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
-			log.V(1).Info("Deleting shutdown", "type", ns.typ, "node-id", s.NodeID)
+			log.V(1).Info("Deleting shutdown", "type", ns.typ, "node_id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)
 			}

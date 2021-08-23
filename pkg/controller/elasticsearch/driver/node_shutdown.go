@@ -13,7 +13,7 @@ import (
 )
 
 func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state ESState) (shutdown.Interface, error) {
-	if supportsNodeshutdown(client.Version()) {
+	if supportsNodeShutdown(client.Version()) {
 		idLookup, err := state.NodeNameToID()
 		if err != nil {
 			return nil, err
@@ -23,6 +23,6 @@ func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state E
 	return migration.NewShardMigration(es, client, client), nil
 }
 
-func supportsNodeshutdown(v version.Version) bool {
+func supportsNodeShutdown(v version.Version) bool {
 	return v.GTE(version.MustParse("7.15.0-SNAPSHOT"))
 }
