@@ -23,14 +23,14 @@ import (
 )
 
 const (
-	operatorNamespace    = "elastic-system"
-	operatorSTS          = "elastic-operator"
-	esName               = "es"
-	kbName               = "kb"
-	apmName              = "apm"
-	beatName             = "heartbeat"
-	enterprisesearchName = "ent"
-	wantHealth           = "green"
+	operatorNamespace = "elastic-system"
+	operatorSTS       = "elastic-operator"
+	esName            = "es"
+	kbName            = "kb"
+	apmName           = "apm"
+	beatName          = "heartbeat"
+	entName           = "ent"
+	wantHealth        = "green"
 )
 
 // TestParam holds parameters for a test.
@@ -253,7 +253,7 @@ func labelSelectorFor(kind string) (string, error) {
 	case "apmserver":
 		return "apm.k8s.elastic.co/name=" + apmName, nil
 	case "enterprisesearch":
-		return "enterprisesearch.k8s.elastic.co/name=" + enterprisesearchName, nil
+		return "enterprisesearch.k8s.elastic.co/name=" + entName, nil
 	case "beat":
 		return "beat.k8s.elastic.co/name=" + beatName, nil
 	}
