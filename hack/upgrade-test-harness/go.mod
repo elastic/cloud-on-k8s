@@ -9,8 +9,7 @@ require (
 	github.com/jonboulle/clockwork v0.2.2
 	github.com/spf13/cobra v1.2.1
 	go.uber.org/zap v1.19.0
-	gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.19.0
 	k8s.io/apimachinery v0.19.0
 	k8s.io/cli-runtime v0.19.0
