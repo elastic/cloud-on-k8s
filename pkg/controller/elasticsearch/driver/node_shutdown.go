@@ -18,7 +18,8 @@ func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state E
 		if err != nil {
 			return nil, err
 		}
-		return shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion), nil
+		logger := log.WithValues("namespace", es.Namespace, "es_name", es.Name)
+		return shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, logger), nil
 	}
 	return migration.NewShardMigration(es, client, client), nil
 }

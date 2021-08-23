@@ -196,23 +196,19 @@ func calculatePerformableDownscale(
 		}
 		switch response.Status {
 		case esclient.ShutdownComplete:
-			ssetLogger(downscale.statefulSet).Info("Node shutdown including data migration completed successfully, starting node deletion", "node", node)
 			// shutdown including data migration over: allow pod to be removed
 			performableDownscale.targetReplicas--
 		case esclient.ShutdownStalled:
 			// shutdown failed this requires user interaction: bubble up via event
-			ssetLogger(downscale.statefulSet).Info("Node shutdown stalled, user intervention required", "node", node)
 			ctx.reconcileState.UpdateElasticsearchShutdownStalled(ctx.resourcesState, ctx.observedState, response.Explanation)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
 		case esclient.ShutdownStarted:
-			ssetLogger(downscale.statefulSet).V(1).Info("Node shutdown including data migration not over yet, skipping node deletion", "node", node)
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
 		case esclient.ShutdownNotStarted:
 			msg := fmt.Sprintf("Unexpected state. Node shutdown could not be started: %s", response.Explanation)
-			ssetLogger(downscale.statefulSet).Info(msg, "node", node)
 			return performableDownscale, errors.New(msg)
 		}
 	}

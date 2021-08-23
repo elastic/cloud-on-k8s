@@ -10,10 +10,8 @@ import (
 	"sync"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/go-logr/logr"
 )
-
-var log = ulog.Log.WithName("node-shutdown")
 
 // NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
 // on this struct concurrently from multiple go-routines.
@@ -24,6 +22,7 @@ type NodeShutdown struct {
 	podToNodeID map[string]string
 	shutdowns   map[string]esclient.NodeShutdown
 	once        sync.Once
+	log         logr.Logger
 }
 
 var _ Interface = &NodeShutdown{}
@@ -31,12 +30,13 @@ var _ Interface = &NodeShutdown{}
 // NewNodeShutdown creates a new NodeShutdown struct restricted to one type of shutdown (typ); podToNodeID is mapping from
 // K8s Pod name to Elasticsearch node ID; reason is a arbitrary bit of metadata that will be attached to each node shutdown
 // request in Elasticsearch and can help tracking and auditing shutdown requests.
-func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string) *NodeShutdown {
+func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string, l logr.Logger) *NodeShutdown {
 	return &NodeShutdown{
 		c:           c,
 		typ:         typ,
 		podToNodeID: podToNodeID,
 		reason:      reason,
+		log:         l,
 	}
 }
 
@@ -50,9 +50,9 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 			return
 		}
 		shutdowns := map[string]esclient.NodeShutdown{}
-		for _, ns := range r.Nodes {
-			log.V(1).Info("Existing shutdown", "node_id", ns.NodeID, "type", ns.Type, "status", ns.Status)
-			shutdowns[ns.NodeID] = ns
+		for _, n := range r.Nodes {
+			ns.log.V(1).Info("Existing shutdown", "node_id", n.NodeID, "type", n.Type, "status", n.Status)
+			shutdowns[n.NodeID] = n
 		}
 		ns.shutdowns = shutdowns
 	})
@@ -86,7 +86,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(ns.typ) {
 			continue
 		}
-		log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID)
+		ns.log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID)
 		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason); err != nil {
 			return fmt.Errorf("on put shutdown %w", err)
 		}
@@ -116,10 +116,24 @@ func (ns *NodeShutdown) ShutdownStatus(ctx context.Context, podName string) (Nod
 	if !exists {
 		return NodeShutdownStatus{}, fmt.Errorf("no shutdown in progress for %s", podName)
 	}
+	logStatus(ns.log, podName, shutdown)
 	return NodeShutdownStatus{
 		Status:      shutdown.Status,
 		Explanation: shutdown.ShardMigration.Explanation,
 	}, nil
+}
+
+func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdown) {
+	switch shutdown.Status {
+	case esclient.ShutdownComplete:
+		logger.Info("Node shutdown complete, can start node deletion", "type", shutdown.Type, "node", podName)
+	case esclient.ShutdownStarted:
+		logger.V(1).Info("Node shutdown not over yet, hold off with node deletion", "type", shutdown.Type, "node", podName)
+	case esclient.ShutdownStalled:
+		logger.Info("Node shutdown stalled, user intervention required", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation)
+	case esclient.ShutdownNotStarted:
+		logger.Info("Unexpected: node shutdown could not be started", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation)
+	}
 }
 
 // Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
@@ -131,7 +145,7 @@ func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStat
 	}
 	for _, s := range ns.shutdowns {
 		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
-			log.V(1).Info("Deleting shutdown", "type", ns.typ, "node_id", s.NodeID)
+			ns.log.V(1).Info("Deleting shutdown", "type", ns.typ, "node_id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)
 			}

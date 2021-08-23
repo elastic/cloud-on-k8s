@@ -6,7 +6,6 @@ package driver
 
 import (
 	"context"
-	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -17,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,7 +64,8 @@ func (d *defaultDriver) handleRollingUpgrades(
 	if err != nil {
 		results.WithError(err)
 	}
-	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion)
+	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
+	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
 
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
@@ -331,37 +330,22 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	switch response.Status {
-	case esclient.ShutdownComplete:
-		log.V(1).Info("Node shutdown for restart complete", "namespace", pod.Namespace, "node", pod.Name)
-		return true, nil
-	case esclient.ShutdownStalled:
-		log.V(1).Info("Node shutdown for restart stalled", "namespace", pod.Namespace, "node", pod.Name)
-		return false, nil
-	case esclient.ShutdownStarted:
-		log.V(1).Info("Node shutdown for restart started", "namespace", pod.Namespace, "node", pod.Name)
-		return true, nil
-	case esclient.ShutdownNotStarted:
-		msg := fmt.Sprintf("Unexpected state. Node shutdown for restart could not be started: %s", response.Explanation)
-		log.Info(msg, "namespace", pod.Namespace, "node", pod.Name)
-		return false, errors.New(msg)
-	}
 	return response.Status == esclient.ShutdownComplete, nil
 }
 
 func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
-	var podNames []string
-	for i, p := range podsToRestart {
+	var podNames []string //nolint:prealloc
+	for _, p := range podsToRestart {
 		if p.Status.Phase != corev1.PodRunning {
 			// There is no point in trying to shut down a Pod that is not running.
 			// Basing this off of the cached Kubernetes client's world view opens up a few edge
 			// cases where a Pod might in fact already be running but the client's cache is not yet
 			// up to date. But the trade-off made here i.e. accepting an ungraceful shutdown in these
-			// edge case vs. being able to automatically unblock configuration rollouts that a blocked
+			// edge case vs. being able to automatically unblock configuration rollouts that are blocked
 			// due to misconfiguration, for example unfulfillable node selectors, seems worth it.
 			continue
 		}
-		podNames[i] = p.Name
+		podNames = append(podNames, p.Name)
 	}
 	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
 	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.

@@ -116,7 +116,7 @@ type Client interface {
 	// The Elasticsearch endpoint will be added automatically to the request URL which should therefore just be the path
 	// with a leading /
 	Request(ctx context.Context, r *http.Request) (*http.Response, error)
-	// Version returns the Elasticsearch version this client is constructor for which should equal the minimal version
+	// Version returns the Elasticsearch version this client is constructed for which should equal the minimal version
 	// in the cluster
 	Version() version.Version
 }

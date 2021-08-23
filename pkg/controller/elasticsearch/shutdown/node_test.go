@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var (
@@ -163,6 +163,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			ns := &NodeShutdown{
 				c:   client,
 				typ: tt.args.typ,
+				log: log.Log.WithName("test"),
 			}
 
 			if err := ns.Clear(context.Background(), tt.args.status); (err != nil) != tt.wantErr {
@@ -244,6 +245,7 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 			ns := &NodeShutdown{
 				c:           client,
 				podToNodeID: tt.args.podToNodeID,
+				log:         log.Log.WithName("test"),
 			}
 			got, err := ns.ShutdownStatus(context.Background(), tt.args.podName)
 			if (err != nil) != tt.wantErr {
@@ -370,6 +372,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				c:           client,
 				typ:         tt.args.typ,
 				podToNodeID: tt.args.podToNodeID,
+				log:         log.Log.WithName("test"),
 			}
 			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileShutdowns() error = %v, wantErr %v", err, tt.wantErr)
