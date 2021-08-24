@@ -2,44 +2,33 @@ testParams:
   - name: alpha
     operatorVersion: 0.9.0
     stackVersion: 7.2.0
-    crdVersion: v1alpha1
   - name: beta
     operatorVersion: 1.0.0-beta1
     stackVersion: 7.5.0
-    crdVersion: v1beta1
   - name: v101
     operatorVersion: 1.0.1
     stackVersion: 7.7.1
-    crdVersion: v1
   - name: v112
     operatorVersion: 1.1.2
     stackVersion: 7.8.1
-    crdVersion: v1
   - name: v121
     operatorVersion: 1.2.1
     stackVersion: 7.9.0
-    crdVersion: v1
   - name: v130
     operatorVersion: 1.3.0
     stackVersion: 7.10.0
-    crdVersion: v1
   - name: v131
     operatorVersion: 1.3.1
     stackVersion: 7.10.1
-    crdVersion: v1
   - name: v140
     operatorVersion: 1.4.1 # same binary as 1.4.0
     stackVersion: 7.11.2
-    crdVersion: v1
   - name: v150
     operatorVersion: 1.5.0
     stackVersion: 7.12.0
-    crdVersion: v1
   - name: v160
     operatorVersion: 1.6.0
     stackVersion: 7.13.0
-    crdVersion: v1
   - name: upcoming
     operatorVersion: 1.7.0
     stackVersion: 7.13.0
-    crdVersion: v1

@@ -19,10 +19,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	cmdwait "k8s.io/kubectl/pkg/cmd/wait"
@@ -196,6 +198,25 @@ func (h *Kubectl) CreateOrUpdate(resources resource.Visitor) error {
 // DynamicClient returns a dynamic client.
 func (h *Kubectl) DynamicClient() (dynamic.Interface, error) {
 	return h.factory.DynamicClient()
+}
+
+// GVR converts a GroupVersionKind into a GroupVersionResource using the K8S RESTMapper.
+func (h *Kubectl) GVR(gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+	mapper, err := h.factory.ToRESTMapper()
+	if err != nil {
+		return schema.GroupVersionResource{}, err
+	}
+
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return schema.GroupVersionResource{}, err
+	}
+	return mapping.Resource, nil
+}
+
+// K8SClient returns a K8S client.
+func (h *Kubectl) K8SClient() (*kubernetes.Clientset, error) {
+	return h.factory.KubernetesClientSet()
 }
 
 // Replace the given set of resources.
