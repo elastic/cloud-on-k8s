@@ -215,7 +215,7 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return nil, fmt.Errorf(
 			"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
 			agent.Namespace,
-			esAssociation.Associated().GetNamespace(),
+			esAssociation.AssociationRef().Namespace,
 		)
 	}
 
