@@ -42,7 +42,7 @@ func main() {
 	cmd := &cobra.Command{
 		Use:           "eck-upgrade-harness",
 		Short:         "Test harness for testing ECK release upgrades",
-		Version:       "0.1.0",
+		Version:       "0.2.0",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE:          doRun,
@@ -117,7 +117,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 	for i := from; i <= to; i++ {
 		currTestParam := conf.TestParams[i]
 
-		fixtures := buildUpgradeFixtures(prevTestParam, currTestParam)
+		fixtures, err := buildUpgradeFixtures(prevTestParam, currTestParam)
+		if err != nil {
+			return err
+		}
 
 		ctx.Infof("=====[%s]=====", currTestParam.Name)
 
@@ -171,21 +174,31 @@ func setupUpcomingRelease(installYAML, targetYAML string) error {
 	return nil
 }
 
-func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) []*fixture.Fixture {
+func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) ([]*fixture.Fixture, error) {
 	fixtures := []*fixture.Fixture{fixture.TestInstallOperator(to)}
 
 	if from != nil {
-		fixtures = append(fixtures, fixture.TestStatusOfResources(*from))
+		testStatusOfResources, err := fixture.TestStatusOfResources(*from)
+		if err != nil {
+			return nil, err
+		}
+		fixtures = append(fixtures, testStatusOfResources)
 
 		// upgrade from alpha requires deleting the finalizers
 		if from.Name == "alpha" {
 			fixtures = append(fixtures, fixture.TestRemoveFinalizers(*from))
 			// delete the stack as alpha resources are no longer reconciled by later versions of the operator
 			fixtures = append(fixtures, fixture.TestRemoveResources(*from))
+			// ensure that all the services have been removed
+			fixtures = append(fixtures, fixture.ServicesShouldBeRemoved(*from))
 		}
 	}
 
-	fixtures = append(fixtures, fixture.TestDeployResources(to), fixture.TestStatusOfResources(to))
+	testStatusOfResources, err := fixture.TestStatusOfResources(to)
+	if err != nil {
+		return nil, err
+	}
+	fixtures = append(fixtures, fixture.TestDeployResources(to), testStatusOfResources)
 
-	return fixtures
+	return fixtures, nil
 }
