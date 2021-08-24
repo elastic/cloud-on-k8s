@@ -5,15 +5,15 @@
 package driver
 
 import (
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 )
 
-func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state ESState) (shutdown.Interface, error) {
-	if supportsNodeShutdown(client.Version()) {
+func newShutdownInterface(d *defaultDriver, client esclient.Client, state ESState) (shutdown.Interface, error) {
+	es := d.ES
+	if d.OperatorParameters.UseNodeShutdownAPI && supportsNodeShutdown(client.Version()) {
 		idLookup, err := state.NodeNameToID()
 		if err != nil {
 			return nil, err
