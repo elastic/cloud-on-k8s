@@ -198,6 +198,10 @@ var predicates = [...]Predicate{
 				// This predicate is only relevant on healthy node if cluster health is yellow
 				return true, nil
 			}
+			if health.NumberOfNodes == 1 {
+				// If the cluster is a single node cluster, allow restart even if there is no version difference
+				return true, nil
+			}
 			version := candidate.Labels[label.VersionLabelName]
 			if version == context.es.Spec.Version {
 				// Restart in yellow state is only allowed during version upgrade
@@ -222,12 +226,10 @@ var predicates = [...]Predicate{
 			if err != nil {
 				return false, err
 			}
+			health, err := context.esState.Health()
 			_, healthyNode := context.healthyPods[candidate.Name]
-			// Get the number of expected masters
-			expectedMasters := len(context.masterNodesNames)
-			healthyPods := len(context.healthyPods)
-			if healthyNode && healthyPods == 1 && expectedMasters == 1 && len(deletedPods) == 0 {
-				// If the cluster is a single node cluster, replicas can not be started, skip the predicate
+			if health.NumberOfNodes == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
+				// If the cluster is a single node cluster, replicas can not be started, allow the upgrade
 				return true, nil
 			}
 			// We maintain two data structures to record:
