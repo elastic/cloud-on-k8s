@@ -11,6 +11,20 @@ endif::[]
 [id="{p}-ga-upgrade"]
 == Upgrade to ECK {eck_version}
 
+[IMPORTANT]
+================================
+This is the upgrade guide for ECK. For Elastic Stack upgrade, please refer to this <<{p}-upgrading-stack,guidance>> for more details.
+================================
+
+[CAUTION]
+================================
+Upgrading the ECK operator results in a one-time update to existing managed resources in the cluster. This triggers a rolling restart of pods, on which Elastic Stack components are running, by Kubernetes to apply those changes. Therefore, if you have a large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart will cause performance degradation, which might be disruptive or inconvenient.
+
+For production use, when you plan to upgrade ECK, it's important to include this pods rolling restart into time schedule consideration.
+
+Also as described later, you could temporarily exclude the Elastic Stack components from being managed by ECK operator. After the ECK upgrade is done, you must remember to remove the exclusion to ensure that your deployment is continually monitored and managed by the operator, and let the rolling restart go through.
+================================
+
 ECK reached general availability (GA) status with the link:https://www.elastic.co/blog/elastic-cloud-on-kubernetes-ECK-is-now-generally-available[release of version 1.0.0]. The latest available GA version is {eck_version}. It is compatible with the previous GA releases (1.0.x and higher) and the beta release (1.0.0-beta1), and can be upgraded in-place (<<{p}-ga-openshift, with a few exceptions>>) by applying the new set of deployment manifests. Previous alpha releases, up to and including version 0.9.0, are not compatible with the GA and beta releases and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.0-beta/k8s-upgrading-eck.html[require extra work to upgrade].
 
 Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to make sure that the release does not contain any breaking changes that could affect you. The <<release-highlights-{eck_version},release highlights document>> provides more details and possible workarounds for any breaking changes or known issues in each release.
