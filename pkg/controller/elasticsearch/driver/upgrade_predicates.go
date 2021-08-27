@@ -222,15 +222,18 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-			allShards, err := context.shardLister.GetShards(context.ctx)
+			health, err := context.esState.Health()
 			if err != nil {
 				return false, err
 			}
-			health, err := context.esState.Health()
 			_, healthyNode := context.healthyPods[candidate.Name]
 			if health.NumberOfNodes == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
 				// If the cluster is a single node cluster, replicas can not be started, allow the upgrade
 				return true, nil
+			}
+			allShards, err := context.shardLister.GetShards(context.ctx)
+			if err != nil {
+				return false, err
 			}
 			// We maintain two data structures to record:
 			// * The total number of replicas for a shard
