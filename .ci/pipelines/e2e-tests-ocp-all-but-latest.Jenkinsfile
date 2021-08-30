@@ -39,7 +39,7 @@ pipeline {
                }
             }
             steps {
-                // "4.3.40", "4.4.33", "4.5.37", "4.6.24", "4.7.6"
+                // "4.3.x", "4.4.x", "4.5.x", "4.6.x", "4.7.x"
                 // latest 4.8.x is taken care of by a separate job
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
@@ -58,21 +58,21 @@ pipeline {
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
-                                        string(name: 'OCP_VERSION', value: "4.5.37"),
+                                        string(name: 'OCP_VERSION', value: "4.5.41"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
-                                        string(name: 'OCP_VERSION', value: "4.6.24"),
+                                        string(name: 'OCP_VERSION', value: "4.6.43"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
-                                        string(name: 'OCP_VERSION', value: "4.7.6"),
+                                        string(name: 'OCP_VERSION', value: "4.7.27"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
