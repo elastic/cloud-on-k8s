@@ -18,7 +18,7 @@ This is the upgrade guide for ECK. For Elastic Stack upgrade, please refer to th
 
 [CAUTION]
 ================================
-Upgrading the ECK operator results in a one-time update to existing managed resources in the cluster. This triggers a rolling restart of pods, on which Elastic Stack components are running, by Kubernetes to apply those changes. Therefore, if you have a large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart will cause performance degradation, which might be disruptive or inconvenient.
+Upgrading the ECK operator results in a one-time update to existing managed resources in the cluster. This triggers a rolling restart of pods, on which Elastic Stack components are running, by Kubernetes to apply those changes. Therefore, if you have a large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart could cause a performance degradation, which might be disruptive or inconvenient.
 
 For production use, when you plan to upgrade ECK, it's important to include this pods rolling restart into time schedule consideration.
 
