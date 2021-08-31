@@ -22,7 +22,7 @@ import (
 
 const (
 	// DefaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
-	DefaultTerminationGracePeriodSeconds int64 = 160
+	DefaultTerminationGracePeriodSeconds int64 = 180
 )
 
 var (
