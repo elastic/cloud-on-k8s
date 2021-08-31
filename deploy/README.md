@@ -2,7 +2,7 @@
 
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
 
-This directory contains the  Helm chart for deploying the ECK operator.
+This directory contains the Helm chart for deploying the ECK operator.
 
 ## Usage
 
