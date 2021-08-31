@@ -33,7 +33,7 @@ set -euo pipefail
 # using iptables with a lot of services, in which case the default 30sec might not be enough.
 # Also gives some additional bonus time to in-flight requests to terminate, and new requests to still
 # target the Pod IP before Elasticsearch stops.
-PRE_STOP_ADDITIONAL_WAIT_SECONDS=${PRE_STOP_ADDITIONAL_WAIT_SECONDS:=30}
+PRE_STOP_ADDITIONAL_WAIT_SECONDS=${PRE_STOP_ADDITIONAL_WAIT_SECONDS:=50}
 
 sleep $PRE_STOP_ADDITIONAL_WAIT_SECONDS
 `
