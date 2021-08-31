@@ -24,6 +24,17 @@ const (
 	UUIDCfgMapKey = "uuid"
 )
 
+var (
+	// lookup of valid distribution channels
+	knownDistributionChannels = map[string]struct{}{
+		"all-in-one":                   {},
+		"helm":                         {},
+		"upstream-community-operators": {},
+		"community-operators":          {},
+		"certified-operators":          {},
+	}
+)
+
 var defaultOperatorNamespaces = []string{"elastic-system"}
 
 // OperatorInfo contains information about the operator.
@@ -85,6 +96,12 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs, distributionCha
 		if operatorNs == ns {
 			customOperatorNs = false
 		}
+	}
+
+	// Check if reported channel is known to us. Passing bogus value to the
+	// operator is treated the same as not passing any value at all
+	if _, ok := knownDistributionChannels[distributionChannel]; !ok {
+		distributionChannel = ""
 	}
 
 	return OperatorInfo{
