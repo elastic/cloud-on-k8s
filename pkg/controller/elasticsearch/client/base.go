@@ -108,7 +108,7 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body) //nolint:noctx
+	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body)
 	if err != nil {
 		return err
 	}
