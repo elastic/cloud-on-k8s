@@ -14,6 +14,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	"github.com/hashicorp/go-multierror"
 )
 
 type baseClient struct {
@@ -114,8 +115,10 @@ func (c *baseClient) request(
 		return err
 	}
 
+	var skippedErr error
 	resp, err := c.doRequest(ctx, request)
 	if skipErrFunc != nil && skipErrFunc(err) {
+		skippedErr = err
 		err = nil
 	}
 	if err != nil {
@@ -126,6 +129,9 @@ func (c *baseClient) request(
 
 	if responseObj != nil {
 		if err := json.NewDecoder(resp.Body).Decode(responseObj); err != nil {
+			if skippedErr != nil {
+				err = multierror.Append(err, skippedErr)
+			}
 			return err
 		}
 	}
