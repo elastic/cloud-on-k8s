@@ -19,7 +19,7 @@ It waits for an additional `PRE_STOP_ADDITIONAL_WAIT_SECONDS` (defaulting to 50)
 2. Give clients time to use the terminating Pod IP resolved just before DNS record was updated.
 3. Give kube-proxy time to refresh ipvs or iptables rules on all nodes, depending on its sync period setting.
 
-The exact behavior is configurable using environment variables, for example:
+The exact behavior is configurable using an environment variable, for example:
 
 [source,yaml,subs="attributes"]
 ----
