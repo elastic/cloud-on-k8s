@@ -77,10 +77,6 @@ func (c *clientV6) GetClusterHealthWaitForAllEvents(ctx context.Context) (Health
 	// given the query parameters. 408 for other reasons than the clients timeout parameter should not happen
 	// as they are expected only on idle connections https://go-review.googlesource.com/c/go/+/179457/4/src/net/http/transport.go#1931
 	err := c.request(ctx, http.MethodGet, pathWithQuery, nil, &result, IsTimeout)
-	if err != nil {
-		return result, err
-	}
-
 	return result, err
 }
 
