@@ -72,70 +72,28 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 }
 
 func (c *baseClient) get(ctx context.Context, pathWithQuery string, out interface{}) error {
-	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out)
+	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out, nil)
 }
 
 func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out interface{}) error { //nolint:unparam
-	return c.request(ctx, http.MethodPut, pathWithQuery, in, out)
+	return c.request(ctx, http.MethodPut, pathWithQuery, in, out, nil)
 }
 
 func (c *baseClient) post(ctx context.Context, pathWithQuery string, in, out interface{}) error {
-	return c.request(ctx, http.MethodPost, pathWithQuery, in, out)
+	return c.request(ctx, http.MethodPost, pathWithQuery, in, out, nil)
 }
 
 func (c *baseClient) delete(ctx context.Context, pathWithQuery string, in, out interface{}) error {
-	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out)
+	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out, nil)
 }
 
-// request performs a new http request
-//
-// if requestObj is not nil, it's marshalled as JSON and used as the request body
-// if responseObj is not nil, it should be a pointer to an struct. The response body will be unmarshalled from JSON
-// into this struct if the status code of the response is 2xx.
-func (c *baseClient) request(
-	ctx context.Context,
-	method string,
-	pathWithQuery string,
-	requestObj,
-	responseObj interface{},
-) error {
-	var body io.Reader = http.NoBody
-	if requestObj != nil {
-		outData, err := json.Marshal(requestObj)
-		if err != nil {
-			return err
-		}
-		body = bytes.NewBuffer(outData)
-	}
-
-	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.doRequest(ctx, request)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	if responseObj != nil {
-		if err := json.NewDecoder(resp.Body).Decode(responseObj); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// unsafeRequest performs a new http request and decodes the payload if the status code of the response is 2xx or if the
+// request performs a new http request and decodes the payload if the status code of the response is 2xx or if the
 // given skipErrFunc function returns true.
 //
 // if requestObj is not nil, it's marshalled as JSON and used as the request body
 // if responseObj is not nil, it should be a pointer to an struct. The response body will be unmarshalled from JSON
 // into this struct if the status code of the response is 2xx or if the given skipErrFunc function returns true.
-func (c *baseClient) unsafeRequest(
+func (c *baseClient) request(
 	ctx context.Context,
 	method string,
 	pathWithQuery string,
@@ -158,7 +116,7 @@ func (c *baseClient) unsafeRequest(
 	}
 
 	resp, err := c.doRequest(ctx, request)
-	if skipErrFunc(err) {
+	if skipErrFunc != nil && skipErrFunc(err) {
 		err = nil
 	}
 	if err != nil {
