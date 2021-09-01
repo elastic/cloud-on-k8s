@@ -35,8 +35,8 @@ type testPod struct {
 
 func newTestPod(name string) testPod {
 	return testPod{
-		name: name,
-		uid:  uuid.NewUUID(),
+		name:            name,
+		uid:             uuid.NewUUID(),
 		resourceVersion: "42",
 	}
 }
