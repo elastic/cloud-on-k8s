@@ -367,8 +367,10 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 
 				ps.Containers[0].Command = []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
 set -e
-cp /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt /etc/pki/ca-trust/source/anchors/
-update-ca-trust
+if [[ -f /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt ]]; then
+  cp /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt /etc/pki/ca-trust/source/anchors/
+  update-ca-trust
+fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
 `}
 

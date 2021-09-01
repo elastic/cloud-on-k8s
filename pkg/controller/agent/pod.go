@@ -294,10 +294,12 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 func trustCAScript(caPath string) string {
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
-cp %s /etc/pki/ca-trust/source/anchors/
-update-ca-trust
+if [[ -f %s ]]; then
+  cp %s /etc/pki/ca-trust/source/anchors/
+  update-ca-trust
+fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
-`, caPath)
+`, caPath, caPath)
 }
 
 func createDataVolume(params Params) volume.VolumeLike {

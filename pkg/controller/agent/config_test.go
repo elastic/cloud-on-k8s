@@ -27,26 +27,40 @@ func TestBuildFleetSetupKibanaConfig(t *testing.T) {
 			"user": []byte("password"),
 		},
 	})
-
-	assoc := &agentv1alpha1.AgentKibanaAssociation{
-		Agent: &agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "agent",
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			KibanaRef: commonv1.ObjectSelector{
+				Name:      "kibana",
 				Namespace: "ns",
-				Name:      "agent",
-			},
-			Spec: agentv1alpha1.AgentSpec{
-				KibanaRef: commonv1.ObjectSelector{
-					Name:      "kibana",
-					Namespace: "ns",
-				},
 			},
 		},
 	}
+	agent2 := agent
 
-	assoc.SetAssociationConf(&commonv1.AssociationConf{
+	assocWithoutCa := &agentv1alpha1.AgentKibanaAssociation{
+		Agent: &agent,
+	}
+
+	assocWithCa := &agentv1alpha1.AgentKibanaAssociation{
+		Agent: &agent2,
+	}
+
+	assocWithoutCa.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret-name",
 		AuthSecretKey:  "user",
 		URL:            "url",
+	})
+
+	assocWithCa.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "secret-name",
+		AuthSecretKey:  "user",
+		URL:            "url",
+		CACertProvided: true,
+		CASecretName:   "ca-secret-name",
 	})
 
 	for _, tt := range []struct {
@@ -64,8 +78,22 @@ func TestBuildFleetSetupKibanaConfig(t *testing.T) {
 			client:  client,
 		},
 		{
-			name:  "kibana ref present",
-			agent: *assoc.Agent,
+			name:  "kibana ref present, kibana with ca populated",
+			agent: *assocWithoutCa.Agent,
+			wantCfg: map[string]interface{}{
+				"fleet": map[string]interface{}{
+					"host":     "url",
+					"password": "password",
+					"setup":    true,
+					"username": "user",
+				},
+			},
+			wantErr: false,
+			client:  client,
+		},
+		{
+			name:  "kibana ref present, kibana without ca populated",
+			agent: *assocWithCa.Agent,
 			wantCfg: map[string]interface{}{
 				"fleet": map[string]interface{}{
 					"ca":       "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
@@ -80,7 +108,7 @@ func TestBuildFleetSetupKibanaConfig(t *testing.T) {
 		},
 		{
 			name:    "no user secret",
-			agent:   *assoc.Agent,
+			agent:   *assocWithoutCa.Agent,
 			wantCfg: nil,
 			wantErr: true,
 			client:  k8s.NewFakeClient(),
@@ -275,7 +303,7 @@ func TestBuildFleetSetupFleetConfig(t *testing.T) {
 }
 
 func TestBuildFleetSetupFleetServerConfig(t *testing.T) {
-	agent := agentv1alpha1.Agent{
+	agentWithoutCa := agentv1alpha1.Agent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "agent",
 			Namespace: "ns",
@@ -292,12 +320,22 @@ func TestBuildFleetSetupFleetServerConfig(t *testing.T) {
 			FleetServerEnabled: true,
 		},
 	}
+	agentWithCa := agentWithoutCa
 
-	assoc := agent.GetAssociations()[0]
-	assoc.SetAssociationConf(&commonv1.AssociationConf{
+	assocWithoutCa := agentWithoutCa.GetAssociations()[0]
+	assocWithoutCa.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret-name",
 		AuthSecretKey:  "user",
 		URL:            "url",
+	})
+
+	assocWithCa := agentWithCa.GetAssociations()[0]
+	assocWithCa.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "secret-name",
+		AuthSecretKey:  "user",
+		URL:            "url",
+		CACertProvided: true,
+		CASecretName:   "ca-secret-name",
 	})
 
 	for _, tt := range []struct {
@@ -330,8 +368,32 @@ func TestBuildFleetSetupFleetServerConfig(t *testing.T) {
 			client: nil,
 		},
 		{
-			name:    "fleet server enabled, elasticsearch ref",
-			agent:   agent,
+			name:    "fleet server enabled, elasticsearch ref, no elasticsearch ca",
+			agent:   agentWithoutCa,
+			wantErr: false,
+			wantCfg: map[string]interface{}{
+				"enable":   true,
+				"cert":     path.Join(FleetCertsMountPath, certificates.CertFileName),
+				"cert_key": path.Join(FleetCertsMountPath, certificates.KeyFileName),
+				"elasticsearch": map[string]interface{}{
+					"host":     "url",
+					"username": "user",
+					"password": "password",
+				},
+			},
+			client: k8s.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "secret-name",
+					Namespace: "ns",
+				},
+				Data: map[string][]byte{
+					"user": []byte("password"),
+				},
+			}),
+		},
+		{
+			name:    "fleet server enabled, elasticsearch ref, elasticsearch ca populated",
+			agent:   agentWithCa,
 			wantErr: false,
 			wantCfg: map[string]interface{}{
 				"enable":   true,
@@ -365,25 +427,39 @@ func TestBuildFleetSetupFleetServerConfig(t *testing.T) {
 }
 
 func TestExtractConnectionSettings(t *testing.T) {
-	assoc := agentv1alpha1.AgentKibanaAssociation{
-		Agent: &agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent",
+	agentWithoutCa := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agent",
+			Namespace: "ns",
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			KibanaRef: commonv1.ObjectSelector{
+				Name:      "kibana",
 				Namespace: "ns",
-			},
-			Spec: agentv1alpha1.AgentSpec{
-				KibanaRef: commonv1.ObjectSelector{
-					Name:      "kibana",
-					Namespace: "ns",
-				},
 			},
 		},
 	}
 
-	assoc.SetAssociationConf(&commonv1.AssociationConf{
+	agentWithCa := agentWithoutCa
+
+	assocWithoutCa := agentv1alpha1.AgentKibanaAssociation{
+		Agent: &agentWithoutCa,
+	}
+	assocWithoutCa.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret-name",
 		AuthSecretKey:  "user",
 		URL:            "url",
+	})
+
+	assocWithCa := agentv1alpha1.AgentKibanaAssociation{
+		Agent: &agentWithCa,
+	}
+	assocWithCa.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "secret-name",
+		AuthSecretKey:  "user",
+		URL:            "url",
+		CACertProvided: true,
+		CASecretName:   "ca-secret-name",
 	})
 
 	for _, tt := range []struct {
@@ -403,14 +479,34 @@ func TestExtractConnectionSettings(t *testing.T) {
 		},
 		{
 			name:      "no auth secret",
-			agent:     *assoc.Agent,
+			agent:     *assocWithoutCa.Agent,
 			client:    k8s.NewFakeClient(),
 			assocType: commonv1.KibanaAssociationType,
 			wantErr:   true,
 		},
 		{
-			name:  "happy path",
-			agent: *assoc.Agent,
+			name:  "happy path without ca",
+			agent: *assocWithoutCa.Agent,
+			client: k8s.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "secret-name",
+					Namespace: "ns",
+				},
+				Data: map[string][]byte{
+					"user": []byte("password"),
+				},
+			}),
+			assocType: commonv1.KibanaAssociationType,
+			wantConnectionSettings: connectionSettings{
+				host:     "url",
+				username: "user",
+				password: "password",
+			},
+			wantErr: false,
+		},
+		{
+			name:  "happy path with ca",
+			agent: *assocWithCa.Agent,
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-name",
