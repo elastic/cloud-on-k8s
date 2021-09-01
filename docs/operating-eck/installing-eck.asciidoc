@@ -31,7 +31,6 @@ This method is the quickest way to get started with ECK if you have full adminis
 [id="{p}-install-helm"]
 == Install ECK using the Helm chart
 
-CAUTION: The Helm chart is experimental and should be considered as a beta-level feature.  
 
 Starting from version 1.3.0, an experimental Helm chart is available to install ECK. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
 
@@ -114,7 +113,10 @@ helm show values elastic/eck-operator
 
 CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Read the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
 
-You can migrate an existing operator installation to Helm by adding the `meta.helm.sh/release-name`, `meta.helm.sh/release-namespace` annotations and the `app.kubernetes.io/managed-by` label to all the resources you want to be adopted by Helm. You _must_ do this for the Elastic Custom Resource Definitions (CRD) because deleting them would trigger the deletion of all deployed Elastic applications as well. All other resources are optional and can be deleted. 
+
+You can migrate an existing operator installation to Helm by adding the `meta.helm.sh/release-name`, `meta.helm.sh/release-namespace` annotations and the `app.kubernetes.io/managed-by` label to all the resources you want to be adopted by Helm. You _must_ do this for the Elastic Custom Resource Definitions (CRD) because deleting them would trigger the deletion of all deployed Elastic applications as well. All other resources are optional and can be deleted.
+
+NOTE: A shell script is available in the link:{eck_github}/blob/{eck_release_branch}/deploy/helm-migrate.sh[ECK source repository] to demonstrate how to migrate from version 1.7.1 to Helm. You can modify it to suit your own environment.
 
 For example, an ECK 1.2.1 installation deployed using the link:https://www.elastic.co/guide/en/cloud-on-k8s/1.2/k8s-quickstart.html[quickstart guide] can be migrated to Helm as follows:
 
@@ -131,7 +133,7 @@ done
 
 . Uninstall the current ECK operator. You can do this by taking the `operator.yaml` file you used to install the operator and running `kubectl delete -f operator.yaml`. Alternatively, you could delete each resource individually.
 +
-[source,sh]
+[source,sh,subs="attributes,callouts"]
 ----
 kubectl delete -n elastic-system \
     serviceaccount/elastic-operator \
@@ -140,13 +142,13 @@ kubectl delete -n elastic-system \
     clusterrole.rbac.authorization.k8s.io/elastic-operator-view \
     clusterrole.rbac.authorization.k8s.io/elastic-operator-edit \
     clusterrolebinding.rbac.authorization.k8s.io/elastic-operator \
-    rolebinding.rbac.authorization.k8s.io/elastic-operator \
     service/elastic-webhook-server \
+    configmap/elastic-operator \ <1>
     statefulset.apps/elastic-operator \
     validatingwebhookconfiguration.admissionregistration.k8s.io/elastic-webhook.k8s.elastic.co
 ----
+<1> If you have previously customized the operator configuration in this ConfigMap, you will have to repeat the configuration once the operator has been reinstalled in the next step.
 
 . Install the ECK operator using the Helm chart as described in <<{p}-install-helm>>.
 
-NOTE: A shell script is available in the link:{eck_github}/blob/{eck_release_branch}/deploy/helm-migrate.sh[ECK source repository] to demonstrate how to migrate from version 1.2.1 to Helm. You can modify it to suit your own environment. 
 
