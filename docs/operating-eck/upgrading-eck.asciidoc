@@ -29,12 +29,7 @@ Note that the release notes and highlights only list the changes since the last 
 [id="{p}-beta-to-ga-upgrade"]
 == Upgrade from beta or previous GA releases to ECK {eck_version}
 
-[CAUTION]
-================================
-The upgrade process results in an update to all the existing managed resources. This triggers a rolling restart of all Elasticsearch and Kibana pods. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. 
-When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. 
-Furthermore, <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
-================================
+CAUTION: The upgrade process results in an update to all the existing managed resources. This triggers a rolling restart of all Elasticsearch and Kibana pods. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. Furthermore, <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
 
 IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
