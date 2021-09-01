@@ -87,12 +87,11 @@ func (c *baseClient) delete(ctx context.Context, pathWithQuery string, in, out i
 	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out, nil)
 }
 
-// request performs a new http request and decodes the payload if the status code of the response is 2xx or if the
-// given skipErrFunc function returns true.
+// request performs a new http request
 //
 // if requestObj is not nil, it's marshalled as JSON and used as the request body
 // if responseObj is not nil, it should be a pointer to an struct. The response body will be unmarshalled from JSON
-// into this struct if the status code of the response is 2xx or if the given skipErrFunc function returns true.
+// into this struct if the status code of the response is 2xx or if the (optional) given skipErrFunc function returns true.
 func (c *baseClient) request(
 	ctx context.Context,
 	method string,
