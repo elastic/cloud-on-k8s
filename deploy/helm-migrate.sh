@@ -22,9 +22,9 @@ done
 
 echo "Adding labels and annotations to ECK operator configuration"
 ECK_CONFIG=elastic-operator
-kubectl -n $RELEASE_NAMESPACE annotate cm "$ECK_CONFIG" meta.helm.sh/release-name="$RELEASE_NAME"
-kubectl -n $RELEASE_NAMESPACE annotate cm "$ECK_CONFIG" meta.helm.sh/release-namespace="$RELEASE_NAMESPACE"
-kubectl -n $RELEASE_NAMESPACE label cm "$ECK_CONFIG" app.kubernetes.io/managed-by=Helm
+kubectl -n "$RELEASE_NAMESPACE" annotate cm "$ECK_CONFIG" meta.helm.sh/release-name="$RELEASE_NAME"
+kubectl -n "$RELEASE_NAMESPACE" annotate cm "$ECK_CONFIG" meta.helm.sh/release-namespace="$RELEASE_NAMESPACE"
+kubectl -n "$RELEASE_NAMESPACE" label cm "$ECK_CONFIG" app.kubernetes.io/managed-by=Helm
 
 echo "Uninstalling ECK"
 kubectl delete -n "${RELEASE_NAMESPACE}" \
