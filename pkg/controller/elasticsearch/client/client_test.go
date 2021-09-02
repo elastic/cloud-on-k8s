@@ -746,6 +746,57 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 				ActiveShardsPercentAsNumber: 42.0,
 			},
 		},
+		{
+			name: "happy path",
+			fields: fields{
+				client: NewMockClient(version.MustParse("7.14.0"), func(req *http.Request) *http.Response {
+					require.Equal(t, expectedPath, req.URL.Path)
+					require.Equal(t, expectedRawQuery, req.URL.RawQuery)
+					return &http.Response{
+						StatusCode: 200,
+						Body: ioutil.NopCloser(strings.NewReader(
+							`
+{
+	"cluster_name": "elasticsearch-sample",
+	"status": "yellow",
+	"timed_out": false,
+	"number_of_nodes": 3,
+	"number_of_data_nodes": 3,
+	"active_primary_shards": 12,
+	"active_shards": 24,
+	"relocating_shards": 1,
+	"initializing_shards": 2,
+	"unassigned_shards": 3,
+	"delayed_unassigned_shards": 4,
+	"number_of_pending_tasks": 5,
+	"number_of_in_flight_fetch": 6,
+	"task_max_waiting_in_queue_millis": 7,
+	"active_shards_percent_as_number": 42.0
+}`,
+						)),
+						Header:  make(http.Header),
+						Request: req,
+					}
+				}),
+			},
+			want: Health{
+				ClusterName:                 "elasticsearch-sample",
+				Status:                      "yellow",
+				TimedOut:                    false,
+				NumberOfNodes:               3,
+				NumberOfDataNodes:           3,
+				ActivePrimaryShards:         12,
+				ActiveShards:                24,
+				RelocatingShards:            1,
+				InitializingShards:          2,
+				UnassignedShards:            3,
+				DelayedUnassignedShards:     4,
+				NumberOfPendingTasks:        5,
+				NumberOfInFlightFetch:       6,
+				TaskMaxWaitingInQueueMillis: 7,
+				ActiveShardsPercentAsNumber: 42.0,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
