@@ -78,8 +78,8 @@ spec:
   elasticsearchRef:
     name: elasticsearch-quickstart
   config:
-    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-quickstart-es-http.default.svc:9200"
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-quickstart-agent-http.default.svc:8220"]
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
