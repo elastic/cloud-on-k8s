@@ -1,0 +1,43 @@
+:parent_page_id: elasticsearch-specification
+:page_id: security-context
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Security Context
+
+In Kubernetes, a https://kubernetes.io/docs/tasks/configure-pod-container/security-context/[`securityContext`] defines privilege and access control settings for a Pod or Container. You can set up it through the `podTemplate` section of an Elastic resource specification.
+
+== Run as non root Elasticsearch
+
+By default, the Elastisearch container is run as root and it is its entrypoint that is responsible to run the Elasticsearch process with the `elasticsearch` user (defined with ID 1000). In the background, ECK makes sure for you via an `initContainer` that the data volume is writeable for the `elasticsearch` user.
+
+If you choose to run the Elastisearch container as a non-root user, then you need to configure the Elasticsearch manifest with an appropriate security context to make the data volume writeable to the `elasticsearch` user by specifying the right group ID through the `fsGroup`.
+
+Kubernetes recursively changes ownership and permissions for the contents of each volume to match the `fsGroup` specified in a Pod's securityContext when that volume is mounted and makes all processes of the containers part of the supplementary group ID.
+
+For example, if you force the Pod to run as user `1234`, you need to define the `fsGroup` accordingly to `1234`:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 1234 <1>
+          fsGroup: 1234 <2>
+----
+
+<1> Any containers in the pod run all processes with user ID `1234`.
+<2> All processes are also part of the supplementary group ID `1234`, that owns the Pod volumes.
