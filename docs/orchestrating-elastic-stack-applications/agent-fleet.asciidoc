@@ -78,8 +78,8 @@ spec:
   elasticsearchRef:
     name: elasticsearch-quickstart
   config:
-    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-quickstart-es-http.default.svc:9200"
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-quickstart-agent-http.default.svc:8220"]
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
@@ -226,11 +226,11 @@ To have Fleet running properly, the following settings must be correctly set in 
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: kibana
+  name: kibana-sample
 spec:
   config:
-    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-sample-es-http.default.svc:9200"
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-sample-agent-http.default.svc:8220"]
 ----
 
 *  `xpack.fleet.agents.elasticsearch.host`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
