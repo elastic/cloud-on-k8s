@@ -78,7 +78,7 @@ func TestBuildFleetSetupKibanaConfig(t *testing.T) {
 			client:  client,
 		},
 		{
-			name:  "kibana ref present, kibana with ca populated",
+			name:  "kibana ref present, kibana without ca populated",
 			agent: *assocWithoutCa.Agent,
 			wantCfg: map[string]interface{}{
 				"fleet": map[string]interface{}{
@@ -92,7 +92,7 @@ func TestBuildFleetSetupKibanaConfig(t *testing.T) {
 			client:  client,
 		},
 		{
-			name:  "kibana ref present, kibana without ca populated",
+			name:  "kibana ref present, kibana with ca populated",
 			agent: *assocWithCa.Agent,
 			wantCfg: map[string]interface{}{
 				"fleet": map[string]interface{}{
