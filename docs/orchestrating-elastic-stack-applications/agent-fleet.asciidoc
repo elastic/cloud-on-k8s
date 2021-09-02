@@ -226,7 +226,7 @@ To have Fleet running properly, the following settings must be correctly set in 
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: kibana
+  name: kibana-sample
 spec:
   config:
     xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-sample-es-http.default.svc:9200"
