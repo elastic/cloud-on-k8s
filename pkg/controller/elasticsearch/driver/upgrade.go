@@ -59,7 +59,12 @@ func (d *defaultDriver) handleRollingUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-
+	// Get the list of pods currently existing in the StatefulSetList
+	currentPods, err := statefulSets.GetActualPods(d.Client)
+	if err != nil {
+		return results.WithError(err)
+	}
+	numberOfPods := len(currentPods)
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		ctx,
@@ -71,6 +76,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		actualMasters,
 		podsToUpgrade,
 		healthyPods,
+		numberOfPods,
 	).run()
 	if err != nil {
 		return results.WithError(err)
@@ -105,6 +111,7 @@ type rollingUpgradeCtx struct {
 	actualMasters   []corev1.Pod
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
+	numberOfPods    int
 }
 
 func newRollingUpgrade(
@@ -117,6 +124,7 @@ func newRollingUpgrade(
 	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
+	numberOfPods int,
 ) rollingUpgradeCtx {
 	return rollingUpgradeCtx{
 		parentCtx:       ctx,
@@ -132,6 +140,7 @@ func newRollingUpgrade(
 		actualMasters:   actualMasters,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
+		numberOfPods:    numberOfPods,
 	}
 }
 
