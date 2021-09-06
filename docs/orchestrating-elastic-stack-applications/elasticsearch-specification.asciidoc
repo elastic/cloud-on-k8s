@@ -34,7 +34,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-prestop>>
 - <<{p}-autoscaling>>
 - <<{p}-jvm-heap-dumps>>
-- <<{p}-securiy-context>>
+- <<{p}-security-context>>
 
 include::elasticsearch/jvm-heap-size.asciidoc[leveloffset=+1]
 include::elasticsearch/node-configuration.asciidoc[leveloffset=+1]
