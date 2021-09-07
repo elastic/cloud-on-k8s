@@ -38,6 +38,5 @@ spec:
           runAsUser: 1234 <1>
           fsGroup: 1234 <2>
 ----
-
 <1> Any containers in the pod run all processes with user ID `1234`.
 <2> All processes are also part of the supplementary group ID `1234`, that owns the Pod volumes.
