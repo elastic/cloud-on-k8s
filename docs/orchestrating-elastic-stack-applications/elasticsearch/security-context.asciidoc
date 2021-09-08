@@ -18,7 +18,7 @@ If you choose to run the Elastisearch container as a non-root user, then you nee
 
 Kubernetes recursively changes ownership and permissions for the contents of each volume to match the `fsGroup` specified in a Pod's securityContext when that volume is mounted and makes all processes of the containers part of the supplementary group ID.
 
-For example, if you force the Pod to run as user `1234`, you need to define the `fsGroup` accordingly to `1234`:
+For example, if you force the Pod to run as user `1234`, you need to set `fsGroup` accordingly to `1234`:
 
 [source,yaml,subs="attributes,callouts"]
 ----
