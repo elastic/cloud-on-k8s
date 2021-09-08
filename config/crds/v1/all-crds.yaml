@@ -1987,7 +1987,6 @@ spec:
       openAPIV3Schema:
         description: to not break compatibility when upgrading from previous versions
           of the CRD
-        properties: {}
         type: object
     served: false
     storage: false
@@ -5462,7 +5461,6 @@ spec:
       openAPIV3Schema:
         description: to not break compatibility when upgrading from previous versions
           of the CRD
-        properties: {}
         type: object
     served: false
     storage: false
@@ -7839,7 +7837,6 @@ spec:
       openAPIV3Schema:
         description: to not break compatibility when upgrading from previous versions
           of the CRD
-        properties: {}
         type: object
     served: false
     storage: false

@@ -8,6 +8,5 @@
     storage: false
     schema:
       openAPIV3Schema:
-        properties: {}
         type: object
         description: "to not break compatibility when upgrading from previous versions of the CRD"
