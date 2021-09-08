@@ -20,7 +20,7 @@ Kubernetes recursively changes ownership and permissions for the contents of eac
 
 For example, if you force the Pod to run as user `1234`, you need to define the `fsGroup` accordingly to `1234`:
 
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,callouts"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
