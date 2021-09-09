@@ -122,13 +122,12 @@ spec:
                               NodePorts will be automatically allocated for services
                               with type LoadBalancer.  Default is "true". It may be
                               set to "false" if the cluster load-balancer does not
-                              rely on NodePorts.  If the caller requests specific
-                              NodePorts (by specifying a value), those requests will
-                              be respected, regardless of this field. This field may
+                              rely on NodePorts. allocateLoadBalancerNodePorts may
                               only be set for services with type LoadBalancer and
                               will be cleared if the type is changed to any other
-                              type. This field is beta-level and is only honored by
-                              servers that enable the ServiceLBNodePortControl feature.
+                              type. This field is alpha-level and is only honored
+                              by servers that enable the ServiceLBNodePortControl
+                              feature.
                             type: boolean
                           clusterIP:
                             description: 'clusterIP is the IP address of the service
@@ -312,7 +311,7 @@ spec:
                               this will restrict traffic through the cloud-provider
                               load-balancer will be restricted to the specified client
                               IPs. This field will be ignored if the cloud-provider
-                              does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                              does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                             items:
                               type: string
                             type: array
@@ -329,7 +328,9 @@ spec:
                                     Un-prefixed names are reserved for IANA standard
                                     service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                     Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                    such as mycompany.com/my-custom-protocol. This
+                                    is a beta field that is guarded by the ServiceAppProtocol
+                                    feature gate and enabled by default.
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -411,7 +412,6 @@ spec:
                               and LoadBalancer. Ignored if type is ExternalName. More
                               info: https://kubernetes.io/docs/concepts/services-networking/service/'
                             type: object
-                            x-kubernetes-map-type: atomic
                           sessionAffinity:
                             description: 'Supports "ClientIP" and "None". Used to
                               maintain session affinity. Enable client IP based session
@@ -436,6 +436,28 @@ spec:
                                     type: integer
                                 type: object
                             type: object
+                          topologyKeys:
+                            description: topologyKeys is a preference-order list of
+                              topology keys which implementations of services should
+                              use to preferentially sort endpoints when accessing
+                              this Service, it can not be used at the same time as
+                              externalTrafficPolicy=Local. Topology keys must be valid
+                              label keys and at most 16 keys may be specified. Endpoints
+                              are chosen based on the first topology key with available
+                              backends. If this field is specified and all entries
+                              have no backends that match the topology of the client,
+                              the service has no backends for that client and connections
+                              should fail. The special value "*" may be used to mean
+                              "any topology". This catch-all value, if used, only
+                              makes sense as the last value in the list. If this is
+                              not specified or empty, no topology constraints will
+                              be applied. This field is alpha-level and is only honored
+                              by servers that enable the ServiceTopology feature.
+                              This field is deprecated and will be removed in a future
+                              version.
+                            items:
+                              type: string
+                            type: array
                           type:
                             description: 'type determines how the Service is exposed.
                               Defaults to ClusterIP. Valid options are ExternalName,
@@ -869,9 +891,9 @@ spec:
                                             null selector and null or empty namespaces
                                             list means "this pod's namespace". An
                                             empty selector ({}) matches all namespaces.
-                                            This field is beta-level and is only honored
-                                            when PodAffinityNamespaceSelector feature
-                                            is enabled.
+                                            This field is alpha-level and is only
+                                            honored when PodAffinityNamespaceSelector
+                                            feature is enabled.
                                           properties:
                                             matchExpressions:
                                               description: matchExpressions is a list
@@ -1041,7 +1063,7 @@ spec:
                                         field. null selector and null or empty namespaces
                                         list means "this pod's namespace". An empty
                                         selector ({}) matches all namespaces. This
-                                        field is beta-level and is only honored when
+                                        field is alpha-level and is only honored when
                                         PodAffinityNamespaceSelector feature is enabled.
                                       properties:
                                         matchExpressions:
@@ -1210,9 +1232,9 @@ spec:
                                             null selector and null or empty namespaces
                                             list means "this pod's namespace". An
                                             empty selector ({}) matches all namespaces.
-                                            This field is beta-level and is only honored
-                                            when PodAffinityNamespaceSelector feature
-                                            is enabled.
+                                            This field is alpha-level and is only
+                                            honored when PodAffinityNamespaceSelector
+                                            feature is enabled.
                                           properties:
                                             matchExpressions:
                                               description: matchExpressions is a list
@@ -1382,7 +1404,7 @@ spec:
                                         field. null selector and null or empty namespaces
                                         list means "this pod's namespace". An empty
                                         selector ({}) matches all namespaces. This
-                                        field is beta-level and is only honored when
+                                        field is alpha-level and is only honored when
                                         PodAffinityNamespaceSelector feature is enabled.
                                       properties:
                                         matchExpressions:
@@ -1477,13 +1499,11 @@ spec:
                                 image''s CMD is used if this is not provided. Variable
                                 references $(VAR_NAME) are expanded using the container''s
                                 environment. If a variable cannot be resolved, the
-                                reference in the input string will be unchanged. Double
-                                $$ are reduced to a single $, which allows for escaping
-                                the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce
-                                the string literal "$(VAR_NAME)". Escaped references
-                                will never be expanded, regardless of whether the
-                                variable exists or not. Cannot be updated. More info:
-                                https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                reference in the input string will be unchanged. The
+                                $(VAR_NAME) syntax can be escaped with a double $$,
+                                ie: $$(VAR_NAME). Escaped references will never be
+                                expanded, regardless of whether the variable exists
+                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -1493,12 +1513,11 @@ spec:
                                 this is not provided. Variable references $(VAR_NAME)
                                 are expanded using the container''s environment. If
                                 a variable cannot be resolved, the reference in the
-                                input string will be unchanged. Double $$ are reduced
-                                to a single $, which allows for escaping the $(VAR_NAME)
-                                syntax: i.e. "$$(VAR_NAME)" will produce the string
-                                literal "$(VAR_NAME)". Escaped references will never
-                                be expanded, regardless of whether the variable exists
-                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                input string will be unchanged. The $(VAR_NAME) syntax
+                                can be escaped with a double $$, ie: $$(VAR_NAME).
+                                Escaped references will never be expanded, regardless
+                                of whether the variable exists or not. Cannot be updated.
+                                More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -1515,16 +1534,14 @@ spec:
                                     type: string
                                   value:
                                     description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
+                                      are expanded using the previous defined environment
                                       variables in the container and any service environment
                                       variables. If a variable cannot be resolved,
                                       the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
+                                      The $(VAR_NAME) syntax can be escaped with a
+                                      double $$, ie: $$(VAR_NAME). Escaped references
+                                      will never be expanded, regardless of whether
+                                      the variable exists or not. Defaults to "".'
                                     type: string
                                   valueFrom:
                                     description: Source for the environment variable's
@@ -2016,10 +2033,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -2210,10 +2225,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -2252,10 +2265,9 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'SecurityContext defines the security options
-                                the container should be run with. If set, the fields
-                                of SecurityContext override the equivalent fields
-                                of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
+                              description: 'Security options the pod should run with.
+                                More info: https://kubernetes.io/docs/concepts/policy/security-context/
+                                More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: 'AllowPrivilegeEscalation controls
@@ -2399,20 +2411,6 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
-                                    hostProcess:
-                                      description: HostProcess determines if a container
-                                        should be run as a 'Host Process' container.
-                                        This field is alpha-level and will only be
-                                        honored by components that enable the WindowsHostProcessContainers
-                                        feature flag. Setting this field without the
-                                        feature flag will result in errors when validating
-                                        the Pod. All of a Pod's containers must have
-                                        the same effective HostProcess value (it is
-                                        not allowed to have a mix of HostProcess containers
-                                        and non-HostProcess containers).  In addition,
-                                        if HostProcess is true then HostNetwork must
-                                        also be set to true.
-                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -2556,10 +2554,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -2771,13 +2767,11 @@ spec:
                                 image''s CMD is used if this is not provided. Variable
                                 references $(VAR_NAME) are expanded using the container''s
                                 environment. If a variable cannot be resolved, the
-                                reference in the input string will be unchanged. Double
-                                $$ are reduced to a single $, which allows for escaping
-                                the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce
-                                the string literal "$(VAR_NAME)". Escaped references
-                                will never be expanded, regardless of whether the
-                                variable exists or not. Cannot be updated. More info:
-                                https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                reference in the input string will be unchanged. The
+                                $(VAR_NAME) syntax can be escaped with a double $$,
+                                ie: $$(VAR_NAME). Escaped references will never be
+                                expanded, regardless of whether the variable exists
+                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -2787,12 +2781,11 @@ spec:
                                 this is not provided. Variable references $(VAR_NAME)
                                 are expanded using the container''s environment. If
                                 a variable cannot be resolved, the reference in the
-                                input string will be unchanged. Double $$ are reduced
-                                to a single $, which allows for escaping the $(VAR_NAME)
-                                syntax: i.e. "$$(VAR_NAME)" will produce the string
-                                literal "$(VAR_NAME)". Escaped references will never
-                                be expanded, regardless of whether the variable exists
-                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                input string will be unchanged. The $(VAR_NAME) syntax
+                                can be escaped with a double $$, ie: $$(VAR_NAME).
+                                Escaped references will never be expanded, regardless
+                                of whether the variable exists or not. Cannot be updated.
+                                More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -2809,16 +2802,14 @@ spec:
                                     type: string
                                   value:
                                     description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
+                                      are expanded using the previous defined environment
                                       variables in the container and any service environment
                                       variables. If a variable cannot be resolved,
                                       the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
+                                      The $(VAR_NAME) syntax can be escaped with a
+                                      double $$, ie: $$(VAR_NAME). Escaped references
+                                      will never be expanded, regardless of whether
+                                      the variable exists or not. Defaults to "".'
                                     type: string
                                   valueFrom:
                                     description: Source for the environment variable's
@@ -3304,10 +3295,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -3485,10 +3474,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -3528,10 +3515,8 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'Optional: SecurityContext defines the
-                                security options the ephemeral container should be
-                                run with. If set, the fields of SecurityContext override
-                                the equivalent fields of PodSecurityContext.'
+                              description: SecurityContext is not allowed for ephemeral
+                                containers.
                               properties:
                                 allowPrivilegeEscalation:
                                   description: 'AllowPrivilegeEscalation controls
@@ -3675,20 +3660,6 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
-                                    hostProcess:
-                                      description: HostProcess determines if a container
-                                        should be run as a 'Host Process' container.
-                                        This field is alpha-level and will only be
-                                        honored by components that enable the WindowsHostProcessContainers
-                                        feature flag. Setting this field without the
-                                        feature flag will result in errors when validating
-                                        the Pod. All of a Pod's containers must have
-                                        the same effective HostProcess value (it is
-                                        not allowed to have a mix of HostProcess containers
-                                        and non-HostProcess containers).  In addition,
-                                        if HostProcess is true then HostNetwork must
-                                        also be set to true.
-                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -3824,10 +3795,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -4046,13 +4015,11 @@ spec:
                                 image''s CMD is used if this is not provided. Variable
                                 references $(VAR_NAME) are expanded using the container''s
                                 environment. If a variable cannot be resolved, the
-                                reference in the input string will be unchanged. Double
-                                $$ are reduced to a single $, which allows for escaping
-                                the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce
-                                the string literal "$(VAR_NAME)". Escaped references
-                                will never be expanded, regardless of whether the
-                                variable exists or not. Cannot be updated. More info:
-                                https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                reference in the input string will be unchanged. The
+                                $(VAR_NAME) syntax can be escaped with a double $$,
+                                ie: $$(VAR_NAME). Escaped references will never be
+                                expanded, regardless of whether the variable exists
+                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -4062,12 +4029,11 @@ spec:
                                 this is not provided. Variable references $(VAR_NAME)
                                 are expanded using the container''s environment. If
                                 a variable cannot be resolved, the reference in the
-                                input string will be unchanged. Double $$ are reduced
-                                to a single $, which allows for escaping the $(VAR_NAME)
-                                syntax: i.e. "$$(VAR_NAME)" will produce the string
-                                literal "$(VAR_NAME)". Escaped references will never
-                                be expanded, regardless of whether the variable exists
-                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                input string will be unchanged. The $(VAR_NAME) syntax
+                                can be escaped with a double $$, ie: $$(VAR_NAME).
+                                Escaped references will never be expanded, regardless
+                                of whether the variable exists or not. Cannot be updated.
+                                More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -4084,16 +4050,14 @@ spec:
                                     type: string
                                   value:
                                     description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
+                                      are expanded using the previous defined environment
                                       variables in the container and any service environment
                                       variables. If a variable cannot be resolved,
                                       the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
+                                      The $(VAR_NAME) syntax can be escaped with a
+                                      double $$, ie: $$(VAR_NAME). Escaped references
+                                      will never be expanded, regardless of whether
+                                      the variable exists or not. Defaults to "".'
                                     type: string
                                   valueFrom:
                                     description: Source for the environment variable's
@@ -4585,10 +4549,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -4779,10 +4741,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -4821,10 +4781,9 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'SecurityContext defines the security options
-                                the container should be run with. If set, the fields
-                                of SecurityContext override the equivalent fields
-                                of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
+                              description: 'Security options the pod should run with.
+                                More info: https://kubernetes.io/docs/concepts/policy/security-context/
+                                More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: 'AllowPrivilegeEscalation controls
@@ -4968,20 +4927,6 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
-                                    hostProcess:
-                                      description: HostProcess determines if a container
-                                        should be run as a 'Host Process' container.
-                                        This field is alpha-level and will only be
-                                        honored by components that enable the WindowsHostProcessContainers
-                                        feature flag. Setting this field without the
-                                        feature flag will result in errors when validating
-                                        the Pod. All of a Pod's containers must have
-                                        the same effective HostProcess value (it is
-                                        not allowed to have a mix of HostProcess containers
-                                        and non-HostProcess containers).  In addition,
-                                        if HostProcess is true then HostNetwork must
-                                        also be set to true.
-                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -5125,10 +5070,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -5274,7 +5217,6 @@ spec:
                           a node''s labels for the pod to be scheduled on that node.
                           More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                         type: object
-                        x-kubernetes-map-type: atomic
                       overhead:
                         additionalProperties:
                           anyOf:
@@ -5292,8 +5234,8 @@ spec:
                           is configured and selected in the PodSpec, Overhead will
                           be set to the value defined in the corresponding RuntimeClass,
                           otherwise it will remain unset and treated as zero. More
-                          info: https://git.k8s.io/enhancements/keps/sig-node/688-pod-overhead/README.md
-                          This field is beta-level as of Kubernetes v1.18, and is
+                          info: https://git.k8s.io/enhancements/keps/sig-node/20190226-pod-overhead.md
+                          This field is alpha-level as of Kubernetes v1.16, and is
                           only honored by servers that enable the PodOverhead feature.'
                         type: object
                       preemptionPolicy:
@@ -5324,7 +5266,7 @@ spec:
                         description: 'If specified, all readiness gates will be evaluated
                           for pod readiness. A pod is ready when all its containers
                           are ready AND all conditions specified in the readiness
-                          gates have status equal to "True" More info: https://git.k8s.io/enhancements/keps/sig-network/580-pod-readiness-gates'
+                          gates have status equal to "True" More info: https://git.k8s.io/enhancements/keps/sig-network/0007-pod-ready%2B%2B.md'
                         items:
                           description: PodReadinessGate contains the reference to
                             a pod condition
@@ -5349,7 +5291,7 @@ spec:
                           the pod will not be run. If unset or empty, the "legacy"
                           RuntimeClass will be used, which is an implicit class with
                           an empty definition that uses the default runtime handler.
-                          More info: https://git.k8s.io/enhancements/keps/sig-node/585-runtime-class
+                          More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md
                           This is a beta feature as of Kubernetes v1.14.'
                         type: string
                       schedulerName:
@@ -5504,19 +5446,6 @@ spec:
                                 description: GMSACredentialSpecName is the name of
                                   the GMSA credential spec to use.
                                 type: string
-                              hostProcess:
-                                description: HostProcess determines if a container
-                                  should be run as a 'Host Process' container. This
-                                  field is alpha-level and will only be honored by
-                                  components that enable the WindowsHostProcessContainers
-                                  feature flag. Setting this field without the feature
-                                  flag will result in errors when validating the Pod.
-                                  All of a Pod's containers must have the same effective
-                                  HostProcess value (it is not allowed to have a mix
-                                  of HostProcess containers and non-HostProcess containers).  In
-                                  addition, if HostProcess is true then HostNetwork
-                                  must also be set to true.
-                                type: boolean
                               runAsUserName:
                                 description: The UserName in Windows to run the entrypoint
                                   of the container process. Defaults to the user specified
@@ -6231,64 +6160,15 @@ spec:
                                             specify either: * An existing VolumeSnapshot
                                             object (snapshot.storage.k8s.io/VolumeSnapshot)
                                             * An existing PVC (PersistentVolumeClaim)
-                                            If the provisioner or an external controller
-                                            can support the specified data source,
-                                            it will create a new volume based on the
-                                            contents of the specified data source.
-                                            If the AnyVolumeDataSource feature gate
-                                            is enabled, this field will always have
-                                            the same contents as the DataSourceRef
-                                            field.'
-                                          properties:
-                                            apiGroup:
-                                              description: APIGroup is the group for
-                                                the resource being referenced. If
-                                                APIGroup is not specified, the specified
-                                                Kind must be in the core API group.
-                                                For any other third-party types, APIGroup
-                                                is required.
-                                              type: string
-                                            kind:
-                                              description: Kind is the type of resource
-                                                being referenced
-                                              type: string
-                                            name:
-                                              description: Name is the name of resource
-                                                being referenced
-                                              type: string
-                                          required:
-                                          - kind
-                                          - name
-                                          type: object
-                                        dataSourceRef:
-                                          description: 'Specifies the object from
-                                            which to populate the volume with data,
-                                            if a non-empty volume is desired. This
-                                            may be any local object from a non-empty
-                                            API group (non core object) or a PersistentVolumeClaim
-                                            object. When this field is specified,
-                                            volume binding will only succeed if the
-                                            type of the specified object matches some
-                                            installed volume populator or dynamic
-                                            provisioner. This field will replace the
-                                            functionality of the DataSource field
-                                            and as such if both fields are non-empty,
-                                            they must have the same value. For backwards
-                                            compatibility, both fields (DataSource
-                                            and DataSourceRef) will be set to the
-                                            same value automatically if one of them
-                                            is empty and the other is non-empty. There
-                                            are two important differences between
-                                            DataSource and DataSourceRef: * While
-                                            DataSource only allows two specific types
-                                            of objects, DataSourceRef   allows any
-                                            non-core object, as well as PersistentVolumeClaim
-                                            objects. * While DataSource ignores disallowed
-                                            values (dropping them), DataSourceRef   preserves
-                                            all values, and generates an error if
-                                            a disallowed value is   specified. (Alpha)
-                                            Using this field requires the AnyVolumeDataSource
-                                            feature gate to be enabled.'
+                                            * An existing custom resource that implements
+                                            data population (Alpha) In order to use
+                                            custom resource types that implement data
+                                            population, the AnyVolumeDataSource feature
+                                            gate must be enabled. If the provisioner
+                                            or an external controller can support
+                                            the specified data source, it will create
+                                            a new volume based on the contents of
+                                            the specified data source.'
                                           properties:
                                             apiGroup:
                                               description: APIGroup is the group for
@@ -7548,13 +7428,12 @@ spec:
                               NodePorts will be automatically allocated for services
                               with type LoadBalancer.  Default is "true". It may be
                               set to "false" if the cluster load-balancer does not
-                              rely on NodePorts.  If the caller requests specific
-                              NodePorts (by specifying a value), those requests will
-                              be respected, regardless of this field. This field may
+                              rely on NodePorts. allocateLoadBalancerNodePorts may
                               only be set for services with type LoadBalancer and
                               will be cleared if the type is changed to any other
-                              type. This field is beta-level and is only honored by
-                              servers that enable the ServiceLBNodePortControl feature.
+                              type. This field is alpha-level and is only honored
+                              by servers that enable the ServiceLBNodePortControl
+                              feature.
                             type: boolean
                           clusterIP:
                             description: 'clusterIP is the IP address of the service
@@ -7738,7 +7617,7 @@ spec:
                               this will restrict traffic through the cloud-provider
                               load-balancer will be restricted to the specified client
                               IPs. This field will be ignored if the cloud-provider
-                              does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                              does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                             items:
                               type: string
                             type: array
@@ -7755,7 +7634,9 @@ spec:
                                     Un-prefixed names are reserved for IANA standard
                                     service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                     Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                    such as mycompany.com/my-custom-protocol. This
+                                    is a beta field that is guarded by the ServiceAppProtocol
+                                    feature gate and enabled by default.
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -7837,7 +7718,6 @@ spec:
                               and LoadBalancer. Ignored if type is ExternalName. More
                               info: https://kubernetes.io/docs/concepts/services-networking/service/'
                             type: object
-                            x-kubernetes-map-type: atomic
                           sessionAffinity:
                             description: 'Supports "ClientIP" and "None". Used to
                               maintain session affinity. Enable client IP based session
@@ -7862,6 +7742,28 @@ spec:
                                     type: integer
                                 type: object
                             type: object
+                          topologyKeys:
+                            description: topologyKeys is a preference-order list of
+                              topology keys which implementations of services should
+                              use to preferentially sort endpoints when accessing
+                              this Service, it can not be used at the same time as
+                              externalTrafficPolicy=Local. Topology keys must be valid
+                              label keys and at most 16 keys may be specified. Endpoints
+                              are chosen based on the first topology key with available
+                              backends. If this field is specified and all entries
+                              have no backends that match the topology of the client,
+                              the service has no backends for that client and connections
+                              should fail. The special value "*" may be used to mean
+                              "any topology". This catch-all value, if used, only
+                              makes sense as the last value in the list. If this is
+                              not specified or empty, no topology constraints will
+                              be applied. This field is alpha-level and is only honored
+                              by servers that enable the ServiceTopology feature.
+                              This field is deprecated and will be removed in a future
+                              version.
+                            items:
+                              type: string
+                            type: array
                           type:
                             description: 'type determines how the Service is exposed.
                               Defaults to ClusterIP. Valid options are ExternalName,
@@ -8273,9 +8175,9 @@ spec:
                                             null selector and null or empty namespaces
                                             list means "this pod's namespace". An
                                             empty selector ({}) matches all namespaces.
-                                            This field is beta-level and is only honored
-                                            when PodAffinityNamespaceSelector feature
-                                            is enabled.
+                                            This field is alpha-level and is only
+                                            honored when PodAffinityNamespaceSelector
+                                            feature is enabled.
                                           properties:
                                             matchExpressions:
                                               description: matchExpressions is a list
@@ -8445,7 +8347,7 @@ spec:
                                         field. null selector and null or empty namespaces
                                         list means "this pod's namespace". An empty
                                         selector ({}) matches all namespaces. This
-                                        field is beta-level and is only honored when
+                                        field is alpha-level and is only honored when
                                         PodAffinityNamespaceSelector feature is enabled.
                                       properties:
                                         matchExpressions:
@@ -8614,9 +8516,9 @@ spec:
                                             null selector and null or empty namespaces
                                             list means "this pod's namespace". An
                                             empty selector ({}) matches all namespaces.
-                                            This field is beta-level and is only honored
-                                            when PodAffinityNamespaceSelector feature
-                                            is enabled.
+                                            This field is alpha-level and is only
+                                            honored when PodAffinityNamespaceSelector
+                                            feature is enabled.
                                           properties:
                                             matchExpressions:
                                               description: matchExpressions is a list
@@ -8786,7 +8688,7 @@ spec:
                                         field. null selector and null or empty namespaces
                                         list means "this pod's namespace". An empty
                                         selector ({}) matches all namespaces. This
-                                        field is beta-level and is only honored when
+                                        field is alpha-level and is only honored when
                                         PodAffinityNamespaceSelector feature is enabled.
                                       properties:
                                         matchExpressions:
@@ -8881,13 +8783,11 @@ spec:
                                 image''s CMD is used if this is not provided. Variable
                                 references $(VAR_NAME) are expanded using the container''s
                                 environment. If a variable cannot be resolved, the
-                                reference in the input string will be unchanged. Double
-                                $$ are reduced to a single $, which allows for escaping
-                                the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce
-                                the string literal "$(VAR_NAME)". Escaped references
-                                will never be expanded, regardless of whether the
-                                variable exists or not. Cannot be updated. More info:
-                                https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                reference in the input string will be unchanged. The
+                                $(VAR_NAME) syntax can be escaped with a double $$,
+                                ie: $$(VAR_NAME). Escaped references will never be
+                                expanded, regardless of whether the variable exists
+                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -8897,12 +8797,11 @@ spec:
                                 this is not provided. Variable references $(VAR_NAME)
                                 are expanded using the container''s environment. If
                                 a variable cannot be resolved, the reference in the
-                                input string will be unchanged. Double $$ are reduced
-                                to a single $, which allows for escaping the $(VAR_NAME)
-                                syntax: i.e. "$$(VAR_NAME)" will produce the string
-                                literal "$(VAR_NAME)". Escaped references will never
-                                be expanded, regardless of whether the variable exists
-                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                input string will be unchanged. The $(VAR_NAME) syntax
+                                can be escaped with a double $$, ie: $$(VAR_NAME).
+                                Escaped references will never be expanded, regardless
+                                of whether the variable exists or not. Cannot be updated.
+                                More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -8919,16 +8818,14 @@ spec:
                                     type: string
                                   value:
                                     description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
+                                      are expanded using the previous defined environment
                                       variables in the container and any service environment
                                       variables. If a variable cannot be resolved,
                                       the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
+                                      The $(VAR_NAME) syntax can be escaped with a
+                                      double $$, ie: $$(VAR_NAME). Escaped references
+                                      will never be expanded, regardless of whether
+                                      the variable exists or not. Defaults to "".'
                                     type: string
                                   valueFrom:
                                     description: Source for the environment variable's
@@ -9420,10 +9317,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -9614,10 +9509,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -9656,10 +9549,9 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'SecurityContext defines the security options
-                                the container should be run with. If set, the fields
-                                of SecurityContext override the equivalent fields
-                                of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
+                              description: 'Security options the pod should run with.
+                                More info: https://kubernetes.io/docs/concepts/policy/security-context/
+                                More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: 'AllowPrivilegeEscalation controls
@@ -9803,20 +9695,6 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
-                                    hostProcess:
-                                      description: HostProcess determines if a container
-                                        should be run as a 'Host Process' container.
-                                        This field is alpha-level and will only be
-                                        honored by components that enable the WindowsHostProcessContainers
-                                        feature flag. Setting this field without the
-                                        feature flag will result in errors when validating
-                                        the Pod. All of a Pod's containers must have
-                                        the same effective HostProcess value (it is
-                                        not allowed to have a mix of HostProcess containers
-                                        and non-HostProcess containers).  In addition,
-                                        if HostProcess is true then HostNetwork must
-                                        also be set to true.
-                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -9960,10 +9838,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -10175,13 +10051,11 @@ spec:
                                 image''s CMD is used if this is not provided. Variable
                                 references $(VAR_NAME) are expanded using the container''s
                                 environment. If a variable cannot be resolved, the
-                                reference in the input string will be unchanged. Double
-                                $$ are reduced to a single $, which allows for escaping
-                                the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce
-                                the string literal "$(VAR_NAME)". Escaped references
-                                will never be expanded, regardless of whether the
-                                variable exists or not. Cannot be updated. More info:
-                                https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                reference in the input string will be unchanged. The
+                                $(VAR_NAME) syntax can be escaped with a double $$,
+                                ie: $$(VAR_NAME). Escaped references will never be
+                                expanded, regardless of whether the variable exists
+                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -10191,12 +10065,11 @@ spec:
                                 this is not provided. Variable references $(VAR_NAME)
                                 are expanded using the container''s environment. If
                                 a variable cannot be resolved, the reference in the
-                                input string will be unchanged. Double $$ are reduced
-                                to a single $, which allows for escaping the $(VAR_NAME)
-                                syntax: i.e. "$$(VAR_NAME)" will produce the string
-                                literal "$(VAR_NAME)". Escaped references will never
-                                be expanded, regardless of whether the variable exists
-                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                input string will be unchanged. The $(VAR_NAME) syntax
+                                can be escaped with a double $$, ie: $$(VAR_NAME).
+                                Escaped references will never be expanded, regardless
+                                of whether the variable exists or not. Cannot be updated.
+                                More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -10213,16 +10086,14 @@ spec:
                                     type: string
                                   value:
                                     description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
+                                      are expanded using the previous defined environment
                                       variables in the container and any service environment
                                       variables. If a variable cannot be resolved,
                                       the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
+                                      The $(VAR_NAME) syntax can be escaped with a
+                                      double $$, ie: $$(VAR_NAME). Escaped references
+                                      will never be expanded, regardless of whether
+                                      the variable exists or not. Defaults to "".'
                                     type: string
                                   valueFrom:
                                     description: Source for the environment variable's
@@ -10708,10 +10579,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -10889,10 +10758,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -10932,10 +10799,8 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'Optional: SecurityContext defines the
-                                security options the ephemeral container should be
-                                run with. If set, the fields of SecurityContext override
-                                the equivalent fields of PodSecurityContext.'
+                              description: SecurityContext is not allowed for ephemeral
+                                containers.
                               properties:
                                 allowPrivilegeEscalation:
                                   description: 'AllowPrivilegeEscalation controls
@@ -11079,20 +10944,6 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
-                                    hostProcess:
-                                      description: HostProcess determines if a container
-                                        should be run as a 'Host Process' container.
-                                        This field is alpha-level and will only be
-                                        honored by components that enable the WindowsHostProcessContainers
-                                        feature flag. Setting this field without the
-                                        feature flag will result in errors when validating
-                                        the Pod. All of a Pod's containers must have
-                                        the same effective HostProcess value (it is
-                                        not allowed to have a mix of HostProcess containers
-                                        and non-HostProcess containers).  In addition,
-                                        if HostProcess is true then HostNetwork must
-                                        also be set to true.
-                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -11228,10 +11079,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -11450,13 +11299,11 @@ spec:
                                 image''s CMD is used if this is not provided. Variable
                                 references $(VAR_NAME) are expanded using the container''s
                                 environment. If a variable cannot be resolved, the
-                                reference in the input string will be unchanged. Double
-                                $$ are reduced to a single $, which allows for escaping
-                                the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce
-                                the string literal "$(VAR_NAME)". Escaped references
-                                will never be expanded, regardless of whether the
-                                variable exists or not. Cannot be updated. More info:
-                                https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                reference in the input string will be unchanged. The
+                                $(VAR_NAME) syntax can be escaped with a double $$,
+                                ie: $$(VAR_NAME). Escaped references will never be
+                                expanded, regardless of whether the variable exists
+                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -11466,12 +11313,11 @@ spec:
                                 this is not provided. Variable references $(VAR_NAME)
                                 are expanded using the container''s environment. If
                                 a variable cannot be resolved, the reference in the
-                                input string will be unchanged. Double $$ are reduced
-                                to a single $, which allows for escaping the $(VAR_NAME)
-                                syntax: i.e. "$$(VAR_NAME)" will produce the string
-                                literal "$(VAR_NAME)". Escaped references will never
-                                be expanded, regardless of whether the variable exists
-                                or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                                input string will be unchanged. The $(VAR_NAME) syntax
+                                can be escaped with a double $$, ie: $$(VAR_NAME).
+                                Escaped references will never be expanded, regardless
+                                of whether the variable exists or not. Cannot be updated.
+                                More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
                               items:
                                 type: string
                               type: array
@@ -11488,16 +11334,14 @@ spec:
                                     type: string
                                   value:
                                     description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
+                                      are expanded using the previous defined environment
                                       variables in the container and any service environment
                                       variables. If a variable cannot be resolved,
                                       the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
+                                      The $(VAR_NAME) syntax can be escaped with a
+                                      double $$, ie: $$(VAR_NAME). Escaped references
+                                      will never be expanded, regardless of whether
+                                      the variable exists or not. Defaults to "".'
                                     type: string
                                   valueFrom:
                                     description: Source for the environment variable's
@@ -11989,10 +11833,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -12183,10 +12025,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -12225,10 +12065,9 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'SecurityContext defines the security options
-                                the container should be run with. If set, the fields
-                                of SecurityContext override the equivalent fields
-                                of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
+                              description: 'Security options the pod should run with.
+                                More info: https://kubernetes.io/docs/concepts/policy/security-context/
+                                More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: 'AllowPrivilegeEscalation controls
@@ -12372,20 +12211,6 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
-                                    hostProcess:
-                                      description: HostProcess determines if a container
-                                        should be run as a 'Host Process' container.
-                                        This field is alpha-level and will only be
-                                        honored by components that enable the WindowsHostProcessContainers
-                                        feature flag. Setting this field without the
-                                        feature flag will result in errors when validating
-                                        the Pod. All of a Pod's containers must have
-                                        the same effective HostProcess value (it is
-                                        not allowed to have a mix of HostProcess containers
-                                        and non-HostProcess containers).  In addition,
-                                        if HostProcess is true then HostNetwork must
-                                        also be set to true.
-                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -12529,10 +12354,8 @@ spec:
                                     the value provided by the pod spec. Value must
                                     be non-negative integer. The value zero indicates
                                     stop immediately via the kill signal (no opportunity
-                                    to shut down). This is a beta field and requires
+                                    to shut down). This is an alpha field and requires
                                     enabling ProbeTerminationGracePeriod feature gate.
-                                    Minimum value is 1. spec.terminationGracePeriodSeconds
-                                    is used if unset.
                                   format: int64
                                   type: integer
                                 timeoutSeconds:
@@ -12678,7 +12501,6 @@ spec:
                           a node''s labels for the pod to be scheduled on that node.
                           More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                         type: object
-                        x-kubernetes-map-type: atomic
                       overhead:
                         additionalProperties:
                           anyOf:
@@ -12696,8 +12518,8 @@ spec:
                           is configured and selected in the PodSpec, Overhead will
                           be set to the value defined in the corresponding RuntimeClass,
                           otherwise it will remain unset and treated as zero. More
-                          info: https://git.k8s.io/enhancements/keps/sig-node/688-pod-overhead/README.md
-                          This field is beta-level as of Kubernetes v1.18, and is
+                          info: https://git.k8s.io/enhancements/keps/sig-node/20190226-pod-overhead.md
+                          This field is alpha-level as of Kubernetes v1.16, and is
                           only honored by servers that enable the PodOverhead feature.'
                         type: object
                       preemptionPolicy:
@@ -12728,7 +12550,7 @@ spec:
                         description: 'If specified, all readiness gates will be evaluated
                           for pod readiness. A pod is ready when all its containers
                           are ready AND all conditions specified in the readiness
-                          gates have status equal to "True" More info: https://git.k8s.io/enhancements/keps/sig-network/580-pod-readiness-gates'
+                          gates have status equal to "True" More info: https://git.k8s.io/enhancements/keps/sig-network/0007-pod-ready%2B%2B.md'
                         items:
                           description: PodReadinessGate contains the reference to
                             a pod condition
@@ -12753,7 +12575,7 @@ spec:
                           the pod will not be run. If unset or empty, the "legacy"
                           RuntimeClass will be used, which is an implicit class with
                           an empty definition that uses the default runtime handler.
-                          More info: https://git.k8s.io/enhancements/keps/sig-node/585-runtime-class
+                          More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md
                           This is a beta feature as of Kubernetes v1.14.'
                         type: string
                       schedulerName:
@@ -12908,19 +12730,6 @@ spec:
                                 description: GMSACredentialSpecName is the name of
                                   the GMSA credential spec to use.
                                 type: string
-                              hostProcess:
-                                description: HostProcess determines if a container
-                                  should be run as a 'Host Process' container. This
-                                  field is alpha-level and will only be honored by
-                                  components that enable the WindowsHostProcessContainers
-                                  feature flag. Setting this field without the feature
-                                  flag will result in errors when validating the Pod.
-                                  All of a Pod's containers must have the same effective
-                                  HostProcess value (it is not allowed to have a mix
-                                  of HostProcess containers and non-HostProcess containers).  In
-                                  addition, if HostProcess is true then HostNetwork
-                                  must also be set to true.
-                                type: boolean
                               runAsUserName:
                                 description: The UserName in Windows to run the entrypoint
                                   of the container process. Defaults to the user specified
@@ -13635,64 +13444,15 @@ spec:
                                             specify either: * An existing VolumeSnapshot
                                             object (snapshot.storage.k8s.io/VolumeSnapshot)
                                             * An existing PVC (PersistentVolumeClaim)
-                                            If the provisioner or an external controller
-                                            can support the specified data source,
-                                            it will create a new volume based on the
-                                            contents of the specified data source.
-                                            If the AnyVolumeDataSource feature gate
-                                            is enabled, this field will always have
-                                            the same contents as the DataSourceRef
-                                            field.'
-                                          properties:
-                                            apiGroup:
-                                              description: APIGroup is the group for
-                                                the resource being referenced. If
-                                                APIGroup is not specified, the specified
-                                                Kind must be in the core API group.
-                                                For any other third-party types, APIGroup
-                                                is required.
-                                              type: string
-                                            kind:
-                                              description: Kind is the type of resource
-                                                being referenced
-                                              type: string
-                                            name:
-                                              description: Name is the name of resource
-                                                being referenced
-                                              type: string
-                                          required:
-                                          - kind
-                                          - name
-                                          type: object
-                                        dataSourceRef:
-                                          description: 'Specifies the object from
-                                            which to populate the volume with data,
-                                            if a non-empty volume is desired. This
-                                            may be any local object from a non-empty
-                                            API group (non core object) or a PersistentVolumeClaim
-                                            object. When this field is specified,
-                                            volume binding will only succeed if the
-                                            type of the specified object matches some
-                                            installed volume populator or dynamic
-                                            provisioner. This field will replace the
-                                            functionality of the DataSource field
-                                            and as such if both fields are non-empty,
-                                            they must have the same value. For backwards
-                                            compatibility, both fields (DataSource
-                                            and DataSourceRef) will be set to the
-                                            same value automatically if one of them
-                                            is empty and the other is non-empty. There
-                                            are two important differences between
-                                            DataSource and DataSourceRef: * While
-                                            DataSource only allows two specific types
-                                            of objects, DataSourceRef   allows any
-                                            non-core object, as well as PersistentVolumeClaim
-                                            objects. * While DataSource ignores disallowed
-                                            values (dropping them), DataSourceRef   preserves
-                                            all values, and generates an error if
-                                            a disallowed value is   specified. (Alpha)
-                                            Using this field requires the AnyVolumeDataSource
-                                            feature gate to be enabled.'
+                                            * An existing custom resource that implements
+                                            data population (Alpha) In order to use
+                                            custom resource types that implement data
+                                            population, the AnyVolumeDataSource feature
+                                            gate must be enabled. If the provisioner
+                                            or an external controller can support
+                                            the specified data source, it will create
+                                            a new volume based on the contents of
+                                            the specified data source.'
                                           properties:
                                             apiGroup:
                                               description: APIGroup is the group for
