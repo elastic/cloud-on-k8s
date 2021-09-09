@@ -177,6 +177,13 @@ RBAC permissions
   resources:
   - pods
   - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - events
   - persistentvolumeclaims
   - secrets
