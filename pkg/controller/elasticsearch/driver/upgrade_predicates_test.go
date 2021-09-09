@@ -502,7 +502,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 						Index:    "index_a",
 						Shard:    "0",
 						State:    "UNASSIGNED",
-						NodeName: "masters-1",
+						NodeName: "",
 						Type:     "r",
 					},
 				}),
