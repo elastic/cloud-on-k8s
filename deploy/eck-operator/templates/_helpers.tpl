@@ -182,7 +182,6 @@ RBAC permissions
   - secrets
   - services
   - configmaps
-  - serviceaccounts
   verbs:
   - get
   - list
@@ -223,8 +222,6 @@ RBAC permissions
   - elasticsearches
   - elasticsearches/status
   - elasticsearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
-  - enterpriselicenses
-  - enterpriselicenses/status
   verbs:
   - get
   - list
@@ -334,7 +331,6 @@ RBAC permissions on non-namespaced resources
 - apiGroups:
   - admissionregistration.k8s.io
   resources:
-  - mutatingwebhookconfigurations
   - validatingwebhookconfigurations
   verbs:
   - get
