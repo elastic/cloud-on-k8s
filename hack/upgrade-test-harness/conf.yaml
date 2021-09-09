@@ -29,6 +29,12 @@ testParams:
   - name: v160
     operatorVersion: 1.6.0
     stackVersion: 7.13.0
-  - name: upcoming
+  - name: v170
     operatorVersion: 1.7.0
-    stackVersion: 7.13.0
+    stackVersion: 7.14.0
+  - name: v171
+    operatorVersion: 1.7.1
+    stackVersion: 7.14.0
+  - name: upcoming
+    operatorVersion: 1.8.0
+    stackVersion: 7.14.0
