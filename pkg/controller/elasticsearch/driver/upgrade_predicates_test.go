@@ -379,16 +379,16 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "stop deletion if yellow in a 2 node cluster and shard has replica unassigned, one node already upgraded",
+			name: "Data tiers test, cluster with 2 hot and 1 warm node, during the upgrade we lost one hot but upgraded the warm, as yellow we need to stop the upgrade",
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-hot-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-warm-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				numberOfPods:   2,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, NumberOfNodes: 2},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					// One shard is not assigned on masters-0 because its version is not the expected one
 					client.Shard{
@@ -413,7 +413,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: false,
 		},
 		{
-			name: "stop deletion if yellow in a 2 node cluster and shard has replica unassigned",
+			name: "Allow deletion if yellow in a 2 node cluster and shard has replica unassigned",
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
@@ -422,9 +422,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				numberOfPods:   2,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, NumberOfNodes: 2},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
-					// One shard is not assigned on masters-0 because its version is not the expected one
 					client.Shard{
 						Index:    "index_a",
 						Shard:    "0",
@@ -455,9 +454,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				numberOfPods:   1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, NumberOfNodes: 1},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
-					// One shard is not assigned on masters-0 because its version is not the expected one
+					// One shard is not assigned because this is a single cluster node with default replica to 1
 					client.Shard{
 						Index:    "index_a",
 						Shard:    "0",
@@ -488,9 +487,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				numberOfPods:   1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, NumberOfNodes: 1},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
-					// One shard is not assigned on masters-0 because its version is not the expected one
+					// One shard is not assigned because this is a single cluster node with default replica to 1
 					client.Shard{
 						Index:    "index_a",
 						Shard:    "0",
