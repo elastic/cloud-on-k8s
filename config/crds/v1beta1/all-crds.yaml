@@ -110,8 +110,8 @@ spec:
                             consumed by the daemonset on any given node can double
                             if the readiness check fails, and so resource intensive
                             daemonsets should take into account that they may cause
-                            evictions during disruption. This is beta field and enabled/disabled
-                            by DaemonSetUpdateSurge feature gate.'
+                            evictions during disruption. This is an alpha field and
+                            requires enabling DaemonSetUpdateSurge feature gate.'
                         maxUnavailable:
                           anyOf:
                           - type: integer
@@ -121,17 +121,17 @@ spec:
                             absolute number (ex: 5) or a percentage of total number
                             of DaemonSet pods at the start of the update (ex: 10%).
                             Absolute number is calculated from percentage by rounding
-                            up. This cannot be 0 if MaxSurge is 0 Default value is
-                            1. Example: when this is set to 30%, at most 30% of the
-                            total number of nodes that should be running the daemon
-                            pod (i.e. status.desiredNumberScheduled) can have their
-                            pods stopped for an update at any given time. The update
-                            starts by stopping at most 30% of those DaemonSet pods
-                            and then brings up new DaemonSet pods in their place.
-                            Once the new pods are available, it then proceeds onto
-                            other DaemonSet pods, thus ensuring that at least 70%
-                            of original number of DaemonSet pods are available at
-                            all times during the update.'
+                            down to a minimum of one. This cannot be 0 if MaxSurge
+                            is 0 Default value is 1. Example: when this is set to
+                            30%, at most 30% of the total number of nodes that should
+                            be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their pods stopped for an update at any given
+                            time. The update starts by stopping at most 30% of those
+                            DaemonSet pods and then brings up new DaemonSet pods in
+                            their place. Once the new pods are available, it then
+                            proceeds onto other DaemonSet pods, thus ensuring that
+                            at least 70% of original number of DaemonSet pods are
+                            available at all times during the update.'
                       type: object
                     type:
                       description: Type of daemon set update. Can be "RollingUpdate"
@@ -268,12 +268,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -450,7 +448,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -467,7 +465,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -542,7 +542,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -566,6 +565,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
@@ -863,12 +883,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -1045,7 +1063,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -1062,7 +1080,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -1137,7 +1157,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -1161,6 +1180,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
@@ -1475,8 +1515,8 @@ spec:
                             consumed by the daemonset on any given node can double
                             if the readiness check fails, and so resource intensive
                             daemonsets should take into account that they may cause
-                            evictions during disruption. This is beta field and enabled/disabled
-                            by DaemonSetUpdateSurge feature gate.'
+                            evictions during disruption. This is an alpha field and
+                            requires enabling DaemonSetUpdateSurge feature gate.'
                         maxUnavailable:
                           anyOf:
                           - type: integer
@@ -1486,17 +1526,17 @@ spec:
                             absolute number (ex: 5) or a percentage of total number
                             of DaemonSet pods at the start of the update (ex: 10%).
                             Absolute number is calculated from percentage by rounding
-                            up. This cannot be 0 if MaxSurge is 0 Default value is
-                            1. Example: when this is set to 30%, at most 30% of the
-                            total number of nodes that should be running the daemon
-                            pod (i.e. status.desiredNumberScheduled) can have their
-                            pods stopped for an update at any given time. The update
-                            starts by stopping at most 30% of those DaemonSet pods
-                            and then brings up new DaemonSet pods in their place.
-                            Once the new pods are available, it then proceeds onto
-                            other DaemonSet pods, thus ensuring that at least 70%
-                            of original number of DaemonSet pods are available at
-                            all times during the update.'
+                            down to a minimum of one. This cannot be 0 if MaxSurge
+                            is 0 Default value is 1. Example: when this is set to
+                            30%, at most 30% of the total number of nodes that should
+                            be running the daemon pod (i.e. status.desiredNumberScheduled)
+                            can have their pods stopped for an update at any given
+                            time. The update starts by stopping at most 30% of those
+                            DaemonSet pods and then brings up new DaemonSet pods in
+                            their place. Once the new pods are available, it then
+                            proceeds onto other DaemonSet pods, thus ensuring that
+                            at least 70% of original number of DaemonSet pods are
+                            available at all times during the update.'
                       type: object
                     type:
                       description: Type of daemon set update. Can be "RollingUpdate"
@@ -1822,12 +1862,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -2004,7 +2042,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -2021,7 +2059,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -2096,7 +2136,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -2120,6 +2159,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
@@ -2347,12 +2407,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -2529,7 +2587,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -2546,7 +2604,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -2621,7 +2681,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -2645,6 +2704,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
@@ -2848,55 +2928,14 @@ spec:
                             dataSource:
                               description: 'This field can be used to specify either:
                                 * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
-                                * An existing PVC (PersistentVolumeClaim) If the provisioner
-                                or an external controller can support the specified
-                                data source, it will create a new volume based on
-                                the contents of the specified data source. If the
-                                AnyVolumeDataSource feature gate is enabled, this
-                                field will always have the same contents as the DataSourceRef
-                                field.'
-                              properties:
-                                apiGroup:
-                                  description: APIGroup is the group for the resource
-                                    being referenced. If APIGroup is not specified,
-                                    the specified Kind must be in the core API group.
-                                    For any other third-party types, APIGroup is required.
-                                  type: string
-                                kind:
-                                  description: Kind is the type of resource being
-                                    referenced
-                                  type: string
-                                name:
-                                  description: Name is the name of resource being
-                                    referenced
-                                  type: string
-                              required:
-                              - kind
-                              - name
-                              type: object
-                            dataSourceRef:
-                              description: 'Specifies the object from which to populate
-                                the volume with data, if a non-empty volume is desired.
-                                This may be any local object from a non-empty API
-                                group (non core object) or a PersistentVolumeClaim
-                                object. When this field is specified, volume binding
-                                will only succeed if the type of the specified object
-                                matches some installed volume populator or dynamic
-                                provisioner. This field will replace the functionality
-                                of the DataSource field and as such if both fields
-                                are non-empty, they must have the same value. For
-                                backwards compatibility, both fields (DataSource and
-                                DataSourceRef) will be set to the same value automatically
-                                if one of them is empty and the other is non-empty.
-                                There are two important differences between DataSource
-                                and DataSourceRef: * While DataSource only allows
-                                two specific types of objects, DataSourceRef   allows
-                                any non-core object, as well as PersistentVolumeClaim
-                                objects. * While DataSource ignores disallowed values
-                                (dropping them), DataSourceRef   preserves all values,
-                                and generates an error if a disallowed value is   specified.
-                                (Alpha) Using this field requires the AnyVolumeDataSource
-                                feature gate to be enabled.'
+                                * An existing PVC (PersistentVolumeClaim) * An existing
+                                custom resource that implements data population (Alpha)
+                                In order to use custom resource types that implement
+                                data population, the AnyVolumeDataSource feature gate
+                                must be enabled. If the provisioner or an external
+                                controller can support the specified data source,
+                                it will create a new volume based on the contents
+                                of the specified data source.'
                               properties:
                                 apiGroup:
                                   description: APIGroup is the group for the resource
@@ -3251,12 +3290,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -3433,7 +3470,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -3450,7 +3487,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -3525,7 +3564,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -3549,6 +3587,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
@@ -3809,12 +3868,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -3991,7 +4048,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -4008,7 +4065,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -4083,7 +4142,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -4107,6 +4165,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
@@ -4362,12 +4441,10 @@ spec:
                           description: allocateLoadBalancerNodePorts defines if NodePorts
                             will be automatically allocated for services with type
                             LoadBalancer.  Default is "true". It may be set to "false"
-                            if the cluster load-balancer does not rely on NodePorts.  If
-                            the caller requests specific NodePorts (by specifying
-                            a value), those requests will be respected, regardless
-                            of this field. This field may only be set for services
+                            if the cluster load-balancer does not rely on NodePorts.
+                            allocateLoadBalancerNodePorts may only be set for services
                             with type LoadBalancer and will be cleared if the type
-                            is changed to any other type. This field is beta-level
+                            is changed to any other type. This field is alpha-level
                             and is only honored by servers that enable the ServiceLBNodePortControl
                             feature.
                           type: boolean
@@ -4544,7 +4621,7 @@ spec:
                             this will restrict traffic through the cloud-provider
                             load-balancer will be restricted to the specified client
                             IPs. This field will be ignored if the cloud-provider
-                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/'
+                            does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
                           items:
                             type: string
                           type: array
@@ -4561,7 +4638,9 @@ spec:
                                   Un-prefixed names are reserved for IANA standard
                                   service names (as per RFC-6335 and http://www.iana.org/assignments/service-names).
                                   Non-standard protocols should use prefixed names
-                                  such as mycompany.com/my-custom-protocol.
+                                  such as mycompany.com/my-custom-protocol. This is
+                                  a beta field that is guarded by the ServiceAppProtocol
+                                  feature gate and enabled by default.
                                 type: string
                               name:
                                 description: The name of this port within the service.
@@ -4636,7 +4715,6 @@ spec:
                             applies to types ClusterIP, NodePort, and LoadBalancer.
                             Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                           type: object
-                          x-kubernetes-map-type: atomic
                         sessionAffinity:
                           description: 'Supports "ClientIP" and "None". Used to maintain
                             session affinity. Enable client IP based session affinity.
@@ -4660,6 +4738,27 @@ spec:
                                   type: integer
                               type: object
                           type: object
+                        topologyKeys:
+                          description: topologyKeys is a preference-order list of
+                            topology keys which implementations of services should
+                            use to preferentially sort endpoints when accessing this
+                            Service, it can not be used at the same time as externalTrafficPolicy=Local.
+                            Topology keys must be valid label keys and at most 16
+                            keys may be specified. Endpoints are chosen based on the
+                            first topology key with available backends. If this field
+                            is specified and all entries have no backends that match
+                            the topology of the client, the service has no backends
+                            for that client and connections should fail. The special
+                            value "*" may be used to mean "any topology". This catch-all
+                            value, if used, only makes sense as the last value in
+                            the list. If this is not specified or empty, no topology
+                            constraints will be applied. This field is alpha-level
+                            and is only honored by servers that enable the ServiceTopology
+                            feature. This field is deprecated and will be removed
+                            in a future version.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: 'type determines how the Service is exposed.
                             Defaults to ClusterIP. Valid options are ExternalName,
