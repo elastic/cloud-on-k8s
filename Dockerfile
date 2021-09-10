@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM golang:1.17.0 as builder
+FROM --platform=$TARGETPLATFORM golang:1.17.1 as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
