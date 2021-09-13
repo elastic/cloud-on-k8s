@@ -1,0 +1,26 @@
+[[release-highlights-1.8.0]]
+== 1.8.0 release highlights
+
+[float]
+[id="{p}-180-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.8.0 of {n}. See <<release-notes-1.8.0>> for the full list of changes.
+
+[float]
+[id="{p}-180-helm-chart-ga"]
+==== ECK Helm Chart graduating from beta to GA
+
+The ECK operator Helm chart is now generally available. It provides an easy way to install and configure the operator along with its Custom Resource Definitions.
+
+[float]
+[id="{p}-180-openshift-311"]
+==== Last minor version to support Openshift 3.11
+
+The ECK 1.8.x minor release series is the last to support Openshift 3.11. Starting ECK 1.9.0, Openshift 3.11 link:https://www.elastic.co/support/matrix#matrix_kubernetes[won't be supported anymore].
+
+[float]
+[id="{p}-180-bugfixes"]
+==== Bug fixes
+
+Several bugs have been fixed in this release, including Elastic Agent certificates handling and inconsistent Elasticsearch Pod PreStop hook.
