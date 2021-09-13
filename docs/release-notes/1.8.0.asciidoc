@@ -38,6 +38,5 @@ The operator does not rely on the `$PRE_STOP_MAX_WAIT_SECONDS` environment varia
 * Update golang Docker tag to v1.17.0 {pull}4766[#4766]
 * Update module sigs.k8s.io/controller-runtime to v0.9.6 {pull}4747[#4747]
 * Update module go.uber.org/zap to v1.19.0 {pull}4742[#4742]
-* Update golang Docker tag to v1.16.7 {pull}4741[#4741]
 * Update module sigs.k8s.io/controller-tools to v0.6.2 {pull}4697[#4697]
 
