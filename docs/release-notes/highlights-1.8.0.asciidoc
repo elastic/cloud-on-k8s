@@ -17,7 +17,7 @@ The ECK operator Helm chart is now generally available. It provides an easy way 
 [id="{p}-180-openshift-311"]
 ==== Last minor version to support Openshift 3.11
 
-The ECK 1.8.x minor release series is the last to support Openshift 3.11. Starting ECK 1.9.0, Openshift 3.11 won't be supported anymore.
+The ECK 1.8.x minor release series is the last to support Openshift 3.11. Starting ECK 1.9.0, Openshift 3.11 link:https://www.elastic.co/support/matrix#matrix_kubernetes[won't be supported anymore].
 
 [float]
 [id="{p}-180-bugfixes"]
