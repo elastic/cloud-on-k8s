@@ -252,7 +252,7 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {
-	var vols []volume.VolumeLike
+	var vols []volume.VolumeLike //nolint:prealloc
 	for i, assoc := range associations {
 		if !assoc.AssociationConf().CAIsConfigured() {
 			// skip as there is no volume to mount if association has no CA configured
