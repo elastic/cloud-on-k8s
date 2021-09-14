@@ -199,8 +199,8 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						Mode:           agentv1alpha1.AgentFleetMode,
-						KibanaRef:      v1.ObjectSelector{Name: "kb"},
-						FleetServerRef: v1.ObjectSelector{Name: "es"},
+						KibanaRef:      v1.ObjectSelector{Name: "kibana"},
+						FleetServerRef: v1.ObjectSelector{Name: "fleet"},
 					},
 				},
 			},
@@ -209,7 +209,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					CASecretName: "kibana-kb-http-certs-public",
 				})
 				assocs[1].SetAssociationConf(&v1.AssociationConf{
-					CASecretName: "fleet-kb-http-certs-public",
+					CASecretName: "fleet-agent-http-certs-public",
 				})
 			},
 			wantAssociationsLength: 2,
@@ -220,8 +220,8 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						Mode:           agentv1alpha1.AgentFleetMode,
-						KibanaRef:      v1.ObjectSelector{Name: "kb"},
-						FleetServerRef: v1.ObjectSelector{Name: "es"},
+						KibanaRef:      v1.ObjectSelector{Name: "kibana"},
+						FleetServerRef: v1.ObjectSelector{Name: "fleet"},
 					},
 				},
 			},
@@ -230,7 +230,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					// No CASecretName
 				})
 				assocs[1].SetAssociationConf(&v1.AssociationConf{
-					CASecretName: "fleet-kb-http-certs-public",
+					CASecretName: "fleet-agent-http-certs-public",
 				})
 			},
 			wantAssociationsLength: 1,
