@@ -252,16 +252,17 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {
-	vols := []volume.VolumeLike{}
-	for i, association := range associations {
-		if !association.AssociationConf().CAIsConfigured() {
-			return nil
+	var vols []volume.VolumeLike //nolint:prealloc
+	for i, assoc := range associations {
+		if !assoc.AssociationConf().CAIsConfigured() {
+			// skip as there is no volume to mount if association has no CA configured
+			continue
 		}
-		caSecretName := association.AssociationConf().GetCASecretName()
+		caSecretName := assoc.AssociationConf().GetCASecretName()
 		vols = append(vols, volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("%s-certs-%d", association.AssociationType(), i),
-			certificatesDir(association),
+			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
+			certificatesDir(assoc),
 		))
 	}
 	return vols
