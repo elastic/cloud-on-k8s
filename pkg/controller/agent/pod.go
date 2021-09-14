@@ -255,7 +255,8 @@ func getVolumesFromAssociations(associations []commonv1.Association) []volume.Vo
 	var vols []volume.VolumeLike
 	for i, assoc := range associations {
 		if !assoc.AssociationConf().CAIsConfigured() {
-			return nil
+			// skip as there is no volume to mount if association has no CA configured
+			continue
 		}
 		caSecretName := assoc.AssociationConf().GetCASecretName()
 		vols = append(vols, volume.NewSecretVolumeWithMountPath(
