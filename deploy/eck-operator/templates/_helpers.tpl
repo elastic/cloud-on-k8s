@@ -236,7 +236,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - kibana.k8s.elastic.co
   resources:
@@ -250,7 +249,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - apm.k8s.elastic.co
   resources:
@@ -264,7 +262,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - enterprisesearch.k8s.elastic.co
   resources:
@@ -278,7 +275,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - beat.k8s.elastic.co
   resources:
@@ -292,7 +288,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - agent.k8s.elastic.co
   resources:
@@ -306,7 +301,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - maps.k8s.elastic.co
   resources:
@@ -320,7 +314,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 {{- end -}}
 
 {{/*
