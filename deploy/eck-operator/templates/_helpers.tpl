@@ -175,12 +175,20 @@ RBAC permissions
 - apiGroups:
   - ""
   resources:
-  - pods
   - endpoints
   verbs:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
 - apiGroups:
   - ""
   resources:
