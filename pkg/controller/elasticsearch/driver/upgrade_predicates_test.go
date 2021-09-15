@@ -379,18 +379,18 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "Data tiers test, cluster with 2 hot and 1 warm node, during the upgrade we lost one hot but upgraded the warm, as yellow we need to stop the upgrade",
+			name: "Do not delete the node with the last remaining started shard, one of the nodes is unhealthy",
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-hot-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-warm-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				numberOfPods:   2,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
-					// One shard is not assigned on masters-0 because its version is not the expected one
+					// One shard is not assigned on masters-1 because the node is not healthy
 					client.Shard{
 						Index:    "index_a",
 						Shard:    "0",
