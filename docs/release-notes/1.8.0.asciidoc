@@ -25,6 +25,7 @@ The operator does not rely on the `$PRE_STOP_MAX_WAIT_SECONDS` environment varia
 [float]
 === Bug fixes
 
+* Fix Agent volumes when an association has no CA {pull}4833[#4833] (issue: {issue}4832[#4832]
 * Fix handling CAs in Agent controller {pull}4807[#4807] (issue: {issue}4790[#4790])
 * Improve Elasticsearch cluster health API timeout handling {pull}4803[#4803] (issue: {issue}4507[#4507])
 * Agent: fix Elasticsearch association error message {pull}4792[#4792]
