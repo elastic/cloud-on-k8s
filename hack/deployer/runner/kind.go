@@ -25,7 +25,6 @@ const (
 overrides:
   clusterName: %s-dev-cluster
 `
-	KindConfigFileName = "deployer-config-kind.yml"
 	// manifest is a kind cluster template
 	// the explicit podSubnet definition can be removed as soon as https://github.com/kubernetes-sigs/kind/commit/60074a9e67ddc8d35d3468ab137358b62a4cf723
 	// will be available in a released version of kind and we don't rely on older versions anymore

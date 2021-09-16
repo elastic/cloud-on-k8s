@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -33,6 +34,32 @@ func mergeKubeconfig(kubeConfig string) error {
 		return err
 	}
 	return ioutil.WriteFile(hostKubeconfig, []byte(merged), 0600)
+}
+
+func removeKubeconfig(context, clusterName, userName string) error {
+	params := map[string]interface{}{
+		"Context": context,
+	}
+	if err := NewCommand("kubectl config get-contexts {{.Context}}").
+		AsTemplate(params).Run(); err != nil {
+		// skip because the admin context does not exist in the kube config
+		return nil //nolint:nilerr
+	}
+
+	log.Printf("Removing context, user and cluster entry from kube config")
+	if err := NewCommand("kubectl config delete-context {{.Context}}").
+		AsTemplate(params).Run(); err != nil {
+		return err
+	}
+	if err := NewCommand("kubectl config unset users.{{.User}}").
+		AsTemplate(map[string]interface{}{
+			"User": userName,
+		}).Run(); err != nil {
+		return err
+	}
+	return NewCommand("kubectl config delete-cluster {{.ClusterName}}").
+		AsTemplate(map[string]interface{}{"ClusterName": clusterName}).
+		Run()
 }
 
 func copyFile(src, tgt string) error {

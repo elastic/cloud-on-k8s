@@ -16,7 +16,6 @@ import (
 
 const (
 	EKSDriverID                 = "eks"
-	EKSConfigFileName           = "deployer-config-eks.yml"
 	DefaultEKSRunConfigTemplate = `id: eks-dev
 overrides:
   clusterName: %s-dev-cluster
