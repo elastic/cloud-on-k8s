@@ -184,14 +184,6 @@ RBAC permissions
   - ""
   resources:
   - pods
-  verbs:
-  - get
-  - list
-  - watch
-  - delete
-- apiGroups:
-  - ""
-  resources:
   - events
   - persistentvolumeclaims
   - secrets
