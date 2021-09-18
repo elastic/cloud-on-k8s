@@ -17,6 +17,7 @@ import (
 const (
 	TanzuDriverID                 = "tanzu"
 	TanzuInstallConfig            = "install-config.yaml"
+	TanzuVaultPath                = "secret/devops-ci/cloud-on-k8s/ci-tanzu-k8s-operator"
 	DefaultTanzuRunConfigTemplate = `id: tanzu-dev
 overrides:
   clusterName: %s-dev-cluster
@@ -74,11 +75,16 @@ func (t TanzuDriverFactory) Create(plan Plan) (Driver, error) {
 	// users can optionally provide their SSH pubkey to log into hosts provisioned by this driver
 	// however we need a pubkey in any case to be able to run the installer, thus we have a default in vault.
 	if plan.Tanzu.SSHPubKey == "" {
-		key, err := vaultClient.Get("secret/devops-ci/cloud-on-k8s/ci-tanzu-k8s-operator", "ssh_public_key")
+		key, err := vaultClient.Get(TanzuVaultPath, "ssh_public_key")
 		if err != nil {
 			return nil, err
 		}
 		plan.Tanzu.SSHPubKey = key
+	}
+
+	storageAccount, err := vaultClient.Get(TanzuVaultPath, "storage_account")
+	if err != nil {
+		return nil, err
 	}
 
 	// we use the Azure resource group to simplify garbage collecting the created resources on delete, if users set this
@@ -88,18 +94,20 @@ func (t TanzuDriverFactory) Create(plan Plan) (Driver, error) {
 	}
 
 	return &TanzuDriver{
-		plan:             plan,
-		azureCredentials: credentials,
-		acrName:          acrName,
+		plan:                plan,
+		azureCredentials:    credentials,
+		azureStorageAccount: storageAccount,
+		acrName:             acrName,
 	}, nil
 }
 
 var _ DriverFactory = &TanzuDriverFactory{}
 
 type TanzuDriver struct {
-	plan             Plan
-	acrName          string
-	azureCredentials azureCredentials
+	plan                Plan
+	acrName             string
+	azureStorageAccount string
+	azureCredentials    azureCredentials
 	// runtime state
 	installerStateDir string
 }
@@ -356,8 +364,9 @@ func (t *TanzuDriver) deleteResourceGroup() error {
 }
 
 func (t *TanzuDriver) storageContainerExists() (bool, error) {
-	return azureExistsCmd(NewCommand("az storage container exists --account-name cloudonk8s --name {{.StorageContainer}} --auth login").
+	return azureExistsCmd(NewCommand("az storage container exists --account-name {{.StorageAccount}} --name {{.StorageContainer}} --auth login").
 		AsTemplate(map[string]interface{}{
+			"StorageAccount":   t.azureStorageAccount,
 			"StorageContainer": t.plan.ClusterName,
 		}))
 }
@@ -372,24 +381,27 @@ func (t *TanzuDriver) ensureStorageContainer() error {
 		return nil
 	}
 	log.Println("Creating new storage container to persist installer state")
-	return NewCommand("az storage container create --account-name cloudonk8s --name {{.StorageContainer}} --auth login").
+	return NewCommand("az storage container create --account-name {{.StorageAccount}} --name {{.StorageContainer}} --auth login").
 		AsTemplate(map[string]interface{}{
+			"StorageAccount":   t.azureStorageAccount,
 			"StorageContainer": t.plan.ClusterName,
 		}).WithoutStreaming().Run()
 }
 
 func (t TanzuDriver) deleteStorageContainer() error {
 	log.Println("Deleting Azure storage container")
-	return NewCommand("az storage container delete --account-name cloudonk8s --name {{.StorageContainer}} --auth login").
+	return NewCommand("az storage container delete --account-name {{.StorageAccount}} --name {{.StorageContainer}} --auth login").
 		AsTemplate(map[string]interface{}{
+			"StorageAccount":   t.azureStorageAccount,
 			"StorageContainer": t.plan.ClusterName,
 		}).WithoutStreaming().Run()
 }
 
 func (t *TanzuDriver) persistInstallerState() error {
 	log.Println("Persisting installer state to Azure storage container")
-	return NewCommand(`az storage azcopy blob sync -c {{.StorageContainer}} --account-name cloudonk8s -s "{{.InstallerStateDir}}"`).
+	return NewCommand(`az storage azcopy blob sync -c {{.StorageContainer}} --account-name {{.StorageAccount}} -s "{{.InstallerStateDir}}"`).
 		AsTemplate(map[string]interface{}{
+			"StorageAccount":    t.azureStorageAccount,
 			"StorageContainer":  t.plan.ClusterName,
 			"InstallerStateDir": t.installerStateDir,
 		}).WithoutStreaming().Run()
@@ -397,8 +409,9 @@ func (t *TanzuDriver) persistInstallerState() error {
 
 func (t *TanzuDriver) restoreInstallerState() error {
 	log.Println("Restoring installer state from storage container if any")
-	return NewCommand(`az storage azcopy blob download -c {{.StorageContainer}} --account-name cloudonk8s -s '*' -d "{{.InstallerStateDir}}" --recursive`).
+	return NewCommand(`az storage azcopy blob download -c {{.StorageContainer}} --account-name {{.StorageAccount}} -s '*' -d "{{.InstallerStateDir}}" --recursive`).
 		AsTemplate(map[string]interface{}{
+			"StorageAccount":    t.azureStorageAccount,
 			"StorageContainer":  t.plan.ClusterName,
 			"InstallerStateDir": t.installerStateDir,
 		}).WithoutStreaming().Run()

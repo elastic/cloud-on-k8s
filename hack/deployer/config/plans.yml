@@ -177,4 +177,12 @@ plans:
     location: eastus
     nodeCount: 3
     installerImage: cloudonk8s.azurecr.io/tanzu-ci:47a15de6827f
-
+- id: tanzu-dev
+  operation: create
+  clusterName: tkg-dev
+  provider: tanzu
+  machineType: Standard_D8s_v3
+  tanzu:
+    location: westeurope
+    nodeCount: 3
+    installerImage: cloudonk8s.azurecr.io/tanzu-ci:47a15de6827f
