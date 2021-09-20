@@ -108,8 +108,9 @@ type TanzuDriver struct {
 	acrName             string
 	azureStorageAccount string
 	azureCredentials    azureCredentials
-	// runtime state
-	installerStateDir string
+	// runtime state paths relative to deployers environment
+	installerStateDirPath     string
+	installerStateDirBasename string
 }
 
 func (t *TanzuDriver) Execute() error {
@@ -149,16 +150,16 @@ func (t *TanzuDriver) GetCredentials() error {
 // copies it to the main kube config (typically $HOME/.kube/config) where it is merged with existing configs.
 func (t *TanzuDriver) copyKubeconfig() error {
 	workloadConfigFile := "workload-kubeconfig"
-	tanzuContainerKubeconfigPath := filepath.Join("/root", workloadConfigFile)
+	tanzuContainerKubeconfigPath := t.tanzuContainerPath(workloadConfigFile)
 	if err := t.dockerizedTanzuCmd("cluster", "kubeconfig", "get", t.plan.ClusterName,
 		"--admin", "--export-file", tanzuContainerKubeconfigPath).Run(); err != nil {
 		return err
 	}
-	ciContainerKubeconfigPath := filepath.Join(t.installerStateDir, workloadConfigFile)
+	ciContainerKubeconfigPath := t.deployerContainerPath(workloadConfigFile)
 	return mergeKubeconfig(ciContainerKubeconfigPath)
 }
 
-// perpareCLI prepares the tanzu CLI by installing the necessary plugins.
+// perpareCLI prepares the tanzu/az CLI by installing the necessary plugins and setting up configuration
 func (t *TanzuDriver) perpareCLI() error {
 	log.Println("Installing Tanzu CLI plugins")
 	return t.dockerizedTanzuCmd("plugin", "install", "--local", "/", "all").Run()
@@ -173,7 +174,7 @@ func (t *TanzuDriver) teardownCLI() error {
 // ensureWorkDir setups the workdir in a place that is accessible from the calling context (on CI deployer is called from
 // within another container). Users can also just set a fixed workdir via config which is useful for debugging.
 func (t *TanzuDriver) ensureWorkDir() error {
-	if t.installerStateDir != "" {
+	if t.installerStateDirPath != "" {
 		// already initialised
 		return nil
 	}
@@ -181,8 +182,6 @@ func (t *TanzuDriver) ensureWorkDir() error {
 	if workDir == "" {
 		// base work dir in HOME dir otherwise mounting to container won't work without further settings adjustment
 		// in macOS in local mode. In CI mode we need the workdir to be in the volume shared between containers.
-		// having the work dir in HOME also underlines the importance of the work dir contents. The work dir is the only
-		// source to cleanly uninstall the cluster should the rsync fail.
 		var err error
 		workDir, err = ioutil.TempDir(os.Getenv("HOME"), t.plan.ClusterName)
 		if err != nil {
@@ -194,9 +193,18 @@ func (t *TanzuDriver) ensureWorkDir() error {
 	if err := os.MkdirAll(workDir, os.ModePerm); err != nil {
 		return err
 	}
-	t.installerStateDir = workDir
+	t.installerStateDirPath = workDir
+	t.installerStateDirBasename = filepath.Base(workDir)
 	log.Printf("Using installer state dir: %s", workDir)
 	return nil
+}
+
+func (t *TanzuDriver) tanzuContainerPath(path string) string {
+	return filepath.Join("/root", t.installerStateDirBasename, path)
+}
+
+func (t TanzuDriver) deployerContainerPath(path string) string {
+	return filepath.Join(t.installerStateDirPath, path)
 }
 
 // create creates the Tanzu management and workload clusters and installs the storage class needed for e2e testing.
@@ -209,7 +217,7 @@ func (t *TanzuDriver) create() error {
 	// run clean up and state upload to be able to continue to run operations later with a fresh Docker container
 	defer t.suspend()
 
-	cfgPathInContainer := filepath.Join("/root", TanzuInstallConfig)
+	cfgPathInContainer := t.tanzuContainerPath(TanzuInstallConfig)
 	if err := t.dockerizedTanzuCmd("management-cluster", "create", "--file", cfgPathInContainer).Run(); err != nil {
 		return err
 	}
@@ -250,7 +258,7 @@ func (t *TanzuDriver) createInstallerConfig() error {
 
 // installerConfigFilePath returns the path to the installer config valid in the context of deployer.
 func (t *TanzuDriver) installerConfigFilePath() string {
-	return filepath.Join(t.installerStateDir, TanzuInstallConfig)
+	return t.deployerContainerPath(TanzuInstallConfig)
 }
 
 // delete deletes the created resources simply by removing the Azure resource group
@@ -270,8 +278,9 @@ func (t *TanzuDriver) delete() error {
 // dockerizedTanzuCmd runs a tanzu CLI command inside a Docker container based off the Tanzu installer image.
 func (t *TanzuDriver) dockerizedTanzuCmd(args ...string) *Command {
 	params := map[string]interface{}{
-		"SharedVolume":        filepath.Join(SharedVolumeName(), filepath.Base(t.installerStateDir)),
+		"SharedVolume":        SharedVolumeName(),
 		"TanzuCLIDockerImage": t.plan.Tanzu.InstallerImage,
+		"Home":                t.tanzuContainerPath(""),
 		"Args":                args,
 	}
 	// We are mounting the shared volume into the installer container and configure it to be the HOME directory
@@ -283,7 +292,7 @@ func (t *TanzuDriver) dockerizedTanzuCmd(args ...string) *Command {
 		-v {{.SharedVolume}}:/root \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /tmp:/tmp \
-		-e HOME=/root \
+		-e HOME={{.Home}} \
 		-e PATH=/ \
 		--network host \
 		{{.TanzuCLIDockerImage}} \
@@ -296,6 +305,7 @@ func (t *TanzuDriver) setup() []func() error {
 	return []func() error{
 		t.loginToAzure,
 		t.loginToContainerRegistry,
+		t.installAzureStoragePreview,
 		t.ensureWorkDir,
 		t.ensureStorageContainer,
 		t.restoreInstallerState,
@@ -335,6 +345,11 @@ func (t *TanzuDriver) loginToContainerRegistry() error {
 		AsTemplate(map[string]interface{}{
 			"ContainerRegistry": t.acrName,
 		}).Run()
+}
+
+func (t *TanzuDriver) installAzureStoragePreview() error {
+	log.Println("Installing Azure storage-preview extension")
+	return NewCommand("az extension add --name storage-preview -y").Run()
 }
 
 // ensureResourceGroup checks for the existence of an Azure resource group (which we name unless overridden after the
@@ -403,7 +418,7 @@ func (t *TanzuDriver) persistInstallerState() error {
 		AsTemplate(map[string]interface{}{
 			"StorageAccount":    t.azureStorageAccount,
 			"StorageContainer":  t.plan.ClusterName,
-			"InstallerStateDir": t.installerStateDir,
+			"InstallerStateDir": t.installerStateDirPath,
 		}).WithoutStreaming().Run()
 }
 
@@ -413,7 +428,7 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		AsTemplate(map[string]interface{}{
 			"StorageAccount":    t.azureStorageAccount,
 			"StorageContainer":  t.plan.ClusterName,
-			"InstallerStateDir": t.installerStateDir,
+			"InstallerStateDir": t.installerStateDirPath,
 		}).WithoutStreaming().Run()
 }
 
