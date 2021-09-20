@@ -159,8 +159,8 @@ func (t *TanzuDriver) copyKubeconfig() error {
 	return mergeKubeconfig(ciContainerKubeconfigPath)
 }
 
-// perpareCLI prepares the tanzu/az CLI by installing the necessary plugins and setting up configuration
-func (t *TanzuDriver) perpareCLI() error {
+// prepareCLI prepares the tanzu/az CLI by installing the necessary plugins and setting up configuration
+func (t *TanzuDriver) prepareCLI() error {
 	log.Println("Installing Tanzu CLI plugins")
 	return t.dockerizedTanzuCmd("plugin", "install", "--local", "/", "all").Run()
 }
@@ -199,10 +199,13 @@ func (t *TanzuDriver) ensureWorkDir() error {
 	return nil
 }
 
+// tanzuContainerPath returns an absolute path valid inside the Tanzu installer container using the given relative path.
 func (t *TanzuDriver) tanzuContainerPath(path string) string {
 	return filepath.Join("/root", t.installerStateDirBasename, path)
 }
 
+// deployerContainerPath returns an absolute path valid inside the deployer environment (container or not) using the give
+// relative path.
 func (t TanzuDriver) deployerContainerPath(path string) string {
 	return filepath.Join(t.installerStateDirPath, path)
 }
@@ -309,7 +312,7 @@ func (t *TanzuDriver) setup() []func() error {
 		t.ensureWorkDir,
 		t.ensureStorageContainer,
 		t.restoreInstallerState,
-		t.perpareCLI,
+		t.prepareCLI,
 	}
 }
 
