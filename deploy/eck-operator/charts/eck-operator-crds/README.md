@@ -8,7 +8,7 @@ A Helm chart to install the Kubernetes Custom Resource Definitions (CRD) require
 ## Requirements
 
 - Supported Kubernetes versions are listed in the documentation: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s_supported_versions.html
-- Helm >= 3.0.0
+- Helm >= 3.2.0
 
 
 ## Usage
