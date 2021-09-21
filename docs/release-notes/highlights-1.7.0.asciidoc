@@ -1,0 +1,52 @@
+[[release-highlights-1.7.0]]
+== 1.7.0 release highlights
+
+[float]
+[id="{p}-170-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.7.0 of {n}. See <<release-notes-1.7.0>> for the full list of changes.
+
+[float]
+[id="{p}-170-splitted-crds"]
+==== v1 versions of CustomResourceDefinitions (CRD) and ValidatingWebhookConfiguration are available
+
+Starting with this release, the `CustomResourceDefinitions` (CRD) and the `ValidatingWebhookConfiguration` resources are available in version `v1`. The resources definitions and the operator are now provided in two separate files, the `all-in-one.yaml` file is no longer available. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/1.7/k8s-deploy-eck.html[installation guide] or the link:https://www.elastic.co/guide/en/cloud-on-k8s/1.7/k8s-upgrading-eck.html#k8s-beta-to-ga-upgrade[upgrade notes] for more information.
+
+[float]
+[id="{p}-170-stack-monitoring"]
+==== Stack Monitoring
+
+In this release, the Elasticsearch and Kibana resources have been enhanced to let you specify a reference to a monitoring cluster. When specified, sidecar containers are automatically setup by ECK to ship logs and metrics to the referenced Elasticsearch cluster. Refer to the <<{p}-stack-monitoring,Stack Monitoring documentation>> for more details.
+
+[float]
+[id="{p}-170-autoscaling"]
+==== Autoscaling
+
+The `/scale` subresource is now enabled for Kibana, Enterprise Search, Elastic Maps Server, and APM Server. The number of replicas for these resources can be managed automatically by the link:https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/[Horizontal Pod Autoscaler] (HPA).
+
+[float]
+[id="{p}-170-agent-fleet"]
+==== Fleet mode and Fleet Server support (Alpha)
+
+In this release, the Agent CRD has been enhanced to introduce support for Fleet mode and Fleet Server. The agents configuration can be managed from Kibana, while an agent can be run in server mode to update policies across a fleet of Elastic Agents.
+
+[float]
+[id="{p}-170-known-issues"]
+=== Known issues
+
+After installing ECK 1.7.0 on Kubernetes versions 1.16/1.17 using Helm or the YAML manifests, deploying Elasticsearch may fail with the following error:
+
+[source,bash]
+----
+error: SchemaError(co.elastic.k8s.elasticsearch.v1.Elasticsearch.spec.nodeSets.volumeClaimTemplates): array should have exactly one sub-item
+----
+
+This is due to a validation issue in `kubectl` that has been addressed in the Kubernetes API server as of versions 1.18.13, 1.19.5 and 1.20. To work around this issue patch the Elasticsearch CRD as follows:
+
+[source,bash]
+----
+kubectl patch crd elasticsearches.elasticsearch.k8s.elastic.co --type json -p='[{"op": "remove", "path": "/spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/x-kubernetes-preserve-unknown-fields"}]'
+----
+More details about the issue and available workarounds are documented in link:https://github.com/elastic/cloud-on-k8s/issues/4737[this bug report].
+

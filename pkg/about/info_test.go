@@ -85,3 +85,37 @@ func TestGetOperatorInfo(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOperatorInfo_DistributionChannel(t *testing.T) {
+	tests := []struct {
+		name                     string
+		distributionChannelParam string
+		wantDistributionChannel  string
+	}{
+		{
+			name:                     "known distribution channel",
+			distributionChannelParam: "helm",
+			wantDistributionChannel:  "helm",
+		},
+		{
+			name:                     "no distribution channel",
+			distributionChannelParam: "",
+			wantDistributionChannel:  "",
+		},
+		{
+			name:                     "unknown distribution channel",
+			distributionChannelParam: fakeDistributionChannel,
+			wantDistributionChannel:  "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fakeClientset := k8sfake.NewSimpleClientset()
+
+			operatorInfo, err := GetOperatorInfo(fakeClientset, fakeOperatorNs, test.distributionChannelParam)
+			require.NoError(t, err)
+			require.Equal(t, test.wantDistributionChannel, operatorInfo.DistributionChannel)
+		})
+	}
+}

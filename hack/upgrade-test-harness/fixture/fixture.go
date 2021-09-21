@@ -120,6 +120,17 @@ func retryRetriable(name string, action func(*TestContext) error) *TestStep {
 	}
 }
 
+// retryOnConflict is a convenience function to create a test step that is retried if there was a conflict.
+func retryOnConflict(name string, action func(*TestContext) error) *TestStep {
+	return &TestStep{
+		Name:   name,
+		Action: action,
+		Retriable: func(err error) bool {
+			return apierrors.IsConflict(err)
+		},
+	}
+}
+
 // noRetry is a convenience function to create a test step that is not retried.
 func noRetry(name string, action func(*TestContext) error) *TestStep {
 	return &TestStep{

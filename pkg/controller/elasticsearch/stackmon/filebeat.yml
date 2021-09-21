@@ -1,5 +1,5 @@
 filebeat.modules:
-  # https://www.elastic.co/guide/en/beats/filebeat/7.13/filebeat-module-elasticsearch.html
+  # https://www.elastic.co/guide/en/beats/filebeat/7.14/filebeat-module-elasticsearch.html
   - module: elasticsearch
     server:
       enabled: true

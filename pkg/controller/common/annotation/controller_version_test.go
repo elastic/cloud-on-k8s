@@ -108,25 +108,25 @@ func TestCheckCompatibility(t *testing.T) {
 	}
 }
 
-// Test UpdateControllerVersion updates annotation if there is an older version
+// UpdateControllerVersion tests that updates annotation if there is an older version
 func TestAnnotationUpdated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "kibana",
 			Annotations: map[string]string{
-				ControllerVersionAnnotation: "oldversion",
+				ControllerVersionAnnotation: "1.6.0",
 			},
 		},
 	}
 	obj := kibana.DeepCopy()
 	client := k8s.NewFakeClient(obj)
-	err := UpdateControllerVersion(context.Background(), client, obj, "newversion")
+	err := UpdateControllerVersion(context.Background(), client, obj, "1.7.0")
 	require.NoError(t, err)
-	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "newversion")
+	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "1.7.0")
 }
 
-// Test UpdateControllerVersion creates an annotation even if there are no current annotations
+// UpdateControllerVersion tests that creates an annotation even if there are no current annotations
 func TestAnnotationCreated(t *testing.T) {
 	kibana := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -137,7 +137,7 @@ func TestAnnotationCreated(t *testing.T) {
 
 	obj := kibana.DeepCopy()
 	client := k8s.NewFakeClient(obj)
-	err := UpdateControllerVersion(context.Background(), client, obj, "newversion")
+	err := UpdateControllerVersion(context.Background(), client, obj, "1.7.0")
 	require.NoError(t, err)
 	actualKibana := &kbv1.Kibana{}
 	err = client.Get(context.Background(), types.NamespacedName{
@@ -146,7 +146,7 @@ func TestAnnotationCreated(t *testing.T) {
 	}, actualKibana)
 	require.NoError(t, err)
 	require.NotNil(t, actualKibana.GetAnnotations())
-	assert.Equal(t, actualKibana.GetAnnotations()[ControllerVersionAnnotation], "newversion")
+	assert.Equal(t, actualKibana.GetAnnotations()[ControllerVersionAnnotation], "1.7.0")
 }
 
 // TestMissingAnnotationOldVersion tests that we skip reconciling an object missing annotations that has already been reconciled by
@@ -220,7 +220,6 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 	assert.Equal(t, MinCompatibleControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
-//
 func TestSameAnnotation(t *testing.T) {
 	es := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -273,6 +272,23 @@ func TestNewerAnnotation(t *testing.T) {
 	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	assert.NoError(t, err)
 	assert.True(t, compat)
+}
+
+// TestInvalidAnnotation tests that an invalid version cannot be used for the annotation
+func TestInvalidAnnotation(t *testing.T) {
+	kibana := kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "kibana",
+		},
+	}
+
+	obj := kibana.DeepCopy()
+	client := k8s.NewFakeClient(obj)
+	err := UpdateControllerVersion(context.Background(), client, obj, "errorverison")
+	require.Error(t, err)
+	err = UpdateControllerVersion(context.Background(), client, obj, "1.7.0")
+	require.NoError(t, err)
 }
 
 func getElasticsearchSelector(es *esv1.Elasticsearch) map[string]string {

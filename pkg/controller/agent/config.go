@@ -195,14 +195,21 @@ func buildFleetSetupKibanaConfig(agent agentv1alpha1.Agent, client k8s.Client) (
 		if err != nil {
 			return nil, err
 		}
+
+		fleet := map[string]interface{}{
+			"host":     kbConnectionSettings.host,
+			"password": kbConnectionSettings.password,
+			"setup":    agent.Spec.KibanaRef.IsDefined(),
+			"username": kbConnectionSettings.username,
+		}
+
+		// don't set ca key if ca is not available
+		if kbConnectionSettings.ca != "" {
+			fleet["ca"] = kbConnectionSettings.ca
+		}
+
 		return map[string]interface{}{
-			"fleet": map[string]interface{}{
-				"ca":       kbConnectionSettings.ca,
-				"host":     kbConnectionSettings.host,
-				"password": kbConnectionSettings.password,
-				"setup":    agent.Spec.KibanaRef.IsDefined(),
-				"username": kbConnectionSettings.username,
-			},
+			"fleet": fleet,
 		}, nil
 	}
 
@@ -260,12 +267,18 @@ func buildFleetSetupFleetServerConfig(agent agentv1alpha1.Agent, client k8s.Clie
 			return nil, err
 		}
 
-		fleetServerCfg["elasticsearch"] = map[string]interface{}{
-			"ca":       esConnectionSettings.ca,
+		elasticsearch := map[string]interface{}{
 			"host":     esConnectionSettings.host,
 			"username": esConnectionSettings.username,
 			"password": esConnectionSettings.password,
 		}
+
+		// don't set ca key if ca is not available
+		if esConnectionSettings.ca != "" {
+			elasticsearch["ca"] = esConnectionSettings.ca
+		}
+
+		fleetServerCfg["elasticsearch"] = elasticsearch
 	}
 
 	return fleetServerCfg, nil
@@ -291,9 +304,14 @@ func extractConnectionSettings(
 		return connectionSettings{}, err
 	}
 
+	ca := ""
+	if assoc.AssociationConf().GetCACertProvided() {
+		ca = path.Join(certificatesDir(assoc), CAFileName)
+	}
+
 	return connectionSettings{
 		host:     assoc.AssociationConf().GetURL(),
-		ca:       path.Join(certificatesDir(assoc), CAFileName),
+		ca:       ca,
 		username: username,
 		password: password,
 	}, err

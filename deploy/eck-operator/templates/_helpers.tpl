@@ -175,14 +175,20 @@ RBAC permissions
 - apiGroups:
   - ""
   resources:
-  - pods
   - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
   - events
   - persistentvolumeclaims
   - secrets
   - services
   - configmaps
-  - serviceaccounts
   verbs:
   - get
   - list
@@ -223,8 +229,6 @@ RBAC permissions
   - elasticsearches
   - elasticsearches/status
   - elasticsearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
-  - enterpriselicenses
-  - enterpriselicenses/status
   verbs:
   - get
   - list
@@ -232,7 +236,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - kibana.k8s.elastic.co
   resources:
@@ -246,7 +249,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - apm.k8s.elastic.co
   resources:
@@ -260,7 +262,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - enterprisesearch.k8s.elastic.co
   resources:
@@ -274,7 +275,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - beat.k8s.elastic.co
   resources:
@@ -288,7 +288,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - agent.k8s.elastic.co
   resources:
@@ -302,7 +301,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 - apiGroups:
   - maps.k8s.elastic.co
   resources:
@@ -316,7 +314,6 @@ RBAC permissions
   - create
   - update
   - patch
-  - delete
 {{- end -}}
 
 {{/*
@@ -334,7 +331,6 @@ RBAC permissions on non-namespaced resources
 - apiGroups:
   - admissionregistration.k8s.io
   resources:
-  - mutatingwebhookconfigurations
   - validatingwebhookconfigurations
   verbs:
   - get

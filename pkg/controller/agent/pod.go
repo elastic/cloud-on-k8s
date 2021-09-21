@@ -215,7 +215,7 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return nil, fmt.Errorf(
 			"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
 			agent.Namespace,
-			esAssociation.Associated().GetNamespace(),
+			esAssociation.AssociationRef().Namespace,
 		)
 	}
 
@@ -252,16 +252,17 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {
-	vols := []volume.VolumeLike{}
-	for i, association := range associations {
-		if !association.AssociationConf().CAIsConfigured() {
-			return nil
+	var vols []volume.VolumeLike //nolint:prealloc
+	for i, assoc := range associations {
+		if !assoc.AssociationConf().CAIsConfigured() {
+			// skip as there is no volume to mount if association has no CA configured
+			continue
 		}
-		caSecretName := association.AssociationConf().GetCASecretName()
+		caSecretName := assoc.AssociationConf().GetCASecretName()
 		vols = append(vols, volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("%s-certs-%d", association.AssociationType(), i),
-			certificatesDir(association),
+			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
+			certificatesDir(assoc),
 		))
 	}
 	return vols
@@ -294,8 +295,10 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 func trustCAScript(caPath string) string {
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
-cp %s /etc/pki/ca-trust/source/anchors/
-update-ca-trust
+if [[ -f %[1]s ]]; then
+  cp %[1]s /etc/pki/ca-trust/source/anchors/
+  update-ca-trust
+fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
 `, caPath)
 }

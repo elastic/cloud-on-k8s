@@ -6,6 +6,9 @@
 
 This section summarizes the changes in each release.
 
+* <<release-notes-1.8.0>>
+* <<release-notes-1.7.1>>
+* <<release-notes-1.7.0>>
 * <<release-notes-1.6.0>>
 * <<release-notes-1.5.0>>
 * <<release-notes-1.4.1>>
@@ -25,6 +28,9 @@ This section summarizes the changes in each release.
 
 --
 
+include::release-notes/1.8.0.asciidoc[]
+include::release-notes/1.7.1.asciidoc[]
+include::release-notes/1.7.0.asciidoc[]
 include::release-notes/1.6.0.asciidoc[]
 include::release-notes/1.5.0.asciidoc[]
 include::release-notes/1.4.1.asciidoc[]

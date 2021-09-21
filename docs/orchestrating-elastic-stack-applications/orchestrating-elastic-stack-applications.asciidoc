@@ -13,6 +13,7 @@ endif::[]
 - <<{p}-kibana>>
 - <<{p}-apm-server>>
 - <<{p}-elastic-agent>>
+- <<{p}-elastic-agent-fleet>>
 - <<{p}-maps>>
 - <<{p}-enterprise-search>>
 - <<{p}-beat>>
@@ -20,6 +21,7 @@ endif::[]
 - <<{p}-accessing-elastic-services>>
 - <<{p}-customize-pods>>
 - <<{p}-managing-compute-resources>>
+- <<{p}-stateless-autoscaling>>
 - <<{p}-upgrading-stack>>
 
 --
@@ -27,7 +29,8 @@ endif::[]
 include::elasticsearch-specification.asciidoc[leveloffset=+1]
 include::kibana.asciidoc[leveloffset=+1]
 include::apm-server.asciidoc[leveloffset=+1]
-include::agent.asciidoc[leveloffset=+1]
+include::agent-standalone.asciidoc[leveloffset=+1]
+include::agent-fleet.asciidoc[leveloffset=+1]
 include::maps.asciidoc[leveloffset=+1]
 include::enterprise-search.asciidoc[leveloffset=+1]
 include::beat.asciidoc[leveloffset=+1]
@@ -35,5 +38,6 @@ include::securing-stack.asciidoc[leveloffset=+1]
 include::accessing-elastic-services.asciidoc[leveloffset=+1]
 include::customize-pods.asciidoc[leveloffset=+1]
 include::managing-compute-resources.asciidoc[leveloffset=+1]
+include::autoscaling.asciidoc[leveloffset=+1]
 include::upgrading-stack.asciidoc[leveloffset=+1]
 

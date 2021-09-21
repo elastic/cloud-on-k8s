@@ -16,10 +16,10 @@ This glossary supplements the link:https://kubernetes.io/docs/reference/glossary
   Can refer to either an link:https://www.elastic.co/guide/en/elasticsearch/reference/current/add-elasticsearch-nodes.html[Elasticsearch cluster] or a Kubernetes cluster depending on the context.
 
 [[CRD]]CRD::
-  link:https://kubernetes.io/docs/reference/glossary/?fundamental=true#term-CustomResourceDefinition[Custom Resource Definition]. ECK extends the Kubernetes API with CRDs to allow users to deploy and manage Elasticsearch, Kibana and APM server resources just as they would do with built-in Kubernetes resources.
+  link:https://kubernetes.io/docs/reference/glossary/?fundamental=true#term-CustomResourceDefinition[Custom Resource Definition]. ECK extends the Kubernetes API with CRDs to allow users to deploy and manage {eck_resources_list} resources just as they would do with built-in Kubernetes resources.
 
 [[ECK]]ECK::
-  Elastic Cloud on Kubernetes. Kubernetes operator to orchestrate Elasticsearch, Kibana and APM Server deployments on Kubernetes.
+  Elastic Cloud on Kubernetes. Kubernetes operator to orchestrate {eck_resources_list} deployments on Kubernetes.
 
 [[EKS]]EKS::
   link:https://aws.amazon.com/eks/[Elastic Kubernetes Service]. Managed Kubernetes service provided by Amazon Web Services (AWS).

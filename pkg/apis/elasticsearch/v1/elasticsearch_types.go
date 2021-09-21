@@ -284,7 +284,6 @@ type NodeSet struct {
 	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
 	// Items defined here take precedence over any default claims added by the operator with the same name.
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:pruning:PreserveUnknownFields
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 

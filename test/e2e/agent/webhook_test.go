@@ -17,6 +17,11 @@ import (
 )
 
 func TestWebhook(t *testing.T) {
+	// Skip on OCP3 where admission controller is not enabled by default.
+	if test.Ctx().Provider == "ocp3" {
+		t.SkipNow()
+	}
+
 	agent := v1alpha1.Agent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-webhook",

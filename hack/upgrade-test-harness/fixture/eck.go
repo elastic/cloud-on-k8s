@@ -8,28 +8,29 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/blang/semver/v4"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
 const (
-	operatorNamespace      = "elastic-system"
-	operatorSTS            = "elastic-operator"
-	esName                 = "es"
-	kbName                 = "kb"
-	apmName                = "apm"
-	wantAPMServerNodes     = 1
-	wantElasticsearchNodes = 3
-	wantHealth             = "green"
-	wantKibanaNodes        = 1
+	operatorNamespace = "elastic-system"
+	operatorSTS       = "elastic-operator"
+	esName            = "es"
+	kbName            = "kb"
+	apmName           = "apm"
+	beatName          = "heartbeat"
+	entName           = "ent"
+	wantHealth        = "green"
 )
 
 // TestParam holds parameters for a test.
@@ -37,7 +38,6 @@ type TestParam struct {
 	Name            string `json:"name"`
 	OperatorVersion string `json:"operatorVersion"`
 	StackVersion    string `json:"stackVersion"`
-	CRDVersion      string `json:"crdVersion"`
 }
 
 // Path returns the full path to the given filename from the test data files.
@@ -48,20 +48,6 @@ func (tp TestParam) Path(fileName string) string {
 // Suffixed adds a suffix describing the test to the given name.
 func (tp TestParam) Suffixed(name string) string {
 	return fmt.Sprintf("%s[%s]", name, tp.Name)
-}
-
-// GVR returns the GroupVersionResource for the given kind.
-func (tp TestParam) GVR(kind string) schema.GroupVersionResource {
-	switch kind {
-	case "elasticsearch":
-		return schema.GroupVersionResource{Group: "elasticsearch.k8s.elastic.co", Version: tp.CRDVersion, Resource: "elasticsearches"}
-	case "kibana":
-		return schema.GroupVersionResource{Group: "kibana.k8s.elastic.co", Version: tp.CRDVersion, Resource: "kibanas"}
-	case "apmserver":
-		return schema.GroupVersionResource{Group: "apm.k8s.elastic.co", Version: tp.CRDVersion, Resource: "apmservers"}
-	default:
-		panic(fmt.Errorf("unknown kind: %s", kind))
-	}
 }
 
 // TestInstallOperator is the fixture for installing an operator.
@@ -115,17 +101,49 @@ func TestDeployResources(param TestParam) *Fixture {
 }
 
 // TestStatusOfResources is the fixture for checking the status of a set of resources.
-func TestStatusOfResources(param TestParam) *Fixture {
+func TestStatusOfResources(param TestParam) (*Fixture, error) {
+	// Read the stack.yaml
+	steps, err := createResourcesTestSteps(param)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Fixture{
-		Name: param.Suffixed("TestStatusOfResources"),
-		Steps: []*TestStep{
-			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: wantElasticsearchNodes, version: param.StackVersion})),
-			retryRetriable(param.Suffixed("CheckKibana"),
-				checkStatus("kibana", kbName, status{health: wantHealth, nodes: wantKibanaNodes, version: param.StackVersion})),
-			retryRetriable(param.Suffixed("CheckAPMServer"),
-				checkStatus("apmserver", apmName, status{health: wantHealth, nodes: wantAPMServerNodes, version: param.StackVersion})),
-		},
+		Name:  param.Suffixed("TestStatusOfResources"),
+		Steps: steps,
+	}, nil
+}
+
+// createResourcesTestSteps generate the TestSteps from the manifest used to deploy the stack.
+func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
+	yamlFiles, err := os.Open(param.Path("stack.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	var result []*TestStep
+	d := yaml.NewDecoder(yamlFiles)
+	for {
+		var r Resource
+		err := d.Decode(&r)
+		if errors.Is(err, io.EOF) {
+			return result, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		var wantNodes int64 = 1
+		if r.Kind == "Elasticsearch" {
+			wantNodes = 3
+		}
+		result = append(result,
+			retryRetriable(
+				param.Suffixed(fmt.Sprintf("Check%s", r.Kind)),
+				checkStatus(
+					strings.ToLower(r.Kind),
+					r.Metadata.Name,
+					status{health: wantHealth, nodes: wantNodes, version: param.StackVersion},
+				),
+			))
 	}
 }
 
@@ -133,6 +151,13 @@ type status struct {
 	health  string
 	nodes   int64
 	version string
+}
+
+type Resource struct {
+	Kind     string `yaml:"kind"`
+	Metadata struct {
+		Name string `yaml:"name"`
+	} `yaml:"metadata"`
 }
 
 func checkStatus(kind, name string, want status) func(*TestContext) error {
@@ -227,6 +252,10 @@ func labelSelectorFor(kind string) (string, error) {
 		return "kibana.k8s.elastic.co/name=" + kbName, nil
 	case "apmserver":
 		return "apm.k8s.elastic.co/name=" + apmName, nil
+	case "enterprisesearch":
+		return "enterprisesearch.k8s.elastic.co/name=" + entName, nil
+	case "beat":
+		return "beat.k8s.elastic.co/name=" + beatName, nil
 	}
 
 	return "", fmt.Errorf("%s is not a supported kind", kind)
@@ -238,6 +267,38 @@ func TestRemoveResources(param TestParam) *Fixture {
 		Name: param.Suffixed("TestRemoveResources"),
 		Steps: []*TestStep{
 			retryRetriable(param.Suffixed("RemoveResources"), deleteManifests(param.Path("stack.yaml"))),
+		},
+	}
+}
+
+// ServicesShouldBeRemoved avoids to hit https://github.com/elastic/cloud-on-k8s/issues/2693#issuecomment-607109651
+func ServicesShouldBeRemoved(param TestParam) *Fixture {
+	return &Fixture{
+		Name: param.Suffixed("ServicesShouldBeRemoved"),
+		Steps: []*TestStep{
+			retryRetriable(
+				param.Suffixed("ServicesShouldBeRemoved"),
+				func(ctx *TestContext) error {
+					client, err := ctx.K8SClient()
+					if err != nil {
+						return err
+					}
+					services, err := client.CoreV1().Services(ctx.Namespace()).List(context.TODO(), metav1.ListOptions{})
+					if err != nil {
+						return err
+					}
+					for _, service := range services.Items {
+						if service.Labels == nil {
+							continue
+						}
+						if _, hasElasticLabel := service.Labels["common.k8s.elastic.co"]; hasElasticLabel {
+							ctx.Infof("Waiting for service %s/%s to be removed", service.Namespace, service.Name)
+							return ErrRetry
+						}
+					}
+					return nil
+				},
+			),
 		},
 	}
 }
@@ -303,8 +364,10 @@ func scaleElasticsearch(param TestParam, count int64) func(*TestContext) error {
 				return fmt.Errorf("failed to set nodeSets: %w", err)
 			}
 
+			gvr, err := ctx.GVR(runtimeObj.GetObjectKind().GroupVersionKind())
+
 			u := &unstructured.Unstructured{Object: obj}
-			_, err = dynamicClient.Resource(param.GVR("elasticsearch")).Namespace(ctx.Namespace()).Update(context.TODO(), u, metav1.UpdateOptions{})
+			_, err = dynamicClient.Resource(gvr).Namespace(ctx.Namespace()).Update(context.TODO(), u, metav1.UpdateOptions{})
 
 			return err
 		})

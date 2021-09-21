@@ -1,0 +1,43 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.8.0]]
+== {n} version 1.8.0
+
+[[breaking-1.8.0]]
+[float]
+=== Breaking changes
+
+* Remove non-functional pre-stop hook parts {pull}4801[#4801] (issue: {issue}4698[#4698])
+
+The operator does not rely on the `$PRE_STOP_MAX_WAIT_SECONDS` environment variable to control <<{p}-prestop,Elasticsearch Pods PreStop hook>> anymore. Use `$PRE_STOP_ADDITIONAL_WAIT_SECONDS` instead (defaults to 50 seconds).
+
+* Note the next minor ECK version (1.9.0) will drop support for Openshift 3.11.
+
+[[enhancement-1.8.0]]
+[float]
+=== Enhancements
+
+* Drop "properties: {}" from empty-v1alpha1-patch {pull}4813[#4813]
+* Remove beta label from Helm documentation {pull}4802[#4802] (issue: {issue}4796[#4796])
+
+[[bug-1.8.0]]
+[float]
+=== Bug fixes
+
+* Fix Agent volumes when an association has no CA {pull}4833[#4833] (issue: {issue}4832[#4832]
+* Fix handling CAs in Agent controller {pull}4807[#4807] (issue: {issue}4790[#4790])
+* Improve Elasticsearch cluster health API timeout handling {pull}4803[#4803] (issue: {issue}4507[#4507])
+* Agent: fix Elasticsearch association error message {pull}4792[#4792]
+
+[[nogroup-1.8.0]]
+[float]
+=== Misc
+
+* Update module gopkg.in/yaml.v1 to v2 {pull}4788[#4788]
+* Update module github.com/fsnotify/fsnotify to v1.5.0 {pull}4778[#4778]
+* Update golang Docker tag to v1.17.0 {pull}4766[#4766]
+* Update module sigs.k8s.io/controller-runtime to v0.9.6 {pull}4747[#4747]
+* Update module go.uber.org/zap to v1.19.0 {pull}4742[#4742]
+* Update module sigs.k8s.io/controller-tools to v0.6.2 {pull}4697[#4697]
+

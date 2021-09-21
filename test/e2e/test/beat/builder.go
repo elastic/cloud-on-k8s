@@ -51,6 +51,12 @@ type Builder struct {
 }
 
 func (b Builder) SkipTest() bool {
+	// Beat on OpenShift3 requires specific securityContext due to hostPath volumes.
+	// Skipping all Beat tests to reduce maintenance burden.
+	if test.Ctx().Provider == "ocp3" {
+		return true
+	}
+
 	ver := version.MustParse(b.Beat.Spec.Version)
 	return version.SupportedBeatVersions.WithinRange(ver) != nil
 }

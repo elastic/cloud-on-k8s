@@ -185,6 +185,66 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 	}
 }
 
+func Test_getVolumesFromAssociations(t *testing.T) {
+	// Note: we use setAssocConfs to set the AssociationConfs which are normally set in the reconciliation loop.
+	for _, tt := range []struct {
+		name                   string
+		params                 Params
+		setAssocConfs          func(assocs []v1.Association)
+		wantAssociationsLength int
+	}{
+		{
+			name: "fleet mode enabled, kb ref, fleet ref",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode:           agentv1alpha1.AgentFleetMode,
+						KibanaRef:      v1.ObjectSelector{Name: "kibana"},
+						FleetServerRef: v1.ObjectSelector{Name: "fleet"},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []v1.Association) {
+				assocs[0].SetAssociationConf(&v1.AssociationConf{
+					CASecretName: "kibana-kb-http-certs-public",
+				})
+				assocs[1].SetAssociationConf(&v1.AssociationConf{
+					CASecretName: "fleet-agent-http-certs-public",
+				})
+			},
+			wantAssociationsLength: 2,
+		},
+		{
+			name: "fleet mode enabled, kb no tls ref, fleet ref",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode:           agentv1alpha1.AgentFleetMode,
+						KibanaRef:      v1.ObjectSelector{Name: "kibana"},
+						FleetServerRef: v1.ObjectSelector{Name: "fleet"},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []v1.Association) {
+				assocs[0].SetAssociationConf(&v1.AssociationConf{
+					// No CASecretName
+				})
+				assocs[1].SetAssociationConf(&v1.AssociationConf{
+					CASecretName: "fleet-agent-http-certs-public",
+				})
+			},
+			wantAssociationsLength: 1,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			assocs := tt.params.Agent.GetAssociations()
+			tt.setAssocConfs(assocs)
+			associations := getVolumesFromAssociations(assocs)
+			require.Equal(t, tt.wantAssociationsLength, len(associations))
+		})
+	}
+}
+
 func Test_getRelatedEsAssoc(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
@@ -367,8 +427,10 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 
 				ps.Containers[0].Command = []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
 set -e
-cp /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt /etc/pki/ca-trust/source/anchors/
-update-ca-trust
+if [[ -f /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt ]]; then
+  cp /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt /etc/pki/ca-trust/source/anchors/
+  update-ca-trust
+fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
 `}
 

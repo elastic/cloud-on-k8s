@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
@@ -19,14 +18,14 @@ func TestRemoveFinalizers(param TestParam) *Fixture {
 	return &Fixture{
 		Name: "TestRemoveFinalizers",
 		Steps: []*TestStep{
-			noRetry("RemoveESFinalizers", removeFinalizers("elasticsearch", esName, param.GVR("elasticsearch"))),
-			noRetry("RemoveKBFinalizers", removeFinalizers("kibana", kbName, param.GVR("kibana"))),
-			noRetry("RemoveAPMFinalizers", removeFinalizers("apmserver", apmName, param.GVR("apmserver"))),
+			retryOnConflict("RemoveESFinalizers", removeFinalizers("elasticsearch", esName)),
+			retryOnConflict("RemoveKBFinalizers", removeFinalizers("kibana", kbName)),
+			retryOnConflict("RemoveAPMFinalizers", removeFinalizers("apmserver", apmName)),
 		},
 	}
 }
 
-func removeFinalizers(kind, name string, gvr schema.GroupVersionResource) func(*TestContext) error {
+func removeFinalizers(kind, name string) func(*TestContext) error {
 	return func(ctx *TestContext) error {
 		resources := ctx.GetResources(ctx.Namespace(), kind, name)
 
@@ -53,6 +52,7 @@ func removeFinalizers(kind, name string, gvr schema.GroupVersionResource) func(*
 			u := &unstructured.Unstructured{Object: obj}
 			u.SetFinalizers(nil)
 
+			gvr, err := ctx.GVR(runtimeObj.GetObjectKind().GroupVersionKind())
 			_, err = dynamicClient.Resource(gvr).Namespace(ctx.Namespace()).Update(context.TODO(), u, metav1.UpdateOptions{})
 
 			return err

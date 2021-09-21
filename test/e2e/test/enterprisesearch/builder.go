@@ -177,6 +177,9 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 }
 
 func (b Builder) WithEnvVar(name, value string) Builder {
+	if len(b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers) == 0 {
+		b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: entv1.EnterpriseSearchContainerName}}
+	}
 	for i, container := range b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers {
 		container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
 		b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers[i].Env = container.Env

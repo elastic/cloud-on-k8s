@@ -77,13 +77,11 @@ func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
 func (c *clientV6) GetClusterHealthWaitForAllEvents(ctx context.Context) (Health, error) {
 	var result Health
 	// wait for all events means wait for all events down to `languid` events which is the lowest event priority
-	err := c.get(ctx, "/_cluster/health?wait_for_events=languid&timeout=0s", &result)
-	if IsTimeout(err) {
-		// ignore timeout errors as they are communicated in the returned payload and a timeout is to be expected
-		// given the query parameters. 408 for other reasons than the clients timeout parameter should not happen
-		// as they are expected only on idle connections https://go-review.googlesource.com/c/go/+/179457/4/src/net/http/transport.go#1931
-		err = nil
-	}
+	pathWithQuery := "/_cluster/health?wait_for_events=languid&timeout=0s"
+	// ignore timeout errors as they are communicated in the returned payload and a timeout is to be expected
+	// given the query parameters. 408 for other reasons than the clients timeout parameter should not happen
+	// as they are expected only on idle connections https://go-review.googlesource.com/c/go/+/179457/4/src/net/http/transport.go#1931
+	err := c.request(ctx, http.MethodGet, pathWithQuery, nil, &result, IsTimeout)
 	return result, err
 }
 

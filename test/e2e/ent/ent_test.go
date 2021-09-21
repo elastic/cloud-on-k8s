@@ -49,6 +49,8 @@ func TestEnterpriseSearchTLSDisabled(t *testing.T) {
 }
 
 func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
+	t.Skip() // pending resolution of https://github.com/elastic/cloud-on-k8s/issues/4755
+
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 

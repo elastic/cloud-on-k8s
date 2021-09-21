@@ -28,7 +28,7 @@ const (
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
-func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlclient.Object, version string) error {
+func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlclient.Object, controllerVersion string) error {
 	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -38,11 +38,16 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj ctrlcli
 	}
 
 	// do not send unnecessary update if the value would not change
-	if annotations[ControllerVersionAnnotation] == version {
+	if annotations[ControllerVersionAnnotation] == controllerVersion {
 		return nil
 	}
 
-	annotations[ControllerVersionAnnotation] = version
+	_, err := version.Parse(controllerVersion)
+	if err != nil {
+		return errors.Wrap(err, "Error parsing controller version")
+	}
+
+	annotations[ControllerVersionAnnotation] = controllerVersion
 	accessor := meta.NewAccessor()
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
 		log.Error(err, "error updating controller version annotation", "namespace", obj.GetNamespace(), "name", obj.GetName(), "kind", obj.GetObjectKind())
@@ -110,17 +115,13 @@ func isAnnotatedVersionSupported(currentVersion, controllerVersion string, obj c
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing minimum compatible version")
 	}
-	ctrlVersion, err := version.Parse(controllerVersion)
-	if err != nil {
-		return false, errors.Wrap(err, "Error parsing controller version")
-	}
 
 	// if the current version is gte the minimum version then they are compatible
 	if current.GTE(minVersion) {
 		return true, nil
 	}
 
-	log.Info("Resource was created with older version of operator, will not take action", "controller_version", ctrlVersion,
+	log.Info("Resource was created with older version of operator, will not take action", "controller_version", controllerVersion,
 		"resource_controller_version", currentVersion, "namespace", obj.GetNamespace(), "name", obj.GetName())
 	return false, nil
 }
