@@ -170,7 +170,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		results.WithResult(defaultRequeue)
 	}
 	// shutdown logic is dependent on Elasticsearch version
-	nodeShutdowns, err := newShutdownInterface(d, esClient, esState)
+	nodeShutdowns, err := newShutdownInterface(d.ES, esClient, esState)
 	if err != nil {
 		return results.WithError(err)
 	}

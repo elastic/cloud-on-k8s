@@ -183,11 +183,6 @@ func Command() *cobra.Command {
 		"Default timeout for requests made by the Elasticsearch client.",
 	)
 	cmd.Flags().Bool(
-		operator.ElasticsearchUseNodeShutdownFlag,
-		true,
-		"Use the node shutdown API to orchestrate Elasticsearch 7.15+ clusters. Deprecated: flag will be removed in ECK 1.9",
-	)
-	cmd.Flags().Bool(
 		operator.DisableTelemetryFlag,
 		false,
 		"Disable periodically updating ECK telemetry data for Kibana to consume.",
@@ -555,7 +550,6 @@ func startOperator(ctx context.Context) error {
 		},
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
-		UseNodeShutdownAPI:        viper.GetBool(operator.ElasticsearchUseNodeShutdownFlag),
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
 	}

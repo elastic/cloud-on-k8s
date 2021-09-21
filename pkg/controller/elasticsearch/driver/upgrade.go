@@ -128,13 +128,14 @@ func newRollingUpgrade(
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 ) rollingUpgradeCtx {
-	upgradeCtx := rollingUpgradeCtx{
+	return rollingUpgradeCtx{
 		parentCtx:       ctx,
 		client:          d.Client,
 		ES:              d.ES,
 		statefulSets:    statefulSets,
 		esClient:        esClient,
 		shardLister:     esClient,
+		nodeShutdown:    nodeShutdown,
 		esState:         esState,
 		expectations:    d.Expectations,
 		reconcileState:  d.ReconcileState,
@@ -143,11 +144,6 @@ func newRollingUpgrade(
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
 	}
-	// we use nil as signifier that shutdown is turned off to avoid having to drag all the context through all layers
-	if d.OperatorParameters.UseNodeShutdownAPI && supportsNodeShutdown(esClient.Version()) {
-		upgradeCtx.nodeShutdown = nodeShutdown
-	}
-	return upgradeCtx
 }
 
 func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
@@ -261,7 +257,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	// we still have to enable shard allocation in cases where we just upgraded from
 	// a version that did not support node shutdown to a supported version.
 	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
-	if !results.HasError() && d.OperatorParameters.UseNodeShutdownAPI && supportsNodeShutdown(esClient.Version()) {
+	if !results.HasError() && supportsNodeShutdown(esClient.Version()) {
 		// clear all shutdowns of type restart that have completed
 		// this relies on the fact the maybeEnableShardsAllocation checks expectations
 		err := nodeShutdown.Clear(ctx, &esclient.ShutdownComplete)
@@ -323,8 +319,8 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 }
 
 func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
-	if ctx.nodeShutdown == nil { // nil means we are pre 7.15 or shutdown API is toggled off
-		return true, nil // always OK to restart
+	if !supportsNodeShutdown(ctx.esClient.Version()) {
+		return true, nil // always OK to restart pre 7.14
 	}
 	if pod.Status.Phase != corev1.PodRunning {
 		// there is no point in trying to query the shutdown status of a Pod that is not running
@@ -357,7 +353,7 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 }
 
 func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
-	if ctx.nodeShutdown != nil {
+	if supportsNodeShutdown(ctx.esClient.Version()) {
 		return ctx.requestNodeRestarts(podsToUpgrade)
 	}
 	// Disable shard allocations to avoid shards moving around while the node is temporarily down
