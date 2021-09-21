@@ -1,0 +1,112 @@
+:page_id: eck-permissions
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-{page_id}"]
+= ECK permissions
+
+Installing and running ECK, as well as using ECK-managed resources requires certain Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]. Each of those permissions is listed below, together with a reason why it is needed.
+
+
+[float]
+[id="{p}-{page_id}-defaults"]
+== Installing CRDs
+
+Below is the permission required to install CRDs. CRDs (link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions]) are the only non-namespaced resources required to be installed.
+
+[width="100%",cols=".^35m,.^25m,.^5d,.^35",options="header"]
+|===
+|Name|API group|Optional?|Usage
+|CustomResourceDefinition|apiextensions.k8s.io|no|Extend Kubernetes APIs with Elastic Stack applications resources
+|===
+
+[float]
+[id="{p}-{page_id}-installing"]
+== Installing the ECK operator
+
+Below are the permissions required to install ECK operator in a Kubernetes cluster.
+
+[width="100%",cols=".^1m,.^1m,.^1d,.^97",options="header"]
+|===
+|Name|API group|Optional?|Usage
+|StatefulSet or Deployment|apps|no|ECK operator `Pod` deployment method. By default, `Deployment` is used only in OpenShift.
+|ServiceAccount|core|no|Service account that the operator Pods run as
+|Role or ClusterRole|rbac.authorization.k8s.io|no|Role bound to the operators Service account. Depending on the installation type (global/restricted) either global (ClusterRole) or namespaced (Role) resource is needed.
+|RoleBinding or ClusterRoleBinding|rbac.authorization.k8s.io|no|Binding between the operators role and the operators service account. Depending on installation type (global/restricted) either global (ClusterRoleBinding) or namespaced (RoleBinding) resource is needed.
+|ConfigMap|core|yes|Configuration parameters of the Operator. They can be specified directly in the StatefulSet (or Deployment) resource instead.
+|Namespace|core|yes|Namespace where the Operator will run. It can be a pre-existing namespace as well.
+|ValidatingWebhookConfiguration|admissionregistration.k8s.io|yes|Validating webhook installation. It provides fast feedback for the user directly as a APIServer response. Very similar set of validations is done by the operator itself, but the results are only available through operator logs. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-webhook.html[docs] for more.
+|Secret|core|yes|Secret containing validating webhooks endpoint CA certificate
+|Service|core|yes|Service for validating webhook endpoint
+|===
+
+And all permissions that <<{p}-{page_id}-running>> section specifies.
+
+[float]
+[id="{p}-{page_id}-running"]
+== Running ECK operator
+
+Below are the permissions that are needed by the Service Account that ECK Operator runs as.
+
+[width="100%",cols=".^1m,.^1m,.^1d,.^97",options="header"]
+|===
+|Name|API group|Optional?|Usage
+|Pod||no|Assuring expected Pods presence during Elasticsearch reconciliation +
+Validating `podTemplate` by dry-run creating the Pod
+|Endpoint||no|Checking availability of service endpoints
+|Event||no|Emitting events concerning reconciliation progress and issues
+|PersistentVolumeClaim||no|Expanding existing volumes. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
+|Secret||no|Reading/writing configurations, passwords, certificates, etc.
+|Service||no|Creating Services fronting Elastic Stack applications
+|ConfigMap||no|Reading/writing configurations
+|StatefulSet|apps|no|Deploying Elasticsearch
+|Deployment|apps|no|Deploying Kibana, APM Server, EnterpriseSearch, Maps, Beats, Agent
+|DaemonSet|apps|no|Deploying Beats, Agent
+|PodDisruptionBudget|policy|no|Ensuring update safety for Elasticsearch. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-pod-disruption-budget.html[docs] to learn more.
+|StorageClass|storage.k8s.io|yes|Validating storage expansion support. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
+|coreauthorization.k8s.io|SubjectAccessReview|yes|Controlling access between referenced resources. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-restrict-cross-namespace-associations.html[docs] to learn more.
+|===
+
+And all permissions that <<{p}-{page_id}-using>> chapter specifies.
+
+[float]
+[id="{p}-{page_id}-using"]
+== Using ECK-managed resources
+
+Below are the permissions that are needed to manage each Elastic Stack application. For example, to be able to create, update and delete Elasticsearch clusters the permissions for respective verbs are required to be held by the user performing the operation.
+
+[width="100%",cols=".^1m,.^1m,.^97d",options="header"]
+|===
+|Name|API group|Optional?
+|Elasticsearch +
+Elasticsearch/status +
+Elasticsearch/finalizers|elasticsearch.k8s.elastic.co|no
+|Kibana +
+Kibana/status +
+Kibana/finalizers
+|kibana.k8s.elastic.co|no
+|APMServer +
+APMServer/status +
+APMServer/finalizers
+|apm.k8s.elastic.co|no
+|EnterpriseSearch +
+EnterpriseSearch/status +
+EnterpriseSearch/finalizers
+|enterprisesearch.k8s.elastic.co|no
+|Beat +
+Beat/status +
+Beat/finalizers
+|beat.k8s.elastic.co|no
+|Agent +
+Agent/status +
+Agent/finalizers
+|agent.k8s.elastic.co|no
+|ElasticMapsServer +
+ElasticMapsServer/status +
+ElasticMapsServer/finalizers
+|maps.k8s.elastic.co|no
+|===
+

@@ -164,6 +164,8 @@ matchPolicy: Exact
 
 {{/*
 RBAC permissions
+NOTE - any changes made to RBAC permissions below require
+updating docs/operating-eck/eck-permissions.asciidoc file.
 */}}
 {{- define "eck-operator.rbacRules" -}}
 - apiGroups:
