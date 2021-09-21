@@ -65,7 +65,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.14.10@sha256:6033e04bcfca7c5f2a9c4ce77551e1abf385bcd2709932ec2f6a9c8c0aff6d4f", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.14.10@sha256:f8a66ef82822ab4f7569e91a5bccaf27bceee135c1457c512e54de8c6f7219f8", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -76,7 +76,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.15.12@sha256:8d575f056493c7778935dd855ded0e95c48cb2fab90825792e8fc9af61536bf9", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.15.12@sha256:b920920e1eda689d9936dfcf7332701e80be12566999152626b2c9d730397a95", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -87,7 +87,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.16.15@sha256:430c03034cd856c1f1415d3e37faf35a3ea9c5aaa2812117b79e6903d1fc9651", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.16.15@sha256:83067ed51bf2a3395b24687094e283a7c7c865ccc12a8b1d7aa673ba0c5e8861", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -98,7 +98,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.17@sha256:c581fbf67f720f70aaabc74b44c2332cc753df262b6c0bca5d26338492470c17", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.17.17@sha256:66f1d0d91a88b8a001811e2f1054af60eef3b669a9a74f9b6db871f2f1eeed00", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -109,7 +109,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.18.19@sha256:530378628c7c518503ade70b1df698b5de5585dcdba4f349328d986b8849b1ee", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.18.19@sha256:7af1492e19b3192a79f606e43c35fb741e520d195f96399284515f077b3b622c", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -120,7 +120,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.19.11@sha256:7664f21f9cb6ba2264437de0eb3fe99f201db7a3ac72329547ec4373ba5f5911", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.19.11@sha256:07db187ae84b4b7de440a73886f008cf903fcf5764ba8106a9fd5243d6f32729", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -131,29 +131,40 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.20.7@sha256:e645428988191fc824529fd0bb5c94244c12401cf5f5ea3bd875eb0a787f0fe9", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.20.7@sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9", "0.11.1", "ipv4")
                         }
                     }
                 }
-                stage("1.21.1 IPv4") {
+                stage("1.21.1") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.21.1@sha256:fae9a58f17f18f06aeac9772ca8b5ac680ebbed985e266f711d936e91d113bad", "0.11.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6", "0.11.1", "ipv4")
                         }
                     }
                 }
-                stage("1.21.0 IPv6") {
+                stage("1.22.0 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.21.1@sha256:fae9a58f17f18f06aeac9772ca8b5ac680ebbed985e266f711d936e91d113bad", "0.11.0", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047", "0.11.1", "ipv4")
+                        }
+                    }
+                }
+                stage("1.22.0 IPv6") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047", "0.11.1", "ipv6")
                         }
                     }
                 }
