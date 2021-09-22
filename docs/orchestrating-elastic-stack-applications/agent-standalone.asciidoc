@@ -406,3 +406,12 @@ kubectl apply -f {agent_recipes}/kubernetes-integration.yaml
 ----
 
 Deploys Elastic Agent as a DaemonSet in standalone mode with Kubernetes integration enabled. Collects API server, Container, Event, Node, Pod, Volume and system metrics.
+
+=== Multiple Elasticsearch clusters output
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/multi-output.yaml
+----
+
+Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
