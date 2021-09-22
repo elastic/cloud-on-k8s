@@ -438,7 +438,7 @@ Deploys single instance Elastic Agent Deployment in Fleet mode with APM integrat
 [id="{p}-elastic-agent-fleet-known-limitation"]
 == Known limitation
 
-Elastic Agent in Fleet mode has to run with elevated privileges and in the same namespace as the Elasticsearch cluster it connects to.
+Elastic Agent in Fleet mode has to run as a root, and in the same namespace as the Elasticsearch cluster it connects to.
 
 Due to current configuration limitations on Fleet/Elastic Agent side, ECK needs to establish trust between Elastic Agents and Elasticsearch. ECK can fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
 To establish trust, the Pod needs to update the CA store via a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
