@@ -8,19 +8,19 @@ endif::[]
 [id="{p}-{page_id}"]
 = ECK permissions
 
-Installing and running ECK, as well as using ECK-managed resources requires certain Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]. Each of those permissions is listed below, together with a reason why it is needed.
+Installing and running ECK, as well as using ECK-managed resources requires certain Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]. These permissions are listed below, with a reason why they are needed.
 
 
 [float]
 [id="{p}-{page_id}-defaults"]
 == Installing CRDs
 
-Below is the permission required to install CRDs. CRDs (link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions]) are the only non-namespaced resources required to be installed.
+This permission is required to install CRDs. CRDs (link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions]) are the only non-namespaced resources required to be installed.
 
 [width="100%",cols=".^35m,.^25m,.^5d,.^35",options="header"]
 |===
 |Name|API group|Optional?|Usage
-|CustomResourceDefinition|apiextensions.k8s.io|no|Extend Kubernetes APIs with Elastic Stack applications resources
+|CustomResourceDefinition|apiextensions.k8s.io|no|Extend Kubernetes APIs with Elastic Stack application resources
 |===
 
 [float]
@@ -34,12 +34,12 @@ Below are the permissions required to install ECK operator in a Kubernetes clust
 |Name|API group|Optional?|Usage
 |StatefulSet or Deployment|apps|no|ECK operator `Pod` deployment method. By default, `Deployment` is used only in OpenShift.
 |ServiceAccount|core|no|Service account that the operator Pods run as
-|Role or ClusterRole|rbac.authorization.k8s.io|no|Role bound to the operators Service account. Depending on the installation type (global/restricted) either global (ClusterRole) or namespaced (Role) resource is needed.
-|RoleBinding or ClusterRoleBinding|rbac.authorization.k8s.io|no|Binding between the operators role and the operators service account. Depending on installation type (global/restricted) either global (ClusterRoleBinding) or namespaced (RoleBinding) resource is needed.
+|Role or ClusterRole|rbac.authorization.k8s.io|no|Role bound to the operators Service account. Depending on the installation type (global/restricted) either a global (ClusterRole) or a namespaced (Role) resource is needed.
+|RoleBinding or ClusterRoleBinding|rbac.authorization.k8s.io|no|Binding between the operators role and the operators service account. Depending on the installation type (global/restricted), either global (ClusterRoleBinding) or namespaced (RoleBinding) resource is needed.
 |ConfigMap|core|yes|Configuration parameters of the Operator. They can be specified directly in the StatefulSet (or Deployment) resource instead.
-|Namespace|core|yes|Namespace where the Operator will run. It can be a pre-existing namespace as well.
-|ValidatingWebhookConfiguration|admissionregistration.k8s.io|yes|Validating webhook installation. It provides fast feedback for the user directly as a APIServer response. Very similar set of validations is done by the operator itself, but the results are only available through operator logs. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-webhook.html[docs] for more.
-|Secret|core|yes|Secret containing validating webhooks endpoint CA certificate
+|Namespace|core|yes|Namespace where the operator will run. It can be a pre-existing namespace as well.
+|ValidatingWebhookConfiguration|admissionregistration.k8s.io|yes|Validating webhook installation. It provides fast feedback for the user directly as a APIServer response. A subset of these validations is also run by the operator itself, but the results are only available through operator logs and Kubernetes events. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-webhook.html[docs] for more.
+|Secret|core|yes|Secret containing the validating webhook's endpoint CA certificate
 |Service|core|yes|Service for validating webhook endpoint
 |===
 
@@ -55,13 +55,13 @@ Below are the permissions that are needed by the Service Account that ECK Operat
 |===
 |Name|API group|Optional?|Usage
 |Pod||no|Assuring expected Pods presence during Elasticsearch reconciliation +
-Validating `podTemplate` by dry-run creating the Pod
+Validating `podTemplate` by dry-run creation of Pods
 |Endpoint||no|Checking availability of service endpoints
 |Event||no|Emitting events concerning reconciliation progress and issues
 |PersistentVolumeClaim||no|Expanding existing volumes. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
-|Secret||no|Reading/writing configurations, passwords, certificates, etc.
+|Secret||no|Reading/writing configuration, passwords, certificates, etc.
 |Service||no|Creating Services fronting Elastic Stack applications
-|ConfigMap||no|Reading/writing configurations
+|ConfigMap||no|Reading/writing configuration.
 |StatefulSet|apps|no|Deploying Elasticsearch
 |Deployment|apps|no|Deploying Kibana, APM Server, EnterpriseSearch, Maps, Beats, Agent
 |DaemonSet|apps|no|Deploying Beats, Agent
@@ -70,7 +70,7 @@ Validating `podTemplate` by dry-run creating the Pod
 |coreauthorization.k8s.io|SubjectAccessReview|yes|Controlling access between referenced resources. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-restrict-cross-namespace-associations.html[docs] to learn more.
 |===
 
-And all permissions that <<{p}-{page_id}-using>> chapter specifies.
+And all permissions that the <<{p}-{page_id}-using>> chapter specifies.
 
 [float]
 [id="{p}-{page_id}-using"]
