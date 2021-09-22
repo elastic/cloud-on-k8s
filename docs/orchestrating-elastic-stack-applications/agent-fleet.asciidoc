@@ -433,7 +433,7 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration 
 kubectl apply -f {agent_recipes}/fleet-apm-integration.yaml
 ----
 
-Deploys single instance Elastic Agent Deployment with APM integration enabled.
+Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
 
 [id="{p}-elastic-agent-fleet-known-limitation"]
 == Known limitation
