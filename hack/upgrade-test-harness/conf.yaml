@@ -35,6 +35,9 @@ testParams:
   - name: v171
     operatorVersion: 1.7.1
     stackVersion: 7.14.0
-  - name: upcoming
+  - name: v180
     operatorVersion: 1.8.0
-    stackVersion: 7.14.0
+    stackVersion: 7.15.0
+  - name: upcoming
+    operatorVersion: 1.9.0
+    stackVersion: 7.16.0-SNAPSHOT
