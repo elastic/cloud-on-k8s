@@ -816,8 +816,7 @@ func (h *helper) runECKDiagnostics() {
 	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		log.Error(err, "Failed to run eck-diagnostics")
 	}
 }
