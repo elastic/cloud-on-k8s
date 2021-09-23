@@ -40,4 +40,4 @@ testParams:
     stackVersion: 7.15.0
   - name: upcoming
     operatorVersion: 1.9.0
-    stackVersion: 7.15.0
+    stackVersion: 7.16.0-SNAPSHOT
