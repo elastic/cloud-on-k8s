@@ -374,6 +374,11 @@ switch-eks:
 switch-kind:
 	@ echo "kind" > hack/deployer/config/provider
 
+switch-tanzu:
+	@ echo "tanzu" > hack/deployer/config/provider
+
+
+
 #################################
 ##  --    Docker images    --  ##
 #################################

@@ -14,7 +14,6 @@ const (
 	GkeDriverID                     = "gke"
 	GkeVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
 	GkeServiceAccountVaultFieldName = "service-account"
-	GkeConfigFileName               = "deployer-config-gke.yml"
 	DefaultGkeRunConfigTemplate     = `id: gke-dev
 overrides:
   clusterName: %s-dev-cluster

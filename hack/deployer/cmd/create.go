@@ -30,7 +30,7 @@ func CreateCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
+			var cfgData string
 			switch provider {
 			case runner.GkeDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
@@ -38,22 +38,14 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
-				fullPath := path.Join(filePath, runner.GkeConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
-					return err
-				}
+				cfgData = fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
 			case runner.AksDriverID:
 				resourceGroup, err := GetEnvVar("RESOURCE_GROUP")
 				if err != nil {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
-				fullPath := path.Join(filePath, runner.AksConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
-					return err
-				}
+				cfgData = fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
 			case runner.OcpDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
@@ -65,11 +57,7 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
-				fullPath := path.Join(filePath, runner.OcpConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
-					return err
-				}
+				cfgData = fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
 			case runner.EKSDriverID:
 				// optional variable for local dev use
 				token, _ := os.LookupEnv("GITHUB_TOKEN")
@@ -79,20 +67,17 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
-				fullPath := path.Join(filePath, runner.EKSConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
-					return err
-				}
+				cfgData = fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 			case runner.KindDriverID:
-				data := fmt.Sprintf(runner.DefaultKindRunConfigTemplate, user)
-				fullPath := path.Join(filePath, runner.KindConfigFileName)
-				return ioutil.WriteFile(fullPath, []byte(data), 0600)
+				cfgData = fmt.Sprintf(runner.DefaultKindRunConfigTemplate, user)
+			case runner.TanzuDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultTanzuRunConfigTemplate, user)
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}
 
-			return nil
+			fullPath := path.Join(filePath, fmt.Sprintf("deployer-config-%s.yml", provider))
+			return ioutil.WriteFile(fullPath, []byte(cfgData), 0600)
 		},
 	}
 

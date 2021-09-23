@@ -17,7 +17,6 @@ const (
 	AksDriverID                    = "aks"
 	AksVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
 	AksResourceGroupVaultFieldName = "resource-group"
-	AksConfigFileName              = "deployer-config-aks.yml"
 	DefaultAksRunConfigTemplate    = `id: aks-dev
 overrides:
   clusterName: %s-dev-cluster
@@ -113,22 +112,11 @@ func (d *AksDriver) Execute() error {
 func (d *AksDriver) auth() error {
 	if d.plan.ServiceAccount {
 		log.Print("Authenticating as service account...")
-
-		secrets, err := d.vaultClient.GetMany(AksVaultPath, "appId", "password", "tenant")
+		credentials, err := newAzureCredentials(d.vaultClient)
 		if err != nil {
 			return err
 		}
-		appID, tenantSecret, tenantID := secrets[0], secrets[1], secrets[2]
-
-		cmd := "az login --service-principal -u {{.AppId}} -p {{.TenantSecret}} --tenant {{.TenantId}}"
-		return NewCommand(cmd).
-			AsTemplate(map[string]interface{}{
-				"AppId":        appID,
-				"TenantSecret": tenantSecret,
-				"TenantId":     tenantID,
-			}).
-			WithoutStreaming().
-			Run()
+		return azureLogin(credentials)
 	}
 
 	log.Print("Authenticating as user...")

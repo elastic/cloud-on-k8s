@@ -23,7 +23,6 @@ const (
 	OcpServiceAccountVaultFieldName = "service-account"
 	OcpPullSecretFieldName          = "pull-secret"
 	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
-	OcpConfigFileName               = "deployer-config-ocp.yml"
 	DefaultOcpRunConfigTemplate     = `id: ocp-dev
 overrides:
   clusterName: %s-dev-cluster
@@ -409,21 +408,7 @@ func (d *OcpDriver) copyKubeconfig() error {
 }
 
 func (d *OcpDriver) removeKubeconfig() error {
-	if err := NewCommand("kubectl config get-contexts admin").Run(); err != nil {
-		// skip because the admin context does not exist in the kube config
-		return nil //nolint:nilerr
-	}
-
-	log.Printf("Removing context, user and cluster entry from kube config")
-	if err := NewCommand("kubectl config delete-context admin").Run(); err != nil {
-		return err
-	}
-	if err := NewCommand("kubectl config delete-user admin").Run(); err != nil {
-		return err
-	}
-	return NewCommand("kubectl config delete-cluster {{.ClusterName}}").
-		AsTemplate(map[string]interface{}{"ClusterName": d.plan.ClusterName}).
-		Run()
+	return removeKubeconfig("admin", "admin", "admin")
 }
 
 func (d *OcpDriver) bucketParams() map[string]interface{} {
