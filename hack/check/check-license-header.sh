@@ -16,7 +16,7 @@ files=$(grep \
     --include=\*.go --exclude-dir=vendor \
     --include=\*.sh \
     --include=Makefile \
-    -L "Copyright Elasticsearch B.V." \
+    -L "Elastic License 2.0" \
     -r ${CHECK_PATH} || true)
 
 [ "$files" != "" ] \
