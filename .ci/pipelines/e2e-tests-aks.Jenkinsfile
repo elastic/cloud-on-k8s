@@ -42,7 +42,7 @@ pipeline {
                         failedTests = lib.getListOfFailedTests()
                         googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                             credentialsId: "devops-ci-gcs-plugin",
-                            pattern: "*.tgz",
+                            pattern: "*.zip",
                             sharedPublicly: true,
                             showInline: true
                     }

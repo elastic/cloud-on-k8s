@@ -144,7 +144,7 @@ def runTests(lib, failedTests, kindNodeImage, kindVersion, ipFamily) {
             failedTests.addAll(lib.getListOfFailedTests())
             googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                 credentialsId: "devops-ci-gcs-plugin",
-                pattern: "*.tgz",
+                pattern: "*.zip",
                 sharedPublicly: true,
                 showInline: true
         }
