@@ -514,8 +514,7 @@ func (h *helper) runTestsRemote() error {
 
 	if err != nil {
 		h.dumpEventLog()
-		h.dumpK8sData()
-		h.runEsDiagnosticsJob()
+		h.runECKDiagnostics()
 		return errors.Wrap(err, "test run failed")
 	}
 
@@ -811,11 +810,13 @@ func (h *helper) dumpEventLog() {
 	}
 }
 
-func (h *helper) dumpK8sData() {
+func (h *helper) runECKDiagnostics() {
 	operatorNS := h.testContext.Operator.Namespace
 	otherNS := append([]string{h.testContext.E2ENamespace}, h.testContext.Operator.ManagedNamespaces...)
-	cmd := exec.Command("support/diagnostics/eck-dump.sh", "-N", operatorNS, "-n", strings.Join(otherNS, ","), "-o", h.testContext.TestRun, "-z")
+	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		log.Error(err, "Failed to run support/diagnostics/eck-dump.sh")
+		log.Error(err, "Failed to run eck-diagnostics")
 	}
 }
