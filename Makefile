@@ -87,7 +87,7 @@ dependencies:
 # Generate code, CRDs and documentation
 ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
-generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
+generate: tidy generate-crds-v1 generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
