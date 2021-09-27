@@ -15,7 +15,7 @@ This section describes how to configure and deploy Elastic Agent in link:https:/
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
 * <<{p}-elastic-agent-fleet-configuration-examples,Configuration Examples>>
-* <<{p}-elastic-agent-fleet-known-limitations,Known Limitation>>
+* <<{p}-elastic-agent-fleet-known-limitations,Known Limitations>>
 
 [id="{p}-elastic-agent-fleet-quickstart"]
 == Quickstart
