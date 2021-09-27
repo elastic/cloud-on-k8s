@@ -88,7 +88,7 @@ dependencies:
 # Generate code, CRDs and documentation
 ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
-generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
+generate: tidy generate-crds-v1 generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -117,30 +117,6 @@ generate-crds-v1: go-generate controller-gen
 		--set=image.repository=$(BASE_IMG) \
 		--set=nameOverride=$(OPERATOR_NAME) \
 		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator.yaml
-
-
-
-generate-crds-v1beta1: go-generate controller-gen
-	# Generate webhook manifest
-	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
-	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd:crdVersions=v1beta1 paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1beta1/bases
-	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/v1beta1/patches > config/crds/v1beta1/all-crds.yaml
-	# generate a CRD only version without the operator manifests
-	@ ./hack/manifest-gen/manifest-gen.sh -c -g --set=global.kubeVersion=1.12.0 > config/crds-legacy.yaml
-	# generate the operator manifests
-	@ ./hack/manifest-gen/manifest-gen.sh -g \
-		--profile=global \
-		--namespace=$(OPERATOR_NAMESPACE) \
-		--set=global.kubeVersion=1.12.0 \
-		--set=installCRDs=false \
-		--set=telemetry.distributionChannel=all-in-one \
-		--set=image.tag=$(IMG_VERSION) \
-		--set=image.repository=$(BASE_IMG) \
-		--set=nameOverride=$(OPERATOR_NAME) \
-		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator-legacy.yaml
 
 generate-config-file:
 	@hack/config-extractor/extract.sh
@@ -177,13 +153,12 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
-# kubebuilder 2.3.1 comes with a 1.15 control plane and we rely on it for the k8s binaries
 integration: GO_TAGS += integration
-integration: clean generate-crds-v1beta1
+integration: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean generate-crds-v1beta1
+integration-xml: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
