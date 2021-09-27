@@ -10,6 +10,7 @@ endif::[]
 [partintro]
 --
 - <<{p}-operator-config>>
+- <<{p}-eck-permissions>>
 - <<{p}-webhook>>
 - <<{p}-restrict-cross-namespace-associations>>
 - <<{p}-licensing>>
@@ -20,6 +21,7 @@ endif::[]
 --
 
 include::operator-config.asciidoc[leveloffset=+1]
+include::eck-permissions.asciidoc[leveloffset=+1]
 include::webhook.asciidoc[leveloffset=+1]
 include::restrict-cross-namespace-associations.asciidoc[leveloffset=+1]
 include::licensing.asciidoc[leveloffset=+1]

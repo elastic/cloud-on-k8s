@@ -16,7 +16,7 @@ To access the Elastic Stack services, you need to:
 [id="{p}-security"]
 == Security
 
-All Elastic Stack resources deployed by the ECK Operator are secured by default. The operator sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
+All Elastic Stack resources deployed by the ECK operator are secured by default. The operator sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
 
 [id="{p}-authentication"]
 === Authentication
