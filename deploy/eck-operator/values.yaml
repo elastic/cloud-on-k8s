@@ -162,7 +162,7 @@ config:
   kubeClientTimeout: 60s
 
   # elasticsearchClientTimeout sets the request timeout for Elasticsearch API calls made by the operator.
-  elasticsearchClientTimeout: 180s
+  elasticsearchClientTimeout: 30s
 
   # validateStorageClass specifies whether storage classes volume expansion support should be verified.
   # Can be disabled if cluster-wide storage class RBAC access is not available.

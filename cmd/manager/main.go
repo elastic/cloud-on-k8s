@@ -179,7 +179,7 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().Duration(
 		operator.ElasticsearchClientTimeout,
-		3*time.Minute,
+		30*time.Second,
 		"Default timeout for requests made by the Elasticsearch client.",
 	)
 	cmd.Flags().Bool(

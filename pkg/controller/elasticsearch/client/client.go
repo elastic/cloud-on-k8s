@@ -27,7 +27,7 @@ const (
 )
 
 // DefaultESClientTimeout is the default timeout value for Elasticsearch requests.
-var DefaultESClientTimeout = 3 * time.Minute
+var DefaultESClientTimeout = 30 * time.Second
 
 // BasicAuth contains credentials for an Elasticsearch user.
 type BasicAuth struct {
