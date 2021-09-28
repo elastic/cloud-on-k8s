@@ -5,6 +5,7 @@
 package test
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -17,7 +18,12 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 	}
 
 	if !Ctx().OcpCluster {
-		defaultUserID := int64(1000)
+		defaultUserID := int64(123456) // arbitrary user ID
+		// before 7.9.0 Stack images expected to run with the user ID 1000 or 0 (https://github.com/elastic/beats/issues/18871)
+		stackVersion := version.MustParse(Ctx().ElasticStackVersion)
+		if stackVersion.LT(version.MustParse("7.9.0")) {
+			defaultUserID = int64(1000)
+		}
 		dscc.RunAsUser = &defaultUserID
 		dscc.FSGroup = &defaultUserID
 	}
