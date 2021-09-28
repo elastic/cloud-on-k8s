@@ -15,7 +15,7 @@ This section describes how to configure and deploy Elastic Agent in link:https:/
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
 * <<{p}-elastic-agent-fleet-configuration-examples,Configuration Examples>>
-* <<{p}-elastic-agent-fleet-known-limitation,Known Limitation>>
+* <<{p}-elastic-agent-fleet-known-limitations,Known Limitations>>
 
 [id="{p}-elastic-agent-fleet-quickstart"]
 == Quickstart
@@ -435,10 +435,14 @@ kubectl apply -f {agent_recipes}/fleet-apm-integration.yaml
 
 Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
 
-[id="{p}-elastic-agent-fleet-known-limitation"]
-== Known limitation
+[id="{p}-elastic-agent-fleet-known-limitations"]
+== Known limitations
 
-Elastic Agent in Fleet mode has to run as a root, and in the same namespace as the Elasticsearch cluster it connects to.
+=== Running as root and within a single namespace
+Elastic Agent in Fleet mode has to run as root, and in the same namespace as the Elasticsearch cluster it connects to.
 
 Due to current configuration limitations on Fleet/Elastic Agent side, ECK needs to establish trust between Elastic Agents and Elasticsearch. ECK can fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
 To establish trust, the Pod needs to update the CA store via a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
+
+=== Running Endpoint Security integration
+Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
