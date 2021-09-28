@@ -106,7 +106,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 			echo "Empty dir {{.ContainerMountPath}}"
 		else
 			echo "Copying {{.ContainerMountPath}}/* to {{.InitContainerMountPath}}/"
-			cp -av {{.ContainerMountPath}}/* {{.InitContainerMountPath}}/
+			yes | cp -avf {{.ContainerMountPath}}/* {{.InitContainerMountPath}}/
 		fi
 	{{end}}
 	echo "Files copy duration: $(duration $mv_start) sec."
