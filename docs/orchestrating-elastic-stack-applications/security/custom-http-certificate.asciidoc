@@ -55,3 +55,64 @@ spec:
     organizations:
       - quickstart
 ----
+
+
+Here is another example to issue multiple certificates from the same self-signed CA:
+
+[source,yaml]
+----
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+spec:
+  isCA: true
+  commonName: selfsigned-ca
+  secretName: root-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    kind: ClusterIssuer
+    name: selfsigned-issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: ca-issuer
+spec:
+  ca:
+    secretName: root-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: quickstart-es-cert
+spec:
+  isCA: false
+  dnsNames:
+    - quickstart-es-http
+    - quickstart-es-http.default.svc
+    - quickstart-es-http.default.svc.cluster.local
+  subject:
+    organizations:
+      - quickstart
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  issuerRef:
+    kind: Issuer
+    name: ca-issuer
+  secretName: quickstart-es-cert
+  subject:
+    organizations:
+      - quickstart
+----
