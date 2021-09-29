@@ -130,6 +130,9 @@ spec:
     kind: ClusterIssuer
     name: self-signing-issuer
   secretName: elastic-webhook-server-cert
+  subject:
+    organizations:
+      - example
 ----
 
 - Annotate the `ValidatingWebhookConfiguration` to inject the CA bundle:

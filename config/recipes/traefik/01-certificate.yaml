@@ -15,3 +15,6 @@ spec:
   issuerRef:
     name: selfsigning-issuer
     kind: ClusterIssuer
+  subject:
+    organizations:
+      - hulk

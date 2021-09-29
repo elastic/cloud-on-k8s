@@ -14,6 +14,9 @@ spec:
   issuerRef:
     name: selfsigning-issuer
     kind: ClusterIssuer
+  subject:
+    organizations:
+      - ekmnt
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -30,3 +33,6 @@ spec:
   issuerRef:
     name: selfsigning-issuer
     kind: ClusterIssuer
+  subject:
+    organizations:
+      - ekmnt

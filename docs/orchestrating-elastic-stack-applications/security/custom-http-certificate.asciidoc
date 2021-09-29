@@ -51,4 +51,7 @@ spec:
     kind: Issuer
     name: selfsigned-issuer
   secretName: quickstart-es-cert
+  subject:
+    organizations:
+      - quickstart
 ----
