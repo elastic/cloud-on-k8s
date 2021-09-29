@@ -30,7 +30,7 @@ This example illustrates how to issue a self-signed certificate for the <<{p}-de
 [source,yaml]
 ----
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: selfsigned-issuer

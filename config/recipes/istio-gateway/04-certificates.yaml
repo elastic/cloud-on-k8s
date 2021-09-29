@@ -1,5 +1,5 @@
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: ekmnt-elasticsearch-cert
@@ -15,7 +15,7 @@ spec:
     name: selfsigning-issuer
     kind: ClusterIssuer
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: ekmnt-kibana-cert
