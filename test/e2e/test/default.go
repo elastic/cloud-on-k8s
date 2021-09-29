@@ -18,7 +18,7 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 	}
 
 	if !Ctx().OcpCluster {
-		defaultUserID := int64(123456) // arbitrary user ID
+		defaultUserID := int64(12345) // arbitrary user ID
 		// Stack images expected to run with the user ID 1000 or 0 before 7.9.0 for APM and Beats (https://github.com/elastic/beats/issues/18871)
 		// and 7.11.0 for Enterprise Search (https://github.com/elastic/enterprise-search-team/issues/285)
 		stackVersion := version.MustParse(Ctx().ElasticStackVersion)
