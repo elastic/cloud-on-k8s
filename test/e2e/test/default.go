@@ -38,8 +38,12 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 // with special permissions is created by APM test's builder
 // so that this can work.
 func APMDefaultSecurityContext() *corev1.PodSecurityContext {
-	defaultUserID := int64(1000)
-
+	defaultUserID := int64(12345) // arbitrary user ID
+	// APM image expected to run with the user ID 1000 or 0 before 7.9.0 (https://github.com/elastic/beats/issues/18871)
+	stackVersion := version.MustParse(Ctx().ElasticStackVersion)
+	if stackVersion.LT(version.MustParse("7.9.0")) {
+		defaultUserID = int64(1000)
+	}
 	return &corev1.PodSecurityContext{
 		RunAsNonRoot: BoolPtr(true),
 		RunAsUser:    &defaultUserID,
