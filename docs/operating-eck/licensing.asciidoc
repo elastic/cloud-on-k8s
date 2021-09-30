@@ -48,9 +48,9 @@ At the end of the trial period, the Platinum and Enterprise features operate in 
 [float]
 [id="{p}-add-license"]
 == Add a license
-If you have a valid Enterprise subscription or a trial license extension, you will receive a license as a JSON file.
+If you have a valid Enterprise subscription or a trial license extension, you will receive a license as a JSON file. The JSON file contains the cluster-level Enterprise licenses which enables ECK features, as well Platinum Stack licenses for recent and older Elasticsearch versions.
 
-NOTE: ECK will only accept Enterprise licenses. You can not apply a single Platinum or Gold cluster license to ECK.
+NOTE: After you install a license into ECK, all the Elastic Stack applications you manage with ECK have Platinum and Enterprise features enabled. Additionally, the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API reports that individual Elasticsearch clusters are running under a Platinum license, and the command `kubectl -n elastic-system get configmap elastic-licensing -o yaml` returns a JSON document that, among other things, contains the current license level of the ECK operator. Applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
 
 To add the license to your ECK installation, create a Kubernetes secret of the following form:
 
@@ -77,8 +77,6 @@ You can easily create this secret using `kubectl` built-in support for secrets. 
 kubectl create secret generic eck-license --from-file=my-license-file.json -n elastic-system
 kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elastic-system
 ----
-
-NOTE: After you install a license into ECK, all the Elastic stack applications you manage with ECK will have all Platinum and Enterprise features enabled. Applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
 
 [float]
 [id="{p}-update-license"]
