@@ -106,7 +106,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 			echo "Empty dir {{.ContainerMountPath}}"
 		else
 			echo "Copying {{.ContainerMountPath}}/* to {{.InitContainerMountPath}}/"
-			# we want the init container to be idempotent and not fail when executed more than once,so cp command use -f args.
+			# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
 			yes | cp -avf {{.ContainerMountPath}}/* {{.InitContainerMountPath}}/ 
 		fi
 	{{end}}
