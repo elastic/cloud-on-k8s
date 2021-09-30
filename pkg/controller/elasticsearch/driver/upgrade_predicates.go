@@ -24,6 +24,7 @@ type PredicateContext struct {
 	shardLister            client.ShardLister
 	masterUpdateInProgress bool
 	ctx                    context.Context
+	numberOfPods           int
 }
 
 // Predicate is a function that indicates if a Pod can be deleted (or not).
@@ -59,6 +60,7 @@ func NewPredicateContext(
 	podsToUpgrade []corev1.Pod,
 	masterNodesNames []string,
 	actualMasters []corev1.Pod,
+	numberOfPods int,
 ) PredicateContext {
 	return PredicateContext{
 		es:               es,
@@ -69,6 +71,7 @@ func NewPredicateContext(
 		esState:          state,
 		shardLister:      shardLister,
 		ctx:              ctx,
+		numberOfPods:     numberOfPods,
 	}
 }
 
@@ -198,6 +201,10 @@ var predicates = [...]Predicate{
 				// This predicate is only relevant on healthy node if cluster health is yellow
 				return true, nil
 			}
+			if context.numberOfPods == 1 {
+				// If the cluster is a single node cluster, allow restart even if there is no version difference
+				return true, nil
+			}
 			version := candidate.Labels[label.VersionLabelName]
 			if version == context.es.Spec.Version {
 				// Restart in yellow state is only allowed during version upgrade
@@ -218,6 +225,15 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
+			health, err := context.esState.Health()
+			if err != nil {
+				return false, err
+			}
+			_, healthyNode := context.healthyPods[candidate.Name]
+			if context.numberOfPods == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
+				// If the cluster is a healthy single node cluster, replicas can not be started, allow the upgrade
+				return true, nil
+			}
 			allShards, err := context.shardLister.GetShards(context.ctx)
 			if err != nil {
 				return false, err
