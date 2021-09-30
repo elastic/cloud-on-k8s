@@ -19,7 +19,7 @@ import (
 
 // Builder to create APM Servers
 type Builder struct {
-	ApmServer      apmv1.ApmServer
+	ApmServer apmv1.ApmServer
 }
 
 var _ test.Builder = Builder{}
