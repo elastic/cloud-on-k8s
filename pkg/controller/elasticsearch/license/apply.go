@@ -37,11 +37,13 @@ func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
-) error {
+) (bool, error) {
 	// get the current license
 	current, err := updater.GetLicense(ctx)
 	if err != nil {
-		return fmt.Errorf("while getting current license level %w", err)
+		// do not requeue on 4xx, except 404 which may happen if the master node is generating a new cluster state
+		requeue := !esclient.Is4xx(err) || esclient.IsNotFound(err)
+		return requeue, fmt.Errorf("while getting current license level %w", err)
 	}
 
 	// get the expected license
@@ -58,14 +60,14 @@ func applyLinkedLicense(
 		&license,
 	)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+		return true, err
 	}
 	if err != nil && apierrors.IsNotFound(err) {
 		// no license expected, let's look at the current cluster license
 		switch {
 		case isBasic(current):
 			// nothing to do
-			return nil
+			return false, nil
 		case isTrial(current):
 			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
 			// This can be the case if:
@@ -75,24 +77,24 @@ func applyLinkedLicense(
 			// we tolerate it to avoid a bad user experience because trials can only be started once.
 			log.V(1).Info("Preserving existing stack-level trial license",
 				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
-			return nil
+			return false, nil
 		default:
 			// revert the current license to basic
-			return startBasic(ctx, updater)
+			return true, startBasic(ctx, updater)
 		}
 	}
 
 	bytes, err := commonlicense.FetchLicenseData(license.Data)
 	if err != nil {
-		return err
+		return true, err
 	}
 
 	var desired esclient.License
 	err = json.Unmarshal(bytes, &desired)
 	if err != nil {
-		return pkgerrors.Wrap(err, "no valid license found in license secret")
+		return true, pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updateLicense(ctx, esCluster, updater, current, desired)
+	return true, updateLicense(ctx, esCluster, updater, current, desired)
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {

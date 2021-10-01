@@ -176,6 +176,15 @@ func IsConflict(err error) bool {
 	return isHTTPError(err, http.StatusConflict)
 }
 
+func Is4xx(err error) bool {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		code := apiErr.response.StatusCode
+		return code >= 400 && code <= 499
+	}
+	return false
+}
+
 func isHTTPError(err error, statusCode int) bool {
 	apiErr := new(APIError)
 	if errors.As(err, &apiErr) {

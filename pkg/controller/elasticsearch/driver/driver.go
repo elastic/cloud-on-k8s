@@ -196,19 +196,24 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	if esReachable {
 		// reconcile the license
-		if err := license.Reconcile(ctx, d.Client, d.ES, esClient); err != nil {
-			d.ReconcileState.AddEvent(
-				corev1.EventTypeWarning,
-				events.EventReasonUnexpected,
-				fmt.Sprintf("Could not update cluster license: %s", err.Error()),
-			)
-			log.Info("Could not update cluster license", "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			// don't error out the entire reconciliation, move on with next steps and retry later
+		requeue, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
+		if err != nil {
+			msg := "Could not reconcile cluster license"
+			if !requeue {
+				log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+				// an error has been detected to get the license, let's update the phase to "invalid" and stop the reconciliation
+				d.ReconcileState.UpdateElasticsearchInvalid(err)
+				return results.WithError(err)
+			}
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		}
+		if requeue {
 			results.WithResult(defaultRequeue)
 		}
 
 		// reconcile remote clusters
-		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
+		requeue, err = remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
