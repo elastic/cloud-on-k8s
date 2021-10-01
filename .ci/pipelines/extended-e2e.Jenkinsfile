@@ -17,8 +17,9 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        // read safely TAG_NAME, defined for a release build and not for a nightly build
-        TAG_NAME = sh(script: 'echo -n $TAG_NAME', returnStdout: true)
+        // TAG_NAME must always be empty this is never a release build, we use this in setenvconfig to decided
+        // between dev and release build
+        TAG_NAME = ""
     }
 
     stages {
@@ -48,24 +49,6 @@ pipeline {
                     steps {
                         script {
                             sh 'make -C .ci yaml-upload'
-                        }
-                    }
-                }
-                stage('Notify successful release build') {
-                    when {
-                        buildingTag()
-                    }
-                    steps {
-                        script {
-
-                            slackSend(
-                                channel: '#cloud-k8s',
-                                color: 'good',
-                                message: "`${TAG_NAME}` was released \r\n" +
-                                    "Manifests were uploaded to https://download.elastic.co/downloads/eck/${TAG_NAME}\r\n" +
-                                    "Congratulations!",
-                                tokenCredentialId: 'cloud-ci-slack-integration-token'
-                            )
                         }
                     }
                 }
