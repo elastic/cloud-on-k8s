@@ -1,0 +1,17 @@
+---
+- job:
+    description: Run extended ECK e2e tests over the weekend
+    name: cloud-on-k8s-weekend-build
+    project-type: pipeline
+    triggers:
+      - timed: '0 0 * * 6'
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - master
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+      # Jenkinsfile shared with the release build job
+      script-path: .ci/pipelines/extended-e2e.Jenkinsfile
+      lightweight-checkout: true

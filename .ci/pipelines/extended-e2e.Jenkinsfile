@@ -22,7 +22,7 @@ pipeline {
     }
 
     stages {
-        stage('Nightly or release build') {
+        stage('Extended e2e builds') {
             stages {
                 stage('Run checks') {
                     steps {
@@ -78,63 +78,22 @@ pipeline {
             script {
                 def operatorImage = sh(returnStdout: true, script: 'make print-operator-image').trim()
 
-                build job: 'cloud-on-k8s-e2e-tests-stack-versions',
+
+                build job: 'cloud-on-k8s-e2e-tests-ocp-all-but-latest',
                     parameters: [
                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
                         string(name: 'branch_specifier', value: GIT_COMMIT)
                     ],
                     wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-gke-k8s-versions',
+                build job: 'cloud-on-k8s-e2e-tests-tanzu',
                     parameters: [
                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
                         string(name: 'branch_specifier', value: GIT_COMMIT)
                     ],
                     wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-aks',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-kind-k8s-versions',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
-
-                // test the latest version of OCP on every build
-                build job: 'cloud-on-k8s-e2e-tests-ocp',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'OCP_VERSION', value: "4.8.10"),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
-
-                build job: 'cloud-on-k8s-e2e-tests-eks',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
-
-                build job: 'cloud-on-k8s-e2e-tests-eks-arm',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
-
-                build job: 'cloud-on-k8s-e2e-tests-resilience',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
             }
         }
         unsuccessful {
