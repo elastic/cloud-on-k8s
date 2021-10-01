@@ -40,7 +40,7 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 	}
 
-	runBeatRecipe(t, "system-integration.yaml", customize)
+	runAgentRecipe(t, "system-integration.yaml", customize)
 }
 
 func TestKubernetesIntegrationRecipe(t *testing.T) {
@@ -62,7 +62,29 @@ func TestKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.volume", "k8s"))
 	}
 
-	runBeatRecipe(t, "kubernetes-integration.yaml", customize)
+	runAgentRecipe(t, "kubernetes-integration.yaml", customize)
+}
+
+func TestMultiOutputRecipe(t *testing.T) {
+	customize := func(builder agent.Builder) agent.Builder {
+		return builder.
+			WithRoles(agent.PSPClusterRoleName).
+			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
+			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
+			WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring").
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process_summary", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
+	}
+
+	runAgentRecipe(t, "multi-output.yaml", customize)
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
@@ -106,7 +128,7 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 	}
 
-	runBeatRecipe(t, "fleet-kubernetes-integration.yaml", customize)
+	runAgentRecipe(t, "fleet-kubernetes-integration.yaml", customize)
 }
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
@@ -135,7 +157,7 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.NoEvent("/_search?q=message:" + notLoggingPod.Logged))
 	}
 
-	runBeatRecipe(t, "fleet-custom-logs-integration.yaml", customize, &loggingPod.Pod, &notLoggingPod.Pod)
+	runAgentRecipe(t, "fleet-custom-logs-integration.yaml", customize, &loggingPod.Pod, &notLoggingPod.Pod)
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
@@ -158,10 +180,10 @@ func TestFleetAPMIntegrationRecipe(t *testing.T) {
 		//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 	}
 
-	runBeatRecipe(t, "fleet-apm-integration.yaml", customize)
+	runAgentRecipe(t, "fleet-apm-integration.yaml", customize)
 }
 
-func runBeatRecipe(
+func runAgentRecipe(
 	t *testing.T,
 	fileName string,
 	customize func(builder agent.Builder) agent.Builder,
