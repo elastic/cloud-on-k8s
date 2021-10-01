@@ -42,8 +42,8 @@ func applyLinkedLicense(
 	current, err := updater.GetLicense(ctx)
 	if err != nil {
 		// do not requeue on 4xx, except 404 which may happen if the master node is generating a new cluster state
-		requeue := !esclient.Is4xx(err) || esclient.IsNotFound(err)
-		return requeue, fmt.Errorf("while getting current license level %w", err)
+		requeueOnErr := !esclient.Is4xx(err) || esclient.IsNotFound(err)
+		return requeueOnErr, fmt.Errorf("while getting current license level %w", err)
 	}
 
 	// get the expected license
