@@ -56,8 +56,7 @@ func newBuilder(name, randSuffix string) Builder {
 				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
-						ServiceAccountName: name,
-						SecurityContext:    test.DefaultSecurityContext(),
+						SecurityContext: test.DefaultSecurityContext(),
 					},
 				},
 			},
