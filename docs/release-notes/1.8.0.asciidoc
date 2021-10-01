@@ -12,7 +12,7 @@
 
 The operator does not rely on the `$PRE_STOP_MAX_WAIT_SECONDS` environment variable to control <<{p}-prestop,Elasticsearch Pods PreStop hook>> anymore. Use `$PRE_STOP_ADDITIONAL_WAIT_SECONDS` instead (defaults to 50 seconds).
 
-* Note the next minor ECK version (1.9.0) will drop support for Openshift 3.11.
+* Note ECK will drop support for OpenShift 3.11 starting ECK version 2.0.
 
 [[enhancement-1.8.0]]
 [float]
