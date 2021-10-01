@@ -233,7 +233,9 @@ func getResizeableStorageClass(k8sClient k8s.Client) (string, error) {
 		return "", err
 	}
 	for _, sc := range scs.Items {
-		if sc.AllowVolumeExpansion != nil && *sc.AllowVolumeExpansion {
+		// TODO https://github.com/Azure/AKS/issues/1477 azure-disk does not support resizing of "attached" disks, despite
+		// advertising it allows volume expansion. Remove the azure special case once this issue is resolved.
+		if sc.AllowVolumeExpansion != nil && *sc.AllowVolumeExpansion && sc.Provisioner != "kubernetes.io/azure-disk" {
 			return sc.Name, nil
 		}
 	}
