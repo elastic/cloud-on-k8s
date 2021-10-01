@@ -194,7 +194,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if esReachable {
+	if esReachable { //nolint:nestif
 		// reconcile the license
 		requeueOnErr, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
 		if err != nil {

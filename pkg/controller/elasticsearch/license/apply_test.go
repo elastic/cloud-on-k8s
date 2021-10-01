@@ -125,14 +125,17 @@ func Test_applyLinkedLicense(t *testing.T) {
 	tests := []struct {
 		name             string
 		initialObjs      []runtime.Object
-		currentLicense   esclient.License
 		errors           map[client.ObjectKey]error
 		wantErr          bool
+		wantRequeueOnErr bool
+		updater          esclient.LicenseClient
 		clientAssertions func(updater fakeLicenseUpdater)
 	}{
 		{
-			name:    "happy path",
-			wantErr: false,
+			name:             "happy path",
+			wantErr:          false,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{},
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -149,32 +152,37 @@ func Test_applyLinkedLicense(t *testing.T) {
 			},
 		},
 		{
-			name:           "no error: no license found but stack has an enterprise license",
-			wantErr:        false,
-			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeEnterprise)},
+			name:             "no error: no license found but stack has an enterprise license",
+			wantErr:          false,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{license: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeEnterprise)}},
 			clientAssertions: func(updater fakeLicenseUpdater) {
 				require.True(t, updater.startBasicCalled, "should call start_basic to remove the license")
 			},
 		},
 		{
-			name:           "no error: no license found, stack already in basic license",
-			wantErr:        false,
-			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)},
+			name:             "no error: no license found, stack already in basic license",
+			wantErr:          false,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{license: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)}},
 			clientAssertions: func(updater fakeLicenseUpdater) {
 				require.False(t, updater.startBasicCalled, "should not call start_basic if already basic")
 			},
 		},
 		{
-			name:           "no error: no license found but tolerate a cluster level trial",
-			wantErr:        false,
-			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeTrial)},
+			name:             "no error: no license found but tolerate a cluster level trial",
+			wantErr:          false,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{license: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeTrial)}},
 			clientAssertions: func(updater fakeLicenseUpdater) {
 				require.False(t, updater.startBasicCalled, "should not call start_basic")
 			},
 		},
 		{
-			name:    "error: empty license",
-			wantErr: true,
+			name:             "error: empty license",
+			wantErr:          true,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{},
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -185,8 +193,10 @@ func Test_applyLinkedLicense(t *testing.T) {
 			},
 		},
 		{
-			name:    "error: invalid license json",
-			wantErr: true,
+			name:             "error: invalid license json",
+			wantErr:          true,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{},
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -200,8 +210,46 @@ func Test_applyLinkedLicense(t *testing.T) {
 			},
 		},
 		{
-			name:    "error: request error",
-			wantErr: true,
+			name:             "error: request error",
+			wantErr:          true,
+			wantRequeueOnErr: true,
+			updater:          &fakeLicenseUpdater{},
+			errors: map[client.ObjectKey]error{
+				types.NamespacedName{
+					Namespace: clusterName.Namespace,
+					Name:      esv1.LicenseSecretName("test"),
+				}: errors.New("boom"),
+			},
+		},
+		{
+			name:             "do not requeue on error 400 on get license",
+			wantErr:          true,
+			wantRequeueOnErr: false,
+			updater:          &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 400},
+			errors: map[client.ObjectKey]error{
+				types.NamespacedName{
+					Namespace: clusterName.Namespace,
+					Name:      esv1.LicenseSecretName("test"),
+				}: errors.New("boom"),
+			},
+		},
+		{
+			name:             "requeue on error 404 on get license",
+			wantErr:          true,
+			wantRequeueOnErr: true,
+			updater:          &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 404},
+			errors: map[client.ObjectKey]error{
+				types.NamespacedName{
+					Namespace: clusterName.Namespace,
+					Name:      esv1.LicenseSecretName("test"),
+				}: errors.New("boom"),
+			},
+		},
+		{
+			name:             "requeue on error 500 on get license",
+			wantErr:          true,
+			wantRequeueOnErr: true,
+			updater:          &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 500},
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
@@ -216,20 +264,35 @@ func Test_applyLinkedLicense(t *testing.T) {
 				Client: k8s.NewFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
-			updater := fakeLicenseUpdater{license: tt.currentLicense}
-			if err := applyLinkedLicense(
+			requeueOnErr, err := applyLinkedLicense(
 				context.Background(),
 				c,
 				clusterName,
-				&updater,
-			); (err != nil) != tt.wantErr {
+				tt.updater,
+			)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			if requeueOnErr != tt.wantRequeueOnErr {
+				t.Errorf("applyLinkedLicense() requeueOnErr = %v, wantRequeueOnErr %v", requeueOnErr, tt.wantRequeueOnErr)
+			}
 			if tt.clientAssertions != nil {
-				tt.clientAssertions(updater)
+				if flu, ok := tt.updater.(*fakeLicenseUpdater); ok {
+					tt.clientAssertions(*flu)
+				}
 			}
 		})
 	}
+}
+
+type fakeInvalidLicenseUpdater struct {
+	*fakeLicenseUpdater
+	statusCodeOnGetLicense int
+}
+
+func (f *fakeInvalidLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, error) {
+	apiErr := esclient.FakeAPIError(f.statusCodeOnGetLicense)
+	return esclient.License{}, &apiErr
 }
 
 type fakeLicenseUpdater struct {

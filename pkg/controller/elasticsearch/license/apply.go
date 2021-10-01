@@ -38,11 +38,12 @@ func applyLinkedLicense(
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
 ) (bool, error) {
+	requeueOnErr := true
 	// get the current license
 	current, err := updater.GetLicense(ctx)
 	if err != nil {
 		// do not requeue on 4xx, except 404 which may happen if the master node is generating a new cluster state
-		requeueOnErr := !esclient.Is4xx(err) || esclient.IsNotFound(err)
+		requeueOnErr = !esclient.Is4xx(err) || esclient.IsNotFound(err)
 		return requeueOnErr, fmt.Errorf("while getting current license level %w", err)
 	}
 
@@ -67,7 +68,7 @@ func applyLinkedLicense(
 		switch {
 		case isBasic(current):
 			// nothing to do
-			return false, nil
+			return requeueOnErr, nil
 		case isTrial(current):
 			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
 			// This can be the case if:
@@ -77,24 +78,24 @@ func applyLinkedLicense(
 			// we tolerate it to avoid a bad user experience because trials can only be started once.
 			log.V(1).Info("Preserving existing stack-level trial license",
 				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
-			return false, nil
+			return requeueOnErr, nil
 		default:
 			// revert the current license to basic
-			return true, startBasic(ctx, updater)
+			return requeueOnErr, startBasic(ctx, updater)
 		}
 	}
 
 	bytes, err := commonlicense.FetchLicenseData(license.Data)
 	if err != nil {
-		return true, err
+		return requeueOnErr, err
 	}
 
 	var desired esclient.License
 	err = json.Unmarshal(bytes, &desired)
 	if err != nil {
-		return true, pkgerrors.Wrap(err, "no valid license found in license secret")
+		return requeueOnErr, pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return true, updateLicense(ctx, esCluster, updater, current, desired)
+	return requeueOnErr, updateLicense(ctx, esCluster, updater, current, desired)
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {

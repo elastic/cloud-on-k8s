@@ -143,6 +143,14 @@ type APIError struct {
 	response *http.Response
 }
 
+func FakeAPIError(statusCode int) APIError {
+	return APIError{
+		response: &http.Response{
+			StatusCode: statusCode,
+		},
+	}
+}
+
 // Error() implements the error interface.
 func (e *APIError) Error() string {
 	defer e.response.Body.Close()
