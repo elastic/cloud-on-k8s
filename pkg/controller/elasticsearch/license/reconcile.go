@@ -19,6 +19,24 @@ func Reconcile(
 	esCluster esv1.Elasticsearch,
 	clusterClient esclient.Client,
 ) (bool, error) {
+	currentLicense, unsupportedElasticsearch, err := checkElasticsearchLicense(ctx, clusterClient)
+	if err != nil {
+		return unsupportedElasticsearch, err
+	}
+
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
-	return applyLinkedLicense(ctx, c, clusterName, clusterClient)
+	return true, applyLinkedLicense(ctx, c, clusterName, clusterClient, currentLicense)
+}
+
+// checkElasticsearchLicense checks that Elasticsearch is licensed, which ensures that the operator is communicating
+// with a supported version of Elasticsearch
+func checkElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, bool, error) {
+	currentLicense, err := clusterClient.GetLicense(ctx)
+	if err != nil {
+		// 4xx is not supported, except 404 which may happen if the master node is generating a new cluster state
+		unsupportedElasticsearch := esclient.Is4xx(err) && !esclient.IsNotFound(err)
+		return esclient.License{}, unsupportedElasticsearch, err
+	}
+
+	return currentLicense, false, nil
 }

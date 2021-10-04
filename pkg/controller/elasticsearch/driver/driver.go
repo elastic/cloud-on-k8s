@@ -8,8 +8,10 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -195,16 +197,18 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	if esReachable { //nolint:nestif
-		// reconcile the license
-		requeueOnErr, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
+		// reconcile the Elasticsearch license
+		unsupportedElasticsearch, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
 		if err != nil {
-			msg := "Could not reconcile cluster license"
-			if !requeueOnErr {
+			if unsupportedElasticsearch {
+				msg := "Unsupported Elasticsearch"
+				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 				log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-				// an error has been detected to get the license, let's update the phase to "invalid" and stop the reconciliation
-				d.ReconcileState.UpdateElasticsearchInvalid(err)
-				return results.WithError(err)
+				// unsupported Elasticsearch, let's update the phase to "invalid" and stop the reconciliation
+				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
+				return results.WithError(errors.Wrap(err, strings.ToLower(msg)))
 			}
+			msg := "Could not reconcile cluster license"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			results.WithResult(defaultRequeue)

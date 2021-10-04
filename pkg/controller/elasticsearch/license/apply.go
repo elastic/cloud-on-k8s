@@ -37,23 +37,15 @@ func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
-) (bool, error) {
-	requeueOnErr := true
-	// get the current license
-	current, err := updater.GetLicense(ctx)
-	if err != nil {
-		// do not requeue on 4xx, except 404 which may happen if the master node is generating a new cluster state
-		requeueOnErr = !esclient.Is4xx(err) || esclient.IsNotFound(err)
-		return requeueOnErr, fmt.Errorf("while getting current license level %w", err)
-	}
-
+	currentLicense esclient.License,
+) error {
 	// get the expected license
 	// the underlying assumption here is that either a user or a
 	// license controller has created a cluster license in the
 	// namespace of this cluster following the cluster-license naming
 	// convention
 	var license corev1.Secret
-	err = c.Get(context.Background(),
+	err := c.Get(context.Background(),
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
 			Name:      esv1.LicenseSecretName(esCluster.Name),
@@ -61,15 +53,15 @@ func applyLinkedLicense(
 		&license,
 	)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return true, err
+		return err
 	}
 	if err != nil && apierrors.IsNotFound(err) {
 		// no license expected, let's look at the current cluster license
 		switch {
-		case isBasic(current):
+		case isBasic(currentLicense):
 			// nothing to do
-			return requeueOnErr, nil
-		case isTrial(current):
+			return nil
+		case isTrial(currentLicense):
 			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
 			// This can be the case if:
 			// - an ECK trial was started previously, then stopped (secret removed)
@@ -78,24 +70,24 @@ func applyLinkedLicense(
 			// we tolerate it to avoid a bad user experience because trials can only be started once.
 			log.V(1).Info("Preserving existing stack-level trial license",
 				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
-			return requeueOnErr, nil
+			return nil
 		default:
 			// revert the current license to basic
-			return requeueOnErr, startBasic(ctx, updater)
+			return startBasic(ctx, updater)
 		}
 	}
 
 	bytes, err := commonlicense.FetchLicenseData(license.Data)
 	if err != nil {
-		return requeueOnErr, err
+		return err
 	}
 
 	var desired esclient.License
 	err = json.Unmarshal(bytes, &desired)
 	if err != nil {
-		return requeueOnErr, pkgerrors.Wrap(err, "no valid license found in license secret")
+		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return requeueOnErr, updateLicense(ctx, esCluster, updater, current, desired)
+	return updateLicense(ctx, esCluster, updater, currentLicense, desired)
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {
