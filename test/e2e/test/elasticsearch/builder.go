@@ -199,39 +199,54 @@ func (b Builder) WithNoESTopology() Builder {
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
+	cfg := CreateRolesConfig(
+		b.Elasticsearch.Spec.Version,
+		[]esv1.NodeRole{esv1.MasterRole},
+		map[string]bool{
+			esv1.NodeData: false,
+		})
+
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "master",
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{
-				esv1.NodeData: "false",
-			},
+			Data: cfg,
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
+	cfg := CreateRolesConfig(
+		b.Elasticsearch.Spec.Version,
+		[]esv1.NodeRole{esv1.DataRole},
+		map[string]bool{
+			esv1.NodeMaster: false,
+		})
+
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "data",
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{
-				esv1.NodeMaster: "false",
-			},
+			Data: cfg,
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
+	cfg := CreateRolesConfig(
+		b.Elasticsearch.Spec.Version,
+		[]esv1.NodeRole{esv1.DataRole},
+		map[string]bool{
+			esv1.NodeMaster: false,
+		})
+
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  name,
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{
-				esv1.NodeMaster: "false",
-			},
+			Data: cfg,
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
@@ -513,4 +528,19 @@ func (b Builder) TriggersRollingUpgrade() bool {
 		}
 	}
 	return false
+}
+
+func CreateRolesConfig(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]interface{} {
+	v := version.MustParse(ver)
+
+	cfg := map[string]interface{}{}
+	if v.GTE(version.From(7, 9, 0)) {
+		cfg[esv1.NodeRoles] = post78roles
+	} else {
+		for k, v := range pre79roles {
+			cfg[k] = v
+		}
+	}
+
+	return cfg
 }

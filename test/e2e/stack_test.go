@@ -65,7 +65,8 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	apmUpdated := apm.WithVersion(updatedVersion)
 	ent := enterprisesearch.NewBuilder("ent").
 		WithNodeCount(1).
-		WithVersion(initialVersion).
+		WithVersion(initialVersion). // pre 8.x doesn't require any config, but we change the version after calling
+		WithoutConfig().             // NewBuilder which relies on the version from test.Ctx(), so removing config here
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	entUpdated := ent.WithVersion(updatedVersion)

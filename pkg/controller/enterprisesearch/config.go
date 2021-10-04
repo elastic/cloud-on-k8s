@@ -268,18 +268,15 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.Cano
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	cfg := settings.MustCanonicalConfig(map[string]string{
-		"ent_search.auth.source": "elasticsearch-native",
-	})
 	ver, err := version.Parse(ent.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
-	// origin of authenticated ent users setting changed starting 8.x
-	if ver.Major >= uint64(8) {
-		cfg = settings.MustCanonicalConfig(map[string]interface{}{
-			"ent_search.auth.native1.source": "elasticsearch-native",
-			"ent_search.auth.native1.order":  -100,
+
+	cfg := settings.NewCanonicalConfig()
+	if ver.LT(version.MinFrom(8, 0, 0)) {
+		cfg = settings.MustCanonicalConfig(map[string]string{
+			"ent_search.auth.source": "elasticsearch-native",
 		})
 	}
 

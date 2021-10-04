@@ -431,7 +431,7 @@ func TestCustomTransportCA(t *testing.T) {
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-http-cert-san").
-		WithESMasterNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	var caCert []byte
 	var podIP string

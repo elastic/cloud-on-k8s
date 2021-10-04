@@ -5,6 +5,7 @@
 package version
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -295,6 +296,32 @@ func TestMinMaxVersion_WithMin(t *testing.T) {
 			if got := mnv.WithMin(tt.args.min); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("WithMin() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestMinFrom(t *testing.T) {
+	for _, tt := range []struct {
+		name                string
+		major, minor, patch uint64
+	}{
+		{
+			name:  "8.0.0",
+			major: 8,
+			minor: 0,
+			patch: 0,
+		},
+		{
+			name:  "7.99.99",
+			major: 7,
+			minor: 99,
+			patch: 99,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			gotVer := MinFrom(tt.major, tt.minor, tt.patch)
+			require.True(t, gotVer.LT(From(int(tt.major), int(tt.minor), int(tt.patch))))
+			require.True(t, gotVer.EQ(MustParse(fmt.Sprintf("%d.%d.%d-1", tt.major, tt.minor, tt.patch))))
 		})
 	}
 }
