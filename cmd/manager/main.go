@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -580,12 +581,31 @@ func startOperator(ctx context.Context) error {
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	if err := mgr.Start(ctx); err != nil {
-		log.Error(err, "Failed to start the controller manager")
-		return err
-	}
+	exitOnErr := make(chan error)
 
-	return nil
+	// start the manager
+	go func() {
+		if err := mgr.Start(ctx); err != nil {
+			log.Error(err, "Failed to start the controller manager")
+			exitOnErr <- err
+		}
+	}()
+
+	// check operator license key
+	go func() {
+		mgr.GetCache().WaitForCacheSync(ctx)
+
+		lc := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
+		licenseType, err := lc.ValidOperatorLicenseKey()
+		if err != nil {
+			log.Error(err, "Failed to validate operator license key")
+			exitOnErr <- err
+		} else {
+			log.Info("Operator license key validated", "license_type", licenseType)
+		}
+	}()
+
+	return <-exitOnErr
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
