@@ -164,6 +164,11 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("%s: %s", e.response.Status, reason)
 }
 
+// IsUnauthorized checks whether the error was an HTTP 401 error.
+func IsUnauthorized(err error) bool {
+	return isHTTPError(err, http.StatusUnauthorized)
+}
+
 // IsForbidden checks whether the error was an HTTP 403 error.
 func IsForbidden(err error) bool {
 	return isHTTPError(err, http.StatusForbidden)

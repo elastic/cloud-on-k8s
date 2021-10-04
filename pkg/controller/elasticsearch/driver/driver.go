@@ -198,10 +198,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	if esReachable { //nolint:nestif
 		// reconcile the Elasticsearch license
-		unsupportedElasticsearch, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
+		supportedDistribution, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
 		if err != nil {
-			if unsupportedElasticsearch {
-				msg := "Unsupported Elasticsearch"
+			if !supportedDistribution {
+				msg := "Unsupported Elasticsearch distribution"
 				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 				log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 				// unsupported Elasticsearch, let's update the phase to "invalid" and stop the reconciliation

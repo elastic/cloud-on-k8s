@@ -235,47 +235,59 @@ func Test_applyLinkedLicense(t *testing.T) {
 
 func Test_checkEsLicense(t *testing.T) {
 	tests := []struct {
-		name        string
-		wantErr     bool
-		unsupported bool
-		updater     esclient.LicenseClient
+		name      string
+		wantErr   bool
+		supported bool
+		updater   esclient.LicenseClient
 	}{
 		{
-			name:        "happy path",
-			wantErr:     false,
-			unsupported: false,
+			name:      "happy path",
+			wantErr:   false,
+			supported: true,
 			updater: &fakeInvalidLicenseUpdater{
 				fakeLicenseUpdater:     &fakeLicenseUpdater{license: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)}},
 				statusCodeOnGetLicense: 200,
 			},
 		},
 		{
-			name:        "error: 400 on get license, unsupported",
-			wantErr:     true,
-			unsupported: true,
-			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 400},
+			name:      "error: 400 on get license, unsupported distribution",
+			wantErr:   true,
+			supported: false,
+			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 400},
 		},
 		{
-			name:        "error: 404 on get license, supported",
-			wantErr:     true,
-			unsupported: false,
-			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 404},
+			name:      "error: 401 on get license",
+			wantErr:   true,
+			supported: true,
+			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 401},
 		},
 		{
-			name:        "error: 500 on get license, supported",
-			wantErr:     true,
-			unsupported: false,
-			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 500},
+			name:      "error: 403 on get license",
+			wantErr:   true,
+			supported: true,
+			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 403},
+		},
+		{
+			name:      "error: 404 on get license",
+			wantErr:   true,
+			supported: true,
+			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 404},
+		},
+		{
+			name:      "error: 500 on get license",
+			wantErr:   true,
+			supported: true,
+			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 500},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, unsupported, err := checkEsLicense(context.Background(), tt.updater)
+			_, supported, err := checkElasticsearchLicense(context.Background(), tt.updater)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("checkEsLicense() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("checkElasticsearchLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if unsupported != tt.unsupported {
-				t.Errorf("checkEsLicense() unsupported = %v, unsupported %v", unsupported, tt.unsupported)
+			if supported != tt.supported {
+				t.Errorf("checkElasticsearchLicense() supported = %v, supported %v", supported, tt.supported)
 			}
 		})
 	}
