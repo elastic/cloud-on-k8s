@@ -203,8 +203,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			if !supportedDistribution {
 				msg := "Unsupported Elasticsearch distribution"
 				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-				log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-				// unsupported Elasticsearch, let's update the phase to "invalid" and stop the reconciliation
+				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
 				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
 				return results.WithError(errors.Wrap(err, strings.ToLower(msg)))
 			}
