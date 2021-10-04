@@ -19,8 +19,7 @@ import (
 
 // Builder to create APM Servers
 type Builder struct {
-	ApmServer      apmv1.ApmServer
-	ServiceAccount corev1.ServiceAccount
+	ApmServer apmv1.ApmServer
 }
 
 var _ test.Builder = Builder{}
@@ -44,15 +43,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 
-	sa := metav1.ObjectMeta{
-		Name:      name,
-		Namespace: test.Ctx().ManagedNamespace(0),
-	}
-
 	return Builder{
-		ServiceAccount: corev1.ServiceAccount{
-			ObjectMeta: sa,
-		},
 		ApmServer: apmv1.ApmServer{
 			ObjectMeta: meta,
 			Spec: apmv1.ApmServerSpec{
@@ -65,8 +56,7 @@ func newBuilder(name, randSuffix string) Builder {
 				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
-						ServiceAccountName: name,
-						SecurityContext:    test.APMDefaultSecurityContext(),
+						SecurityContext: test.DefaultSecurityContext(),
 					},
 				},
 			},
@@ -80,20 +70,16 @@ func newBuilder(name, randSuffix string) Builder {
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
-		b.ServiceAccount.ObjectMeta.Name = b.ApmServer.ObjectMeta.GetName()
-		b.ApmServer.Spec.PodTemplate.Spec.ServiceAccountName = b.ServiceAccount.GetName()
 	}
 	return b
 }
 
 func (b Builder) WithRestrictedSecurityContext() Builder {
-	b.ApmServer.Spec.PodTemplate.Spec.ServiceAccountName = b.ServiceAccount.GetName()
-	b.ApmServer.Spec.PodTemplate.Spec.SecurityContext = test.APMDefaultSecurityContext()
+	b.ApmServer.Spec.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 	return b
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {
-	b.ServiceAccount.ObjectMeta.Namespace = namespace
 	b.ApmServer.ObjectMeta.Namespace = namespace
 	return b
 }
@@ -189,7 +175,7 @@ func (b Builder) ListOptions() []client.ListOption {
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []client.Object {
-	return []client.Object{&b.ServiceAccount, &b.ApmServer}
+	return []client.Object{&b.ApmServer}
 }
 
 func (b Builder) RUMEnabled() bool {
