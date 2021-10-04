@@ -35,7 +35,7 @@ func checkElasticsearchLicense(ctx context.Context, clusterClient esclient.Licen
 	supportedDistribution := true
 	currentLicense, err := clusterClient.GetLicense(ctx)
 	if err != nil {
-		if esclient.IsUnauthorized(err) {
+		if esclient.IsUnauthorized(err) { //nolint:gocritic
 			err = errors.New("unauthorized access, unable to verify Elasticsearch license, check your security configuration")
 		} else if esclient.IsForbidden(err) {
 			err = errors.New("forbidden access, unable to verify Elasticsearch license, check your security configuration")
