@@ -77,64 +77,80 @@ pipeline {
         success {
             script {
                 def operatorImage = sh(returnStdout: true, script: 'make print-operator-image').trim()
+                if isWeekday() {
+                    build job: 'cloud-on-k8s-e2e-tests-stack-versions',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-stack-versions',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-gke-k8s-versions',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-gke-k8s-versions',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-aks',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-aks',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-kind-k8s-versions',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-kind-k8s-versions',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    // test the latest version of OCP on every build
+                    build job: 'cloud-on-k8s-e2e-tests-ocp',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'OCP_VERSION', value: "4.8.10"),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                // test the latest version of OCP on every build
-                build job: 'cloud-on-k8s-e2e-tests-ocp',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'OCP_VERSION', value: "4.8.10"),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-eks',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-eks',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-eks-arm',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
 
-                build job: 'cloud-on-k8s-e2e-tests-eks-arm',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-resilience',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
+                } else {
 
-                build job: 'cloud-on-k8s-e2e-tests-resilience',
-                    parameters: [
-                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                        string(name: 'branch_specifier', value: GIT_COMMIT)
-                    ],
-                    wait: false
+                    build job: 'cloud-on-k8s-e2e-tests-ocp-all-but-latest',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
+
+                    build job: 'cloud-on-k8s-e2e-tests-tanzu',
+                        parameters: [
+                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
+                            string(name: 'branch_specifier', value: GIT_COMMIT)
+                        ],
+                        wait: false
+                }
             }
         }
         unsuccessful {
@@ -150,3 +166,11 @@ pipeline {
         }
     }
 }
+
+def isWeekday() {
+     // %u day of week (1..7); 1 is Monday 5 is Friday
+     return sh (
+         script: "date +%u",
+         returnStdout: true
+     ) as Integer <= 5
+ }
