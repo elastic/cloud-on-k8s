@@ -31,7 +31,7 @@ func newAPIError(response *http.Response) error {
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		// We were not able to read the body, log this I/O error and return the API error with the status.
-		log.Error(err, "Cannot read error body")
+		log.Error(err, "Cannot read Elasticsearch error response body")
 		return apiError
 	}
 	// Reset the response body to the original unread state. It allows a caller to read again the body if necessary,
@@ -43,14 +43,14 @@ func newAPIError(response *http.Response) error {
 	if err := json.Unmarshal(body, &errorResponse); err != nil {
 		// Only log at the debug level since it is expected to not be able to parse all types of errors.
 		// Some errors, like 408 on /_cluster/health may return a different body structure.
-		log.V(1).Error(err, "Cannot parse error body")
+		log.V(1).Error(err, "Cannot parse Elasticsearch error response body")
 		return apiError
 	}
 	apiError.ErrorResponse = errorResponse
 	return apiError
 }
 
-// Error() implements the error interface.
+// Error implements the error interface.
 func (a *APIError) Error() string {
 	return fmt.Sprintf("%s: %+v", a.Status, a.ErrorResponse)
 }
