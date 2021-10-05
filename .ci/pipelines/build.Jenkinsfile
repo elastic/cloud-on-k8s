@@ -77,7 +77,7 @@ pipeline {
         success {
             script {
                 def operatorImage = sh(returnStdout: true, script: 'make print-operator-image').trim()
-                if isWeekday() {
+                if (isWeekday()) {
                     build job: 'cloud-on-k8s-e2e-tests-stack-versions',
                         parameters: [
                             string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
@@ -169,8 +169,9 @@ pipeline {
 
 def isWeekday() {
      // %u day of week (1..7); 1 is Monday 5 is Friday
-     return sh (
+     int day = sh (
          script: "date +%u",
          returnStdout: true
-     ) as Integer <= 5
+     ) as Integer
+     return day <= 5
  }
