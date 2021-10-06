@@ -153,3 +153,7 @@ func (s *State) UpdateElasticsearchInvalid(err error) {
 	s.status.Phase = esv1.ElasticsearchResourceInvalid
 	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
 }
+
+func (s *State) UpdateElasticsearchStatusPhase(orchPhase esv1.ElasticsearchOrchestrationPhase) {
+	s.status.Phase = orchPhase
+}

@@ -143,6 +143,14 @@ type APIError struct {
 	response *http.Response
 }
 
+func FakeAPIError(statusCode int) APIError {
+	return APIError{
+		response: &http.Response{
+			StatusCode: statusCode,
+		},
+	}
+}
+
 // Error() implements the error interface.
 func (e *APIError) Error() string {
 	defer e.response.Body.Close()
@@ -154,6 +162,11 @@ func (e *APIError) Error() string {
 		reason = errMsg.Error.Reason
 	}
 	return fmt.Sprintf("%s: %s", e.response.Status, reason)
+}
+
+// IsUnauthorized checks whether the error was an HTTP 401 error.
+func IsUnauthorized(err error) bool {
+	return isHTTPError(err, http.StatusUnauthorized)
 }
 
 // IsForbidden checks whether the error was an HTTP 403 error.
@@ -174,6 +187,15 @@ func IsTimeout(err error) bool {
 // IsConflict checks whether the error was an HTTP 409 error.
 func IsConflict(err error) bool {
 	return isHTTPError(err, http.StatusConflict)
+}
+
+func Is4xx(err error) bool {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		code := apiErr.response.StatusCode
+		return code >= 400 && code <= 499
+	}
+	return false
 }
 
 func isHTTPError(err error, statusCode int) bool {
