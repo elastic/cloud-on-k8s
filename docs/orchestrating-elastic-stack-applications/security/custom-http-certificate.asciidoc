@@ -57,7 +57,7 @@ spec:
 ----
 
 
-Here is how to issue multiple Elasticsearch certificates from a single self-signed CA. This is useful for example for <<{p}-remote-clusters,Remote clusters>> which need to trust each other’s CA, in order to avoid mounting N CA when a cluster is connected to N other clusters.
+Here is how to issue multiple Elasticsearch certificates from a single self-signed CA. This is useful for example for <<{p}-remote-clusters,Remote clusters>> which need to trust each other’s CA, in order to avoid mounting N CAs when a cluster is connected to N other clusters.
 
 [source,yaml]
 ----
