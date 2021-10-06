@@ -205,7 +205,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
 				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
-				return results.WithError(errors.Wrap(err, strings.ToLower(msg)))
+				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
 			}
 			msg := "Could not reconcile cluster license"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
