@@ -214,7 +214,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 		}
-		if requeue {
+		if err != nil || requeue {
 			results.WithResult(defaultRequeue)
 		}
 	}
