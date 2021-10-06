@@ -45,7 +45,6 @@ func UpdateSettings(
 	}
 
 	remoteClustersInSpec := getRemoteClustersInSpec(es)
-
 	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
 		return true, err

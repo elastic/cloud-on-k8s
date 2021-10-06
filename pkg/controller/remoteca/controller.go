@@ -129,6 +129,7 @@ func doReconcile(
 	localEs *esv1.Elasticsearch,
 ) (reconcile.Result, error) {
 	localClusterKey := k8s.ExtractNamespacedName(localEs)
+
 	expectedRemoteClusters, err := getExpectedRemoteClusters(ctx, r.Client, localEs)
 	if err != nil {
 		return reconcile.Result{}, err
