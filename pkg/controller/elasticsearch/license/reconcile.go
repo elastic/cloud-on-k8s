@@ -35,13 +35,14 @@ func checkElasticsearchLicense(ctx context.Context, clusterClient esclient.Licen
 	supportedDistribution := true
 	currentLicense, err := clusterClient.GetLicense(ctx)
 	if err != nil {
-		if esclient.IsUnauthorized(err) { //nolint:gocritic
+		switch {
+		case esclient.IsUnauthorized(err):
 			err = errors.New("unauthorized access, unable to verify Elasticsearch license, check your security configuration")
-		} else if esclient.IsForbidden(err) {
+		case esclient.IsForbidden(err):
 			err = errors.New("forbidden access, unable to verify Elasticsearch license, check your security configuration")
-		} else if esclient.IsNotFound(err) {
+		case esclient.IsNotFound(err):
 			// 404 may happen if the master node is generating a new cluster state
-		} else if esclient.Is4xx(err) {
+		case esclient.Is4xx(err):
 			supportedDistribution = false
 			err = errors.Wrap(err, "unable to verify Elasticsearch license")
 		}
