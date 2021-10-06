@@ -175,11 +175,6 @@ func (r RemoteCluster) ConfigHash() string {
 	return hash.HashObject(r)
 }
 
-func (es Elasticsearch) IsRemoteClustersDefined() bool {
-	return len(es.Spec.RemoteClusters) > 0 &&
-		es.Spec.RemoteClusters[0].Name != "" && es.Spec.RemoteClusters[0].ElasticsearchRef.IsDefined()
-}
-
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
