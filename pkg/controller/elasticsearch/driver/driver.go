@@ -196,17 +196,17 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if esReachable { //nolint:nestif
+	if esReachable {
 		// reconcile the Elasticsearch license
 		supportedDistribution, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
+		if err != nil && !supportedDistribution {
+			msg := "Unsupported Elasticsearch distribution"
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
+			d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
+			return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
+		}
 		if err != nil {
-			if !supportedDistribution {
-				msg := "Unsupported Elasticsearch distribution"
-				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
-				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
-				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
-			}
 			msg := "Could not reconcile cluster license"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
