@@ -76,7 +76,7 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj ctrlclie
 		}
 		if exist {
 			log.Info(
-				"Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation",
+				"Resource was previously reconciled by incompatible controller version and is missing annotation, adding annotation",
 				"controller_version", controllerVersion,
 				"namespace", obj.GetNamespace(),
 				"name", obj.GetName(),

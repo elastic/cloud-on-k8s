@@ -173,10 +173,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
-	if err := r.reconcileCompatibility(ctx, associated); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
