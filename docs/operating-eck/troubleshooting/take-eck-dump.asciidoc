@@ -11,7 +11,7 @@ endif::[]
 [float]
 == Prepare
 
-The tool is available at https://github.com/elastic/eck-diagnostics/. Please find detailed installation instructions there.
+The tool is available at https://github.com/elastic/eck-diagnostics/. You can find detailed installation instructions there.
 
 
 
