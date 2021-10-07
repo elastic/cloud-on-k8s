@@ -21,9 +21,9 @@ import (
 	"time"
 
 	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/avast/retry-go"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/command"
 	"github.com/pkg/errors"
@@ -414,7 +414,7 @@ func (h *helper) waitForOperatorToBeReady() error {
 	// operator pod name takes the form <statefulset name>-<ordinal>
 	podName := fmt.Sprintf("%s-0", h.testContext.Operator.Name)
 
-	return retry.UntilSuccess(func() error {
+	return retry.Do(func() error {
 		pod, err := client.CoreV1().Pods(h.testContext.Operator.Namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -423,7 +423,7 @@ func (h *helper) waitForOperatorToBeReady() error {
 			return fmt.Errorf("operator pod `%s` not ready", podName)
 		}
 		return nil
-	}, operatorReadyTimeout, 10*time.Second)
+	}, retry.Delay(operatorReadyTimeout), retry.MaxDelay(10*time.Second))
 }
 
 func (h *helper) deploySecurityConstraints() error {

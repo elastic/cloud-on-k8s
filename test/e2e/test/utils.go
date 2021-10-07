@@ -13,13 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
+	"github.com/avast/retry-go"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -78,10 +79,10 @@ func UntilSuccess(f func() error, timeout time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
 		fmt.Printf("Retries (%s timeout): ", timeout)
-		err := retry.UntilSuccess(func() error {
+		err := retry.Do(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
 			return f()
-		}, timeout, DefaultRetryDelay)
+		}, retry.MaxDelay(timeout), retry.Delay(DefaultRetryDelay))
 		fmt.Println()
 		require.NoError(t, err)
 	}

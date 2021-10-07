@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
+	"github.com/avast/retry-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,5 +22,5 @@ const (
 // and requires that no error is returned.
 func RetryUntilSuccess(t *testing.T, f func() error) {
 	t.Helper()
-	require.NoError(t, retry.UntilSuccess(f, Timeout, RetryInterval))
+	require.NoError(t, retry.Do(f, retry.MaxDelay(Timeout), retry.Delay(RetryInterval)))
 }
