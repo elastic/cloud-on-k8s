@@ -144,7 +144,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &beat); err != nil || !compatible {
+	if err := r.reconcileCompatibility(ctx, &beat); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -192,13 +192,13 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	return nil
 }
 
-func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat) (bool, error) {
+func (r *ReconcileBeat) reconcileCompatibility(ctx context.Context, beat *beatv1beta1.Beat) error {
 	selector := map[string]string{beatcommon.NameLabelName: beat.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, beat, selector, r.OperatorInfo.BuildInfo.Version)
+	err := annotation.ReconcileCompatibility(ctx, r.Client, beat, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, beat, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-	return compat, err
+	return err
 }
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {

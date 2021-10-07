@@ -180,8 +180,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	// check for compatibility with the operator version
-	compatible, err := r.isCompatible(ctx, &ems)
-	if err != nil || !compatible {
+	if err := r.reconcileCompatibility(ctx, &ems); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -204,13 +203,13 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	return r.doReconcile(ctx, ems)
 }
 
-func (r *ReconcileMapsServer) isCompatible(ctx context.Context, kb *emsv1alpha1.ElasticMapsServer) (bool, error) {
+func (r *ReconcileMapsServer) reconcileCompatibility(ctx context.Context, kb *emsv1alpha1.ElasticMapsServer) error {
 	selector := map[string]string{NameLabelName: kb.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.OperatorInfo.BuildInfo.Version)
+	err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-	return compat, err
+	return err
 }
 
 func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (reconcile.Result, error) {

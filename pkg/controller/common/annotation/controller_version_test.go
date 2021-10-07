@@ -17,96 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func TestCheckCompatibility(t *testing.T) {
-	type args struct {
-		obj               ctrlclient.Object
-		controllerVersion string
-	}
-	tests := []struct {
-		name          string
-		args          args
-		wantSupported bool
-		wantErr       bool
-	}{
-		{
-			name: "Annotation is nil",
-			args: args{
-				obj: &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:   "ns",
-						Name:        "kibana",
-						Annotations: nil,
-					},
-				},
-			},
-			wantSupported: false,
-			wantErr:       false,
-		},
-		{
-			name: "Controller annotation is not set",
-			args: args{
-				obj: &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:   "ns",
-						Name:        "kibana",
-						Annotations: map[string]string{},
-					},
-				},
-			},
-			wantSupported: false,
-			wantErr:       false,
-		},
-		{
-			name: "Unknown controller version",
-			args: args{
-				obj: &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "kibana",
-						Annotations: map[string]string{
-							ControllerVersionAnnotation: UnknownControllerVersion,
-						},
-					},
-				},
-				controllerVersion: "1.5.0",
-			},
-			wantSupported: false,
-			wantErr:       false,
-		},
-		{
-			name: "Supported controller version",
-			args: args{
-				obj: &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "kibana",
-						Annotations: map[string]string{
-							ControllerVersionAnnotation: "1.4.0",
-						},
-					},
-				},
-				controllerVersion: "1.5.0",
-			},
-			wantSupported: true,
-			wantErr:       false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotSupported, err := CheckCompatibility(tt.args.obj, tt.args.controllerVersion)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CheckCompatibility() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if gotSupported != tt.wantSupported {
-				t.Errorf("CheckCompatibility() gotSupported = %v, want %v", gotSupported, tt.wantSupported)
-			}
-		})
-	}
-}
 
 // UpdateControllerVersion tests that updates annotation if there is an older version
 func TestAnnotationUpdated(t *testing.T) {
@@ -149,8 +60,8 @@ func TestAnnotationCreated(t *testing.T) {
 	assert.Equal(t, actualKibana.GetAnnotations()[ControllerVersionAnnotation], "1.7.0")
 }
 
-// TestMissingAnnotationOldVersion tests that we skip reconciling an object missing annotations that has already been reconciled by
-// a previous operator version, and add an annotation indicating an old controller version
+// TestMissingAnnotationOldVersion tests that if an object is missing annotations that has already been reconciled by
+// a previous operator version, we add an annotation indicating an old controller version
 func TestMissingAnnotationOldVersion(t *testing.T) {
 	trueVar := true
 	es := &esv1.Elasticsearch{
@@ -182,9 +93,8 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(es, svc)
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
+	err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
-	assert.False(t, compat)
 
 	// check old version annotation was added
 	require.NotNil(t, es.Annotations)
@@ -211,9 +121,8 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 
 	client := k8s.NewFakeClient(es, svc)
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
+	err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
-	assert.True(t, compat)
 
 	// check version annotation was added
 	require.NotNil(t, es.Annotations)
@@ -232,9 +141,8 @@ func TestSameAnnotation(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(es)
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
+	err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
-	assert.True(t, compat)
 	assert.Equal(t, MinCompatibleControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
@@ -250,9 +158,8 @@ func TestIncompatibleAnnotation(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(es)
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
+	err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
-	assert.False(t, compat)
 	// check we did not update the annotation
 	assert.Equal(t, "0.8.0-FOOBAR", es.Annotations[ControllerVersionAnnotation])
 }
@@ -269,9 +176,8 @@ func TestNewerAnnotation(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(es)
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
+	err := ReconcileCompatibility(context.Background(), client, es, selector, MinCompatibleControllerVersion)
 	assert.NoError(t, err)
-	assert.True(t, compat)
 }
 
 // TestInvalidAnnotation tests that an invalid version cannot be used for the annotation

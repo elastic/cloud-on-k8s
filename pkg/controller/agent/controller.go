@@ -141,7 +141,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &agent); err != nil || !compatible {
+	if err := r.reconcileCompatibility(ctx, &agent); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -195,14 +195,14 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	return nil
 }
 
-func (r *ReconcileAgent) isCompatible(ctx context.Context, agent *agentv1alpha1.Agent) (bool, error) {
+func (r *ReconcileAgent) reconcileCompatibility(ctx context.Context, agent *agentv1alpha1.Agent) error {
 	defer tracing.Span(&ctx)()
 	selector := map[string]string{NameLabelName: agent.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, agent, selector, r.OperatorInfo.BuildInfo.Version)
+	err := annotation.ReconcileCompatibility(ctx, r.Client, agent, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, agent, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-	return compat, err
+	return err
 }
 
 func (r *ReconcileAgent) onDelete(obj types.NamespacedName) {

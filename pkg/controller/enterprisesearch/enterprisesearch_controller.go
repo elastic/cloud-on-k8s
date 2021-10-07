@@ -162,7 +162,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &ent); err != nil || !compatible {
+	if err := r.reconcileCompatibility(ctx, &ent); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -185,13 +185,13 @@ func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1.Kind)
 }
 
-func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1.EnterpriseSearch) (bool, error) {
+func (r *ReconcileEnterpriseSearch) reconcileCompatibility(ctx context.Context, ent *entv1.EnterpriseSearch) error {
 	selector := map[string]string{EnterpriseSearchNameLabelName: ent.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, ent, selector, r.OperatorInfo.BuildInfo.Version)
+	err := annotation.ReconcileCompatibility(ctx, r.Client, ent, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, ent, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-	return compat, err
+	return err
 }
 
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (reconcile.Result, error) {

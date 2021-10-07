@@ -189,7 +189,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &as); err != nil || !compatible {
+	if err := r.reconcileCompatibility(ctx, &as); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -214,13 +214,13 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	return r.doReconcile(ctx, request, &as)
 }
 
-func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServer) (bool, error) {
+func (r *ReconcileApmServer) reconcileCompatibility(ctx context.Context, as *apmv1.ApmServer) error {
 	selector := map[string]string{ApmServerNameLabelName: as.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
+	err := annotation.ReconcileCompatibility(ctx, r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-	return compat, err
+	return err
 }
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {

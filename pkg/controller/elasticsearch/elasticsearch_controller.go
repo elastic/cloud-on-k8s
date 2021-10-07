@@ -171,15 +171,9 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	}
 
 	selector := map[string]string{label.ClusterNameLabelName: es.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
+	if err := annotation.ReconcileCompatibility(ctx, r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version); err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	if !compat {
-		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
-		return reconcile.Result{}, nil
 	}
 
 	// Remove any previous Finalizers

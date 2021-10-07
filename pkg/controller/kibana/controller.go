@@ -148,8 +148,7 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 	}
 
 	// check for compatibility with the operator version
-	compatible, err := r.isCompatible(ctx, &kb)
-	if err != nil || !compatible {
+	if err := r.reconcileCompatibility(ctx, &kb); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -163,23 +162,17 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&kb))
 	}
 
-	// update controller version annotation if necessary
-	err = annotation.UpdateControllerVersion(ctx, r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	// main reconciliation logic
 	return r.doReconcile(ctx, request, &kb)
 }
 
-func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bool, error) {
+func (r *ReconcileKibana) reconcileCompatibility(ctx context.Context, kb *kbv1.Kibana) error {
 	selector := map[string]string{KibanaNameLabelName: kb.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
+	err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-	return compat, err
+	return err
 }
 
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
