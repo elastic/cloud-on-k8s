@@ -5,191 +5,50 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= Take ECK Dump
+= Run eck-diagnostics
 
-
-Steps to take ECK dump:
-
+`eck-diagnostics` is a stand-alone command line tool to create a diagnostic archive to help troubleshoot issues with ECK.
 [float]
 == Prepare
 
-To download the ECK dump shell file and change mode to executable, run:
+The tool is available at https://github.com/elastic/eck-diagnostics/. You can find detailed installation instructions there.
 
-["source", "sh", subs="attributes"]
-------------------------------------------------
-curl -L -O https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/support/diagnostics/eck-dump.sh && chmod +x eck-dump.sh
-------------------------------------------------
+
 
 [float]
 == Run
 
-Make sure to set the correct options. Check here for link:https://github.com/elastic/cloud-on-k8s/blob/master/support/diagnostics/eck-dump.sh[the latest version].
+The eck-diagnostics tool supports various command line flags. Run it with `-h` or `--help` to print all available options. The only required flag is `-r` or `--resources-namespace` which indicates the namespaces where your Elastic stack resources are deployed.
+There is also `-o` or `--operator-namespaces` that indicate where the ECK operator is deployed. If you don't specify this flag the tool assumes the operator to be deployed in the `elastic-system` namespace.
 
 [source,bash]
 ----
-Options:
-  -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (comma-separated list)
-  -n, --resources-namespaces    Namespace(s) in which resources are managed      (comma-separated list)
-  -o, --output-directory        Path to output dump files
-  -z, --create-zip              Create an archive with the dump files (implies --output-directory)
-  -v, --verbose                 Verbose mode
+eck-diagnostics -o <operator-namespaces> -r <resources-namespaces>
 ----
 
-Command:
-
-[source,bash]
-----
-./eck-dump.sh -o <path/to/output/dump/files> [-z] [-v] -N <operator namespace> -n <resources namespace>
-----
+By default, the tool automatically runs link:https://github.com/elastic/support-diagnostics[support diagnostics] for every Elasticsearch cluster and Kibana instance. This requires the temporary deployment of additional Pods into the Kubernetes cluster. If this is not what you want, you can turn off the feature by specifying the `--run-stack-diagnostics=false` flag.
 
 
 [float]
 == Example
 
-Here is an example:
 
-- Assuming the operator namespace is `elastic-system` and resources namespaces are `security` and `monitoring`
-- Generate dump log to current folder with `eck-dump-log` prefix
-- Also zip it
+Assuming the ECK operator is deployed in a namespace called `operators` and Elastic stack resources are deployed in the `security` and `monitoring` namespaces, you should run `eck-diagnostics` as follows:
 
 [source,bash]
 ----
-./eck-dump.sh -o eck-dump-log -z -N "elastic-system" -n "security,monitoring"
+eck-diagnostics -o=operators -r=security,monitoring
 ----
 
 Sample output:
 
 [source,bash]
 ----
-ECK info dumped to eck-dump-log-15_ 7_2021_15_52_45.tgz
+2021/10/06 20:34:20 ECK diagnostics with parameters: {DiagnosticImage:docker.elastic.co/eck-dev/support-diagnostics:8.1.4 ECKVersion: Kubeconfig: OperatorNamespaces:[operators] ResourcesNamespaces:[security monitoring] OutputDir:/tmp RunStackDiagnostics:true Verbose:false}
+2021/10/06 20:34:22 Extracting Kubernetes diagnostics from operators
+2021/10/06 20:34:23 ECK version is 1.8.0
+2021/10/06 20:34:23 Extracting Kubernetes diagnostics from security
+2021/10/06 20:34:23 Extracting Kubernetes diagnostics from monitoring
+2021/10/06 20:34:24 ECK diagnostics written to /tmp/eck-diagnostic-2021-10-06T20-34-21.zip
 ----
 
-Directory structure of the output files. The output may vary depending on the configuration.
-
-[source,bash]
-----
- tree -A -L 10 eck-dump-log      
-eck-dump-log
-├── clusterroles.txt
-├── elastic-system
-│   ├── agent.json
-│   ├── apmserver.json
-│   ├── beat.json
-│   ├── configmaps.json
-│   ├── controllerrevisions.json
-│   ├── daemonsets.json
-│   ├── deployments.json
-│   ├── elasticmapsserver.json
-│   ├── elasticsearch.json
-│   ├── endpoints.json
-│   ├── enterprisesearch.json
-│   ├── events.json
-│   ├── kibana.json
-│   ├── networkpolicies.json
-│   ├── persistentvolumeclaims.json
-│   ├── persistentvolumes.json
-│   ├── pod
-│   │   └── elastic-operator-0
-│   │       └── logs.txt
-│   ├── poddisruptionbudgets.txt
-│   ├── pods.json
-│   ├── replicasets.json
-│   ├── secrets.txt
-│   ├── services.json
-│   └── statefulsets.json
-├── monitoring
-│   ├── agent.json
-│   ├── apmserver.json
-│   ├── beat.json
-│   ├── configmaps.json
-│   ├── controllerrevisions.json
-│   ├── daemonsets.json
-│   ├── deployments.json
-│   ├── elasticmapsserver.json
-│   ├── elasticsearch.json
-│   ├── endpoints.json
-│   ├── enterprisesearch.json
-│   ├── events.json
-│   ├── kibana.json
-│   ├── networkpolicies.json
-│   ├── persistentvolumeclaims.json
-│   ├── persistentvolumes.json
-│   ├── pod
-│   │   ├── apm-01-prod-apm-server-8485b5bf97-j6g25
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-apm-server-8485b5bf97-jxc6g
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-es-master-0
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-kb-b56645bb9-4kxlq
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-kb-b56645bb9-5m2mb
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-kb-c6d58674f-bcd62
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-kb-c6d58674f-cjfzm
-│   │   │   └── logs.txt
-│   │   ├── apm-01-prod-kb-df76dbfff-9nhvx
-│   │   │   └── logs.txt
-│   │   ├── logs-01-prod-es-master-0
-│   │   │   └── logs.txt
-│   │   ├── logs-01-prod-es-master-1
-│   │   │   └── logs.txt
-│   │   ├── logs-01-prod-es-master-2
-│   │   │   └── logs.txt
-│   │   ├── logs-01-prod-kb-8599b565cf-4s9n2
-│   │   │   └── logs.txt
-│   │   ├── logs-01-prod-kb-8599b565cf-cx5wv
-│   │   │   └── logs.txt
-│   │   ├── logs-02-prod-es-master-0
-│   │   │   └── logs.txt
-│   │   ├── logs-02-prod-kb-7fff9c5fc6-pnlb2
-│   │   │   └── logs.txt
-│   │   ├── metrics-01-prod-es-master-0
-│   │   │   └── logs.txt
-│   │   └── metrics-01-prod-kb-7ffccd6747-cdqhw
-│   │       └── logs.txt
-│   ├── poddisruptionbudgets.txt
-│   ├── pods.json
-│   ├── replicasets.json
-│   ├── secrets.txt
-│   ├── services.json
-│   └── statefulsets.json
-├── nodes.json
-├── podsecuritypolicies.json
-├── security
-│   ├── agent.json
-│   ├── apmserver.json
-│   ├── beat.json
-│   ├── configmaps.json
-│   ├── controllerrevisions.json
-│   ├── daemonsets.json
-│   ├── deployments.json
-│   ├── elasticmapsserver.json
-│   ├── elasticsearch.json
-│   ├── endpoints.json
-│   ├── enterprisesearch.json
-│   ├── events.json
-│   ├── kibana.json
-│   ├── networkpolicies.json
-│   ├── persistentvolumeclaims.json
-│   ├── persistentvolumes.json
-│   ├── pod
-│   │   ├── siem-01-prod-es-master-0
-│   │   │   └── logs.txt
-│   │   ├── siem-01-prod-kb-554b496d8c-hk8js
-│   │   │   └── logs.txt
-│   │   ├── siem-02-prod-es-master-0
-│   │   │   └── logs.txt
-│   │   └── siem-02-prod-kb-855f7dbdc-bh6ks
-│   │       └── logs.txt
-│   ├── poddisruptionbudgets.txt
-│   ├── pods.json
-│   ├── replicasets.json
-│   ├── secrets.txt
-│   ├── services.json
-│   └── statefulsets.json
-└── version.json
-
-28 directories, 92 files
-----

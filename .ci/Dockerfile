@@ -13,6 +13,7 @@ ENV KIND_VERSION_0_8=0.8.1
 ENV KIND_VERSION_0_9=0.9.0
 ENV OPENSHIFT_TOOLS_VERSION=4.7.0
 ENV EKSCTL_VERSION=0.34.0
+ENV ECK_DIAG_VERSION=1.0.1
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -84,6 +85,10 @@ RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIN
 
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION_0_9}/kind-linux-amd64 && \
     mv kind-linux-amd64 /usr/local/bin/kind-${KIND_VERSION_0_9} && chmod +x /usr/local/bin/kind-${KIND_VERSION_0_9}
+
+RUN curl -fsSLO https://github.com/elastic/eck-diagnostics/releases/download/${ECK_DIAG_VERSION}/eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
+    tar xzf eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
+    mv eck-diagnostics /usr/local/bin/eck-diagnostics
 
 RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" && \
     tar xzf eksctl_Linux_amd64.tar.gz && \
