@@ -1,1 +1,1 @@
-Please find the support diagnostics tool for ECK at https://github.com/elastic/eck-diagnostics.
+You can find the support diagnostics tool for ECK at https://github.com/elastic/eck-diagnostics.

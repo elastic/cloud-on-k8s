@@ -18,22 +18,22 @@ The tool is available at https://github.com/elastic/eck-diagnostics/. You can fi
 [float]
 == Run
 
-The eck-diagnostics tool supports various command line flags. Run it with `-h` or `--help` to print all available options. The only required flag is the `-r` or `--resources-namespace` flag to indicate the namespaces where your Elastic stack resources are deployed.
-In addition there is also the `-o` or `--operator-namespaces` flag to allow you to indicate where the ECK operator is deployed. If you don't specify this flag the tool assumes the operator to be deplyed in the `elastic-system` namespace.
+The eck-diagnostics tool supports various command line flags. Run it with `-h` or `--help` to print all available options. The only required flag is `-r` or `--resources-namespace` which indicates the namespaces where your Elastic stack resources are deployed.
+There is also `-o` or `--operator-namespaces` that indicate where the ECK operator is deployed. If you don't specify this flag the tool assumes the operator to be deployed in the `elastic-system` namespace.
 
 [source,bash]
 ----
-eck-diagnostics -r <workload-namespaces> -o <operator-namespace>
+eck-diagnostics -o <operator-namespaces> -r <resources-namespaces>
 ----
 
-By default the tool also automatically runs link:https://github.com/elastic/support-diagnostics[support diagnostics] for every Elasticsearch cluster and Kibana instance. This requires the temporary deployment of additional Pods into the Kubernetes cluster. If that is not desired, the feature can be turned off by specifying the `--run-stack-diagnostics=false` flag.
+By default, the tool automatically runs link:https://github.com/elastic/support-diagnostics[support diagnostics] for every Elasticsearch cluster and Kibana instance. This requires the temporary deployment of additional Pods into the Kubernetes cluster. If this is not what you want, you can turn off the feature by specifying the `--run-stack-diagnostics=false` flag.
 
 
 [float]
 == Example
 
 
-Assuming the ECK operator is deployed in a namespace called `operators` and Elastic stack resources are deployed in the  `security` and `monitoring` namespaces, you should run `eck-diagnostics` as follows:
+Assuming the ECK operator is deployed in a namespace called `operators` and Elastic stack resources are deployed in the `security` and `monitoring` namespaces, you should run `eck-diagnostics` as follows:
 
 [source,bash]
 ----
