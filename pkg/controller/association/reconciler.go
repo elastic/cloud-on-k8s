@@ -177,10 +177,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, associated, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}

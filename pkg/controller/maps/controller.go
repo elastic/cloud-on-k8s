@@ -189,12 +189,6 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&ems))
 	}
 
-	// update controller version annotation if necessary
-	err = annotation.UpdateControllerVersion(ctx, r.Client, &ems, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if !association.IsConfiguredIfSet(&ems, r.recorder) {
 		return reconcile.Result{}, nil
 	}

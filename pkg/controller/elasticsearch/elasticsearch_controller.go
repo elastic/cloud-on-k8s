@@ -181,11 +181,6 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	err = annotation.UpdateControllerVersion(ctx, r.Client, &es, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	state := esreconcile.NewState(es)
 	results := r.internalReconcile(ctx, es, state)
 	err = r.updateStatus(ctx, es, state)

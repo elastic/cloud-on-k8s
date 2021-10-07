@@ -149,10 +149,6 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, &agent, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	res, err := r.doReconcile(ctx, agent).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, &agent, events.EventReconciliationError, "Reconciliation error: %v", err)
 

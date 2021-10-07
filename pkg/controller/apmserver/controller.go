@@ -203,10 +203,6 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
 		return reconcile.Result{}, nil
 	}

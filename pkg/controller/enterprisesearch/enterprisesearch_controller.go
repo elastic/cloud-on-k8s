@@ -166,10 +166,6 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, &ent, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, fmt.Errorf("updating controller version: %w", err))
-	}
-
 	if !association.IsConfiguredIfSet(&ent, r.recorder) {
 		return reconcile.Result{}, nil
 	}
