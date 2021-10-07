@@ -108,22 +108,6 @@ func newEsWithRemoteClusters(
 	}
 }
 
-type fakeLicenseChecker struct {
-	enterpriseFeaturesEnabled bool
-}
-
-func (fakeLicenseChecker) CurrentEnterpriseLicense() (*license.EnterpriseLicense, error) {
-	return nil, nil
-}
-
-func (f *fakeLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return f.enterpriseFeaturesEnabled, nil
-}
-
-func (fakeLicenseChecker) Valid(_ license.EnterpriseLicense) (bool, error) {
-	return true, nil
-}
-
 func TestUpdateSettings(t *testing.T) {
 	emptySettings := esclient.RemoteClustersSettings{PersistentSettings: &esclient.SettingsGroup{}}
 	type args struct {
@@ -144,7 +128,7 @@ func TestUpdateSettings(t *testing.T) {
 			name: "Nothing to create, nothing to delete",
 			args: args{
 				esClient:       &fakeESClient{existingSettings: emptySettings},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -158,7 +142,7 @@ func TestUpdateSettings(t *testing.T) {
 			name: "Empty annotation",
 			args: args{
 				esClient:       &fakeESClient{existingSettings: emptySettings},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -172,7 +156,7 @@ func TestUpdateSettings(t *testing.T) {
 			name: "Outdated annotation should be removed",
 			args: args{
 				esClient:       &fakeESClient{existingSettings: emptySettings},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -186,7 +170,7 @@ func TestUpdateSettings(t *testing.T) {
 			name: "Create a new remote cluster",
 			args: args{
 				esClient:       &fakeESClient{existingSettings: emptySettings},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -215,7 +199,7 @@ func TestUpdateSettings(t *testing.T) {
 				esClient: &fakeESClient{
 					existingSettings: esclient.RemoteClustersSettings{PersistentSettings: &esclient.SettingsGroup{}},
 				},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -251,7 +235,7 @@ func TestUpdateSettings(t *testing.T) {
 						},
 					},
 				},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -290,7 +274,7 @@ func TestUpdateSettings(t *testing.T) {
 						},
 					},
 				},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -331,7 +315,7 @@ func TestUpdateSettings(t *testing.T) {
 						},
 					},
 				},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -374,7 +358,7 @@ func TestUpdateSettings(t *testing.T) {
 						},
 					},
 				},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -404,7 +388,7 @@ func TestUpdateSettings(t *testing.T) {
 			name: "No valid license to create a new remote cluster",
 			args: args{
 				esClient:       &fakeESClient{},
-				licenseChecker: &fakeLicenseChecker{false},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: false},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -431,7 +415,7 @@ func TestUpdateSettings(t *testing.T) {
 						},
 					},
 				},
-				licenseChecker: &fakeLicenseChecker{true},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",

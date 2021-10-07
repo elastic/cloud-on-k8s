@@ -78,7 +78,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
 					ObjectMeta: metav1.ObjectMeta{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace, DeletionTimestamp: &timeFixture},
 				}),
-				licenseChecker: license.MockChecker{},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				dynamicWatches: watches.NewDynamicWatches(),
 			},
 			pre: func(r ReconcileMapsServer) {
@@ -115,7 +115,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				Client:         k8s.NewFakeClient(&emsFixture),
 				recorder:       record.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.MockChecker{MissingLicense: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcileMapsServer) {
@@ -132,7 +132,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				Client:         k8s.NewFakeClient(&emsFixture),
 				recorder:       record.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.MockChecker{},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcileMapsServer) {
@@ -155,7 +155,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 						Version: "7.10.0", // unsupported version
 					},
 				}),
-				licenseChecker: license.MockChecker{},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				recorder:       record.NewFakeRecorder(10),
 			},
 			wantErr: true,
@@ -174,7 +174,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 					},
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.MockChecker{},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				recorder:       record.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
@@ -200,7 +200,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 					},
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.MockChecker{},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				recorder:       record.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
@@ -215,7 +215,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				Client:         k8s.NewFakeClient(&emsFixture),
 				recorder:       record.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.MockChecker{},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcileMapsServer) {

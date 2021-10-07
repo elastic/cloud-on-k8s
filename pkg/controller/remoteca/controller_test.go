@@ -78,20 +78,6 @@ func (f *fakeAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string
 	return f.allowed, f.err
 }
 
-type fakeLicenseChecker struct {
-	enterpriseFeaturesEnabled bool
-}
-
-func (f fakeLicenseChecker) CurrentEnterpriseLicense() (*license.EnterpriseLicense, error) {
-	return nil, nil
-}
-func (f fakeLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return f.enterpriseFeaturesEnabled, nil
-}
-func (f fakeLicenseChecker) Valid(l license.EnterpriseLicense) (bool, error) {
-	return f.enterpriseFeaturesEnabled, nil
-}
-
 func fakePublicCa(namespace, name string) *corev1.Secret {
 	namespacedName := types.NamespacedName{
 		Name:      name,
@@ -166,7 +152,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					fakePublicCa("ns2", "es2"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -193,7 +179,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					fakePublicCa("ns2", "es2"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -222,7 +208,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					remoteCa("ns2", "es2", "ns1", "es1"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -263,7 +249,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					withDataCert(remoteCa("ns2", "es2", "ns1", "es1"), []byte("bar")),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -295,7 +281,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					remoteCa("ns3", "es3", "ns1", "es1"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -334,7 +320,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					fakePublicCa("ns2", "es2"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: false},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -375,7 +361,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					remoteCa("ns2", "es2", "ns1", "es1"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: true},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: false},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -404,7 +390,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 					remoteCa("ns2", "es2", "ns1", "es1"),
 				},
 				accessReviewer: &fakeAccessReviewer{allowed: false},
-				licenseChecker: &fakeLicenseChecker{enterpriseFeaturesEnabled: true},
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				request: reconcile.Request{

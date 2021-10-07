@@ -131,24 +131,24 @@ func (lc checker) ValidOperatorLicenseKey() (OperatorLicenseType, error) {
 	return licType, nil
 }
 
-type MockChecker struct {
-	MissingLicense bool
+type MockLicenseChecker struct {
+	EnterpriseEnabled bool
 }
 
-func (m MockChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
+func (m MockLicenseChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 	return &EnterpriseLicense{}, nil
 }
 
-func (m MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return !m.MissingLicense, nil
+func (m MockLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
+	return m.EnterpriseEnabled, nil
 }
 
-func (m MockChecker) Valid(l EnterpriseLicense) (bool, error) {
-	return !m.MissingLicense, nil
+func (m MockLicenseChecker) Valid(l EnterpriseLicense) (bool, error) {
+	return m.EnterpriseEnabled, nil
 }
 
-func (m MockChecker) ValidOperatorLicenseKey() (OperatorLicenseType, error) {
-	return LicenseTypeBasic, nil
+func (m MockLicenseChecker) ValidOperatorLicenseKey() (OperatorLicenseType, error) {
+	return LicenseTypeEnterprise, nil
 }
 
-var _ Checker = &MockChecker{}
+var _ Checker = &MockLicenseChecker{}
