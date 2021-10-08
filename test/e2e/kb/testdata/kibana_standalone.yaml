@@ -9,7 +9,6 @@ spec:
   - count: 1
     name: mdi
     config:
-      node.roles: [master, data]
       node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1

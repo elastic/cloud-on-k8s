@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"reflect"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -476,6 +477,10 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 }
 
 func (b Builder) GetMetricsIndexPattern() string {
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFrom(8, 0, 0)) {
+		return fmt.Sprintf("metricbeat-%s*", test.Ctx().ElasticStackVersion)
+	}
+
 	return ".monitoring-es-*"
 }
 
