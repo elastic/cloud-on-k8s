@@ -55,11 +55,9 @@ func (a *APIError) Error() string {
 	return fmt.Sprintf("%s: %+v", a.Status, a.ErrorResponse)
 }
 
-func newDecoratedHTTPError(request *http.Request, err error) error {
-	if request == nil {
-		return err
-	}
-	return fmt.Errorf(`elasticsearch client failed for %s: %w`, request.URL.Redacted(), err)
+// IsUnauthorized checks whether the error was an HTTP 401 error.
+func IsUnauthorized(err error) bool {
+	return isHTTPError(err, http.StatusUnauthorized)
 }
 
 // IsForbidden checks whether the error was an HTTP 403 error.
@@ -82,11 +80,26 @@ func IsConflict(err error) bool {
 	return isHTTPError(err, http.StatusConflict)
 }
 
+func Is4xx(err error) bool {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		code := apiErr.StatusCode
+		return code >= 400 && code <= 499
+	}
+	return false
+}
+
 func isHTTPError(err error, statusCode int) bool {
 	apiErr := new(APIError)
 	if errors.As(err, &apiErr) {
 		return apiErr.StatusCode == statusCode
 	}
-
 	return false
+}
+
+func newDecoratedHTTPError(request *http.Request, err error) error {
+	if request == nil {
+		return err
+	}
+	return fmt.Errorf(`elasticsearch client failed for %s: %w`, request.URL.Redacted(), err)
 }
