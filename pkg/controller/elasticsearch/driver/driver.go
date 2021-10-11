@@ -217,13 +217,13 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		// reconcile remote clusters
 		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
 		if err != nil {
-			msg := "Could not update remote clusters in Elasticsearch settings"
+			msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
+			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			results.WithResult(defaultRequeue)
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 		}
-		if requeue {
-			results.WithResult(defaultRequeue)
+		if err != nil || requeue {
+			return results.WithResult(defaultRequeue)
 		}
 	}
 
