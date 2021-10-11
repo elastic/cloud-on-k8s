@@ -176,7 +176,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 
 	// always update the elasticsearch state bits
-	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
@@ -265,14 +265,14 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
+	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState(), *resourcesState, keystoreResources)
 	results = results.WithResults(res)
 
 	if res.HasError() {
 		return results
 	}
 
-	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 	return results
 }
 

@@ -37,10 +37,13 @@ func NewManager(tracer *apm.Tracer) *Manager {
 	}
 }
 
-// ObservedStateResolver returns the last known state of the given cluster,
+// ObservedStateResolver returns a function that returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) State {
-	return m.Observe(cluster, esClient).LastState()
+func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) func() State {
+	observer := m.Observe(cluster, esClient)
+	return func() State {
+		return observer.LastState()
+	}
 }
 
 func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
