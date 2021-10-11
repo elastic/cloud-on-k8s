@@ -6,6 +6,7 @@ package license
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -24,6 +25,7 @@ type Checker interface {
 	CurrentEnterpriseLicense() (*EnterpriseLicense, error)
 	EnterpriseFeaturesEnabled() (bool, error)
 	Valid(l EnterpriseLicense) (bool, error)
+	ValidOperatorLicenseKeyType() (OperatorLicenseType, error)
 }
 
 // checker contains parameters for license checks.
@@ -64,7 +66,7 @@ func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 	}
 
 	sort.Slice(licenses, func(i, j int) bool {
-		t1, t2 := EnterpriseLicenseTypeOrder[licenses[i].License.Type], EnterpriseLicenseTypeOrder[licenses[j].License.Type]
+		t1, t2 := OperatorLicenseTypeOrder[licenses[i].License.Type], OperatorLicenseTypeOrder[licenses[j].License.Type]
 		if t1 != t2 { // sort by type (first the most features)
 			return t1 > t2
 		}
@@ -115,20 +117,38 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	return false, nil
 }
 
-type MockChecker struct {
-	MissingLicense bool
+// ValidOperatorLicenseKeyType returns true if the current operator license key is valid
+func (lc checker) ValidOperatorLicenseKeyType() (OperatorLicenseType, error) {
+	lic, err := lc.CurrentEnterpriseLicense()
+	if err != nil {
+		log.V(-1).Info("Invalid Enterprise license, fallback to Basic: " + err.Error())
+	}
+
+	licType := lic.GetOperatorLicenseType()
+	if _, valid := OperatorLicenseTypeOrder[licType]; !valid {
+		return licType, fmt.Errorf("invalid license key: %s", licType)
+	}
+	return licType, nil
 }
 
-func (m MockChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
+type MockLicenseChecker struct {
+	EnterpriseEnabled bool
+}
+
+func (m MockLicenseChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 	return &EnterpriseLicense{}, nil
 }
 
-func (m MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return !m.MissingLicense, nil
+func (m MockLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
+	return m.EnterpriseEnabled, nil
 }
 
-func (m MockChecker) Valid(l EnterpriseLicense) (bool, error) {
-	return !m.MissingLicense, nil
+func (m MockLicenseChecker) Valid(l EnterpriseLicense) (bool, error) {
+	return m.EnterpriseEnabled, nil
 }
 
-var _ Checker = &MockChecker{}
+func (m MockLicenseChecker) ValidOperatorLicenseKeyType() (OperatorLicenseType, error) {
+	return LicenseTypeEnterprise, nil
+}
+
+var _ Checker = &MockLicenseChecker{}
