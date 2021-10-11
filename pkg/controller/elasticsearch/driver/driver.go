@@ -207,10 +207,11 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
 		}
 		if err != nil {
-			msg := "Could not reconcile cluster license"
-			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			msg := "Could not reconcile cluster license, re-queuing"
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			results.WithResult(defaultRequeue)
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+			return results.WithResult(defaultRequeue)
 		}
 
 		// reconcile remote clusters
