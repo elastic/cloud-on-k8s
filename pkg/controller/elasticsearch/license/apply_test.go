@@ -302,8 +302,7 @@ func (f *fakeInvalidLicenseUpdater) GetLicense(ctx context.Context) (esclient.Li
 	if f.statusCodeOnGetLicense == 200 {
 		return f.license, nil
 	}
-	apiErr := esclient.FakeAPIError(f.statusCodeOnGetLicense)
-	return esclient.License{}, &apiErr
+	return esclient.License{}, &esclient.APIError{StatusCode: f.statusCodeOnGetLicense}
 }
 
 type fakeLicenseUpdater struct {

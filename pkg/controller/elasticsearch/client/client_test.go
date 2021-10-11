@@ -256,7 +256,7 @@ func TestClient_request(t *testing.T) {
 
 func TestAPIError_Error(t *testing.T) {
 	type fields struct {
-		response *http.Response
+		apiError error
 	}
 	tests := []struct {
 		name   string
@@ -265,27 +265,28 @@ func TestAPIError_Error(t *testing.T) {
 	}{
 		{
 			name: "Elasticsearch JSON error response",
-			fields: fields{&http.Response{
-				Status: "400 Bad Request",
-				Body:   ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
-			}},
-			want: "400 Bad Request: illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6]",
+			fields: fields{newAPIError(&http.Response{
+				StatusCode: 400,
+				Status:     "400 Bad Request",
+				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
+			})},
+			want: `400 Bad Request: {Status:400 Error:{CausedBy:{Reason:cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1] ` +
+				`Type:illegal_argument_exception} Reason:illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6] Type:illegal_argument_exception ` +
+				`RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
 		},
 		{
 			name: "non-JSON error response",
-			fields: fields{&http.Response{
-				Status: "500 Internal Server Error",
-				Body:   ioutil.NopCloser(bytes.NewBufferString("")),
-			}},
-			want: "500 Internal Server Error: unknown",
+			fields: fields{newAPIError(&http.Response{
+				StatusCode: 500,
+				Status:     "500 Internal Server Error",
+				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
+			})},
+			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: RootCause:[]}}",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &APIError{
-				response: tt.fields.response,
-			}
-			if got := e.Error(); got != tt.want {
+			if got := tt.fields.apiError.Error(); got != tt.want {
 				t.Errorf("APIError.Error() = %v, want %v", got, tt.want)
 			}
 		})
@@ -562,27 +563,27 @@ func TestAPIError_Types(t *testing.T) {
 		{
 			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: &APIError{response: NewMockResponse(500, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(500, nil, "")), //nolint:bodyclose
 			},
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
-				err: &APIError{response: NewMockResponse(409, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(409, nil, "")), //nolint:bodyclose
 			},
 			wantConflict: true,
 		},
 		{
 			name: "403 is a forbidden",
 			args: args{
-				err: &APIError{response: NewMockResponse(403, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(403, nil, "")), //nolint:bodyclose
 			},
 			wantForbidden: true,
 		},
 		{
 			name: "404 is not found",
 			args: args{
-				err: &APIError{response: NewMockResponse(404, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(404, nil, "")), //nolint:bodyclose
 			},
 			wantNotFound: true,
 		},
