@@ -7,7 +7,7 @@ metadata:
   labels:
     app: ekmnt
 spec:
-  version: 7.14.0
+  version: 7.15.0
   http:
     tls:
       selfSignedCertificate:
@@ -97,7 +97,7 @@ metadata:
   labels:
     app: ekmnt
 spec:
-  version: 7.14.0
+  version: 7.15.0
   count: 1
   http:
     tls:
