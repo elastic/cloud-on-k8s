@@ -63,6 +63,7 @@ func initContainerParameters(typ string) keystore.InitContainerParameters {
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		KeystoreVolumePath:            fmt.Sprintf(DataPathTemplate, typ),
 		Resources:                     defaultResources,
+		SkipInitializedFlag:           true,
 	}
 }
 
