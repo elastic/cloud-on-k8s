@@ -85,7 +85,7 @@ func newBuilder(name, randSuffix string) Builder {
 
 	// this is mandatory setting starting with 8.x
 	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFrom(8, 0, 0)) {
-		b = b.WithConfig(map[string]interface{}{"kibana.host": "https://localhost:3002"})
+		b = b.WithConfig(map[string]interface{}{"kibana.host": "https://localhost:5601"})
 	}
 
 	return b
