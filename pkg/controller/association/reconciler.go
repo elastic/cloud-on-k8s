@@ -311,15 +311,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	return r.updateAssocConf(ctx, expectedAssocConf, association)
 }
 
-// reconcileCompatibility reconciles the controller version annotation and emits a warning if the resource was reconciled by an incompatible controller originally.
-func (r *Reconciler) reconcileCompatibility(ctx context.Context, associated commonv1.Associated) error {
-	err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.Labels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, associated, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return err
-}
-
 // getElasticsearch attempts to retrieve the referenced Elasticsearch resource. If not found, it removes
 // any existing association configuration on associated, and returns AssociationPending.
 func (r *Reconciler) getElasticsearch(
