@@ -325,12 +325,12 @@ func Test_ValidOperatorLicenseKey(t *testing.T) {
 				operatorNamespace: tt.fields.operatorNamespace,
 				publicKey:         tt.fields.publicKey,
 			}
-			licenseType, err := lc.ValidOperatorLicenseKey()
+			licenseType, err := lc.ValidOperatorLicenseKeyType()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Checker.ValidOperatorLicenseKey() err = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Checker.ValidOperatorLicenseKeyType() err = %v, wantErr %v", err, tt.wantErr)
 			}
 			if licenseType != tt.wantType {
-				t.Errorf("Checker.ValidOperatorLicenseKey() licenseType = %v, wantType %v", licenseType, tt.wantType)
+				t.Errorf("Checker.ValidOperatorLicenseKeyType() licenseType = %v, wantType %v", licenseType, tt.wantType)
 			}
 		})
 	}

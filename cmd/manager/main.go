@@ -596,7 +596,7 @@ func startOperator(ctx context.Context) error {
 		mgr.GetCache().WaitForCacheSync(ctx)
 
 		lc := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-		licenseType, err := lc.ValidOperatorLicenseKey()
+		licenseType, err := lc.ValidOperatorLicenseKeyType()
 		if err != nil {
 			log.Error(err, "Failed to validate operator license key")
 			exitOnErr <- err

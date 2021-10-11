@@ -25,7 +25,7 @@ type Checker interface {
 	CurrentEnterpriseLicense() (*EnterpriseLicense, error)
 	EnterpriseFeaturesEnabled() (bool, error)
 	Valid(l EnterpriseLicense) (bool, error)
-	ValidOperatorLicenseKey() (OperatorLicenseType, error)
+	ValidOperatorLicenseKeyType() (OperatorLicenseType, error)
 }
 
 // checker contains parameters for license checks.
@@ -117,8 +117,8 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	return false, nil
 }
 
-// ValidOperatorLicenseKey returns true if the current operator license key is valid
-func (lc checker) ValidOperatorLicenseKey() (OperatorLicenseType, error) {
+// ValidOperatorLicenseKeyType returns true if the current operator license key is valid
+func (lc checker) ValidOperatorLicenseKeyType() (OperatorLicenseType, error) {
 	lic, err := lc.CurrentEnterpriseLicense()
 	if err != nil {
 		log.V(-1).Info("Invalid Enterprise license, fallback to Basic: " + err.Error())
@@ -147,7 +147,7 @@ func (m MockLicenseChecker) Valid(l EnterpriseLicense) (bool, error) {
 	return m.EnterpriseEnabled, nil
 }
 
-func (m MockLicenseChecker) ValidOperatorLicenseKey() (OperatorLicenseType, error) {
+func (m MockLicenseChecker) ValidOperatorLicenseKeyType() (OperatorLicenseType, error) {
 	return LicenseTypeEnterprise, nil
 }
 
