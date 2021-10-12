@@ -9,6 +9,7 @@ package es
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -211,18 +212,12 @@ func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.BasicA
 		return err
 	}
 	resp, err := esClient.Request(context.Background(), req)
-	if err != nil {
-		// APIError is wrapped, checking if this is the case based on the presence of `Unwrap() error` func
-		if wrappedErr, ok := err.(interface {
-			Unwrap() error
-		}); ok {
-			err = wrappedErr.Unwrap()
-			// the client wraps unexpected status codes in an APIError, but still returns the correct resp
-			// we want to ignore APIErrors here
-			if _, isWrappedAPIErr := err.(*esclient.APIError); !isWrappedAPIErr {
-				return err
-			}
-		}
+
+	// The client double wraps unexpected status codes in an fmt.wrapError and esclient.APIError,
+	// but still returns the correct resp. We want to ignore APIErrors here.
+	var apiError *esclient.APIError
+	if !errors.As(err, &apiError) {
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != expectedStatusCode {
