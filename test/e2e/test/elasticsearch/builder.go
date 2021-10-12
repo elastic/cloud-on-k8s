@@ -200,54 +200,33 @@ func (b Builder) WithNoESTopology() Builder {
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
-	cfg := CreateRolesConfig(
-		b.Elasticsearch.Spec.Version,
-		[]esv1.NodeRole{esv1.MasterRole},
-		map[string]bool{
-			esv1.NodeData: false,
-		})
-
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "master",
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: cfg,
+			Data: MasterRoleCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	cfg := CreateRolesConfig(
-		b.Elasticsearch.Spec.Version,
-		[]esv1.NodeRole{esv1.DataRole},
-		map[string]bool{
-			esv1.NodeMaster: false,
-		})
-
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "data",
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: cfg,
+			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
-	cfg := CreateRolesConfig(
-		b.Elasticsearch.Spec.Version,
-		[]esv1.NodeRole{esv1.DataRole},
-		map[string]bool{
-			esv1.NodeMaster: false,
-		})
-
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  name,
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: cfg,
+			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
@@ -477,7 +456,7 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 }
 
 func (b Builder) GetMetricsIndexPattern() string {
-	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFrom(8, 0, 0)) {
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
 		return fmt.Sprintf("metricbeat-%s*", test.Ctx().ElasticStackVersion)
 	}
 
@@ -535,7 +514,28 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	return false
 }
 
-func CreateRolesConfig(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]interface{} {
+func MixedRolesCfg(ver string) map[string]interface{} {
+	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}, map[string]bool{
+		esv1.NodeMaster: true,
+		esv1.NodeData:   true,
+	})
+}
+
+func DataRoleCfg(ver string) map[string]interface{} {
+	return roleCfg(ver, []esv1.NodeRole{esv1.DataRole}, map[string]bool{
+		esv1.NodeMaster: false,
+		esv1.NodeData:   true,
+	})
+}
+
+func MasterRoleCfg(ver string) map[string]interface{} {
+	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole}, map[string]bool{
+		esv1.NodeMaster: true,
+		esv1.NodeData:   false,
+	})
+}
+
+func roleCfg(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]interface{} {
 	v := version.MustParse(ver)
 
 	cfg := map[string]interface{}{}

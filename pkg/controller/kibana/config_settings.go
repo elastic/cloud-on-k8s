@@ -256,7 +256,7 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 		ServerHost: net.InAddrAnyFor(ipFamily).String(),
 	}
 
-	if ver.GTE(version.MinFrom(7, 16, 0)) {
+	if ver.GTE(version.MinFor(7, 16, 0)) {
 		conf[MonitoringUIContainerElasticsearchEnabled] = true
 	} else {
 		conf[XpackMonitoringUIContainerElasticsearchEnabled] = true

@@ -63,7 +63,9 @@ func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 				return err
 			}
 
-			if version.MustParse(b.Kibana.Spec.Version).LT(version.MinFrom(8, 0, 0)) {
+			// Starting with 8.0 the default format of /api/status response is changed. For more details see
+			// https://github.com/elastic/kibana/pull/76054.
+			if version.MustParse(b.Kibana.Spec.Version).LT(version.MinFor(8, 0, 0)) {
 				if status.Status.Overall.State != "green" {
 					return fmt.Errorf("not ready: want 'green' state but it was '%s' ", status.Status.Overall.State)
 				}
@@ -88,7 +90,7 @@ func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
 			path := "/api/enterprise_search/config_data"
 
 			// new API endpoint
-			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFrom(8, 0, 0)) {
+			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(8, 0, 0)) {
 				path = "/internal/workplace_search/overview"
 			}
 			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil)

@@ -84,7 +84,7 @@ func newBuilder(name, randSuffix string) Builder {
 		WithEnvVar("ALLOW_PREVIEW_ELASTICSEARCH_8X", "true")
 
 	// this is mandatory setting starting with 8.x
-	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFrom(8, 0, 0)) {
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
 		b = b.WithConfig(map[string]interface{}{"kibana.host": "https://localhost:5601"})
 	}
 

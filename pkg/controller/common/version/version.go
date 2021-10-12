@@ -84,10 +84,10 @@ func From(major, minor, patch int) Version {
 	return Version{Major: uint64(major), Minor: uint64(minor), Patch: uint64(patch)}
 }
 
-// MinFrom creates a new version from the given major, minor, patch numbers with lowest PreRelease version, ie.
+// MinFor creates a new version for the given major, minor, patch numbers with lowest PreRelease version, ie.
 // the returned Version is the lowest possible version with those major, minor and patch numbers.
 // See https://semver.org/#spec-item-11.
-func MinFrom(major, minor, patch uint64) Version {
+func MinFor(major, minor, patch uint64) Version {
 	return Version{Major: major, Minor: minor, Patch: patch, Pre: []semver.PRVersion{minPreReleaseVersion}}
 }
 

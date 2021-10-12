@@ -60,30 +60,14 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	cfg := elasticsearch.CreateRolesConfig(
-		b.Elasticsearch.Spec.Version,
-		[]esv1.NodeRole{esv1.MasterRole, esv1.DataRole},
-		map[string]bool{
-			esv1.NodeMaster: true,
-			esv1.NodeData:   true,
-		})
-
 	b = b.WithNodeSet(esv1.NodeSet{
 		Name:  "other-master",
 		Count: 1,
 		Config: &commonv1.Config{
-			Data: cfg,
+			Data: elasticsearch.MixedRolesCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 	})
-
-	noMasterCfg := elasticsearch.CreateRolesConfig(
-		b.Elasticsearch.Spec.Version,
-		[]esv1.NodeRole{esv1.DataRole},
-		map[string]bool{
-			esv1.NodeMaster: false,
-			esv1.NodeData:   true,
-		})
 
 	// this currently breaks the cluster (something we might fix in the future at which point this just tests a temp downscale)
 	noMasterMaster := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources).
@@ -91,7 +75,7 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 			Name:  "other-master",
 			Count: 1,
 			Config: &commonv1.Config{
-				Data: noMasterCfg,
+				Data: elasticsearch.DataRoleCfg(b.Elasticsearch.Spec.Version),
 			},
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 		})

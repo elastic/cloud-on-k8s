@@ -77,7 +77,7 @@ func TestVolumeRetention(t *testing.T) {
 
 func TestVolumeMultiDataPath(t *testing.T) {
 	// remove when https://github.com/elastic/elasticsearch/issues/78525 is resolved
-	if version.MustParse(test.Ctx().ElasticStackVersion).Major >= 8 {
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
 		t.SkipNow()
 	}
 
