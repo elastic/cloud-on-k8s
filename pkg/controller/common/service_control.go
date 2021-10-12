@@ -97,6 +97,14 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
 
+	// ClusterIPs also might not exist in the expected service,
+	// but might have been set after creation by k8s on the actual resource.
+	// In such case, we want to use these values for comparison.
+	// But only if we are not changing the type of service and the api server has assigned IPs
+	if expected.Spec.Type == reconciled.Spec.Type && len(expected.Spec.ClusterIPs) == 0 && validClusterIPs(reconciled.Spec.ClusterIPs) {
+		expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
+	}
+
 	// SessionAffinity may be defaulted by the api server
 	if expected.Spec.SessionAffinity == "" {
 		expected.Spec.SessionAffinity = reconciled.Spec.SessionAffinity
@@ -126,6 +134,20 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.IPFamilies == nil {
 		expected.Spec.IPFamilies = reconciled.Spec.IPFamilies
 	}
+
+	// IPFamilyPolicy is immutable and cannot be modified so we should retain the existing value from the server if there's no explicit override.
+	if expected.Spec.IPFamilyPolicy == nil {
+		expected.Spec.IPFamilyPolicy = reconciled.Spec.IPFamilyPolicy
+	}
+}
+
+func validClusterIPs(clusterIPs []string) bool {
+	for _, ip := range clusterIPs {
+		if net.ParseIP(ip) == nil {
+			return false
+		}
+	}
+	return true
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.

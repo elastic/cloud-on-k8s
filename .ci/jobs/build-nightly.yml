@@ -4,7 +4,7 @@
     name: cloud-on-k8s-nightly-build
     project-type: pipeline
     triggers:
-      - timed: '0 0 * * 1-5'
+      - timed: '0 0 * * 1-6'
     pipeline-scm:
       scm:
         - git:

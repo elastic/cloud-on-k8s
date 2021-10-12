@@ -1,5 +1,5 @@
 # Docker image used for continuous integration
-FROM golang:1.17.1
+FROM golang:1.17.2
 
 ENV GOLANGCILINT_VERSION=1.38.0
 ENV SHELLCHECK_VERSION=0.7.1
@@ -13,7 +13,7 @@ ENV KIND_VERSION_0_8=0.8.1
 ENV KIND_VERSION_0_9=0.9.0
 ENV OPENSHIFT_TOOLS_VERSION=4.7.0
 ENV EKSCTL_VERSION=0.34.0
-ENV ECK_DIAG_VERSION=1.0.0
+ENV ECK_DIAG_VERSION=1.0.1
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
