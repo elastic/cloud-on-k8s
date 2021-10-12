@@ -417,7 +417,7 @@ func TestUpdateSettings(t *testing.T) {
 			name: "No valid license, nothing to create, nothing to delete",
 			args: args{
 				esClient:       &fakeESClient{existingSettings: emptySettings},
-				licenseChecker: &fakeLicenseChecker{false},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: false},
 				es: &esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "es1",
