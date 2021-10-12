@@ -139,7 +139,7 @@ func extractDNSNames(webhookServices Services) []string {
 
 	for n := range svcNames {
 		dnsNames[i] = n
-		i++ 
+		i++
 	}
 
 	return dnsNames

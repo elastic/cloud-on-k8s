@@ -39,7 +39,7 @@ func ecb(block cipher.Block, dst, src []byte) {
 	for len(src) > 0 {
 		block.Encrypt(dst, src[:block.BlockSize()])
 		src = src[block.BlockSize():]
-		dst = dst[block.BlockSize():] 
+		dst = dst[block.BlockSize():]
 	}
 }
 
