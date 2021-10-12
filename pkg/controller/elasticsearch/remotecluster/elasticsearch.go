@@ -37,17 +37,17 @@ func UpdateSettings(
 	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
 ) (bool, error) {
-	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
-	defer span.End()
-
 	remoteClustersInSpec := getRemoteClustersInSpec(es)
-	isRemoteClustersSpec := len(getRemoteClustersInSpec(es)) > 0
+	isRemoteClustersSpec := len(remoteClustersInSpec) > 0
 	_, isRemoteClustersAnnotation := es.Annotations[ManagedRemoteClustersAnnotationName]
 
 	if !isRemoteClustersSpec && !isRemoteClustersAnnotation {
 		// nothing to do, skip
 		return false, nil
 	}
+
+	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
+	defer span.End()
 
 	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
