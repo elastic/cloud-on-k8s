@@ -2,6 +2,7 @@ package initcontainer
 
 import (
 	"fmt"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
@@ -12,7 +13,6 @@ import (
 const (
 	SuspendScriptConfigKey = "suspend.sh"
 	SuspendedHostsFile     = "suspended_hosts.txt"
-	SuspendAnnotation      = "eck.elastic.co/suspend"
 )
 
 var SuspendScript = fmt.Sprintf(`#!/usr/bin/env bash
@@ -22,7 +22,7 @@ while [[ $(grep -Ec $HOSTNAME /mnt/elastic-internal/scripts/%s) -eq 1 ]]; do
 echo Pod suspended via %s annotation
 sleep 10
 done
-`, SuspendedHostsFile, SuspendAnnotation)
+`, SuspendedHostsFile, esv1.SuspendAnnotation)
 
 var suspendContainerResources = corev1.ResourceRequirements{
 	Requests: map[corev1.ResourceName]resource.Quantity{

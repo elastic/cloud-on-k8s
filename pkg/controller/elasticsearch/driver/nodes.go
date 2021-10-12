@@ -83,7 +83,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	esState := NewMemoizingESState(ctx, esClient)
+	esState := NewMemoizingESState(ctx, esClient, d.ES.SuspendedPodNames())
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
