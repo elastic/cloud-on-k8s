@@ -211,9 +211,11 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
-			return results.WithResult(defaultRequeue)
+			results.WithResult(defaultRequeue)
+			esReachable = false
 		}
-
+	}
+	if esReachable {
 		// reconcile remote clusters
 		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
 		if err != nil {
@@ -221,9 +223,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+			esReachable = false
 		}
 		if err != nil || requeue {
-			return results.WithResult(defaultRequeue)
+			results.WithResult(defaultRequeue)
 		}
 	}
 
