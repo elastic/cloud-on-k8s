@@ -12,9 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"

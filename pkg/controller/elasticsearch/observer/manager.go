@@ -111,7 +111,7 @@ func (m *Manager) List() []types.NamespacedName {
 	i := 0
 	for name := range m.observers {
 		names[i] = name
-		i++
+		i++ //nolint:wastedassign
 	}
 	return names
 }

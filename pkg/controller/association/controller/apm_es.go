@@ -8,10 +8,9 @@ import (
 	"context"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
