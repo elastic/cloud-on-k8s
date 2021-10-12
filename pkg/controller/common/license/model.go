@@ -15,6 +15,7 @@ import (
 type OperatorLicenseType string
 
 const (
+	LicenseTypeBasic           OperatorLicenseType = "basic"
 	LicenseTypeEnterprise      OperatorLicenseType = "enterprise"
 	LicenseTypeEnterpriseTrial OperatorLicenseType = "enterprise_trial"
 	// LicenseTypeLegacyTrial earlier versions of ECK used this as the trial identifier
@@ -47,8 +48,9 @@ type LicenseSpec struct {
 	Version            int                    // not marshalled but part of the signature
 }
 
-// EnterpriseLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
-var EnterpriseLicenseTypeOrder = map[OperatorLicenseType]int{
+// OperatorLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
+var OperatorLicenseTypeOrder = map[OperatorLicenseType]int{
+	LicenseTypeBasic:           -1,
 	LicenseTypeLegacyTrial:     0,
 	LicenseTypeEnterpriseTrial: 1,
 	LicenseTypeEnterprise:      2,
@@ -105,6 +107,13 @@ func (l EnterpriseLicense) IsMissingFields() error {
 		return pkgerrors.Errorf("required fields are missing: %v", missing)
 	}
 	return nil
+}
+
+func (l *EnterpriseLicense) GetOperatorLicenseType() OperatorLicenseType {
+	if l == nil {
+		return LicenseTypeBasic
+	}
+	return l.License.Type
 }
 
 // LicenseStatus expresses the validity status of a license.

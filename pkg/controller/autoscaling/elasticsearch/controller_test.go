@@ -94,7 +94,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("frozen-tier"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "frozen-tier",
@@ -109,7 +109,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("ml"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "ml",
@@ -124,7 +124,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingAutoscalingPolicies(),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "min-nodes-increased-by-user",
@@ -139,7 +139,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("empty-autoscaling-api-response"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "empty-autoscaling-api-response",
@@ -152,7 +152,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "cluster-creation",
@@ -165,7 +165,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("max-storage-reached"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "max-storage-reached",
@@ -182,7 +182,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("storage-scaled-horizontally"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "storage-scaled-horizontally",
@@ -195,7 +195,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "",
@@ -373,20 +373,4 @@ func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.Autos
 }
 func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, maxLazyMLNodes int32, maxMemory string) error {
 	return nil
-}
-
-// - Fake licence checker
-
-type fakeLicenceChecker struct{}
-
-func (flc *fakeLicenceChecker) CurrentEnterpriseLicense() (*license.EnterpriseLicense, error) {
-	return nil, nil
-}
-
-func (flc *fakeLicenceChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return true, nil
-}
-
-func (flc *fakeLicenceChecker) Valid(l license.EnterpriseLicense) (bool, error) {
-	return true, nil
 }
