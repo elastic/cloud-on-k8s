@@ -10,8 +10,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
-const PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
+const (
+	// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
+	PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
+	SuspendContainerName = "elastic-internal-suspend"
+)
 
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
@@ -28,6 +31,8 @@ func NewInitContainers(
 	if keystoreResources != nil {
 		containers = append(containers, keystoreResources.InitContainer)
 	}
+
+	containers = append(containers, NewSuspendInitContainer())
 
 	return containers, nil
 }

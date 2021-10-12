@@ -264,6 +264,13 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		results.WithResult(defaultRequeue)
 	}
 
+	// we want to reconcile suspended Pods before we start reconciling node specs as this is considered a debugging and
+	// troubleshooting tool that does not follow the change budget restrictions
+	// TODO: does this need to happen after all expectations are met?
+	if err := reconcileSuspendedPods(d.Client, d.ES); err != nil {
+		return results.WithError(err)
+	}
+
 	// reconcile StatefulSets and nodes configuration
 	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
 	results = results.WithResults(res)
