@@ -18,13 +18,6 @@ const (
 	ManagedRemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/managed-remote-clusters"
 )
 
-// HasRemoteClusters returns true if remote clusters are defined in the Elasticsearch specification or in the annotation
-func HasRemoteClusters(es esv1.Elasticsearch) bool {
-	nbRemoteClusters := len(getRemoteClustersInSpec(es))
-	_, isRemoteClustersAnnotation := es.Annotations[ManagedRemoteClustersAnnotationName]
-	return nbRemoteClusters > 0 || isRemoteClustersAnnotation
-}
-
 // getRemoteClustersInAnnotation returns a set that contains a list of remote clusters that may have been declared in Elasticsearch.
 // A map is returned here to quickly compare with the ones that are new or missing.
 // If there's no remote clusters the map is empty but not nil.
