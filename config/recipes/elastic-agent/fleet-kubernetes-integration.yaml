@@ -12,7 +12,9 @@ spec:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.packages:
     - name: kubernetes
-      version: latest
+      # pinning this version as the next one introduced a kube-proxy host setting default that breaks this recipe,
+      # see https://github.com/elastic/integrations/pull/1565 for more details
+      version: 0.14.0
     xpack.fleet.agentPolicies:
     - name: Default Fleet Server on ECK policy
       is_default_fleet_server: true
