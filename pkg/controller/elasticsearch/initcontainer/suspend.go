@@ -23,7 +23,7 @@ const (
 var SuspendScript = fmt.Sprintf(`#!/usr/bin/env bash
 set -eu
 
-while [[ $(grep -Ec $HOSTNAME /mnt/elastic-internal/scripts/%s) -eq 1 ]]; do
+while [[ $(grep -Exc $HOSTNAME /mnt/elastic-internal/scripts/%s) -eq 1 ]]; do
 echo Pod suspended via %s annotation
 sleep 10
 done

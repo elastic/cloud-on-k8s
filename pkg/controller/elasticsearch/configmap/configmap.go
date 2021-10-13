@@ -6,6 +6,7 @@ package configmap
 
 import (
 	"context"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
@@ -50,7 +51,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			nodespec.PreStopHookScriptConfigKey:    nodespec.PreStopHookScript,
 			initcontainer.PrepareFsScriptConfigKey: fsScript,
 			initcontainer.SuspendScriptConfigKey:   initcontainer.SuspendScript,
-			initcontainer.SuspendedHostsFile:       es.Annotations[esv1.SuspendAnnotation],
+			initcontainer.SuspendedHostsFile:       strings.Join(es.SuspendedPodNames().AsSlice(), "\n"),
 		},
 	)
 

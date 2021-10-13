@@ -50,7 +50,7 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 				}
 			}
 		} else if isSuspended(pod) {
-			// try to speed up propagation of configmap entries 
+			// try to speed up propagation of configmap entries
 			annotation.MarkPodAsUpdated(c, pod)
 		}
 	}
