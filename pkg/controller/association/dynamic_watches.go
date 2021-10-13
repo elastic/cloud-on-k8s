@@ -7,10 +7,11 @@ package association
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // referencedResourceWatchName is the name of the watch set on the referenced resource.

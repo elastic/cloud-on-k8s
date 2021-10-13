@@ -5,12 +5,13 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -146,7 +147,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	i := 0
 	for statefulSet, replica := range statefulSets {
 		statefulSetList[i] = sset.TestSset{Name: statefulSet, ClusterName: TestEsName, Namespace: TestEsNamespace, Replicas: replica + 1}.Build()
-		i++ //nolint:wastedassign
+		i++ 
 	}
 	return statefulSetList
 }

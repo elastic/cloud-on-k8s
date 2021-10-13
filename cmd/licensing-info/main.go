@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"log"
 
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/license"
 )
 
 // Simple program that returns the licensing information, including the total memory of all Elastic managed components by

@@ -7,12 +7,13 @@ package remoteca
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 var log = ulog.Log.WithName("remotecluster-remoteca")

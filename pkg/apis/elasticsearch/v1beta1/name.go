@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/pkg/errors"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
+
+	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 )
 
 const (

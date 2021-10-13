@@ -8,10 +8,11 @@ import (
 	"context"
 	"fmt"
 
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
+
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 )
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {

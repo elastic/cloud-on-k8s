@@ -9,15 +9,17 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 )
 
 func AnnotatePodsWithBuilderHash(subj, prev Subject, k *K8sClient) StepList {

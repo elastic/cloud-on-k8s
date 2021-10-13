@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/pkg/errors"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	"github.com/pkg/errors"
 )
 
 var errNotSupportedInEs6x = errors.New("not supported in Elasticsearch 6.x")

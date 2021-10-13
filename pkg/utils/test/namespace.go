@@ -7,11 +7,12 @@ package test
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func EnsureNamespace(c k8s.Client, ns string) error {

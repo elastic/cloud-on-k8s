@@ -7,8 +7,9 @@ package v1alpha1
 import (
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 func Test_checkSupportedVersion(t *testing.T) {

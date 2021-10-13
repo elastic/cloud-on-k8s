@@ -5,12 +5,13 @@
 package kibana
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"

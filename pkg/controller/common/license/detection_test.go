@@ -7,9 +7,10 @@ package license
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
 
 func Test_isLicenseType(t *testing.T) {

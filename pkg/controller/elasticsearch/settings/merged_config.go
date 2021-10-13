@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -16,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // the name of the ES attribute indicating the pod's current k8s node

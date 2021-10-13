@@ -15,9 +15,10 @@ import (
 
 	"github.com/go-test/deep"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 )
 
 func TestLicenseVerifier_ValidSignature(t *testing.T) {

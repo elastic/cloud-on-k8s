@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +20,9 @@ import (
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
+	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
+	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 // doRun runs the main chaos process. It randomly deletes operator Pods, scale up and down operator replicas and attempts

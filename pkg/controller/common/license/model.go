@@ -7,8 +7,9 @@ package license
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	pkgerrors "github.com/pkg/errors"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 // OperatorLicenseType is the type of operator level license a resource is describing.

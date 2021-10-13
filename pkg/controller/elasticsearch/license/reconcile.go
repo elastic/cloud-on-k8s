@@ -7,10 +7,11 @@ package license
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/pkg/errors"
 )
 
 // Reconcile reconciles the current Elasticsearch license with the desired one.

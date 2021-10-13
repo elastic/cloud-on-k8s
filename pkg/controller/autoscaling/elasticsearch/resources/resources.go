@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"math"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 )
 
 const (

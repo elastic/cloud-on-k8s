@@ -7,9 +7,10 @@ package chaos
 import (
 	"time"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var (

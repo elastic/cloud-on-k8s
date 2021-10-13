@@ -7,8 +7,9 @@ package license
 import (
 	"testing"
 
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/stretchr/testify/assert"
+
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 )
 
 func TestToMap(t *testing.T) {
