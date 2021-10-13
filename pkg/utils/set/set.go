@@ -34,7 +34,7 @@ func (set StringSet) MergeWith(other StringSet) {
 	}
 }
 
-func (set StringSet) Diff( other StringSet) StringSet {
+func (set StringSet) Diff(other StringSet) StringSet {
 	res := Make()
 	res.MergeWith(set)
 	for str := range other {

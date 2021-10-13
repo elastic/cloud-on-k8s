@@ -6,8 +6,9 @@ package v1
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"strings"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

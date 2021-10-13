@@ -14,7 +14,7 @@ import (
 
 func TestNewInitContainers(t *testing.T) {
 	type args struct {
-		keystoreResources  *keystore.Resources
+		keystoreResources *keystore.Resources
 	}
 	tests := []struct {
 		name                       string
@@ -24,14 +24,14 @@ func TestNewInitContainers(t *testing.T) {
 		{
 			name: "with keystore resources",
 			args: args{
-				keystoreResources:  &keystore.Resources{},
+				keystoreResources: &keystore.Resources{},
 			},
 			expectedNumberOfContainers: 3,
 		},
 		{
-			name:                       "without keystore resources",
-			args:                       args{
-				keystoreResources:  nil,
+			name: "without keystore resources",
+			args: args{
+				keystoreResources: nil,
 			},
 			expectedNumberOfContainers: 2,
 		},

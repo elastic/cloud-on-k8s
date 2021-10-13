@@ -15,7 +15,6 @@ const (
 	PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 	// SuspendContainerName is the name of the container that is used to suspend Elasticsearch if requested by the user.
 	SuspendContainerName = "elastic-internal-suspend"
-
 )
 
 // NewInitContainers creates init containers according to the given parameters

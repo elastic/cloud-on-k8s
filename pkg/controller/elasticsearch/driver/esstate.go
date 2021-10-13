@@ -6,8 +6,9 @@ package driver
 
 import (
 	"context"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"sync"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"

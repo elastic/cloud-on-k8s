@@ -49,8 +49,8 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			nodespec.ReadinessProbeScriptConfigKey: nodespec.ReadinessProbeScript,
 			nodespec.PreStopHookScriptConfigKey:    nodespec.PreStopHookScript,
 			initcontainer.PrepareFsScriptConfigKey: fsScript,
-			initcontainer.SuspendScriptConfigKey: initcontainer.SuspendScript,
-			initcontainer.SuspendedHostsFile: es.Annotations[esv1.SuspendAnnotation],
+			initcontainer.SuspendScriptConfigKey:   initcontainer.SuspendScript,
+			initcontainer.SuspendedHostsFile:       es.Annotations[esv1.SuspendAnnotation],
 		},
 	)
 

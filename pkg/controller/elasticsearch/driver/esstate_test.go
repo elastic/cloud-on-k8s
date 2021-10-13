@@ -6,8 +6,9 @@ package driver
 
 import (
 	"context"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"testing"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 
 	"github.com/stretchr/testify/require"
 
@@ -141,7 +142,6 @@ func Test_memoizingNodes_NodesInCluster(t *testing.T) {
 	inCluster, err = memoizingNodes.NodesInCluster([]string{"a", "b", "c", "e"})
 	require.NoError(t, err)
 	require.True(t, inCluster)
-
 }
 
 func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {

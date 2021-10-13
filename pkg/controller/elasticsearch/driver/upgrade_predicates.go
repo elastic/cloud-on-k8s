@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"

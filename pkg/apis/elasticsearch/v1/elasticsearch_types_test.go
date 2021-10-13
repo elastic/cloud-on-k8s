@@ -6,11 +6,12 @@ package v1
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 
@@ -215,37 +216,35 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 
 func TestElasticsearch_SuspendedPodNames(t *testing.T) {
 	tests := []struct {
-		name   string
+		name       string
 		ObjectMeta metav1.ObjectMeta
-		want   set.StringSet
+		want       set.StringSet
 	}{
 		{
-			name:   "no annotation",
-			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
-
-			}},
-			want:   nil,
+			name:       "no annotation",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+			want:       nil,
 		},
 		{
-			name:       "single value",
+			name: "single value",
 			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
 				SuspendAnnotation: "a",
 			}},
-			want:       set.Make("a"),
+			want: set.Make("a"),
 		},
 		{
-			name:       "multi value",
+			name: "multi value",
 			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
 				SuspendAnnotation: "a,b,c",
 			}},
-			want:       set.Make("a", "b", "c"),
+			want: set.Make("a", "b", "c"),
 		},
 		{
-			name:       "multi value with whitespace",
+			name: "multi value with whitespace",
 			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
 				SuspendAnnotation: "a , b , c",
 			}},
-			want:       set.Make("a", "b", "c"),
+			want: set.Make("a", "b", "c"),
 		},
 	}
 	for _, tt := range tests {
