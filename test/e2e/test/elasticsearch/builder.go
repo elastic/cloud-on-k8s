@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"reflect"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -203,9 +204,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 		Name:  "master",
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{
-				esv1.NodeData: "false",
-			},
+			Data: MasterRoleCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
@@ -216,9 +215,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 		Name:  "data",
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{
-				esv1.NodeMaster: "false",
-			},
+			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
@@ -229,9 +226,7 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 		Name:  name,
 		Count: int32(count),
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{
-				esv1.NodeMaster: "false",
-			},
+			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
@@ -461,6 +456,10 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 }
 
 func (b Builder) GetMetricsIndexPattern() string {
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
+		return fmt.Sprintf("metricbeat-%s*", test.Ctx().ElasticStackVersion)
+	}
+
 	return ".monitoring-es-*"
 }
 
@@ -513,4 +512,40 @@ func (b Builder) TriggersRollingUpgrade() bool {
 		}
 	}
 	return false
+}
+
+func MixedRolesCfg(ver string) map[string]interface{} {
+	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}, map[string]bool{
+		esv1.NodeMaster: true,
+		esv1.NodeData:   true,
+	})
+}
+
+func DataRoleCfg(ver string) map[string]interface{} {
+	return roleCfg(ver, []esv1.NodeRole{esv1.DataRole}, map[string]bool{
+		esv1.NodeMaster: false,
+		esv1.NodeData:   true,
+	})
+}
+
+func MasterRoleCfg(ver string) map[string]interface{} {
+	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole}, map[string]bool{
+		esv1.NodeMaster: true,
+		esv1.NodeData:   false,
+	})
+}
+
+func roleCfg(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]interface{} {
+	v := version.MustParse(ver)
+
+	cfg := map[string]interface{}{}
+	if v.GTE(version.From(7, 9, 0)) {
+		cfg[esv1.NodeRoles] = post78roles
+	} else {
+		for k, v := range pre79roles {
+			cfg[k] = v
+		}
+	}
+
+	return cfg
 }

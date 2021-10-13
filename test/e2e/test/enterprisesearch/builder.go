@@ -68,7 +68,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 
-	return Builder{
+	b := Builder{
 		EnterpriseSearch: entv1.EnterpriseSearch{
 			ObjectMeta: meta,
 			Spec: entv1.EnterpriseSearchSpec{
@@ -82,6 +82,13 @@ func newBuilder(name, randSuffix string) Builder {
 		WithPodLabel(run.TestNameLabel, name).
 		// allows running with ES 8.0.0-SNAPSHOT version, to remove once 8.0.0 is released
 		WithEnvVar("ALLOW_PREVIEW_ELASTICSEARCH_8X", "true")
+
+	// this is mandatory setting starting with 8.x
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
+		b = b.WithConfig(map[string]interface{}{"kibana.host": "https://localhost:5601"})
+	}
+
+	return b
 }
 
 func (b Builder) Ref() commonv1.ObjectSelector {
@@ -184,6 +191,14 @@ func (b Builder) WithEnvVar(name, value string) Builder {
 		container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
 		b.EnterpriseSearch.Spec.PodTemplate.Spec.Containers[i].Env = container.Env
 	}
+	return b
+}
+
+// WithoutConfig removes all custom config from the Enterprise Search spec.
+func (b Builder) WithoutConfig() Builder {
+	b.EnterpriseSearch.Spec.Config = nil
+	b.EnterpriseSearch.Spec.ConfigRef = nil
+
 	return b
 }
 
