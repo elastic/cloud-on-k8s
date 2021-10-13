@@ -20,7 +20,7 @@ import (
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
-	SuspendAnnotation          = "eck.elastic.co/suspend"
+	SuspendAnnotation          = "eck.k8s.elastic.co/suspend"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
