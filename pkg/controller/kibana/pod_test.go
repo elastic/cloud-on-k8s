@@ -7,10 +7,6 @@ package kibana
 import (
 	"testing"
 
-	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +17,9 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestNewPodTemplateSpec(t *testing.T) {
