@@ -200,9 +200,12 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		nil,
 	)
 	require.NoError(t, err)
-	// should be patched with volume and env
+	// init containers should be patched with volume and inherited env vars and image
+	headlessSvcEnvVar := corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}
+	esDockerImage := "docker.elastic.co/elasticsearch/elasticsearch:7.2.0"
 	for i := range initContainers {
-		initContainers[i].Env = append(initContainers[i].Env, defaults.PodDownwardEnvVars()...)
+		initContainers[i].Image = esDockerImage
+		initContainers[i].Env = append(initContainers[i].Env, headlessSvcEnvVar)
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 	}
 
@@ -243,8 +246,8 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			Volumes: volumes,
 			InitContainers: append(initContainers, corev1.Container{
 				Name:         "additional-init-container",
-				Image:        "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-				Env:          defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}),
+				Image:        esDockerImage,
+				Env:          defaults.ExtendPodDownwardEnvVars(headlessSvcEnvVar),
 				VolumeMounts: volumeMounts,
 			}),
 			Containers: []corev1.Container{
@@ -253,7 +256,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				},
 				{
 					Name:  "elasticsearch",
-					Image: "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
+					Image: esDockerImage,
 					Ports: []corev1.ContainerPort{
 						{Name: "https", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},

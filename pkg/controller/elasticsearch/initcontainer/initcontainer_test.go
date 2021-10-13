@@ -14,8 +14,6 @@ import (
 
 func TestNewInitContainers(t *testing.T) {
 	type args struct {
-		elasticsearchImage string
-		operatorImage      string
 		keystoreResources  *keystore.Resources
 	}
 	tests := []struct {
@@ -26,9 +24,14 @@ func TestNewInitContainers(t *testing.T) {
 		{
 			name: "with keystore resources",
 			args: args{
-				elasticsearchImage: "es-image",
-				operatorImage:      "op-image",
 				keystoreResources:  &keystore.Resources{},
+			},
+			expectedNumberOfContainers: 3,
+		},
+		{
+			name:                       "without keystore resources",
+			args:                       args{
+				keystoreResources:  nil,
 			},
 			expectedNumberOfContainers: 2,
 		},
