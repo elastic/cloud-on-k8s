@@ -275,7 +275,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 		caCertValidity     time.Duration
 		shouldReuseCa      *CA             // ca that should be reused
 		shouldNotReuseCa   *CA             // ca that should not be reused
-		expectedPrivateKey *rsa.PrivateKey // ca that should not be reused
+		expectedPrivateKey *rsa.PrivateKey // the private key that is expected to be used to create the CA
 	}{
 		{
 			name:           "no existing CA cert nor private key",
@@ -302,12 +302,12 @@ func TestReconcileCAForCluster(t *testing.T) {
 			shouldReuseCa:  validCa, // should reuse existing one
 		},
 		{
-			name:               "existing internal cert is soon to expire",
+			name:               "existing internal cert is soon to expire, and the existing private key will be used to regenerate",
 			cl:                 k8s.NewFakeClient(&soonToExpireInternalCASecret),
 			caCertValidity:     DefaultCertValidity,
-			shouldReuseCa:      nil,            // should create a new one
-			shouldNotReuseCa:   soonToExpireCa, // and not reuse existing one
-			expectedPrivateKey: soonToExpireCAPrivateKey,
+			shouldReuseCa:      nil,                      // should create a new one
+			shouldNotReuseCa:   soonToExpireCa,           // and not reuse existing one
+			expectedPrivateKey: soonToExpireCAPrivateKey, // the private key that should be used to regenerate a new CA
 		},
 	}
 	for _, tt := range tests {

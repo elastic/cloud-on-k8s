@@ -91,6 +91,12 @@ func ReconcileCAForOwner(
 	return ca, nil
 }
 
+// renewCAFromExisting will attempt to renew, or rather create a new CA using the existing
+// private key from the existing CA, using the same options as the previous CA.  There are 2
+// scenarious where this will fail back to the existing behavior of creating a new CA with
+// a newly created private key and those are:
+// 1. The given CA is nil
+// 2. The CA's private key interface type can't be cast to a *rsa.PrivateKey
 func renewCAFromExisting(
 	client k8s.Client,
 	namer name.Namer,
@@ -121,7 +127,7 @@ func renewCAFromExisting(
 	})
 }
 
-// renewCA creates and stores a new CA to replace one that might exist
+// renewCA creates and stores a new CA to replace one that might exist using a set of default builder options
 func renewCA(
 	client k8s.Client,
 	namer name.Namer,
@@ -139,6 +145,8 @@ func renewCA(
 	})
 }
 
+// renewCAWithOptions will create and store a new CA to replace one that might exist using a set of given builder options
+// instead of accepting the defaults
 func renewCAWithOptions(
 	client k8s.Client,
 	namer name.Namer,
@@ -185,6 +193,8 @@ func CertIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bo
 	return true
 }
 
+// certExpiring is simple helper function to see if a certificate is expiring relative to the given
+// time.Time, and a given safety margin
 func certExpiring(t time.Time, cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
 	return t.After(cert.NotAfter.Add(-expirationSafetyMargin))
 }
