@@ -6,6 +6,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"reflect"
 	"sort"
 	"testing"
@@ -207,6 +208,53 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 			got := ChangeBudget{MaxUnavailable: tt.fromSpec}.GetMaxUnavailableOrDefault()
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetMaxUnavailableOrDefault() want = %v, got = %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestElasticsearch_SuspendedPodNames(t *testing.T) {
+	tests := []struct {
+		name   string
+		ObjectMeta metav1.ObjectMeta
+		want   set.StringSet
+	}{
+		{
+			name:   "no annotation",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+
+			}},
+			want:   nil,
+		},
+		{
+			name:       "single value",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				SuspendAnnotation: "a",
+			}},
+			want:       set.Make("a"),
+		},
+		{
+			name:       "multi value",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				SuspendAnnotation: "a,b,c",
+			}},
+			want:       set.Make("a", "b", "c"),
+		},
+		{
+			name:       "multi value with whitespace",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				SuspendAnnotation: "a , b , c",
+			}},
+			want:       set.Make("a", "b", "c"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := Elasticsearch{
+				ObjectMeta: tt.ObjectMeta,
+			}
+			if got := es.SuspendedPodNames(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SuspendedPodNames() = %v, want %v", got, tt.want)
 			}
 		})
 	}
