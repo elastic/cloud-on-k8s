@@ -55,14 +55,6 @@ func BuildPodTemplateSpec(
 
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
-	initContainers, err := initcontainer.NewInitContainers(
-		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
-		keystoreResources,
-	)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
 	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName)
 
 	ver, err := version.Parse(es.Spec.Version)
@@ -76,11 +68,26 @@ func BuildPodTemplateSpec(
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+
+	// build the podTemplate until we have the effective resources configured
+	builder = builder.
+		WithResources(DefaultResources)
+
+	// now build the initContainers using the effective main container resources as an input
+	initContainers, err := initcontainer.NewInitContainers(
+		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
+		keystoreResources,
+		builder.GetContainer().Resources,
+	)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	// finish building the podTemplate
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, es.Spec.Version)).
-		WithResources(DefaultResources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).

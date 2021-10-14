@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -29,23 +28,12 @@ sleep 10
 done
 `, SuspendedHostsFile, esv1.SuspendAnnotation)
 
-var suspendContainerResources = corev1.ResourceRequirements{
-	Requests: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("100Mi"),
-	},
-	Limits: map[corev1.ResourceName]resource.Quantity{
-		// Memory limit should be at least 12582912 when running with CRI-O
-		// Less than 100Mi and Elasticsearch tools like elasticsearch-node run into OOM
-		corev1.ResourceMemory: resource.MustParse("100Mi"),
-	},
-}
-
-func NewSuspendInitContainer() corev1.Container {
+func NewSuspendInitContainer(resources corev1.ResourceRequirements) corev1.Container {
 	return corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            SuspendContainerName,
 		Env:             defaults.PodDownwardEnvVars(),
 		Command:         []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, SuspendScriptConfigKey)},
-		Resources:       suspendContainerResources,
+		Resources:       resources,
 	}
 }

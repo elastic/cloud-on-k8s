@@ -56,8 +56,8 @@ func NewPodTemplateBuilder(base corev1.PodTemplateSpec, containerName string) *P
 	return builder.setDefaults()
 }
 
-// getContainer retrieves the main Container from the pod template
-func (b *PodTemplateBuilder) getContainer() *corev1.Container {
+// GetContainer retrieves the main Container from the pod template
+func (b *PodTemplateBuilder) GetContainer() *corev1.Container {
 	for i, c := range b.PodTemplate.Spec.Containers {
 		if c.Name == b.containerName {
 			return &b.PodTemplate.Spec.Containers[i]
@@ -67,13 +67,13 @@ func (b *PodTemplateBuilder) getContainer() *corev1.Container {
 }
 
 func (b *PodTemplateBuilder) setContainerDefaulter() {
-	b.containerDefaulter = container.NewDefaulter(b.getContainer())
+	b.containerDefaulter = container.NewDefaulter(b.GetContainer())
 }
 
 // setDefaults sets up a default Container in the pod template,
 // and disables service account token auto mount.
 func (b *PodTemplateBuilder) setDefaults() *PodTemplateBuilder {
-	userContainer := b.getContainer()
+	userContainer := b.GetContainer()
 	if userContainer == nil {
 		// create the default Container if not provided by the user
 		b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, corev1.Container{Name: b.containerName})

@@ -195,10 +195,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
 
-	initContainers, err := initcontainer.NewInitContainers(
-		transportCertificatesVolume(sampleES.Name),
-		nil,
-	)
+	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil, DefaultResources)
 	require.NoError(t, err)
 	// init containers should be patched with volume and inherited env vars and image
 	headlessSvcEnvVar := corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}
