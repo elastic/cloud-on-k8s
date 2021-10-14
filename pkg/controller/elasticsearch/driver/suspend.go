@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
@@ -36,7 +37,7 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 		return err
 	}
 
-	for _, pod := range knownPods {
+	for i, pod := range knownPods {
 		if suspendedPodNames.Has(pod.Name) {
 			for _, s := range pod.Status.ContainerStatuses {
 				// delete the Pod without grace period if the main container is running
@@ -44,7 +45,7 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 					log.Info("Deleting suspended pod", "pod_name", pod.Name, "pod_uid", pod.UID,
 						"namespace", es.Namespace, "es_name", es.Name)
 					e.ExpectDeletion(pod)
-					if err := c.Delete(context.Background(), &pod, client.GracePeriodSeconds(0)); err != nil {
+					if err := c.Delete(context.Background(), &knownPods[i], client.GracePeriodSeconds(0)); err != nil {
 						return err
 					}
 				}
