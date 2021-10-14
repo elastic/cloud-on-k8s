@@ -19,7 +19,7 @@ import (
 
 func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations.Expectations) error {
 	// let's make sure we observe any deletions in the cache to avoid redundant deletion
-	deletionsSatisfied, err := e.DeletionsSatisfied();
+	deletionsSatisfied, err := e.DeletionsSatisfied()
 	if err != nil {
 		return err
 	}
@@ -38,20 +38,22 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 	}
 
 	for i, pod := range knownPods {
-		// Pod should be suspended and we have seen all deletions i.e. cache is up to date
-		if suspendedPodNames.Has(pod.Name) && deletionsSatisfied {
+		// Pod should be suspended
+		if suspendedPodNames.Has(pod.Name) {
 			for _, s := range pod.Status.ContainerStatuses {
 				// delete the Pod without grace period if the main Elasticsearch container is running
-				if s.Name == esv1.ElasticsearchContainerName && s.State.Running != nil {
+				// and we have seen all expected deletions in the cache
+				if deletionsSatisfied && s.Name == esv1.ElasticsearchContainerName && s.State.Running != nil {
 					log.Info("Deleting suspended pod", "pod_name", pod.Name, "pod_uid", pod.UID,
 						"namespace", es.Namespace, "es_name", es.Name)
 					if err := c.Delete(context.Background(), &knownPods[i], client.GracePeriodSeconds(0)); err != nil {
 						return err
 					}
 					// record the expected deletion
-					e.ExpectDeletion(pod)				}
+					e.ExpectDeletion(pod)
+				}
 			}
-		// Pod is suspended but it should not be
+			// Pod is suspended but it should not be
 		} else if isSuspended(pod) {
 			// try to speed up propagation of config map entries so that it can start up again. Without this it can take
 			// minutes to until the config map file in the Pod's filesystem is updated with the current state
