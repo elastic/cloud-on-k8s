@@ -58,7 +58,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// Fixtures
 	watched := types.NamespacedName{
 		Namespace: "default",
-		Name:      "watched1-" + rand.String(10),
+		Name:      "watched-" + rand.String(10),
 	}
 	testObj := &corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(watched),
