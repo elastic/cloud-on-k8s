@@ -62,10 +62,6 @@ func buildOnce(s *upscaleState) error {
 				return
 			}
 			for _, masterNodePod := range masters {
-				// ignore suspended Pods here
-				if s.ctx.es.SuspendedPodNames().Has(masterNodePod.Name) {
-					continue
-				}
 				var isJoining bool
 				isJoining, err = isMasterNodeJoining(masterNodePod, s.ctx.esState)
 				if err != nil {

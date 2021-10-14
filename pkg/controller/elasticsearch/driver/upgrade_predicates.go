@@ -7,8 +7,6 @@ package driver
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -134,17 +132,6 @@ var predicates = [...]Predicate{
 				return false, nil
 			}
 			return true, nil
-		},
-	},
-	{
-		name: "skip_suspended_pods",
-		fn: func(
-			context PredicateContext,
-			candidate corev1.Pod,
-			_ []corev1.Pod,
-			_ bool,
-		) (bool, error) {
-			return !context.es.SuspendedPodNames().Has(candidate.Name), nil
 		},
 	},
 	{
@@ -340,10 +327,7 @@ var predicates = [...]Predicate{
 			}
 
 			// Get the expected masters
-			masterNodeNames := set.Make(context.masterNodesNames...)
-			// but exclude and suspended Pods
-			expectedMasters := len(masterNodeNames.Diff(context.es.SuspendedPodNames()))
-
+			expectedMasters := len(context.masterNodesNames)
 			// Get the healthy masters
 			healthyMasters := 0
 			for _, pod := range context.healthyPods {

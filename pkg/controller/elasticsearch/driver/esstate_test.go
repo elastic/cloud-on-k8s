@@ -8,8 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
-
 	"github.com/stretchr/testify/require"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -136,12 +134,6 @@ func Test_memoizingNodes_NodesInCluster(t *testing.T) {
 	inCluster, err = memoizingNodes.NodesInCluster([]string{"a", "b", "c", "e"})
 	require.NoError(t, err)
 	require.False(t, inCluster)
-
-	// unless we explicitly chose to ignore a node (because it has been suspended on the infrastructure level for example)
-	memoizingNodes.ignored = set.Make("e")
-	inCluster, err = memoizingNodes.NodesInCluster([]string{"a", "b", "c", "e"})
-	require.NoError(t, err)
-	require.True(t, inCluster)
 }
 
 func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {
@@ -198,7 +190,7 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 func TestNewMemoizingESState(t *testing.T) {
 	esClient := &fakeESClient{}
 	// just make sure everything is initialized correctly (no panic for nil pointers)
-	s := NewMemoizingESState(context.Background(), esClient, set.Make())
+	s := NewMemoizingESState(context.Background(), esClient)
 	_, err := s.Health()
 	require.NoError(t, err)
 	_, err = s.ShardAllocationsEnabled()

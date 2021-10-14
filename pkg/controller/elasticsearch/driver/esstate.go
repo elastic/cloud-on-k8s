@@ -8,8 +8,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
-
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -34,10 +32,10 @@ type MemoizingESState struct {
 }
 
 // NewMemoizingESState returns an initialized MemoizingESState.
-func NewMemoizingESState(ctx context.Context, esClient esclient.Client, ignoredNodes set.StringSet) ESState {
+func NewMemoizingESState(ctx context.Context, esClient esclient.Client) ESState {
 	return &MemoizingESState{
 		esClient:                         esClient,
-		memoizingNodes:                   &memoizingNodes{esClient: esClient, ctx: ctx, ignored: ignoredNodes},
+		memoizingNodes:                   &memoizingNodes{esClient: esClient, ctx: ctx},
 		memoizingShardsAllocationEnabled: &memoizingShardsAllocationEnabled{esClient: esClient, ctx: ctx},
 		memoizingHealth:                  &memoizingHealth{esClient: esClient, ctx: ctx},
 	}
@@ -59,7 +57,6 @@ type memoizingNodes struct {
 	once     sync.Once
 	esClient esclient.Client
 	ctx      context.Context
-	ignored  set.StringSet
 	nodes    []string
 }
 
@@ -77,9 +74,6 @@ func (n *memoizingNodes) initialize() error {
 func (n *memoizingNodes) NodesInCluster(nodeNames []string) (bool, error) {
 	if err := initOnce(&n.once, n.initialize); err != nil {
 		return false, err
-	}
-	for _, ignore := range n.ignored.AsSlice() {
-		nodeNames = stringsutil.RemoveStringInSlice(ignore, nodeNames)
 	}
 	return stringsutil.StringsInSlice(nodeNames, n.nodes), nil
 }
