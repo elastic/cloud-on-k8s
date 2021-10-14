@@ -69,6 +69,7 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 
 	response, err := c.HTTP.Do(withContext)
 	if err != nil {
+		log.V(10).Info("Hitting Elasticsearch", "URL", request.URL.Redacted())
 		return response, newDecoratedHTTPError(request, err)
 	}
 
