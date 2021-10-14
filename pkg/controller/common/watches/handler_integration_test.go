@@ -39,8 +39,11 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
 		reconcileFunc := reconcile.Func(func(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-			requests <- req
-			return reconcile.Result{}, nil
+			select {
+			case requests <- req:
+			case <-ctx.Done():
+				return reconcile.Result{}, nil
+			}
 		})
 		ctrl, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: reconcileFunc})
 		require.NoError(t, err)
