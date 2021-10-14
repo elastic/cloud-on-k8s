@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -42,8 +43,8 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 			select {
 			case requests <- req:
 			case <-ctx.Done():
-				return reconcile.Result{}, nil
 			}
+			return reconcile.Result{}, nil
 		})
 		ctrl, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: reconcileFunc})
 		require.NoError(t, err)
@@ -57,7 +58,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// Fixtures
 	watched := types.NamespacedName{
 		Namespace: "default",
-		Name:      "watched1",
+		Name:      "watched1-" + rand.String(10),
 	}
 	testObj := &corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(watched),
