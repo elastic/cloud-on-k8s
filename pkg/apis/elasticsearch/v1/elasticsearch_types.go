@@ -19,7 +19,9 @@ import (
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
-	SuspendAnnotation          = "eck.k8s.elastic.co/suspend"
+	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
+	// for debugging purposes.
+	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"

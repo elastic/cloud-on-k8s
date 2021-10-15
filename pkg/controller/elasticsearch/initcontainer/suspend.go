@@ -7,6 +7,7 @@ package initcontainer
 import (
 	"fmt"
 	"path"
+	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -16,7 +17,7 @@ import (
 
 const (
 	SuspendScriptConfigKey = "suspend.sh"
-	SuspendedHostsFile     = "suspended_hosts.txt"
+	SuspendedHostsFile     = "suspended_pods.txt"
 )
 
 var SuspendScript = fmt.Sprintf(`#!/usr/bin/env bash
@@ -28,6 +29,12 @@ sleep 10
 done
 `, SuspendedHostsFile, esv1.SuspendAnnotation)
 
+// RenderSuspendConfiguration renders the configuration used by the SuspendScript.
+func RenderSuspendConfiguration(es esv1.Elasticsearch) string {
+	return strings.Join(es.SuspendedPodNames().AsSlice(), "\n")
+}
+
+// NewSuspendInitContainer creates an init container to run the script to check for suspended Pods.
 func NewSuspendInitContainer(resources corev1.ResourceRequirements) corev1.Container {
 	return corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,

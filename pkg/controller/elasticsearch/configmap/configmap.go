@@ -6,7 +6,6 @@ package configmap
 
 import (
 	"context"
-	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
@@ -33,7 +32,7 @@ func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev
 	}
 }
 
-// ReconcileScriptsConfigMap reconciles a configmap containing scripts used by
+// ReconcileScriptsConfigMap reconciles a configmap containing scripts and related configuration used by
 // init containers and readiness probe.
 func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
@@ -51,7 +50,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			nodespec.PreStopHookScriptConfigKey:    nodespec.PreStopHookScript,
 			initcontainer.PrepareFsScriptConfigKey: fsScript,
 			initcontainer.SuspendScriptConfigKey:   initcontainer.SuspendScript,
-			initcontainer.SuspendedHostsFile:       strings.Join(es.SuspendedPodNames().AsSlice(), "\n"),
+			initcontainer.SuspendedHostsFile:       initcontainer.RenderSuspendConfiguration(es),
 		},
 	)
 
