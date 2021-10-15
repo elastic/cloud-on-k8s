@@ -35,12 +35,11 @@ func RenderSuspendConfiguration(es esv1.Elasticsearch) string {
 }
 
 // NewSuspendInitContainer creates an init container to run the script to check for suspended Pods.
-func NewSuspendInitContainer(resources corev1.ResourceRequirements) corev1.Container {
+func NewSuspendInitContainer() corev1.Container {
 	return corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            SuspendContainerName,
 		Env:             defaults.PodDownwardEnvVars(),
 		Command:         []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, SuspendScriptConfigKey)},
-		Resources:       resources,
 	}
 }

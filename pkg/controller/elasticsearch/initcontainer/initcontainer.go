@@ -21,7 +21,6 @@ const (
 func NewInitContainers(
 	transportCertificatesVolume volume.SecretVolume,
 	keystoreResources *keystore.Resources,
-	mainContainerResources corev1.ResourceRequirements,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 	prepareFsContainer, err := NewPrepareFSInitContainer(transportCertificatesVolume)
@@ -34,7 +33,7 @@ func NewInitContainers(
 		containers = append(containers, keystoreResources.InitContainer)
 	}
 
-	containers = append(containers, NewSuspendInitContainer(mainContainerResources))
+	containers = append(containers, NewSuspendInitContainer())
 
 	return containers, nil
 }
