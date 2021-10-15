@@ -16,6 +16,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/hashicorp/go-multierror"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var log = ulog.Log.WithName("elasticsearch-client")
@@ -24,6 +25,7 @@ type baseClient struct {
 	User     BasicAuth
 	HTTP     *http.Client
 	Endpoint string
+	es       types.NamespacedName
 	caCerts  []*x509.Certificate
 	version  version.Version
 }
@@ -67,9 +69,15 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 		withContext.SetBasicAuth(c.User.Name, c.User.Password)
 	}
 
+	log.V(1).Info(
+		"Elasticsearch HTTP request",
+		"method", request.Method,
+		"url", request.URL.Redacted(),
+		"namespace", c.es.Namespace,
+		"es_name", c.es.Name,
+	)
 	response, err := c.HTTP.Do(withContext)
 	if err != nil {
-		log.V(10).Info("Hitting Elasticsearch", "URL", request.URL.Redacted())
 		return response, newDecoratedHTTPError(request, err)
 	}
 

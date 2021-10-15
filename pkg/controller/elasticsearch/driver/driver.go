@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -283,7 +284,11 @@ func (d *defaultDriver) newElasticsearchClient(
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts, esclient.Timeout(d.ES))
+	namespaceName := types.NamespacedName{
+		Name:      d.ES.Name,
+		Namespace: d.ES.Namespace,
+	}
+	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, namespaceName, url, user, v, caCerts, esclient.Timeout(d.ES))
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
