@@ -351,7 +351,10 @@ func TestGetInfo(t *testing.T) {
 func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
 	dummyUser := BasicAuth{Name: "user", Password: "password"}
-	dummyNamespaceName := types.NamespacedName{}
+	dummyNamespaceName := types.NamespacedName{
+		Namespace: "ns",
+		Name:      "es",
+	}
 	createCert := func() *x509.Certificate {
 		ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 		require.NoError(t, err)
