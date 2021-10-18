@@ -31,7 +31,9 @@ done
 
 // RenderSuspendConfiguration renders the configuration used by the SuspendScript.
 func RenderSuspendConfiguration(es esv1.Elasticsearch) string {
-	return strings.Join(es.SuspendedPodNames().AsSlice(), "\n")
+	names := es.SuspendedPodNames().AsSlice()
+	names.Sort()
+	return strings.Join(names, "\n")
 }
 
 // NewSuspendInitContainer creates an init container to run the script to check for suspended Pods.
