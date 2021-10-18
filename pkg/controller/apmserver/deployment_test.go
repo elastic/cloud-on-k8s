@@ -68,9 +68,10 @@ func (tp testParams) withInitContainer() testParams {
 					MountPath: "/usr/share/apm-server/config",
 				},
 			},
-			Name:  "",
-			Image: "docker.elastic.co/apm/apm-server:1.0",
-			Env:   defaults.PodDownwardEnvVars(),
+			Name:      "",
+			Image:     "docker.elastic.co/apm/apm-server:1.0",
+			Env:       defaults.PodDownwardEnvVars(),
+			Resources: DefaultResources,
 		},
 	}
 	return tp

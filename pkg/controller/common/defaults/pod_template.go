@@ -232,6 +232,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults(additionalEnvVars ...core
 				// Inherit image and volume mounts from main container in the Pod
 				WithImage(mainContainer.Image).
 				WithVolumeMounts(mainContainer.VolumeMounts).
+				WithResources(mainContainer.Resources).
 				WithEnv(ExtendPodDownwardEnvVars(additionalEnvVars...)).
 				Container()
 	}
