@@ -174,12 +174,12 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 func TestMutationRollingDownscaleCombination(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-combined-upgrade-downscale").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
-		WithNamedESDataNodes(1, "data-1", elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data-1", elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data-2", elasticsearch.DefaultResources)
 
 	mutated := b.WithNoESTopology().
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
-		WithNamedESDataNodes(1, "data-1", elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data-1", elasticsearch.DefaultResources).
 		WithNamedESDataNodes(1, "data-2", elasticsearch.DefaultResources). // scaling down data-2
 		WithAdditionalConfig(map[string]map[string]interface{}{
 			"data-1": {

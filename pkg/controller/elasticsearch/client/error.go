@@ -13,6 +13,13 @@ import (
 	"net/http"
 )
 
+var apiErr = new(APIError)
+
+// IsAPIError return true if an error is of type APIError, otherwise false
+func IsAPIError(err error) bool {
+	return errors.As(err, &apiErr)
+}
+
 // APIError is a non 2xx response from the Elasticsearch API
 type APIError struct {
 	Status        string

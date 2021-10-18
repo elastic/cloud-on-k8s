@@ -181,8 +181,15 @@ func (b *PodTemplateBuilder) WithVolumeLikes(volumeLikes ...volume.VolumeLike) *
 
 // WithEnv appends the given env vars to the Container, unless already provided in the template.
 func (b *PodTemplateBuilder) WithEnv(vars ...corev1.EnvVar) *PodTemplateBuilder {
-	b.containerDefaulter.WithEnv(vars)
+	b.containerDefaulter.WithNewEnv(vars)
 	return b
+}
+
+// WithNewEnv appends the given env vars to the Container, unless already provided in the template. Returns true if and
+// only if the all env vars were not previously set in the Container
+func (b *PodTemplateBuilder) WithNewEnv(vars ...corev1.EnvVar) (*PodTemplateBuilder, bool) {
+	_, allNew := b.containerDefaulter.WithNewEnv(vars)
+	return b, allNew
 }
 
 // WithTerminationGracePeriod sets the given termination grace period if not already specified in the template.
@@ -232,6 +239,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults(additionalEnvVars ...core
 				// Inherit image and volume mounts from main container in the Pod
 				WithImage(mainContainer.Image).
 				WithVolumeMounts(mainContainer.VolumeMounts).
+				WithResources(mainContainer.Resources).
 				WithEnv(ExtendPodDownwardEnvVars(additionalEnvVars...)).
 				Container()
 	}

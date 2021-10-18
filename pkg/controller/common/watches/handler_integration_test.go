@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -39,7 +40,10 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
 		reconcileFunc := reconcile.Func(func(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-			requests <- req
+			select {
+			case requests <- req:
+			case <-ctx.Done():
+			}
 			return reconcile.Result{}, nil
 		})
 		ctrl, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: reconcileFunc})
@@ -54,7 +58,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// Fixtures
 	watched := types.NamespacedName{
 		Namespace: "default",
-		Name:      "watched1",
+		Name:      "watched-" + rand.String(10),
 	}
 	testObj := &corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(watched),

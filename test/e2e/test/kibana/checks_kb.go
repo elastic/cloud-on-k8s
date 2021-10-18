@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 )
@@ -20,6 +21,7 @@ type kbStatus struct {
 	Status struct {
 		Overall struct {
 			State string `json:"state"`
+			Level string `json:"level"`
 		} `json:"overall"`
 	} `json:"status"`
 }
@@ -60,8 +62,15 @@ func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 			if err != nil {
 				return err
 			}
-			if status.Status.Overall.State != "green" {
-				return fmt.Errorf("not ready: want 'green' but Kibana status was '%s'", status.Status.Overall.State)
+
+			// Starting with 8.0 the default format of /api/status response is changed. For more details see
+			// https://github.com/elastic/kibana/pull/76054.
+			if version.MustParse(b.Kibana.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+				if status.Status.Overall.State != "green" {
+					return fmt.Errorf("not ready: want 'green' state but it was '%s' ", status.Status.Overall.State)
+				}
+			} else if status.Status.Overall.Level != "available" {
+				return fmt.Errorf("not ready: want 'available' level but it was '%s'", status.Status.Overall.Level)
 			}
 			return nil
 		}),
@@ -79,6 +88,11 @@ func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
 			}
 			// returns 200 OK if accessible
 			path := "/api/enterprise_search/config_data"
+
+			// new API endpoint
+			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(8, 0, 0)) {
+				path = "/internal/workplace_search/overview"
+			}
 			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil)
 			return err
 		}),

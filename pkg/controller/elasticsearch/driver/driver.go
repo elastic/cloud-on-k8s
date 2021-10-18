@@ -212,7 +212,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 			results.WithResult(defaultRequeue)
-			esReachable = false
+			if esclient.IsAPIError(err) {
+				// update esReachable to bypass steps that requires ES up in order to not block reconciliation
+				esReachable = false
+			}
 		}
 	}
 	if esReachable {
@@ -223,7 +226,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
-			esReachable = false
+			if esclient.IsAPIError(err) {
+				// update esReachable to bypass steps that requires ES up in order to not block reconciliation
+				esReachable = false
+			}
 		}
 		if err != nil || requeue {
 			results.WithResult(defaultRequeue)
@@ -266,6 +272,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Elasticsearch Pods once, then change their spec a few seconds later once the association is configured
 	if !association.AreConfiguredIfSet(d.ES.GetAssociations(), d.Recorder()) {
 		results.WithResult(defaultRequeue)
+	}
+
+	// we want to reconcile suspended Pods before we start reconciling node specs as this is considered a debugging and
+	// troubleshooting tool that does not follow the change budget restrictions
+	if err := reconcileSuspendedPods(d.Client, d.ES, d.Expectations); err != nil {
+		return results.WithError(err)
 	}
 
 	// reconcile StatefulSets and nodes configuration
