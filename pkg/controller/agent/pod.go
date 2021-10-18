@@ -217,7 +217,7 @@ func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*default
 	}
 
 	type tuple struct{ k, v string }
-	var sortedVars []tuple
+	sortedVars := make([]tuple, 0, len(fleetModeEnvVars))
 	for k, v := range fleetModeEnvVars {
 		sortedVars = append(sortedVars, tuple{k: k, v: v})
 	}
