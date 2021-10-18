@@ -204,6 +204,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	for i := range initContainers {
 		initContainers[i].Env = append(initContainers[i].Env, defaults.PodDownwardEnvVars()...)
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
+		initContainers[i].Resources = DefaultResources
 	}
 
 	// remove the prepare-fs init-container from comparison, it has its own volume mount logic
@@ -246,6 +247,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				Image:        "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
 				Env:          defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}),
 				VolumeMounts: volumeMounts,
+				Resources:    DefaultResources, // inherited from main container
 			}),
 			Containers: []corev1.Container{
 				{
