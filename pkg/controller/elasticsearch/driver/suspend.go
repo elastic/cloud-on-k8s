@@ -71,10 +71,10 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 					e.ExpectDeletion(pod)
 				}
 			}
-			// Pod is suspended but it should not be
 		} else if isSuspended(pod) {
-			// try to speed up propagation of config map entries so that it can start up again. Without this it can take
-			// minutes to until the config map file in the Pod's filesystem is updated with the current state
+			// Pod is suspended. But it should not be. Try to speed up propagation of config map entries so that it can
+			// start up again. Without this it can take minutes until the config map file in the Pod's filesystem is
+			// updated with the current state.
 			annotation.MarkPodAsUpdated(c, pod)
 		}
 	}
