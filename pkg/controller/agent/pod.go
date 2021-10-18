@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"hash"
 	"path"
+	"sort"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -22,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -53,7 +57,7 @@ const (
 	// Below are the names of environment variables used to configure Elastic Agent to Kibana connection in Fleet mode.
 	KibanaFleetHost     = "KIBANA_FLEET_HOST"
 	KibanaFleetUsername = "KIBANA_FLEET_USERNAME"
-	KibanaFleetPassword = "KIBANA_FLEET_PASSWORD"
+	KibanaFleetPassword = "KIBANA_FLEET_PASSWORD" //nolint:gosec
 	KibanaFleetSetup    = "KIBANA_FLEET_SETUP"
 	KibanaFleetCA       = "KIBANA_FLEET_CA"
 
@@ -69,7 +73,7 @@ const (
 	FleetServerCertKey               = "FLEET_SERVER_CERT_KEY"
 	FleetServerElasticsearchHost     = "FLEET_SERVER_ELASTICSEARCH_HOST"
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
-	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD"
+	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
 )
 
@@ -98,6 +102,13 @@ var (
 			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 	}
+
+	secretEnvVarNames = map[string]struct{}{
+		KibanaFleetUsername:              {},
+		KibanaFleetPassword:              {},
+		FleetServerElasticsearchUsername: {},
+		FleetServerElasticsearchPassword: {},
+	}
 )
 
 func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash) (corev1.PodTemplateSpec, error) {
@@ -121,6 +132,11 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			return corev1.PodTemplateSpec{}, err
 		}
 	} else if spec.StandaloneModeEnabled() {
+		// cleanup secret used in Fleet mode
+		if err := cleanupEnvVarsSecret(params); err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+
 		builder = builder.
 			WithResources(defaultResources).
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
@@ -168,12 +184,10 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		return nil, err
 	}
 
-	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client)
+	builder, err = applyEnvVars(params, builder)
 	if err != nil {
 		return nil, err
 	}
-
-	builder = builder.WithEnv(fleetModeEnvVars...)
 
 	if params.Agent.Spec.FleetServerEnabled {
 		// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
@@ -191,6 +205,53 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		WithResources(defaultFleetResources).
 		// needed to pick up fleet-setup.yml correctly
 		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: "/usr/share/elastic-agent"})
+
+	return builder, nil
+}
+
+func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client)
+	if err != nil {
+		return nil, err
+	}
+
+	type tuple struct{ k, v string }
+	sortedVars := []tuple{}
+	for k, v := range fleetModeEnvVars {
+		sortedVars = append(sortedVars, tuple{k: k, v: v})
+	}
+	sort.Slice(sortedVars, func(i, j int) bool {
+		return sortedVars[i].k < sortedVars[j].k
+	})
+
+	envVarsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      EnvVarsSecretName(params.Agent.Name),
+			Namespace: params.Agent.Namespace,
+		},
+		Data: map[string][]byte{},
+	}
+	for _, kv := range sortedVars {
+		k, v := kv.k, kv.v
+		if _, ok := secretEnvVarNames[k]; !ok {
+			builder = builder.WithEnv(corev1.EnvVar{Name: k, Value: v})
+			continue
+		}
+
+		var isNew bool
+		if builder, isNew = builder.WithNewEnv(corev1.EnvVar{Name: k, ValueFrom: secretSource(params.Agent.Name, k)}); isNew {
+			envVarsSecret.Data[k] = []byte(v)
+		}
+	}
+
+	// cleanup and don't reconcile if there are no env vars provided from a secret
+	if len(envVarsSecret.Data) == 0 {
+		if err := cleanupEnvVarsSecret(params); err != nil {
+			return nil, err
+		}
+	} else if _, err := reconciler.ReconcileSecret(params.Client, envVarsSecret, &params.Agent); err != nil {
+		return nil, err
+	}
 
 	return builder, nil
 }
@@ -343,10 +404,10 @@ func certificatesDir(association commonv1.Association) string {
 	)
 }
 
-func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]corev1.EnvVar, error) {
-	result := []corev1.EnvVar{}
+func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+	result := map[string]string{}
 
-	for _, f := range []func(agentv1alpha1.Agent, k8s.Client) ([]corev1.EnvVar, error){
+	for _, f := range []func(agentv1alpha1.Agent, k8s.Client) (map[string]string, error){
 		getFleetSetupKibanaEnvVars,
 		getFleetSetupFleetEnvVars,
 		getFleetSetupFleetServerEnvVars,
@@ -356,44 +417,48 @@ func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]corev1
 			return nil, err
 		}
 
-		result = append(result, envVars...)
+		for k, v := range envVars {
+			result[k] = v
+		}
 	}
 
 	return result, nil
 }
 
-func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]corev1.EnvVar, error) {
+func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
 	if agent.Spec.KibanaRef.IsDefined() {
 		kbConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
 		if err != nil {
 			return nil, err
 		}
 
-		envVars := []corev1.EnvVar{
-			{Name: KibanaFleetHost, Value: kbConnectionSettings.host},
-			{Name: KibanaFleetUsername, Value: kbConnectionSettings.username},
-			{Name: KibanaFleetPassword, Value: kbConnectionSettings.password},
-			{Name: KibanaFleetSetup, Value: strconv.FormatBool(agent.Spec.KibanaRef.IsDefined())},
+		envVars := map[string]string{
+			KibanaFleetHost:     kbConnectionSettings.host,
+			KibanaFleetUsername: kbConnectionSettings.username,
+			KibanaFleetPassword: kbConnectionSettings.password,
+			KibanaFleetSetup:    strconv.FormatBool(agent.Spec.KibanaRef.IsDefined()),
 		}
 
 		// don't set ca key if ca is not available
 		if kbConnectionSettings.ca != "" {
-			envVars = append(envVars, corev1.EnvVar{Name: KibanaFleetCA, Value: kbConnectionSettings.ca})
+			envVars[KibanaFleetCA] = kbConnectionSettings.ca
 		}
 
 		return envVars, nil
 	}
 
-	return []corev1.EnvVar{}, nil
+	return map[string]string{}, nil
 }
 
-func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]corev1.EnvVar, error) {
-	fleetCfg := []corev1.EnvVar{}
+func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+	fleetCfg := map[string]string{}
 
 	if agent.Spec.KibanaRef.IsDefined() {
-		fleetCfg = append(fleetCfg, corev1.EnvVar{Name: FleetEnroll, Value: "true"})
+		fleetCfg[FleetEnroll] = "true"
 	}
 
+	// Agent in Fleet mode can run as a Fleet Server or as an Elastic Agent that connects to Fleet Server.
+	// Both cases are handled below and the presence of FleetServerRef indicates the latter case.
 	if agent.Spec.FleetServerEnabled {
 		fleetURL, err := association.ServiceURL(
 			client,
@@ -404,8 +469,8 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]
 			return nil, err
 		}
 
-		fleetCfg = append(fleetCfg, corev1.EnvVar{Name: FleetCA, Value: path.Join(FleetCertsMountPath, certificates.CAFileName)})
-		fleetCfg = append(fleetCfg, corev1.EnvVar{Name: FleetURL, Value: fleetURL})
+		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		fleetCfg[FleetURL] = fleetURL
 	} else if agent.Spec.FleetServerRef.IsDefined() {
 		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
@@ -413,22 +478,22 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]
 		}
 
 		if assoc != nil {
-			fleetCfg = append(fleetCfg, corev1.EnvVar{Name: FleetCA, Value: path.Join(certificatesDir(assoc), CAFileName)})
-			fleetCfg = append(fleetCfg, corev1.EnvVar{Name: FleetURL, Value: assoc.AssociationConf().GetURL()})
+			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
+			fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
 		}
 	}
 	return fleetCfg, nil
 }
 
-func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client) ([]corev1.EnvVar, error) {
+func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
 	if !agent.Spec.FleetServerEnabled {
-		return []corev1.EnvVar{}, nil
+		return map[string]string{}, nil
 	}
 
-	fleetServerCfg := []corev1.EnvVar{
-		{Name: FleetServerEnable, Value: "true"},
-		{Name: FleetServerCert, Value: path.Join(FleetCertsMountPath, certificates.CertFileName)},
-		{Name: FleetServerCertKey, Value: path.Join(FleetCertsMountPath, certificates.KeyFileName)},
+	fleetServerCfg := map[string]string{
+		FleetServerEnable:  "true",
+		FleetServerCert:    path.Join(FleetCertsMountPath, certificates.CertFileName),
+		FleetServerCertKey: path.Join(FleetCertsMountPath, certificates.KeyFileName),
 	}
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
@@ -438,15 +503,47 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 			return nil, err
 		}
 
-		fleetServerCfg = append(fleetServerCfg, corev1.EnvVar{Name: FleetServerElasticsearchHost, Value: esConnectionSettings.host})
-		fleetServerCfg = append(fleetServerCfg, corev1.EnvVar{Name: FleetServerElasticsearchUsername, Value: esConnectionSettings.username})
-		fleetServerCfg = append(fleetServerCfg, corev1.EnvVar{Name: FleetServerElasticsearchPassword, Value: esConnectionSettings.password})
+		fleetServerCfg[FleetServerElasticsearchHost] = esConnectionSettings.host
+		fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.username
+		fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.password
 
 		// don't set ca key if ca is not available
 		if esConnectionSettings.ca != "" {
-			fleetServerCfg = append(fleetServerCfg, corev1.EnvVar{Name: FleetServerElasticsearchCA, Value: esConnectionSettings.ca})
+			fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.ca
 		}
 	}
 
 	return fleetServerCfg, nil
+}
+
+func secretSource(name, key string) *corev1.EnvVarSource {
+	f := false
+	return &corev1.EnvVarSource{
+		SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: EnvVarsSecretName(name),
+			},
+			Key:      key,
+			Optional: &f,
+		},
+	}
+}
+
+func cleanupEnvVarsSecret(params Params) error {
+	envVarsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      EnvVarsSecretName(params.Agent.Name),
+			Namespace: params.Agent.Namespace,
+		},
+	}
+
+	if err := params.Client.Get(params.Context, k8s.ExtractNamespacedName(&envVarsSecret), &envVarsSecret); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	} else if err := params.Client.Delete(params.Context, &envVarsSecret); err != nil {
+		return err
+	}
+
+	return nil
 }
