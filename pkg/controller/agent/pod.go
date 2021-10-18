@@ -21,6 +21,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -216,7 +217,7 @@ func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*default
 	}
 
 	type tuple struct{ k, v string }
-	sortedVars := []tuple{}
+	var sortedVars []tuple
 	for k, v := range fleetModeEnvVars {
 		sortedVars = append(sortedVars, tuple{k: k, v: v})
 	}
@@ -228,6 +229,7 @@ func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*default
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      EnvVarsSecretName(params.Agent.Name),
 			Namespace: params.Agent.Namespace,
+			Labels:    common.AddCredentialsLabel(NewLabels(params.Agent)),
 		},
 		Data: map[string][]byte{},
 	}
@@ -238,6 +240,9 @@ func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*default
 			continue
 		}
 
+		// Checking if we really provide an env var to the container or it's already specified by the user. This is done
+		// to allow for a proper cleanup and to prevent abandoning working credentials (user/pass) in a Secret that is
+		// not used by the container.
 		var isNew bool
 		if builder, isNew = builder.WithNewEnv(corev1.EnvVar{Name: k, ValueFrom: secretSource(params.Agent.Name, k)}); isNew {
 			envVarsSecret.Data[k] = []byte(v)
@@ -416,10 +421,7 @@ func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[stri
 		if err != nil {
 			return nil, err
 		}
-
-		for k, v := range envVars {
-			result[k] = v
-		}
+		result = maps.Merge(result, envVars)
 	}
 
 	return result, nil
@@ -530,14 +532,12 @@ func secretSource(name, key string) *corev1.EnvVarSource {
 }
 
 func cleanupEnvVarsSecret(params Params) error {
-	envVarsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      EnvVarsSecretName(params.Agent.Name),
-			Namespace: params.Agent.Namespace,
-		},
-	}
-
-	if err := params.Client.Get(params.Context, k8s.ExtractNamespacedName(&envVarsSecret), &envVarsSecret); err != nil {
+	var envVarsSecret corev1.Secret
+	if err := params.Client.Get(
+		params.Context,
+		types.NamespacedName{Name: EnvVarsSecretName(params.Agent.Name), Namespace: params.Agent.Namespace},
+		&envVarsSecret,
+	); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}

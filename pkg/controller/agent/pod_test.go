@@ -227,8 +227,8 @@ func Test_applyEnvVars(t *testing.T) {
 		URL:            "kb-url",
 	})
 
-	podTemplateBuilder := generateBuilder()
-	podTemplateBuilder = podTemplateBuilder.WithEnv(corev1.EnvVar{Name: "KIBANA_FLEET_CA", Value: ""})
+	podTemplateBuilderWithFleetCASet := generateBuilder()
+	podTemplateBuilderWithFleetCASet = podTemplateBuilderWithFleetCASet.WithEnv(corev1.EnvVar{Name: "KIBANA_FLEET_CA", Value: ""})
 
 	f := false
 	for _, tt := range []struct {
@@ -295,7 +295,7 @@ func Test_applyEnvVars(t *testing.T) {
 					},
 				),
 			},
-			podTemplateBuilder: podTemplateBuilder,
+			podTemplateBuilder: podTemplateBuilderWithFleetCASet,
 			wantContainer: corev1.Container{
 				Name: "agent",
 				Env: []corev1.EnvVar{
@@ -979,17 +979,12 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 				},
 				Spec: agentv1alpha1.AgentSpec{
 					FleetServerEnabled: true,
-					KibanaRef: commonv1.ObjectSelector{
-						Name:      "kibana",
-						Namespace: "ns",
-					},
 				},
 			},
 			wantErr: false,
 			wantEnvVars: map[string]string{
-				"FLEET_ENROLL": "true",
-				"FLEET_CA":     "/usr/share/fleet-server/config/http-certs/ca.crt",
-				"FLEET_URL":    "https://agent-agent-http.ns.svc:8220",
+				"FLEET_CA":  "/usr/share/fleet-server/config/http-certs/ca.crt",
+				"FLEET_URL": "https://agent-agent-http.ns.svc:8220",
 			},
 			client: k8s.NewFakeClient(&corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
