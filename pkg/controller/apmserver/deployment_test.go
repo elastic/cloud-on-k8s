@@ -71,7 +71,7 @@ func (tp testParams) withInitContainer() testParams {
 			Name:      "",
 			Image:     "docker.elastic.co/apm/apm-server:1.0",
 			Env:       defaults.PodDownwardEnvVars(),
-			Resources: DefaultResources,
+			Resources: DefaultResources, // inherited from main container
 		},
 	}
 	return tp

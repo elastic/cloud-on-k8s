@@ -55,6 +55,7 @@ func BuildPodTemplateSpec(
 
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
+	// now build the initContainers using the effective main container resources as an input
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
 		keystoreResources,
@@ -76,6 +77,8 @@ func BuildPodTemplateSpec(
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+
+	// build the podTemplate until we have the effective resources configured
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
