@@ -79,16 +79,18 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 type fakeESClient struct {
 	esclient.Client
 	existingSettings, updatedSettings esclient.RemoteClustersSettings
-	called                            bool
+	getRemoteClusterSettingsCalled    bool
+	updateRemoteClusterSettingsCalled bool
 }
 
 func (f *fakeESClient) GetRemoteClusterSettings(_ context.Context) (esclient.RemoteClustersSettings, error) {
+	f.getRemoteClusterSettingsCalled = true
 	return f.existingSettings, nil
 }
 
 func (f *fakeESClient) UpdateRemoteClusterSettings(_ context.Context, settings esclient.RemoteClustersSettings) error {
 	f.updatedSettings = settings
-	f.called = true
+	f.updateRemoteClusterSettingsCalled = true
 	return nil
 }
 func newEsWithRemoteClusters(
@@ -116,13 +118,14 @@ func TestUpdateSettings(t *testing.T) {
 		licenseChecker license.Checker
 	}
 	tests := []struct {
-		name           string
-		args           args
-		wantAnnotation string
-		wantRequeue    bool
-		wantErr        bool
-		wantEsCalled   bool
-		wantSettings   esclient.RemoteClustersSettings
+		name                                  string
+		args                                  args
+		wantAnnotation                        string
+		wantRequeue                           bool
+		wantErr                               bool
+		wantGetRemoteClusterSettingsCalled    bool
+		wantUpdateRemoteClusterSettingsCalled bool
+		wantSettings                          esclient.RemoteClustersSettings
 	}{
 		{
 			name: "Nothing to create, nothing to delete",
@@ -135,8 +138,9 @@ func TestUpdateSettings(t *testing.T) {
 					nil,
 				),
 			},
-			wantRequeue:  false,
-			wantEsCalled: false,
+			wantRequeue:                           false,
+			wantGetRemoteClusterSettingsCalled:    false,
+			wantUpdateRemoteClusterSettingsCalled: false,
 		},
 		{
 			name: "Empty annotation",
@@ -149,8 +153,9 @@ func TestUpdateSettings(t *testing.T) {
 					map[string]string{"foo": "bar", ManagedRemoteClustersAnnotationName: ""},
 				),
 			},
-			wantRequeue:  false,
-			wantEsCalled: false,
+			wantRequeue:                           false,
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: false,
 		},
 		{
 			name: "Outdated annotation should be removed",
@@ -163,8 +168,9 @@ func TestUpdateSettings(t *testing.T) {
 					map[string]string{ManagedRemoteClustersAnnotationName: "ns2-es2"},
 				),
 			},
-			wantRequeue:  false,
-			wantEsCalled: false,
+			wantRequeue:                           false,
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: false,
 		},
 		{
 			name: "Create a new remote cluster",
@@ -181,8 +187,9 @@ func TestUpdateSettings(t *testing.T) {
 					},
 				),
 			},
-			wantAnnotation: "ns2-es2",
-			wantEsCalled:   true,
+			wantAnnotation:                        "ns2-es2",
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -209,8 +216,9 @@ func TestUpdateSettings(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
 					}),
 			},
-			wantEsCalled:   true,
-			wantAnnotation: "ns1-es2",
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
+			wantAnnotation:                        "ns1-es2",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -248,8 +256,9 @@ func TestUpdateSettings(t *testing.T) {
 					},
 				),
 			},
-			wantEsCalled:   true,
-			wantAnnotation: "ns2-es2",
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
+			wantAnnotation:                        "ns2-es2",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -287,9 +296,10 @@ func TestUpdateSettings(t *testing.T) {
 					},
 				),
 			},
-			wantRequeue:    false,
-			wantAnnotation: "ns2-es2",
-			wantEsCalled:   true,
+			wantRequeue:                           false,
+			wantAnnotation:                        "ns2-es2",
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -330,8 +340,9 @@ func TestUpdateSettings(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es3"},
 					}),
 			},
-			wantEsCalled:   true,
-			wantAnnotation: "ns1-es2,ns1-es3",
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
+			wantAnnotation:                        "ns1-es2,ns1-es3",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -370,9 +381,10 @@ func TestUpdateSettings(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
 					}),
 			},
-			wantRequeue:    true,
-			wantAnnotation: "ns1-es2,to-be-deleted",
-			wantEsCalled:   true,
+			wantRequeue:                           true,
+			wantAnnotation:                        "ns1-es2,to-be-deleted",
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -398,7 +410,25 @@ func TestUpdateSettings(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{Namespace: "ns2", Name: "es2"},
 					}),
 			},
-			wantEsCalled: false,
+			wantGetRemoteClusterSettingsCalled:    false,
+			wantUpdateRemoteClusterSettingsCalled: false,
+		},
+		{
+			name: "No valid license, nothing to create, nothing to delete",
+			args: args{
+				esClient:       &fakeESClient{existingSettings: emptySettings},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: false},
+				es: &esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "es1",
+						Namespace:   "ns1",
+						Annotations: nil,
+					},
+				},
+			},
+			wantRequeue:                           false,
+			wantGetRemoteClusterSettingsCalled:    false,
+			wantUpdateRemoteClusterSettingsCalled: false,
 		},
 		{
 			name: "Multiple changes: remote cluster already exists but has been updated, one is added and a last one is removed.",
@@ -432,9 +462,10 @@ func TestUpdateSettings(t *testing.T) {
 					},
 				),
 			},
-			wantRequeue:    true, // ns1-es5 has been deleted, requeue to sync the annotation
-			wantEsCalled:   true,
-			wantAnnotation: "ns1-es2,ns1-es4,ns1-es5",
+			wantRequeue:                           true, // ns1-es5 has been deleted, requeue to sync the annotation
+			wantGetRemoteClusterSettingsCalled:    true,
+			wantUpdateRemoteClusterSettingsCalled: true,
+			wantAnnotation:                        "ns1-es2,ns1-es4,ns1-es5",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -475,9 +506,10 @@ func TestUpdateSettings(t *testing.T) {
 
 			// Check the requeue result
 			assert.Equal(t, tt.wantRequeue, shouldRequeue)
-			// Check the updatedSettings
-			assert.Equal(t, tt.wantEsCalled, tt.args.esClient.called)
-			if tt.wantEsCalled {
+			assert.Equal(t, tt.wantGetRemoteClusterSettingsCalled, tt.args.esClient.getRemoteClusterSettingsCalled)
+			// Check if the Cluster update settings ES API is called
+			assert.Equal(t, tt.wantUpdateRemoteClusterSettingsCalled, tt.args.esClient.updateRemoteClusterSettingsCalled)
+			if tt.wantUpdateRemoteClusterSettingsCalled {
 				assert.Equal(t, tt.wantSettings, tt.args.esClient.updatedSettings)
 			}
 		})

@@ -22,3 +22,7 @@ func Name(name string) string {
 func HTTPServiceName(name string) string {
 	return Namer.Suffix(name, httpServiceSuffix)
 }
+
+func EnvVarsSecretName(name string) string {
+	return Namer.Suffix(name, "envvars")
+}
