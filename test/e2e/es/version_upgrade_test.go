@@ -171,7 +171,41 @@ func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	initial := elasticsearch.NewBuilder("test-version-up-2-to-7x").
+		WithVersion(srcVersion).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	mutated := initial.WithNoESTopology().
 		WithVersion(dstVersion).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	RunESMutation(t, initial, mutated)
+}
+
+func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion8x
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	initial := elasticsearch.NewBuilder("test-version-up-1-to-8x").
+		WithVersion(srcVersion).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	mutated := initial.WithNoESTopology().
+		WithVersion(dstVersion).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	RunESMutation(t, initial, mutated)
+}
+
+func TestVersionUpgradeTwoNodesToLatest8x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion8x
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	initial := elasticsearch.NewBuilder("test-version-up-2-to-8x").
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
