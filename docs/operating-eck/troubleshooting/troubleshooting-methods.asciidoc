@@ -333,6 +333,13 @@ To suspend the second Pod in the `default` node set of a cluster called `quickst
 kubectl annotate es quickstart eck.k8s.elastic.co/suspend=quickstart-es-default-1
 ----
 
+You can then open a shell on the `elastic-internal-suspend` init container to troubleshoot:
+
+[source,sh]
+----
+kubectl exec -ti quickstart-es-default-1 -c elastic-internal-suspend -- bash
+----
+
 Once you are done with troubleshooting the node, you can resume normal operations by removing the annotation:
 
 [source,sh]
