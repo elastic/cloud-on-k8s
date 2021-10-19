@@ -196,7 +196,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	var currentLicense *esclient.License
+	var currentLicense esclient.License
 	if esReachable {
 		var supportedDistribution bool
 		currentLicense, supportedDistribution, esReachable, err = license.CheckElasticsearchLicense(ctx, esClient)
@@ -217,7 +217,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile the Elasticsearch license
-	if currentLicense != nil {
+	if esReachable {
 		err = license.Reconcile(ctx, d.Client, d.ES, esClient, currentLicense)
 		if err != nil {
 			msg := "Could not reconcile cluster license, re-queuing"

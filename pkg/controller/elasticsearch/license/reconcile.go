@@ -19,15 +19,15 @@ func Reconcile(
 	c k8s.Client,
 	esCluster esv1.Elasticsearch,
 	clusterClient esclient.Client,
-	currentLicense *esclient.License,
+	currentLicense esclient.License,
 ) error {
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
-	return applyLinkedLicense(ctx, c, clusterName, clusterClient, *currentLicense)
+	return applyLinkedLicense(ctx, c, clusterName, clusterClient, currentLicense)
 }
 
 // CheckElasticsearchLicense checks that Elasticsearch is licensed, which ensures that the operator is communicating
 // with a supported Elasticsearch distribution
-func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (*esclient.License, bool, bool, error) {
+func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, bool, bool, error) {
 	esReachable := true
 	supportedDistribution := true
 	currentLicense, err := clusterClient.GetLicense(ctx)
@@ -46,7 +46,7 @@ func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.Licen
 			// update esReachable to bypass steps that requires ES up in order to not block reconciliation
 			esReachable = false
 		}
-		return nil, supportedDistribution, esReachable, err
+		return esclient.License{}, supportedDistribution, esReachable, err
 	}
-	return &currentLicense, supportedDistribution, esReachable, nil
+	return currentLicense, supportedDistribution, esReachable, nil
 }

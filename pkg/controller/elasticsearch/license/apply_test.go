@@ -280,7 +280,7 @@ func Test_checkEsLicense(t *testing.T) {
 			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 404},
 		},
 		{
-			name:        "error: 500 on get license",
+			name:        "error: 500 on get license, es not reachable",
 			wantErr:     true,
 			supported:   true,
 			esReachable: false,
