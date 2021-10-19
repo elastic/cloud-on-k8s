@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,7 +97,7 @@ func ReconcileCAForOwner(
 // scenarios where this will fail back to the existing behavior of creating a new CA with
 // a newly created private key and those are:
 // 1. The given CA is nil
-// 2. The CA's private key interface type can't be cast to a *rsa.PrivateKey
+// 2. The CA's private key interface type cannot be asserted to be a *rsa.PrivateKey
 func renewCAFromExisting(
 	client k8s.Client,
 	namer name.Namer,
@@ -112,12 +113,22 @@ func renewCAFromExisting(
 
 	privateKey, ok := ca.PrivateKey.(*rsa.PrivateKey)
 	if !ok {
-		log.Info("failed to cast ca.PrivateKey into *rsa.PrivateKey", "type", fmt.Sprintf("%T", ca.PrivateKey))
+		log.Error(
+			errors.New("cannot cast ca.PrivateKey into *rsa.PrivateKey"),
+			"failed to cast the operator generated CA private key into a RSA private key",
+			"namespace", owner.GetNamespace(),
+			"name", owner.GetName(),
+			"type", fmt.Sprintf("%T", ca.PrivateKey),
+		)
 		return renewCA(client, namer, owner, labels, expireIn, caType)
 	}
 
-	log.Info("attempting to create new CA with existing private key")
-	return renewCAWithOptions(client, namer, owner, labels, expireIn, caType, CABuilderOptions{
+	log.Info(
+		"Attempting to renew CA certificate with existing private key",
+		"namespace", owner.GetNamespace(),
+		"name", owner.GetName(),
+	)
+	return renewCAWithOptions(client, namer, owner, labels, caType, CABuilderOptions{
 		Subject: pkix.Name{
 			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
@@ -136,7 +147,7 @@ func renewCA(
 	expireIn time.Duration,
 	caType CAType,
 ) (*CA, error) {
-	return renewCAWithOptions(client, namer, owner, labels, expireIn, caType, CABuilderOptions{
+	return renewCAWithOptions(client, namer, owner, labels, caType, CABuilderOptions{
 		Subject: pkix.Name{
 			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
@@ -152,7 +163,6 @@ func renewCAWithOptions(
 	namer name.Namer,
 	owner client.Object,
 	labels map[string]string,
-	expireIn time.Duration,
 	caType CAType,
 	options CABuilderOptions,
 ) (*CA, error) {
