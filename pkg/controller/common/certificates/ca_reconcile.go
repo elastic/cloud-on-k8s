@@ -6,6 +6,7 @@ package certificates
 
 import (
 	"context"
+	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -80,9 +81,9 @@ func ReconcileCAForOwner(
 
 	// renew or recreate from private key if cannot reuse
 	if !CanReuseCA(ca, rotationParams.RotateBefore) {
-		if certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
+		if ca.PrivateKey != nil && certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
 			log.Info("Existing CA is expiring, creating a new one from existing private key", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-			return renewCAFromExisting(cl, namer, owner, labels, rotationParams.Validity, caType, ca)
+			return renewCAFromExisting(cl, namer, owner, labels, rotationParams.Validity, caType, ca.PrivateKey)
 		}
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
@@ -105,20 +106,17 @@ func renewCAFromExisting(
 	labels map[string]string,
 	expireIn time.Duration,
 	caType CAType,
-	ca *CA,
+	signer crypto.Signer,
 ) (*CA, error) {
-	if ca == nil {
-		return renewCA(client, namer, owner, labels, expireIn, caType)
-	}
 
-	privateKey, ok := ca.PrivateKey.(*rsa.PrivateKey)
+	privateKey, ok := signer.(*rsa.PrivateKey)
 	if !ok {
 		log.Error(
 			errors.New("cannot cast ca.PrivateKey into *rsa.PrivateKey"),
 			"failed to cast the operator generated CA private key into a RSA private key",
 			"namespace", owner.GetNamespace(),
 			"name", owner.GetName(),
-			"type", fmt.Sprintf("%T", ca.PrivateKey),
+			"type", fmt.Sprintf("%T", signer),
 		)
 		return renewCA(client, namer, owner, labels, expireIn, caType)
 	}
