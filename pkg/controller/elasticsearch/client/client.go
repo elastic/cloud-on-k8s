@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -121,6 +122,7 @@ func formatAsSeconds(d time.Duration) string {
 // If dialer is not nil, it will be used to create new TCP connections
 func NewElasticsearchClient(
 	dialer net.Dialer,
+	es types.NamespacedName,
 	esURL string,
 	esUser BasicAuth,
 	v version.Version,
@@ -132,6 +134,7 @@ func NewElasticsearchClient(
 		User:     esUser,
 		caCerts:  caCerts,
 		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
+		es:       es,
 	}
 	return versioned(base, v)
 }
