@@ -108,12 +108,11 @@ func renewCAFromExisting(
 	caType CAType,
 	signer crypto.Signer,
 ) (*CA, error) {
-
 	privateKey, ok := signer.(*rsa.PrivateKey)
 	if !ok {
 		log.Error(
 			errors.New("cannot cast ca.PrivateKey into *rsa.PrivateKey"),
-			"failed to cast the operator generated CA private key into a RSA private key",
+			"Failed to cast the operator generated CA private key into a RSA private key",
 			"namespace", owner.GetNamespace(),
 			"name", owner.GetName(),
 			"type", fmt.Sprintf("%T", signer),
