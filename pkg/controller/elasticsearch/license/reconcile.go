@@ -26,8 +26,8 @@ func Reconcile(
 }
 
 // CheckElasticsearchLicense checks that Elasticsearch is licensed, which ensures that the operator is communicating
-// with a supported Elasticsearch distribution
-func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, bool, bool, error) {
+// with a supported Elasticsearch distribution and that Elasticsearch is reachable
+func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, error) {
 	esReachable := true
 	supportedDistribution := true
 	currentLicense, err := clusterClient.GetLicense(ctx)
@@ -43,10 +43,23 @@ func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.Licen
 			supportedDistribution = false
 			err = errors.Wrap(err, "unable to verify Elasticsearch license")
 		default:
-			// update esReachable to bypass steps that requires ES up in order to not block reconciliation
 			esReachable = false
 		}
-		return esclient.License{}, supportedDistribution, esReachable, err
+		return esclient.License{}, &GetLicenseError{
+			msg:                   err.Error(),
+			SupportedDistribution: supportedDistribution,
+			EsReachable:           esReachable,
+		}
 	}
-	return currentLicense, supportedDistribution, esReachable, nil
+	return currentLicense, nil
+}
+
+type GetLicenseError struct {
+	msg                   string
+	SupportedDistribution bool
+	EsReachable           bool
+}
+
+func (e *GetLicenseError) Error() string {
+	return e.msg
 }

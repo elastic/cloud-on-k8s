@@ -198,16 +198,20 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	var currentLicense esclient.License
 	if esReachable {
-		var supportedDistribution bool
-		currentLicense, supportedDistribution, esReachable, err = license.CheckElasticsearchLicense(ctx, esClient)
-		if err != nil {
-			if !supportedDistribution {
+		currentLicense, err = license.CheckElasticsearchLicense(ctx, esClient)
+		var e *license.GetLicenseError
+		if errors.As(err, &e) {
+			if !e.SupportedDistribution {
 				msg := "Unsupported Elasticsearch distribution"
 				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
 				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
 				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
 			}
+			// update esReachable to bypass steps that requires ES up in order to not block reconciliation for long periods
+			esReachable = e.EsReachable
+		}
+		if err != nil {
 			msg := "Could not verify license, re-queuing"
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))

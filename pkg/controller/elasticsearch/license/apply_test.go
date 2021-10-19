@@ -289,15 +289,22 @@ func Test_checkEsLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, supported, esReachable, err := CheckElasticsearchLicense(context.Background(), tt.updater)
+			_, err := CheckElasticsearchLicense(context.Background(), tt.updater)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("checkElasticsearchLicense() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CheckElasticsearchLicense() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			supported := true
+			esReachable := true
+			var checkErr *GetLicenseError
+			if errors.As(err, &checkErr) {
+				supported = checkErr.SupportedDistribution
+				esReachable = checkErr.EsReachable
 			}
 			if supported != tt.supported {
-				t.Errorf("checkElasticsearchLicense() supported = %v, supported %v", supported, tt.supported)
+				t.Errorf("CheckElasticsearchLicense() supported = %v, supported %v", supported, tt.supported)
 			}
 			if esReachable != tt.esReachable {
-				t.Errorf("checkElasticsearchLicense() esReachable = %v, esReachable %v", esReachable, tt.esReachable)
+				t.Errorf("CheckElasticsearchLicense() esReachable = %v, esReachable %v", esReachable, tt.esReachable)
 			}
 		})
 	}
