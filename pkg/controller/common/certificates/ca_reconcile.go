@@ -193,7 +193,7 @@ func CertIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bo
 	return true
 }
 
-// certExpiring is simple helper function to see if a certificate is expiring relative to the given
+// certExpiring is a simple helper function to see if a certificate is expiring relative to the given
 // time.Time, and a given safety margin
 func certExpiring(t time.Time, cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
 	return t.After(cert.NotAfter.Add(-expirationSafetyMargin))
