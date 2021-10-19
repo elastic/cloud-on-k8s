@@ -229,15 +229,17 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile remote clusters
-	requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES, esReachable)
-	if err != nil {
-		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
-		log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
-	}
-	if err != nil || requeue {
-		results.WithResult(defaultRequeue)
+	if esReachable {
+		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
+		if err != nil {
+			msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
+			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+		}
+		if err != nil || requeue {
+			results.WithResult(defaultRequeue)
+		}
 	}
 
 	// Compute seed hosts based on current masters with a podIP
@@ -258,7 +260,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err = bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
+	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -36,13 +36,7 @@ func UpdateSettings(
 	eventRecorder record.EventRecorder,
 	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
-	esReachable bool,
 ) (bool, error) {
-	if !esReachable {
-		// retry later
-		return true, nil
-	}
-
 	remoteClustersInSpec := getRemoteClustersInSpec(es)
 	isRemoteClustersSpec := len(remoteClustersInSpec) > 0
 	_, isRemoteClustersAnnotation := es.Annotations[ManagedRemoteClustersAnnotationName]
