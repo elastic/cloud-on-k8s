@@ -84,7 +84,23 @@ This will update the ECK installation to the latest binary and update the CRDs a
 [id="{p}-beta-to-ga-rolling-restart"]
 === Control rolling restarts during the upgrade
 
-Upgrading the operator results in a one-time update to existing managed resources in the cluster. This triggers a rolling restart of pods by Kubernetes to apply those changes. If you have a very large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart might be disruptive or inconvenient. To have more control over when the pods belonging to a particular deployment should be restarted, you can <<{p}-exclude-resource,add an annotation>> to the corresponding Elasticsearch, Kibana, or APM Server resources to temporarily exclude them from being managed by the operator. When the time is convenient, you can remove the annotation and let the rolling restart go through.
+Upgrading the operator potentially results in a one-time update to existing managed resources in the cluster, depending on the current, and target version. This potentially triggers a rolling restart of pods by Kubernetes to apply those changes. The following chart shows the current, and target version that would cause a rolling restart.
+
+[float]
+[id="{p}-versions-affected-by-version-upgrades"]
+===== Versions affected by version upgrades
+[cols="1,1"]
+|===
+|Current Version |Target Version
+
+|1.4
+|1.5
+
+|1.6
+|1.7
+|===
+
+If you have a very large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart might be disruptive or inconvenient. To have more control over when the pods belonging to a particular deployment should be restarted, you can <<{p}-exclude-resource,add an annotation>> to the corresponding Elasticsearch, Kibana, or APM Server resources to temporarily exclude them from being managed by the operator. When the time is convenient, you can remove the annotation and let the rolling restart go through.
 
 CAUTION: Once a resource is excluded from being managed by ECK, you will not be able to add/remove nodes, upgrade Stack version, or perform other <<{p}-orchestrating-elastic-stack-applications, orchestration tasks>> by updating the resource manifest. You must remember to remove the exclusion to ensure that your Elastic Stack deployment is continually monitored and managed by the operator.
 
