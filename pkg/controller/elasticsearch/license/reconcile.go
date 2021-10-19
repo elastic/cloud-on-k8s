@@ -26,7 +26,7 @@ func Reconcile(
 }
 
 // CheckElasticsearchLicense checks that Elasticsearch is licensed, which ensures that the operator is communicating
-// with a supported Elasticsearch distribution and that Elasticsearch is reachable
+// with a supported Elasticsearch distribution and that Elasticsearch is reachable.
 func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, error) {
 	esReachable := true
 	supportedDistribution := true
