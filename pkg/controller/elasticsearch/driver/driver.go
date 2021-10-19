@@ -235,10 +235,6 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
-		if esclient.IsAPIError(err) {
-			// update esReachable to bypass steps that requires ES up in order to not block reconciliation
-			esReachable = false
-		}
 	}
 	if err != nil || requeue {
 		results.WithResult(defaultRequeue)
