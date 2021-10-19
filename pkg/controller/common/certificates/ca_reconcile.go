@@ -146,7 +146,7 @@ func renewCA(
 }
 
 // renewCAWithOptions will create and store a new CA to replace one that might exist using a set of given builder options
-// instead of accepting the defaults
+// instead of accepting the defaults.
 func renewCAWithOptions(
 	client k8s.Client,
 	namer name.Namer,
