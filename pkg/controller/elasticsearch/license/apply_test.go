@@ -235,59 +235,69 @@ func Test_applyLinkedLicense(t *testing.T) {
 
 func Test_checkEsLicense(t *testing.T) {
 	tests := []struct {
-		name      string
-		wantErr   bool
-		supported bool
-		updater   esclient.LicenseClient
+		name        string
+		wantErr     bool
+		supported   bool
+		esReachable bool
+		updater     esclient.LicenseClient
 	}{
 		{
-			name:      "happy path",
-			wantErr:   false,
-			supported: true,
+			name:        "happy path",
+			wantErr:     false,
+			supported:   true,
+			esReachable: true,
 			updater: &fakeInvalidLicenseUpdater{
 				fakeLicenseUpdater:     &fakeLicenseUpdater{license: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)}},
 				statusCodeOnGetLicense: 200,
 			},
 		},
 		{
-			name:      "error: 400 on get license, unsupported distribution",
-			wantErr:   true,
-			supported: false,
-			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 400},
+			name:        "error: 400 on get license, unsupported distribution",
+			wantErr:     true,
+			supported:   false,
+			esReachable: true,
+			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 400},
 		},
 		{
-			name:      "error: 401 on get license",
-			wantErr:   true,
-			supported: true,
-			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 401},
+			name:        "error: 401 on get license",
+			wantErr:     true,
+			supported:   true,
+			esReachable: true,
+			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 401},
 		},
 		{
-			name:      "error: 403 on get license",
-			wantErr:   true,
-			supported: true,
-			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 403},
+			name:        "error: 403 on get license",
+			wantErr:     true,
+			supported:   true,
+			esReachable: true,
+			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 403},
 		},
 		{
-			name:      "error: 404 on get license",
-			wantErr:   true,
-			supported: true,
-			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 404},
+			name:        "error: 404 on get license",
+			wantErr:     true,
+			supported:   true,
+			esReachable: true,
+			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 404},
 		},
 		{
-			name:      "error: 500 on get license",
-			wantErr:   true,
-			supported: true,
-			updater:   &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 500},
+			name:        "error: 500 on get license",
+			wantErr:     true,
+			supported:   true,
+			esReachable: false,
+			updater:     &fakeInvalidLicenseUpdater{statusCodeOnGetLicense: 500},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, supported, err := checkElasticsearchLicense(context.Background(), tt.updater)
+			_, supported, esReachable, err := CheckElasticsearchLicense(context.Background(), tt.updater)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("checkElasticsearchLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if supported != tt.supported {
 				t.Errorf("checkElasticsearchLicense() supported = %v, supported %v", supported, tt.supported)
+			}
+			if esReachable != tt.esReachable {
+				t.Errorf("checkElasticsearchLicense() esReachable = %v, esReachable %v", esReachable, tt.esReachable)
 			}
 		})
 	}

@@ -489,6 +489,7 @@ func TestUpdateSettings(t *testing.T) {
 				record.NewFakeRecorder(100),
 				tt.args.licenseChecker,
 				*tt.args.es,
+				true,
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateRemoteClusterSettings() error = %v, wantErr %v", err, tt.wantErr)
