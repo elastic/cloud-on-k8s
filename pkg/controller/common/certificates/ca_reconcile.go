@@ -92,7 +92,7 @@ func ReconcileCAForOwner(
 }
 
 // renewCAFromExisting will attempt to renew, or rather create a new CA using the existing
-// private key from the existing CA, using the same options as the previous CA.  There are 2
+// private key from the existing CA, using the same options as the previous CA. There are 2
 // scenarious where this will fail back to the existing behavior of creating a new CA with
 // a newly created private key and those are:
 // 1. The given CA is nil
