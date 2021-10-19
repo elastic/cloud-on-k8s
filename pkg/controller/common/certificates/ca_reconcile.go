@@ -127,7 +127,7 @@ func renewCAFromExisting(
 	})
 }
 
-// renewCA creates and stores a new CA to replace one that might exist using a set of default builder options
+// renewCA creates and stores a new CA to replace one that might exist using a set of default builder options.
 func renewCA(
 	client k8s.Client,
 	namer name.Namer,
