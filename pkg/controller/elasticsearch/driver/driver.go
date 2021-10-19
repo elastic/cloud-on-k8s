@@ -196,44 +196,52 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	var currentLicense *esclient.License
 	if esReachable {
-		// reconcile the Elasticsearch license
-		supportedDistribution, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
-		if err != nil && !supportedDistribution {
-			msg := "Unsupported Elasticsearch distribution"
+		var supportedDistribution bool
+		currentLicense, supportedDistribution, esReachable, err = license.CheckElasticsearchLicense(ctx, esClient)
+		if err != nil {
+			if !supportedDistribution {
+				msg := "Unsupported Elasticsearch distribution"
+				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
+				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
+				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
+			}
+			msg := "Could not verify license, re-queuing"
+			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-			// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
-			d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
-			return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+			results.WithResult(defaultRequeue)
 		}
+	}
+
+	// reconcile the Elasticsearch license
+	if currentLicense != nil {
+		err = license.Reconcile(ctx, d.Client, d.ES, esClient, currentLicense)
 		if err != nil {
 			msg := "Could not reconcile cluster license, re-queuing"
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
 			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 			results.WithResult(defaultRequeue)
-			if esclient.IsAPIError(err) {
-				// update esReachable to bypass steps that requires ES up in order to not block reconciliation
-				esReachable = false
-			}
 		}
 	}
-	if esReachable {
-		// reconcile remote clusters
-		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
-		if err != nil {
-			msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
-			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
-			if esclient.IsAPIError(err) {
-				// update esReachable to bypass steps that requires ES up in order to not block reconciliation
-				esReachable = false
-			}
+
+	// reconcile remote clusters
+	requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES, esReachable)
+	if err != nil {
+		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
+		log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+		if esclient.IsAPIError(err) {
+			// update esReachable to bypass steps that requires ES up in order to not block reconciliation
+			esReachable = false
 		}
-		if err != nil || requeue {
-			results.WithResult(defaultRequeue)
-		}
+	}
+	if err != nil || requeue {
+		results.WithResult(defaultRequeue)
 	}
 
 	// Compute seed hosts based on current masters with a podIP
@@ -254,7 +262,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
+	requeue, err = bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
 		return results.WithError(err)
 	}
