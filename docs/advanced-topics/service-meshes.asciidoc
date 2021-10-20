@@ -23,7 +23,7 @@ The instructions in this section describe how to connect the operator and manage
 
 These instructions have been tested with Istio {istio_version}. Older or newer versions of Istio might require additional configuration steps not documented here.
 
-CAUTION: Some Elastic Stack features such as link:https://www.elastic.co/guide/en/kibana/7.x/alerting-getting-started.html#alerting-getting-started[Kibana alerting and actions] rely on the Elasticsearch API keys feature which requires TLS to be enabled at the application level. If you want to use these features, you should not disable the self-signed certificate on the Elasticsearch resource and enable `PERMISSIVE` mode for the Elasticsearch service through a `DestinationRule` or `PeerAuthentication` resource. Strict mTLS mode is currently not compatible with Elastic Stack features requiring TLS to be enabled for the Elasticsearch HTTP layer.
+CAUTION: Some Elastic Stack features such as link:{kibana-ref}/alerting-getting-started.html#alerting-getting-started[Kibana alerting and actions] rely on the Elasticsearch API keys feature which requires TLS to be enabled at the application level. If you want to use these features, you should not disable the self-signed certificate on the Elasticsearch resource and enable `PERMISSIVE` mode for the Elasticsearch service through a `DestinationRule` or `PeerAuthentication` resource. Strict mTLS mode is currently not compatible with Elastic Stack features requiring TLS to be enabled for the Elasticsearch HTTP layer.
 
 IMPORTANT: If you use a Kubernetes distribution like Minikube, which does not have support for issuing third-party security tokens, you should explicitly set `automountServiceAccountToken` field to `true` in the Pod templates to allow Istio to fallback to default service account tokens. Refer to link:https://istio.io/docs/ops/best-practices/security/#configure-third-party-service-account-tokens[Istio security best practices] for more information.
 
@@ -72,7 +72,7 @@ spec:
 [...]
 ----
 
-As the default `failurePolicy` of the webhook is `Ignore`, the operator continues to function even if the above annotations are not present. The downside is that you are still able to submit an invalid manifest using `kubectl` without receiving any immediate feedback. 
+As the default `failurePolicy` of the webhook is `Ignore`, the operator continues to function even if the above annotations are not present. The downside is that you are still able to submit an invalid manifest using `kubectl` without receiving any immediate feedback.
 
 ECK has a fallback validation mechanism that reports validation failures as events associated with the relevant resource ({eck_resources_list}) that must be manually discovered by running `kubectl describe`. For example, to find the validation errors in an Elasticsearch resource named `quickstart`, you can run `kubectl describe elasticsearch quickstart`.
 
