@@ -13,7 +13,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-multierror"
-    "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
