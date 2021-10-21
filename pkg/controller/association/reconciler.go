@@ -409,6 +409,10 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	}
 	newStatus = associated.AssociationStatusMap(r.AssociationType)
 
+	// shortcut if the two maps are nil or empty
+	if len(oldStatus) == 0 && len(newStatus) == 0 {
+		return nil
+	}
 	if !reflect.DeepEqual(oldStatus, newStatus) {
 		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
