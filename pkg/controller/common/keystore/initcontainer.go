@@ -28,6 +28,9 @@ type InitContainerParameters struct {
 	KeystoreCreateCommand string
 	// Resources for the init container
 	Resources corev1.ResourceRequirements
+	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
+	// to true if the keystore can be forcibly recreated.
+	SkipInitializedFlag bool
 }
 
 // script is a small bash script to create an Elastic Stack keystore,
@@ -36,6 +39,7 @@ const script = `#!/usr/bin/env bash
 
 set -eux
 
+{{ if not .SkipInitializedFlag -}}
 keystore_initialized_flag={{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 
 if [[ -f "${keystore_initialized_flag}" ]]; then
@@ -43,6 +47,7 @@ if [[ -f "${keystore_initialized_flag}" ]]; then
 	exit 0
 fi
 
+{{ end -}}
 echo "Initializing keystore."
 
 # create a keystore in the default data path
@@ -56,7 +61,10 @@ for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	{{ .KeystoreAddCommand }}
 done
 
+{{ if not .SkipInitializedFlag -}}
 touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
+{{ end -}}
+
 echo "Keystore initialization successful."
 `
 

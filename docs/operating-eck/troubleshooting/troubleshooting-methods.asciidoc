@@ -13,9 +13,11 @@ Most common issues can be identified and resolved by following these instruction
 - <<{p}-describe-failing-resources,Describe failing resources>>
 - <<{p}-eck-debug-logs,Enable ECK debug logs>>
 - <<{p}-view-logs>>
+- <<{p}-resource-level-config>>
 - <<{p}-exclude-resource,Exclude a resource from reconciliation>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
+- <<{p}-suspend-elasticsearch>>
 - <<{p}-capture-jvm-heap-dumps>>
 
 If you are still unable to find a solution to your problem after following the above instructions, ask for help:
@@ -315,6 +317,36 @@ kubectl exec -ti elasticsearch-sample-es-p45nrjch29 bash
 ----
 
 This can also be done for Kibana and APM Server.
+
+[id="{p}-suspend-elasticsearch"]
+== Suspend Elasticsearch
+
+In exceptional cases, you might need to suspend the Elasticsearch process while using `kubectl exec` (<<{p}-exec-into-containers,see previous section>>) to troubleshoot.
+One such example where Elasticsearch has to be stopped are the unsafe operations on Elasticsearch nodes that can be executed with the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/node-tool.html[elasticsearch-node] tool.
+
+To suspend an Elasticearch node, while keeping the corresponding Pod running, you can annotate the Elasticsearch resource with the `eck.k8s.elastic.co/suspend` annotation. The value should be a comma-separated list of the names of the Pods whose Elasticsearch process you want to suspend.
+
+To suspend the second Pod in the `default` node set of a cluster called `quickstart` for example, you would use the following command:
+
+[source,sh]
+----
+kubectl annotate es quickstart eck.k8s.elastic.co/suspend=quickstart-es-default-1
+----
+
+You can then open a shell on the `elastic-internal-suspend` init container to troubleshoot:
+
+[source,sh]
+----
+kubectl exec -ti quickstart-es-default-1 -c elastic-internal-suspend -- bash
+----
+
+Once you are done with troubleshooting the node, you can resume normal operations by removing the annotation:
+
+[source,sh]
+----
+kubectl annotate es quickstart eck.k8s.elastic.co/suspend-
+----
+
 
 [id="{p}-capture-jvm-heap-dumps"]
 == Capture JVM heap dumps

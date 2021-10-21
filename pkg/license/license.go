@@ -121,7 +121,17 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(expected.Data, reconciled.Data)
+			// do not compare timestamp, as it will always change
+			expectedData, reconciledData := map[string]string{}, map[string]string{}
+			for k, v := range expected.Data {
+				expectedData[k] = v
+			}
+			for k, v := range reconciled.Data {
+				reconciledData[k] = v
+			}
+			delete(expectedData, "timestamp")
+			delete(reconciledData, "timestamp")
+			return !reflect.DeepEqual(expectedData, reconciledData)
 		},
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(reconciled)

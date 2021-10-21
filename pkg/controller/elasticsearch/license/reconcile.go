@@ -19,19 +19,16 @@ func Reconcile(
 	c k8s.Client,
 	esCluster esv1.Elasticsearch,
 	clusterClient esclient.Client,
-) (bool, error) {
-	currentLicense, supportedDistribution, err := checkElasticsearchLicense(ctx, clusterClient)
-	if err != nil {
-		return supportedDistribution, err
-	}
-
+	currentLicense esclient.License,
+) error {
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
-	return true, applyLinkedLicense(ctx, c, clusterName, clusterClient, currentLicense)
+	return applyLinkedLicense(ctx, c, clusterName, clusterClient, currentLicense)
 }
 
-// checkElasticsearchLicense checks that Elasticsearch is licensed, which ensures that the operator is communicating
-// with a supported Elasticsearch distribution
-func checkElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, bool, error) {
+// CheckElasticsearchLicense checks that Elasticsearch is licensed, which ensures that the operator is communicating
+// with a supported Elasticsearch distribution and that Elasticsearch is reachable.
+func CheckElasticsearchLicense(ctx context.Context, clusterClient esclient.LicenseClient) (esclient.License, error) {
+	esReachable := true
 	supportedDistribution := true
 	currentLicense, err := clusterClient.GetLicense(ctx)
 	if err != nil {
@@ -45,7 +42,24 @@ func checkElasticsearchLicense(ctx context.Context, clusterClient esclient.Licen
 		case esclient.Is4xx(err):
 			supportedDistribution = false
 			err = errors.Wrap(err, "unable to verify Elasticsearch license")
+		default:
+			esReachable = false
+		}
+		return esclient.License{}, &GetLicenseError{
+			msg:                   err.Error(),
+			SupportedDistribution: supportedDistribution,
+			EsReachable:           esReachable,
 		}
 	}
-	return currentLicense, supportedDistribution, err
+	return currentLicense, nil
+}
+
+type GetLicenseError struct {
+	msg                   string
+	SupportedDistribution bool
+	EsReachable           bool
+}
+
+func (e *GetLicenseError) Error() string {
+	return e.msg
 }

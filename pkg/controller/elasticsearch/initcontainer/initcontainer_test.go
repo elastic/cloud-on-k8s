@@ -14,9 +14,7 @@ import (
 
 func TestNewInitContainers(t *testing.T) {
 	type args struct {
-		elasticsearchImage string
-		operatorImage      string
-		keystoreResources  *keystore.Resources
+		keystoreResources *keystore.Resources
 	}
 	tests := []struct {
 		name                       string
@@ -26,19 +24,21 @@ func TestNewInitContainers(t *testing.T) {
 		{
 			name: "with keystore resources",
 			args: args{
-				elasticsearchImage: "es-image",
-				operatorImage:      "op-image",
-				keystoreResources:  &keystore.Resources{},
+				keystoreResources: &keystore.Resources{},
+			},
+			expectedNumberOfContainers: 3,
+		},
+		{
+			name: "without keystore resources",
+			args: args{
+				keystoreResources: nil,
 			},
 			expectedNumberOfContainers: 2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			containers, err := NewInitContainers(
-				volume.SecretVolume{},
-				tt.args.keystoreResources,
-			)
+			containers, err := NewInitContainers(volume.SecretVolume{}, tt.args.keystoreResources)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))
 		})

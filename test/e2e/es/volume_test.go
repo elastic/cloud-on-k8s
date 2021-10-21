@@ -13,6 +13,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -29,7 +30,7 @@ import (
 // TestVolumeEmptyDir tests a manual override of the default persistent storage with emptyDir.
 func TestVolumeEmptyDir(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-es-explicit-empty-dir").
-		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes()
 
 	// volume type will be checked in creation steps
@@ -75,6 +76,11 @@ func TestVolumeRetention(t *testing.T) {
 }
 
 func TestVolumeMultiDataPath(t *testing.T) {
+	// remove when https://github.com/elastic/elasticsearch/issues/78525 is resolved
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
+		t.SkipNow()
+	}
+
 	b := elasticsearch.NewBuilder("test-es-multi-data-path").
 		WithNodeSet(esv1.NodeSet{
 			Name: "default",

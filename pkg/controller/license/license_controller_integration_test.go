@@ -43,7 +43,7 @@ func TestReconcile(t *testing.T) {
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
 		r := &ReconcileLicenses{
 			Client:  mgr.GetClient(),
-			checker: license.MockChecker{},
+			checker: license.MockLicenseChecker{EnterpriseEnabled: true},
 		}
 		c, err := common.NewController(mgr, name, r, p)
 		if err != nil {

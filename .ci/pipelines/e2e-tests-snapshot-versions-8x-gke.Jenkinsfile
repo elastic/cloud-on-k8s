@@ -83,7 +83,7 @@ pipeline {
                     slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
-                        message: lib.generateSlackMessage("E2E tests for Elastic stack snapshot versions failed!", env.BUILD_URL, filter),
+                        message: lib.generateSlackMessage("E2E tests for Elastic Stack 8.0 snapshot failed!", env.BUILD_URL, filter),
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
                         failOnError: true
                     )

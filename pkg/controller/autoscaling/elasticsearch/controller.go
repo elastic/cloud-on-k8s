@@ -211,6 +211,7 @@ func newElasticsearchClient(
 	}
 	return esclient.NewElasticsearchClient(
 		dialer,
+		k8s.ExtractNamespacedName(&es),
 		url,
 		esclient.BasicAuth{
 			Name:     user.ControllerUserName,

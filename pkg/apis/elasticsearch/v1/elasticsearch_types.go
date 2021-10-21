@@ -6,18 +6,22 @@ package v1
 
 import (
 	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"strings"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
+	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
+	// for debugging purposes.
+	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
@@ -469,6 +473,20 @@ func (es Elasticsearch) AutoscalingSpec() string {
 
 func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {
 	return es.Spec.SecureSettings
+}
+
+func (es Elasticsearch) SuspendedPodNames() set.StringSet {
+	suspended, exists := es.Annotations[SuspendAnnotation]
+	if !exists {
+		return nil
+	}
+
+	podNames := strings.Split(suspended, ",")
+	suspendedPods := set.Make()
+	for _, p := range podNames {
+		suspendedPods.Add(strings.TrimSpace(p))
+	}
+	return suspendedPods
 }
 
 // -- associations

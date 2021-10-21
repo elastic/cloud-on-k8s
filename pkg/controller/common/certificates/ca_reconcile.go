@@ -6,13 +6,17 @@ package certificates
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,8 +79,12 @@ func ReconcileCAForOwner(
 		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
 	}
 
-	// renew if cannot reuse
+	// renew or recreate from private key if cannot reuse
 	if !CanReuseCA(ca, rotationParams.RotateBefore) {
+		if ca.PrivateKey != nil && certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
+			log.Info("Existing CA is expiring, creating a new one from existing private key", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
+			return renewCAFromExisting(cl, namer, owner, labels, rotationParams.Validity, caType, ca.PrivateKey)
+		}
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
 	}
@@ -85,7 +93,49 @@ func ReconcileCAForOwner(
 	return ca, nil
 }
 
-// renewCA creates and stores a new CA to replace one that might exist
+// renewCAFromExisting will attempt to renew, or rather create a new CA using the existing
+// private key from the existing CA, using the same options as the previous CA. There are 2
+// scenarios where this will fail back to the existing behavior of creating a new CA with
+// a newly created private key and those are:
+// 1. The given CA is nil
+// 2. The CA's private key interface type cannot be asserted to be a *rsa.PrivateKey
+func renewCAFromExisting(
+	client k8s.Client,
+	namer name.Namer,
+	owner client.Object,
+	labels map[string]string,
+	expireIn time.Duration,
+	caType CAType,
+	signer crypto.Signer,
+) (*CA, error) {
+	privateKey, ok := signer.(*rsa.PrivateKey)
+	if !ok {
+		log.Error(
+			errors.New("cannot cast ca.PrivateKey into *rsa.PrivateKey"),
+			"Failed to cast the operator generated CA private key into a RSA private key",
+			"namespace", owner.GetNamespace(),
+			"name", owner.GetName(),
+			"type", fmt.Sprintf("%T", signer),
+		)
+		return renewCA(client, namer, owner, labels, expireIn, caType)
+	}
+
+	log.Info(
+		"Attempting to renew CA certificate with existing private key",
+		"namespace", owner.GetNamespace(),
+		"name", owner.GetName(),
+	)
+	return renewCAWithOptions(client, namer, owner, labels, caType, CABuilderOptions{
+		Subject: pkix.Name{
+			CommonName:         owner.GetName() + "-" + string(caType),
+			OrganizationalUnit: []string{owner.GetName()},
+		},
+		ExpireIn:   &expireIn,
+		PrivateKey: privateKey,
+	})
+}
+
+// renewCA creates and stores a new CA to replace one that might exist using a set of default builder options.
 func renewCA(
 	client k8s.Client,
 	namer name.Namer,
@@ -94,13 +144,26 @@ func renewCA(
 	expireIn time.Duration,
 	caType CAType,
 ) (*CA, error) {
-	ca, err := NewSelfSignedCA(CABuilderOptions{
+	return renewCAWithOptions(client, namer, owner, labels, caType, CABuilderOptions{
 		Subject: pkix.Name{
 			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
 		},
 		ExpireIn: &expireIn,
 	})
+}
+
+// renewCAWithOptions will create and store a new CA to replace one that might exist using a set of given builder options
+// instead of accepting the defaults.
+func renewCAWithOptions(
+	client k8s.Client,
+	namer name.Namer,
+	owner client.Object,
+	labels map[string]string,
+	caType CAType,
+	options CABuilderOptions,
+) (*CA, error) {
+	ca, err := NewSelfSignedCA(options)
 	if err != nil {
 		return nil, err
 	}
@@ -130,11 +193,17 @@ func CertIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bo
 		log.Info("CA cert is not valid yet", "subject", cert.Subject)
 		return false
 	}
-	if now.After(cert.NotAfter.Add(-expirationSafetyMargin)) {
+	if certExpiring(now, cert, expirationSafetyMargin) {
 		log.Info("CA cert expired or soon to expire", "subject", cert.Subject, "expiration", cert.NotAfter)
 		return false
 	}
 	return true
+}
+
+// certExpiring is a simple helper function to see if a certificate is expiring relative to the given
+// time.Time, and a given safety margin.
+func certExpiring(t time.Time, cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
+	return t.After(cert.NotAfter.Add(-expirationSafetyMargin))
 }
 
 // internalSecretForCA returns a new internal Secret for the given CA.

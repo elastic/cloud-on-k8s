@@ -177,7 +177,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			client := k8s.NewFakeClient(tt.k8sResources...)
 			r := &ReconcileLicenses{
 				Client:  client,
-				checker: commonlicense.MockChecker{},
+				checker: commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)
 			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn}).Aggregate()

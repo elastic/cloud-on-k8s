@@ -176,7 +176,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 
 	// always update the elasticsearch state bits
-	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
@@ -196,32 +196,52 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	var currentLicense esclient.License
 	if esReachable {
-		// reconcile the Elasticsearch license
-		supportedDistribution, err := license.Reconcile(ctx, d.Client, d.ES, esClient)
-		if err != nil && !supportedDistribution {
-			msg := "Unsupported Elasticsearch distribution"
-			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-			// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
-			d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
-			return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
+		currentLicense, err = license.CheckElasticsearchLicense(ctx, esClient)
+		var e *license.GetLicenseError
+		if errors.As(err, &e) {
+			if !e.SupportedDistribution {
+				msg := "Unsupported Elasticsearch distribution"
+				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
+				d.ReconcileState.UpdateElasticsearchStatusPhase(esv1.ElasticsearchResourceInvalid)
+				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
+			}
+			// update esReachable to bypass steps that requires ES up in order to not block reconciliation for long periods
+			esReachable = e.EsReachable
 		}
 		if err != nil {
-			msg := "Could not reconcile cluster license"
-			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			msg := "Could not verify license, re-queuing"
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 			results.WithResult(defaultRequeue)
 		}
+	}
 
-		// reconcile remote clusters
+	// reconcile the Elasticsearch license
+	if esReachable {
+		err = license.Reconcile(ctx, d.Client, d.ES, esClient, currentLicense)
+		if err != nil {
+			msg := "Could not reconcile cluster license, re-queuing"
+			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+			results.WithResult(defaultRequeue)
+		}
+	}
+
+	// reconcile remote clusters
+	if esReachable {
 		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
 		if err != nil {
-			msg := "Could not update remote clusters in Elasticsearch settings"
+			msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
+			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			results.WithResult(defaultRequeue)
+			d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 		}
-		if requeue {
+		if err != nil || requeue {
 			results.WithResult(defaultRequeue)
 		}
 	}
@@ -264,15 +284,21 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		results.WithResult(defaultRequeue)
 	}
 
+	// we want to reconcile suspended Pods before we start reconciling node specs as this is considered a debugging and
+	// troubleshooting tool that does not follow the change budget restrictions
+	if err := reconcileSuspendedPods(d.Client, d.ES, d.Expectations); err != nil {
+		return results.WithError(err)
+	}
+
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
+	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState(), *resourcesState, keystoreResources)
 	results = results.WithResults(res)
 
 	if res.HasError() {
 		return results
 	}
 
-	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 	return results
 }
 
@@ -284,7 +310,15 @@ func (d *defaultDriver) newElasticsearchClient(
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts, esclient.Timeout(d.ES))
+	return esclient.NewElasticsearchClient(
+		d.OperatorParameters.Dialer,
+		k8s.ExtractNamespacedName(&d.ES),
+		url,
+		user,
+		v,
+		caCerts,
+		esclient.Timeout(d.ES),
+	)
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
