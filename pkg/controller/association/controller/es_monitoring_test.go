@@ -43,6 +43,6 @@ func Test_EsMonitoringReconciler_NoAssociation(t *testing.T) {
 	var updatedEs esv1.Elasticsearch
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&es), &updatedEs)
 	require.NoError(t, err)
-	// resource version should not changed
+	// resource version should not have changed
 	require.Equal(t, resourceVersion, updatedEs.ResourceVersion)
 }
