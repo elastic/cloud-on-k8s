@@ -14,7 +14,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -162,10 +161,6 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, nil
 	}
 
-	if err := r.reconcileCompatibility(ctx, &ent); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if !association.IsConfiguredIfSet(&ent, r.recorder) {
 		return reconcile.Result{}, nil
 	}
@@ -179,15 +174,6 @@ func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entv1.Namer, obj.Name))
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1.Kind)
-}
-
-func (r *ReconcileEnterpriseSearch) reconcileCompatibility(ctx context.Context, ent *entv1.EnterpriseSearch) error {
-	selector := map[string]string{EnterpriseSearchNameLabelName: ent.Name}
-	err := annotation.ReconcileCompatibility(ctx, r.Client, ent, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, ent, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return err
 }
 
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (reconcile.Result, error) {
