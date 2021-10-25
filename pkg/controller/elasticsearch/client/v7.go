@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/pkg/errors"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 type clientV7 struct {

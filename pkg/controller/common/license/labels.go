@@ -5,8 +5,9 @@
 package license
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
 
 const (

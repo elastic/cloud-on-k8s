@@ -5,10 +5,11 @@
 package certificates
 
 import (
+	"k8s.io/apimachinery/pkg/types"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates

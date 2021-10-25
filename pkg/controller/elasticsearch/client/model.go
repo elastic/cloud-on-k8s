@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	"github.com/pkg/errors"
 )
 
 // Info represents the response from /

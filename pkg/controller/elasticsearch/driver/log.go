@@ -5,9 +5,10 @@
 package driver
 
 import (
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var log = ulog.Log.WithName("driver")

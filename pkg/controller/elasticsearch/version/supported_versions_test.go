@@ -8,8 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 func TestSupportedVersions(t *testing.T) {

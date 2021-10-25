@@ -7,9 +7,10 @@ package defaults
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 )
 
 func TestSetServiceDefaults(t *testing.T) {

@@ -7,8 +7,9 @@ package license
 import (
 	"time"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 // ResourceReporterFrequency defines the reporting frequency of the resource reporter

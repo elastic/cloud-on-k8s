@@ -7,6 +7,8 @@ package reconcile
 import (
 	"reflect"
 
+	corev1 "k8s.io/api/core/v1"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -14,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var log = ulog.Log.WithName("elasticsearch-controller")

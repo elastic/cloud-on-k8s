@@ -7,11 +7,12 @@ package elasticsearch
 import (
 	"context"
 
+	"github.com/go-logr/logr"
+	"go.elastic.co/apm"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/go-logr/logr"
-	"go.elastic.co/apm"
 )
 
 // updatePolicies updates the autoscaling policies in the Elasticsearch cluster.
