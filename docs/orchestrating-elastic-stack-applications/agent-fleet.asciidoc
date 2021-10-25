@@ -102,6 +102,7 @@ rules:
 - apiGroups: [""] # "" indicates the core API group
   resources:
   - pods
+  - nodes
   verbs:
   - get
   - watch
