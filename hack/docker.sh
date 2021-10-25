@@ -38,6 +38,11 @@ docker-login() {
             gcloud auth configure-docker --quiet 2> /dev/null
         ;;
 
+        *.docker.io/*)
+            echo "Authentication to ${registry}..."
+            docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" 2> /dev/null
+        ;;
+
         *)
             if ! grep -q "$registry" ~/.docker/config.json; then
                echo "Please log in to $registry."

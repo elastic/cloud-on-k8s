@@ -36,16 +36,19 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
 REGISTRY           ?= docker.elastic.co
+DOCKERHUB_REGISTRY = docker.io
 REGISTRY_NAMESPACE ?= eck-dev
 NAME               ?= eck-operator
+ORGANIZATION       ?= elastic
 SNAPSHOT           ?= true
 VERSION            ?= $(shell cat VERSION)
 TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION        ?= $(VERSION)-$(TAG)
 
-BASE_IMG       := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
-OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
+BASE_IMG                 := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
+OPERATOR_IMAGE           ?= $(BASE_IMG):$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE ?= $(DOCKERHUB_REGISTRY)/$(ORGANIZATION)/$(IMG_NAME):$(IMG_VERSION)
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
@@ -390,8 +393,8 @@ docker-multiarch-build: go-generate generate-config-file
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		--platform linux/amd64,linux/arm64 \
-		--push \
-		-t $(OPERATOR_IMAGE)
+		-t $(OPERATOR_IMAGE) \
+		-t $(OPERATOR_DOCKERHUB_IMAGE)
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
@@ -403,6 +406,11 @@ docker-build: go-generate generate-config-file
 
 docker-push:
 	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
+
+docker-push-dockerhub: OPERATOR_IMAGE=$(OPERATOR_DOCKERHUB_IMAGE)
+docker-push-dockerhub: DOCKER_LOGIN=$(DOCKERHUB_LOGIN)
+docker-push-dockerhub: DOCKER_PASSWORD=$(DOCKERHUB_PASSWORD)
+docker-push-dockerhub: docker-push
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -529,7 +537,7 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean ci-check build-operator-multiarch-image
+ci-release: clean ci-check build-operator-multiarch-image docker-push docker-push-dockerhub
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
