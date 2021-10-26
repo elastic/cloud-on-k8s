@@ -8,6 +8,7 @@
 #
 # Log in to docker.elastic.co if the namespace eck, eck-ci or eck-snapshots is used
 # Log in to gcloud if GCR is used
+# Log in to hub.docker.com if docker.io is used
 
 set -euo pipefail
 
