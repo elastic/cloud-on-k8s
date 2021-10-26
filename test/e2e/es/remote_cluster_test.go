@@ -68,9 +68,15 @@ func TestRemoteCluster(t *testing.T) {
 			es1LicenseTestContext.Init(),
 			es2LicenseTestContext.Init(),
 			// Check that the first cluster is using a Platinum license
-			es1LicenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypePlatinum),
+			es1LicenseTestContext.CheckElasticsearchLicense(
+				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeEnterprise,
+			),
 			// Check that the second cluster is using a Platinum license
-			es1LicenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypePlatinum),
+			es1LicenseTestContext.CheckElasticsearchLicense(
+				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeEnterprise,
+			),
 			test.Step{
 				Name: "Add some data to the first cluster",
 				Test: func(t *testing.T) {
