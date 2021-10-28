@@ -309,7 +309,7 @@ func (d *defaultDriver) newElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
+	url := services.RandomElasticsearchPodURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
 	return esclient.NewElasticsearchClient(
 		d.OperatorParameters.Dialer,
 		k8s.ExtractNamespacedName(&d.ES),

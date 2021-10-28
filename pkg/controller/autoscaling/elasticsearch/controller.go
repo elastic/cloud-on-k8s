@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esreconciler "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
@@ -187,7 +188,11 @@ func newElasticsearchClient(
 	es esv1.Elasticsearch,
 ) (esclient.Client, error) {
 	defer tracing.Span(&ctx)()
-	url := services.ExternalServiceURL(es)
+	resourcesState, err := esreconciler.NewResourcesStateFromAPI(c, es)
+	if err != nil {
+		return nil, err
+	}
+	url := services.RandomElasticsearchPodURL(es, resourcesState.CurrentPodsByPhase[corev1.PodRunning])
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return nil, err
