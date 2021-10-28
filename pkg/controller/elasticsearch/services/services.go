@@ -157,7 +157,6 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 // given set of pods.  If for some reason a pod URL cannot be generated, the external Elasticsearch
 // service URL will be returned.
 func RandomElasticsearchPodURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
-	// switch to sending requests directly to a random pod instead of going through the service
 	randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
 	if podURL := ElasticsearchPodURL(randomPod); podURL != "" {
 		return podURL
