@@ -394,7 +394,8 @@ docker-multiarch-build: go-generate generate-config-file
 		--build-arg VERSION='$(VERSION)' \
 		--platform linux/amd64,linux/arm64 \
 		-t $(OPERATOR_IMAGE) \
-		-t $(OPERATOR_DOCKERHUB_IMAGE)
+		-t $(OPERATOR_DOCKERHUB_IMAGE) \
+		--load
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
