@@ -19,7 +19,8 @@ retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
 
 # source variables if present
 if [[ -f ${REGISTRY_ENV} ]]; then
-    echo registry.env file `cat ${REGISTRY_ENV}`
+    echo "registry.env file"
+    cat "${REGISTRY_ENV}"
     # shellcheck disable=SC2046
     export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
 fi
