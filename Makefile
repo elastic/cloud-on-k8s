@@ -400,6 +400,8 @@ docker-multiarch-build: go-generate generate-config-file
 		--platform linux/amd64,linux/arm64 \
 		-t $(OPERATOR_IMAGE) \
 		--push
+docker-multiarch-build-dockerhub: DOCKER_LOGIN=$(DOCKERHUB_LOGIN)
+docker-multiarch-build-dockerhub: DOCKER_PASSWORD=$(DOCKERHUB_PASSWORD)
 docker-multiarch-build-dockerhub:
 	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
