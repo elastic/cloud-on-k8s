@@ -40,7 +40,7 @@ docker-login() {
         ;;
 
         docker.io/*)
-            echo "Authentication to ${registry}..."
+            echo "Authentication to ${registry} with credentials ${DOCKER_LOGIN}, ${DOCKER_PASSWORD}..."
             docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" 2> /dev/null
         ;;
 
