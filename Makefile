@@ -395,7 +395,7 @@ docker-multiarch-build: go-generate generate-config-file
 		--platform linux/amd64,linux/arm64 \
 		-t $(OPERATOR_IMAGE) \
 		--push && \
-		docker buildx build . \
+	DOCKER_LOGIN=$(DOCKERHUB_LOGIN) DOCKER_PASSWORD=$(DOCKERHUB_PASSWORD) docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
