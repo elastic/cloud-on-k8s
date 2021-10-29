@@ -248,6 +248,11 @@ build-operator-multiarch-image:
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-multiarch-build
 
+build-operator-multiarch-image-dockerhub:
+	@ docker buildx imagetools inspect $(OPERATOR_DOCKERHUB_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	&& echo "OK: image $(OPERATOR_DOCKERHUB_IMAGE) already published" \
+	|| $(MAKE) docker-multiarch-build-dockerhub
+
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
@@ -394,8 +399,10 @@ docker-multiarch-build: go-generate generate-config-file
 		--build-arg VERSION='$(VERSION)' \
 		--platform linux/amd64,linux/arm64 \
 		-t $(OPERATOR_IMAGE) \
-		--push && \
-	DOCKER_LOGIN=$(DOCKERHUB_LOGIN) DOCKER_PASSWORD=$(DOCKERHUB_PASSWORD) docker buildx build . \
+		--push
+docker-multiarch-build-dockerhub:
+	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
+	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
@@ -545,8 +552,8 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean ci-check build-operator-multiarch-image docker-push docker-push-dockerhub
-	@ echo $(OPERATOR_IMAGE) was pushed!
+ci-release: clean ci-check build-operator-multiarch-image build-operator-multiarch-image-dockerhub
+	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
 
 ##########################
 ##  --   Helpers    --  ##
