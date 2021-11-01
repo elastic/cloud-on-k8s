@@ -22,7 +22,7 @@ pipeline {
     }
 
     stages {
-        stage('Nightly or release build - Checks') {
+        stage('Nightly or release build - Check License Header and Lint') {
             failFast true
             parallel {
                 stage('Check License Header') {
@@ -35,6 +35,11 @@ pipeline {
                         sh 'make -C .ci TARGET=lint ci'
                     }
                 }
+            }
+        }
+        stage('Nightly or release build - Shellcheck and Generation') {
+            failFast true
+            parallel {
                 stage('Shellcheck') {
                     steps {
                         sh 'make -C .ci TARGET=shellcheck ci'
@@ -45,6 +50,11 @@ pipeline {
                         sh 'make -C .ci TARGET=generate-and-check-local-changes ci'
                     }
                 }
+            }
+        }
+        stage('Nightly or release build - Unit and Integration tests') {
+            failFast true
+            parallel {
                 stage('Unit tests') {
                     steps {
                         sh 'make -C .ci TARGET=unit-xml ci'
