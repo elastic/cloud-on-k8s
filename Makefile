@@ -92,6 +92,8 @@ ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
 generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
+generate-and-check-local-changes: generate check-local-changes
+
 tidy:
 	go mod tidy
 
