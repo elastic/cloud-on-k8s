@@ -43,7 +43,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.9.0 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.7.0 | MIT
 | link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
-| link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.12.0 | Apache-2.0
+| link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.14.0 | Apache-2.0
 | link:https://go.elastic.co/apm/module/apmelasticsearch[$$go.elastic.co/apm/module/apmelasticsearch$$] | v1.12.0 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.4.0 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.19.1 | MIT
@@ -116,6 +116,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/huandu/xstrings[$$github.com/huandu/xstrings$$] | v1.3.1 | MIT
 | link:https://github.com/inconshreveable/mousetrap[$$github.com/inconshreveable/mousetrap$$] | v1.0.0 | Apache-2.0
 | link:https://github.com/influxdata/tdigest[$$github.com/influxdata/tdigest$$] | v0.0.1 | Apache-2.0
+| link:https://github.com/jcchavezs/porto[$$github.com/jcchavezs/porto$$] | v0.1.0 | Apache-2.0
 | link:https://github.com/jhump/protoreflect[$$github.com/jhump/protoreflect$$] | v1.6.0 | Apache-2.0
 | link:https://github.com/joeshaw/multierror[$$github.com/joeshaw/multierror$$] | v0.0.0-20140124173710-69b34d4ec901 | MIT
 | link:https://github.com/json-iterator/go[$$github.com/json-iterator/go$$] | v1.1.11 | MIT
