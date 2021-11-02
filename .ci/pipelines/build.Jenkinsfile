@@ -22,59 +22,19 @@ pipeline {
     }
 
     stages {
-        stage('Lint') {
-            steps {
-                sh 'make -C .ci TARGET=lint ci'
-            }
-        }
-        stage('Shellcheck, Generation, Check License Header and check reattach-pv compiles') {
-            failFast true
-            parallel {
-                stage('Shellcheck') {
-                    steps {
-                        sh 'make -C .ci TARGET=shellcheck ci'
-                    }
-                }
-                stage('Generate and check local changes') {
-                    steps {
-                        sh 'make -C .ci TARGET=generate-and-check-local-changes ci'
-                    }
-                }
-                stage('Check License Header') {
-                    steps {
-                        sh 'make -C .ci TARGET=check-license-header ci'
-                    }
-                }
-                stage('Ensure reattach-pv compiles') {
-                    steps {
-                        sh 'make -C .ci TARGET=reattach-pv ci'
-                    }
-                }
-            }
-        }
-        stage('Nightly or release build - Unit and Integration tests') {
-            failFast true
-            parallel {
-                stage('Unit tests') {
-                    steps {
-                        sh 'make -C .ci TARGET=unit-xml ci'
-                    }
-                }
-                stage('Integration tests') {
-                    steps {
-                        sh 'make -C .ci TARGET=integration-xml ci'
-                    }
-                }
-            }
-        }
-        stage('Nightly or release build - Build and Push') {
+        stage('Nightly or release build') {
             stages {
-                stage('Build Docker image') {
+                stage('Run checks') {
                     steps {
-                        sh 'make -C .ci TARGET=docker-build ci'
+                        sh 'make -C .ci TARGET=ci-check ci'
                     }
                 }
-                stage('Build and push multiarchitecture Docker image') {
+                stage('Run unit and integration tests') {
+                    steps {
+                        sh 'make -C .ci TARGET=ci ci'
+                    }
+                }
+                stage('Build and push Docker image') {
                     steps {
                         sh '.ci/setenvconfig build'
                         sh 'make -C .ci license.key TARGET=ci-release ci'

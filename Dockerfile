@@ -2,8 +2,7 @@
 FROM --platform=$TARGETPLATFORM golang:1.17.2 as builder
 
 ARG TARGETPLATFORM
-ARG TARGETOS
-ARG TARGETARCH
+ARG BUILDPLATFORM
 ARG GO_LDFLAGS
 ARG GO_TAGS
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
@@ -18,7 +17,7 @@ COPY pkg/    pkg/
 COPY cmd/    cmd/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+RUN CGO_ENABLED=0 GOOS=linux \
 		go build \
             -mod readonly \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
