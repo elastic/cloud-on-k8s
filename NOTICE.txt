@@ -2569,11 +2569,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.14.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch
-Version : v1.12.0
-Time    : 2021-05-25T17:24:56Z
+Version : v1.14.0
+Time    : 2021-09-22T11:13:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.14.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16534,11 +16534,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp
-Version : v1.12.0
-Time    : 2021-05-25T17:24:56Z
+Version : v1.14.0
+Time    : 2021-09-22T11:13:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.14.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004

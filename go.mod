@@ -34,7 +34,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	go.elastic.co/apm v1.14.0
-	go.elastic.co/apm/module/apmelasticsearch v1.12.0
+	go.elastic.co/apm/module/apmelasticsearch v1.14.0
 	go.uber.org/automaxprocs v1.4.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
