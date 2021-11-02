@@ -1,12 +1,18 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package nodespec
 
 import (
 	"sort"
 	"testing"
+
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -16,11 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/go-test/deep"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var sampleES = esv1.Elasticsearch{
@@ -195,15 +196,16 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
 
-	initContainers, err := initcontainer.NewInitContainers(
-		transportCertificatesVolume(sampleES.Name),
-		nil,
-	)
+	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil)
 	require.NoError(t, err)
-	// should be patched with volume and env
+	// init containers should be patched with volume and inherited env vars and image
+	headlessSvcEnvVar := corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}
+	esDockerImage := "docker.elastic.co/elasticsearch/elasticsearch:7.2.0"
 	for i := range initContainers {
-		initContainers[i].Env = append(initContainers[i].Env, defaults.PodDownwardEnvVars()...)
+		initContainers[i].Image = esDockerImage
+		initContainers[i].Env = append(initContainers[i].Env, headlessSvcEnvVar)
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
+		initContainers[i].Resources = DefaultResources
 	}
 
 	// remove the prepare-fs init-container from comparison, it has its own volume mount logic
@@ -243,9 +245,10 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			Volumes: volumes,
 			InitContainers: append(initContainers, corev1.Container{
 				Name:         "additional-init-container",
-				Image:        "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-				Env:          defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}),
+				Image:        esDockerImage,
+				Env:          defaults.ExtendPodDownwardEnvVars(headlessSvcEnvVar),
 				VolumeMounts: volumeMounts,
+				Resources:    DefaultResources, // inherited from main container
 			}),
 			Containers: []corev1.Container{
 				{
@@ -253,7 +256,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				},
 				{
 					Name:  "elasticsearch",
-					Image: "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
+					Image: esDockerImage,
 					Ports: []corev1.ContainerPort{
 						{Name: "https", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},

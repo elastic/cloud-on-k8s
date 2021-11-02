@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-# or more contributor license agreements. Licensed under the Elastic License;
-# you may not use this file except in compliance with the Elastic License.
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
 
 # Script to generate an ECK installation manifest
 
@@ -77,11 +77,10 @@ while getopts "cug" OPT; do
         g)
             update_chart
             shift $((OPTIND-1))
-            ARGS=("$@")
             (
                 cd "$SCRIPT_DIR"
                 go build -o manifest-gen >/dev/null 2>&1
-                ./manifest-gen --source="$EFFECTIVE_SRC_CHART_DIR" generate "${ARGS[@]}"
+                ./manifest-gen --source="$EFFECTIVE_SRC_CHART_DIR" generate "$@"
                 rm manifest-gen
             )
             exit 0

@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package client
 
@@ -19,14 +19,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestParseShards(t *testing.T) {
@@ -256,7 +258,7 @@ func TestClient_request(t *testing.T) {
 
 func TestAPIError_Error(t *testing.T) {
 	type fields struct {
-		response *http.Response
+		apiError error
 	}
 	tests := []struct {
 		name   string
@@ -265,27 +267,28 @@ func TestAPIError_Error(t *testing.T) {
 	}{
 		{
 			name: "Elasticsearch JSON error response",
-			fields: fields{&http.Response{
-				Status: "400 Bad Request",
-				Body:   ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
-			}},
-			want: "400 Bad Request: illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6]",
+			fields: fields{newAPIError(&http.Response{
+				StatusCode: 400,
+				Status:     "400 Bad Request",
+				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
+			})},
+			want: `400 Bad Request: {Status:400 Error:{CausedBy:{Reason:cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1] ` +
+				`Type:illegal_argument_exception} Reason:illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6] Type:illegal_argument_exception ` +
+				`RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
 		},
 		{
 			name: "non-JSON error response",
-			fields: fields{&http.Response{
-				Status: "500 Internal Server Error",
-				Body:   ioutil.NopCloser(bytes.NewBufferString("")),
-			}},
-			want: "500 Internal Server Error: unknown",
+			fields: fields{newAPIError(&http.Response{
+				StatusCode: 500,
+				Status:     "500 Internal Server Error",
+				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
+			})},
+			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: RootCause:[]}}",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &APIError{
-				response: tt.fields.response,
-			}
-			if got := e.Error(); got != tt.want {
+			if got := tt.fields.apiError.Error(); got != tt.want {
 				t.Errorf("APIError.Error() = %v, want %v", got, tt.want)
 			}
 		})
@@ -349,6 +352,10 @@ func TestGetInfo(t *testing.T) {
 func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
 	dummyUser := BasicAuth{Name: "user", Password: "password"}
+	dummyNamespaceName := types.NamespacedName{
+		Namespace: "ns",
+		Name:      "es",
+	}
 	createCert := func() *x509.Certificate {
 		ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 		require.NoError(t, err)
@@ -366,62 +373,62 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(esv1.Elasticsearch{})),
 			want: false,
 		},
 	}
@@ -562,27 +569,27 @@ func TestAPIError_Types(t *testing.T) {
 		{
 			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: &APIError{response: NewMockResponse(500, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(500, nil, "")), //nolint:bodyclose
 			},
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
-				err: &APIError{response: NewMockResponse(409, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(409, nil, "")), //nolint:bodyclose
 			},
 			wantConflict: true,
 		},
 		{
 			name: "403 is a forbidden",
 			args: args{
-				err: &APIError{response: NewMockResponse(403, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(403, nil, "")), //nolint:bodyclose
 			},
 			wantForbidden: true,
 		},
 		{
 			name: "404 is not found",
 			args: args{
-				err: &APIError{response: NewMockResponse(404, nil, "")}, //nolint:bodyclose
+				err: newAPIError(NewMockResponse(404, nil, "")), //nolint:bodyclose
 			},
 			wantNotFound: true,
 		},

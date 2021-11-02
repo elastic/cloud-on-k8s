@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package observer
 
@@ -13,11 +13,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func fakeEsClient(healthRespErr bool) client.Client {

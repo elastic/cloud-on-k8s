@@ -1,14 +1,15 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package v1
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/go-ucfg"
 	"k8s.io/utils/pointer"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )

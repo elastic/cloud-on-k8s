@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package common
 
@@ -8,14 +8,15 @@ import (
 	"context"
 	"testing"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcileService(t *testing.T) {
@@ -72,6 +73,7 @@ func mkService(owner *kbv1.Kibana) *corev1.Service {
 }
 
 func Test_needsUpdate(t *testing.T) {
+	ipFamilySingleStack := corev1.IPFamilyPolicySingleStack
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -133,9 +135,11 @@ func Test_needsUpdate(t *testing.T) {
 						Annotations: map[string]string{"annotation1": "annotation1val", "annotation2": "annotation2val"},
 					},
 					Spec: corev1.ServiceSpec{
-						Type:       corev1.ServiceTypeClusterIP,
-						ClusterIP:  "1.2.3.4",
-						IPFamilies: []corev1.IPFamily{corev1.IPv4Protocol},
+						Type:           corev1.ServiceTypeClusterIP,
+						ClusterIP:      "1.2.3.4",
+						ClusterIPs:     []string{"1.2.3.4"},
+						IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
+						IPFamilyPolicy: &ipFamilySingleStack,
 					}},
 			},
 			want: false,
@@ -263,28 +267,31 @@ func Test_applyServerSideValues(t *testing.T) {
 		want corev1.Service
 	}{
 		{
-			name: "Reconciled ClusterIP/Type/SessionAffinity is used if expected ClusterIP/Type/SessionAffinity is empty",
+			name: "Reconciled ClusterIP/ClusterIPs/Type/SessionAffinity is used if expected ClusterIP/Type/SessionAffinity is empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "1.2.3.4",
+					ClusterIPs:      []string{"1.2.3.4"},
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "1.2.3.4",
+				ClusterIPs:      []string{"1.2.3.4"},
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 			}},
 		},
 		{
-			name: "Reconciled ClusterIP is not used if the reconciled ClusterIP is not an IP",
+			name: "Reconciled ClusterIP[s] is not used if the reconciled ClusterIP[s] are not valid IPs",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "None",
+					ClusterIPs:      []string{"None"},
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
@@ -294,14 +301,15 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Reconciled ClusterIP is not used if expected type changes",
+			name: "Reconciled ClusterIP[s] is not used if expected type changes",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "1.2.3.4",
+					Type:       corev1.ServiceTypeClusterIP,
+					ClusterIP:  "1.2.3.4",
+					ClusterIPs: []string{"1.2.3.4"},
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
@@ -309,22 +317,25 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Reconciled ClusterIP/Type/SessionAffinity is not used if expected ClusterIP/Type/SessionAffinity is set",
+			name: "Reconciled ClusterIP[s]/Type/SessionAffinity is not used if expected ClusterIP[s]/Type/SessionAffinity is set",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:            corev1.ServiceTypeLoadBalancer,
 					ClusterIP:       "4.3.2.1",
+					ClusterIPs:      []string{"4.3.2.1"},
 					SessionAffinity: corev1.ServiceAffinityNone,
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "1.2.3.4",
+					ClusterIPs:      []string{"1.2.3.4"},
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:            corev1.ServiceTypeLoadBalancer,
 				ClusterIP:       "4.3.2.1",
+				ClusterIPs:      []string{"4.3.2.1"},
 				SessionAffinity: corev1.ServiceAffinityNone,
 			}},
 		},

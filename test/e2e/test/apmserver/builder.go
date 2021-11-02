@@ -1,26 +1,26 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package apmserver
 
 import (
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 // Builder to create APM Servers
 type Builder struct {
-	ApmServer      apmv1.ApmServer
-	ServiceAccount corev1.ServiceAccount
+	ApmServer apmv1.ApmServer
 }
 
 var _ test.Builder = Builder{}
@@ -44,15 +44,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 
-	sa := metav1.ObjectMeta{
-		Name:      name,
-		Namespace: test.Ctx().ManagedNamespace(0),
-	}
-
 	return Builder{
-		ServiceAccount: corev1.ServiceAccount{
-			ObjectMeta: sa,
-		},
 		ApmServer: apmv1.ApmServer{
 			ObjectMeta: meta,
 			Spec: apmv1.ApmServerSpec{
@@ -65,8 +57,7 @@ func newBuilder(name, randSuffix string) Builder {
 				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
-						ServiceAccountName: name,
-						SecurityContext:    test.APMDefaultSecurityContext(),
+						SecurityContext: test.DefaultSecurityContext(),
 					},
 				},
 			},
@@ -80,20 +71,16 @@ func newBuilder(name, randSuffix string) Builder {
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
-		b.ServiceAccount.ObjectMeta.Name = b.ApmServer.ObjectMeta.GetName()
-		b.ApmServer.Spec.PodTemplate.Spec.ServiceAccountName = b.ServiceAccount.GetName()
 	}
 	return b
 }
 
 func (b Builder) WithRestrictedSecurityContext() Builder {
-	b.ApmServer.Spec.PodTemplate.Spec.ServiceAccountName = b.ServiceAccount.GetName()
-	b.ApmServer.Spec.PodTemplate.Spec.SecurityContext = test.APMDefaultSecurityContext()
+	b.ApmServer.Spec.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 	return b
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {
-	b.ServiceAccount.ObjectMeta.Namespace = namespace
 	b.ApmServer.ObjectMeta.Namespace = namespace
 	return b
 }
@@ -189,7 +176,7 @@ func (b Builder) ListOptions() []client.ListOption {
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []client.Object {
-	return []client.Object{&b.ServiceAccount, &b.ApmServer}
+	return []client.Object{&b.ApmServer}
 }
 
 func (b Builder) RUMEnabled() bool {

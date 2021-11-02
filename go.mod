@@ -13,13 +13,13 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
-	github.com/go-test/deep v1.0.7
+	github.com/go-test/deep v1.0.8
 	github.com/gobuffalo/flect v0.2.3
 	github.com/google/go-cmp v0.5.6
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/vault/api v1.1.0
+	github.com/hashicorp/vault/api v1.3.0
 	github.com/imdario/mergo v0.3.12
 	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/magiconair/properties v1.8.5
@@ -33,7 +33,7 @@ require (
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
-	go.elastic.co/apm v1.12.0
+	go.elastic.co/apm v1.14.0
 	go.elastic.co/apm/module/apmelasticsearch v1.12.0
 	go.uber.org/automaxprocs v1.4.0
 	go.uber.org/zap v1.19.1

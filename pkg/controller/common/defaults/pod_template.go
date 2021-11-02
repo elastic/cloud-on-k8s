@@ -1,17 +1,18 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package defaults
 
 import (
 	"sort"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // PodDownwardEnvVars returns default environment variables created from the downward API.
@@ -181,8 +182,15 @@ func (b *PodTemplateBuilder) WithVolumeLikes(volumeLikes ...volume.VolumeLike) *
 
 // WithEnv appends the given env vars to the Container, unless already provided in the template.
 func (b *PodTemplateBuilder) WithEnv(vars ...corev1.EnvVar) *PodTemplateBuilder {
-	b.containerDefaulter.WithEnv(vars)
+	b.containerDefaulter.WithNewEnv(vars)
 	return b
+}
+
+// WithNewEnv appends the given env vars to the Container, unless already provided in the template. Returns true if and
+// only if the all env vars were not previously set in the Container
+func (b *PodTemplateBuilder) WithNewEnv(vars ...corev1.EnvVar) (*PodTemplateBuilder, bool) {
+	_, allNew := b.containerDefaulter.WithNewEnv(vars)
+	return b, allNew
 }
 
 // WithTerminationGracePeriod sets the given termination grace period if not already specified in the template.
@@ -232,6 +240,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults(additionalEnvVars ...core
 				// Inherit image and volume mounts from main container in the Pod
 				WithImage(mainContainer.Image).
 				WithVolumeMounts(mainContainer.VolumeMounts).
+				WithResources(mainContainer.Resources).
 				WithEnv(ExtendPodDownwardEnvVars(additionalEnvVars...)).
 				Container()
 	}

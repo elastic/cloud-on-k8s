@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package elasticsearch
 
@@ -47,6 +47,14 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	if err != nil {
 		return nil, err
 	}
-	esClient := client.NewElasticsearchClient(dialer, inClusterURL, user, v, caCert, client.Timeout(es))
+	esClient := client.NewElasticsearchClient(
+		dialer,
+		k8s.ExtractNamespacedName(&es),
+		inClusterURL,
+		user,
+		v,
+		caCert,
+		client.Timeout(es),
+	)
 	return esClient, nil
 }

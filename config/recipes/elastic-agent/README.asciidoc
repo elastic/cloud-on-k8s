@@ -6,10 +6,35 @@ IMPORTANT: These examples are for illustration purposes only and should not be c
 
 CAUTION: Some of these examples use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
 
-==== System integration - `system-integration.yaml`
+==== Standalone mode
+
+===== System integration - `system-integration.yaml`
 
 Deploys Elastic Agent as a DaemonSet in standalone mode with system integration enabled. Collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others).
 
-==== Kubernetes integration - `kubernetes-integration.yaml`
+===== Kubernetes integration - `kubernetes-integration.yaml`
 
 Deploys Elastic Agent as a DaemonSet in standalone mode with Kubernetes integration enabled. Collects API server, Container, Event, Node, Pod, Volume and system metrics.
+
+===== Multiple Elasticsearch clusters output
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/multi-output.yaml
+----
+
+Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
+
+==== Fleet mode
+
+===== System and Kubernetes integrations - `fleet-kubernetes-integration.yaml`
+
+Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes integrations enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). Kubernetes integrations collects API server, Container, Event, Node, Pod, Volume and system metrics.
+
+===== Custom logs integration with autodiscover - `fleet-custom-logs-integration.yaml`
+
+Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.
+
+===== APM integration - `fleet-apm-integration.yaml`
+
+Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.

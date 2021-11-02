@@ -1,18 +1,18 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package client
 
 import (
 	"context"
 	"crypto/x509"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -135,6 +135,7 @@ func formatAsSeconds(d time.Duration) string {
 // If dialer is not nil, it will be used to create new TCP connections
 func NewElasticsearchClient(
 	dialer net.Dialer,
+	es types.NamespacedName,
 	esURL string,
 	esUser BasicAuth,
 	v version.Version,
@@ -146,57 +147,7 @@ func NewElasticsearchClient(
 		User:     esUser,
 		caCerts:  caCerts,
 		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
+		es:       es,
 	}
 	return versioned(base, v)
-}
-
-// APIError is a non 2xx response from the Elasticsearch API
-type APIError struct {
-	response *http.Response
-}
-
-// Error() implements the error interface.
-func (e *APIError) Error() string {
-	defer e.response.Body.Close()
-	reason := "unknown"
-	// Elasticsearch has a detailed error message in the response body
-	var errMsg ErrorResponse
-	err := json.NewDecoder(e.response.Body).Decode(&errMsg)
-	if err == nil {
-		reason = errMsg.Error.Reason
-	}
-	return fmt.Sprintf("%s: %s", e.response.Status, reason)
-}
-
-// IsForbidden checks whether the error was an HTTP 403 error.
-func IsForbidden(err error) bool {
-	return isHTTPError(err, http.StatusForbidden)
-}
-
-// IsNotFound checks whether the error was an HTTP 404 error.
-func IsNotFound(err error) bool {
-	return isHTTPError(err, http.StatusNotFound)
-}
-
-// IsTimeout checks whether the error was an HTTP 408 error
-func IsTimeout(err error) bool {
-	return isHTTPError(err, http.StatusRequestTimeout)
-}
-
-// IsConflict checks whether the error was an HTTP 409 error.
-func IsConflict(err error) bool {
-	return isHTTPError(err, http.StatusConflict)
-}
-
-func IsInternalServerError(err error) bool {
-	return isHTTPError(err, http.StatusInternalServerError)
-}
-
-func isHTTPError(err error, statusCode int) bool {
-	apiErr := new(APIError)
-	if errors.As(err, &apiErr) {
-		return apiErr.response.StatusCode == statusCode
-	}
-
-	return false
 }

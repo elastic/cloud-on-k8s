@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package manager
 
@@ -14,6 +14,27 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/go-logr/logr"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"go.elastic.co/apm"
+	"go.uber.org/automaxprocs/maxprocs"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
@@ -35,6 +56,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -60,26 +82,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"github.com/fsnotify/fsnotify"
-	"github.com/go-logr/logr"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.elastic.co/apm"
-	"go.uber.org/automaxprocs/maxprocs"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 const (
@@ -580,12 +582,31 @@ func startOperator(ctx context.Context) error {
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	if err := mgr.Start(ctx); err != nil {
-		log.Error(err, "Failed to start the controller manager")
-		return err
-	}
+	exitOnErr := make(chan error)
 
-	return nil
+	// start the manager
+	go func() {
+		if err := mgr.Start(ctx); err != nil {
+			log.Error(err, "Failed to start the controller manager")
+			exitOnErr <- err
+		}
+	}()
+
+	// check operator license key
+	go func() {
+		mgr.GetCache().WaitForCacheSync(ctx)
+
+		lc := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
+		licenseType, err := lc.ValidOperatorLicenseKeyType()
+		if err != nil {
+			log.Error(err, "Failed to validate operator license key")
+			exitOnErr <- err
+		} else {
+			log.Info("Operator license key validated", "license_type", licenseType)
+		}
+	}()
+
+	return <-exitOnErr
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected

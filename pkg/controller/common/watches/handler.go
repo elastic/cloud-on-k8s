@@ -1,19 +1,20 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package watches
 
 import (
 	"sync"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var (

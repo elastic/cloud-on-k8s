@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build integration
 
@@ -43,7 +43,7 @@ func TestReconcile(t *testing.T) {
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
 		r := &ReconcileLicenses{
 			Client:  mgr.GetClient(),
-			checker: license.MockChecker{},
+			checker: license.MockLicenseChecker{EnterpriseEnabled: true},
 		}
 		c, err := common.NewController(mgr, name, r, p)
 		if err != nil {

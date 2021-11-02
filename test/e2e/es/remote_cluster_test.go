@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build es e2e
 
@@ -68,9 +68,15 @@ func TestRemoteCluster(t *testing.T) {
 			es1LicenseTestContext.Init(),
 			es2LicenseTestContext.Init(),
 			// Check that the first cluster is using a Platinum license
-			es1LicenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypePlatinum),
+			es1LicenseTestContext.CheckElasticsearchLicense(
+				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeEnterprise,
+			),
 			// Check that the second cluster is using a Platinum license
-			es1LicenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypePlatinum),
+			es1LicenseTestContext.CheckElasticsearchLicense(
+				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeEnterprise,
+			),
 			test.Step{
 				Name: "Add some data to the first cluster",
 				Test: func(t *testing.T) {

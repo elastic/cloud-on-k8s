@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build es e2e
 
@@ -58,18 +58,16 @@ func TestReversalStatefulSetRename(t *testing.T) {
 
 func TestRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSet(esv1.NodeSet{
-			Name:  "other-master",
-			Count: 1,
-			Config: &commonv1.Config{
-				Data: map[string]interface{}{
-					esv1.NodeMaster: true,
-					esv1.NodeData:   true,
-				},
-			},
-			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
-		})
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	b = b.WithNodeSet(esv1.NodeSet{
+		Name:  "other-master",
+		Count: 1,
+		Config: &commonv1.Config{
+			Data: elasticsearch.MixedRolesCfg(b.Elasticsearch.Spec.Version),
+		},
+		PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
+	})
 
 	// this currently breaks the cluster (something we might fix in the future at which point this just tests a temp downscale)
 	noMasterMaster := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources).
@@ -77,10 +75,7 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 			Name:  "other-master",
 			Count: 1,
 			Config: &commonv1.Config{
-				Data: map[string]interface{}{
-					esv1.NodeMaster: false,
-					esv1.NodeData:   true,
-				},
+				Data: elasticsearch.DataRoleCfg(b.Elasticsearch.Spec.Version),
 			},
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 		})

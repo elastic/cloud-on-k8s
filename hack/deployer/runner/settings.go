@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package runner
 
@@ -29,24 +29,25 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string        `yaml:"id"` //nolint:revive
-	Operation         string        `yaml:"operation"`
-	ClusterName       string        `yaml:"clusterName"`
-	ClientVersion     string        `yaml:"clientVersion"`
-	ClientBuildDefDir string        `yaml:"clientBuildDefDir"`
-	Provider          string        `yaml:"provider"`
-	KubernetesVersion string        `yaml:"kubernetesVersion"`
-	MachineType       string        `yaml:"machineType"`
-	Gke               *GkeSettings  `yaml:"gke,omitempty"`
-	Aks               *AksSettings  `yaml:"aks,omitempty"`
-	Ocp               *OcpSettings  `yaml:"ocp,omitempty"`
-	Ocp3              *Ocp3Settings `yaml:"ocp3,omitempty"`
-	EKS               *EKSSettings  `yaml:"eks,omitempty"`
-	Kind              *KindSettings `yaml:"kind,omitempty"`
-	VaultInfo         *VaultInfo    `yaml:"vaultInfo,omitempty"`
-	ServiceAccount    bool          `yaml:"serviceAccount"`
-	Psp               bool          `yaml:"psp"`
-	DiskSetup         string        `yaml:"diskSetup"`
+	Id                string         `yaml:"id"` //nolint:revive
+	Operation         string         `yaml:"operation"`
+	ClusterName       string         `yaml:"clusterName"`
+	ClientVersion     string         `yaml:"clientVersion"`
+	ClientBuildDefDir string         `yaml:"clientBuildDefDir"`
+	Provider          string         `yaml:"provider"`
+	KubernetesVersion string         `yaml:"kubernetesVersion"`
+	MachineType       string         `yaml:"machineType"`
+	Gke               *GkeSettings   `yaml:"gke,omitempty"`
+	Aks               *AksSettings   `yaml:"aks,omitempty"`
+	Ocp               *OcpSettings   `yaml:"ocp,omitempty"`
+	Ocp3              *Ocp3Settings  `yaml:"ocp3,omitempty"`
+	EKS               *EKSSettings   `yaml:"eks,omitempty"`
+	Kind              *KindSettings  `yaml:"kind,omitempty"`
+	Tanzu             *TanzuSettings `yaml:"tanzu,omitempty"`
+	VaultInfo         *VaultInfo     `yaml:"vaultInfo,omitempty"`
+	ServiceAccount    bool           `yaml:"serviceAccount"`
+	Psp               bool           `yaml:"psp"`
+	DiskSetup         string         `yaml:"diskSetup"`
 }
 
 type VaultInfo struct {
@@ -108,6 +109,13 @@ type KindSettings struct {
 	NodeCount int    `yaml:"nodeCount"`
 	NodeImage string `yaml:"nodeImage"`
 	IPFamily  string `yaml:"ipFamily"`
+}
+
+type TanzuSettings struct {
+	AksSettings    `yaml:",inline"`
+	InstallerImage string `yaml:"installerImage"`
+	WorkDir        string `yaml:"workDir"`
+	SSHPubKey      string `yaml:"sshPubKey"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file

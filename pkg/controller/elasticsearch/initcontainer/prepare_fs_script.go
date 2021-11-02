@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package initcontainer
 
@@ -106,7 +106,8 @@ var scriptTemplate = template.Must(template.New("").Parse(
 			echo "Empty dir {{.ContainerMountPath}}"
 		else
 			echo "Copying {{.ContainerMountPath}}/* to {{.InitContainerMountPath}}/"
-			cp -av {{.ContainerMountPath}}/* {{.InitContainerMountPath}}/
+			# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
+			yes | cp -avf {{.ContainerMountPath}}/* {{.InitContainerMountPath}}/ 
 		fi
 	{{end}}
 	echo "Files copy duration: $(duration $mv_start) sec."

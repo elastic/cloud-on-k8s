@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package certificates
 
@@ -15,15 +15,16 @@ import (
 	"testing"
 	"time"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var testNamer = name.Namer{
@@ -167,6 +168,7 @@ func checkCASecrets(
 	expectedCa *CA,
 	notExpectedCa *CA,
 	expectedExpiration time.Duration,
+	expectPrivateKey *rsa.PrivateKey,
 ) {
 	t.Helper()
 	// ca cert should be valid
@@ -185,6 +187,10 @@ func checkCASecrets(
 	// if a not expected Ca was passed, it should not match ca
 	if notExpectedCa != nil {
 		require.False(t, ca.Cert.Equal(notExpectedCa.Cert))
+	}
+
+	if expectPrivateKey != nil {
+		privateKeysEqual(t, ca.PrivateKey, expectPrivateKey)
 	}
 
 	// cert and private key should be updated in the apiserver
@@ -235,7 +241,7 @@ func Test_renewCA(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			assert.Equal(t, ca.Cert.Issuer.CommonName, testName+"-"+string(TransportCAType))
-			checkCASecrets(t, tt.client, testCluster, TransportCAType, ca, nil, tt.notExpected, tt.expireIn)
+			checkCASecrets(t, tt.client, testCluster, TransportCAType, ca, nil, tt.notExpected, tt.expireIn, nil)
 		})
 	}
 }
@@ -261,13 +267,16 @@ func TestReconcileCAForCluster(t *testing.T) {
 		soonToExpireCa, testNamer, &testCluster, nil, TransportCAType,
 	)
 	require.NoError(t, err)
+	soonToExpireCAPrivateKey, ok := soonToExpireCa.PrivateKey.(*rsa.PrivateKey)
+	require.True(t, ok)
 
 	tests := []struct {
-		name             string
-		cl               k8s.Client
-		caCertValidity   time.Duration
-		shouldReuseCa    *CA // ca that should be reused
-		shouldNotReuseCa *CA // ca that should not be reused
+		name               string
+		cl                 k8s.Client
+		caCertValidity     time.Duration
+		shouldReuseCa      *CA             // ca that should be reused
+		shouldNotReuseCa   *CA             // ca that should not be reused
+		expectedPrivateKey *rsa.PrivateKey // the private key that is expected to be used to create the CA
 	}{
 		{
 			name:           "no existing CA cert nor private key",
@@ -294,11 +303,12 @@ func TestReconcileCAForCluster(t *testing.T) {
 			shouldReuseCa:  validCa, // should reuse existing one
 		},
 		{
-			name:             "existing internal cert is soon to expire",
-			cl:               k8s.NewFakeClient(&soonToExpireInternalCASecret),
-			caCertValidity:   DefaultCertValidity,
-			shouldReuseCa:    nil,            // should create a new one
-			shouldNotReuseCa: soonToExpireCa, // and not reuse existing one
+			name:               "existing internal cert is soon to expire, and the existing private key will be used to regenerate",
+			cl:                 k8s.NewFakeClient(&soonToExpireInternalCASecret),
+			caCertValidity:     DefaultCertValidity,
+			shouldReuseCa:      nil,                      // should create a new one
+			shouldNotReuseCa:   soonToExpireCa,           // and not reuse existing one
+			expectedPrivateKey: soonToExpireCAPrivateKey, // the private key that should be used to regenerate a new CA
 		},
 	}
 	for _, tt := range tests {
@@ -312,7 +322,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			checkCASecrets(
-				t, tt.cl, testCluster, TransportCAType, ca, tt.shouldReuseCa, tt.shouldNotReuseCa, tt.caCertValidity,
+				t, tt.cl, testCluster, TransportCAType, ca, tt.shouldReuseCa, tt.shouldNotReuseCa, tt.caCertValidity, tt.expectedPrivateKey,
 			)
 		})
 	}

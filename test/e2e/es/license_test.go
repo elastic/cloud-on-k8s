@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build es e2e
 
@@ -43,8 +43,9 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		1*time.Second,
 		func(k *test.K8sClient, t *testing.T) {
 			require.NoError(t, licenseTestContext.CheckElasticsearchLicenseFn(
-				client.ElasticsearchLicenseTypeGold,
-				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeGold,       // pre 8.0 for backwards compatibility gold/platinum was reported
+				client.ElasticsearchLicenseTypePlatinum,   // even if an enterprise license was installed
+				client.ElasticsearchLicenseTypeEnterprise, // as of 8.0 enterprise is reported
 			))
 		},
 		test.NOOPCheck,
@@ -63,6 +64,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 			licenseTestContext.CheckElasticsearchLicense(
 				client.ElasticsearchLicenseTypeGold,
 				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeEnterprise, // as of 8.0 see comment above
 			),
 			// but we don't expect to go below that level until we delete the last license secret
 			licenseLevelWatch.StartStep(k),
@@ -114,6 +116,7 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 			licenseTestContext.CheckElasticsearchLicense(
 				client.ElasticsearchLicenseTypeGold,
 				client.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeEnterprise, // as of 8.0 see comment above
 			),
 			// revert to basic again
 			licenseTestContext.DeleteEnterpriseLicenseSecret(trialSecretName),

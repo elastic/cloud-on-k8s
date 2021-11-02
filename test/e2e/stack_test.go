@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build mixed e2e
 
@@ -34,7 +34,7 @@ import (
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func TestVersionUpgradeOrdering(t *testing.T) {
 	initialVersion := "7.13.4"
-	updatedVersion := "7.14.0"
+	updatedVersion := "7.15.0"
 
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
@@ -65,7 +65,8 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	apmUpdated := apm.WithVersion(updatedVersion)
 	ent := enterprisesearch.NewBuilder("ent").
 		WithNodeCount(1).
-		WithVersion(initialVersion).
+		WithVersion(initialVersion). // pre 8.x doesn't require any config, but we change the version after calling
+		WithoutConfig().             // NewBuilder which relies on the version from test.Ctx(), so removing config here
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	entUpdated := ent.WithVersion(updatedVersion)

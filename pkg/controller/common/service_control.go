@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package common
 
@@ -9,15 +9,16 @@ import (
 	"net"
 	"reflect"
 
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var log = ulog.Log.WithName("common")
@@ -97,6 +98,14 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
 
+	// ClusterIPs also might not exist in the expected service,
+	// but might have been set after creation by k8s on the actual resource.
+	// In such case, we want to use these values for comparison.
+	// But only if we are not changing the type of service and the api server has assigned IPs
+	if expected.Spec.Type == reconciled.Spec.Type && len(expected.Spec.ClusterIPs) == 0 && validClusterIPs(reconciled.Spec.ClusterIPs) {
+		expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
+	}
+
 	// SessionAffinity may be defaulted by the api server
 	if expected.Spec.SessionAffinity == "" {
 		expected.Spec.SessionAffinity = reconciled.Spec.SessionAffinity
@@ -126,6 +135,20 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.IPFamilies == nil {
 		expected.Spec.IPFamilies = reconciled.Spec.IPFamilies
 	}
+
+	// IPFamilyPolicy is immutable and cannot be modified so we should retain the existing value from the server if there's no explicit override.
+	if expected.Spec.IPFamilyPolicy == nil {
+		expected.Spec.IPFamilyPolicy = reconciled.Spec.IPFamilyPolicy
+	}
+}
+
+func validClusterIPs(clusterIPs []string) bool {
+	for _, ip := range clusterIPs {
+		if net.ParseIP(ip) == nil {
+			return false
+		}
+	}
+	return true
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.

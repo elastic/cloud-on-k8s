@@ -1,12 +1,16 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package remotecluster
 
 import (
 	"context"
 	"sort"
+
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -16,9 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 var log = ulog.Log.WithName("remotecluster")
@@ -37,15 +38,23 @@ func UpdateSettings(
 	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
 ) (bool, error) {
+	remoteClustersInSpec := getRemoteClustersInSpec(es)
+	isRemoteClustersSpec := len(remoteClustersInSpec) > 0
+	_, isRemoteClustersAnnotation := es.Annotations[ManagedRemoteClustersAnnotationName]
+
+	if !isRemoteClustersSpec && !isRemoteClustersAnnotation {
+		// nothing to do, skip
+		return false, nil
+	}
+
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
-	remoteClustersInSpec := getRemoteClustersInSpec(es)
 	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
 		return true, err
 	}
-	if !enabled && len(remoteClustersInSpec) > 0 {
+	if !enabled && isRemoteClustersSpec {
 		log.Info(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,

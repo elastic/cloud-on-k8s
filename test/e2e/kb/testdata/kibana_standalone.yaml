@@ -4,13 +4,11 @@ kind: Elasticsearch
 metadata:
   name: {{ .ESName }}
 spec:
-  version: 7.14.0
+  version: 7.15.0
   nodeSets:
   - count: 1
     name: mdi
     config:
-      node.master: true
-      node.data: true
       node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -18,7 +16,7 @@ kind: Kibana
 metadata:
   name: test-kibana-standalone-{{ .Suffix }}
 spec:
-  version: 7.14.0
+  version: 7.15.0
   count: 1
   config:
     elasticsearch.hosts:

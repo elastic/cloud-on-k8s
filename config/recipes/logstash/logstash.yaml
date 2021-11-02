@@ -5,9 +5,9 @@ metadata:
   name: elasticsearch
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: elasticsearch
+    app.kubernetes.io/component: elasticsearch
 spec:
-  version: 7.14.0
+  version: 7.15.0
   nodeSets:
     - name: default
       count: 3
@@ -21,9 +21,9 @@ metadata:
   name: kibana
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: kibana
+    app.kubernetes.io/component: kibana
 spec:
-  version: 7.14.0
+  version: 7.15.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -34,7 +34,7 @@ metadata:
   name: logstash-config
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: logstash
+    app.kubernetes.io/component: logstash
 data:
   logstash.yml: |
     http.host: "0.0.0.0"
@@ -46,7 +46,7 @@ metadata:
   name: logstash-pipeline
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: logstash
+    app.kubernetes.io/component: logstash
 data:
   logstash.conf: |
     input {
@@ -77,22 +77,22 @@ metadata:
   name: logstash
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: logstash
+    app.kubernetes.io/component: logstash
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: eck-logstash
-      app.kubernets.io/component: logstash
+      app.kubernetes.io/component: logstash
   template:
     metadata:
       labels:
         app.kubernetes.io/name: eck-logstash
-        app.kubernets.io/component: logstash
+        app.kubernetes.io/component: logstash
     spec:
       containers:
         - name: logstash
-          image: docker.elastic.co/logstash/logstash:7.14.0
+          image: docker.elastic.co/logstash/logstash:7.15.0
           ports:
             - name: "tcp-beats"
               containerPort: 5044
@@ -131,7 +131,7 @@ metadata:
   name: logstash
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: logstash
+    app.kubernetes.io/component: logstash
 spec:
   ports:
     - name: "tcp-beats"
@@ -139,7 +139,7 @@ spec:
       targetPort: 5044
   selector:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: logstash
+    app.kubernetes.io/component: logstash
 ---
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
@@ -147,10 +147,10 @@ metadata:
   name: filebeat
   labels:
     app.kubernetes.io/name: eck-logstash
-    app.kubernets.io/component: filebeat
+    app.kubernetes.io/component: filebeat
 spec:
   type: filebeat
-  version: 7.14.0
+  version: 7.15.0
   config:
     filebeat.inputs:
       - type: log
@@ -163,7 +163,7 @@ spec:
       metadata:
         labels:
           app.kubernetes.io/name: eck-logstash
-          app.kubernets.io/component: filebeat
+          app.kubernetes.io/component: filebeat
       spec:
         automountServiceAccountToken: true
         initContainers:

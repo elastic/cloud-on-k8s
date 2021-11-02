@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package apmserver
 
@@ -14,6 +14,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -23,9 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type apmClusterChecks struct {

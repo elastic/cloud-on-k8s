@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package validations
 
@@ -8,9 +8,10 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (

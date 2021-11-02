@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package driver
 
@@ -67,6 +67,12 @@ func (d *defaultDriver) handleRollingUpgrades(
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
 
+	// Get the list of pods currently existing in the StatefulSetList
+	currentPods, err := statefulSets.GetActualPods(d.Client)
+	if err != nil {
+		return results.WithError(err)
+	}
+	numberOfPods := len(currentPods)
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		ctx,
@@ -79,6 +85,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		actualMasters,
 		podsToUpgrade,
 		healthyPods,
+		numberOfPods,
 	).run()
 	if err != nil {
 		return results.WithError(err)
@@ -114,6 +121,7 @@ type rollingUpgradeCtx struct {
 	actualMasters   []corev1.Pod
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
+	numberOfPods    int
 }
 
 func newRollingUpgrade(
@@ -127,6 +135,7 @@ func newRollingUpgrade(
 	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
+	numberOfPods int,
 ) rollingUpgradeCtx {
 	return rollingUpgradeCtx{
 		parentCtx:       ctx,
@@ -143,6 +152,7 @@ func newRollingUpgrade(
 		actualMasters:   actualMasters,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
+		numberOfPods:    numberOfPods,
 	}
 }
 

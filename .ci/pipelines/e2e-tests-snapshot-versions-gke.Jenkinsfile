@@ -58,14 +58,14 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.15.0-SNAPSHOT") {
+                stage("7.16.0-SNAPSHOT") {
                      agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.15.0-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-7x-snapshot-${BUILD_NUMBER}-e2e", "7.16.0-SNAPSHOT")
                         }
                     }
                 }
@@ -90,7 +90,7 @@ pipeline {
                 }
                 googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                     credentialsId: "devops-ci-gcs-plugin",
-                    pattern: "*.tgz",
+                    pattern: "*.zip",
                     sharedPublicly: true,
                     showInline: true
             }
@@ -124,7 +124,7 @@ def runWith(lib, failedTests, clusterName, stackVersion) {
             failedTests.addAll(lib.getListOfFailedTests())
             googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                 credentialsId: "devops-ci-gcs-plugin",
-                pattern: "*.tgz",
+                pattern: "*.zip",
                 sharedPublicly: true,
                 showInline: true
         }

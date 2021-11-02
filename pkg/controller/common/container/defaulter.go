@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package container
 
@@ -107,12 +107,21 @@ func (d Defaulter) envExists(name string) bool {
 }
 
 func (d Defaulter) WithEnv(vars []corev1.EnvVar) Defaulter {
+	def, _ := d.WithNewEnv(vars)
+	return def
+}
+
+func (d Defaulter) WithNewEnv(vars []corev1.EnvVar) (Defaulter, bool) {
+	allNew := true
 	for _, v := range vars {
-		if !d.envExists(v.Name) {
-			d.base.Env = append(d.base.Env, v)
+		if d.envExists(v.Name) {
+			allNew = false
+			continue
 		}
+		d.base.Env = append(d.base.Env, v)
 	}
-	return d
+
+	return d, allNew
 }
 
 // WithResources ensures that resource requirements are set in the container.

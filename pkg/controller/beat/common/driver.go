@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package common
 
@@ -17,7 +17,6 @@ import (
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -93,18 +92,10 @@ func Reconcile(
 		return results.WithError(err)
 	}
 
-	keystoreResources, err := keystore.NewResources(
-		params,
-		&params.Beat,
-		namer,
-		NewLabels(params.Beat),
-		initContainerParameters(params.Beat.Spec.Type),
-	)
+	podTemplate, err := buildPodTemplate(params, defaultImage, configHash)
 	if err != nil {
 		return results.WithError(err)
 	}
-
-	podTemplate := buildPodTemplate(params, defaultImage, keystoreResources, configHash)
 	results.WithResults(reconcilePodVehicle(podTemplate, params))
 	return results
 }

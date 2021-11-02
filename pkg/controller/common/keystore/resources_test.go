@@ -1,17 +1,16 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package keystore
 
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 
@@ -23,23 +22,6 @@ import (
 )
 
 var (
-	initContainersParameters = InitContainerParameters{
-		KeystoreCreateCommand:         "/keystore/bin/keystore create",
-		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
-		SecureSettingsVolumeMountPath: "/foo/secret",
-		KeystoreVolumePath:            "/bar/data",
-		Resources: corev1.ResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("128Mi"),
-				corev1.ResourceCPU:    resource.MustParse("100m"),
-			},
-			Limits: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("128Mi"),
-				corev1.ResourceCPU:    resource.MustParse("100m"),
-			},
-		},
-	}
-
 	testSecureSettingsSecretName = "secure-settings-secret"
 	testSecureSettingsSecret     = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -70,28 +52,51 @@ var (
 	}
 )
 
+func fakeFlagInitContainersParameters(skipInitializedFlag bool) InitContainerParameters {
+	return InitContainerParameters{
+		KeystoreCreateCommand:         "/keystore/bin/keystore create",
+		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
+		SecureSettingsVolumeMountPath: "/foo/secret",
+		KeystoreVolumePath:            "/bar/data",
+		Resources: corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+		},
+		SkipInitializedFlag: skipInitializedFlag,
+	}
+}
+
 func TestResources(t *testing.T) {
 	varFalse := false
 	tests := []struct {
-		name           string
-		client         k8s.Client
-		kb             kbv1.Kibana
-		wantNil        bool
-		wantContainers *corev1.Container
-		wantVersion    string
+		name                    string
+		client                  k8s.Client
+		kb                      kbv1.Kibana
+		initContainerParameters InitContainerParameters
+		wantNil                 bool
+		wantContainers          *corev1.Container
+		wantVersion             string
 	}{
 		{
-			name:           "no secure settings specified: no resources",
-			client:         k8s.NewFakeClient(),
-			kb:             testKibana,
-			wantContainers: nil,
-			wantVersion:    "",
-			wantNil:        true,
+			name:                    "no secure settings specified: no resources",
+			client:                  k8s.NewFakeClient(),
+			kb:                      testKibana,
+			initContainerParameters: fakeFlagInitContainersParameters(false),
+			wantContainers:          nil,
+			wantVersion:             "",
+			wantNil:                 true,
 		},
 		{
-			name:   "secure settings specified: return volume, init container and (empty) version",
-			client: k8s.NewFakeClient(&testSecureSettingsSecret),
-			kb:     testKibanaWithSecureSettings,
+			name:                    "secure settings specified: return volume, init container and (empty) version",
+			client:                  k8s.NewFakeClient(&testSecureSettingsSecret),
+			kb:                      testKibanaWithSecureSettings,
+			initContainerParameters: fakeFlagInitContainersParameters(false),
 			wantContainers: &corev1.Container{
 				Command: []string{
 					"/usr/bin/env",
@@ -151,6 +156,61 @@ echo "Keystore initialization successful."
 			wantNil:     false,
 		},
 		{
+			name:                    "Skip create keystore flag",
+			client:                  k8s.NewFakeClient(&testSecureSettingsSecret),
+			initContainerParameters: fakeFlagInitContainersParameters(true),
+			kb:                      testKibanaWithSecureSettings,
+			wantContainers: &corev1.Container{
+				Command: []string{
+					"/usr/bin/env",
+					"bash",
+					"-c",
+					`#!/usr/bin/env bash
+
+set -eux
+
+echo "Initializing keystore."
+
+# create a keystore in the default data path
+/keystore/bin/keystore create
+
+# add all existing secret entries into it
+for filename in  /foo/secret/*; do
+	[[ -e "$filename" ]] || continue # glob does not match
+	key=$(basename "$filename")
+	echo "Adding "$key" to the keystore."
+	/keystore/bin/keystore add "$key" "$filename"
+done
+
+echo "Keystore initialization successful."
+`,
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "elastic-internal-secure-settings",
+						ReadOnly:  true,
+						MountPath: "/mnt/elastic-internal/secure-settings",
+					},
+				},
+				SecurityContext: &corev1.SecurityContext{
+					Privileged: &varFalse,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+					},
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+					},
+				},
+			},
+			// since this will be created, it will be incremented
+			wantVersion: "1",
+			wantNil:     false,
+		},
+		{
 			name:           "secure settings specified but secret not there: no resources",
 			client:         k8s.NewFakeClient(),
 			kb:             testKibanaWithSecureSettings,
@@ -166,7 +226,7 @@ echo "Keystore initialization successful."
 				Watches:      watches2.NewDynamicWatches(),
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			resources, err := NewResources(testDriver, &tt.kb, kbNamer, nil, initContainersParameters)
+			resources, err := NewResources(testDriver, &tt.kb, kbNamer, nil, tt.initContainerParameters)
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package controller
 
@@ -8,7 +8,10 @@ import (
 	"context"
 	"strings"
 
+	pkgerrors "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -21,9 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	pkgerrors "github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (

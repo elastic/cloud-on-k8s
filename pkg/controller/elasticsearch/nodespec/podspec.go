@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package nodespec
 
@@ -55,6 +55,7 @@ func BuildPodTemplateSpec(
 
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
+	// now build the initContainers using the effective main container resources as an input
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
 		keystoreResources,
@@ -76,6 +77,8 @@ func BuildPodTemplateSpec(
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+
+	// build the podTemplate until we have the effective resources configured
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).

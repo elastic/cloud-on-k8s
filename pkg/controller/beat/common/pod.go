@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package common
 
@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"hash"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -63,23 +63,29 @@ func initContainerParameters(typ string) keystore.InitContainerParameters {
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		KeystoreVolumePath:            fmt.Sprintf(DataPathTemplate, typ),
 		Resources:                     defaultResources,
+		SkipInitializedFlag:           true,
 	}
 }
 
 func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
-	keystoreResources *keystore.Resources,
 	configHash hash.Hash,
-) corev1.PodTemplateSpec {
+) (corev1.PodTemplateSpec, error) {
 	podTemplate := params.GetPodTemplate()
 
+	keystoreResources, err := keystore.NewResources(
+		params,
+		&params.Beat,
+		namer,
+		NewLabels(params.Beat),
+		initContainerParameters(params.Beat.Spec.Type),
+	)
+	if err != nil {
+		return podTemplate, err
+	}
+
 	spec := &params.Beat.Spec
-
-	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
-		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-		VersionLabelName:    spec.Version})
-
 	dataVolume := createDataVolume(params)
 	vols := []volume.VolumeLike{
 		volume.NewSecretVolume(
@@ -119,6 +125,9 @@ func buildPodTemplate(
 		initContainers = append(initContainers, keystoreResources.InitContainer)
 	}
 
+	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
+		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
+		VersionLabelName:    spec.Version})
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithLabels(labels).
 		WithResources(defaultResources).
@@ -129,7 +138,7 @@ func buildPodTemplate(
 		WithInitContainers(initContainers...).
 		WithInitContainerDefaults()
 
-	return builder.PodTemplate
+	return builder.PodTemplate, nil
 }
 
 func createDataVolume(dp DriverParams) volume.VolumeLike {

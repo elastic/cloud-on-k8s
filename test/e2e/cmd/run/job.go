@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package run
 
@@ -82,8 +82,7 @@ func (j *Job) WithDependency(dependency *Job) *Job {
 // onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
 // received from the informer.
 func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
-	//nolint:exhaustive
-	switch pod.Status.Phase {
+	switch pod.Status.Phase { //nolint:exhaustive
 	case corev1.PodRunning:
 		if !j.jobStarted {
 			j.jobStarted = true

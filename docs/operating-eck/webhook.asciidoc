@@ -118,7 +118,7 @@ This section describes how to use link:https://cert-manager.io/[cert-manager] to
 +
 [source,yaml]
 ----
-apiVersion: cert-manager.io/v1beta1
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: elastic-webhook-server-cert
@@ -130,6 +130,9 @@ spec:
     kind: ClusterIssuer
     name: self-signing-issuer
   secretName: elastic-webhook-server-cert
+  subject:
+    organizations:
+      - example
 ----
 
 - Annotate the `ValidatingWebhookConfiguration` to inject the CA bundle:

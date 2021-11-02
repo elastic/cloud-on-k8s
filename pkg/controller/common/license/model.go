@@ -1,20 +1,22 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package license
 
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	pkgerrors "github.com/pkg/errors"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 // OperatorLicenseType is the type of operator level license a resource is describing.
 type OperatorLicenseType string
 
 const (
+	LicenseTypeBasic           OperatorLicenseType = "basic"
 	LicenseTypeEnterprise      OperatorLicenseType = "enterprise"
 	LicenseTypeEnterpriseTrial OperatorLicenseType = "enterprise_trial"
 	// LicenseTypeLegacyTrial earlier versions of ECK used this as the trial identifier
@@ -47,8 +49,9 @@ type LicenseSpec struct {
 	Version            int                    // not marshalled but part of the signature
 }
 
-// EnterpriseLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
-var EnterpriseLicenseTypeOrder = map[OperatorLicenseType]int{
+// OperatorLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
+var OperatorLicenseTypeOrder = map[OperatorLicenseType]int{
+	LicenseTypeBasic:           -1,
 	LicenseTypeLegacyTrial:     0,
 	LicenseTypeEnterpriseTrial: 1,
 	LicenseTypeEnterprise:      2,
@@ -105,6 +108,13 @@ func (l EnterpriseLicense) IsMissingFields() error {
 		return pkgerrors.Errorf("required fields are missing: %v", missing)
 	}
 	return nil
+}
+
+func (l *EnterpriseLicense) GetOperatorLicenseType() OperatorLicenseType {
+	if l == nil {
+		return LicenseTypeBasic
+	}
+	return l.License.Type
 }
 
 // LicenseStatus expresses the validity status of a license.

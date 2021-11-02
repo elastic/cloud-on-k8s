@@ -7,7 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Install ECK 
 
-{n} (ECK) is a link:https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[Kubernetes operator] to orchestrate Elastic applications ({eck_resources_list}) on Kubernetes. It relies on a set of link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions[Custom Resource Definitions (CRD)] to declaratively define the way each application is deployed. CRDs are global resources shared by all users of the Kubernetes cluster, which requires an administrator to install them for initial use. The operator itself can be installed as a cluster-scoped application managing all namespaces or it can be restricted to a pre-defined set of namespaces. Multiple copies of the operator can be installed on a single Kubernetes cluster provided that the global CRDs are compatible with each instance and optional cluster-scoped extensions such as the <<{p}-webhook,validating webhook>> are disabled.
+{n} (ECK) is a link:https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[Kubernetes operator] to orchestrate Elastic applications ({eck_resources_list}) on Kubernetes. It relies on a set of link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions[Custom Resource Definitions (CRD)] to declaratively define the way each application is deployed. CRDs are global resources shared by all users of the Kubernetes cluster, which requires <<{p}-eck-permissions-installing-crds,certain permissions>> to install them for initial use. The operator itself can be installed as a cluster-scoped application managing all namespaces or it can be restricted to a pre-defined set of namespaces. Multiple copies of the operator can be installed on a single Kubernetes cluster provided that the global CRDs are compatible with each instance and optional cluster-scoped extensions such as the <<{p}-webhook,validating webhook>> are disabled.
 
 CAUTION: Deleting CRDs will trigger deletion of all custom resources ({eck_resources_list}) in all namespaces of the cluster, regardless of whether they are managed by a single operator or multiple operators. 
 
@@ -31,14 +31,15 @@ This method is the quickest way to get started with ECK if you have full adminis
 [id="{p}-install-helm"]
 == Install ECK using the Helm chart
 
-
-Starting from version 1.3.0, an experimental Helm chart is available to install ECK. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
+Starting from ECK 1.3.0, an experimental Helm chart is available to install ECK. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
 
 [source, sh]
 ----
 helm repo add elastic https://helm.elastic.co
 helm repo update
 ----
+
+NOTE: The minimum supported version of Helm is 3.2.0.
 
 [float]
 [id="{p}-install-helm-global"]

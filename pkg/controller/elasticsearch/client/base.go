@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package client
 
@@ -12,15 +12,21 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/hashicorp/go-multierror"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
+
+var log = ulog.Log.WithName("elasticsearch-client")
 
 type baseClient struct {
 	User     BasicAuth
 	HTTP     *http.Client
 	Endpoint string
+	es       types.NamespacedName
 	caCerts  []*x509.Certificate
 	version  version.Version
 }
@@ -64,12 +70,24 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 		withContext.SetBasicAuth(c.User.Name, c.User.Password)
 	}
 
+	log.V(1).Info(
+		"Elasticsearch HTTP request",
+		"method", request.Method,
+		"url", request.URL.Redacted(),
+		"namespace", c.es.Namespace,
+		"es_name", c.es.Name,
+	)
 	response, err := c.HTTP.Do(withContext)
 	if err != nil {
-		return response, err
+		return response, newDecoratedHTTPError(request, err)
 	}
-	err = checkError(response)
-	return response, err
+
+	// Check HTTP code in Elasticsearch response.
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return response, newDecoratedHTTPError(request, newAPIError(response))
+	}
+
+	return response, nil
 }
 
 func (c *baseClient) get(ctx context.Context, pathWithQuery string, out interface{}) error {
@@ -156,13 +174,4 @@ func versioned(b *baseClient, v version.Version) Client {
 	default:
 		return &v6
 	}
-}
-
-func checkError(response *http.Response) error {
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return &APIError{
-			response: response,
-		}
-	}
-	return nil
 }

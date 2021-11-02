@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package license
 
@@ -9,15 +9,16 @@ import (
 	"encoding/json"
 	"fmt"
 
+	pkgerrors "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	pkgerrors "github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 var log = ulog.Log.WithName("elasticsearch-controller")
@@ -37,20 +38,15 @@ func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
+	currentLicense esclient.License,
 ) error {
-	// get the current license
-	current, err := updater.GetLicense(ctx)
-	if err != nil {
-		return fmt.Errorf("while getting current license level %w", err)
-	}
-
 	// get the expected license
 	// the underlying assumption here is that either a user or a
 	// license controller has created a cluster license in the
 	// namespace of this cluster following the cluster-license naming
 	// convention
 	var license corev1.Secret
-	err = c.Get(context.Background(),
+	err := c.Get(context.Background(),
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
 			Name:      esv1.LicenseSecretName(esCluster.Name),
@@ -63,10 +59,10 @@ func applyLinkedLicense(
 	if err != nil && apierrors.IsNotFound(err) {
 		// no license expected, let's look at the current cluster license
 		switch {
-		case isBasic(current):
+		case isBasic(currentLicense):
 			// nothing to do
 			return nil
-		case isTrial(current):
+		case isTrial(currentLicense):
 			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
 			// This can be the case if:
 			// - an ECK trial was started previously, then stopped (secret removed)
@@ -92,7 +88,7 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updateLicense(ctx, esCluster, updater, current, desired)
+	return updateLicense(ctx, esCluster, updater, currentLicense, desired)
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {

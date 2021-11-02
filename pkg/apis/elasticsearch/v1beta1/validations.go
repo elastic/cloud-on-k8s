@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package v1beta1
 
@@ -9,11 +9,12 @@ import (
 	"net"
 	"reflect"
 
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (

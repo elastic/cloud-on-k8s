@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package initcontainer
 
@@ -28,9 +28,9 @@ func TestRenderScriptTemplate(t *testing.T) {
 							Target: "/usr/share/elasticsearch/users"}}},
 			},
 			wantSubstr: []string{
-				"cp -av /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",
-				"cp -av /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
-				"cp -av /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
+				"yes | cp -avf /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",
+				"yes | cp -avf /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
+				"yes | cp -avf /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
 				"ln -sf /secrets/users /usr/share/elasticsearch/users",
 			},
 		},

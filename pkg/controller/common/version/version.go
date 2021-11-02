@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package version
 
@@ -33,6 +33,10 @@ var (
 	// Due to bugfixes present in 7.14 that ECK depends on, this is the lowest version we support in Fleet mode.
 	SupportedFleetModeAgentVersions = MinMaxVersion{Min: MustParse("7.14.0-SNAPSHOT"), Max: From(8, 99, 99)}
 	SupportedMapsVersions           = MinMaxVersion{Min: From(7, 11, 0), Max: From(8, 99, 99)}
+
+	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
+	// alphanumeric ones and it can't have leading zeros.
+	minPreReleaseVersion = mustNewPRVersion("1")
 )
 
 // MinMaxVersion holds the minimum and maximum supported versions.
@@ -78,6 +82,13 @@ func MustParse(v string) Version {
 // From creates a new version from the given major, minor, patch numbers.
 func From(major, minor, patch int) Version {
 	return Version{Major: uint64(major), Minor: uint64(minor), Patch: uint64(patch)}
+}
+
+// MinFor creates a new version for the given major, minor, patch numbers with lowest PreRelease version, ie.
+// the returned Version is the lowest possible version with those major, minor and patch numbers.
+// See https://semver.org/#spec-item-11.
+func MinFor(major, minor, patch uint64) Version {
+	return Version{Major: major, Minor: minor, Patch: patch, Pre: []semver.PRVersion{minPreReleaseVersion}}
 }
 
 // MinInPods returns the lowest version parsed from labels in the given Pods.
@@ -126,4 +137,13 @@ func FromLabels(labels map[string]string, labelName string) (Version, error) {
 	}
 
 	return v, nil
+}
+
+func mustNewPRVersion(s string) semver.PRVersion {
+	ver, err := semver.NewPRVersion(s)
+	if err != nil {
+		panic(`version: mustNewPRVersion(` + s + `): ` + err.Error())
+	}
+
+	return ver
 }

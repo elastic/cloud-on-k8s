@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build es e2e
 
@@ -9,6 +9,7 @@ package es
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -211,12 +212,12 @@ func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.BasicA
 		return err
 	}
 	resp, err := esClient.Request(context.Background(), req)
-	if err != nil {
-		// the client wraps unexpected status codes in an APIError, but still returns the correct resp
-		// we want to ignore APIErrors here
-		if _, isWrappedAPIErr := err.(*esclient.APIError); !isWrappedAPIErr {
-			return err
-		}
+
+	// The client double wraps unexpected status codes in an fmt.wrapError and esclient.APIError,
+	// but still returns the correct resp. We want to ignore APIErrors here.
+	var apiError *esclient.APIError
+	if !errors.As(err, &apiError) {
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != expectedStatusCode {

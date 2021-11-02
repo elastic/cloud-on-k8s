@@ -35,17 +35,6 @@ pipeline {
         }
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.18") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, '1.18', "eck-gke18-${BUILD_NUMBER}-e2e")
-                        }
-                    }
-                }
                 stage("1.19") {
                     agent {
                         label 'linux'
@@ -65,6 +54,17 @@ pipeline {
                         unstash "source"
                         script {
                             runWith(lib, failedTests, '1.20', "eck-gke20-${BUILD_NUMBER}-e2e")
+                        }
+                    }
+                }
+                stage("1.21") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runWith(lib, failedTests, '1.21', "eck-gke21-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
@@ -92,7 +92,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["eck-gke18-${BUILD_NUMBER}-e2e", "eck-gke19-${BUILD_NUMBER}-e2e", "eck-gke20-${BUILD_NUMBER}-e2e"]
+                clusters = ["eck-gke19-${BUILD_NUMBER}-e2e", "eck-gke20-${BUILD_NUMBER}-e2e", "eck-gke21-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: clusters[i])],
@@ -116,7 +116,7 @@ def runWith(lib, failedTests, clusterVersion, clusterName) {
             failedTests.addAll(lib.getListOfFailedTests())
             googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                 credentialsId: "devops-ci-gcs-plugin",
-                pattern: "*.tgz",
+                pattern: "*.zip",
                 sharedPublicly: true,
                 showInline: true
         }

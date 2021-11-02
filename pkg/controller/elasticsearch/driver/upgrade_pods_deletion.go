@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package driver
 
@@ -8,14 +8,15 @@ import (
 	"context"
 	"sort"
 
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
@@ -43,6 +44,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
 		ctx.actualMasters,
+		ctx.numberOfPods,
 	)
 	log.V(1).Info("Applying predicates",
 		"maxUnavailableReached", maxUnavailableReached,

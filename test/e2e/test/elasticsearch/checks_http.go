@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package elasticsearch
 
@@ -43,7 +43,15 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 
 	for _, p := range reconcile.AvailableElasticsearchNodes(pods) {
 		url := services.ElasticsearchPodURL(p)
-		esClient := client.NewElasticsearchClient(dialer, url, user, v, caCert, client.Timeout(es))
+		esClient := client.NewElasticsearchClient(
+			dialer,
+			k8s.ExtractNamespacedName(&es),
+			url,
+			user,
+			v,
+			caCert,
+			client.Timeout(es),
+		)
 		_, err := esClient.GetClusterInfo(context.Background())
 		if err != nil {
 			return err

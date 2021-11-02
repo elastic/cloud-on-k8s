@@ -1,6 +1,6 @@
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-# or more contributor license agreements. Licensed under the Elastic License;
-# you may not use this file except in compliance with the Elastic License.
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
 
 #################################
 ##  --      Variables      --  ##
@@ -374,6 +374,11 @@ switch-eks:
 switch-kind:
 	@ echo "kind" > hack/deployer/config/provider
 
+switch-tanzu:
+	@ echo "tanzu" > hack/deployer/config/provider
+
+
+
 #################################
 ##  --    Docker images    --  ##
 #################################
@@ -428,7 +433,7 @@ ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it 
 endif
 
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 7.14.0
+E2E_STACK_VERSION          ?= 7.15.0
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m

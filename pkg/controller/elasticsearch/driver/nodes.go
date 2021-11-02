@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package driver
 
@@ -8,6 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -23,9 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(

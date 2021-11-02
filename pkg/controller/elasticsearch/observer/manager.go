@@ -1,18 +1,19 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package observer
 
 import (
 	"sync"
 
+	"go.elastic.co/apm"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -37,10 +38,13 @@ func NewManager(tracer *apm.Tracer) *Manager {
 	}
 }
 
-// ObservedStateResolver returns the last known state of the given cluster,
+// ObservedStateResolver returns a function that returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) State {
-	return m.Observe(cluster, esClient).LastState()
+func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) func() State {
+	observer := m.Observe(cluster, esClient)
+	return func() State {
+		return observer.LastState()
+	}
 }
 
 func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {

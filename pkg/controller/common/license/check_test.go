@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package license
 
@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const testNS = "test-system"
@@ -232,6 +233,105 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 			}
 			if tt.want != (got != nil) {
 				t.Errorf("Checker.CurrentEnterpriseLicense() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ValidOperatorLicenseKey(t *testing.T) {
+	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
+	require.NoError(t, err)
+
+	validLicenseFixture := licenseFixtureV3
+	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
+	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
+	require.NoError(t, err)
+	validLicense := asRuntimeObjects(validLicenseFixture, signatureBytes)
+
+	trialState, err := NewTrialState()
+	require.NoError(t, err)
+	validTrialLicenseFixture := emptyTrialLicenseFixture
+	require.NoError(t, trialState.InitTrialLicense(&validTrialLicenseFixture))
+	validTrialLicense := asRuntimeObject(validTrialLicenseFixture)
+
+	statusSecret, err := ExpectedTrialStatus(testNS, types.NamespacedName{}, trialState)
+	require.NoError(t, err)
+
+	type fields struct {
+		initialObjects    []runtime.Object
+		operatorNamespace string
+		publicKey         []byte
+	}
+
+	tests := []struct {
+		name     string
+		fields   fields
+		wantErr  bool
+		wantType OperatorLicenseType
+	}{
+		{
+			name: "get valid basic license: OK",
+			fields: fields{
+				initialObjects:    []runtime.Object{},
+				operatorNamespace: "test-system",
+			},
+			wantType: LicenseTypeBasic,
+			wantErr:  false,
+		},
+		{
+			name: "get valid enterprise license: OK",
+			fields: fields{
+				initialObjects:    validLicense,
+				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
+			},
+			wantType: LicenseTypeEnterprise,
+			wantErr:  false,
+		},
+		{
+			name: "get valid trial enterprise license: OK",
+			fields: fields{
+				initialObjects:    []runtime.Object{validTrialLicense, &statusSecret},
+				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
+			},
+			wantType: LicenseTypeEnterpriseTrial,
+			wantErr:  false,
+		},
+		{
+			name: "get valid enterprise license among two licenses: OK",
+			fields: fields{
+				initialObjects:    append(validLicense, validTrialLicense),
+				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
+			},
+			wantType: LicenseTypeEnterprise,
+			wantErr:  false,
+		},
+		{
+			name: "invalid public key: fallback to basic",
+			fields: fields{
+				initialObjects:    validLicense,
+				operatorNamespace: "test-system",
+				publicKey:         []byte("not a public key"),
+			},
+			wantType: LicenseTypeBasic,
+			wantErr:  false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lc := &checker{
+				k8sClient:         k8s.NewFakeClient(tt.fields.initialObjects...),
+				operatorNamespace: tt.fields.operatorNamespace,
+				publicKey:         tt.fields.publicKey,
+			}
+			licenseType, err := lc.ValidOperatorLicenseKeyType()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Checker.ValidOperatorLicenseKeyType() err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if licenseType != tt.wantType {
+				t.Errorf("Checker.ValidOperatorLicenseKeyType() licenseType = %v, wantType %v", licenseType, tt.wantType)
 			}
 		})
 	}

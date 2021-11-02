@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package kibana
 
@@ -8,6 +8,13 @@ import (
 	"context"
 	"path"
 	"path/filepath"
+
+	"github.com/elastic/go-ucfg"
+	"github.com/pkg/errors"
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -21,12 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/go-ucfg"
-	"github.com/pkg/errors"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -45,8 +46,9 @@ const (
 const (
 	ServerName                                     = "server.name"
 	ServerHost                                     = "server.host"
-	XpackMonitoringUIContainerElasticsearchEnabled = "xpack.monitoring.ui.container.elasticsearch.enabled"
-	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled" // >= 7.6
+	XpackMonitoringUIContainerElasticsearchEnabled = "xpack.monitoring.ui.container.elasticsearch.enabled" // <= 7.15
+	MonitoringUIContainerElasticsearchEnabled      = "monitoring.ui.container.elasticsearch.enabled"       // >= 7.16
+	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled"                 // >= 7.6
 	XpackSecurityEncryptionKey                     = "xpack.security.encryptionKey"
 	XpackReportingEncryptionKey                    = "xpack.reporting.encryptionKey"
 	XpackEncryptedSavedObjects                     = "xpack.encryptedSavedObjects"
@@ -101,7 +103,12 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 
-	cfg := settings.MustCanonicalConfig(baseSettings(&kb, ipFamily))
+	baseSettingsMap, err := baseSettings(&kb, ipFamily)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+
+	cfg := settings.MustCanonicalConfig(baseSettingsMap)
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 	versionSpecificCfg := VersionDefaults(&kb, v)
 	entSearchCfg := settings.MustCanonicalConfig(enterpriseSearchSettings(kb))
@@ -239,11 +246,21 @@ func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.Canoni
 	return settings.MustCanonicalConfig(r), nil
 }
 
-func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) map[string]interface{} {
+func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interface{}, error) {
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+
 	conf := map[string]interface{}{
 		ServerName: kb.Name,
 		ServerHost: net.InAddrAnyFor(ipFamily).String(),
-		XpackMonitoringUIContainerElasticsearchEnabled: true,
+	}
+
+	if ver.GTE(version.MinFor(7, 16, 0)) {
+		conf[MonitoringUIContainerElasticsearchEnabled] = true
+	} else {
+		conf[XpackMonitoringUIContainerElasticsearchEnabled] = true
 	}
 
 	assocConf := kb.EsAssociation().AssociationConf()
@@ -251,7 +268,7 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) map[string]interfac
 		conf[ElasticsearchHosts] = []string{assocConf.GetURL()}
 	}
 
-	return conf
+	return conf, nil
 }
 
 func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {

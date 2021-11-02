@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 // +build ent e2e
 
@@ -49,8 +49,6 @@ func TestEnterpriseSearchTLSDisabled(t *testing.T) {
 }
 
 func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
-	t.Skip() // pending resolution of https://github.com/elastic/cloud-on-k8s/issues/4755
-
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion7x
 

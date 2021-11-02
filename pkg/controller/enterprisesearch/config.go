@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package enterprisesearch
 
@@ -9,6 +9,11 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
@@ -22,10 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -268,18 +269,15 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.Cano
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	cfg := settings.MustCanonicalConfig(map[string]string{
-		"ent_search.auth.source": "elasticsearch-native",
-	})
 	ver, err := version.Parse(ent.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
-	// origin of authenticated ent users setting changed starting 8.x
-	if ver.Major >= uint64(8) {
-		cfg = settings.MustCanonicalConfig(map[string]interface{}{
-			"ent_search.auth.native1.source": "elasticsearch-native",
-			"ent_search.auth.native1.order":  -100,
+
+	cfg := settings.NewCanonicalConfig()
+	if ver.LT(version.MinFor(8, 0, 0)) {
+		cfg = settings.MustCanonicalConfig(map[string]string{
+			"ent_search.auth.source": "elasticsearch-native",
 		})
 	}
 

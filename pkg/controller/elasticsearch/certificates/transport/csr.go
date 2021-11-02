@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package transport
 
@@ -11,13 +11,14 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // createValidatedCertificateTemplate validates a CSR and creates a certificate template.

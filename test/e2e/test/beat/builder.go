@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package beat
 
@@ -15,6 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 
+	"github.com/stretchr/testify/require"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
@@ -23,8 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (

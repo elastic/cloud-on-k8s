@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package v1
 
@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 func TestElasticsearchHealth_Less(t *testing.T) {
@@ -207,6 +208,51 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 			got := ChangeBudget{MaxUnavailable: tt.fromSpec}.GetMaxUnavailableOrDefault()
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetMaxUnavailableOrDefault() want = %v, got = %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestElasticsearch_SuspendedPodNames(t *testing.T) {
+	tests := []struct {
+		name       string
+		ObjectMeta metav1.ObjectMeta
+		want       set.StringSet
+	}{
+		{
+			name:       "no annotation",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+			want:       nil,
+		},
+		{
+			name: "single value",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				SuspendAnnotation: "a",
+			}},
+			want: set.Make("a"),
+		},
+		{
+			name: "multi value",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				SuspendAnnotation: "a,b,c",
+			}},
+			want: set.Make("a", "b", "c"),
+		},
+		{
+			name: "multi value with whitespace",
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				SuspendAnnotation: "a , b , c",
+			}},
+			want: set.Make("a", "b", "c"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := Elasticsearch{
+				ObjectMeta: tt.ObjectMeta,
+			}
+			if got := es.SuspendedPodNames(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SuspendedPodNames() = %v, want %v", got, tt.want)
 			}
 		})
 	}

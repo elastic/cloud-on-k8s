@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package controller
 
@@ -35,7 +35,11 @@ const (
 // Beats are configured to collect monitoring metrics and logs data of the associated Elasticsearch and send
 // them to the Elasticsearch referenced in the association.
 func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
+	return association.AddAssociationController(mgr, accessReviewer, params, esMonitoringAssociationInfo())
+}
+
+func esMonitoringAssociationInfo() association.AssociationInfo {
+	return association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &esv1.Elasticsearch{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
@@ -64,5 +68,5 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 				return user.StackMonitoringUserRole, nil
 			},
 		},
-	})
+	}
 }

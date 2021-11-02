@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package elasticsearch
 
@@ -14,6 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ghodss/yaml"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
@@ -24,15 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/ghodss/yaml"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -94,7 +95,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("frozen-tier"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "frozen-tier",
@@ -109,7 +110,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("ml"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "ml",
@@ -124,7 +125,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingAutoscalingPolicies(),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "min-nodes-increased-by-user",
@@ -139,7 +140,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("empty-autoscaling-api-response"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "empty-autoscaling-api-response",
@@ -152,7 +153,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "cluster-creation",
@@ -165,7 +166,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("max-storage-reached"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "max-storage-reached",
@@ -182,7 +183,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("storage-scaled-horizontally"),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "storage-scaled-horizontally",
@@ -195,7 +196,7 @@ func TestReconcile(t *testing.T) {
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
 				recorder:       record.NewFakeRecorder(1000),
-				licenseChecker: &fakeLicenceChecker{},
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				esManifest: "",
@@ -373,20 +374,4 @@ func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.Autos
 }
 func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, maxLazyMLNodes int32, maxMemory string) error {
 	return nil
-}
-
-// - Fake licence checker
-
-type fakeLicenceChecker struct{}
-
-func (flc *fakeLicenceChecker) CurrentEnterpriseLicense() (*license.EnterpriseLicense, error) {
-	return nil, nil
-}
-
-func (flc *fakeLicenceChecker) EnterpriseFeaturesEnabled() (bool, error) {
-	return true, nil
-}
-
-func (flc *fakeLicenceChecker) Valid(l license.EnterpriseLicense) (bool, error) {
-	return true, nil
 }

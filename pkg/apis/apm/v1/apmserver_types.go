@@ -1,13 +1,13 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package v1
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -120,9 +120,16 @@ func (as *ApmServer) ServiceAccountName() string {
 	return as.Spec.ServiceAccountName
 }
 
-// EffectiveVersion returns the version reported by APM server. For development builds APM server does not use the SNAPSHOT suffix.
+// EffectiveVersion returns the version as it would be reported by APM server. For development builds
+// APM server does not use prerelease or build suffixes.
 func (as *ApmServer) EffectiveVersion() string {
-	return strings.TrimSuffix(as.Spec.Version, "-SNAPSHOT")
+	ver, err := semver.FinalizeVersion(as.Spec.Version)
+	if err != nil {
+		// just pass it back if it's malformed
+		return as.Spec.Version
+	}
+
+	return ver
 }
 
 func (as *ApmServer) GetAssociations() []commonv1.Association {

@@ -1,15 +1,16 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package main
 
 import (
+	"github.com/spf13/cobra"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
 	"github.com/elastic/cloud-on-k8s/cmd/manager"
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
-	"github.com/spf13/cobra"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 func main() {

@@ -1,6 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package defaults
 
@@ -734,6 +734,15 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 	}
 	defaultVolumeMounts := []corev1.VolumeMount{defaultVolumeMount}
 
+	defaultResources := corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("350Mi"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("350Mi"),
+		},
+	}
+
 	tests := []struct {
 		name        string
 		PodTemplate corev1.PodTemplateSpec
@@ -745,7 +754,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 			want:        nil,
 		},
 		{
-			name: "default but dont override image and volume mounts",
+			name: "default but dont override image and volume mounts or resources",
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
@@ -773,6 +782,11 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 								Name:      defaultVolumeMount.Name,
 								MountPath: "/baz",
 							}},
+							Resources: corev1.ResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceMemory: resource.MustParse("1Gi"),
+								},
+							},
 						},
 					},
 				},
@@ -784,6 +798,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 					Image:        "user-image",
 					Env:          PodDownwardEnvVars(),
 					VolumeMounts: defaultVolumeMounts,
+					Resources:    defaultResources,
 				},
 				{
 					Name:  "user-init-container2",
@@ -795,6 +810,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 							MountPath: "/foo",
 						},
 					},
+					Resources: defaultResources,
 				},
 				{
 					Name:  "user-init-container3",
@@ -805,6 +821,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 						Name:      "bar",
 						MountPath: defaultVolumeMount.MountPath,
 					}},
+					Resources: defaultResources,
 				},
 				{
 					Name:  "user-init-container4",
@@ -815,6 +832,11 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 						Name:      defaultVolumeMount.Name,
 						MountPath: "/baz",
 					}},
+					Resources: corev1.ResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
 				},
 			},
 		},
@@ -823,7 +845,8 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, "main").
 				WithDockerImage("", "default-image").
-				WithVolumeMounts(defaultVolumeMounts...)
+				WithVolumeMounts(defaultVolumeMounts...).
+				WithResources(defaultResources)
 
 			got := b.WithInitContainerDefaults().PodTemplate.Spec.InitContainers
 
