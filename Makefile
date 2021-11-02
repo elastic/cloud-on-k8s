@@ -398,8 +398,8 @@ docker-multiarch-build: go-generate generate-config-file
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		--platform linux/amd64,linux/arm64 \
-		--push
-		-t $(OPERATOR_IMAGE) \
+		--push \
+		-t $(OPERATOR_IMAGE)
 
 docker-multiarch-build-dockerhub:
 	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
@@ -409,8 +409,8 @@ docker-multiarch-build-dockerhub:
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		--platform linux/amd64,linux/arm64 \
-		--push
-		-t $(OPERATOR_DOCKERHUB_IMAGE) \
+		--push \
+		-t $(OPERATOR_DOCKERHUB_IMAGE)
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
