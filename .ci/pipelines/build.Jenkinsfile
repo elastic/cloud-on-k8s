@@ -22,22 +22,12 @@ pipeline {
     }
 
     stages {
-        stage('Nightly or release build - Check License Header and Lint') {
-            failFast true
-            parallel {
-                stage('Check License Header') {
-                    steps {
-                        sh 'make -C .ci TARGET=check-license-header ci'
-                    }
-                }
-                stage('Lint') {
-                    steps {
-                        sh 'make -C .ci TARGET=lint ci'
-                    }
-                }
+        stage('Lint') {
+            steps {
+                sh 'make -C .ci TARGET=lint ci'
             }
         }
-        stage('Nightly or release build - Shellcheck and Generation') {
+        stage('Shellcheck, Generation, Check License Header and check reattach-pv compiles') {
             failFast true
             parallel {
                 stage('Shellcheck') {
@@ -48,6 +38,16 @@ pipeline {
                 stage('Generate and check local changes') {
                     steps {
                         sh 'make -C .ci TARGET=generate-and-check-local-changes ci'
+                    }
+                }
+                stage('Check License Header') {
+                    steps {
+                        sh 'make -C .ci TARGET=check-license-header ci'
+                    }
+                }
+                stage('Ensure reattach-pv compiles') {
+                    steps {
+                        sh 'make -C .ci TARGET=reattach-pv ci'
                     }
                 }
             }
@@ -63,11 +63,6 @@ pipeline {
                 stage('Integration tests') {
                     steps {
                         sh 'make -C .ci TARGET=integration-xml ci'
-                    }
-                }
-                stage('Ensure reattach-pv compiles') {
-                    steps {
-                        sh 'make -C .ci TARGET=reattach-pv ci'
                     }
                 }
             }
