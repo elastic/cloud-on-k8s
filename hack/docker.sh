@@ -19,8 +19,6 @@ retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
 
 # source variables if present
 if [[ -f ${REGISTRY_ENV} ]]; then
-    echo "registry.env file"
-    cat "${REGISTRY_ENV}"
     # shellcheck disable=SC2046
     export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
 fi
@@ -42,7 +40,7 @@ docker-login() {
         ;;
 
         docker.io/*)
-            echo "Authentication to ${registry} with credentials ${DOCKERHUB_LOGIN}, ${DOCKERHUB_PASSWORD}..."
+            echo "Authentication to ${registry}..."
             docker login -u "${DOCKERHUB_LOGIN}" -p "${DOCKERHUB_PASSWORD}" 2> /dev/null
         ;;
 

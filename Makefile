@@ -92,8 +92,6 @@ ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
 generate: tidy generate-crds-v1 generate-crds-v1beta1 generate-config-file generate-api-docs generate-notice-file
 
-generate-and-check-local-changes: generate check-local-changes
-
 tidy:
 	go mod tidy
 
@@ -402,8 +400,7 @@ docker-multiarch-build: go-generate generate-config-file
 		--platform linux/amd64,linux/arm64 \
 		-t $(OPERATOR_IMAGE) \
 		--push
-docker-multiarch-build-dockerhub: DOCKER_LOGIN=$(DOCKERHUB_LOGIN)
-docker-multiarch-build-dockerhub: DOCKER_PASSWORD=$(DOCKERHUB_PASSWORD)
+
 docker-multiarch-build-dockerhub:
 	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
@@ -425,11 +422,6 @@ docker-build: go-generate generate-config-file
 
 docker-push:
 	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
-
-docker-push-dockerhub: OPERATOR_IMAGE=$(OPERATOR_DOCKERHUB_IMAGE)
-docker-push-dockerhub: DOCKER_LOGIN=$(DOCKERHUB_LOGIN)
-docker-push-dockerhub: DOCKER_PASSWORD=$(DOCKERHUB_PASSWORD)
-docker-push-dockerhub: docker-push
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
