@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"sync"
 
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/go-logr/logr"
+
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 // NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
