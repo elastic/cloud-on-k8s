@@ -341,3 +341,65 @@ func TestNewTransportService(t *testing.T) {
 		})
 	}
 }
+
+func TestRandomElasticsearchPodURL(t *testing.T) {
+	type args struct {
+		es   esv1.Elasticsearch
+		pods []corev1.Pod
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"Zero pods returns external service URL",
+			args{
+				es:   mkElasticsearch(commonv1.HTTPConfig{}),
+				pods: []corev1.Pod{},
+			},
+			"https://elasticsearch-test-es-http.test.svc:9200",
+		},
+		{
+			"One pod with required labels returns single pod URL",
+			args{
+				es: mkElasticsearch(commonv1.HTTPConfig{}),
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "pod0",
+							Namespace: "testing",
+							Labels: map[string]string{
+								label.HTTPSchemeLabelName:      "https",
+								label.StatefulSetNameLabelName: "testes01",
+							},
+						},
+					},
+				},
+			},
+			"https://pod0.testes01.testing:9200",
+		}, {
+			"One pod without required labels returns external service URL",
+			args{
+				es: mkElasticsearch(commonv1.HTTPConfig{}),
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "pod0",
+							Namespace: "testing",
+							Labels:    map[string]string{},
+						},
+					},
+				},
+			},
+			"https://elasticsearch-test-es-http.test.svc:9200",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RandomElasticsearchPodURL(tt.args.es, tt.args.pods); got != tt.want {
+				t.Errorf("RandomElasticsearchPodURL() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
