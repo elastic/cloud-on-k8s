@@ -20,16 +20,16 @@ func Test_supportsNodeshutdown(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "7.15.0-SNAPSHOT is supported",
+			name: "7.15.1 is supported",
 			args: args{
-				v: version.MustParse("7.15.0-SNAPSHOT"),
+				v: version.MustParse("7.15.1"),
 			},
 			want: true,
 		},
 		{
-			name: "7.15.0 is supported",
+			name: "7.15.2-SNAPSHOT is supported",
 			args: args{
-				v: version.MustParse("7.15.0"),
+				v: version.MustParse("7.15.2-SNAPSHOT"),
 			},
 			want: true,
 		},
