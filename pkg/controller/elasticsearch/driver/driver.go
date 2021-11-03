@@ -191,10 +191,16 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	esReachable, err := services.IsServiceReady(d.Client, *externalService)
+	healthCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var health esclient.Health
+	health, err = esClient.GetClusterHealth(healthCtx)
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	esReachable := !health.TimedOut
 
 	var currentLicense esclient.License
 	if esReachable {
