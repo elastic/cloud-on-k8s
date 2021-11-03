@@ -21,7 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
@@ -93,18 +93,16 @@ func newStatusBuilder(log logr.Logger, autoscalingSpec esv1.AutoscalingSpec) *st
 // Check if the Service is available.
 func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
 	defer tracing.Span(&ctx)()
-	externalService, err := services.GetExternalService(r.Client, es)
-	if apierrors.IsNotFound(err) {
-		return false, nil
-	}
+	esClient, err := r.esClientProvider(ctx, r.Client, r.Dialer, es)
 	if err != nil {
 		return false, tracing.CaptureError(ctx, err)
 	}
-	esReachable, err := services.IsServiceReady(r.Client, externalService)
-	if err != nil {
+	var health esclient.Health
+	health, err = esClient.GetClusterHealth(ctx)
+	if err != nil || (err == nil && health.TimedOut) {
 		return false, tracing.CaptureError(ctx, err)
 	}
-	return esReachable, nil
+	return true, nil
 }
 
 // attemptOnlineReconciliation attempts an online autoscaling reconciliation with a call to the Elasticsearch autoscaling API.

@@ -103,6 +103,7 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 }
 
 // IsServiceReady checks if a service has one or more ready endpoints.
+// *Note* this is unused now.  Should we simply remove? --mmontgomery
 func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 	endpoints := corev1.Endpoints{}
 	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}

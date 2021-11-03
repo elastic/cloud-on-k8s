@@ -151,7 +151,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Cluster has just been created, initialize resources",
 			fields: fields{
-				EsClient:       newFakeEsClient(t),
+				EsClient:       newFakeEsClient(t).withUnhealthyCluster(),
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -194,7 +194,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Cluster does not exit",
 			fields: fields{
-				EsClient:       newFakeEsClient(t),
+				EsClient:       newFakeEsClient(t).withUnhealthyCluster(),
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -325,12 +325,14 @@ type fakeEsClient struct {
 	autoscalingPolicies                         esclient.AutoscalingCapacityResult
 	policiesCleaned                             bool
 	errorOnDeleteAutoscalingAutoscalingPolicies bool
+	healthy                                     bool
 	updatedPolicies                             map[string]esv1.AutoscalingPolicy
 }
 
 func newFakeEsClient(t *testing.T) *fakeEsClient {
 	t.Helper()
 	return &fakeEsClient{
+		healthy:             true,
 		t:                   t,
 		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},
 		updatedPolicies:     make(map[string]esv1.AutoscalingPolicy),
@@ -355,6 +357,11 @@ func (f *fakeEsClient) withErrorOnDeleteAutoscalingAutoscalingPolicies() *fakeEs
 	return f
 }
 
+func (f *fakeEsClient) withUnhealthyCluster() *fakeEsClient {
+	f.healthy = false
+	return f
+}
+
 func (f *fakeEsClient) newFakeElasticsearchClient(_ context.Context, _ k8s.Client, _ net.Dialer, _ esv1.Elasticsearch) (esclient.Client, error) {
 	return f, nil
 }
@@ -371,6 +378,11 @@ func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, policyName str
 }
 func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {
 	return f.autoscalingPolicies, nil
+}
+func (f *fakeEsClient) GetClusterHealth(context.Context) (esclient.Health, error) {
+	return esclient.Health{
+		TimedOut: !f.healthy,
+	}, nil
 }
 func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, maxLazyMLNodes int32, maxMemory string) error {
 	return nil
