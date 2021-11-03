@@ -19,6 +19,10 @@ func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
+	if test.Ctx().ElasticStackVersion == "7.16.0-SNAPSHOT" {
+		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
@@ -86,6 +90,10 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
+	if test.Ctx().ElasticStackVersion == "7.16.0-SNAPSHOT" {
+		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
+	}
+
 	srcVersion := test.MinVersion68x
 	dstVersion := test.Ctx().ElasticStackVersion
 
@@ -115,6 +123,10 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
 	if test.Ctx().HasTag(test.ArchARMTag) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
+	}
+
+	if test.Ctx().ElasticStackVersion == "7.16.0-SNAPSHOT" {
+		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
 	srcVersion := test.MinVersion68x
