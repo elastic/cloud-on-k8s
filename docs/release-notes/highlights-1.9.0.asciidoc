@@ -1,0 +1,31 @@
+[[release-highlights-1.9.0]]
+== 1.9.0 release highlights
+
+[float]
+[id="{p}-190-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.9.0 of {n}. See <<release-notes-1.9.0>> for the full list of changes.
+
+[float]
+[id="{p}-190-tanzu-support"]
+==== VMware Tanzu Kubernetes Grid support
+
+ECK `1.9.0` introduces official support for link:https://tanzu.vmware.com/kubernetes-grid[VMware Tanzu Kubernetes Grid] starting with version `1.4`.
+
+[float]
+[id="{p}-190-suspend-pods"]
+==== Pod suspension for Elasticsearch troubleshooting
+
+Some debugging operations, like using link:https://www.elastic.co/guide/en/elasticsearch/reference/current/node-tool.html[elasticsearch-node] tool, require access to the Pod before the Elasticsearch process starts. Starting with ECK `1.9.0`, this functionality is provided by the operator. See the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-troubleshooting-methods.html#k8s-suspend-elasticsearch[documentation] for more details.
+
+[float]
+[id="{p}-190-diag-tool"]
+==== New and improved diagnostic tool
+
+To provide more functionalities and better user experience we are moving away from script based diagnostic capture towards a dedicated binary. See ECK diagnostic tool link:https://github.com/elastic/eck-diagnostics[repository] for more details.
+
+[float]
+[id="{p}-190-elastic-license-v2"]
+==== Elastic Cloud on Kubernetes moves to Elastic License v2
+Following Elastic Stack licensing changes in `7.11.0`, ECK `1.9.0` moves to Elastic License v2. You can read more about this license in the announcement link:https://www.elastic.co/blog/elastic-license-v2[blog post].

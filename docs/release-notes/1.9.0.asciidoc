@@ -1,0 +1,78 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.9.0]]
+== {n} version 1.9.0
+
+[[breaking-1.9.0]]
+[float]
+=== Breaking changes
+
+* Inherit resource requirements in init containers {pull}4963[#4963]
+
+All init containers will inherit resource requirements from the main containers. As this changes the `podTemplate` used, upgrading ECK will cause rolling update to all ECK-managed Pods.
+
+* Move to env vars based Fleet mode configuration {pull}4889[#4889]
+
+ECK operator will configure Elastic Agent in Fleet mode using link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[environmental variables] instead of configuration file. This makes overriding default settings much easier, but requires an additional step before the operator upgrade if such an override was configured using any other method.
+
+1. Update your Agent resources such that:
++
+a. Environmental variables are set for settings you'd like to override, for example:
++
+[source,yaml]
+----
+...
+spec:
+  deployment:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          env:
+          - name: KIBANA_FLEET_HOST
+            value: "https://kibana.example.com:443"
+...
+----
++
+b. `podTemplate` will work correctly both with and without `fleet-setup.yml` mount and file present. This file is no longer created/mounted by ECK starting with version `1.9.0`.
+
+2. Upgrade ECK to version `1.9.x`.
+3. Remove any modification and references to `fleet-setup.yml`. As ECK `1.9.x` will use environmental variables to set the default config, the environmental variables you've set in 1.a. above are overriding those defaults.
+
+[[feature-1.9.0]]
+[float]
+=== New features
+
+* Allow users to suspend Elasticsearch Pods for debugging purposes {pull}4946[#4946] (issue: {issue}4546[#4546])
+
+[[enhancement-1.9.0]]
+[float]
+=== Enhancements
+
+* Add logging for call to ES {pull}4958[#4958] (issue: {issue}4935[#4935])
+* Shorten the reconciliation loop duration if Elasticsearch is down {pull}4938[#4938] (issues: {issue}2939[#2939], {issue}3496[#3496])
+* Ignore ClusterIPs, and IPFamilyPolicy in services, and timestamp in license during reconciliation {pull}4929[#4929]
+* Add operator license key check {pull}4925[#4925]
+* Skip remote clusters reconciliation earlier if remote clusters are not configured {pull}4924[#4924]
+* Refactor Elasticsearch HTTP error handling {pull}4922[#4922] (issue: {issue}4918[#4918])
+* Verify supported Elasticsearch distribution during licence reconciliation {pull}4920[#4920]
+* Remove permissions not used by the operator {pull}4823[#4823]
+
+[[bug-1.9.0]]
+[float]
+=== Bug fixes
+
+* Avoid updating the association status when no association {pull}4986[#4986] (issue: {issue}4985[#4985])
+* Forcibly recreate Beat keystore {pull}4942[#4942] (issues: {issue}4527[#4527], {issue}4926[#4926])
+* Init. fs container: make cp more resilient {pull}4888[#4888] (issue: {issue}4877[#4877])
+* Allow to upgrade a single node cluster with yellow status {pull}4787[#4787] (issue: {issue}4625[#4625])
+
+[[nogroup-1.9.0]]
+[float]
+=== Misc
+
+* Update module github.com/go-test/deep to v1.0.8 {pull}4948[#4948]
+* Update golang Docker tag to v1.17.2 {pull}4934[#4934]
+* Update module github.com/spf13/viper to v1.9.0 {pull}4847[#4847]
+
