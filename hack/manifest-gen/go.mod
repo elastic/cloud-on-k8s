@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	github.com/spf13/cobra v1.2.1
-	helm.sh/helm/v3 v3.6.1
-	rsc.io/letsencrypt v0.0.3 // indirect
+	helm.sh/helm/v3 v3.7.1
 	sigs.k8s.io/kustomize/kyaml v0.12.0
 )
