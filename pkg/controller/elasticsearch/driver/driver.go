@@ -191,7 +191,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	healthCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	healthCtx, cancel := context.WithTimeout(context.Background(), esclient.Timeout(d.ES))
 	defer cancel()
 
 	var health esclient.Health
