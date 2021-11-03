@@ -8,3 +8,5 @@ require (
 	k8s.io/api v0.22.2 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.12.0
 )
+
+exclude github.com/containerd/containerd v1.5.1
