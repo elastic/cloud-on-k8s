@@ -36,10 +36,8 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
 REGISTRY           ?= docker.elastic.co
-DOCKERHUB_REGISTRY = docker.io
 REGISTRY_NAMESPACE ?= eck-dev
 NAME               ?= eck-operator
-ORGANIZATION       ?= elastic
 SNAPSHOT           ?= true
 VERSION            ?= $(shell cat VERSION)
 TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
@@ -48,7 +46,7 @@ IMG_VERSION        ?= $(VERSION)-$(TAG)
 
 BASE_IMG                 := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
 OPERATOR_IMAGE           ?= $(BASE_IMG):$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE ?= $(DOCKERHUB_REGISTRY)/$(ORGANIZATION)/$(IMG_NAME):$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
@@ -244,7 +242,8 @@ build-operator-image:
 	|| $(MAKE) docker-build docker-push
 
 build-operator-multiarch-image:
-	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	@ (docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	|| docker buildx imagetools inspect $(OPERATOR_DOCKERHUB_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null) \
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-multiarch-build
 

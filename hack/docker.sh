@@ -29,7 +29,7 @@ docker-login() {
 
     case "$image" in
 
-        */eck/*|*/eck-ci/*|*/eck-snapshots/*)
+        docker.elastic.co/*)
             echo "Authentication to ${registry}..."
             docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" docker.elastic.co 2> /dev/null
         ;;
