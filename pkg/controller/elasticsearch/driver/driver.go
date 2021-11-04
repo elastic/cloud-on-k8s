@@ -195,11 +195,8 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	defer cancel()
 
 	var health esclient.Health
-	esReachable := false
 	health, err = esClient.GetClusterHealth(healthCtx)
-	if err == nil && !health.TimedOut {
-		esReachable = true
-	}
+	esReachable := (err == nil && !health.TimedOut)
 
 	var currentLicense esclient.License
 	if esReachable {
