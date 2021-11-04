@@ -58,7 +58,7 @@ ci-internal: ci-build-image
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
-ci-build-image: DOCKERHUB_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=password secret/release/docker-hub-eck)
+ci-build-image: DOCKERHUB_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=token secret/release/docker-hub-eck)
 ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
