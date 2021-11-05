@@ -44,8 +44,9 @@ TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION        ?= $(VERSION)-$(TAG)
 
-BASE_IMG       := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
-OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
+BASE_IMG                 := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
+OPERATOR_IMAGE           ?= $(BASE_IMG):$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
@@ -241,7 +242,10 @@ build-operator-image:
 	|| $(MAKE) docker-build docker-push
 
 build-operator-multiarch-image:
-	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
+	@ (docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	&& docker buildx imagetools inspect $(OPERATOR_DOCKERHUB_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null) \
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-multiarch-build
 
@@ -384,14 +388,16 @@ switch-tanzu:
 #################################
 docker-multiarch-build: go-generate generate-config-file 
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		--platform linux/amd64,linux/arm64 \
-		--push \
-		-t $(OPERATOR_IMAGE)
+		-t $(OPERATOR_IMAGE) \
+		-t $(OPERATOR_DOCKERHUB_IMAGE) \
+		--push
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
@@ -530,7 +536,7 @@ run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean ci-check build-operator-multiarch-image
-	@ echo $(OPERATOR_IMAGE) was pushed!
+	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
 
 ##########################
 ##  --   Helpers    --  ##
