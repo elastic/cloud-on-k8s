@@ -7,14 +7,17 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -157,13 +160,33 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 				if err != nil {
 					return err
 				}
+
 				for i, topoElem := range expectedTopology {
 					cfg := esv1.DefaultCfg(v)
 					if err := esv1.UnpackConfig(topoElem.Config, v, &cfg); err != nil {
 						return err
 					}
+					// get pods to check mem/cpu requirements
+					pods, err := e.k.GetPods(test.ESPodListOptionsByNodeSet(e.Elasticsearch.Namespace, e.Elasticsearch.Name, topoElem.Name)...)
+					if err != nil {
+						return err
+					}
+					if len(pods) == 0 {
+						return fmt.Errorf("no pod found for ES %q / nodeSet %q", e.Elasticsearch.Name, topoElem.Name)
+					}
+					// get pvs to check storage requirements
+					pvs, err := e.k.GetPVsByPods(pods)
+					if err != nil {
+						return err
+					}
+					if len(pvs) != len(pods) {
+						return fmt.Errorf("number of pvs (%d) must equal the number of pods (%d)", len(pvs), len(pods))
+					}
 					if compareRoles(cfg.Node, node.Roles) &&
-						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) {
+						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) &&
+						compareCPULimit(topoElem, nodeStats.OS.CGroup.CPU) &&
+						compareResources(topoElem, pods) &&
+						compareStorage(topoElem, pvs) {
 						// found it! no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						foundInExpectedTopology = true
@@ -195,6 +218,7 @@ func compareRoles(expected *esv1.Node, actualRoles []string) bool {
 	return true
 }
 
+// compareMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the CPU control group at the OS level
 func compareMemoryLimit(topologyElement esv1.NodeSet, cgroupMemoryLimitsInBytes int64) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
@@ -210,4 +234,67 @@ func compareMemoryLimit(topologyElement esv1.NodeSet, cgroupMemoryLimitsInBytes 
 	expectedBytes := memoryLimit.Value()
 
 	return expectedBytes == cgroupMemoryLimitsInBytes
+}
+
+// compareCPULimit compares the CPU limit specified in a nodeSet with the limit set in the CPU control group at the OS level
+func compareCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
+	CFSPeriodMicros int `json:"cfs_period_micros"`
+	CFSQuotaMicros  int `json:"cfs_quota_micros"`
+}) bool {
+	var expectedCPULimit *resource.Quantity
+	for _, c := range topologyElement.PodTemplate.Spec.Containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			expectedCPULimit = c.Resources.Limits.Cpu()
+		}
+	}
+	if expectedCPULimit == nil {
+		// no expected cpu, consider it's ok
+		return true
+	}
+
+	cgroupCPULimit := float64(cgroupCPU.CFSQuotaMicros) / float64(cgroupCPU.CFSPeriodMicros)
+	return expectedCPULimit.AsApproximateFloat64() == cgroupCPULimit
+}
+
+// compareResources compares the resources specified in the Elasticsearch resource with the resources
+// specified in the pods
+func compareResources(topologyElement esv1.NodeSet, pods []corev1.Pod) bool {
+	var expectedResources corev1.ResourceRequirements
+	for _, c := range topologyElement.PodTemplate.Spec.Containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			expectedResources = c.Resources
+		}
+	}
+	for _, pod := range pods {
+		for _, c := range pod.Spec.Containers {
+			if c.Name == esv1.ElasticsearchContainerName {
+				if !reflect.DeepEqual(expectedResources, c.Resources) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// compareStorage compares the requested storage specified in a nodeSet with the capacity of the volumes corresponding
+// to the pods of the nodeSet
+func compareStorage(topologyElement esv1.NodeSet, pvs []corev1.PersistentVolume) bool {
+	var expectedStorage *resource.Quantity
+	for _, v := range topologyElement.VolumeClaimTemplates {
+		if v.Name == volume.ElasticsearchDataVolumeName {
+			expectedStorage = v.Spec.Resources.Requests.Storage()
+		}
+	}
+	if expectedStorage == nil {
+		// no expected storage, consider it's ok
+		return true
+	}
+	for _, pv := range pvs {
+		actualStorage := pv.Spec.Capacity.Storage()
+		if !reflect.DeepEqual(expectedStorage, actualStorage) {
+			return false
+		}
+	}
+	return true
 }
