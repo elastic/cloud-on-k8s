@@ -72,6 +72,8 @@ You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In
 
 == When to use it
 
+CAUTION: Minimum supported Stack version is 7.14.0. 
+
 This feature is a good solution if you need to monitor your Elastic applications in restricted Kubernetes environments where you cannot grant advanced permissions:
 
 - to Metricbeat to allow queriying the k8s API
