@@ -17,6 +17,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -259,16 +260,20 @@ func compareCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
 // compareResources compares the resources specified in the Elasticsearch resource with the resources
 // specified in the pods
 func compareResources(topologyElement esv1.NodeSet, pods []corev1.Pod) bool {
-	var expectedResources corev1.ResourceRequirements
+	var expectedResources *corev1.ResourceRequirements
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
+		container := c
 		if c.Name == esv1.ElasticsearchContainerName {
-			expectedResources = c.Resources
+			expectedResources = &container.Resources
 		}
+	}
+	if expectedResources == nil {
+		expectedResources = &nodespec.DefaultResources
 	}
 	for _, pod := range pods {
 		for _, c := range pod.Spec.Containers {
 			if c.Name == esv1.ElasticsearchContainerName {
-				if !reflect.DeepEqual(expectedResources, c.Resources) {
+				if !reflect.DeepEqual(*expectedResources, c.Resources) {
 					return false
 				}
 			}
