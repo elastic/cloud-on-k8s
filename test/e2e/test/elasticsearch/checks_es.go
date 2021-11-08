@@ -7,11 +7,11 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -175,19 +175,19 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 					if len(pods) == 0 {
 						return fmt.Errorf("no pod found for ES %q / nodeSet %q", e.Elasticsearch.Name, topoElem.Name)
 					}
-					// get pvs to check storage requirements
-					pvs, err := e.k.GetPVsByPods(pods)
+					// get PVCs to check storage requirements
+					pvcs, err := e.k.GetPVCsByPods(pods)
 					if err != nil {
 						return err
 					}
-					if len(pvs) != len(pods) {
-						return fmt.Errorf("number of pvs (%d) must equal the number of pods (%d)", len(pvs), len(pods))
+					if len(pvcs) != len(pods) {
+						return fmt.Errorf("number of PVCs (%d) must equal the number of pods (%d)", len(pvcs), len(pods))
 					}
 					if compareRoles(cfg.Node, node.Roles) &&
 						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) &&
 						compareCPULimit(topoElem, nodeStats.OS.CGroup.CPU) &&
 						compareResources(topoElem, pods) &&
-						compareStorage(topoElem, pvs) {
+						compareClaimedStorage(topoElem, pvcs) {
 						// found it! no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						foundInExpectedTopology = true
@@ -273,7 +273,7 @@ func compareResources(topologyElement esv1.NodeSet, pods []corev1.Pod) bool {
 	for _, pod := range pods {
 		for _, c := range pod.Spec.Containers {
 			if c.Name == esv1.ElasticsearchContainerName {
-				if !reflect.DeepEqual(*expectedResources, c.Resources) {
+				if !equality.Semantic.DeepEqual(*expectedResources, c.Resources) {
 					return false
 				}
 			}
@@ -282,9 +282,8 @@ func compareResources(topologyElement esv1.NodeSet, pods []corev1.Pod) bool {
 	return true
 }
 
-// compareStorage compares the requested storage specified in a nodeSet with the capacity of the volumes corresponding
-// to the pods of the nodeSet
-func compareStorage(topologyElement esv1.NodeSet, pvs []corev1.PersistentVolume) bool {
+// compareClaimedStorage compares the requested storage specified in a nodeSet with the actual capacity claimed in the PVC
+func compareClaimedStorage(topologyElement esv1.NodeSet, pvcs []corev1.PersistentVolumeClaim) bool {
 	var expectedStorage *resource.Quantity
 	for _, v := range topologyElement.VolumeClaimTemplates {
 		if v.Name == volume.ElasticsearchDataVolumeName {
@@ -295,13 +294,9 @@ func compareStorage(topologyElement esv1.NodeSet, pvs []corev1.PersistentVolume)
 		// no expected storage, consider it's ok
 		return true
 	}
-	for _, pv := range pvs {
-		actualStorage := pv.Spec.Capacity.Storage()
-		if pv.Spec.Local != nil {
-			// static local volume, skip
-			continue
-		}
-		if !reflect.DeepEqual(expectedStorage, actualStorage) {
+	for _, pvc := range pvcs {
+		actualStorage := pvc.Spec.Resources.Requests.Storage()
+		if !equality.Semantic.DeepEqual(expectedStorage, actualStorage) {
 			return false
 		}
 	}
