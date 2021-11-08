@@ -297,6 +297,10 @@ func compareStorage(topologyElement esv1.NodeSet, pvs []corev1.PersistentVolume)
 	}
 	for _, pv := range pvs {
 		actualStorage := pv.Spec.Capacity.Storage()
+		if pv.Spec.Local != nil {
+			// static local volume, skip
+			continue
+		}
 		if !reflect.DeepEqual(expectedStorage, actualStorage) {
 			return false
 		}
