@@ -317,6 +317,8 @@ spec:
                 args:
                   - "manager"
                   - "--config=/conf/eck.yaml"
+                  - "--manage-webhook-certs=false"
+                  - "--enable-webhook"
                   {{- range  .AdditionalArgs }}
                   - "{{.}}"
                   {{- end }}
@@ -338,6 +340,10 @@ spec:
                   requests:
                     cpu: 100m
                     memory: 150Mi
+                ports:
+                - containerPort: 9443
+                  name: https-webhook
+                  protocol: TCP
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
@@ -372,3 +378,5 @@ spec:
     name: Elastic
   replaces: {{ .PackageName }}.v{{ .PrevVersion }}
   version: {{ .NewVersion }}
+  webhookdefinitions:
+{{- .OperatorWebhooks | nindent 4 }}
