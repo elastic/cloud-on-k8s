@@ -29,7 +29,7 @@ Note that the release notes and highlights only list the changes since the last 
 [id="{p}-beta-to-ga-upgrade"]
 == Upgrade from beta or previous GA releases to ECK {eck_version}
 
-CAUTION: The upgrade process results in an update to all the existing managed resources. This triggers a rolling restart of all Elasticsearch and Kibana pods. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. Furthermore, <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
+CAUTION: The upgrade process results in an update to all the existing managed resources. This potentially triggers a rolling restart of all Elasticsearch and Kibana pods. This <<{p}-beta-to-ga-rolling-restart, list>> details the affected target versions that will cause a rolling restart. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. Furthermore, <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
 
 IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
@@ -84,7 +84,13 @@ This will update the ECK installation to the latest binary and update the CRDs a
 [id="{p}-beta-to-ga-rolling-restart"]
 === Control rolling restarts during the upgrade
 
-Upgrading the operator results in a one-time update to existing managed resources in the cluster. This triggers a rolling restart of pods by Kubernetes to apply those changes. If you have a very large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart might be disruptive or inconvenient. To have more control over when the pods belonging to a particular deployment should be restarted, you can <<{p}-exclude-resource,add an annotation>> to the corresponding Elasticsearch, Kibana, or APM Server resources to temporarily exclude them from being managed by the operator. When the time is convenient, you can remove the annotation and let the rolling restart go through.
+Upgrading the operator results in a one-time update to existing managed resources in the cluster. This potentially triggers a rolling restart of pods by Kubernetes to apply those changes. The following table shows the target version that would cause a rolling restart.
+
+* 1.6
+* 1.7
+* 1.9
+
+If you have a very large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart might be disruptive or inconvenient. To have more control over when the pods belonging to a particular deployment should be restarted, you can <<{p}-exclude-resource,add an annotation>> to the corresponding resources to temporarily exclude them from being managed by the operator. When the time is convenient, you can remove the annotation and let the rolling restart go through.
 
 CAUTION: Once a resource is excluded from being managed by ECK, you will not be able to add/remove nodes, upgrade Stack version, or perform other <<{p}-orchestrating-elastic-stack-applications, orchestration tasks>> by updating the resource manifest. You must remember to remove the exclusion to ensure that your Elastic Stack deployment is continually monitored and managed by the operator.
 
