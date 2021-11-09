@@ -102,23 +102,6 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
-// IsServiceReady checks if a service has one or more ready endpoints.
-// *Note* this is unused now.  Should we simply remove? --mmontgomery
-func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
-	endpoints := corev1.Endpoints{}
-	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
-
-	if err := c.Get(context.Background(), namespacedName, &endpoints); err != nil {
-		return false, err
-	}
-	for _, subs := range endpoints.Subsets {
-		if len(subs.Addresses) > 0 {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // GetExternalService returns the external service associated to the given Elasticsearch cluster.
 func GetExternalService(c k8s.Client, es esv1.Elasticsearch) (corev1.Service, error) {
 	var svc corev1.Service
@@ -149,15 +132,15 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	}
 	if schemeChange {
 		// switch to sending requests directly to a random pod instead of going through the service
-		return RandomElasticsearchPodURL(es, pods)
+		return AttemptRandomElasticsearchPodURL(es, pods)
 	}
 	return ExternalServiceURL(es)
 }
 
-// RandomElasticsearchPodURL will return a URL to communicate with a random Elasticsearch pod from the
+// AttemptRandomElasticsearchPodURL will return a URL to communicate with a random Elasticsearch pod from the
 // given set of pods.  If for some reason a pod URL cannot be generated, the external Elasticsearch
 // service URL will be returned.
-func RandomElasticsearchPodURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
+func AttemptRandomElasticsearchPodURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	if len(pods) == 0 {
 		return ExternalServiceURL(es)
 	}

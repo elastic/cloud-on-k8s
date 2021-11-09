@@ -342,7 +342,7 @@ func TestNewTransportService(t *testing.T) {
 	}
 }
 
-func TestRandomElasticsearchPodURL(t *testing.T) {
+func TestAttemptRandomElasticsearchPodURL(t *testing.T) {
 	type args struct {
 		es   esv1.Elasticsearch
 		pods []corev1.Pod
@@ -397,8 +397,8 @@ func TestRandomElasticsearchPodURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := RandomElasticsearchPodURL(tt.args.es, tt.args.pods); got != tt.want {
-				t.Errorf("RandomElasticsearchPodURL() = %v, want %v", got, tt.want)
+			if got := AttemptRandomElasticsearchPodURL(tt.args.es, tt.args.pods); got != tt.want {
+				t.Errorf("AttemptRandomElasticsearchPodURL() = %v, want %v", got, tt.want)
 			}
 		})
 	}

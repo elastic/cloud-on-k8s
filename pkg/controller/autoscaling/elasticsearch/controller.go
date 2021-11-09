@@ -192,7 +192,7 @@ func newElasticsearchClient(
 	if err != nil {
 		return nil, err
 	}
-	url := services.RandomElasticsearchPodURL(es, resourcesState.CurrentPodsByPhase[corev1.PodRunning])
+	url := services.AttemptRandomElasticsearchPodURL(es, resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)])
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return nil, err

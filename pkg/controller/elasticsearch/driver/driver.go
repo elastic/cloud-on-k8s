@@ -191,12 +191,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	healthCtx, cancel := context.WithTimeout(context.Background(), esclient.Timeout(d.ES))
-	defer cancel()
-
-	var health esclient.Health
-	health, err = esClient.GetClusterHealth(healthCtx)
-	esReachable := (err == nil && !health.TimedOut)
+	esReachable := d.isReachable()
 
 	var currentLicense esclient.License
 	if esReachable {
@@ -311,7 +306,7 @@ func (d *defaultDriver) newElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := services.RandomElasticsearchPodURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
+	url := services.AttemptRandomElasticsearchPodURL(d.ES, state.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)])
 	return esclient.NewElasticsearchClient(
 		d.OperatorParameters.Dialer,
 		k8s.ExtractNamespacedName(&d.ES),
@@ -321,6 +316,14 @@ func (d *defaultDriver) newElasticsearchClient(
 		caCerts,
 		esclient.Timeout(d.ES),
 	)
+}
+
+func (d *defaultDriver) isReachable() bool {
+	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
+	if err != nil {
+		return false
+	}
+	return len(resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)]) > 0
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
