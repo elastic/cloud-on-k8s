@@ -367,7 +367,7 @@ spec:
   - email: eck@elastic.co
     name: Elastic
   maturity: stable
-  minKubeVersion: 1.11.0
+  minKubeVersion: 1.16.0
   provider:
     name: Elastic
   replaces: {{ .PackageName }}.v{{ .PrevVersion }}
