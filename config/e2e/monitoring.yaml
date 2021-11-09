@@ -294,6 +294,13 @@ spec:
             runAsUser: 0
         containers:
         - name: filebeat
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 0.5
+            limits:
+              memory: 500Mi
+              cpu: 0.5
           securityContext:
             runAsUser: 0
             {{ if .OcpCluster }}
