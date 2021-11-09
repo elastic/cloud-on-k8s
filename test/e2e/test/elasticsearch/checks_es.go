@@ -227,7 +227,7 @@ func compareMemoryLimit(topologyElement esv1.NodeSet, cgroupMemoryLimitsInBytes 
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}
-	if memoryLimit == nil {
+	if memoryLimit == nil || memoryLimit.IsZero() {
 		// no expected memory, consider it's ok
 		return true
 	}
@@ -248,7 +248,7 @@ func compareCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
 			expectedCPULimit = c.Resources.Limits.Cpu()
 		}
 	}
-	if expectedCPULimit == nil {
+	if expectedCPULimit == nil || expectedCPULimit.IsZero() {
 		// no expected cpu, consider it's ok
 		return true
 	}
@@ -260,21 +260,35 @@ func compareCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
 // compareResources compares the resources specified in the Elasticsearch resource with the resources
 // specified in the pods
 func compareResources(topologyElement esv1.NodeSet, pods []corev1.Pod) bool {
-	var expectedResources *corev1.ResourceRequirements
+	var expected *corev1.ResourceRequirements
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		container := c
 		if c.Name == esv1.ElasticsearchContainerName {
-			expectedResources = &container.Resources
+			expected = &container.Resources
 		}
 	}
-	if expectedResources == nil {
-		expectedResources = &nodespec.DefaultResources
+	if expected == nil {
+		expected = &nodespec.DefaultResources
 	}
 	for _, pod := range pods {
 		for _, c := range pod.Spec.Containers {
+			actual := c.Resources
 			if c.Name == esv1.ElasticsearchContainerName {
-				if !equality.Semantic.DeepEqual(*expectedResources, c.Resources) {
-					return false
+				if expected.Requests != nil {
+					if !expected.Requests.Cpu().IsZero() && !equality.Semantic.DeepEqual(expected.Requests.Cpu(), actual.Requests.Cpu()) {
+						return false
+					}
+					if !expected.Requests.Memory().IsZero() && !equality.Semantic.DeepEqual(expected.Requests.Memory(), actual.Requests.Memory()) {
+						return false
+					}
+				}
+				if expected.Limits != nil {
+					if !expected.Limits.Cpu().IsZero() && !equality.Semantic.DeepEqual(expected.Limits.Cpu(), actual.Limits.Cpu()) {
+						return false
+					}
+					if !expected.Limits.Memory().IsZero() && !equality.Semantic.DeepEqual(expected.Limits.Memory(), actual.Limits.Memory()) {
+						return false
+					}
 				}
 			}
 		}
