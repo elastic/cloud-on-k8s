@@ -21,7 +21,6 @@ tracing:
   enabled: true
   config:
     ELASTIC_APM_SERVER_URL: null
-    ELASTIC_APM_SERVER_CERT: "/mnt/elastic/apm.crt"
     ELASTIC_APM_ENVIRONMENT: "{{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesMajorMinor }}-{{ .ElasticStackVersion }}"
 
 env:
@@ -36,16 +35,6 @@ env:
         name: "eck-{{ .TestRun }}"
         key: apm_secret_token
 
-volumeMounts:
-  - name: apm-cert
-    mountPath: /mnt/elastic/apm.crt
-    subPath: "apm_server_cert"
-    readOnly: true
-
-volumes:
-  - name: apm-cert
-    secret:
-      secretName: "eck-{{ .TestRun }}"
 {{ end }}
   
 
