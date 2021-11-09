@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esReconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
@@ -90,19 +91,14 @@ func newStatusBuilder(log logr.Logger, autoscalingSpec esv1.AutoscalingSpec) *st
 	return statusBuilder
 }
 
-// Check if the Service is available.
+// Check if the Elasticsearch has any pods ready to handle requests.
 func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
 	defer tracing.Span(&ctx)()
-	esClient, err := r.esClientProvider(ctx, r.Client, r.Dialer, es)
+	resourcesState, err := esReconcile.NewResourcesStateFromAPI(r.Client, es)
 	if err != nil {
 		return false, tracing.CaptureError(ctx, err)
 	}
-	var health esclient.Health
-	health, err = esClient.GetClusterHealth(ctx)
-	if err != nil || (err == nil && health.TimedOut) {
-		return false, tracing.CaptureError(ctx, err)
-	}
-	return true, nil
+	return len(resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)]) > 0, nil
 }
 
 // attemptOnlineReconciliation attempts an online autoscaling reconciliation with a call to the Elasticsearch autoscaling API.

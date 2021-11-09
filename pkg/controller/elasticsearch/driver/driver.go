@@ -191,7 +191,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	esReachable := d.isReachable()
+	var esReachable bool
+	if esReachable, err = d.isReachable(); err != nil {
+		return results.WithError(err)
+	}
 
 	var currentLicense esclient.License
 	if esReachable {
@@ -318,12 +321,13 @@ func (d *defaultDriver) newElasticsearchClient(
 	)
 }
 
-func (d *defaultDriver) isReachable() bool {
+// isReachable will check if Elasticsearch has any pods ready to handle requests.
+func (d *defaultDriver) isReachable() (bool, error) {
 	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return len(resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)]) > 0
+	return len(resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)]) > 0, nil
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
