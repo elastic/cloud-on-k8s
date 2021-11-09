@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 func TestDeepCopyObject(t *testing.T) {

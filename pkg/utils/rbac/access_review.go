@@ -8,7 +8,6 @@ import (
 	"context"
 	"strings"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/gobuffalo/flect"
 	authorizationapi "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -17,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
+
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 const (

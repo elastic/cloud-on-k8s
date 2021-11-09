@@ -5,7 +5,6 @@
 package watches
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -13,6 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 )
 
 // WatchUserProvidedSecrets registers a watch for user-provided secrets.

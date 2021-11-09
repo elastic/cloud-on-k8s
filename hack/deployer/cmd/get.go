@@ -7,9 +7,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner"
 )
 
 func GetCommand() *cobra.Command {

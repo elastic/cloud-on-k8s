@@ -13,9 +13,10 @@ import (
 	"reflect"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // PodKeyFileName returns the name of the private key entry for a specific pod in a transport certificates secret.

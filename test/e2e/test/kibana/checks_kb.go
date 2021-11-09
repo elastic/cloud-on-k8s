@@ -8,9 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/pkg/errors"
 )
 
 type kbChecks struct {
@@ -90,7 +91,7 @@ func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
 			path := "/api/enterprise_search/config_data"
 
 			// new API endpoint
-			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(8, 0, 0)) {
+			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(7, 16, 0)) {
 				path = "/internal/workplace_search/overview"
 			}
 			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil)

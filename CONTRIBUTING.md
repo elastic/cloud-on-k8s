@@ -33,9 +33,10 @@ Check requirements and steps in this [guide](dev-setup.md).
 ### Format your code and manage imports
 
 1. Run `make lint` to make sure there are no lint warnings.
-2. Make sure you only have two groups in your imports:
+2. Make sure you only have, at maximum, 3 groups in your imports:
     - a group for packages from the standard library
-    - a group for third parties
+    - (optionally) a group for third parties
+    - (optionally) a group for 'local' imports (local being 'github.com/elastic/cloud-on-k8s')
 
 ### Scripts
 

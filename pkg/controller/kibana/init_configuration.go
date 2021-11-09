@@ -5,9 +5,10 @@
 package kibana
 
 import (
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 )
 
 const (

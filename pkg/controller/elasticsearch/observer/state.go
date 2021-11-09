@@ -7,8 +7,9 @@ package observer
 import (
 	"context"
 
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"k8s.io/apimachinery/pkg/types"
+
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 // State contains information about an observed state of Elasticsearch.

@@ -12,12 +12,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 )
 
 const (

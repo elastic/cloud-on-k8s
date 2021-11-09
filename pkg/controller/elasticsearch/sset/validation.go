@@ -9,13 +9,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type PodTemplateError struct {

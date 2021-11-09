@@ -7,8 +7,9 @@ package autoscaler
 import (
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 )
 
 // q is a shorthand for resource.MustParse, the only purpose is to make unit tests more readable.

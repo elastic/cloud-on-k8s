@@ -9,6 +9,8 @@ import (
 	"net"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	stackmon "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
@@ -17,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 var log = ulog.Log.WithName("es-validation")

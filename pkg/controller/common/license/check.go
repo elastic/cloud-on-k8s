@@ -10,10 +10,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (

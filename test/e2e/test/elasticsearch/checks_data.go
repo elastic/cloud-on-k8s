@@ -14,9 +14,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-test/deep"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/go-test/deep"
 )
 
 const (

@@ -11,16 +11,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 )
 
 const (
@@ -37,6 +38,7 @@ const (
 type LicensingInfo struct {
 	Timestamp                  string
 	EckLicenseLevel            string
+	EckLicenseExpiryDate       *time.Time
 	TotalManagedMemory         float64
 	MaxEnterpriseResourceUnits int64
 	EnterpriseResourceUnits    int64
@@ -53,6 +55,10 @@ func (li LicensingInfo) toMap() map[string]string {
 
 	if li.MaxEnterpriseResourceUnits > 0 {
 		m["max_enterprise_resource_units"] = strconv.FormatInt(li.MaxEnterpriseResourceUnits, 10)
+	}
+
+	if li.EckLicenseExpiryDate != nil {
+		m["eck_license_expiry_date"] = li.EckLicenseExpiryDate.Format(time.RFC3339)
 	}
 
 	return m
@@ -84,6 +90,7 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 	licensingInfo := LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
 		EckLicenseLevel:         r.getOperatorLicenseLevel(operatorLicense),
+		EckLicenseExpiryDate:    r.getOperatorLicenseExpiry(operatorLicense),
 		TotalManagedMemory:      inGB(totalMemory),
 		EnterpriseResourceUnits: inEnterpriseResourceUnits(totalMemory),
 	}
@@ -152,6 +159,15 @@ func (r LicensingResolver) getOperatorLicenseLevel(lic *license.EnterpriseLicens
 		return defaultOperatorLicenseLevel
 	}
 	return string(lic.License.Type)
+}
+
+// getOperatorLicenseExpiry returns the expiry date of the given Enterprise license or nil.
+func (r LicensingResolver) getOperatorLicenseExpiry(lic *license.EnterpriseLicense) *time.Time {
+	if lic != nil {
+		t := time.Unix(0, lic.License.ExpiryDateInMillis*int64(time.Millisecond))
+		return &t
+	}
+	return nil
 }
 
 // getMaxEnterpriseResourceUnits returns the maximum of enterprise resources units that is allowed for a given license.

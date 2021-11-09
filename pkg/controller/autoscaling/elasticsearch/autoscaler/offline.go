@@ -5,11 +5,12 @@
 package autoscaler
 
 import (
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // GetOfflineNodeSetsResources attempts to create or restore resources.NodeSetsResources without an actual autoscaling

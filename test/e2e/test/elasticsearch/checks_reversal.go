@@ -8,10 +8,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 )
 
 func (b Builder) MutationReversalTestContext() test.ReversalTestContext {

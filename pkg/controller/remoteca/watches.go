@@ -7,9 +7,6 @@ package remoteca
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,9 +16,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.

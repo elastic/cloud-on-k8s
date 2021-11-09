@@ -7,10 +7,10 @@ package enterprisesearch
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_newPodSpec(t *testing.T) {

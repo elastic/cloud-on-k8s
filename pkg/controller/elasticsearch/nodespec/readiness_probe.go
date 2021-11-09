@@ -7,9 +7,10 @@ package nodespec
 import (
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func NewReadinessProbe() *corev1.Probe {

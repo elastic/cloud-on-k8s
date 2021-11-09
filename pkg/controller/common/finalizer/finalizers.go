@@ -8,9 +8,10 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var finalizersRegExp = regexp.MustCompile(`^finalizer\.(.*)\.k8s.elastic.co\/(.*)$`)

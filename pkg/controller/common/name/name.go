@@ -9,10 +9,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 const (

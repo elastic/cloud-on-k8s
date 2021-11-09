@@ -7,11 +7,12 @@ package driver
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
 )
 
 type PredicateContext struct {

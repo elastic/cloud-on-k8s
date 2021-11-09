@@ -57,6 +57,8 @@ ci-internal: ci-build-image
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+ci-build-image: DOCKERHUB_LOGIN = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=username secret/release/docker-hub-eck)
+ci-build-image: DOCKERHUB_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=token secret/release/docker-hub-eck)
 ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
@@ -70,8 +72,10 @@ ci-build-image: write-ci-docker-creds
 
 # make Docker creds available from inside the CI container through the .registry.env file
 write-ci-docker-creds:
-	@ echo "DOCKER_LOGIN=$(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
-	@ echo "DOCKER_PASSWORD=$(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_LOGIN=$(DOCKER_LOGIN)"              > ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_PASSWORD=$(DOCKER_PASSWORD)"       >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKERHUB_LOGIN=$(DOCKERHUB_LOGIN)"       >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKERHUB_PASSWORD=$(DOCKERHUB_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
 ##  Test
 

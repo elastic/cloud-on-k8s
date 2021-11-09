@@ -5,9 +5,10 @@
 package tracing
 
 import (
+	"go.elastic.co/apm"
+
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"go.elastic.co/apm"
 )
 
 var (

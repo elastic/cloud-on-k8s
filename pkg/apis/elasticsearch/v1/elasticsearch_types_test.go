@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 func TestElasticsearchHealth_Less(t *testing.T) {

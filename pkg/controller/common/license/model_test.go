@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
+
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
-	"github.com/go-test/deep"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLicense_IsValidAt(t *testing.T) {

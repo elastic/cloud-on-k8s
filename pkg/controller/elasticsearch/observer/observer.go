@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var log = ulog.Log.WithName("observer")

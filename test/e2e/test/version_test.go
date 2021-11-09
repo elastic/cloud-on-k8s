@@ -7,8 +7,9 @@ package test
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 func TestIsValidUpgrade(t *testing.T) {
