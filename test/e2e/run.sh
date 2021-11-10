@@ -16,7 +16,7 @@ for PKG in $(go list -tags "$E2E_TAGS" github.com/elastic/cloud-on-k8s/test/e2e/
     if [ "${E2E_JSON}" == "true" ]
     then
         go test -v -failfast -timeout=6h -tags="$E2E_TAGS" -p=1 --json "$PKG" "$@"
-    els
+    else
         go test -v -failfast -timeout=6h -tags="$E2E_TAGS" -p=1 "$PKG" "$@"
     fi
 done
