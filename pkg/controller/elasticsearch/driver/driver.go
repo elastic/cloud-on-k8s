@@ -327,7 +327,12 @@ func (d *defaultDriver) isReachable() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return len(resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)]) > 0, nil
+	for _, pod := range resourcesState.CurrentPods {
+		if pod.Status.Phase == corev1.PodRunning && k8s.IsPodReady(pod) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
