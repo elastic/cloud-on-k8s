@@ -19,6 +19,8 @@ VAULT_CLIENT_TIMEOUT = 120
 ifndef VAULT_TOKEN
 ifdef BUILD_ID
 VAULT_TOKEN = $(shell $(vault) write -address=$(VAULT_ADDR) -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
+DOCKERHUB_LOGIN = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=username secret/release/docker-hub-eck)
+DOCKERHUB_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=token secret/release/docker-hub-eck)
 else
 VAULT_TOKEN = $(shell $(vault) write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
@@ -57,8 +59,6 @@ ci-internal: ci-build-image
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
-ci-build-image: DOCKERHUB_LOGIN = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=username secret/release/docker-hub-eck)
-ci-build-image: DOCKERHUB_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=token secret/release/docker-hub-eck)
 ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
