@@ -25,5 +25,5 @@ func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state E
 }
 
 func supportsNodeShutdown(v version.Version) bool {
-	return v.GTE(version.MustParse("7.15.1"))
+	return v.GTE(version.MustParse("7.15.2"))
 }
