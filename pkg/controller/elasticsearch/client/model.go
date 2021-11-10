@@ -444,7 +444,7 @@ type NodeShutdown struct {
 }
 
 func (ns NodeShutdown) Is(t ShutdownType) bool {
-	//	 API returns type in capital letters currently
+	// API returns type in capital letters currently
 	return strings.EqualFold(ns.Type, string(t))
 }
 

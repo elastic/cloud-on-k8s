@@ -29,7 +29,7 @@ type NodeShutdown struct {
 var _ Interface = &NodeShutdown{}
 
 // NewNodeShutdown creates a new NodeShutdown struct restricted to one type of shutdown (typ); podToNodeID is mapping from
-// K8s Pod name to Elasticsearch node ID; reason is a arbitrary bit of metadata that will be attached to each node shutdown
+// K8s Pod name to Elasticsearch node ID; reason is an arbitrary bit of metadata that will be attached to each node shutdown
 // request in Elasticsearch and can help tracking and auditing shutdown requests.
 func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string, l logr.Logger) *NodeShutdown {
 	return &NodeShutdown{

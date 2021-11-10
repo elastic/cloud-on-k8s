@@ -331,7 +331,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 
 func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	if !supportsNodeShutdown(ctx.esClient.Version()) {
-		return true, nil // always OK to restart pre 7.14
+		return true, nil // always OK to restart pre node shutdown support
 	}
 	if pod.Status.Phase != corev1.PodRunning {
 		// there is no point in trying to query the shutdown status of a Pod that is not running
