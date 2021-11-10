@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
 			-o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.4
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.5
 
 ARG VERSION
 
