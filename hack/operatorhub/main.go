@@ -360,7 +360,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 	webhookDefinitionList := make([]WebhookDefinition, 0)
 
 	for _, webhook := range extracts.operatorWebhooks {
-		webhookDefinitionList = append(webhookDefinitionList, validatingWebhooksToWebhookDefinition(webhook)...)
+		webhookDefinitionList = append(webhookDefinitionList, validatingWebhookConfigurationToWebhookDefinition(webhook)...)
 	}
 
 	webhooks, err := gyaml.Marshal(webhookDefinitionList)
@@ -400,7 +400,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 	}, nil
 }
 
-func validatingWebhooksToWebhookDefinition(webhookConfiguration admissionv1.ValidatingWebhookConfiguration) []WebhookDefinition {
+func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admissionv1.ValidatingWebhookConfiguration) []WebhookDefinition {
 	webhookDefinitions := make([]WebhookDefinition, 0)
 	for _, webhook := range webhookConfiguration.Webhooks {
 		webhookDefinitions = append(webhookDefinitions, WebhookDefinition{
