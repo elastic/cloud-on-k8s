@@ -44,7 +44,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Give Elasticsearch some time to allocate internal indices",
-				Test: func(t *testing.T) {
+				Test: func(_ *testing.T) {
 					// TODO remove this step once https://github.com/elastic/cloud-on-k8s/issues/5040 does not apply anymore
 					time.Sleep(30 * time.Second)
 				},
