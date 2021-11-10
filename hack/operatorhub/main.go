@@ -233,6 +233,9 @@ type CRD struct {
 	Def         []byte
 }
 
+// WebhookDefinition cooresponds to a WebhookDefinition within an OLM
+// ClusterServiceVersion.
+// See https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/
 type WebhookDefinition struct {
 	AdmissionReviewVersions []string                         `json:"admissionReviewVersions"`
 	ContainerPort           int                              `json:"containerPort"`
@@ -400,6 +403,8 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 	}, nil
 }
 
+// validatingWebhookConfigurationToWebhookDefinition converts a standard validating webhook configuration resource
+// to an OLM webhook definition resource.
 func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admissionv1.ValidatingWebhookConfiguration) []WebhookDefinition {
 	webhookDefinitions := make([]WebhookDefinition, 0)
 	for _, webhook := range webhookConfiguration.Webhooks {
