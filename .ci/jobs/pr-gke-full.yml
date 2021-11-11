@@ -3,6 +3,11 @@
     description: Build a PR version of ECK and run full suite of E2E tests
     name: cloud-on-k8s-pr-full
     project-type: pipeline
+    parameters:
+      - bool:
+          name: SEND_NOTIFICATIONS
+          default: false
+          description: "Specified if job should send notifications to Slack. Disabled by default."
     pipeline-scm:
       scm:
         - git:
