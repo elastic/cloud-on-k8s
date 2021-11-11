@@ -36,7 +36,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		},
 		Data: map[string][]byte{
 			// this needs to be a valid configuration item, otherwise Kibana refuses to start
-			"logging.verbose": []byte("true"),
+			"elasticsearch.pingTimeout": []byte("30000"),
 		},
 	}
 
@@ -64,22 +64,22 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
-			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"logging.verbose"}, kbPodListOpts...),
+			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"elasticsearch.pingTimeout"}, kbPodListOpts...),
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
 				Test: test.Eventually(func() error {
 					secureSettings.Data = map[string][]byte{
 						// this needs to be a valid configuration item, otherwise Kibana refuses to start
-						"logging.json":    []byte("true"),
-						"logging.verbose": []byte("true"),
+						"elasticsearch.requestTimeout": []byte("30000"),
+						"elasticsearch.pingTimeout":    []byte("30000"),
 					}
 					return k.Client.Update(context.Background(), &secureSettings)
 				}),
 			},
 
 			// keystore should be updated accordingly
-			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"logging.json", "logging.verbose"}, kbPodListOpts...),
+			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"elasticsearch.pingTimeout", "elasticsearch.requestTimeout"}, kbPodListOpts...),
 
 			// remove the secure settings reference
 			test.Step{
