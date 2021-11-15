@@ -343,7 +343,7 @@ func TestNewTransportService(t *testing.T) {
 	}
 }
 
-func TestAttemptRandomElasticsearchPodURL(t *testing.T) {
+func TestElasticsearchURLFromRandomPod(t *testing.T) {
 	type args struct {
 		es   esv1.Elasticsearch
 		pods []corev1.Pod
