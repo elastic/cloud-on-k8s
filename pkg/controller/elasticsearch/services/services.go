@@ -151,6 +151,7 @@ func ElasticsearchURLFromRandomPod(es esv1.Elasticsearch, pods []corev1.Pod) (st
 }
 
 // ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.
+// If the pod is missing any of the required labels, an error is returned.
 func ElasticsearchPodURL(pod corev1.Pod) (string, error) {
 	scheme, hasSchemeLabel := pod.Labels[label.HTTPSchemeLabelName]
 	sset, hasSsetLabel := pod.Labels[label.StatefulSetNameLabelName]
