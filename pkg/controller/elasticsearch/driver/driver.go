@@ -309,7 +309,11 @@ func (d *defaultDriver) newElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := services.AttemptRandomElasticsearchPodURL(d.ES, state.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)])
+	url, err := services.ElasticsearchURLFromRandomPod(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
+	if err != nil {
+		log.V(1).Info("could not get a URL to communicate with elasticsearch from a random pod, failing back to using external service", "error", err)
+		url = services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
+	}
 	return esclient.NewElasticsearchClient(
 		d.OperatorParameters.Dialer,
 		k8s.ExtractNamespacedName(&d.ES),

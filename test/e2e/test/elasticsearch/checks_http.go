@@ -42,7 +42,10 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 	}
 
 	for _, p := range reconcile.AvailableElasticsearchNodes(pods) {
-		url := services.ElasticsearchPodURL(p)
+		url, err := services.ElasticsearchPodURL(p)
+		if err != nil {
+			return err
+		}
 		esClient := client.NewElasticsearchClient(
 			dialer,
 			k8s.ExtractNamespacedName(&es),
@@ -52,7 +55,7 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 			caCert,
 			client.Timeout(es),
 		)
-		_, err := esClient.GetClusterInfo(context.Background())
+		_, err = esClient.GetClusterInfo(context.Background())
 		if err != nil {
 			return err
 		}

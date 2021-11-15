@@ -6,6 +6,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -131,32 +132,31 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 		}
 	}
 	if schemeChange {
-		// switch to sending requests directly to a random pod instead of going through the service
-		return AttemptRandomElasticsearchPodURL(es, pods)
+		// attempting switch to sending requests directly to a random pod instead of going through the service
+		if url, err := ElasticsearchURLFromRandomPod(es, pods); err == nil {
+			return url
+		}
 	}
 	return ExternalServiceURL(es)
 }
 
 // AttemptRandomElasticsearchPodURL will return a URL to communicate with a random Elasticsearch pod from the
-// given set of pods.  If for some reason a pod URL cannot be generated, the external Elasticsearch
-// service URL will be returned.
-func AttemptRandomElasticsearchPodURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
+// given set of pods.  If for some reason a pod URL cannot be generated, an error is returned.
+func ElasticsearchURLFromRandomPod(es esv1.Elasticsearch, pods []corev1.Pod) (string, error) {
 	if len(pods) == 0 {
-		return ExternalServiceURL(es)
+		return "", errors.New("could not create URL from any pod as no pods exist")
 	}
 	randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
-	if podURL := ElasticsearchPodURL(randomPod); podURL != "" {
-		return podURL
-	}
-	return ExternalServiceURL(es)
+	return ElasticsearchPodURL(randomPod)
 }
 
 // ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.
-func ElasticsearchPodURL(pod corev1.Pod) string {
+func ElasticsearchPodURL(pod corev1.Pod) (string, error) {
 	scheme, hasSchemeLabel := pod.Labels[label.HTTPSchemeLabelName]
 	sset, hasSsetLabel := pod.Labels[label.StatefulSetNameLabelName]
 	if hasSsetLabel && hasSchemeLabel {
-		return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, pod.Name, sset, pod.Namespace, network.HTTPPort)
+		return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, pod.Name, sset, pod.Namespace, network.HTTPPort), nil
 	}
-	return ""
+	return "", fmt.Errorf(
+		"could not generate URL from given pod as the pod does not have both %s, and %s labels; existing labels: %v", label.HTTPSchemeLabelName, label.StatefulSetNameLabelName, pod.Labels)
 }

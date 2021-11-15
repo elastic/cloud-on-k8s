@@ -5,6 +5,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -348,20 +349,22 @@ func TestAttemptRandomElasticsearchPodURL(t *testing.T) {
 		pods []corev1.Pod
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name          string
+		args          args
+		want          string
+		expectedError error
 	}{
 		{
-			"Zero pods returns external service URL",
+			"Zero pods returns an error",
 			args{
 				es:   mkElasticsearch(commonv1.HTTPConfig{}),
 				pods: []corev1.Pod{},
 			},
-			"https://elasticsearch-test-es-http.test.svc:9200",
+			"",
+			fmt.Errorf("could not create URL from any pod as no pods exist"),
 		},
 		{
-			"One pod with required labels returns single pod URL",
+			"One pod with required labels returns single pod URL and no error",
 			args{
 				es: mkElasticsearch(commonv1.HTTPConfig{}),
 				pods: []corev1.Pod{
@@ -378,8 +381,9 @@ func TestAttemptRandomElasticsearchPodURL(t *testing.T) {
 				},
 			},
 			"https://pod0.testes01.testing:9200",
+			nil,
 		}, {
-			"One pod without required labels returns external service URL",
+			"One pod without required labels returns error",
 			args{
 				es: mkElasticsearch(commonv1.HTTPConfig{}),
 				pods: []corev1.Pod{
@@ -392,14 +396,16 @@ func TestAttemptRandomElasticsearchPodURL(t *testing.T) {
 					},
 				},
 			},
-			"https://elasticsearch-test-es-http.test.svc:9200",
+			"",
+			fmt.Errorf(
+				"could not generate URL from given pod as the pod does not have both %s, and %s labels; existing labels: %v", label.HTTPSchemeLabelName, label.StatefulSetNameLabelName, map[string]string{}),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AttemptRandomElasticsearchPodURL(tt.args.es, tt.args.pods); got != tt.want {
-				t.Errorf("AttemptRandomElasticsearchPodURL() = %v, want %v", got, tt.want)
-			}
+			got, err := ElasticsearchURLFromRandomPod(tt.args.es, tt.args.pods)
+			assert.Equal(t, tt.expectedError, err, "AttemptRandomElasticsearchPodURL() expected error '%v', got '%v'", tt.expectedError, err)
+			assert.Equal(t, tt.want, got, "AttemptRandomElasticsearchPodURL() = %v, want %v", got, tt.want)
 		})
 	}
 }

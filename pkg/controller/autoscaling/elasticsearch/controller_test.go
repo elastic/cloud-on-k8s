@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -65,6 +66,28 @@ var (
 			}},
 			Ports: []corev1.EndpointPort{},
 		}},
+	}
+	fakePod = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "testns",
+			Name:      "testes-0",
+			Labels: map[string]string{
+				label.ClusterNameLabelName: "testes",
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{
+				{
+					Type:   corev1.ContainersReady,
+					Status: corev1.ConditionTrue,
+				},
+				{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
 	}
 )
 
@@ -151,7 +174,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Cluster has just been created, initialize resources",
 			fields: fields{
-				EsClient:       newFakeEsClient(t).withUnhealthyCluster(),
+				EsClient:       newFakeEsClient(t),
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -194,7 +217,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Cluster does not exit",
 			fields: fields{
-				EsClient:       newFakeEsClient(t).withUnhealthyCluster(),
+				EsClient:       newFakeEsClient(t),
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -221,7 +244,7 @@ func TestReconcile(t *testing.T) {
 					t.Fatalf("yaml.Unmarshal error = %v, wantErr %v", err, tt.wantErr)
 				}
 				if tt.args.isOnline {
-					k8sClient = k8s.NewFakeClient(es.DeepCopy(), fakeService, fakeEndpoints)
+					k8sClient = k8s.NewFakeClient(es.DeepCopy(), fakeService, fakeEndpoints, fakePod)
 				} else {
 					k8sClient = k8s.NewFakeClient(es.DeepCopy())
 				}
@@ -325,14 +348,12 @@ type fakeEsClient struct {
 	autoscalingPolicies                         esclient.AutoscalingCapacityResult
 	policiesCleaned                             bool
 	errorOnDeleteAutoscalingAutoscalingPolicies bool
-	healthy                                     bool
 	updatedPolicies                             map[string]esv1.AutoscalingPolicy
 }
 
 func newFakeEsClient(t *testing.T) *fakeEsClient {
 	t.Helper()
 	return &fakeEsClient{
-		healthy:             true,
 		t:                   t,
 		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},
 		updatedPolicies:     make(map[string]esv1.AutoscalingPolicy),
@@ -357,11 +378,6 @@ func (f *fakeEsClient) withErrorOnDeleteAutoscalingAutoscalingPolicies() *fakeEs
 	return f
 }
 
-func (f *fakeEsClient) withUnhealthyCluster() *fakeEsClient {
-	f.healthy = false
-	return f
-}
-
 func (f *fakeEsClient) newFakeElasticsearchClient(_ context.Context, _ k8s.Client, _ net.Dialer, _ esv1.Elasticsearch) (esclient.Client, error) {
 	return f, nil
 }
@@ -378,11 +394,6 @@ func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, policyName str
 }
 func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {
 	return f.autoscalingPolicies, nil
-}
-func (f *fakeEsClient) GetClusterHealth(context.Context) (esclient.Health, error) {
-	return esclient.Health{
-		TimedOut: !f.healthy,
-	}, nil
 }
 func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, maxLazyMLNodes int32, maxMemory string) error {
 	return nil

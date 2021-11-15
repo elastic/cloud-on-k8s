@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esReconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
@@ -98,7 +99,12 @@ func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, e
 	if err != nil {
 		return false, tracing.CaptureError(ctx, err)
 	}
-	return len(resourcesState.CurrentPodsByPhase[corev1.PodPhase(corev1.PodReady)]) > 0, nil
+	for _, pod := range resourcesState.CurrentPods {
+		if pod.Status.Phase == corev1.PodRunning && k8s.IsPodReady(pod) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // attemptOnlineReconciliation attempts an online autoscaling reconciliation with a call to the Elasticsearch autoscaling API.
