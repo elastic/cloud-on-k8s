@@ -122,13 +122,14 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 	}
 
 	requireValidTrial := func(c k8s.Client) {
-		var sec corev1.Secret
+		var trialLicenseSecret corev1.Secret
+		require.NoError(t, c.Get(context.Background(), trialLicenseNsn, &trialLicenseSecret))
+		var trialStatusSecret corev1.Secret
 		require.NoError(t, c.Get(context.Background(), types.NamespacedName{
 			Namespace: testNs,
 			Name:      licensing.TrialStatusSecretKey,
-		}, &sec))
-		require.NoError(t, c.Get(context.Background(), trialLicenseNsn, &sec))
-		pubKeyBytes := sec.Data[licensing.TrialPubkeyKey]
+		}, &trialStatusSecret))
+		pubKeyBytes := trialStatusSecret.Data[licensing.TrialPubkeyKey]
 		key, err := licensing.ParsePubKey(pubKeyBytes)
 		require.NoError(t, err)
 		_, lic, err := licensing.TrialLicense(c, trialLicenseNsn)
