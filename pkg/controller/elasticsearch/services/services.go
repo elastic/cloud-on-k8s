@@ -140,7 +140,7 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	return ExternalServiceURL(es)
 }
 
-// AttemptRandomElasticsearchPodURL will return a URL to communicate with a random Elasticsearch pod from the
+// ElasticsearchURLFromRandomPod will return a URL to communicate with a random Elasticsearch pod from the
 // given set of pods.  If for some reason a pod URL cannot be generated, an error is returned.
 func ElasticsearchURLFromRandomPod(es esv1.Elasticsearch, pods []corev1.Pod) (string, error) {
 	if len(pods) == 0 {
