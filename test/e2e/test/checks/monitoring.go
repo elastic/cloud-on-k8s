@@ -157,7 +157,7 @@ func containsDocuments(esClient esClient.Client, indexPattern string) error {
 
 	// 1 index must exist
 	if len(indices) != 1 {
-		return fmt.Errorf("expected [%d] index [%s], found [%d]", len(indices), indexPattern, 1)
+		return fmt.Errorf("expected [%d] index [%s], found [%d]", 1, indexPattern, len(indices))
 	}
 	docsCount, err := strconv.Atoi(indices[0].DocsCount)
 	if err != nil {

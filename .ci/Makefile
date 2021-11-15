@@ -19,6 +19,8 @@ VAULT_CLIENT_TIMEOUT = 120
 ifndef VAULT_TOKEN
 ifdef BUILD_ID
 VAULT_TOKEN = $(shell $(vault) write -address=$(VAULT_ADDR) -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
+DOCKERHUB_LOGIN = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=username secret/release/docker-hub-eck)
+DOCKERHUB_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=token secret/release/docker-hub-eck)
 else
 VAULT_TOKEN = $(shell $(vault) write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
@@ -70,8 +72,10 @@ ci-build-image: write-ci-docker-creds
 
 # make Docker creds available from inside the CI container through the .registry.env file
 write-ci-docker-creds:
-	@ echo "DOCKER_LOGIN=$(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
-	@ echo "DOCKER_PASSWORD=$(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_LOGIN=$(DOCKER_LOGIN)"              > ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_PASSWORD=$(DOCKER_PASSWORD)"       >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKERHUB_LOGIN=$(DOCKERHUB_LOGIN)"       >> ${ROOT_DIR}/.registry.env
+	@ echo "DOCKERHUB_PASSWORD=$(DOCKERHUB_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
 ##  Test
 

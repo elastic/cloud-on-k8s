@@ -6,6 +6,7 @@ package license
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -13,6 +14,8 @@ import (
 )
 
 func TestToMap(t *testing.T) {
+	dateFixture := time.Date(2021, 11, 03, 0, 0, 0, 0, time.UTC)
+
 	t.Run("empty_object", func(t *testing.T) {
 		i := LicensingInfo{}
 		have := i.toMap()
@@ -29,6 +32,7 @@ func TestToMap(t *testing.T) {
 		i := LicensingInfo{
 			Timestamp:                  "2020-05-28T11:15:31Z",
 			EckLicenseLevel:            "enterprise",
+			EckLicenseExpiryDate:       &dateFixture,
 			TotalManagedMemory:         72.54578,
 			EnterpriseResourceUnits:    5,
 			MaxEnterpriseResourceUnits: 10,
@@ -38,6 +42,7 @@ func TestToMap(t *testing.T) {
 		want := map[string]string{
 			"timestamp":                     "2020-05-28T11:15:31Z",
 			"eck_license_level":             "enterprise",
+			"eck_license_expiry_date":       "2021-11-03T00:00:00Z",
 			"total_managed_memory":          "72.55GB",
 			"enterprise_resource_units":     "5",
 			"max_enterprise_resource_units": "10",

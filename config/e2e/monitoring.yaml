@@ -79,11 +79,9 @@ spec:
     - name: clusterName
       type: keyword
     output.elasticsearch:
-      hosts: ['https://${monitoring_ip}:9200']
+      hosts: ['${monitoring_url}']
       username: ${monitoring_user}
       password: ${monitoring_pass}
-      ssl.certificate_authorities:
-      - /mnt/elastic/monitoring-ca.crt
   daemonSet:
     podTemplate:
       spec:
@@ -110,10 +108,6 @@ spec:
             name: dockersock
           - mountPath: /hostfs/proc
             name: proc
-          - name: monitoring-ca
-            mountPath: /mnt/elastic/monitoring-ca.crt
-            readOnly: true
-            subPath: monitoring_ca
           env:
           - name: NODE_NAME
             valueFrom:
@@ -134,9 +128,6 @@ spec:
         - hostPath:
             path: /proc
           name: proc
-        - name: monitoring-ca
-          secret:
-            secretName: "eck-{{ .TestRun }}"
   secureSettings:
   - secretName: "eck-{{ .TestRun }}"
 ---
@@ -284,11 +275,9 @@ spec:
     - name: build_number
       type: keyword
     output.elasticsearch:
-      hosts: ['https://${monitoring_ip}:9200']
+      hosts: ['${monitoring_url}']
       username: ${monitoring_user}
       password: ${monitoring_pass}
-      ssl.certificate_authorities:
-      - /mnt/elastic/monitoring-ca.crt
   secureSettings:
   - secretName: "eck-{{ .TestRun }}"
   daemonSet:
@@ -305,6 +294,13 @@ spec:
             runAsUser: 0
         containers:
         - name: filebeat
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 0.5
+            limits:
+              memory: 500Mi
+              cpu: 0.5
           securityContext:
             runAsUser: 0
             {{ if .OcpCluster }}
@@ -317,10 +313,6 @@ spec:
             mountPath: /var/log/pods
           - name: varlibdockercontainers
             mountPath: /var/lib/docker/containers
-          - name: monitoring-ca
-            mountPath: /mnt/elastic/monitoring-ca.crt
-            readOnly: true
-            subPath: monitoring_ca
           env:
           - name: NODE_NAME
             valueFrom:
@@ -336,9 +328,6 @@ spec:
         - name: varlibdockercontainers
           hostPath:
             path: /var/lib/docker/containers
-        - name: monitoring-ca
-          secret:
-            secretName: "eck-{{ .TestRun }}"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -96,11 +96,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/elastic/go-ucfg
-Version : v0.8.3
-Time    : 2020-02-20T11:45:39Z
+Version : v0.8.4
+Time    : 2021-11-10T15:38:47Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.4/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -647,11 +647,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gobuffalo/flect
-Version : v0.2.3
-Time    : 2021-06-16T12:12:51Z
+Version : v0.2.4
+Time    : 2021-11-03T12:17:29Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gobuffalo/flect@v0.2.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gobuffalo/flect@v0.2.4/LICENSE:
 
 The MIT License (MIT)
 
@@ -2569,11 +2569,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.14.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch
-Version : v1.12.0
-Time    : 2021-05-25T17:24:56Z
+Version : v1.14.0
+Time    : 2021-09-22T11:13:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.14.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16534,11 +16534,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp
-Version : v1.12.0
-Time    : 2021-05-25T17:24:56Z
+Version : v1.14.0
+Time    : 2021-09-22T11:13:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.14.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
