@@ -273,7 +273,7 @@ func compareResources(topologyElement esv1.NodeSet, pods []corev1.Pod) bool {
 	for _, pod := range pods {
 		for _, c := range pod.Spec.Containers {
 			actual := c.Resources
-			if c.Name == esv1.ElasticsearchContainerName {
+			if c.Name == esv1.ElasticsearchContainerName { //nolint:nestif
 				if expected.Requests != nil {
 					if !expected.Requests.Cpu().IsZero() && !equality.Semantic.DeepEqual(expected.Requests.Cpu(), actual.Requests.Cpu()) {
 						return false
