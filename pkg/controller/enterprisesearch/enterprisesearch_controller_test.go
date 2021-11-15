@@ -249,11 +249,12 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 			certificates.CertFileName: []byte("es-cert-data"),
 		},
 	}
-	ent.SetAssociationConf(&commonv1.AssociationConf{
+	assocConf := commonv1.AssociationConf{
 		Version:        "7.7.0",
 		AuthSecretName: "ent-user",
 		CASecretName:   "es-tls-certs",
-		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"})
+		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"}
+	ent.SetAssociationConf(&assocConf)
 
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret),
@@ -276,6 +277,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	ent.Spec.Version = "7.8.0"
 	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
+	ent.SetAssociationConf(&assocConf)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
@@ -285,9 +287,8 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	require.NoError(t, r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&ent), &ent))
 
 	// update the associated Elasticsearch to 7.8.0: Enterprise Search should now be upgraded to 7.8.0
-	assocConf := ent.AssociationConf()
 	assocConf.Version = "7.8.0"
-	ent.SetAssociationConf(assocConf)
+	ent.SetAssociationConf(&assocConf)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
@@ -301,6 +302,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	ent.Spec.Version = "7.8.1"
 	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
+	ent.SetAssociationConf(&assocConf)
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
