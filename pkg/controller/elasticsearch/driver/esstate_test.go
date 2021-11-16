@@ -114,7 +114,7 @@ func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownTyp
 }
 
 func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.ShutdownResponse, error) {
-	var ns []esclient.NodeShutdown
+	var ns []esclient.NodeShutdown //nolint:prealloc
 	for k, v := range f.Shutdowns {
 		if nodeID != nil && k != *nodeID {
 			continue

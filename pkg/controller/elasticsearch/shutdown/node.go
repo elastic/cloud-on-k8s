@@ -52,7 +52,7 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 		}
 		shutdowns := map[string]esclient.NodeShutdown{}
 		for _, n := range r.Nodes {
-			ns.log.V(1).Info("Existing shutdown", "node_id", n.NodeID, "type", n.Type, "status", n.Status)
+			ns.log.V(1).Info("Existing shutdown", "type", n.Type, "node_id", n.NodeID, "status", n.Status)
 			shutdowns[n.NodeID] = n
 		}
 		ns.shutdowns = shutdowns
