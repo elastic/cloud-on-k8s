@@ -25,7 +25,7 @@ type ShardMigration struct {
 
 var _ shutdown.Interface = &ShardMigration{}
 
-// NewShardMigration creates a new ShardMigration struct that holds no other state then the arguments to this
+// NewShardMigration creates a new ShardMigration struct that holds no other state than the arguments to this
 // constructor function.
 func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.ShardLister) shutdown.Interface {
 	return &ShardMigration{

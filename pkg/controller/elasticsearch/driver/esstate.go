@@ -67,11 +67,10 @@ func (n *memoizingNodes) initialize() error {
 	if err != nil {
 		return err
 	}
-	m := map[string]string{}
+	n.nodeNameToID = map[string]string{}
 	for id, node := range nodes.Nodes {
-		m[node.Name] = id
+		n.nodeNameToID[node.Name] = id
 	}
-	n.nodeNameToID = m
 	return nil
 }
 

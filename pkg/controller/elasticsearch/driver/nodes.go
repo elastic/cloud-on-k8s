@@ -165,7 +165,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Maybe clear zen2 voting config exclusions.
 	requeue, err = zen2.ClearVotingConfigExclusions(ctx, d.ES, d.Client, esClient, actualStatefulSets)
 	if err != nil {
-		return results.WithError(fmt.Errorf("when clearing voting exclustions: %w", err))
+		return results.WithError(fmt.Errorf("when clearing voting exclusions: %w", err))
 	}
 	if requeue {
 		results.WithResult(defaultRequeue)
