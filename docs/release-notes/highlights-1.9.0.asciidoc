@@ -28,4 +28,4 @@ To provide more functionalities and better user experience we are moving away fr
 [float]
 [id="{p}-190-elastic-license-v2"]
 ==== Elastic Cloud on Kubernetes moves to Elastic License v2
-Following Elastic Stack licensing changes in `7.11.0`, ECK `1.9.0` moves to Elastic License v2. You can read more about this license in the announcement link:https://www.elastic.co/blog/elastic-license-v2[blog post].
+Following the Elastic Stack licensing changes in `7.11.0`, ECK `1.9.0` moves to Elastic License v2. For more details, check this link:https://www.elastic.co/blog/elastic-license-v2[blog post].
