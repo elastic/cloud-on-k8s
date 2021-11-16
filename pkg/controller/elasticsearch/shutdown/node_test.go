@@ -236,7 +236,7 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "successful lookup for stalled request",
+			name:    "successful lookup with explanation",
 			fixture: stalledShutdownFixture,
 			args: args{
 				podToNodeID: map[string]string{

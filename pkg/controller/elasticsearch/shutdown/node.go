@@ -134,7 +134,7 @@ func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdow
 	case esclient.ShutdownStarted:
 		logger.V(1).Info("Node shutdown not over yet, hold off with node deletion", "type", shutdown.Type, "node", podName)
 	case esclient.ShutdownStalled:
-		logger.Info("Node shutdown stalled, user intervention required", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation, "node", podName)
+		logger.Info("Node shutdown stalled, user intervention maybe required if condition persists", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation, "node", podName)
 	case esclient.ShutdownNotStarted:
 		logger.Info("Unexpected: node shutdown could not be started", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation, "node", podName)
 	}
