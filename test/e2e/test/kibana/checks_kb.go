@@ -91,7 +91,7 @@ func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
 			path := "/api/enterprise_search/config_data"
 
 			// new API endpoint
-			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(8, 0, 0)) {
+			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(7, 16, 0)) {
 				path = "/internal/workplace_search/overview"
 			}
 			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil)

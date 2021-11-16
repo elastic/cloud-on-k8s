@@ -6,7 +6,7 @@ managedNamespaces: [{{ .E2ENamespace }}]
 
 image:
   repository: docker.elastic.co/eck/eck-operator
-  tag: 1.4.0
+  tag: 1.8.0
 
 podAnnotations:
   co.elastic.metrics/metricsets: collector

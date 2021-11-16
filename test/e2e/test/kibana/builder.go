@@ -191,8 +191,9 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 }
 
 func (b Builder) GetMetricsIndexPattern() string {
-	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
-		return fmt.Sprintf("metricbeat-%s*", test.Ctx().ElasticStackVersion)
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.GTE(version.MinFor(8, 0, 0)) {
+		return fmt.Sprintf("metricbeat-%d.%d.%d*", v.Major, v.Minor, v.Patch)
 	}
 
 	return ".monitoring-kibana-*"

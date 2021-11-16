@@ -3,6 +3,11 @@
     description: Run ECK E2E tests on GKE, on every merge in master
     name: cloud-on-k8s-e2e-tests-master
     project-type: pipeline
+    parameters:
+      - bool:
+          name: SEND_NOTIFICATIONS
+          default: true
+          description: "Specified if job should send notifications to Slack. Enabled by default."
     triggers:
       - github
     concurrent: true
