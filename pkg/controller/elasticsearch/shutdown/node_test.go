@@ -79,6 +79,29 @@ var (
   ]
 }
 `
+	stalledShutdownFixture = `{
+  "nodes": [
+    {
+      "node_id": "D_E3ZVdyQlOmc81NAUOD8w",
+      "type": "REMOVE",
+      "reason": "49124",
+      "shutdown_startedmillis": 1637071630313,
+      "status": "STALLED",
+      "shard_migration": {
+        "status": "STALLED",
+        "shard_migrations_remaining": 4,
+        "explanation": "shard [1] [primary] of index [elasticlogs_q-000001] cannot move, use the Cluster Allocation Explain API on this shard for details"
+      },
+      "persistent_tasks": {
+        "status": "COMPLETE"
+      },
+      "plugins": {
+        "status": "COMPLETE"
+      }
+    }
+  ]
+}
+`
 	noShutdownFixture = `{"nodes":[]}`
 	ackFixture        = `{"acknowledged": true}`
 )
@@ -209,6 +232,21 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 			want: NodeShutdownStatus{
 				Status:      esclient.ShutdownComplete,
 				Explanation: "",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "successful lookup for stalled request",
+			fixture: stalledShutdownFixture,
+			args: args{
+				podToNodeID: map[string]string{
+					"pod-1": "D_E3ZVdyQlOmc81NAUOD8w",
+				},
+				podName: "pod-1",
+			},
+			want: NodeShutdownStatus{
+				Status:      esclient.ShutdownStalled,
+				Explanation: "shard [1] [primary] of index [elasticlogs_q-000001] cannot move, use the Cluster Allocation Explain API on this shard for details",
 			},
 			wantErr: false,
 		},

@@ -143,7 +143,7 @@ func (s *State) UpdateElasticsearchShutdownStalled(
 	s.AddEvent(
 		corev1.EventTypeWarning,
 		events.EventReasonStalled,
-		fmt.Sprintf("Requested topology change is stalled. User intervention required. %s", reasonDetail),
+		fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", reasonDetail),
 	)
 	return s.updateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase, resourcesState, observedState)
 }

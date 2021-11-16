@@ -55,7 +55,6 @@ func HandleDownscale(
 	// if leaving nodes is empty this should cancel any ongoing shutdowns
 	leavingNodes := leavingNodeNames(downscales)
 	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, leavingNodes); err != nil {
-		// TODO handle failed cancellation
 		return results.WithError(err)
 	}
 
@@ -200,7 +199,7 @@ func calculatePerformableDownscale(
 			// shutdown including data migration over: allow pod to be removed
 			performableDownscale.targetReplicas--
 		case esclient.ShutdownStalled:
-			// shutdown failed this requires user interaction: bubble up via event
+			// shutdown stalled this can require user interaction: bubble up via event
 			ctx.reconcileState.UpdateElasticsearchShutdownStalled(ctx.resourcesState, ctx.observedState, response.Explanation)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil

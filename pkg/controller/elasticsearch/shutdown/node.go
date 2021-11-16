@@ -30,7 +30,7 @@ var _ Interface = &NodeShutdown{}
 
 // NewNodeShutdown creates a new NodeShutdown struct restricted to one type of shutdown (typ); podToNodeID is mapping from
 // K8s Pod name to Elasticsearch node ID; reason is an arbitrary bit of metadata that will be attached to each node shutdown
-// request in Elasticsearch and can help tracking and auditing shutdown requests.
+// request in Elasticsearch and can help to track and audit shutdown requests.
 func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string, l logr.Logger) *NodeShutdown {
 	return &NodeShutdown{
 		c:           c,
@@ -74,7 +74,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
-	// cancel all ongoing shutdowns
+	// cancel all ongoing shutdowns for the current shutdown type
 	if len(leavingNodes) == 0 {
 		return ns.Clear(ctx, nil)
 	}
@@ -88,9 +88,12 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 			continue
 		}
 		ns.log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID)
+		// in case of type=restart we are relying on the default allocation_delay of 5 min see
+		// https://www.elastic.co/guide/en/elasticsearch/reference/7.15/put-shutdown.html
 		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason); err != nil {
-			return fmt.Errorf("on put shutdown %w", err)
+			return fmt.Errorf("on put shutdown (type: %s) for node %s : %w", ns.typ, node, err)
 		}
+		// update the internal cache with the information about the new shutdown
 		shutdown, err := ns.c.GetShutdown(ctx, &nodeID)
 		if err != nil {
 			return err
@@ -131,9 +134,9 @@ func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdow
 	case esclient.ShutdownStarted:
 		logger.V(1).Info("Node shutdown not over yet, hold off with node deletion", "type", shutdown.Type, "node", podName)
 	case esclient.ShutdownStalled:
-		logger.Info("Node shutdown stalled, user intervention required", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation)
+		logger.Info("Node shutdown stalled, user intervention required", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation, "node", podName)
 	case esclient.ShutdownNotStarted:
-		logger.Info("Unexpected: node shutdown could not be started", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation)
+		logger.Info("Unexpected: node shutdown could not be started", "type", shutdown.Type, "explanation", shutdown.ShardMigration.Explanation, "node", podName)
 	}
 }
 
