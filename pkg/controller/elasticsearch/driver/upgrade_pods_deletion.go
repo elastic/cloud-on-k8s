@@ -65,10 +65,10 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	}
 
 	if err := ctx.prepareClusterForNodeRestart(podsToDelete); err != nil {
-		return podsToDelete, err
+		return nil, err
 	}
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
-	deletedPods := []corev1.Pod{}
+	var deletedPods []corev1.Pod
 	for _, podToDelete := range podsToDelete {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
 			return deletedPods, err

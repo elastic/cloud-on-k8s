@@ -333,8 +333,8 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	if !supportsNodeShutdown(ctx.esClient.Version()) {
 		return true, nil // always OK to restart pre node shutdown support
 	}
-	if pod.Status.Phase != corev1.PodRunning {
-		// there is no point in trying to query the shutdown status of a Pod that is not running
+	if !k8s.IsPodReady(pod) {
+		// there is no point in trying to query the shutdown status of a Pod that is not ready
 		return true, nil
 	}
 	response, err := ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, pod.Name)
@@ -347,7 +347,7 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 	var podNames []string //nolint:prealloc
 	for _, p := range podsToRestart {
-		if p.Status.Phase != corev1.PodRunning {
+		if !k8s.IsPodReady(p) {
 			// There is no point in trying to shut down a Pod that is not running.
 			// Basing this off of the cached Kubernetes client's world view opens up a few edge
 			// cases where a Pod might in fact already be running but the client's cache is not yet
@@ -364,6 +364,7 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 }
 
 func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
+	// use client.Version here as we want the minimal version in the cluster not the one in the spec.
 	if supportsNodeShutdown(ctx.esClient.Version()) {
 		return ctx.requestNodeRestarts(podsToUpgrade)
 	}

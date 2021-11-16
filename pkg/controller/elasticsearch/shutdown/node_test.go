@@ -172,7 +172,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			deleteCalled := false
-			client := esclient.NewMockClient(version.MustParse("7.14.0"), func(req *http.Request) *http.Response {
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
 				if req.Method == http.MethodDelete {
 					deleteCalled = true
 				}
@@ -272,7 +272,7 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := esclient.NewMockClient(version.MustParse("7.14.0"), func(req *http.Request) *http.Response {
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
 				return &http.Response{
 					StatusCode: 200,
 					Body:       ioutil.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
@@ -394,7 +394,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			i := 0
 			var methodsCalled []string
-			client := esclient.NewMockClient(version.MustParse("7.14.0"), func(req *http.Request) *http.Response {
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
 				defer func() {
 					i++
 				}()
