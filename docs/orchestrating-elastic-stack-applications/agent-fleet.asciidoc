@@ -290,7 +290,7 @@ By default, every reference targets all instances in your Elasticsearch, Kibana 
 
 In contrast to what happens with Elastic Agent as standalone, the configuration is managed through Fleet, and it cannot be defined through `config` or `configRef` elements.
 
-You can only configure the setup part of the Fleet Server and Elastic Agent. You can override each of the environmental variables that agents consume, as documented in link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[Elastic Agent environment variables]. This allows different setups where components are deployed both in local Kubernetes cluster and externally.
+You can only configure the setup part of the Fleet Server and Elastic Agent. You can override each of the environment variables that agents consume, as documented in link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[Elastic Agent environment variables]. This allows different setups where components are deployed both in local Kubernetes cluster and externally.
 
 [id="{p}-elastic-agent-fleet-configuration-upgrade-specification"]
 === Upgrade the Elastic Agent specification
@@ -398,6 +398,29 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 === Customize Fleet Server Service
 
 By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. You can read more about link:k8s-services.html[making changes] to the Service and link:k8s-tls-certificates.html[customizing] TLS configuration in the documentation.
+
+[id="{p}-elastic-agent-fleet-configuration-override-default-fleet-configuration-settings"]
+=== Override default Fleet configuration settings
+
+ECK uses environment variables to control how Elastic Agent and Fleet Server should be configured. Sometimes, it might be required to override some of these settings. For example, if Kibana TLS certificate is signed by a well-known root and can't include `kibana-kb-http.namespace.svc` as a SAN, `KIBANA_FLEET_HOST` can be overriden to point to the URL that the certificate specifies. To do that, specify environment variable, as shown in the following example.
+
+[source,yaml]
+----
+...
+spec:
+  deployment:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          env:
+          - name: KIBANA_FLEET_HOST
+            value: "https://kibana.example.com:443"
+...
+----
+
+Check the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] to get a list of all the environment variables that can be used.
+
 
 [id="{p}-elastic-agent-fleet-configuration-examples"]
 == Configuration Examples
