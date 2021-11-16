@@ -23,7 +23,7 @@ Some debugging operations, like using the link:https://www.elastic.co/guide/en/e
 [id="{p}-190-diag-tool"]
 ==== New and improved diagnostic tool
 
-To provide more functionalities and better user experience we are moving away from script based diagnostic capture towards a dedicated binary. See ECK diagnostic tool link:https://github.com/elastic/eck-diagnostics[repository] for more details.
+To provide more functionalities and better user experience we are moving away from script based diagnostic capture towards a dedicated binary. Check the ECK diagnostic tool link:https://github.com/elastic/eck-diagnostics[repository] for more details.
 
 [float]
 [id="{p}-190-elastic-license-v2"]
