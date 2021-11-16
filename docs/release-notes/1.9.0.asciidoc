@@ -10,11 +10,11 @@
 
 * Inherit resource requirements in init containers {pull}4963[#4963]
 
-All init containers will inherit resource requirements from the main containers. As this changes the `podTemplate` in use, upgrading ECK will cause rolling update to all ECK-managed Pods.
+All init containers will inherit resource requirements from the main containers by default.
 
 * Move to env vars based Fleet mode configuration {pull}4889[#4889]
 
-ECK operator will configure Elastic Agent in Fleet mode using link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[environmental variables] instead of a configuration file. This method allows you to easily override the default settings. If the override is configured with any other method, an additional step is required before the operator upgrade.
+ECK operator will configure Elastic Agent in Fleet mode using link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[environment variables] instead of a configuration file. This method allows you to easily override the default settings. If the override is configured with any other method, an additional step is required before the operator upgrade.
 
 1. Update your Agent resources such that:
 +
@@ -35,10 +35,10 @@ spec:
 ...
 ----
 +
-b. `podTemplate` will work correctly both with and without `fleet-setup.yml` mount and file present. This file is no longer created/mounted by ECK starting with version `1.9.0`.
+b. `podTemplate` will work correctly both with `fleet-setup.yml` file and its mount, and without them. This file is no longer created/mounted by ECK starting with version `1.9.0`.
 
 2. Upgrade ECK to version `1.9.x`.
-3. Remove any modification and references to `fleet-setup.yml`. As ECK `1.9.x` uses environmental variables to set the default config, the environmental variables you've set in step 1.a. override the default values.
+3. Remove any modification and references to `fleet-setup.yml`. As ECK `1.9.x` uses environment variables to set the default config, the environment variables you've set in step 1.a. override the default values.
 
 [[feature-1.9.0]]
 [float]
