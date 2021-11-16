@@ -402,7 +402,7 @@ By default, ECK creates a Service for Fleet Server that Elastic Agents can conne
 [id="{p}-elastic-agent-fleet-configuration-override-default-fleet-configuration-settings"]
 === Override default Fleet configuration settings
 
-ECK uses environmental variables to control how Elastic Agent and Fleet Server should be configured. Sometimes, it might be required to override some of those settings. For example, if Kibana TLS certificate is signed by a well-known root and can't include `kibana-kb-http.namespace.svc` as a SAN, `KIBANA_FLEET_HOST` can be overriden to point to the URL that the certificate specifies. To do that, specify environmental variable, as below.
+ECK uses environment variables to control how Elastic Agent and Fleet Server should be configured. Sometimes, it might be required to override some of these settings. For example, if Kibana TLS certificate is signed by a well-known root and can't include `kibana-kb-http.namespace.svc` as a SAN, `KIBANA_FLEET_HOST` can be overriden to point to the URL that the certificate specifies. To do that, specify environmental variable, as shown in the following example.
 
 [source,yaml]
 ----
@@ -419,7 +419,7 @@ spec:
 ...
 ----
 
-List of all environmental variables that can be used is available in Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs].
+Check the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] to get a list of all the environment variables that can be used.
 
 
 [id="{p}-elastic-agent-fleet-configuration-examples"]
