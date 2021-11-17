@@ -14,18 +14,14 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var (
 	sampleES = esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "esns",
-			Name:      "esname",
-			Annotations: map[string]string{
-				annotation.ControllerVersionAnnotation: "1.5.0",
-			},
+			Namespace:       "esns",
+			Name:            "esname",
 			ResourceVersion: "42"},
 		Status: esv1.ElasticsearchStatus{Version: "7.15.0"},
 	}

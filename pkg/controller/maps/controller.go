@@ -27,7 +27,6 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -180,21 +179,9 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}, nil
 	}
 
-	// check for compatibility with the operator version
-	compatible, err := r.isCompatible(ctx, &ems)
-	if err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	// MapsServer will be deleted nothing to do other than remove the watches
 	if ems.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&ems))
-	}
-
-	// update controller version annotation if necessary
-	err = annotation.UpdateControllerVersion(ctx, r.Client, &ems, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if !association.IsConfiguredIfSet(&ems, r.recorder) {
@@ -203,15 +190,6 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 
 	// main reconciliation logic
 	return r.doReconcile(ctx, ems)
-}
-
-func (r *ReconcileMapsServer) isCompatible(ctx context.Context, kb *emsv1alpha1.ElasticMapsServer) (bool, error) {
-	selector := map[string]string{NameLabelName: kb.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return compat, err
 }
 
 func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (reconcile.Result, error) {

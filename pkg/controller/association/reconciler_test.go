@@ -27,7 +27,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -296,32 +295,6 @@ func TestReconciler_Reconcile_DeletionTimestamp(t *testing.T) {
 	// should do nothing
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, res)
-}
-
-func TestReconciler_Reconcile_NotCompatible(t *testing.T) {
-	kb := sampleKibanaWithESRef()
-	// set an invalid/incompatible controller annotation. It is actually quite hard to test the non-compatible case
-	// as we don't produce an event nor an error but only a log statement (something we should fix). So we approximate
-	// the non-compatible case here by injecting an invalid version annotation which will produce an error
-	kb.Annotations = map[string]string{
-		annotation.ControllerVersionAnnotation: "0.9.x",
-	}
-	r := testReconciler(&kb)
-	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	// should error out
-	require.Error(t, err)
-}
-
-func TestReconciler_Reconcile_SetsControllerVersion(t *testing.T) {
-	kb := sampleKibanaWithESRef()
-	r := testReconciler(&kb)
-	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	require.NoError(t, err)
-	// should update the controller version annotation on Kibana
-	var updatedKibana kbv1.Kibana
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
-	require.NoError(t, err)
-	require.Equal(t, "1.5.0", updatedKibana.Annotations[annotation.ControllerVersionAnnotation])
 }
 
 func TestReconciler_Reconcile_DeletesOrphanedResource(t *testing.T) {

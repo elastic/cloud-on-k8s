@@ -24,7 +24,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -171,25 +170,8 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, nil
 	}
 
-	selector := map[string]string{label.ClusterNameLabelName: es.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	if !compat {
-		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
-		return reconcile.Result{}, nil
-	}
-
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	err = annotation.UpdateControllerVersion(ctx, r.Client, &es, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 

@@ -27,7 +27,6 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -190,10 +189,6 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &as); err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
 	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
 		return reconcile.Result{}, err
@@ -204,24 +199,11 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
 		return reconcile.Result{}, nil
 	}
 
 	return r.doReconcile(ctx, request, &as)
-}
-
-func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServer) (bool, error) {
-	selector := map[string]string{ApmServerNameLabelName: as.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, as, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return compat, err
 }
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {

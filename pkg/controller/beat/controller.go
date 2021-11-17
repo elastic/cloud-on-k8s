@@ -30,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/otherbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/packetbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -145,16 +144,8 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &beat); err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if beat.IsMarkedForDeletion() {
 		return reconcile.Result{}, nil
-	}
-
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, &beat, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	res, err := r.doReconcile(ctx, beat).Aggregate()
@@ -191,15 +182,6 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	}
 
 	return nil
-}
-
-func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat) (bool, error) {
-	selector := map[string]string{beatcommon.NameLabelName: beat.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, beat, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, beat, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return compat, err
 }
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {

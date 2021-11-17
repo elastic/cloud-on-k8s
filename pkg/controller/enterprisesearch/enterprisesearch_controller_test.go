@@ -22,7 +22,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -64,32 +63,6 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 
 	// watch should have been cleared out
 	require.Empty(t, r.dynamicWatches.Secrets.Registrations())
-}
-
-func TestReconcileEnterpriseSearch_Reconcile_SetControllerVersion(t *testing.T) {
-	sample := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
-		Spec:       entv1.EnterpriseSearchSpec{Version: "7.7.0"},
-	}
-	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.NewFakeClient(&sample),
-		dynamicWatches: watches.NewDynamicWatches(),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{
-					Version: "1.7.0",
-				},
-			},
-		},
-	}
-	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
-	require.NoError(t, err)
-
-	// resource should be annotated with controller version
-	var updated entv1.EnterpriseSearch
-	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&sample), &updated)
-	require.NoError(t, err)
-	require.Equal(t, map[string]string{annotation.ControllerVersionAnnotation: "1.7.0"}, updated.Annotations)
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing.T) {

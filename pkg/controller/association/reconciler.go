@@ -174,14 +174,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, associated); err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, associated, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -318,15 +310,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// update the association configuration if necessary
 	return r.updateAssocConf(ctx, expectedAssocConf, association)
-}
-
-// isCompatible returns true if the given resource can be reconciled by the current controller.
-func (r *Reconciler) isCompatible(ctx context.Context, associated commonv1.Associated) (bool, error) {
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, associated, r.Labels(k8s.ExtractNamespacedName(associated)), r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, associated, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return compat, err
 }
 
 // getElasticsearch attempts to retrieve the referenced Elasticsearch resource. If not found, it removes
