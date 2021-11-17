@@ -360,7 +360,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		return crdList[i].Name <= crdList[j].Name
 	})
 
-	webhookDefinitionList := make([]WebhookDefinition, 0)
+	var webhookDefinitionList []WebhookDefinition
 
 	for _, webhook := range extracts.operatorWebhooks {
 		webhookDefinitionList = append(webhookDefinitionList, validatingWebhookConfigurationToWebhookDefinition(webhook)...)
