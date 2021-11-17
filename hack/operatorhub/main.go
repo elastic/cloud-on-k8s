@@ -272,8 +272,7 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 	yamlReader := yaml.NewYAMLReader(bufio.NewReader(stream))
 
 	parts := &yamlExtracts{
-		crds:             make(map[string]*CRD),
-		operatorWebhooks: make([]admissionv1.ValidatingWebhookConfiguration, 0),
+		crds: make(map[string]*CRD),
 	}
 
 	for {
@@ -406,7 +405,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 // validatingWebhookConfigurationToWebhookDefinition converts a standard validating webhook configuration resource
 // to an OLM webhook definition resource.
 func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admissionv1.ValidatingWebhookConfiguration) []WebhookDefinition {
-	webhookDefinitions := make([]WebhookDefinition, 0)
+	var webhookDefinitions []WebhookDefinition
 	for _, webhook := range webhookConfiguration.Webhooks {
 		webhookDefinitions = append(webhookDefinitions, WebhookDefinition{
 			Type:                    "ValidatingAdmissionWebhook",
