@@ -233,7 +233,7 @@ type CRD struct {
 	Def         []byte
 }
 
-// WebhookDefinition cooresponds to a WebhookDefinition within an OLM
+// WebhookDefinition corresponds to a WebhookDefinition within an OLM
 // ClusterServiceVersion.
 // See https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/
 type WebhookDefinition struct {
