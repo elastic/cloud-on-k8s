@@ -20,7 +20,7 @@ func ForcedUpgradeTestSteps(k *test.K8sClient, initial Builder, conditions []tes
 		// apply the fixed Elasticsearch resource
 		WithSteps(fixed.UpgradeTestSteps(k)).
 		// ensure the cluster eventually becomes healthy
-		WithSteps(test.CheckTestSteps(fixed, k)).
+		WithSteps(test.CheckTestSteps(&fixed, k)).
 		// then remove it
 		WithSteps(fixed.DeletionTestSteps(k))
 }
