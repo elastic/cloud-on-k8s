@@ -16,7 +16,7 @@ import (
 
 var log = ulog.Log.WithName("migrate-data")
 
-// ShardMigration implements the shutddown.Interface based on externally controlled shard allocation filtering.
+// ShardMigration implements the shutdown.Interface based on externally controlled shard allocation filtering.
 type ShardMigration struct {
 	es esv1.Elasticsearch
 	c  esclient.Client
@@ -53,7 +53,7 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownComplete}, nil
 }
 
-// nodeMayHaveShard returns true if one of those condition is met:
+// nodeMayHaveShard returns true if one of those conditions is met:
 // - the given ES Pod is holding at least one shard (primary or replica)
 // - some shards in the cluster don't have a node assigned, in which case we can't be sure about the 1st condition
 //   this may happen if the node was just restarted: the shards it is holding appear unassigned

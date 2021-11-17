@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -177,7 +176,6 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 }
 
 func TestUpgradePodsDeletion_Delete(t *testing.T) {
-	// logutil.InitLogger()
 	type fields struct {
 		upgradeTestPods upgradeTestPods
 		shardLister     client.ShardLister
