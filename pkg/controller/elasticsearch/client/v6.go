@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
@@ -19,6 +20,10 @@ var errNotSupportedInEs6x = errors.New("not supported in Elasticsearch 6.x")
 
 type clientV6 struct {
 	baseClient
+}
+
+func (c *clientV6) Version() version.Version {
+	return c.version
 }
 
 func (c *clientV6) GetClusterInfo(ctx context.Context) (Info, error) {
@@ -162,6 +167,18 @@ func (c *clientV6) GetAutoscalingCapacity(_ context.Context) (AutoscalingCapacit
 }
 
 func (c *clientV6) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) error {
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) GetShutdown(context.Context, *string) (ShutdownResponse, error) {
+	return ShutdownResponse{}, errNotSupportedInEs6x
+}
+
+func (c *clientV6) PutShutdown(context.Context, string, ShutdownType, string) error {
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) DeleteShutdown(context.Context, string) error {
 	return errNotSupportedInEs6x
 }
 

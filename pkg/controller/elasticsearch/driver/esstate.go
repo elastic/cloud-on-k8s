@@ -9,13 +9,14 @@ import (
 	"sync"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 // ESState gives information about Elasticsearch current status.
 type ESState interface {
 	// NodesInCluster returns true if the given nodes exist in the Elasticsearch cluster.
 	NodesInCluster(nodeNames []string) (bool, error)
+	// NodeNameToID returns a map of Elasticsearch node ID to node name.
+	NodeNameToID() (map[string]string, error)
 	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
@@ -54,10 +55,10 @@ func initOnce(once *sync.Once, f func() error) error {
 
 // memoizingNodes provides nodes information.
 type memoizingNodes struct {
-	once     sync.Once
-	esClient esclient.Client
-	ctx      context.Context
-	nodes    []string
+	once         sync.Once
+	esClient     esclient.Client
+	ctx          context.Context
+	nodeNameToID map[string]string
 }
 
 // initialize requests Elasticsearch for nodes information, only once.
@@ -66,7 +67,10 @@ func (n *memoizingNodes) initialize() error {
 	if err != nil {
 		return err
 	}
-	n.nodes = nodes.Names()
+	n.nodeNameToID = map[string]string{}
+	for id, node := range nodes.Nodes {
+		n.nodeNameToID[node.Name] = id
+	}
 	return nil
 }
 
@@ -75,7 +79,19 @@ func (n *memoizingNodes) NodesInCluster(nodeNames []string) (bool, error) {
 	if err := initOnce(&n.once, n.initialize); err != nil {
 		return false, err
 	}
-	return stringsutil.StringsInSlice(nodeNames, n.nodes), nil
+	for _, name := range nodeNames {
+		if _, exists := n.nodeNameToID[name]; !exists {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (n *memoizingNodes) NodeNameToID() (map[string]string, error) {
+	if err := initOnce(&n.once, n.initialize); err != nil {
+		return nil, err
+	}
+	return n.nodeNameToID, nil
 }
 
 // -- Shards allocation enabled

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
@@ -43,8 +44,11 @@ type fakeESClient struct { //nolint:maligned
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
 	GetClusterRoutingAllocationCallCount int
 
+	Shutdowns map[string]esclient.NodeShutdown
+
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
+	version                     version.Version
 }
 
 func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, n int) error {
@@ -103,6 +107,29 @@ func (f *fakeESClient) GetClusterHealth(_ context.Context) (esclient.Health, err
 func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
 	return f.health, nil
+}
+
+func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, reason string) error {
+	return nil
+}
+
+func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.ShutdownResponse, error) {
+	var ns []esclient.NodeShutdown //nolint:prealloc
+	for k, v := range f.Shutdowns {
+		if nodeID != nil && k != *nodeID {
+			continue
+		}
+		ns = append(ns, v)
+	}
+	return esclient.ShutdownResponse{Nodes: ns}, nil
+}
+
+func (f *fakeESClient) DeleteShutdown(ctx context.Context, nodeID string) error {
+	return nil
+}
+
+func (f *fakeESClient) Version() version.Version {
+	return f.version
 }
 
 // -- ESState tests

@@ -64,15 +64,19 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		return podsToDelete, nil
 	}
 
-	if err := ctx.prepareClusterForNodeRestart(ctx.esClient, ctx.esState); err != nil {
-		return podsToDelete, err
+	if err := ctx.prepareClusterForNodeRestart(podsToDelete); err != nil {
+		return nil, err
 	}
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
-	deletedPods := []corev1.Pod{}
+	var deletedPods []corev1.Pod //nolint:prealloc
 	for _, podToDelete := range podsToDelete {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
 			return deletedPods, err
 		}
+		if readyToDelete, err := ctx.readyToDelete(podToDelete); err != nil || !readyToDelete {
+			return deletedPods, err
+		}
+
 		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations); err != nil {
 			return deletedPods, err
 		}

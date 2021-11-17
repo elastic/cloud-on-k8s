@@ -401,3 +401,77 @@ type SearchResults struct {
 	Shards json.RawMessage            // model when needed
 	Aggs   map[string]json.RawMessage // model when needed
 }
+
+// ShutdownType is the set of different shutdown operation types supported by Elasticsearch.
+type ShutdownType string
+
+var (
+
+	// Restart indicates the intent to restart an Elasticsearch node.
+	Restart ShutdownType = "restart"
+	// Remove indicates the intent to permanently remove a node from the Elasticsearch cluster.
+	Remove ShutdownType = "remove"
+)
+
+// ShutdownStatus is the set of different status a shutdown requests can have.
+type ShutdownStatus string
+
+var (
+	// ShutdownStarted means a shutdown request has been accepted and is being processed in Elasticsearch.
+	ShutdownStarted ShutdownStatus = "STARTED"
+	// ShutdownComplete means a shutdown request has been processed and the node can be either restarted or taken out
+	// of the cluster by an orchestrator.
+	ShutdownComplete ShutdownStatus = "COMPLETE"
+	// ShutdownStalled means a shutdown request cannot be processed further because of a limiting constraint e.g.
+	// no place for shard data to migrate to.
+	ShutdownStalled ShutdownStatus = "STALLED"
+	// ShutdownNotStarted is an error condition that should never be returned by Elasticsearch and indicates a bug if so.
+	ShutdownNotStarted ShutdownStatus = "NOT_STARTED"
+)
+
+// ShardMigration is the status of shards that are being migrated away from a node that goes through a shutdown.
+type ShardMigration struct {
+	Status          ShutdownStatus `json:"status"`
+	ShardsRemaining int            `json:"shards_remaining"`
+	Explanation     string         `json:"explanation"`
+}
+
+// PersistentTasks expresses the status of preparing ongoing persistent tasks for a node shutdown.
+type PersistentTasks struct {
+	Status ShutdownStatus `json:"status"`
+}
+
+// Plugins represents the status of Elasticsearch plugins being prepared for a node shutdown.
+type Plugins struct {
+	Status ShutdownStatus `json:"status"`
+}
+
+// NodeShutdown is the representation of an ongoing shutdown request.
+type NodeShutdown struct {
+	NodeID                string          `json:"node_id"`
+	Type                  string          `json:"type"`
+	Reason                string          `json:"reason"`
+	ShutdownStartedMillis int             `json:"shutdown_started_millis"`
+	Status                ShutdownStatus  `json:"status"`
+	ShardMigration        ShardMigration  `json:"shard_migration"`
+	PersistentTasks       PersistentTasks `json:"persistent_tasks"`
+	Plugins               Plugins         `json:"plugins"`
+}
+
+// Is tests a NodeShutdown request whether it is of type t.
+func (ns NodeShutdown) Is(t ShutdownType) bool {
+	// API returns type in capital letters currently
+	return strings.EqualFold(ns.Type, string(t))
+}
+
+// ShutdownRequest is the body of a node shutdown request.
+type ShutdownRequest struct {
+	Type            ShutdownType  `json:"type"`
+	Reason          string        `json:"reason"`
+	AllocationDelay time.Duration `json:"allocation_delay,omitempty"`
+}
+
+// ShutdownResponse is the response wrapper for retrieving the status of ongoing node shutdowns from Elasticsearch.
+type ShutdownResponse struct {
+	Nodes []NodeShutdown `json:"nodes"`
+}

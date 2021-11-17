@@ -102,8 +102,8 @@ func (c *baseClient) post(ctx context.Context, pathWithQuery string, in, out int
 	return c.request(ctx, http.MethodPost, pathWithQuery, in, out, nil)
 }
 
-func (c *baseClient) delete(ctx context.Context, pathWithQuery string, in, out interface{}) error {
-	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out, nil)
+func (c *baseClient) delete(ctx context.Context, pathWithQuery string) error {
+	return c.request(ctx, http.MethodDelete, pathWithQuery, nil, nil, nil)
 }
 
 // request performs a new http request

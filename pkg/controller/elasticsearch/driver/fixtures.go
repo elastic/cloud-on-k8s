@@ -208,6 +208,16 @@ func (u upgradeTestPods) podsInCluster() []string {
 	return result
 }
 
+func (u upgradeTestPods) podNamesToESNodeID() map[string]string {
+	result := make(map[string]string)
+	// to minimize the cognitive overhead during unit testing we are using
+	// pod name as Elasticsearch node ID here.
+	for _, p := range u.podsInCluster() {
+		result[p] = p
+	}
+	return result
+}
+
 func (u upgradeTestPods) toMasters(mutation mutation) []string {
 	var result []string
 	for _, testPod := range u {
