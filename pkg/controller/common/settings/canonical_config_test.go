@@ -12,10 +12,11 @@ import (
 )
 
 func TestCanonicalConfig_Render(t *testing.T) {
-	config := MustCanonicalConfig(map[string]string{
+	config := MustCanonicalConfig(map[string]interface{}{
 		"aaa":        "aa  a",
 		"bbb":        "b  bb",
 		"aab":        "a a a",
+		"key":        map[string]interface{}{"emptyarray": []string{}},
 		"withquotes": "aa\"bb\"aa",
 		"zz":         "zzz  z z z",
 	})
@@ -24,10 +25,12 @@ func TestCanonicalConfig_Render(t *testing.T) {
 	expected := []byte(`aaa: aa  a
 aab: a a a
 bbb: b  bb
+key:
+  emptyarray: []
 withquotes: aa"bb"aa
 zz: zzz  z z z
 `)
-	require.Equal(t, expected, output)
+	require.Equal(t, string(expected), string(output))
 }
 
 func TestCanonicalConfig_MergeWith(t *testing.T) {

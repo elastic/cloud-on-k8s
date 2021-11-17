@@ -8,7 +8,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -59,6 +60,14 @@ func (d *defaultDriver) handleRollingUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	nodeNameToID, err := esState.NodeNameToID()
+	if err != nil {
+		results.WithError(err)
+	}
+	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
+	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
+
 	// Get the list of pods currently existing in the StatefulSetList
 	currentPods, err := statefulSets.GetActualPods(d.Client)
 	if err != nil {
@@ -72,6 +81,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		statefulSets,
 		esClient,
 		esState,
+		nodeShutdown,
 		expectedMaster,
 		actualMasters,
 		podsToUpgrade,
@@ -90,8 +100,8 @@ func (d *defaultDriver) handleRollingUpgrades(
 		results.WithResult(defaultRequeue)
 	}
 
-	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
-	res := d.MaybeEnableShardsAllocation(ctx, esClient, esState)
+	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
+	res := d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)
 	results.WithResults(res)
 
 	return results
@@ -104,6 +114,7 @@ type rollingUpgradeCtx struct {
 	statefulSets    sset.StatefulSetList
 	esClient        esclient.Client
 	shardLister     esclient.ShardLister
+	nodeShutdown    *shutdown.NodeShutdown
 	esState         ESState
 	expectations    *expectations.Expectations
 	reconcileState  *reconcile.State
@@ -120,6 +131,7 @@ func newRollingUpgrade(
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
+	nodeShutdown *shutdown.NodeShutdown,
 	expectedMaster []string,
 	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
@@ -133,6 +145,7 @@ func newRollingUpgrade(
 		statefulSets:    statefulSets,
 		esClient:        esClient,
 		shardLister:     esClient,
+		nodeShutdown:    nodeShutdown,
 		esState:         esState,
 		expectations:    d.Expectations,
 		reconcileState:  d.ReconcileState,
@@ -146,7 +159,7 @@ func newRollingUpgrade(
 
 func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
 	deletedPods, err := ctx.Delete()
-	if errors.IsConflict(err) || errors.IsNotFound(err) {
+	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
 		// (could be the statefulset controller)
 		// TODO: should we at least log this one in debug mode ?
@@ -203,10 +216,10 @@ func podsToUpgrade(
 			// retrieve pod to inspect its revision label
 			var pod corev1.Pod
 			err := client.Get(context.Background(), podRef, &pod)
-			if err != nil && !errors.IsNotFound(err) {
+			if err != nil && !apierrors.IsNotFound(err) {
 				return toUpgrade, err
 			}
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
@@ -246,7 +259,27 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 	}
 }
 
-func (d *defaultDriver) MaybeEnableShardsAllocation(
+func (d *defaultDriver) maybeCompleteNodeUpgrades(
+	ctx context.Context,
+	esClient esclient.Client,
+	esState ESState,
+	nodeShutdown *shutdown.NodeShutdown,
+) *reconciler.Results {
+	// we still have to enable shard allocation in cases where we just upgraded from
+	// a version that did not support node shutdown to a supported version.
+	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
+	if !results.HasError() && supportsNodeShutdown(esClient.Version()) {
+		// clear all shutdowns of type restart that have completed
+		// this relies on the fact the maybeEnableShardsAllocation checks expectations
+		err := nodeShutdown.Clear(ctx, &esclient.ShutdownComplete)
+		if err != nil {
+			results = results.WithError(err)
+		}
+	}
+	return results
+}
+
+func (d *defaultDriver) maybeEnableShardsAllocation(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
@@ -296,24 +329,57 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	return results
 }
 
-func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
+func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
+	if !supportsNodeShutdown(ctx.esClient.Version()) {
+		return true, nil // always OK to restart pre node shutdown support
+	}
+	if !k8s.IsPodReady(pod) {
+		// there is no point in trying to query the shutdown status of a Pod that is not ready
+		return true, nil
+	}
+	response, err := ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, pod.Name)
+	if err != nil {
+		return false, err
+	}
+	return response.Status == esclient.ShutdownComplete, nil
+}
+
+func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
+	var podNames []string //nolint:prealloc
+	for _, p := range podsToRestart {
+		if !k8s.IsPodReady(p) {
+			// There is no point in trying to shut down a Pod that is not running.
+			// Basing this off of the cached Kubernetes client's world view opens up a few edge
+			// cases where a Pod might in fact already be running but the client's cache is not yet
+			// up to date. But the trade-off made here i.e. accepting an ungraceful shutdown in these
+			// edge case vs. being able to automatically unblock configuration rollouts that are blocked
+			// due to misconfiguration, for example unfulfillable node selectors, seems worth it.
+			continue
+		}
+		podNames = append(podNames, p.Name)
+	}
+	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
+	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.
+	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
+}
+
+func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
+	// use client.Version here as we want the minimal version in the cluster not the one in the spec.
+	if supportsNodeShutdown(ctx.esClient.Version()) {
+		return ctx.requestNodeRestarts(podsToUpgrade)
+	}
 	// Disable shard allocations to avoid shards moving around while the node is temporarily down
-	shardsAllocationEnabled, err := esState.ShardAllocationsEnabled()
+	shardsAllocationEnabled, err := ctx.esState.ShardAllocationsEnabled()
 	if err != nil {
 		return err
 	}
 	if shardsAllocationEnabled {
 		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
-		if err := esClient.DisableReplicaShardsAllocation(ctx.parentCtx); err != nil {
+		if err := ctx.esClient.DisableReplicaShardsAllocation(ctx.parentCtx); err != nil {
 			return err
 		}
 	}
 
 	// Request a flush to optimize indices recovery when the node restarts.
-	if err := doFlush(ctx.parentCtx, ctx.ES, esClient); err != nil {
-		return err
-	}
-
-	// TODO: halt ML jobs on that node
-	return nil
+	return doFlush(ctx.parentCtx, ctx.ES, ctx.esClient)
 }

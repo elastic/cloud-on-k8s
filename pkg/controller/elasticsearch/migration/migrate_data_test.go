@@ -75,13 +75,13 @@ func TestNodeMayHaveShard(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NodeMayHaveShard(context.Background(), esv1.Elasticsearch{}, tt.args.shardLister, tt.args.podName)
+			got, err := nodeMayHaveShard(context.Background(), esv1.Elasticsearch{}, tt.args.shardLister, tt.args.podName)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeMayHaveShard() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("nodeMayHaveShard() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("NodeMayHaveShard() = %v, want %v", got, tt.want)
+				t.Errorf("nodeMayHaveShard() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -113,7 +113,7 @@ func TestMigrateData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			allocationSetter := fakeAllocationSetter{}
-			err := MigrateData(context.Background(), esv1.Elasticsearch{}, &allocationSetter, tt.leavingNodes)
+			err := migrateData(context.Background(), esv1.Elasticsearch{}, &allocationSetter, tt.leavingNodes)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, allocationSetter.value)
 		})

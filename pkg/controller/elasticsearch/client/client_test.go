@@ -246,7 +246,7 @@ func TestClient_request(t *testing.T) {
 			return "put", testClient.put(context.Background(), testPath, nil, nil)
 		},
 		func() (string, error) {
-			return "delete", testClient.delete(context.Background(), testPath, nil, nil)
+			return "delete", testClient.delete(context.Background(), testPath)
 		},
 	}
 

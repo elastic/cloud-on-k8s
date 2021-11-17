@@ -24,7 +24,6 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -148,12 +147,6 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 		return reconcile.Result{}, nil
 	}
 
-	// check for compatibility with the operator version
-	compatible, err := r.isCompatible(ctx, &kb)
-	if err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -164,23 +157,8 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&kb))
 	}
 
-	// update controller version annotation if necessary
-	err = annotation.UpdateControllerVersion(ctx, r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	// main reconciliation logic
 	return r.doReconcile(ctx, request, &kb)
-}
-
-func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bool, error) {
-	selector := map[string]string{KibanaNameLabelName: kb.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return compat, err
 }
 
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {

@@ -144,18 +144,19 @@ func TestHandleDownscale(t *testing.T) {
 	k8sClient := k8s.NewFakeClient(runtimeObjs...)
 	esClient := &fakeESClient{}
 	actualStatefulSets := sset.StatefulSetList{ssetMaster3Replicas, ssetData4Replicas}
+	shardLister := migration.NewFakeShardLister(
+		esclient.Shards{
+			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
+		},
+	)
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
 		expectations:   expectations.NewExpectations(k8sClient),
 		reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
-		shardLister: migration.NewFakeShardLister(
-			esclient.Shards{
-				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
-			},
-		),
-		esClient:  esClient,
-		es:        es,
-		parentCtx: context.Background(),
+		nodeShutdown:   migration.NewShardMigration(es, esClient, shardLister),
+		esClient:       esClient,
+		es:             es,
+		parentCtx:      context.Background(),
 	}
 
 	// request master nodes downscale from 3 to 1 replicas
@@ -226,11 +227,12 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster3Replicas[1]))
 
 	// once data migration is over the downscale should continue for next data nodes
-	downscaleCtx.shardLister = migration.NewFakeShardLister(
+	shardLister = migration.NewFakeShardLister(
 		esclient.Shards{
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
+	downscaleCtx.nodeShutdown = migration.NewShardMigration(es, esClient, shardLister)
 	nodespec.UpdateReplicas(&expectedAfterDownscale[0], pointer.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
@@ -614,7 +616,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			name: "downscale possible from 3 to 2",
 			args: args{
 				ctx: downscaleContext{
-					shardLister: migration.NewFakeShardLister(esclient.Shards{}),
+					nodeShutdown: migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})),
 				},
 				downscale: ssetDownscale{
 					initialReplicas: 3,
@@ -633,13 +635,13 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			args: args{
 				ctx: downscaleContext{
 					reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
-					shardLister: migration.NewFakeShardLister(esclient.Shards{
+					nodeShutdown: migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{
 						{
 							Index:    "index-1",
 							Shard:    "0",
 							NodeName: "default-2",
 						},
-					}),
+					})),
 				},
 				downscale: ssetDownscale{
 					statefulSet:     sset.TestSset{Name: "default"}.Build(),
@@ -720,7 +722,7 @@ func Test_attemptDownscale(t *testing.T) {
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
 				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
-				shardLister:    migration.NewFakeShardLister(esclient.Shards{}),
+				nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})),
 				esClient:       &fakeESClient{},
 			}
 			// do the downscale

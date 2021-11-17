@@ -23,6 +23,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -232,9 +233,26 @@ type CRD struct {
 	Def         []byte
 }
 
+// WebhookDefinition corresponds to a WebhookDefinition within an OLM
+// ClusterServiceVersion.
+// See https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/
+type WebhookDefinition struct {
+	AdmissionReviewVersions []string                         `json:"admissionReviewVersions"`
+	ContainerPort           int                              `json:"containerPort"`
+	DeploymentName          string                           `json:"deploymentName"`
+	FailurePolicy           *admissionv1.FailurePolicyType   `json:"failurePolicy"`
+	GenerateName            string                           `json:"generateName"`
+	Rules                   []admissionv1.RuleWithOperations `json:"rules"`
+	SideEffects             *admissionv1.SideEffectClass     `json:"sideEffects"`
+	TargetPort              int                              `json:"targetPort"`
+	Type                    string                           `json:"type"`
+	WebhookPath             *string                          `json:"webhookPath"`
+}
+
 type yamlExtracts struct {
-	crds         map[string]*CRD
-	operatorRBAC []rbacv1.PolicyRule
+	crds             map[string]*CRD
+	operatorRBAC     []rbacv1.PolicyRule
+	operatorWebhooks []admissionv1.ValidatingWebhookConfiguration
 }
 
 func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
@@ -244,6 +262,10 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 
 	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, fmt.Errorf("failed to register apiextensions/v1: %w", err)
+	}
+
+	if err := admissionv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, fmt.Errorf("failed to register admissionregistration/v1: %w", err)
 	}
 
 	decoder := scheme.Codecs.UniversalDeserializer()
@@ -289,21 +311,24 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 			if obj.Name == operatorName {
 				parts.operatorRBAC = obj.Rules
 			}
+		case *admissionv1.ValidatingWebhookConfiguration:
+			parts.operatorWebhooks = append(parts.operatorWebhooks, *obj)
 		}
 	}
 }
 
 type RenderParams struct {
-	NewVersion     string
-	ShortVersion   string
-	PrevVersion    string
-	StackVersion   string
-	OperatorRepo   string
-	OperatorRBAC   string
-	AdditionalArgs []string
-	CRDList        []*CRD
-	PackageName    string
-	UbiOnly        bool
+	NewVersion       string
+	ShortVersion     string
+	PrevVersion      string
+	StackVersion     string
+	OperatorRepo     string
+	OperatorRBAC     string
+	AdditionalArgs   []string
+	CRDList          []*CRD
+	OperatorWebhooks string
+	PackageName      string
+	UbiOnly          bool
 }
 
 func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
@@ -334,6 +359,17 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		return crdList[i].Name <= crdList[j].Name
 	})
 
+	var webhookDefinitionList []WebhookDefinition
+
+	for _, webhook := range extracts.operatorWebhooks {
+		webhookDefinitionList = append(webhookDefinitionList, validatingWebhookConfigurationToWebhookDefinition(webhook)...)
+	}
+
+	webhooks, err := gyaml.Marshal(webhookDefinitionList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal operator webhook rules: %w", err)
+	}
+
 	versionParts := strings.Split(conf.NewVersion, ".")
 	if len(versionParts) < 2 {
 		return nil, fmt.Errorf("newVersion in config file appears to be invalid [%s]", conf.NewVersion)
@@ -352,17 +388,39 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 	additionalArgs = append(additionalArgs, "--distribution-channel="+conf.Packages[packageIndex].DistributionChannel)
 
 	return &RenderParams{
-		NewVersion:     conf.NewVersion,
-		ShortVersion:   strings.Join(versionParts[:2], "."),
-		PrevVersion:    conf.PrevVersion,
-		StackVersion:   conf.StackVersion,
-		OperatorRepo:   conf.Packages[packageIndex].OperatorRepo,
-		AdditionalArgs: additionalArgs,
-		CRDList:        crdList,
-		OperatorRBAC:   string(rbac),
-		PackageName:    conf.Packages[packageIndex].PackageName,
-		UbiOnly:        conf.Packages[packageIndex].UbiOnly,
+		NewVersion:       conf.NewVersion,
+		ShortVersion:     strings.Join(versionParts[:2], "."),
+		PrevVersion:      conf.PrevVersion,
+		StackVersion:     conf.StackVersion,
+		OperatorRepo:     conf.Packages[packageIndex].OperatorRepo,
+		AdditionalArgs:   additionalArgs,
+		CRDList:          crdList,
+		OperatorWebhooks: string(webhooks),
+		OperatorRBAC:     string(rbac),
+		PackageName:      conf.Packages[packageIndex].PackageName,
+		UbiOnly:          conf.Packages[packageIndex].UbiOnly,
 	}, nil
+}
+
+// validatingWebhookConfigurationToWebhookDefinition converts a standard validating webhook configuration resource
+// to an OLM webhook definition resource.
+func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admissionv1.ValidatingWebhookConfiguration) []WebhookDefinition {
+	var webhookDefinitions []WebhookDefinition
+	for _, webhook := range webhookConfiguration.Webhooks {
+		webhookDefinitions = append(webhookDefinitions, WebhookDefinition{
+			Type:                    "ValidatingAdmissionWebhook",
+			AdmissionReviewVersions: webhook.AdmissionReviewVersions,
+			TargetPort:              9443,
+			ContainerPort:           443,
+			DeploymentName:          "elastic-operator",
+			FailurePolicy:           webhook.FailurePolicy,
+			GenerateName:            webhook.Name,
+			Rules:                   webhook.Rules,
+			SideEffects:             webhook.SideEffects,
+			WebhookPath:             webhook.ClientConfig.Service.Path,
+		})
+	}
+	return webhookDefinitions
 }
 
 func render(params *RenderParams, templatesDir, outDir string) error {

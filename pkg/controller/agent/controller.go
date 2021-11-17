@@ -21,7 +21,6 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -141,16 +140,8 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, &agent); err != nil || !compatible {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	if agent.IsMarkedForDeletion() {
 		return reconcile.Result{}, nil
-	}
-
-	if err := annotation.UpdateControllerVersion(ctx, r.Client, &agent, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	res, err := r.doReconcile(ctx, agent).Aggregate()
@@ -193,16 +184,6 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 		return tracing.CaptureError(ctx, err)
 	}
 	return nil
-}
-
-func (r *ReconcileAgent) isCompatible(ctx context.Context, agent *agentv1alpha1.Agent) (bool, error) {
-	defer tracing.Span(&ctx)()
-	selector := map[string]string{NameLabelName: agent.Name}
-	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, agent, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, agent, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-	}
-	return compat, err
 }
 
 func (r *ReconcileAgent) onDelete(obj types.NamespacedName) {

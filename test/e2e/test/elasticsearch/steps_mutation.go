@@ -85,6 +85,16 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	//nolint:thelper
 	return test.StepList{
 		test.Step{
+			Name: "Give Elasticsearch some time to allocate internal indices",
+			Test: func(_ *testing.T) {
+				// TODO remove this step once https://github.com/elastic/cloud-on-k8s/issues/5040 does not apply anymore
+				time.Sleep(30 * time.Second)
+			},
+			Skip: func() bool {
+				return version.MustParse(b.Elasticsearch.Spec.Version).LT(version.MinFor(7, 16, 0))
+			},
+		},
+		test.Step{
 			Name: "Add some data to the cluster before starting the mutation",
 			Test: func(t *testing.T) {
 				dataIntegrityCheck = NewDataIntegrityCheck(k, b)

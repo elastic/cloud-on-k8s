@@ -20,7 +20,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -125,23 +124,6 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			},
 			wantRequeue:      true,
 			wantRequeueAfter: true, // license recheck
-			wantErr:          false,
-		},
-		{
-			name: "Sets controller version",
-			reconciler: ReconcileMapsServer{
-				Client:         k8s.NewFakeClient(&emsFixture),
-				recorder:       record.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
-			},
-			post: func(r ReconcileMapsServer) {
-				var reconciled v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), nsnFixture, &reconciled))
-				require.Equal(t, map[string]string{annotation.ControllerVersionAnnotation: "1.6.0"}, reconciled.Annotations)
-			},
-			wantRequeueAfter: true, // certificate rotation
 			wantErr:          false,
 		},
 		{

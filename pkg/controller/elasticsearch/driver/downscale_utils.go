@@ -14,6 +14,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -22,9 +23,9 @@ import (
 // propagated from the main driver.
 type downscaleContext struct {
 	// clients
-	k8sClient   k8s.Client
-	esClient    esclient.Client
-	shardLister esclient.ShardLister
+	k8sClient    k8s.Client
+	esClient     esclient.Client
+	nodeShutdown shutdown.Interface
 	// driver states
 	resourcesState reconcile.ResourcesState
 	observedState  observer.State
@@ -46,11 +47,12 @@ func newDownscaleContext(
 	expectations *expectations.Expectations,
 	// ES cluster
 	es esv1.Elasticsearch,
+	nodeShutdown shutdown.Interface,
 ) downscaleContext {
 	return downscaleContext{
 		k8sClient:      k8sClient,
 		esClient:       esClient,
-		shardLister:    esClient,
+		nodeShutdown:   nodeShutdown,
 		resourcesState: resourcesState,
 		observedState:  observedState,
 		reconcileState: reconcileState,

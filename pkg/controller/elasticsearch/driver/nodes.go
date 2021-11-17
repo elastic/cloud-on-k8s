@@ -165,10 +165,15 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Maybe clear zen2 voting config exclusions.
 	requeue, err = zen2.ClearVotingConfigExclusions(ctx, d.ES, d.Client, esClient, actualStatefulSets)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(fmt.Errorf("when clearing voting exclusions: %w", err))
 	}
 	if requeue {
 		results.WithResult(defaultRequeue)
+	}
+	// shutdown logic is dependent on Elasticsearch version
+	nodeShutdowns, err := newShutdownInterface(d.ES, esClient, esState)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// Phase 2: handle sset scale down.
@@ -183,7 +188,9 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		reconcileState,
 		d.Expectations,
 		d.ES,
+		nodeShutdowns,
 	)
+
 	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {

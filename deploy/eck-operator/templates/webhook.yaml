@@ -1,6 +1,6 @@
 {{- if .Values.webhook.enabled -}}
 ---
-apiVersion: {{ include "eck-operator.webhookAPIVersion" $ }}
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ include "eck-operator.webhookName" . }}
@@ -27,9 +27,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-agent-validation-v1alpha1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - agent.k8s.elastic.co
@@ -56,9 +56,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-apm-validation-v1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - apm.k8s.elastic.co
@@ -85,9 +85,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - apm.k8s.elastic.co
@@ -114,9 +114,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-beat-validation-v1beta1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - beat.k8s.elastic.co
@@ -143,9 +143,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-ent-validation-v1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - enterprisesearch.k8s.elastic.co
@@ -172,9 +172,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-ent-validation-v1beta1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - enterprisesearch.k8s.elastic.co
@@ -201,9 +201,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-es-validation-v1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - elasticsearch.k8s.elastic.co
@@ -230,9 +230,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-es-validation-v1beta1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - elasticsearch.k8s.elastic.co
@@ -259,9 +259,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-kb-validation-v1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - kibana.k8s.elastic.co
@@ -288,9 +288,9 @@ webhooks:
     {{- toYaml . | nindent 4 }}
 {{- end }}
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
-{{- include "eck-operator.webhookMatchPolicy" $ | indent 2 }}
-{{- include "eck-operator.webhookAdmissionReviewVersions" $ | indent 2 }}
-{{- include "eck-operator.webhookSideEffects" $ | indent 2 }}
+  matchPolicy: Exact
+  admissionReviewVersions: [v1beta1]
+  sideEffects: None
   rules:
   - apiGroups:
     - kibana.k8s.elastic.co
