@@ -58,13 +58,6 @@ kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operato
 ----
 
 [source,shell,subs="attributes,callouts"]
-.If you are running a version of Kubernetes before 1.16: use the legacy manifests
-----
-kubectl replace -f https://download.elastic.co/downloads/eck/{eck_version}/crds-legacy.yaml
-kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator-legacy.yaml
-----
-
-[source,shell,subs="attributes,callouts"]
 .If you are using Helm: force upgrade the CRD chart to move to the v1 CRDs
 ----
 helm upgrade elastic-operator elastic/eck-operator-crds -n elastic-system --force

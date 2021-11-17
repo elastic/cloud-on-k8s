@@ -51,10 +51,6 @@ check istio
 $MG --values="${SCRIPT_DIR}/testdata/no_defaults.yaml" > "${TEMP_DIR}/no_defaults.yaml"
 check no_defaults
 
-# manifest-gen with Kubernetes 1.13
-$MG --values="${SCRIPT_DIR}/testdata/kube113.yaml" > "${TEMP_DIR}/kube113.yaml"
-check kube113
-
 # manifest-gen with Kubernetes 1.16
 $MG --values="${SCRIPT_DIR}/testdata/kube116.yaml" > "${TEMP_DIR}/kube116.yaml"
 check kube116 

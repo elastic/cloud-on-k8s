@@ -115,54 +115,6 @@ elastic-webhook-server
 {{- end -}}
 
 {{/*
-Add the webhook sideEffects field on supported Kubernetes versions
-*/}}
-{{- define "eck-operator.webhookSideEffects" -}}
-{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
-{{- $kubeVersionSupported := semverCompare ">=1.13.0-0" $kubeVersion -}}
-{{- if $kubeVersionSupported }}
-sideEffects: "None"
-{{- end }}
-{{- end }}
-
-{{/*
-Use v1 of ValidatingWebhookConfiguration on supported Kubernetes versions
-*/}}
-{{- define "eck-operator.webhookAPIVersion" -}}
-{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
-{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
-{{- if $kubeVersionSupported -}}
-admissionregistration.k8s.io/v1
-{{- else -}}
-admissionregistration.k8s.io/v1beta1
-{{- end -}}
-{{- end }}
-
-
-{{/*
-Define admissionReviewVersions based on Kubernetes version
-*/}}
-{{- define "eck-operator.webhookAdmissionReviewVersions" -}}
-{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
-{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
-{{- if $kubeVersionSupported  }}
-admissionReviewVersions: [v1beta1]
-{{- end }}
-{{- end }}
-
-
-{{/*
-Define webhook match policy based on Kubernetes version
-*/}}
-{{- define "eck-operator.webhookMatchPolicy" -}}
-{{- $kubeVersion := (include "eck-operator.effectiveKubeVersion" .) -}}
-{{- $kubeVersionSupported := semverCompare ">=1.16.0-0" $kubeVersion -}}
-{{- if $kubeVersionSupported  }}
-matchPolicy: Exact
-{{- end }}
-{{- end }}
-
-{{/*
 RBAC permissions
 NOTE - any changes made to RBAC permissions below require
 updating docs/operating-eck/eck-permissions.asciidoc file.
