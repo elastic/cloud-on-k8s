@@ -191,7 +191,13 @@ func TestVolumeExpansion(t *testing.T) {
 						return err
 					}
 					patchStorageSize(&es, resizedStorage)
-					return k.Client.Update(context.Background(), &es)
+					err := k.Client.Update(context.Background(), &es)
+					if err != nil {
+						return err
+					}
+					// update the expected nodeSets in the builder because the ES resource has just been modified by an external mechanism
+					b.WithExpectedNodeSets(es.Spec.NodeSets...)
+					return err
 				}),
 			},
 			{
