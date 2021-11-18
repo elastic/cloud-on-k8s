@@ -27,7 +27,7 @@ func NewConfig(cfg map[string]interface{}) Config {
 }
 
 // MarshalJSON implements the Marshaler interface.
-func (c *Config) MarshalJSON() ([]byte, error) {
+func (c Config) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.Data)
 }
 
