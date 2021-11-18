@@ -227,6 +227,8 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		AuthSecretName: "ent-user",
 		CASecretName:   "es-tls-certs",
 		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"}
+	// the association conf is required to reconcile the Enterprise Search resource, we set it manually because it is not
+	// persisted and instead set by the association controller in real condition
 	ent.SetAssociationConf(&assocConf)
 
 	r := &ReconcileEnterpriseSearch{
@@ -237,6 +239,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	}
 	_, err := r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
+
 	// the Enterprise Search deployment should be created and specify version 7.7.0
 	var dep appsv1.Deployment
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
@@ -250,20 +253,21 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	ent.Spec.Version = "7.8.0"
 	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
-	ent.SetAssociationConf(&assocConf)
+	ent.SetAssociationConf(&assocConf) // required to reconcile, normally set by the assoc controller
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.7.0", dep.Spec.Template.Labels[VersionLabelName])
+
 	// retrieve the updated ent resource
 	require.NoError(t, r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&ent), &ent))
-
 	// update the associated Elasticsearch to 7.8.0: Enterprise Search should now be upgraded to 7.8.0
 	assocConf.Version = "7.8.0"
-	ent.SetAssociationConf(&assocConf)
+	ent.SetAssociationConf(&assocConf) // required to reconcile, normally set by the assoc controller
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
+
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.0", dep.Spec.Template.Labels[VersionLabelName])
@@ -275,9 +279,11 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	ent.Spec.Version = "7.8.1"
 	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
-	ent.SetAssociationConf(&assocConf)
+
+	ent.SetAssociationConf(&assocConf) // required to reconcile, normally set by the assoc controller
 	_, err = r.doReconcile(context.Background(), ent)
 	require.NoError(t, err)
+
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
 	require.NoError(t, err)
 	require.Equal(t, "7.8.1", dep.Spec.Template.Labels[VersionLabelName])
