@@ -28,5 +28,5 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 		return err
 	}
 	// Watch for changes on Elasticsearch clusters.
-	return c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{})
+	return c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces))
 }

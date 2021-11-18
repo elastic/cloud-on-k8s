@@ -65,7 +65,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r.Client)
+	return addWatches(c, r.Client, p)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -99,10 +99,10 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
-func addWatches(c controller.Controller, k8sClient k8s.Client) error {
+func addWatches(c controller.Controller, k8sClient k8s.Client, parameters operator.Parameters) error {
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(parameters.ManagedNamespaces),
 	); err != nil {
 		return err
 	}

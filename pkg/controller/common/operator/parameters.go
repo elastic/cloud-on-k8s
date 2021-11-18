@@ -18,6 +18,8 @@ import (
 type Parameters struct {
 	// ExposedNodeLabels holds regular expressions of node labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
 	ExposedNodeLabels esvalidation.NodeLabels
+	// ManagedNamespaces are the list of namespaces that the operator manages.
+	ManagedNamespaces []string
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
 	// OperatorInfo is information about the operator

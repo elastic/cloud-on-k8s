@@ -553,6 +553,7 @@ func startOperator(ctx context.Context) error {
 		Dialer:            dialer,
 		ExposedNodeLabels: exposedNodeLabels,
 		IPFamily:          ipFamily,
+		ManagedNamespaces: managedNamespaces,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
 		CACertRotation: certificates.RotationParams{

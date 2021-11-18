@@ -60,7 +60,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler)
+	return addWatches(c, reconciler, params)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -79,10 +79,10 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
+func addWatches(c controller.Controller, r *ReconcileElasticsearch, p operator.Parameters) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces),
 	); err != nil {
 		return err
 	}

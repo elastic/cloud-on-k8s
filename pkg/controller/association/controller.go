@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -44,12 +45,12 @@ func AddAssociationController(
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(c, r, associationInfo.Predicates)
 }
 
-func addWatches(c controller.Controller, r *Reconciler) error {
+func addWatches(c controller.Controller, r *Reconciler, predicates []predicate.Predicate) error {
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
-	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}, predicates...); err != nil {
 		return err
 	}
 

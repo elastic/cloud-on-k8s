@@ -49,7 +49,7 @@ func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operato
 	if err != nil {
 		return err
 	}
-	return AddWatches(c, r)
+	return AddWatches(c, r, params)
 }
 
 // NewReconciler returns a new reconcile.Reconciler

@@ -14,6 +14,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -32,7 +33,7 @@ var (
 func Test_EsMonitoringReconciler_NoAssociation(t *testing.T) {
 	es := sampleES
 	resourceVersion := es.ResourceVersion
-	r := association.NewTestAssociationReconciler(esMonitoringAssociationInfo(), &es)
+	r := association.NewTestAssociationReconciler(esMonitoringAssociationInfo(operator.Parameters{}), &es)
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&es)})
 	require.NoError(t, err)
 	// should not update the Elasticsearch resource
