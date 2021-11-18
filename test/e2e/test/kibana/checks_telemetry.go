@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
 	"github.com/pkg/errors"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
