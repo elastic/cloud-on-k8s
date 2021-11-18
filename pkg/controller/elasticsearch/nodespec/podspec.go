@@ -47,7 +47,9 @@ func BuildPodTemplateSpec(
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
-	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
+	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasNodeLabelsToPodsAnnotations())
+	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources, downwardAPIVolume)
+
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -59,6 +61,7 @@ func BuildPodTemplateSpec(
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
 		keystoreResources,
+		es.NodeLabelsToPodsAnnotations(),
 	)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -98,6 +101,11 @@ func BuildPodTemplateSpec(
 	builder, err = stackmon.WithMonitoring(client, builder, es)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
+	}
+
+	// inherit the node labels list to trigger a restart when changed
+	if es.HasNodeLabelsToPodsAnnotations() {
+		builder = builder.WithAnnotations(map[string]string{esv1.NodeLabelsToPodsAnnotationsAnnotation: es.Annotations[esv1.NodeLabelsToPodsAnnotationsAnnotation]})
 	}
 
 	return builder.PodTemplate, nil

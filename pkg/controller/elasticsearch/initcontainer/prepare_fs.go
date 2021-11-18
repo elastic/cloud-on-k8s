@@ -6,6 +6,7 @@ package initcontainer
 
 import (
 	"path"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -97,7 +98,7 @@ var (
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
-func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume) (corev1.Container, error) {
+func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, nodeLabelsAsAnnotations []string) (corev1.Container, error) {
 	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
 	// be attempting to move files from this secret volume mount (any attempt to do so will be logged as errors).
@@ -105,27 +106,35 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume) 
 	certificatesVolumeMount.MountPath = initContainerTransportCertificatesVolumeMountPath
 
 	privileged := false
+	volumeMounts := append(
+		// we will also inherit all volume mounts from the main container later on in the pod template builder
+		PluginVolumes.InitContainerVolumeMounts(),
+		certificatesVolumeMount,
+	)
+	if len(nodeLabelsAsAnnotations) > 0 {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      esvolume.DownwardAPIVolumeName,
+			ReadOnly:  true,
+			MountPath: esvolume.DownwardAPIMountPath,
+		})
+	}
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            PrepareFilesystemContainerName,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-		Env:     defaults.PodDownwardEnvVars(),
-		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
-		VolumeMounts: append(
-			// we will also inherit all volume mounts from the main container later on in the pod template builder
-			PluginVolumes.InitContainerVolumeMounts(),
-			certificatesVolumeMount,
-		),
-		Resources: defaultResources,
+		Env:          defaults.PodDownwardEnvVars(),
+		Command:      []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
+		VolumeMounts: volumeMounts,
+		Resources:    defaultResources,
 	}
 
 	return container, nil
 }
 
-func RenderPrepareFsScript() (string, error) {
-	return RenderScriptTemplate(TemplateParams{
+func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
+	templateParams := TemplateParams{
 		PluginVolumes: PluginVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{
@@ -144,5 +153,10 @@ func RenderPrepareFsScript() (string, error) {
 			esvolume.NodeTransportCertificateCertFile,
 		),
 		TransportCertificatesSecretVolumeMountPath: esvolume.TransportCertificatesSecretVolumeMountPath,
-	})
+	}
+	if len(expectedAnnotations) > 0 {
+		expectedAnnotationsAsString := strings.Join(expectedAnnotations, " ")
+		templateParams.ExpectedAnnotations = &expectedAnnotationsAsString
+	}
+	return RenderScriptTemplate(templateParams)
 }

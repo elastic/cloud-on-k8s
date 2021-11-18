@@ -10,11 +10,14 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	esvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
+	// ExposedNodeLabels are the labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
+	ExposedNodeLabels esvalidation.NodeLabels
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
 	// OperatorInfo is information about the operator

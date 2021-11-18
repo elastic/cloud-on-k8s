@@ -21,6 +21,7 @@ const (
 	EnableTracingFlag             = "enable-tracing"
 	EnableWebhookFlag             = "enable-webhook"
 	EnforceRBACOnRefsFlag         = "enforce-rbac-on-refs"
+	ExposedNodeLabels             = "exposed-node-labels"
 	IPFamilyFlag                  = "ip-family"
 	KubeClientTimeout             = "kube-client-timeout"
 	ManageWebhookCertsFlag        = "manage-webhook-certs"

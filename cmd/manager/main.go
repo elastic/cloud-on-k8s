@@ -213,6 +213,11 @@ func Command() *cobra.Command {
 		false,
 		"Enables a validating webhook server in the operator process.",
 	)
+	cmd.Flags().StringSlice(
+		operator.ExposedNodeLabels,
+		[]string{},
+		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods, empty by default",
+	)
 	cmd.Flags().String(
 		operator.IPFamilyFlag,
 		"",
@@ -537,8 +542,16 @@ func startOperator(ctx context.Context) error {
 	if viper.GetBool(operator.EnableTracingFlag) {
 		tracer = tracing.NewTracer("elastic-operator")
 	}
+
+	exposedNodeLabels, err := esvalidation.NewExposedNodeLabels(viper.GetStringSlice(operator.ExposedNodeLabels))
+	if err != nil {
+		log.Error(err, "Failed to parse exposed node labels")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:            dialer,
+		ExposedNodeLabels: exposedNodeLabels,
 		IPFamily:          ipFamily,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
@@ -557,7 +570,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset)
+		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -762,7 +775,12 @@ func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
 	log.Info("Orphan secrets garbage collection complete")
 }
 
-func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, validateStorageClass bool, clientset kubernetes.Interface) {
+func setupWebhook(
+	mgr manager.Manager,
+	certRotation certificates.RotationParams,
+	validateStorageClass bool,
+	clientset kubernetes.Interface,
+	exposedNodeLabels esvalidation.NodeLabels) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -817,7 +835,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, validateStorageClass)
+	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

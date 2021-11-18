@@ -11,6 +11,7 @@ import (
 )
 
 func TestRenderScriptTemplate(t *testing.T) {
+	expectedAnnotations := "topology.kubernetes.io/zone topology.kubernetes.io/region"
 	tests := []struct {
 		name           string
 		params         TemplateParams
@@ -33,6 +34,14 @@ func TestRenderScriptTemplate(t *testing.T) {
 				"yes | cp -avf /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
 				"ln -sf /secrets/users /usr/share/elasticsearch/users",
 			},
+		},
+		{
+			name: "With expected annotations",
+			params: TemplateParams{
+				PluginVolumes:       PluginVolumes,
+				ExpectedAnnotations: &expectedAnnotations,
+			},
+			wantSubstr: []string{},
 		},
 	}
 	for _, tt := range tests {

@@ -155,6 +155,9 @@ config:
   # certificatesRotateBefore defines when to rotate a certificate that is due to expire.
   certificatesRotateBefore: 24h
 
+  # exposedNodeLabels is an array of node labels which are allowed to be copied as annotations on Elasticsearch Pods.
+  exposedNodeLabels: [ "topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*" ]
+
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
   setDefaultSecurityContext: true
 

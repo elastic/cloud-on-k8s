@@ -8,6 +8,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -191,12 +193,12 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	terminationGracePeriodSeconds := DefaultTerminationGracePeriodSeconds
 	varFalse := false
 
-	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSet, nil)
+	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSet, nil, volume.DownwardAPI{})
 	// should be sorted
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
 
-	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil)
+	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil, nil)
 	require.NoError(t, err)
 	// init containers should be patched with volume and inherited env vars and image
 	headlessSvcEnvVar := corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}

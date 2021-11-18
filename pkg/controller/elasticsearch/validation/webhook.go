@@ -29,10 +29,11 @@ const (
 
 var eslog = ulog.Log.WithName("es-validation")
 
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels) {
 	wh := &validatingWebhook{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
+		exposedNodeLabels:    exposedNodeLabels,
 	}
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
 	mgr.GetWebhookServer().Register(webhookPath, &webhook.Admission{Handler: wh})
@@ -42,6 +43,7 @@ type validatingWebhook struct {
 	client               k8s.Client
 	decoder              *admission.Decoder
 	validateStorageClass bool
+	exposedNodeLabels    NodeLabels
 }
 
 var _ admission.DecoderInjector = &validatingWebhook{}
@@ -54,7 +56,7 @@ func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 
 func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(es)
+	return ValidateElasticsearch(es, wh.exposedNodeLabels)
 }
 
 func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.Elasticsearch) error {
@@ -71,7 +73,7 @@ func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.E
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			curr.Name, errs)
 	}
-	return ValidateElasticsearch(curr)
+	return ValidateElasticsearch(curr, wh.exposedNodeLabels)
 }
 
 func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {
@@ -104,8 +106,8 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 	return admission.Allowed("")
 }
 
-func ValidateElasticsearch(es esv1.Elasticsearch) error {
-	errs := check(es, validations)
+func ValidateElasticsearch(es esv1.Elasticsearch, exposedNodeLabels NodeLabels) error {
+	errs := check(es, validations(exposedNodeLabels))
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},

@@ -22,9 +22,10 @@ const (
 func NewInitContainers(
 	transportCertificatesVolume volume.SecretVolume,
 	keystoreResources *keystore.Resources,
+	nodeLabelsAsAnnotations []string,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
-	prepareFsContainer, err := NewPrepareFSInitContainer(transportCertificatesVolume)
+	prepareFsContainer, err := NewPrepareFSInitContainer(transportCertificatesVolume, nodeLabelsAsAnnotations)
 	if err != nil {
 		return nil, err
 	}

@@ -151,6 +151,9 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	// Patch the Pods to add the expected node labels as annotations
+	results.WithResults(annotatePodsWithNodeLabels(ctx, d.Client, d.ES))
+
 	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
 	if err != nil {
 		return results.WithError(err)
