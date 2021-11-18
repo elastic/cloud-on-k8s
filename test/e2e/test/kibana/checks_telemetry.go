@@ -89,14 +89,14 @@ func unmarshalTelemetryResponse(bytes []byte, kbVersion version.Version) (StackS
 	return stats[0].StackStats, nil
 }
 
-// v2Stats partially models the response from a request to /api/telemetry/v1/clusters/_stats >=7.16.0
+// v3Stats partially models the response from a request to /api/telemetry/v2/clusters/_stats >=7.16.0
 type v3Stats []struct {
 	Stats struct {
 		StackStats StackStats `json:"stack_stats"`
 	} `json:"stats"`
 }
 
-// v2Stats partially models the response from a request to /api/telemetry/v1/clusters/_stats <7.16.0
+// v2Stats partially models the response from a request to /api/telemetry/v[1,2]/clusters/_stats <7.16.0
 type v2Stats []struct {
 	StackStats StackStats `json:"stack_stats"`
 }
