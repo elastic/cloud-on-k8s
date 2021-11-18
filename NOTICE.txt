@@ -3145,11 +3145,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.22.2
-Time    : 2021-09-17T11:53:35Z
+Version : v0.22.4
+Time    : 2021-11-17T23:34:20Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.22.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.22.4/LICENSE:
 
 
                                  Apache License
@@ -3357,11 +3357,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.22.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.22.2
-Time    : 2021-09-06T15:38:29Z
+Version : v0.22.4
+Time    : 2021-11-11T07:24:29Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.22.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.22.4/LICENSE:
 
 
                                  Apache License
@@ -3569,11 +3569,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.22.2/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.22.2
-Time    : 2021-09-17T12:08:50Z
+Version : v0.22.4
+Time    : 2021-11-17T23:48:57Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.22.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.22.4/LICENSE:
 
 
                                  Apache License
@@ -19239,11 +19239,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.22.2/LICE
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/kube-openapi
-Version : v0.0.0-20210421082810-95288971da7e
-Time    : 2021-04-21T08:28:10Z
+Version : v0.0.0-20211109043538-20434351676c
+Time    : 2021-11-09T04:35:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-20210421082810-95288971da7e/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-20211109043538-20434351676c/LICENSE:
 
 
                                  Apache License
