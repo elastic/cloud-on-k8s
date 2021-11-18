@@ -8,16 +8,13 @@ package kb
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
 	kibana2 "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,20 +79,12 @@ func TestTelemetry(t *testing.T) {
 			{
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: test.Eventually(func() error {
-					body, err := kibana.MakeTelemetryRequest(kbBuilder, k)
+					stats, err := kibana.MakeTelemetryRequest(kbBuilder, k)
 					if err != nil {
 						return err
 					}
 
-					var stats clusterStats
-					err = json.Unmarshal(body, &stats)
-					if err != nil {
-						return err
-					}
-					if len(stats) == 0 {
-						return errors.New("cluster stats is empty")
-					}
-					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.ECK
+					eck := stats.Kibana.Plugins.StaticTelemetry.ECK
 					if !eck.IsDefined() {
 						return fmt.Errorf("eck info not defined properly in telemetry data: %+v", eck)
 					}
@@ -107,17 +96,4 @@ func TestTelemetry(t *testing.T) {
 
 	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
 
-}
-
-// clusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats
-type clusterStats []struct {
-	StackStats struct {
-		Kibana struct {
-			Plugins struct {
-				StaticTelemetry struct {
-					telemetry.ECKTelemetry
-				} `json:"static_telemetry"`
-			} `json:"plugins"`
-		} `json:"kibana"`
-	} `json:"stack_stats"`
 }
