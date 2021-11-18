@@ -73,7 +73,6 @@ func unmarshalTelemetryResponse(bytes []byte, kbVersion version.Version) (StackS
 			return StackStats{}, err
 		}
 		if len(stats) == 0 {
-
 			return StackStats{}, noStatsErr
 		}
 		return stats[0].Stats.StackStats, nil
