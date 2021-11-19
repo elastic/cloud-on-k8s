@@ -66,7 +66,8 @@ func TestAPMKibanaAssociation(t *testing.T) {
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithAPMIntegration()
 
 	apmBuilder := apmserver.NewBuilder(name).
 		WithNamespace(ns).

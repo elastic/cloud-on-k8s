@@ -66,7 +66,8 @@ func testLongestPossibleName(t *testing.T) {
 		WithNodeCount(1).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithAPMIntegration()
 
 	apmNamePrefix := strings.Join([]string{esNamePrefix, "apm"}, "-")
 	apmName := strings.Join([]string{apmNamePrefix, strings.Repeat("x", name.MaxResourceNameLength-len(apmNamePrefix)-1)}, "-")

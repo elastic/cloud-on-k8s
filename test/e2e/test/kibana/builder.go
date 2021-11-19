@@ -176,6 +176,22 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
+func (b Builder) WithAPMIntegration() Builder {
+	if version.MustParse(b.Kibana.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+		// configuring APM integration is not necessary below 8.0.0, no-op
+		return b
+	}
+
+	return b.WithConfig(map[string]interface{}{
+		"xpack.fleet.packages": []map[string]interface{}{
+			{
+				"name":    "apm",
+				"version": "latest",
+			},
+		},
+	})
+}
+
 func (b Builder) WithConfig(config map[string]interface{}) Builder {
 	b.Kibana.Spec.Config = &commonv1.Config{
 		Data: config,
