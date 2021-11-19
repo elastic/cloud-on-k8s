@@ -9,14 +9,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-func in(s string, slice []string) bool {
-	// If the operator is managing all namespaces, we need to never ignore
-	// any namespace.
-	if len(slice) == 0 {
+func namespaceInSlice(namespace string, namespaces []string) bool {
+	// If the operator is managing all namespaces,
+	// never ignore any namespace.
+	if len(namespaces) == 0 {
 		return true
 	}
-	for _, candidate := range slice {
-		if s == candidate {
+	for _, ns := range namespaces {
+		if namespace == ns {
 			return true
 		}
 	}
@@ -35,15 +35,15 @@ func ManagedNamespacesPredicate(managedNamespaces []string) predicate.Predicate 
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			// Ignore resources that do not exist within the managed namespaces
-			return in(e.Object.GetNamespace(), managedNamespaces)
+			return namespaceInSlice(e.Object.GetNamespace(), managedNamespaces)
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Ignore resources that do not exist within the managed namespaces
-			return in(e.ObjectNew.GetNamespace(), managedNamespaces)
+			return namespaceInSlice(e.ObjectNew.GetNamespace(), managedNamespaces)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// Ignore resources that do not exist within the managed namespaces
-			return in(e.Object.GetNamespace(), managedNamespaces)
+			return namespaceInSlice(e.Object.GetNamespace(), managedNamespaces)
 		},
 	}
 }
