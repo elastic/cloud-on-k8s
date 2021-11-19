@@ -66,7 +66,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		// create the cluster
 		WithSteps(b.InitTestSteps(k)).
 		WithSteps(b.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(b, k)).
+		WithSteps(test.CheckTestSteps(&b, k)).
 		WithSteps(test.StepList{
 			// initial secure settings should be there in all nodes keystore
 			elasticsearch.CheckESKeystoreEntries(k, b, []string{

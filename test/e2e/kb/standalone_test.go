@@ -46,10 +46,11 @@ func mkKibanaStandaloneBuilders(t *testing.T) []test.Builder {
 
 	transform := func(builder test.Builder) test.Builder {
 		switch b := builder.(type) {
-		case elasticsearch.Builder:
-			return b.WithNamespace(namespace).
+		case *elasticsearch.Builder:
+			esBuilder := b.WithNamespace(namespace).
 				WithVersion(stackVersion).
 				WithRestrictedSecurityContext()
+			return &esBuilder
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithVersion(stackVersion).

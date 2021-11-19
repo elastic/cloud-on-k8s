@@ -113,5 +113,5 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		}
 	}
 
-	test.Sequence(initStepsFn, stepsFn, esBuilder, kbBuilder).RunSequential(t)
+	test.Sequence(initStepsFn, stepsFn, &esBuilder, kbBuilder).RunSequential(t)
 }

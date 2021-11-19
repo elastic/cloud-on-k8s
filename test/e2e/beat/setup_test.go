@@ -57,7 +57,7 @@ func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
 			"Filebeat": true,
 		})
 
-	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder).RunSequential(t)
+	test.Sequence(nil, dashboardCheck, &esBuilder, kbBuilder, fbBuilder).RunSequential(t)
 }
 
 func TestBeatKibanaRef(t *testing.T) {
@@ -106,7 +106,7 @@ func TestBeatKibanaRef(t *testing.T) {
 			"Heartbeat":  false,
 		})
 
-	test.Sequence(nil, dashboardCheck, esBuilder, kbBuilder, fbBuilder, mbBuilder, hbBuilder).RunSequential(t)
+	test.Sequence(nil, dashboardCheck, &esBuilder, kbBuilder, fbBuilder, mbBuilder, hbBuilder).RunSequential(t)
 }
 
 func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder, beatToDashboardsPresence map[string]bool) test.StepsFunc {

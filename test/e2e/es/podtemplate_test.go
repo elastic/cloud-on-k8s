@@ -119,7 +119,7 @@ func TestPodTemplateValidation(t *testing.T) {
 			WithSteps(b.CheckStackTestSteps(k))
 	}
 
-	test.Sequence(nil, stepsFn, b).RunSequential(t)
+	test.Sequence(nil, stepsFn, &b).RunSequential(t)
 }
 
 func TestCustomConfiguration(t *testing.T) {
@@ -242,5 +242,5 @@ func TestCustomConfiguration(t *testing.T) {
 			},
 		}
 	}
-	test.Sequence(init, runAnaylzer, es).RunSequential(t)
+	test.Sequence(init, runAnaylzer, &es).RunSequential(t)
 }

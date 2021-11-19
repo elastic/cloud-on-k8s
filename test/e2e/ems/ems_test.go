@@ -31,7 +31,7 @@ func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
 		WithRestrictedSecurityContext()
 
 	esWithLicense := test.LicenseTestBuilder()
-	esWithLicense.BuildingThis = esBuilder
+	esWithLicense.BuildingThis = &esBuilder
 
 	test.Sequence(nil, test.EmptySteps, esWithLicense, emsBuilder).RunSequential(t)
 }
@@ -49,7 +49,7 @@ func TestElasticMapsServerTLSDisabled(t *testing.T) {
 		WithRestrictedSecurityContext()
 
 	esWithLicense := test.LicenseTestBuilder()
-	esWithLicense.BuildingThis = esBuilder
+	esWithLicense.BuildingThis = &esBuilder
 
 	test.Sequence(nil, test.EmptySteps, esWithLicense, emsBuilder).RunSequential(t)
 }
@@ -74,7 +74,7 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 	emsUpgraded := ems.WithVersion(dstVersion).WithMutatedFrom(&ems)
 
 	esWithLicense := test.LicenseTestBuilder()
-	esWithLicense.BuildingThis = es
+	esWithLicense.BuildingThis = &es
 
 	test.RunMutations(t, []test.Builder{esWithLicense, ems}, []test.Builder{esWithLicense, emsUpgraded})
 }

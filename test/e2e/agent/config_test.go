@@ -49,7 +49,7 @@ func TestSystemIntegrationConfig(t *testing.T) {
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, agentBuilder, testPodBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, agentBuilder, testPodBuilder).RunSequential(t)
 }
 
 func TestAgentConfigRef(t *testing.T) {
@@ -91,7 +91,7 @@ func TestAgentConfigRef(t *testing.T) {
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentSystemIntegrationPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, agentBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, agentBuilder).RunSequential(t)
 }
 
 func TestMultipleOutputConfig(t *testing.T) {
@@ -126,7 +126,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, esBuilder1, esBuilder2, agentBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder1, &esBuilder2, agentBuilder).RunSequential(t)
 }
 
 func TestFleetMode(t *testing.T) {
@@ -164,7 +164,7 @@ func TestFleetMode(t *testing.T) {
 	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
 }
 
 func fleetConfigForKibana(esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {

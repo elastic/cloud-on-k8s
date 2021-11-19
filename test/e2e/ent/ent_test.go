@@ -30,7 +30,7 @@ func TestEnterpriseSearchCrossNSAssociation(t *testing.T) {
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, entBuilder).RunSequential(t)
 }
 
 func TestEnterpriseSearchTLSDisabled(t *testing.T) {
@@ -45,7 +45,7 @@ func TestEnterpriseSearchTLSDisabled(t *testing.T) {
 		WithTLSDisabled(true).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, entBuilder).RunSequential(t)
 }
 
 func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
@@ -70,5 +70,5 @@ func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 	// During the version upgrade, the operator will toggle Enterprise Search read-only mode.
 	// We don't verify this behaviour here. Instead, we just check Enterprise Search eventually
 	// runs fine in the new version: it would fail to run if read-only mode wasn't toggled.
-	test.RunMutations(t, []test.Builder{es, ent}, []test.Builder{es, entUpgraded})
+	test.RunMutations(t, []test.Builder{&es, ent}, []test.Builder{&es, entUpgraded})
 }

@@ -38,5 +38,5 @@ func TestESStackMonitoring(t *testing.T) {
 		return checks.MonitoredSteps(&monitored, k)
 	}
 
-	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)
+	test.Sequence(nil, steps, &metrics, &logs, &monitored).RunSequential(t)
 }

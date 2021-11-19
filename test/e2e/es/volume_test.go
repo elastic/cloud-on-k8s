@@ -34,7 +34,7 @@ func TestVolumeEmptyDir(t *testing.T) {
 		WithEmptyDirVolumes()
 
 	// volume type will be checked in creation steps
-	test.Sequence(nil, test.EmptySteps, b).
+	test.Sequence(nil, test.EmptySteps, &b).
 		RunSequential(t)
 }
 
@@ -55,7 +55,7 @@ func TestVolumeRetention(t *testing.T) {
 				},
 			},
 		}
-	}, b).RunSequential(t)
+	}, &b).RunSequential(t)
 
 	// The cluster has now been deleted as part of our usual test step sequence, but PVCs have been retained.
 	// Recreate it just this time without retaining the PVCs.
@@ -70,7 +70,7 @@ func TestVolumeRetention(t *testing.T) {
 				},
 			},
 		}
-	}, b2).RunSequential(t)
+	}, &b2).RunSequential(t)
 
 	// The cluster has now been deleted including its PVCs as evidenced by our usual deletion test step sequence.
 }
@@ -147,7 +147,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 		})
 
 	// successful creation should suffice to demonstrate use of multiple volumes
-	test.Sequence(nil, test.EmptySteps, b).
+	test.Sequence(nil, test.EmptySteps, &b).
 		RunSequential(t)
 }
 
@@ -229,8 +229,8 @@ func TestVolumeExpansion(t *testing.T) {
 				}),
 			},
 			// re-run all the regular checks
-		}.WithSteps(test.CheckTestSteps(b, k))
-	}, b).RunSequential(t)
+		}.WithSteps(test.CheckTestSteps(&b, k))
+	}, &b).RunSequential(t)
 }
 
 func getResizeableStorageClass(k8sClient k8s.Client) (string, error) {

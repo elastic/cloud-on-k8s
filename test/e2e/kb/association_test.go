@@ -41,7 +41,7 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder).RunSequential(t)
 }
 
 // TestEntSearchAssociation tests associating Kibana to both Elasticsearch and Enterprise Search.
@@ -74,7 +74,7 @@ func TestEntSearchAssociation(t *testing.T) {
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder, kbBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, &esBuilder, entBuilder, kbBuilder).RunSequential(t)
 }
 
 func TestKibanaAssociationWithNonExistentES(t *testing.T) {
@@ -172,5 +172,5 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 		}
 	}
 
-	test.RunUnrecoverableFailureScenario(t, failureSteps, kbBuilder, esBuilder)
+	test.RunUnrecoverableFailureScenario(t, failureSteps, kbBuilder, &esBuilder)
 }

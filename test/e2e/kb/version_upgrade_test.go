@@ -58,8 +58,8 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	// - at all times all pods had the same Kibana version.
 	test.RunMutationsWhileWatching(
 		t,
-		[]test.Builder{esBuilder, kbBuilder},
-		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
+		[]test.Builder{&esBuilder, kbBuilder},
+		[]test.Builder{&esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
 		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
 	)
 }
@@ -128,8 +128,8 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 
 	test.RunMutationsWhileWatching(
 		t,
-		[]test.Builder{esBuilder, kbBuilder1},
-		[]test.Builder{esBuilder, kbBuilder2, kbBuilder3},
+		[]test.Builder{&esBuilder, kbBuilder1},
+		[]test.Builder{&esBuilder, kbBuilder2, kbBuilder3},
 		[]test.Watcher{w, test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
 	)
 }

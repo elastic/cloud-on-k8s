@@ -31,7 +31,7 @@ func TestKillOneDataNode(t *testing.T) {
 
 	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(matchDataNode, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...),
-		b)
+		&b)
 }
 
 func TestKillOneMasterNode(t *testing.T) {
@@ -46,7 +46,7 @@ func TestKillOneMasterNode(t *testing.T) {
 
 	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(matchMasterNode, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...),
-		b)
+		&b)
 }
 
 func TestKillSingleNodeReusePV(t *testing.T) {
@@ -59,7 +59,7 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 
 	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(matchNode, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...),
-		b)
+		&b)
 }
 
 func TestDeleteServices(t *testing.T) {
@@ -98,7 +98,7 @@ func TestDeleteServices(t *testing.T) {
 			// resource creation when services are quickly created/deleted/created, leading to a flaky test.
 			// More details in https://github.com/elastic/cloud-on-k8s/issues/2602.
 		}
-	}, b).RunSequential(t)
+	}, &b).RunSequential(t)
 }
 
 func TestDeleteElasticUserSecret(t *testing.T) {
@@ -131,7 +131,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 				}),
 			},
 		}
-	}, b)
+	}, &b)
 }
 
 func TestDeleteCACert(t *testing.T) {
@@ -164,5 +164,5 @@ func TestDeleteCACert(t *testing.T) {
 				}),
 			},
 		}
-	}, b)
+	}, &b)
 }

@@ -33,7 +33,7 @@ func TestKillKibanaPod(t *testing.T) {
 	}
 	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(matchFirst, test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name)...),
-		esBuilder, kbBuilder)
+		&esBuilder, kbBuilder)
 }
 
 func TestKillKibanaDeployment(t *testing.T) {
@@ -66,5 +66,5 @@ func TestKillKibanaDeployment(t *testing.T) {
 				}),
 			},
 		}
-	}, esBuilder, kbBuilder)
+	}, &esBuilder, kbBuilder)
 }

@@ -55,7 +55,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		// make sure no left over license is still around
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
 		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(esBuilder, k)).
+		WithSteps(test.CheckTestSteps(&esBuilder, k)).
 		WithStep(licenseTestContext.Init()).
 		WithSteps(test.StepList{
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
@@ -128,7 +128,7 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 		}
 	}
 
-	test.Sequence(initStepsFn, stepsFn, esBuilder).RunSequential(t)
+	test.Sequence(initStepsFn, stepsFn, &esBuilder).RunSequential(t)
 }
 
 // TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
@@ -185,5 +185,5 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 		}
 	}
 
-	test.Sequence(initStepsFn, stepsFn, esBuilder).RunSequential(t)
+	test.Sequence(initStepsFn, stepsFn, &esBuilder).RunSequential(t)
 }

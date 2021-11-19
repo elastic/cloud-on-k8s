@@ -111,5 +111,5 @@ func TestRemoteCluster(t *testing.T) {
 		}
 	}
 
-	test.Sequence(before, stepsFn, es1Builder, es2Builder).RunSequential(t)
+	test.Sequence(before, stepsFn, &es1Builder, &es2Builder).RunSequential(t)
 }

@@ -76,5 +76,5 @@ func TestESSuspendPod(t *testing.T) {
 			// Internal view of the cluster should also be as originally specified
 			WithSteps(builder.CheckStackTestSteps(k))
 	}
-	test.Sequence(nil, stepsFn, builder).RunSequential(t)
+	test.Sequence(nil, stepsFn, &builder).RunSequential(t)
 }

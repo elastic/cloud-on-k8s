@@ -107,7 +107,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 		WithSteps(b.InitTestSteps(k)).
 		// wait until cluster is alive
 		WithSteps(b.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(b, k)).
+		WithSteps(test.CheckTestSteps(&b, k)).
 		// check roles and file realm have been propagated
 		WithSteps(test.StepList{
 			test.Step{
