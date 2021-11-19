@@ -22,9 +22,10 @@ LOG_VERBOSITY ?= 1
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
 # find or download controller-gen
+controller-gen: CONTROLLER_TOOLS_VERSION = $(shell grep controller-tools go.mod | grep -o "v[0-9\.]*")
 controller-gen:
-ifneq ($(shell controller-gen --version 2> /dev/null), Version: v0.6.2)
-	@(cd /tmp; GO111MODULE=on go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2)
+ifneq ($(shell controller-gen --version 2> /dev/null), Version: ${CONTROLLER_TOOLS_VERSION})
+	@(cd /tmp; GO111MODULE=on go install sigs.k8s.io/controller-tools/cmd/controller-gen@${CONTROLLER_TOOLS_VERSION})
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)

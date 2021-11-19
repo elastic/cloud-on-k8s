@@ -46,7 +46,7 @@ require (
 	k8s.io/klog/v2 v2.10.0
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 	sigs.k8s.io/controller-runtime v0.10.3
-	sigs.k8s.io/controller-tools v0.6.2
+	sigs.k8s.io/controller-tools v0.7.0
 )
 
 // this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this
