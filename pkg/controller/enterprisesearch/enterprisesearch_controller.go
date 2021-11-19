@@ -55,7 +55,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler)
+	return addWatches(c, reconciler, params)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -69,9 +69,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
+func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch, p operator.Parameters) error {
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
+	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces))
 	if err != nil {
 		return err
 	}

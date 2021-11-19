@@ -82,7 +82,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler)
+	return addWatches(c, reconciler, params)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -96,9 +96,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileApmServer) error {
+func addWatches(c controller.Controller, r *ReconcileApmServer, p operator.Parameters) error {
 	// Watch for changes to ApmServer
-	err := c.Watch(&source.Kind{Type: &apmv1.ApmServer{}}, &handler.EnqueueRequestForObject{})
+	err := c.Watch(&source.Kind{Type: &apmv1.ApmServer{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces))
 	if err != nil {
 		return err
 	}

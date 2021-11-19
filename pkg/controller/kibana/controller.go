@@ -51,7 +51,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler)
+	return addWatches(c, reconciler, params)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -65,9 +65,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileKibana) error {
+func addWatches(c controller.Controller, r *ReconcileKibana, p operator.Parameters) error {
 	// Watch for changes to Kibana
-	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 

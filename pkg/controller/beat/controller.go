@@ -54,7 +54,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(c, r, params)
 }
 
 // newReconciler returns a new reconcile.Reconciler.
@@ -69,9 +69,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 }
 
 // addWatches adds watches for all resources this controller cares about
-func addWatches(c controller.Controller, r *ReconcileBeat) error {
+func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters) error {
 	// Watch for changes to Beat
-	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
