@@ -23,6 +23,12 @@ func in(s string, slice []string) bool {
 	return false
 }
 
+// WithPredicates is a helper function to convert one or more predicates
+// into a slice of predicates.
+func WithPredicates(predicates ...predicate.Predicate) []predicate.Predicate {
+	return predicates
+}
+
 // ManagedNamespacesPredicate will return a predicate that will ignore events
 // that exist outside of the given managed namespaces,
 func ManagedNamespacesPredicate(managedNamespaces []string) predicate.Predicate {
