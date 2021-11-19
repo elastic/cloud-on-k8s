@@ -57,8 +57,7 @@ func TestManagedNamespacesPredicate(t *testing.T) {
 	require.NoError(t, err)
 
 	bldr := builder.ControllerManagedBy(mgr).
-		For(&appsv1.Deployment{}, builder.
-			WithPredicates(common.ManagedNamespacesPredicate([]string{managedNamespace})))
+		For(&appsv1.Deployment{}, builder.WithPredicates(common.ManagedNamespacesPredicate([]string{managedNamespace})))
 	require.NoError(t, bldr.Complete(reconciler))
 
 	ctx, cancel := context.WithCancel(context.Background())
