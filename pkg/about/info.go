@@ -32,6 +32,7 @@ var (
 		"upstream-community-operators": {},
 		"community-operators":          {},
 		"certified-operators":          {},
+		"ironbank":                     {},
 	}
 )
 
