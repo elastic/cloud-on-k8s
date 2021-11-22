@@ -85,10 +85,10 @@ var (
 			},
 		},
 		ApmUserRoleV80: esclient.Role{
-			Cluster: []string{"monitor/main"},
+			Cluster: []string{"cluster:monitor/main", "manage_index_templates"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{"traces-apm*", "metrics-apm*", "logs-apm*", "apm-*", "traces-apm.rum-*", "traces-apm.sampled-*"},
+					Names:      []string{"traces-apm*", "metrics-apm*", "logs-apm*"},
 					Privileges: []string{"auto_configure", "create_doc"},
 				},
 				{
