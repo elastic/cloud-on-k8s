@@ -667,7 +667,7 @@ func asyncTasks(
 	// - association user secrets
 	garbageCollectUsers(cfg, managedNamespaces)
 	// - soft-owned secrets
-	garbageCollectSoftOwnedSecrets(mgr.GetClient())
+	garbageCollectSoftOwnedSecrets(mgr.GetClient(), managedNamespaces)
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -768,7 +768,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
-func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
+func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client, managedNamespaces []string) {
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(k8sClient, map[string]client.Object{
 		esv1.Kind:          &esv1.Elasticsearch{},
 		apmv1.Kind:         &apmv1.ApmServer{},
@@ -777,7 +777,7 @@ func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
 		beatv1beta1.Kind:   &beatv1beta1.Beat{},
 		agentv1alpha1.Kind: &agentv1alpha1.Agent{},
 		emsv1alpha1.Kind:   &emsv1alpha1.ElasticMapsServer{},
-	}); err != nil {
+	}, managedNamespaces); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
 	}

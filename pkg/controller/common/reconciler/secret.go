@@ -25,6 +25,8 @@ const (
 	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/owner-namespace"
 	SoftOwnerNameLabel      = "eck.k8s.elastic.co/owner-name"
 	SoftOwnerKindLabel      = "eck.k8s.elastic.co/owner-kind"
+
+	secretsGarbageCollectionFailedMessage = "Orphan secrets garbage collection failed, will be attempted again at next operator restart."
 )
 
 // ReconcileSecret creates or updates the actual secret to match the expected one.
@@ -170,17 +172,33 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 	return nil
 }
 
-// GarbageCollectAllSoftOwnedOrphanSecrets iterates over all Secrets that reference a soft owner. If the owner
+// GarbageCollectAllSoftOwnedOrphanSecrets iterates over all Secrets in the namespaces that the operator
+// manages that reference a soft owner. If the owner
 // doesn't exist anymore, it deletes the secrets.
 // Should be called on operator startup, after cache warm-up, to cover cases where
 // the operator is down when the owner is deleted.
 // If the operator is up, garbage collection is already handled by GarbageCollectSoftOwnedSecrets on owner deletion.
-func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]client.Object) error {
+func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]client.Object, managedNamespaces []string) error {
+	if len(managedNamespaces) == 0 {
+		return garbageCollectSecrets(c, ownerKinds, "")
+	}
+	for _, namespace := range managedNamespaces {
+		if err := garbageCollectSecrets(c, ownerKinds, namespace); err != nil {
+			log.Error(err, secretsGarbageCollectionFailedMessage, "namespace", namespace)
+			continue
+		}
+	}
+
+	return nil
+}
+
+func garbageCollectSecrets(c k8s.Client, ownerKinds map[string]client.Object, namespace string) error {
 	// retrieve all secrets that reference a soft owner
 	var secrets corev1.SecretList
 	if err := c.List(context.Background(),
 		&secrets,
 		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
+		client.InNamespace(namespace),
 	); err != nil {
 		return err
 	}
