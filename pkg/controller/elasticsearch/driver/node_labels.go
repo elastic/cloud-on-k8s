@@ -40,7 +40,7 @@ func annotatePodsWithNodeLabels(ctx context.Context, c k8s.Client, es esv1.Elast
 	span, ctx := apm.StartSpan(ctx, "annotate_pods_with_node_labels", tracing.SpanTypeApp)
 	defer span.End()
 	results := reconciler.NewResult(ctx)
-	if !es.HasNodeLabelsToPodsAnnotations() {
+	if !es.HasDownwardNodeLabels() {
 		return results
 	}
 	actualPods, err := sset.GetActualPodsForCluster(c, es)
@@ -63,7 +63,7 @@ func annotatePodWithNodeLabels(c k8s.Client, pod corev1.Pod, es esv1.Elasticsear
 		return err
 	}
 	// Get the missing annotations.
-	podAnnotations, err := getPodAnnotations(&pod, es.NodeLabelsToPodsAnnotations(), node.Labels)
+	podAnnotations, err := getPodAnnotations(&pod, es.DownwardNodeLabels(), node.Labels)
 	if err != nil {
 		return err
 	}

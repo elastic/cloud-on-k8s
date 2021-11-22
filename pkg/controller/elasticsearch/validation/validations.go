@@ -77,14 +77,14 @@ func validations(exposedNodeLabels NodeLabels) []validation {
 
 func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
 	var errs field.ErrorList
-	for _, nodeLabel := range proposed.NodeLabelsToPodsAnnotations() {
+	for _, nodeLabel := range proposed.DownwardNodeLabels() {
 		if exposedNodeLabels.IsAllowed(nodeLabel) {
 			continue
 		}
 		errs = append(
 			errs,
 			field.Invalid(
-				field.NewPath("metadata").Child("annotations", esv1.NodeLabelsToPodsAnnotationsAnnotation),
+				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation),
 				nodeLabel,
 				notAllowedNodesLabelMsg,
 			),

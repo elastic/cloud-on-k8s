@@ -20,8 +20,8 @@ import (
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
-	// NodeLabelsToPodsAnnotationsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
-	NodeLabelsToPodsAnnotationsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
+	// DownwardNodeLabelsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
+	DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
@@ -456,9 +456,9 @@ type Elasticsearch struct {
 	AssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
 }
 
-// NodeLabelsToPodsAnnotations returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
-func (es Elasticsearch) NodeLabelsToPodsAnnotations() []string {
-	expectedAnnotations, exist := es.Annotations[NodeLabelsToPodsAnnotationsAnnotation]
+// DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
+func (es Elasticsearch) DownwardNodeLabels() []string {
+	expectedAnnotations, exist := es.Annotations[DownwardNodeLabelsAnnotation]
 	expectedAnnotations = strings.TrimSpace(expectedAnnotations)
 	if !exist || expectedAnnotations == "" {
 		return nil
@@ -466,9 +466,9 @@ func (es Elasticsearch) NodeLabelsToPodsAnnotations() []string {
 	return strings.Split(expectedAnnotations, ",")
 }
 
-// HasNodeLabelsToPodsAnnotations returns true if some node labels are expected on the Elasticsearch Pods.
-func (es Elasticsearch) HasNodeLabelsToPodsAnnotations() bool {
-	return len(es.NodeLabelsToPodsAnnotations()) > 0
+// HasDownwardNodeLabels returns true if some node labels are expected on the Elasticsearch Pods.
+func (es Elasticsearch) HasDownwardNodeLabels() bool {
+	return len(es.DownwardNodeLabels()) > 0
 }
 
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted

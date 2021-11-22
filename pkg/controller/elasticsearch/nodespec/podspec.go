@@ -47,7 +47,7 @@ func BuildPodTemplateSpec(
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
-	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasNodeLabelsToPodsAnnotations())
+	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
 	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources, downwardAPIVolume)
 
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
@@ -61,7 +61,7 @@ func BuildPodTemplateSpec(
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
 		keystoreResources,
-		es.NodeLabelsToPodsAnnotations(),
+		es.DownwardNodeLabels(),
 	)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -104,8 +104,8 @@ func BuildPodTemplateSpec(
 	}
 
 	// inherit the node labels list to trigger a restart when changed
-	if es.HasNodeLabelsToPodsAnnotations() {
-		builder = builder.WithAnnotations(map[string]string{esv1.NodeLabelsToPodsAnnotationsAnnotation: es.Annotations[esv1.NodeLabelsToPodsAnnotationsAnnotation]})
+	if es.HasDownwardNodeLabels() {
+		builder = builder.WithAnnotations(map[string]string{esv1.DownwardNodeLabelsAnnotation: es.Annotations[esv1.DownwardNodeLabelsAnnotation]})
 	}
 
 	return builder.PodTemplate, nil

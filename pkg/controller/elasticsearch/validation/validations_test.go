@@ -504,7 +504,7 @@ func Test_validNodeLabels(t *testing.T) {
 			args: args{
 				proposed: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{esv1.NodeLabelsToPodsAnnotationsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
+						Annotations: map[string]string{esv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
 					},
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
@@ -516,7 +516,7 @@ func Test_validNodeLabels(t *testing.T) {
 			args: args{
 				proposed: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{esv1.NodeLabelsToPodsAnnotationsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
+						Annotations: map[string]string{esv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
 					},
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*", "failure-domain.beta.kubernetes.io/*"},
