@@ -138,6 +138,37 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Retain existing annotations",
+			args: args{
+				es: &esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        esName,
+						Namespace:   "ns",
+						Annotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/region,topology.kubernetes.io/zone"},
+					},
+				},
+				objects: []runtime.Object{
+					newPodBuilder("elasticsearch-sample-es-default-0").scheduledOn("k8s-node-0").withAnnotation(map[string]string{"foo": "bar", "topology.kubernetes.io/region": "existing-annotation"}).build(),
+					newPodBuilder("elasticsearch-sample-es-default-1").scheduledOn("k8s-node-1").withAnnotation(map[string]string{"foo": "bar", "topology.kubernetes.io/region": "existing-annotation"}).build(),
+					&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "k8s-node-0", Labels: map[string]string{"topology.kubernetes.io/region": "europe-west1", "topology.kubernetes.io/zone": "europe-west1-a"}}},
+					&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "k8s-node-1", Labels: map[string]string{"topology.kubernetes.io/region": "europe-west1", "topology.kubernetes.io/zone": "europe-west1-b"}}},
+				},
+				ctx: context.Background(),
+			},
+			expectedAnnotations: expectedPodsAnnotations{
+				"elasticsearch-sample-es-default-0": {
+					"topology.kubernetes.io/region": "existing-annotation",
+					"topology.kubernetes.io/zone":   "europe-west1-a",
+					"foo":                           "bar",
+				},
+				"elasticsearch-sample-es-default-1": {
+					"topology.kubernetes.io/region": "existing-annotation",
+					"topology.kubernetes.io/zone":   "europe-west1-b",
+					"foo":                           "bar",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

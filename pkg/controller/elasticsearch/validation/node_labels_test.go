@@ -32,6 +32,30 @@ func TestNodeLabels_IsAllowed(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:              "Any label",
+			exposedNodeLabels: []string{".*"},
+			args: args{
+				nodeLabel: "kubernetes.io/zone",
+			},
+			want: true,
+		},
+		{
+			name:              "Fixed string",
+			exposedNodeLabels: []string{"kubernetes.io/zone"},
+			args: args{
+				nodeLabel: "kubernetes.io/zone",
+			},
+			want: true,
+		},
+		{
+			name:              "Fixed string",
+			exposedNodeLabels: []string{"kubernetes.io/zone"},
+			args: args{
+				nodeLabel: "kubernetes.io/region",
+			},
+			want: false,
+		},
+		{
 			name:              "Matching topology label",
 			exposedNodeLabels: []string{"topology.kubernetes.io/*", "failure-domain.beta.kubernetes.io/*"},
 			args: args{
