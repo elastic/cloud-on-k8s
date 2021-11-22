@@ -79,7 +79,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	if err := c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
-	}); err != nil {
+	}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -87,7 +87,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
-	}); err != nil {
+	}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -101,7 +101,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
-	}); err != nil {
+	}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 	if err := watches.WatchSoftOwnedSecrets(c, beatv1beta1.Kind); err != nil {
@@ -109,7 +109,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, common.ManagedNamespacesPredicate(p.ManagedNamespaces))
 }
 
 var _ reconcile.Reconciler = &ReconcileBeat{}
