@@ -16,7 +16,7 @@ import (
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
-	// ExposedNodeLabels are the labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
+	// ExposedNodeLabels holds regular expressions of node labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
 	ExposedNodeLabels esvalidation.NodeLabels
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
