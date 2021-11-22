@@ -183,6 +183,12 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 		return garbageCollectSecrets(c, ownerKinds, "")
 	}
 	for _, namespace := range managedNamespaces {
+		// The empty namespace is added to the managed namespaces when storage class validation is enabled to
+		// allow watching cluster-scoped resources, but since this isn't applicable to secrets, we ignore this
+		// namespace to prevent invalid "Orphan secrets garbage collection failed" error message.
+		if namespace == "" {
+			continue
+		}
 		if err := garbageCollectSecrets(c, ownerKinds, namespace); err != nil {
 			log.Error(err, secretsGarbageCollectionFailedMessage, "namespace", namespace)
 			continue
