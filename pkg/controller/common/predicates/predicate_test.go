@@ -4,7 +4,7 @@
 
 // +build integration
 
-package common_test
+package predicates_test
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 )
 
@@ -57,7 +57,7 @@ func TestManagedNamespacesPredicate(t *testing.T) {
 	require.NoError(t, err)
 
 	bldr := builder.ControllerManagedBy(mgr).
-		For(&appsv1.Deployment{}, builder.WithPredicates(common.ManagedNamespacesPredicate([]string{managedNamespace})))
+		For(&appsv1.Deployment{}, builder.WithPredicates(predicates.ManagedNamespacesPredicate([]string{managedNamespace})))
 	require.NoError(t, bldr.Complete(reconciler))
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -82,7 +83,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 func addWatches(c controller.Controller, r *ReconcileElasticsearch, p operator.Parameters) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces),
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces),
 	); err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch, p operator.P
 	}
 
 	// Watch pods belonging to ES clusters
-	if err := watches.WatchPods(c, label.ClusterNameLabelName); err != nil {
+	if err := watches.WatchPods(c, label.ClusterNameLabelName, p.ManagedNamespaces); err != nil {
 		return err
 	}
 
@@ -122,7 +123,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch, p operator.P
 	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind, p.ManagedNamespaces); err != nil {
 		return err
 	}
 

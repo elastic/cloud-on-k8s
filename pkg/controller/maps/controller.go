@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -74,7 +75,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMa
 
 func addWatches(c controller.Controller, r *ReconcileMapsServer, p operator.Parameters) error {
 	// Watch for changes to MapsServer
-	if err := c.Watch(&source.Kind{Type: &emsv1alpha1.ElasticMapsServer{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	if err := c.Watch(&source.Kind{Type: &emsv1alpha1.ElasticMapsServer{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -88,7 +89,7 @@ func addWatches(c controller.Controller, r *ReconcileMapsServer, p operator.Para
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, NameLabelName); err != nil {
+	if err := watches.WatchPods(c, NameLabelName, p.ManagedNamespaces); err != nil {
 		return err
 	}
 
@@ -107,7 +108,7 @@ func addWatches(c controller.Controller, r *ReconcileMapsServer, p operator.Para
 	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, emsv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, emsv1alpha1.Kind, p.ManagedNamespaces); err != nil {
 		return err
 	}
 

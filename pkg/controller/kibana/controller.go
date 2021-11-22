@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -67,7 +68,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 
 func addWatches(c controller.Controller, r *ReconcileKibana, p operator.Parameters) error {
 	// Watch for changes to Kibana
-	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -81,7 +82,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana, p operator.Paramete
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, KibanaNameLabelName); err != nil {
+	if err := watches.WatchPods(c, KibanaNameLabelName, p.ManagedNamespaces); err != nil {
 		return err
 	}
 
@@ -100,7 +101,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana, p operator.Paramete
 	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, kbv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, kbv1.Kind, p.ManagedNamespaces); err != nil {
 		return err
 	}
 

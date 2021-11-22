@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -102,7 +103,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 func addWatches(c controller.Controller, k8sClient k8s.Client, parameters operator.Parameters) error {
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(parameters.ManagedNamespaces),
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacesPredicate(parameters.ManagedNamespaces),
 	); err != nil {
 		return err
 	}

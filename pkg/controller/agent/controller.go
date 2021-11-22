@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -60,7 +61,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 // addWatches adds watches for all resources this controller cares about
 func addWatches(c controller.Controller, r *ReconcileAgent, p operator.Parameters) error {
 	// Watch for changes to Agent
-	if err := c.Watch(&source.Kind{Type: &agentv1alpha1.Agent{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	if err := c.Watch(&source.Kind{Type: &agentv1alpha1.Agent{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -82,7 +83,7 @@ func addWatches(c controller.Controller, r *ReconcileAgent, p operator.Parameter
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching Deployments or DaemonSets only may lead to missing some events.
-	if err := watches.WatchPods(c, NameLabelName); err != nil {
+	if err := watches.WatchPods(c, NameLabelName, p.ManagedNamespaces); err != nil {
 		return err
 	}
 

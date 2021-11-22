@@ -15,8 +15,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
@@ -41,7 +41,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      agent.NameLabelName,
 		AssociationResourceNamespaceLabelName: agent.NamespaceLabelName,
-		Predicates:                            common.WithPredicates(common.ManagedNamespacesPredicate(params.ManagedNamespaces)),
+		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacesPredicate(params.ManagedNamespaces)),
 
 		ElasticsearchUserCreation: nil,
 	})

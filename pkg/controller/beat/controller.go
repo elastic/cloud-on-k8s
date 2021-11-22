@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -71,7 +72,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 // addWatches adds watches for all resources this controller cares about
 func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters) error {
 	// Watch for changes to Beat
-	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -79,7 +80,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	if err := c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
-	}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
@@ -87,13 +88,13 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
-	}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching Deployments or DaemonSets only may lead to missing some events.
-	if err := watches.WatchPods(c, beatcommon.NameLabelName); err != nil {
+	if err := watches.WatchPods(c, beatcommon.NameLabelName, p.ManagedNamespaces); err != nil {
 		return err
 	}
 
@@ -101,15 +102,15 @@ func addWatches(c controller.Controller, r *ReconcileBeat, p operator.Parameters
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
-	}, common.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
+	}, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces)); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, beatv1beta1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, beatv1beta1.Kind, p.ManagedNamespaces); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, common.ManagedNamespacesPredicate(p.ManagedNamespaces))
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, predicates.ManagedNamespacesPredicate(p.ManagedNamespaces))
 }
 
 var _ reconcile.Reconciler = &ReconcileBeat{}
