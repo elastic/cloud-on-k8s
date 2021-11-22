@@ -204,6 +204,8 @@ func garbageCollectSecrets(c k8s.Client, ownerKinds map[string]client.Object, na
 	if err := c.List(context.Background(),
 		&secrets,
 		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
+		// since corev1.NamespaceAll is a string == "", this will also work when managing all namespaces
+		// and namespace == "".
 		client.InNamespace(namespace),
 	); err != nil {
 		return err
