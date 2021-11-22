@@ -1,7 +1,7 @@
 # This file contains an example of Roles, RoleBindings and ServiceAccount which allow the associations to be established
 # between resources living in different namespaces if the access control between resources across namespaces is enabled.
 # This example is only valid if ECK is started with the related option.
-# See https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-operator-config.html.
+# See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html.
 ---
 apiVersion: v1
 kind: Namespace
