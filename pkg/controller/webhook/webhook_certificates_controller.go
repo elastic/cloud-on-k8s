@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -92,7 +93,7 @@ func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernet
 }
 
 // Add adds a new Controller to mgr with r as the reconcile.Reconciler
-func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface) error {
+func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface, predicates ...predicate.Predicate) error {
 	r := newReconciler(mgr, webhookParams, clientset)
 	// Create a new controller
 	c, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: r})
@@ -109,7 +110,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name:    "webhook-server-cert",
 		Watched: []types.NamespacedName{secret},
 		Watcher: secret,
-	}); err != nil {
+	}, predicates...); err != nil {
 		return err
 	}
 

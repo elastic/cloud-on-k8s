@@ -10,19 +10,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 )
 
 // WatchPods updates the given controller to enqueue reconciliation requests triggered by changes on Pods.
 // The resource to reconcile is identified by a label on the Pods.
-func WatchPods(c controller.Controller, objNameLabel string, managedNamespaces []string) error {
+func WatchPods(c controller.Controller, objNameLabel string, predicates ...predicate.Predicate) error {
 	return c.Watch(
 		&source.Kind{Type: &corev1.Pod{}},
 		handler.EnqueueRequestsFromMapFunc(objToReconcileRequest(objNameLabel)),
-		predicates.ManagedNamespacesPredicate(managedNamespaces),
+		predicates...,
 	)
 }
 

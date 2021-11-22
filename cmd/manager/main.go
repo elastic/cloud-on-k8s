@@ -58,6 +58,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -571,7 +572,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels)
+		setupWebhook(mgr, params, clientset)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -783,12 +784,7 @@ func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
 	log.Info("Orphan secrets garbage collection complete")
 }
 
-func setupWebhook(
-	mgr manager.Manager,
-	certRotation certificates.RotationParams,
-	validateStorageClass bool,
-	clientset kubernetes.Interface,
-	exposedNodeLabels esvalidation.NodeLabels) {
+func setupWebhook(mgr manager.Manager, params operator.Parameters, clientset kubernetes.Interface) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -797,7 +793,7 @@ func setupWebhook(
 			Name:       viper.GetString(operator.WebhookNameFlag),
 			Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
 			SecretName: viper.GetString(operator.WebhookSecretFlag),
-			Rotation:   certRotation,
+			Rotation:   params.CertRotation,
 		}
 
 		// retrieve the current webhook configuration interface
@@ -813,7 +809,7 @@ func setupWebhook(
 			os.Exit(1)
 		}
 
-		if err := webhook.Add(mgr, webhookParams, clientset, wh); err != nil {
+		if err := webhook.Add(mgr, webhookParams, clientset, wh, predicates.NewManagedNamespacesPredicate(params.ManagedNamespaces)); err != nil {
 			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
 			os.Exit(1)
 		}
@@ -843,7 +839,7 @@ func setupWebhook(
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels)
+    esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, params.ExposedNodeLabels)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

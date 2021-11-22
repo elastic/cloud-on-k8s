@@ -10,10 +10,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 )
 
@@ -46,11 +46,11 @@ func WatchUserProvidedSecrets(
 }
 
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
-func WatchSoftOwnedSecrets(c controller.Controller, ownerKind string, managedNamespaces []string) error {
+func WatchSoftOwnedSecrets(c controller.Controller, ownerKind string, predicates ...predicate.Predicate) error {
 	return c.Watch(
 		&source.Kind{Type: &corev1.Secret{}},
 		handler.EnqueueRequestsFromMapFunc(reconcileReqForSoftOwner(ownerKind)),
-		predicates.ManagedNamespacesPredicate(managedNamespaces),
+		predicates...,
 	)
 }
 

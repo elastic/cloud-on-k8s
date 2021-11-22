@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -49,7 +50,7 @@ func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operato
 	if err != nil {
 		return err
 	}
-	return AddWatches(c, r, params)
+	return AddWatches(c, r, predicates.ManagedNamespacesPredicate(params.ManagedNamespaces))
 }
 
 // NewReconciler returns a new reconcile.Reconciler

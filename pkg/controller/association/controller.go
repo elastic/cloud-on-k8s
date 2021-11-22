@@ -58,20 +58,20 @@ func addWatches(c controller.Controller, r *Reconciler, predicates []predicate.P
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    r.AssociatedObjTemplate(),
 		IsController: true,
-	}); err != nil {
+	}, predicates...); err != nil {
 		return err
 	}
 
 	// Dynamically watch the referenced resources (e.g. Elasticsearch B for a Kibana A -> Elasticsearch B association)
-	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources); err != nil {
+	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources, predicates...); err != nil {
 		return err
 	}
 
 	// Dynamically watch Secrets (CA Secret of the referenced resource and ES user secret)
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets, predicates...); err != nil {
 		return err
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services)
+	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services, predicates...)
 }
