@@ -15,7 +15,7 @@ To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 . Register the snapshot repository with the Elasticsearch API.
 . Set up a https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[CronJob] to take snapshots on a schedule.
 
-The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin].
+The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins/current/repository-gcs.html[Google Cloud Storage Repository Plugin].
 
 For more information on Elasticsearch snapshots, see https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
 
@@ -75,7 +75,7 @@ kubectl apply -f elasticsearch.yaml
 [id="{p}-secure-settings"]
 == Configure GCS credentials via the Elasticsearch keystore
 
-The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html[Google Cloud Storage Repository Plugin].
+The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/current/repository-gcs-usage.html[Google Cloud Storage Repository Plugin].
 
 Using ECK, you can automatically inject secure settings into a cluster node by providing them through a secret in the Elasticsearch Spec.
 
