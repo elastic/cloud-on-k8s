@@ -289,7 +289,7 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 		nodeSet.Config = &commonv1.Config{Data: map[string]interface{}{}}
 	}
 	nodeSet.Config.Data["node.store.allow_mmap"] = false
-	// temporarily added to debug test failures with red cluster health
+	// helpful to debug test failures with red cluster health
 	nodeSet.Config.Data["logger.org.elasticsearch.cluster.service.MasterService"] = "trace"
 
 	// Propagates test-name label from top level resource.
