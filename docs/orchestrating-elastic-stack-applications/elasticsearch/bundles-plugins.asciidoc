@@ -25,10 +25,36 @@ This option has the following pros and cons:
 This option has the following pros and cons:
 +
 * Pro: Easier to get started and upgrade versions.
-* Con: Requires pods to have internet access.
+* Con: Requires pods to have internet access. *See <<istio-note,note>> below about using Istio*
 * Con: Adding new Elasticsearch nodes could randomly fail due to network issues or bad configuration.
 * Con: Each Elasticsearch node needs to repeat the download, wasting bandwidth and slowing startup.
 * Con: Deployment manifests are more complicated.
+
+[id="istio-note"]
+**Note when using Istio**
+
+When using Istio, init containers do *not* have network access, as the Envoy sidecar that provides network connectivity is not online.  In this scenario, custom containers are the best option.  If custom containers are simply not a viable option, then it is possible, although not recommended to adjust the startup command for the elasticsearch container itself to run the plugin installation before starting Elasticsearch, as the following example describes.
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          command:
+          - /usr/bin/env
+          - bash
+          - -c
+          - |
+            #!/usr/bin/env bash
+            set -e
+            bin/elasticsearch-plugin install --batch repository-s3
+            /bin/tini -- /usr/local/bin/docker-entrypoint.sh
+----
 
 See <<{p}-custom-images,Creating custom images>> for instructions on how to build custom Docker images based on the official Elastic images.
 
