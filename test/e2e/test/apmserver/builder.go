@@ -150,6 +150,10 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 	return b
 }
 
+// WithoutIntegrationCheck adds APM Server configuration that prevents APM Server from checking for APM index templates.
+// Starting with 8.0.0, these templates are installed by APM integration. As all integrations are installed through
+// Kibana, when there is no Kibana in the deployment, the index templates are not present and our E2E tests checks
+// would fail.
 func (b Builder) WithoutIntegrationCheck() Builder {
 	if version.MustParse(b.ApmServer.Spec.Version).LT(version.MinFor(8, 0, 0)) {
 		// disabling integration check is not necessary below 8.0.0, no-op
