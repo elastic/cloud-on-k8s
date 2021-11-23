@@ -159,5 +159,5 @@ func ElasticsearchPodURL(pod corev1.Pod) (string, error) {
 		return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, pod.Name, sset, pod.Namespace, network.HTTPPort), nil
 	}
 	return "", fmt.Errorf(
-		"could not generate URL from given pod as the pod does not have both %s, and %s labels; existing labels: %v", label.HTTPSchemeLabelName, label.StatefulSetNameLabelName, pod.Labels)
+		"could not generate URL from pod %s as the pod does not have both %s, and %s labels; existing labels: %v", pod.Name, label.HTTPSchemeLabelName, label.StatefulSetNameLabelName, pod.Labels)
 }
