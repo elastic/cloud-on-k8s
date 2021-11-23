@@ -77,7 +77,7 @@ func (b Builder) GetExpectedElasticsearch() esv1.Elasticsearch {
 	return b.Elasticsearch
 }
 
-var _ test.Builder = &Builder{}
+var _ test.Builder = Builder{}
 
 func (b Builder) SkipTest() bool {
 	return false
@@ -110,12 +110,12 @@ func newBuilder(name, randSuffix string) Builder {
 		WithLabel(run.TestNameLabel, name)
 }
 
-func (b Builder) WithAnnotation(key, value string) *Builder {
+func (b Builder) WithAnnotation(key, value string) Builder {
 	if b.Elasticsearch.ObjectMeta.Annotations == nil {
 		b.Elasticsearch.ObjectMeta.Annotations = make(map[string]string)
 	}
 	b.Elasticsearch.ObjectMeta.Annotations[key] = value
-	return &b
+	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -273,7 +273,7 @@ func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceReq
 	})
 }
 
-func (b *Builder) WithExpectedNodeSets(nodeSets ...esv1.NodeSet) *Builder {
+func (b Builder) WithExpectedNodeSets(nodeSets ...esv1.NodeSet) Builder {
 	builderCopy := b.DeepCopy()
 	for _, nodeSet := range nodeSets {
 		builderCopy.WithNodeSet(nodeSet)
@@ -413,9 +413,9 @@ func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	return b
 }
 
-func (b Builder) WithMutatedFrom(builder *Builder) *Builder {
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 	b.MutatedFrom = builder
-	return &b
+	return b
 }
 
 func (b Builder) WithEnvironmentVariable(name, value string) Builder {

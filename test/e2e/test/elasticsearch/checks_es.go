@@ -23,11 +23,11 @@ import (
 )
 
 type esClusterChecks struct {
-	*Builder
+	Builder
 	k *test.K8sClient
 }
 
-func (b *Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
+func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	e := esClusterChecks{b, k}
 	return test.StepList{
 		e.CheckESNodesTopology(),

@@ -92,7 +92,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *esv1.Elasticsearch:
 			b := elasticsearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Elasticsearch = *decodedObj
-			builder = transform(&b)
+			builder = transform(b)
 		case *kbv1.Kibana:
 			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Kibana = *decodedObj
@@ -239,12 +239,11 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *esv1.Elasticsearch:
 			b := elasticsearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Elasticsearch = *decodedObj
-			b = b.WithNamespace(namespace).
+			builder = b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
-			builder = &b
 		case *kbv1.Kibana:
 			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Kibana = *decodedObj
@@ -348,7 +347,7 @@ func sortBuilders(builders []test.Builder) {
 
 func builderPriority(builder test.Builder) int {
 	switch builder.(type) {
-	case *elasticsearch.Builder:
+	case elasticsearch.Builder:
 		return 1
 	case kibana.Builder:
 		return 2
