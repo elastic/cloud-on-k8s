@@ -54,8 +54,8 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 
 	test.RunMutationsWhileWatching(
 		t,
-		[]test.Builder{&esBuilder, fbBuilder},
-		[]test.Builder{&esBuilder, fbBuilder.WithVersion(dstVersion)},
+		[]test.Builder{esBuilder, fbBuilder},
+		[]test.Builder{esBuilder, fbBuilder.WithVersion(dstVersion)},
 		// check that only one version of Beats is running at any given time to verify that the "recreate" deployment
 		//strategy has been configured successfully.
 		[]test.Watcher{test.NewVersionWatcher(beatcommon.VersionLabelName, opts...)},

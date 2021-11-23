@@ -200,7 +200,7 @@ func TestMutationAndReversal(t *testing.T) {
 			},
 		}).
 		WithMutatedFrom(&b)
-	test.RunMutations(t, []test.Builder{&b}, []test.Builder{mutation, &b})
+	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
 
 }
 
@@ -294,9 +294,9 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 			}
 		})
 
-	test.RunMutationsWhileWatching(t, []test.Builder{&b}, []test.Builder{mutated.WithMutatedFrom(&b)}, []test.Watcher{w})
+	test.RunMutationsWhileWatching(t, []test.Builder{b}, []test.Builder{mutated.WithMutatedFrom(&b)}, []test.Watcher{w})
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
-	test.RunMutation(t, &toCreate, mutateTo.WithMutatedFrom(&toCreate))
+	test.RunMutation(t, toCreate, mutateTo.WithMutatedFrom(&toCreate))
 }

@@ -50,13 +50,12 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 	transform := func(builder test.Builder) test.Builder {
 		fullTestName := "TestSamples-" + testName
 		switch b := builder.(type) {
-		case *elasticsearch.Builder:
-			esBuilder := b.WithNamespace(namespace).
+		case elasticsearch.Builder:
+			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
-			return &esBuilder
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).

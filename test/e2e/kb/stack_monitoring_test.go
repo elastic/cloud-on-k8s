@@ -42,5 +42,5 @@ func TestKBStackMonitoring(t *testing.T) {
 		return checks.MonitoredSteps(&monitored, k)
 	}
 
-	test.Sequence(nil, steps, &metrics, &logs, &assocEs, monitored).RunSequential(t)
+	test.Sequence(nil, steps, metrics, logs, assocEs, monitored).RunSequential(t)
 }

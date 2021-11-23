@@ -79,8 +79,8 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
 	fbUpdated := fb.WithVersion(updatedVersion)
 
-	initialBuilders := []test.Builder{&es, kb, apm, ent, fb}
-	updatedBuilders := []test.Builder{&esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
+	initialBuilders := []test.Builder{es, kb, apm, ent, fb}
+	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
 
 	versionUpgrade := func(k *test.K8sClient) test.StepList {
 		steps := test.StepList{}

@@ -220,7 +220,7 @@ func TestUpdateConfiguration(t *testing.T) {
 		}
 	}
 
-	test.Sequence(initStepsFn, stepsFn, &esBuilder, apmBuilder).RunSequential(t)
+	test.Sequence(initStepsFn, stepsFn, esBuilder, apmBuilder).RunSequential(t)
 
 }
 

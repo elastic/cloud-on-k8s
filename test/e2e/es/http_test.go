@@ -19,6 +19,6 @@ func TestHTTPWithoutTLS(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithTLSDisabled(true)
 
-	test.Sequence(nil, test.EmptySteps, &b).
+	test.Sequence(nil, test.EmptySteps, b).
 		RunSequential(t)
 }

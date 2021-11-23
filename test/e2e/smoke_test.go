@@ -66,6 +66,6 @@ func TestSmoke(t *testing.T) {
 		WithLabel(run.TestNameLabel, testName).
 		WithPodLabel(run.TestNameLabel, testName)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder, apmBuilder).
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)
 }

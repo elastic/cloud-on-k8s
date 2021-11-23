@@ -112,7 +112,7 @@ email:
 			})
 	}
 
-	test.Sequence(nil, stepsFn, &es, entNoConfig).RunSequential(t)
+	test.Sequence(nil, stepsFn, es, entNoConfig).RunSequential(t)
 }
 
 // CheckPartialConfig retrieves the configuration file from all Pods and compares it with the expected PartialConfig.

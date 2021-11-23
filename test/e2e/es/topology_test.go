@@ -24,7 +24,7 @@ func TestCoordinatingNodes(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithESCoordinatingNodes(1, elasticsearch.DefaultResources)
 
-	test.Sequence(nil, test.EmptySteps, &b).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, b).RunSequential(t)
 }
 
 // TestResourcesRequirements tests a cluster with resources (cpu/memory/storage) requirements.
@@ -60,5 +60,5 @@ func TestResourcesRequirements(t *testing.T) {
 			},
 		})
 
-	test.Sequence(nil, test.EmptySteps, &b).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, b).RunSequential(t)
 }

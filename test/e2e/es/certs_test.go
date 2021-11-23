@@ -69,7 +69,7 @@ func TestCustomHTTPCA(t *testing.T) {
 	test.StepList{}.
 		WithSteps(initialCluster.InitTestSteps(k)).
 		WithSteps(initialCluster.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(&initialCluster, k)).
+		WithSteps(test.CheckTestSteps(initialCluster, k)).
 		WithStep(
 			test.Step{
 				Name: "Create an invalid CA secret",
@@ -190,7 +190,7 @@ func TestHTTPECDSA(t *testing.T) {
 	test.StepList{}.
 		WithSteps(initialCluster.InitTestSteps(k)).
 		WithSteps(initialCluster.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(&initialCluster, k)).
+		WithSteps(test.CheckTestSteps(initialCluster, k)).
 		WithStep(
 			test.Step{
 				Name: "Create custom ECSDA signed CA secret",
@@ -305,7 +305,7 @@ func TestCustomTransportCA(t *testing.T) {
 
 	// start with the operator provided transport CA
 	withBuiltinCA := test.WrappedBuilder{
-		BuildingThis: &initialCluster,
+		BuildingThis: initialCluster,
 		PreDeletionSteps: func(k *test.K8sClient) test.StepList {
 			return test.StepList{
 				{
@@ -492,7 +492,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 		}
 	}
 
-	test.Sequence(nil, steps, &b).RunSequential(t)
+	test.Sequence(nil, steps, b).RunSequential(t)
 }
 
 func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {

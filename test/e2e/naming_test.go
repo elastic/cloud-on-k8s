@@ -80,7 +80,7 @@ func testLongestPossibleName(t *testing.T) {
 		}).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder, apmBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
 }
 
 func testRejectionOfLongName(t *testing.T) {

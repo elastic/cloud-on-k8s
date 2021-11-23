@@ -45,7 +45,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 
 	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
 func TestMetricbeatDefaultConfig(t *testing.T) {
@@ -73,7 +73,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	mbBuilder = beat.ApplyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 }
 
 func TestHeartbeatConfig(t *testing.T) {
@@ -95,7 +95,7 @@ func TestHeartbeatConfig(t *testing.T) {
 
 	hbBuilder = beat.ApplyYamls(t, hbBuilder, configYaml, e2eHeartbeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, hbBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
 }
 
 func TestBeatSecureSettings(t *testing.T) {
@@ -151,7 +151,7 @@ processors:
 
 	fbBuilder = beat.ApplyYamls(t, fbBuilder, config, E2EFilebeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
 func TestBeatConfigRef(t *testing.T) {
@@ -203,7 +203,7 @@ processors:
 
 	fbBuilder = beat.ApplyYamls(t, fbBuilder, "", E2EFilebeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, fbBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder).RunSequential(t)
 }
 
 func TestAuditbeatConfig(t *testing.T) {
@@ -235,7 +235,7 @@ func TestAuditbeatConfig(t *testing.T) {
 
 	abBuilder = beat.ApplyYamls(t, abBuilder, e2eAuditbeatConfig, e2eAuditbeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder, abBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, abBuilder).RunSequential(t)
 }
 
 func TestPacketbeatConfig(t *testing.T) {
@@ -266,7 +266,7 @@ func TestPacketbeatConfig(t *testing.T) {
 
 	pbBuilder = beat.ApplyYamls(t, pbBuilder, e2ePacketbeatConfig, e2ePacketbeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder, pbBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, pbBuilder).RunSequential(t)
 }
 
 func TestJournalbeatConfig(t *testing.T) {
@@ -285,7 +285,7 @@ func TestJournalbeatConfig(t *testing.T) {
 
 	jbBuilder = beat.ApplyYamls(t, jbBuilder, e2eJournalbeatConfig, e2eJournalbeatPodTemplate)
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, jbBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, jbBuilder).RunSequential(t)
 }
 
 // --- helpers

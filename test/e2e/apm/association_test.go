@@ -44,7 +44,7 @@ func TestCrossNSAssociation(t *testing.T) {
 			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
 		})
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, apmBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).RunSequential(t)
 }
 
 // TestAPMKibanaAssociation tests associating an APM Server with Kibana.
@@ -79,7 +79,7 @@ func TestAPMKibanaAssociation(t *testing.T) {
 			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
 		})
 
-	test.Sequence(nil, test.EmptySteps, &esBuilder, kbBuilder, apmBuilder).RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
 }
 
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
@@ -179,5 +179,5 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 		}
 	}
 
-	test.RunUnrecoverableFailureScenario(t, failureSteps, apmBuilder, &esBuilder)
+	test.RunUnrecoverableFailureScenario(t, failureSteps, apmBuilder, esBuilder)
 }
