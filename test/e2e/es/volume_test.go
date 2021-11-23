@@ -181,6 +181,10 @@ func TestVolumeExpansion(t *testing.T) {
 	resizedStorage := initialStorageSize.DeepCopy()
 	resizedStorage.Add(resource.MustParse("1Gi"))
 
+	// Create a copy of the builder with the expected storage resources to use in the regular checks made after updating the Elasticsearch resource
+	scaledUpStorage := b.DeepCopy()
+	patchStorageSize(&scaledUpStorage.Elasticsearch, resizedStorage)
+
 	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
@@ -229,7 +233,7 @@ func TestVolumeExpansion(t *testing.T) {
 				}),
 			},
 			// re-run all the regular checks
-		}.WithSteps(test.CheckTestSteps(b, k))
+		}.WithSteps(test.CheckTestSteps(scaledUpStorage, k))
 	}, b).RunSequential(t)
 }
 
