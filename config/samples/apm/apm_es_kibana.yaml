@@ -23,6 +23,10 @@ spec:
   count: 1
   elasticsearchRef:
     name: "es-apm-sample"
+  config:
+    xpack.fleet.packages:
+    - name: apm
+      version: latest
 ---
 apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer

@@ -100,6 +100,14 @@ func getAPMElasticsearchRoles(associated commonv1.Associated) (string, error) {
 		return "", err
 	}
 
+	// 8.0.x and above
+	if v.GTE(version.MinFor(8, 0, 0)) {
+		return strings.Join([]string{
+			user.ApmUserRoleV80, // Retrieve cluster details (e.g. version) and manage apm-* indices
+			"apm_system",        // To collect metrics about APM Server
+		}, ","), nil
+	}
+
 	// 7.5.x and above
 	if v.GTE(version.From(7, 5, 0)) {
 		return strings.Join([]string{

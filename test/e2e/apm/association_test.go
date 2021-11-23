@@ -42,7 +42,8 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithConfig(map[string]interface{}{
 			"apm-server.ilm.enabled":                           false,
 			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
-		})
+		}).
+		WithoutIntegrationCheck()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).RunSequential(t)
 }
@@ -66,7 +67,8 @@ func TestAPMKibanaAssociation(t *testing.T) {
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithAPMIntegration()
 
 	apmBuilder := apmserver.NewBuilder(name).
 		WithNamespace(ns).
@@ -88,7 +90,8 @@ func TestAPMAssociationWithNonExistentES(t *testing.T) {
 		WithElasticsearchRef(commonv1.ObjectSelector{
 			Name: "non-existent-es",
 		}).
-		WithNodeCount(1)
+		WithNodeCount(1).
+		WithoutIntegrationCheck()
 
 	k := test.NewK8sClientOrFatal()
 	steps := test.StepList{}
@@ -122,7 +125,8 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(1)
+		WithNodeCount(1).
+		WithoutIntegrationCheck()
 
 	failureSteps := func(k *test.K8sClient) test.StepList {
 		return test.StepList{

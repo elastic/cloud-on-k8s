@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -197,37 +196,30 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 				return nil
 			}
 
-			// Check that the metric has been stored
-			metricIndexPattern := "apm-%s-metric-2017.05.30"
-			if strings.HasPrefix(updatedApmServer.Spec.Version, "6") {
-				// Stacks 6.x and 7.x do not share the same index pattern
-				metricIndexPattern = "apm-%s-2017.05.30"
-			}
-			err := assertCountIndexEqual(
-				c.esClient,
-				fmt.Sprintf(metricIndexPattern, updatedApmServer.EffectiveVersion()),
-				1,
-			)
+			v, err := version.Parse(updatedApmServer.Spec.Version)
 			if err != nil {
 				return err
 			}
 
-			// Check that the error has been stored
-			errorIndexPattern := "apm-%s-error-2018.08.09"
-			if strings.HasPrefix(updatedApmServer.Spec.Version, "6") {
-				// Same as above
-				errorIndexPattern = "apm-%s-2018.08.09"
+			// Check that the metric and error have been stored
+			// default to indices names from 6.x
+			metricIndex := fmt.Sprintf("apm-%s-2017.05.30", updatedApmServer.EffectiveVersion())
+			errorIndex := fmt.Sprintf("apm-%s-2018.08.09", updatedApmServer.EffectiveVersion())
+			switch v.Major {
+			case 7:
+				metricIndex = fmt.Sprintf("apm-%s-metric-2017.05.30", updatedApmServer.EffectiveVersion())
+				errorIndex = fmt.Sprintf("apm-%s-error-2018.08.09", updatedApmServer.EffectiveVersion())
+			case 8:
+				// these are datastreams and not indices, but can be searched/counted in the same way
+				metricIndex = "metrics-apm.app.1234_service_12a3-default"
+				errorIndex = "logs-apm.error-default"
 			}
-			err = assertCountIndexEqual(
-				c.esClient,
-				fmt.Sprintf(errorIndexPattern, updatedApmServer.EffectiveVersion()),
-				1,
-			)
-			if err != nil {
+
+			if err := assertCountIndexEqual(c.esClient, metricIndex, 1); err != nil {
 				return err
 			}
 
-			return nil
+			return assertCountIndexEqual(c.esClient, errorIndex, 1)
 		}),
 	}
 }

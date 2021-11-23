@@ -15,32 +15,34 @@ import (
 )
 
 // TestApmStandalone runs a test suite on an APM server that is not outputting to Elasticsearch
-func TestApmStandalone(t *testing.T) {
+func TestAPMStandalone(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone").
 		WithConfig(map[string]interface{}{
 			"output.console": map[string]interface{}{
 				"pretty": true,
 			},
-		})
+		}).
+		WithoutIntegrationCheck()
 
 	test.Sequence(nil, test.EmptySteps, apmBuilder).
 		RunSequential(t)
 }
 
-func TestApmStandaloneWithRUM(t *testing.T) {
+func TestAPMStandaloneWithRUM(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone-with-rum").
 		WithConfig(map[string]interface{}{
 			"output.console": map[string]interface{}{
 				"pretty": true,
 			},
 		}).
-		WithRUM(true)
+		WithRUM(true).
+		WithoutIntegrationCheck()
 
 	test.Sequence(nil, test.EmptySteps, apmBuilder).
 		RunSequential(t)
 }
 
-func TestApmStandaloneNoTLS(t *testing.T) {
+func TestAPMStandaloneNoTLS(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone-no-tls").
 		WithConfig(map[string]interface{}{
 			"output.console": map[string]interface{}{
@@ -53,7 +55,8 @@ func TestApmStandaloneNoTLS(t *testing.T) {
 					Disabled: true,
 				},
 			},
-		})
+		}).
+		WithoutIntegrationCheck()
 
 	test.Sequence(nil, test.EmptySteps, apmBuilder).
 		RunSequential(t)
