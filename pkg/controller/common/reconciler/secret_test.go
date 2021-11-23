@@ -412,7 +412,7 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjs...)
-			err := GarbageCollectAllSoftOwnedOrphanSecrets(c, ownerKinds)
+			err := GarbageCollectAllSoftOwnedOrphanSecrets(c, ownerKinds, nil)
 			require.NoError(t, err)
 			var retrievedSecrets corev1.SecretList
 			err = c.List(context.Background(), &retrievedSecrets)
