@@ -22,7 +22,7 @@ const (
 
 	// FilebeatModuleAnnotation is the name of the annotation applied to pods to give a hint to filebeat so that it
 	// uses the appropriate module to analyze the logs of the container.
-	// https://www.elastic.co/guide/en/beats/filebeat/master/configuration-autodiscover-hints.html#_co_elastic_logsmodule
+	// https://www.elastic.co/guide/en/beats/filebeat/current/configuration-autodiscover-hints.html#_co_elastic_logsmodule
 	FilebeatModuleAnnotation = "co.elastic.logs/module"
 )
 

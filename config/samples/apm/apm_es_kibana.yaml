@@ -11,7 +11,7 @@ spec:
     count: 3
     config:
       # This setting could have performance implications for production clusters.
-      # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      # See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
       node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1
