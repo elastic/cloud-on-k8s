@@ -92,7 +92,7 @@ func newStatusBuilder(log logr.Logger, autoscalingSpec esv1.AutoscalingSpec) *st
 	return statusBuilder
 }
 
-// Check if the Elasticsearch has any pods ready to handle requests.
+// Check if Elasticsearch has any pods ready to handle requests.
 func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
 	defer tracing.Span(&ctx)()
 	resourcesState, err := esReconcile.NewResourcesStateFromAPI(r.Client, es)

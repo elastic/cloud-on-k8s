@@ -19,12 +19,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 const (
 	globalServiceSuffix = ".svc"
 )
+
+var log = ulog.Log.WithName("elasticsearch-services")
 
 // TransportServiceName returns the name for the transport service associated to this cluster
 func TransportServiceName(esName string) string {
@@ -132,17 +135,22 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 		}
 	}
 	if schemeChange {
+		var (
+			url string
+			err error
+		)
 		// attempting switch to sending requests directly to a random pod instead of going through the service
-		if url, err := ElasticsearchURLFromRandomPod(es, pods); err == nil {
+		if url, err = ElasticsearchURLFromRandomPod(pods); err == nil {
 			return url
 		}
+		log.V(1).Error(err, "could not generate elasticsearch URL from random pod, using external service url")
 	}
 	return ExternalServiceURL(es)
 }
 
 // ElasticsearchURLFromRandomPod will return a URL to communicate with a random Elasticsearch pod from the
 // given set of pods.  If for some reason a pod URL cannot be generated, an error is returned.
-func ElasticsearchURLFromRandomPod(es esv1.Elasticsearch, pods []corev1.Pod) (string, error) {
+func ElasticsearchURLFromRandomPod(pods []corev1.Pod) (string, error) {
 	if len(pods) == 0 {
 		return "", errors.New("could not create URL from any pod as no pods exist")
 	}
