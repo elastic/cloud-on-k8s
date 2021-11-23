@@ -64,7 +64,8 @@ func TestUpdateConfiguration(t *testing.T) {
 		WithNamespace(namespace).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithoutIntegrationCheck()
 
 	apmName := apmBuilder.ApmServer.Name
 	apmNamespacedName := types.NamespacedName{
@@ -101,7 +102,7 @@ func TestUpdateConfiguration(t *testing.T) {
 					if config.Output.Elasticsearch.Hosts[0] != esHost {
 						return fmt.Errorf("expected es host %s but got %s", esHost, config.Output.Elasticsearch.Hosts[0])
 					}
-					if config.Output.Elasticsearch.CompressionLevel != 0{ // CompressionLevel is not set by default
+					if config.Output.Elasticsearch.CompressionLevel != 0 { // CompressionLevel is not set by default
 						return fmt.Errorf("expected compression level 0 but got %d", config.Output.Elasticsearch.CompressionLevel)
 					}
 					return nil
