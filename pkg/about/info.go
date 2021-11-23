@@ -33,6 +33,7 @@ var (
 		"community-operators":          {},
 		"certified-operators":          {},
 		"ironbank":                     {},
+		"image":                        {},
 	}
 )
 
