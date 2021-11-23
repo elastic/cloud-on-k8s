@@ -185,6 +185,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 		return err
 	}
 
+	// ES returns a string, parse it as an int64, base10
 	if err = compareCgroupMemoryLimit(topoElem, nodeStats); err != nil {
 		return err
 	}
@@ -230,7 +231,6 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 		return nil
 	}
 
-	// ES returns a string, parse it as an int64, base10
 	actualCgroupMemoryLimit, err := strconv.ParseInt(
 		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
 	)
