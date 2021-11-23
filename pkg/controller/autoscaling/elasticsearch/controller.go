@@ -192,7 +192,7 @@ func newElasticsearchClient(
 	if err != nil {
 		return nil, err
 	}
-	url, err := services.ElasticsearchURLFromRandomPod(es, resourcesState.CurrentPodsByPhase[corev1.PodRunning])
+	url, err := services.ElasticsearchURLFromRandomPod(resourcesState.CurrentPodsByPhase[corev1.PodRunning])
 	if err != nil {
 		log := logconf.FromContext(ctx)
 		log.V(1).Info("could not get a URL to communicate with elasticsearch from a random pod, failing back to using external service", "error", err)

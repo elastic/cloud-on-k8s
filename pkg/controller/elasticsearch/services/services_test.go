@@ -403,7 +403,7 @@ func TestElasticsearchURLFromRandomPod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ElasticsearchURLFromRandomPod(tt.args.es, tt.args.pods)
+			got, err := ElasticsearchURLFromRandomPod(tt.args.pods)
 			assert.Equal(t, tt.expectedError, err, "AttemptRandomElasticsearchPodURL() expected error '%v', got '%v'", tt.expectedError, err)
 			assert.Equal(t, tt.want, got, "AttemptRandomElasticsearchPodURL() = %v, want %v", got, tt.want)
 		})
