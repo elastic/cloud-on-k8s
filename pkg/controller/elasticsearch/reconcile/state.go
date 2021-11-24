@@ -172,3 +172,7 @@ func (s *State) UpdateElasticsearchInvalid(err error) {
 func (s *State) UpdateElasticsearchStatusPhase(orchPhase esv1.ElasticsearchOrchestrationPhase) {
 	s.status.Phase = orchPhase
 }
+
+func (s *State) UpdateOrchestrationVersion(flag OrchestrationVersion) {
+	s.status = set(s.status, flag)
+}

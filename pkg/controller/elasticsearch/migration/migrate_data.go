@@ -91,5 +91,5 @@ func migrateData(
 		exclusions = strings.Join(leavingNodes, ",")
 	}
 	log.Info("Setting routing allocation excludes", "namespace", es.Namespace, "es_name", es.Name, "value", exclusions)
-	return allocationSetter.ExcludeFromShardAllocation(ctx, exclusions)
+	return allocationSetter.ExcludeFromShardAllocation(ctx, &exclusions)
 }

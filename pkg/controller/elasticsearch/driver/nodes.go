@@ -212,6 +212,11 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
 	}
 
+	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
+	if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
+		return results.WithError(err)
+	}
+
 	// TODO:
 	//  - change budget
 	//  - grow and shrink

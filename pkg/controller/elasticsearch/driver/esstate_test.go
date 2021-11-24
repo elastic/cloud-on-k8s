@@ -63,9 +63,9 @@ func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []
 	return nil
 }
 
-func (f *fakeESClient) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
+func (f *fakeESClient) ExcludeFromShardAllocation(_ context.Context, nodes *string) error {
 	f.ExcludeFromShardAllocationCalled = true
-	f.ExcludeFromShardAllocationCalledWith = nodes
+	f.ExcludeFromShardAllocationCalledWith = *nodes
 	return nil
 }
 

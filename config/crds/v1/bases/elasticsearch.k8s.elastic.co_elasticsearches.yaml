@@ -8887,6 +8887,8 @@ spec:
                   single Association of a given type (for ex. single ES reference),
                   this map contains a single entry.
                 type: object
+              orchestrationVersion:
+                type: integer
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.
@@ -8896,6 +8898,8 @@ spec:
                   version upgrades, multiple versions may run in parallel: this value
                   specifies the lowest version currently running.'
                 type: string
+            required:
+            - orchestrationVersion
             type: object
         type: object
     served: true

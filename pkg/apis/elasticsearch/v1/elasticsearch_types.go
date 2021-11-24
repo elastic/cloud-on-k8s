@@ -423,6 +423,7 @@ type ElasticsearchStatus struct {
 	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 
 	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
+	OrchestrationVersion         int                           `json:"orchestrationVersion"`
 }
 
 type ZenDiscoveryStatus struct {

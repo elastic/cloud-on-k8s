@@ -50,7 +50,7 @@ type fakeAllocationSetter struct {
 	value string
 }
 
-func (f *fakeAllocationSetter) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
-	f.value = nodes
+func (f *fakeAllocationSetter) ExcludeFromShardAllocation(_ context.Context, nodes *string) error {
+	f.value = *nodes
 	return nil
 }
