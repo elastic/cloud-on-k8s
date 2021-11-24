@@ -105,7 +105,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.17
+  kubernetesVersion: 1.20
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-3
@@ -117,7 +117,7 @@ plans:
   provider: eks
   machineType: m6gd.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.18
+  kubernetesVersion: 1.20
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -129,7 +129,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.17
+  kubernetesVersion: 1.20
   eks:
     region: eu-west-2
     nodeCount: 3
