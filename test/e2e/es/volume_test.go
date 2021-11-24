@@ -170,11 +170,6 @@ func TestVolumeExpansion(t *testing.T) {
 
 	masterSset := esv1.StatefulSet(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[0].Name)
 	dataSset := esv1.StatefulSet(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[1].Name)
-	pvcNames := []string{
-		fmt.Sprintf("elasticsearch-data-%s-0", masterSset),
-		fmt.Sprintf("elasticsearch-data-%s-0", dataSset),
-		fmt.Sprintf("elasticsearch-data-%s-1", dataSset),
-	}
 
 	// resize the volume with an additional 1Gi after the cluster is up
 	initialStorageSize := b.Elasticsearch.Spec.NodeSets[0].VolumeClaimTemplates[0].Spec.Resources.Requests.Storage()
@@ -196,25 +191,6 @@ func TestVolumeExpansion(t *testing.T) {
 					}
 					patchStorageSize(&es, resizedStorage)
 					return k.Client.Update(context.Background(), &es)
-				}),
-			},
-			{
-				Name: "PVCs should eventually be resized",
-				Test: test.Eventually(func() error {
-					for _, pvcName := range pvcNames {
-						var pvc corev1.PersistentVolumeClaim
-						if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: pvcName}, &pvc); err != nil {
-							return err
-						}
-						reportedStorage := pvc.Status.Capacity.Storage()
-						if reportedStorage == nil {
-							return fmt.Errorf("no storage size reported in %s status", pvcName)
-						}
-						if !reportedStorage.Equal(resizedStorage) {
-							return fmt.Errorf("expected resized capacity %s but got %s", resizedStorage.String(), reportedStorage.String())
-						}
-					}
-					return nil
 				}),
 			},
 			{
