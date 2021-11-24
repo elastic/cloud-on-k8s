@@ -27,7 +27,7 @@ To run Elasticsearch with specific plugins or configuration files installed on E
 ** Easier to get started and upgrade versions.
 +
 * *Cons*
-** Requires pods to have internet access. *See <<istio-note,note>> below about using Istio*
+** Requires pods to have internet access. *Check <<istio-note,note>> below about using Istio*
 ** Adding new Elasticsearch nodes could randomly fail due to network issues or bad configuration.
 ** Each Elasticsearch node needs to repeat the download, wasting bandwidth and slowing startup.
 ** Deployment manifests are more complicated.
