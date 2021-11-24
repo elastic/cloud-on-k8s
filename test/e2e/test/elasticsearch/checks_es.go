@@ -217,7 +217,7 @@ func compareRoles(expected *esv1.Node, actualRoles []string) error {
 	return nil
 }
 
-// compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the CPU control group at the OS level
+// compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level
 func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
