@@ -5,9 +5,11 @@
 package v1
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 )
 
 var testFixture = Config{
@@ -80,4 +82,30 @@ func TestConfig_DeepCopy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfig_JSONMarshal(t *testing.T) {
+	expectedJSON := "{\"foo\":\"bar\"}"
+	cfg := NewConfig(map[string]interface{}{
+		"foo": "bar",
+	})
+	cfgAsJSON, err := json.Marshal(cfg)
+	require.NoError(t, err)
+	require.Equal(t, expectedJSON, string(cfgAsJSON))
+
+	cfgPtr := &cfg
+	cfgPtrAsJSON, err := json.Marshal(cfgPtr)
+	require.NoError(t, err)
+	require.Equal(t, expectedJSON, string(cfgPtrAsJSON))
+}
+
+func TestConfig_JSONUnmarshal(t *testing.T) {
+	bytesCfg := []byte("{\"foo\":\"bar\"}")
+	expectedCfg := NewConfig(map[string]interface{}{
+		"foo": "bar",
+	})
+	var cfg Config
+	err := json.Unmarshal(bytesCfg, &cfg)
+	require.NoError(t, err)
+	require.Equal(t, expectedCfg, cfg)
 }
