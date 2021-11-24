@@ -285,18 +285,18 @@ func compareSpecResources(topologyElement esv1.NodeSet, pods []corev1.Pod) error
 			actual := c.Resources
 			if c.Name == esv1.ElasticsearchContainerName { //nolint:nestif
 				if expected.Requests != nil {
-					if err := compareQuantity("CPU request", expected.Requests.Cpu(), actual.Requests.Cpu()); err != nil {
+					if err := compareQuantity(pod.Name, "CPU request", expected.Requests.Cpu(), actual.Requests.Cpu()); err != nil {
 						return err
 					}
-					if err := compareQuantity("memory request", expected.Requests.Memory(), actual.Requests.Memory()); err != nil {
+					if err := compareQuantity(pod.Name, "memory request", expected.Requests.Memory(), actual.Requests.Memory()); err != nil {
 						return err
 					}
 				}
 				if expected.Limits != nil {
-					if err := compareQuantity("CPU limit", expected.Limits.Cpu(), actual.Limits.Cpu()); err != nil {
+					if err := compareQuantity(pod.Name, "CPU limit", expected.Limits.Cpu(), actual.Limits.Cpu()); err != nil {
 						return err
 					}
-					if err := compareQuantity("memory limit", expected.Limits.Memory(), actual.Limits.Memory()); err != nil {
+					if err := compareQuantity(pod.Name, "memory limit", expected.Limits.Memory(), actual.Limits.Memory()); err != nil {
 						return err
 					}
 				}
@@ -306,9 +306,9 @@ func compareSpecResources(topologyElement esv1.NodeSet, pods []corev1.Pod) error
 	return nil
 }
 
-func compareQuantity(msg string, expected, actual *resource.Quantity) error {
+func compareQuantity(podName string, resourceType string, expected, actual *resource.Quantity) error {
 	if !expected.IsZero() && !equality.Semantic.DeepEqual(expected, actual) {
-		return fmt.Errorf("expected %s [%d], got [%d]", msg, expected.Value(), actual.Value())
+		return fmt.Errorf("pod [%s] expected %s [%d], got [%d]", podName, resourceType, expected.Value(), actual.Value())
 	}
 	return nil
 }
@@ -335,7 +335,7 @@ func compareClaimedStorage(k8sClient *test.K8sClient, topologyElement esv1.NodeS
 	for _, pvc := range pvcs {
 		actualStorage := pvc.Spec.Resources.Requests.Storage()
 		if !equality.Semantic.DeepEqual(expectedStorage, actualStorage) {
-			return fmt.Errorf("expected claimed storage [%d], got [%d]", expectedStorage.Value(), actualStorage.Value())
+			return fmt.Errorf("pvc [%s] expected claimed storage [%d], got [%d]", pvc.Name, expectedStorage.Value(), actualStorage.Value())
 		}
 	}
 	return nil
