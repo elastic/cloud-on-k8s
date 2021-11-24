@@ -13,5 +13,9 @@ OUT_FILE="${SCRIPT_DIR}/../../config/eck.yaml"
 
 (
     cd "$SCRIPT_DIR"
-    "${SCRIPT_DIR}"/../manifest-gen/manifest-gen.sh -g --set=installCRDs=false --set=webhook.enabled=false | go run main.go > "$OUT_FILE"
+    "${SCRIPT_DIR}"/../manifest-gen/manifest-gen.sh -g \
+    --set=installCRDs=false \
+    --set=webhook.enabled=false \
+    --set=telemetry.distributionChannel=image \
+    | go run main.go > "$OUT_FILE"
 )

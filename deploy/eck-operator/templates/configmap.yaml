@@ -20,6 +20,7 @@ data:
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
+    distribution-channel: {{ .Values.telemetry.distributionChannel }}
     {{- if .Values.telemetry.interval }}
     telemetry-interval: {{ .Values.telemetry.interval }}
     {{- end }}
