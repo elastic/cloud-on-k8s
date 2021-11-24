@@ -376,6 +376,7 @@ func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 	return []k8sclient.ListOption{ns, matchLabels}
 }
 
+// ESPodListOptionsByNodeSet returns a list option to list the pods corresponding to a given NodeSet
 func ESPodListOptionsByNodeSet(esNamespace, esName, nodeSetName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(esNamespace)
 	stsName := esv1.StatefulSet(esName, nodeSetName)
