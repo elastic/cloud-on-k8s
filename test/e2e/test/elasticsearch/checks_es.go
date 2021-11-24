@@ -238,7 +238,7 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 	}
 	expectedCgroupMemoryLimit := memoryLimit.Value()
 	if expectedCgroupMemoryLimit != actualCgroupMemoryLimit {
-		return fmt.Errorf("expected Cgroup memory limit %d, got %d", expectedCgroupMemoryLimit, actualCgroupMemoryLimit)
+		return fmt.Errorf("expected cgroup memory limit %d, got %d", expectedCgroupMemoryLimit, actualCgroupMemoryLimit)
 	}
 	return nil
 }
@@ -261,7 +261,7 @@ func compareCgroupCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
 
 	actualCgroupCPULimit := float64(cgroupCPU.CFSQuotaMicros) / float64(cgroupCPU.CFSPeriodMicros)
 	if expectedCPULimit.AsApproximateFloat64() != actualCgroupCPULimit {
-		return fmt.Errorf("expected Cgroup CPU limit [%f], got [%f]", expectedCPULimit.AsApproximateFloat64(), actualCgroupCPULimit)
+		return fmt.Errorf("expected cgroup CPU limit [%f], got [%f]", expectedCPULimit.AsApproximateFloat64(), actualCgroupCPULimit)
 	}
 	return nil
 }
