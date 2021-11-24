@@ -32,32 +32,6 @@ To run Elasticsearch with specific plugins or configuration files installed on E
 ** Each Elasticsearch node needs to repeat the download, wasting bandwidth and slowing startup.
 ** Deployment manifests are more complicated.
 
-[id="istio-note"]
-**Note when using Istio**
-
-When using Istio, init containers do *not* have network access, as the Envoy sidecar that provides network connectivity is not online.  In this scenario, custom containers are the best option.  If custom containers are simply not a viable option, then it is possible, although not recommended to adjust the startup command for the elasticsearch container itself to run the plugin installation before starting Elasticsearch, as the following example describes.
-
-[source,yaml]
-----
-spec:
-  nodeSets:
-  - name: default
-    count: 3
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          command:
-          - /usr/bin/env
-          - bash
-          - -c
-          - |
-            #!/usr/bin/env bash
-            set -e
-            bin/elasticsearch-plugin install --batch repository-s3
-            /bin/tini -- /usr/local/bin/docker-entrypoint.sh
-----
-
 See <<{p}-custom-images,Creating custom images>> for instructions on how to build custom Docker images based on the official Elastic images.
 
 The following example describes option 2, using a repository plugin. To install the plugin before the Elasticsearch
@@ -107,3 +81,29 @@ spec:
 
 <1> Elasticsearch runs by convention in a container called 'elasticsearch'.
 <2> Assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s).
+
+[id="istio-note"]
+**Note when using Istio**
+
+When using Istio, init containers do *not* have network access, as the Envoy sidecar that provides network connectivity is not started yet. In this scenario, custom containers are the best option. If custom containers are simply not a viable option, then it is possible to adjust the startup command for the elasticsearch container itself to run the plugin installation before starting Elasticsearch, as the following example describes. Note that this approach will require updating the startup command if it changes in the Elasticsearch image, which could potentially cause failures during upgrades.
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          command:
+          - /usr/bin/env
+          - bash
+          - -c
+          - |
+            #!/usr/bin/env bash
+            set -e
+            bin/elasticsearch-plugin install --batch repository-s3
+            /bin/tini -- /usr/local/bin/docker-entrypoint.sh
+----
