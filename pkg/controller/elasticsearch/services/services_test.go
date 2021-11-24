@@ -398,7 +398,7 @@ func TestElasticsearchURLFromRandomPod(t *testing.T) {
 			},
 			"",
 			fmt.Errorf(
-				"could not generate URL from given pod as the pod does not have both %s, and %s labels; existing labels: %v", label.HTTPSchemeLabelName, label.StatefulSetNameLabelName, map[string]string{}),
+				"could not generate URL from pod pod0 as the pod does not have both %s, and %s labels; existing labels: %v", label.HTTPSchemeLabelName, label.StatefulSetNameLabelName, map[string]string{}),
 		},
 	}
 	for _, tt := range tests {
