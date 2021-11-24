@@ -189,7 +189,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 		return err
 	}
 
-	if err = compareCgroupCPULimit(topoElem, nodeStats.OS.CGroup.CPU); err != nil {
+	if err = compareCgroupCPULimit(topoElem, nodeStats); err != nil {
 		return err
 	}
 
@@ -244,10 +244,7 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 }
 
 // compareCgroupCPULimit compares the CPU limit specified in a nodeSet with the limit set in the CPU control group at the OS level
-func compareCgroupCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
-	CFSPeriodMicros int `json:"cfs_period_micros"`
-	CFSQuotaMicros  int `json:"cfs_quota_micros"`
-}) error {
+func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
 	var expectedCPULimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		if c.Name == esv1.ElasticsearchContainerName {
@@ -259,6 +256,7 @@ func compareCgroupCPULimit(topologyElement esv1.NodeSet, cgroupCPU struct {
 		return nil
 	}
 
+	cgroupCPU := nodeStats.OS.CGroup.CPU
 	actualCgroupCPULimit := float64(cgroupCPU.CFSQuotaMicros) / float64(cgroupCPU.CFSPeriodMicros)
 	if expectedCPULimit.AsApproximateFloat64() != actualCgroupCPULimit {
 		return fmt.Errorf("expected cgroup CPU limit [%f], got [%f]", expectedCPULimit.AsApproximateFloat64(), actualCgroupCPULimit)
