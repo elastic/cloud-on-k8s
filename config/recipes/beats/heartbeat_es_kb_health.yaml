@@ -4,7 +4,7 @@ metadata:
   name: heartbeat
 spec:
   type: heartbeat
-  version: 7.15.0
+  version: 7.15.2
   elasticsearchRef:
     name: elasticsearch
   config:
@@ -27,7 +27,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.15.0
+  version: 7.15.2
   nodeSets:
   - name: default
     count: 3
@@ -39,7 +39,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.15.0
+  version: 7.15.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
