@@ -91,7 +91,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		parentCtx:            ctx,
 		k8sClient:            d.K8sClient(),
 		es:                   d.ES,
-		observedState:        observedState,
 		esState:              esState,
 		expectations:         d.Expectations,
 		validateStorageClass: d.OperatorParameters.ValidateStorageClass,
