@@ -10,11 +10,15 @@ import (
 	"strconv"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -111,11 +115,6 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 				)
 			}
 
-			v, err := version.Parse(es.Spec.Version)
-			if err != nil {
-				return err
-			}
-
 			// flatten the topology
 			var expectedTopology []esv1.NodeSet
 			for _, node := range es.Spec.NodeSets {
@@ -148,32 +147,19 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 				}
 
 				// match the actual Elasticsearch node to an expected one in expectedTopology
-				foundInExpectedTopology := false
 				nodeStats := nodesStats.Nodes[nodeID]
-				// ES returns a string, parse it as an int64, base10
-				cgroupMemoryLimitsInBytes, err := strconv.ParseInt(
-					nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
-				)
-				if err != nil {
-					return err
-				}
+				var err error
 				for i, topoElem := range expectedTopology {
-					cfg := esv1.DefaultCfg(v)
-					if err := esv1.UnpackConfig(topoElem.Config, v, &cfg); err != nil {
-						return err
-					}
-					if compareRoles(cfg.Node, node.Roles) &&
-						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) {
+					if err = e.compareTopology(es, topoElem, node, nodeStats); err == nil {
 						// found it! no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
-						foundInExpectedTopology = true
 						break
 					}
 				}
-				if !foundInExpectedTopology {
+				if err != nil {
 					// node reported from ES API does not match any expected node in the spec
 					// (could be normal and transient on downscales)
-					return fmt.Errorf("actual node in the cluster (name: %s, roles: %+v, memory limit: %d) does not match any expected node", node.Name, node.Roles, cgroupMemoryLimitsInBytes)
+					return fmt.Errorf("actual node in the cluster does not match any expected node: %w", err)
 				}
 			}
 			// expected topology should have matched all nodes
@@ -185,29 +171,170 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 	}
 }
 
-func compareRoles(expected *esv1.Node, actualRoles []string) bool {
-	for _, r := range actualRoles {
-		if !expected.HasRole(esv1.NodeRole(r)) {
-			return false
-		}
+func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.NodeSet, node client.Node, nodeStats client.NodeStats) error {
+	// get config to check roles
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return err
+	}
+	cfg := esv1.DefaultCfg(v)
+	if err := esv1.UnpackConfig(topoElem.Config, v, &cfg); err != nil {
+		return err
+	}
+	if err = compareRoles(cfg.Node, node.Roles); err != nil {
+		return err
 	}
 
-	return true
+	if err = compareCgroupMemoryLimit(topoElem, nodeStats); err != nil {
+		return err
+	}
+
+	if err = compareCgroupCPULimit(topoElem, nodeStats); err != nil {
+		return err
+	}
+
+	// get pods to check ressources requirements
+	pods, err := e.k.GetPods(test.ESPodListOptionsByNodeSet(e.Elasticsearch.Namespace, e.Elasticsearch.Name, topoElem.Name)...)
+	if err != nil {
+		return err
+	}
+	if len(pods) == 0 {
+		return fmt.Errorf("no pod found for ES %q / nodeSet %q", e.Elasticsearch.Name, topoElem.Name)
+	}
+	if err = compareSpecResources(topoElem, pods); err != nil {
+		return err
+	}
+
+	return compareClaimedStorage(e.k, topoElem, pods)
 }
 
-func compareMemoryLimit(topologyElement esv1.NodeSet, cgroupMemoryLimitsInBytes int64) bool {
+func compareRoles(expected *esv1.Node, actualRoles []string) error {
+	for _, r := range actualRoles {
+		if !expected.HasRole(esv1.NodeRole(r)) {
+			return fmt.Errorf("actual role %s not expected", r)
+		}
+	}
+	return nil
+}
+
+// compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level
+func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		if c.Name == esv1.ElasticsearchContainerName {
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}
-	if memoryLimit == nil {
+	if memoryLimit == nil || memoryLimit.IsZero() {
 		// no expected memory, consider it's ok
-		return true
+		return nil
+	}
+	// ES returns a string, parse it as an int64, base10
+	actualCgroupMemoryLimit, err := strconv.ParseInt(
+		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
+	)
+	if err != nil {
+		return err
+	}
+	expectedCgroupMemoryLimit := memoryLimit.Value()
+	if expectedCgroupMemoryLimit != actualCgroupMemoryLimit {
+		return fmt.Errorf("expected cgroup memory limit %d, got %d", expectedCgroupMemoryLimit, actualCgroupMemoryLimit)
+	}
+	return nil
+}
+
+// compareCgroupCPULimit compares the CPU limit specified in a nodeSet with the limit set in the CPU control group at the OS level
+func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
+	var expectedCPULimit *resource.Quantity
+	for _, c := range topologyElement.PodTemplate.Spec.Containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			expectedCPULimit = c.Resources.Limits.Cpu()
+		}
+	}
+	if expectedCPULimit == nil || expectedCPULimit.IsZero() {
+		// no expected cpu, consider it's ok
+		return nil
 	}
 
-	expectedBytes := memoryLimit.Value()
+	cgroupCPU := nodeStats.OS.CGroup.CPU
+	actualCgroupCPULimit := float64(cgroupCPU.CFSQuotaMicros) / float64(cgroupCPU.CFSPeriodMicros)
+	if expectedCPULimit.AsApproximateFloat64() != actualCgroupCPULimit {
+		return fmt.Errorf("expected cgroup CPU limit [%f], got [%f]", expectedCPULimit.AsApproximateFloat64(), actualCgroupCPULimit)
+	}
+	return nil
+}
 
-	return expectedBytes == cgroupMemoryLimitsInBytes
+// compareSpecResources compares the resources specified in the Elasticsearch resource with the resources
+// specified in the pods
+func compareSpecResources(topologyElement esv1.NodeSet, pods []corev1.Pod) error {
+	var expected *corev1.ResourceRequirements
+	for _, c := range topologyElement.PodTemplate.Spec.Containers {
+		container := c
+		if c.Name == esv1.ElasticsearchContainerName {
+			expected = &container.Resources
+		}
+	}
+	if expected == nil {
+		expected = &nodespec.DefaultResources
+	}
+
+	for _, pod := range pods {
+		for _, c := range pod.Spec.Containers {
+			actual := c.Resources
+			if c.Name == esv1.ElasticsearchContainerName { //nolint:nestif
+				if expected.Requests != nil {
+					if err := compareQuantity(pod.Name, "CPU request", expected.Requests.Cpu(), actual.Requests.Cpu()); err != nil {
+						return err
+					}
+					if err := compareQuantity(pod.Name, "memory request", expected.Requests.Memory(), actual.Requests.Memory()); err != nil {
+						return err
+					}
+				}
+				if expected.Limits != nil {
+					if err := compareQuantity(pod.Name, "CPU limit", expected.Limits.Cpu(), actual.Limits.Cpu()); err != nil {
+						return err
+					}
+					if err := compareQuantity(pod.Name, "memory limit", expected.Limits.Memory(), actual.Limits.Memory()); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func compareQuantity(podName string, resourceType string, expected, actual *resource.Quantity) error {
+	if !expected.IsZero() && !equality.Semantic.DeepEqual(expected, actual) {
+		return fmt.Errorf("pod [%s] expected %s [%d], got [%d]", podName, resourceType, expected.Value(), actual.Value())
+	}
+	return nil
+}
+
+// compareClaimedStorage compares the requested storage specified in a nodeSet with the actual capacity claimed in the PVC
+func compareClaimedStorage(k8sClient *test.K8sClient, topologyElement esv1.NodeSet, pods []corev1.Pod) error {
+	var expectedStorage *resource.Quantity
+	for _, v := range topologyElement.VolumeClaimTemplates {
+		if v.Name == volume.ElasticsearchDataVolumeName {
+			expectedStorage = v.Spec.Resources.Requests.Storage()
+		}
+	}
+	if expectedStorage == nil {
+		// no expected storage, consider it's ok
+		return nil
+	}
+	pvcs, err := k8sClient.GetPVCsByPods(pods)
+	if err != nil {
+		return err
+	}
+	if len(pods) != len(pvcs) {
+		return fmt.Errorf("expected PVC count %q, got %q", len(pods), len(pvcs))
+	}
+	for _, pvc := range pvcs {
+		actualStorage := pvc.Spec.Resources.Requests.Storage()
+		if !equality.Semantic.DeepEqual(expectedStorage, actualStorage) {
+			return fmt.Errorf("pvc [%s] expected claimed storage [%d], got [%d]", pvc.Name, expectedStorage.Value(), actualStorage.Value())
+		}
+	}
+	return nil
 }

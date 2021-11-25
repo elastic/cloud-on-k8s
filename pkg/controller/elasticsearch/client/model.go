@@ -103,6 +103,10 @@ type NodeStats struct {
 			Memory struct {
 				LimitInBytes string `json:"limit_in_bytes"`
 			} `json:"memory"`
+			CPU struct {
+				CFSPeriodMicros int `json:"cfs_period_micros"`
+				CFSQuotaMicros  int `json:"cfs_quota_micros"`
+			} `json:"cpu"`
 		} `json:"cgroup"`
 	} `json:"os"`
 }

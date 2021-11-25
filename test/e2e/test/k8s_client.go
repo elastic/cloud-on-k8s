@@ -39,6 +39,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/maps"
@@ -264,6 +265,24 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 	return certificates.NewCA(pKey, caCerts[0]), nil
 }
 
+// GetPVsByPods returns all the PersistentVolumeClaims associated to a list of pods
+func (k *K8sClient) GetPVCsByPods(pods []corev1.Pod) ([]corev1.PersistentVolumeClaim, error) {
+	pvcs := make([]corev1.PersistentVolumeClaim, len(pods))
+	for i, pod := range pods {
+		var pvc corev1.PersistentVolumeClaim
+		key := types.NamespacedName{
+			Namespace: pod.Namespace,
+			Name:      fmt.Sprintf("%s-%s", volume.ElasticsearchDataVolumeName, pod.Name),
+		}
+		if err := k.Client.Get(context.Background(), key, &pvc); err != nil {
+			return nil, err
+		}
+
+		pvcs[i] = pvc
+	}
+	return pvcs, nil
+}
+
 // Exec runs the given cmd into the given pod.
 func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string, error) {
 	// create the exec client
@@ -353,6 +372,16 @@ func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		common.TypeLabelName:       label.Type,
 		label.ClusterNameLabelName: esName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+// ESPodListOptionsByNodeSet returns a list option to list the pods corresponding to a given NodeSet
+func ESPodListOptionsByNodeSet(esNamespace, esName, nodeSetName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(esNamespace)
+	stsName := esv1.StatefulSet(esName, nodeSetName)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		label.StatefulSetNameLabelName: stsName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }
