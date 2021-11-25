@@ -424,7 +424,6 @@ func Test_buildLabels(t *testing.T) {
 				_, exists := got[unexpectedLabel]
 				assert.False(t, exists, "unexpected label: %s", unexpectedLabel)
 			}
-
 		})
 	}
 }
