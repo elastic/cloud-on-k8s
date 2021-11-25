@@ -12,7 +12,7 @@ ENV GOTESTSUM_VERSION=0.5.0
 ENV KIND_VERSION_0_8=0.8.1
 ENV KIND_VERSION_0_9=0.9.0
 ENV OPENSHIFT_TOOLS_VERSION=4.7.0
-ENV EKSCTL_VERSION=0.34.0
+ENV EKSCTL_VERSION=0.74.0
 ENV ECK_DIAG_VERSION=1.0.1
 
 # golangci-lint
@@ -83,7 +83,7 @@ RUN curl -fsSLO https://github.com/elastic/eck-diagnostics/releases/download/${E
     tar xzf eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
     mv eck-diagnostics /usr/local/bin/eck-diagnostics
 
-RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" && \
+RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" && \
     tar xzf eksctl_Linux_amd64.tar.gz && \
     mv eksctl /usr/local/bin/eksctl && \
     rm eksctl_Linux_amd64.tar.gz
