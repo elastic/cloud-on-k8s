@@ -28,6 +28,13 @@ func isTrial(l esclient.License) bool {
 	return l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
 }
 
+// isECKManagedTrial returns true if this is a trial started via the internal trial mechanism in the operator. We use an
+// empty license with only the type field populated to indicate to the Elasticsearch controller that a self-generated
+// trial in Elasticsearch should be started. This can be done only once.
+func isECKManagedTrial(l esclient.License) bool {
+	return isTrial(l) && l.Signature == "" && l.UID == "" && l.ExpiryDateInMillis == 0 && l.StartDateInMillis == 0
+}
+
 // isBasic returns true if an Elasticsearch license is of the basic type
 func isBasic(l esclient.License) bool {
 	return l.Type == string(esclient.ElasticsearchLicenseTypeBasic)
@@ -117,7 +124,8 @@ func updateLicense(
 		},
 	}
 
-	if isTrial(desired) {
+	if isECKManagedTrial(desired) {
+		// start a self-generated trial in Elasticsearch, this can only be done once.
 		return pkgerrors.Wrap(startTrial(ctx, updater, esCluster), "failed to start trial")
 	}
 
