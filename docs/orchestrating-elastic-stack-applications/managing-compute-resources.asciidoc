@@ -9,6 +9,12 @@ endif::[]
 
 To help the Kubernetes scheduler correctly place Pods in available Kubernetes nodes and ensure quality of service (QoS), it is recommended to specify the CPU and memory requirements for objects managed by the operator ({eck_resources_list}). In Kubernetes, `requests` defines the minimum amount of resources that must be available for a Pod to be scheduled; `limits` defines the maximum amount of resources that a Pod is allowed to consume. For more information about how Kubernetes uses these concepts, see: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
 
+NOTE: The operator applies default requests and limits for memory and CPU. They may be suitable for a first experience with the Elastic stack, however it is recommended to reevaluate these values for more advanced use cases.
+
+Consider that Kubernetes throttles containers exceeding the CPU limit defined in the `limits` section. Do not set this value too low, or it would affect the performance of your workloads, even if you have enough resources available in the Kubernetes cluster.
+
+Also, to minimize disruption caused by Pod evictions due to resource contention, you can run pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
+
 [float]
 [id="{p}-compute-resources"]
 == Set compute resources
@@ -19,22 +25,36 @@ You can set compute resource constraints in the `podTemplate` of objects managed
 [id="{p}-compute-resources-elasticsearch"]
 === Set compute resources for Elasticsearch
 
-NOTE: Staring with Elasticsearch 7.11, unless manually overridden, heap size is automatically calculated based on the node roles and the available memory. In Kubernetes, the amount of memory available to an Elasticsearch node is determined by the `limits` defined for that container. See <<{p}-jvm-heap-size>> for more information.
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              memory: 4Gi
+              cpu: 8
+            limits:
+              memory: 4Gi
+----
 
-To minimize disruption caused by Pod evictions due to resource contention, you can run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
+[float]
+[id="{p}-elasticsearch-memory"]
+==== Memory limit and JVM Heap settings
 
-The value set for cpu requests directly impacts Elasticsearch `node.processors` setting. For example, with `resources.requests.cpu: 1`, Elasticsearch effectively relies on a single core, which may significantly limit performance. Consider setting a higher value that matches the desired number of cores Elasticsearch can use. You can also set your own value for `node.processors` in the Elasticsearch config.
+Starting with Elasticsearch 7.11, the heap size of the JVM is automatically calculated based on the node roles and the available memory. The available memory is defined by the value of `resources.limits.memory` set on the `elasticsearch` container in the Pod template, or the available memory on the Kubernetes node is no limit is set.
 
-Consider also that Kubernetes throttles containers exceeding the CPU limit defined in the `limits` section. Do not set this value too low or it would affect the performance of Elasticsearch, even if you have enough resources available in the Kubernetes cluster.
-
-[NOTE]
-===============================
-A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes issue] may lead to over-aggressive CPU limits throttling. If the host Linux Kernel does not include link:https://github.com/kubernetes/kubernetes/issues/67577[this CFS quota fix], you may want to:
-
-* not set any CPU limit in the Elasticsearch resource (Burstable QoS)
-* link:https://github.com/kubernetes/kubernetes/pull/63437[reduce the CFS quota period] in kubelet configuration
-* link:https://github.com/kubernetes/kubernetes/issues/51135#issuecomment-386319185[disable CFS quotas] in kubelet configuration
-===============================
+For Elasticsearch before 7.11, or if you want to override the default calculated heap size on newer versions, set the `ES_JAVA_OPTS` environment variable in the `podTemplate` to an appropriate value:
 
 [source,yaml,subs="attributes"]
 ----
@@ -61,6 +81,32 @@ spec:
             limits:
               memory: 4Gi
 ----
+
+[float]
+[id="{p}-elasticsearch-cpu"]
+==== CPU resources
+
+The value set for cpu limits or requests directly impacts Elasticsearch `node.processors` setting. The following table gives the default value for `node.processors` given the cpu limits and requests set on the `elasticsearch` container:
+
+.Default value for Elasticsearch `node.processors` setting depending on CPU `requests` and `limits`
+[cols="h,m,m", options="header"]
+|===
+| ^| No CPU limit                            ^| With CPU limit
+>| No CPU request | All the available cores on the K8S node | Value of the CPU limit
+>| CPU request set to 1 | All the available cores on the K8S node | Value of the CPU limit
+>| Other CPU requests | Value of the CPU request | Value of the CPU limit
+|===
+
+You can also set your own value for `node.processors` in the Elasticsearch config.
+
+[NOTE]
+===============================
+A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes issue] may lead to over-aggressive CPU limits throttling. If the host Linux Kernel does not include link:https://github.com/kubernetes/kubernetes/issues/67577[this CFS quota fix], you may want to:
+
+* not set any CPU limit in the Elasticsearch resource (Burstable QoS)
+* link:https://github.com/kubernetes/kubernetes/pull/63437[reduce the CFS quota period] in kubelet configuration
+* link:https://github.com/kubernetes/kubernetes/issues/51135#issuecomment-386319185[disable CFS quotas] in kubelet configuration
+===============================
 
 [float]
 [id="{p}-compute-resources-kibana-and-apm"]
@@ -265,3 +311,46 @@ Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample
 ...................................
 
 To avoid this, explicitly define the requests and limits mandated by your environment in the resource specification. It will prevent the operator from applying the built-in defaults.
+
+[float]
+[id="{p}-monitor-compute-resources"]
+== Monitor compute resources
+
+[float]
+[id="{p}-monitor-compute-resources-beats"]
+==== Using Beats
+
+link:{p}-beat.html[Metricbeat] can collect the percentage of both the CPU and the memory limits used by each Pod (or total node allocatable if resource is not limited). The two relevant metrics are `kubernetes.pod.cpu.usage.limit.pct` for CPU, and `kubernetes.pod.memory.usage.node.pct` for memory.
+
+[role="screenshot"]
+image::images/metrics-explorer-cpu.png[cgroup CPU perforamce chart]
+
+[float]
+[id="{p}-monitor-compute-resources-stack-monitoring"]
+==== Monitoring Elasticsearch CPU using Stack Monitoring
+
+If link:{p}-stack-monitoring.html[stack monitoring] is enabled, the pressure applied by the CPU cgroup controller to an Elasticsearch node can be evaluated from the *Stack Monitoring* page in Kibana.
+
+. On the *Stack Monitoring* page select the Elasticsearch node you want to monitor.
+. Select the *Advanced* tab.
+
+In the example below an Elasticsearch container is limited to 2 cores.
+
+[source,yaml]
+----
+nodeSets:
+- name: default
+  count: 3
+  podTemplate:
+    spec:
+      containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              cpu: 2
+----
+
+The *Cgroup usage* curve shows that the CPU usage of this container has been steadily increasing up to 2 cores. Then, while the container was still requesting more CPU, the *Cgroup Throttling* curve shows how much the Elasticsearch container has been throttled:
+
+[role="screenshot"]
+image::images/cgroups-cfs-stats.png[cgroup CPU perforamce chart]
