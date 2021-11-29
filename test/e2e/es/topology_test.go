@@ -9,7 +9,6 @@ package es
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -29,8 +28,6 @@ func TestCoordinatingNodes(t *testing.T) {
 
 // TestResourcesRequirements tests a cluster with resources (cpu/memory/storage) requirements.
 func TestResourcesRequirements(t *testing.T) {
-	sc, err := getResizeableStorageClass(test.NewK8sClientOrFatal().Client)
-	assert.NoError(t, err)
 	b := elasticsearch.NewBuilder("test-es-resreq").
 		WithNodeSet(esv1.NodeSet{
 			Name:  "masterdata",
@@ -56,7 +53,7 @@ func TestResourcesRequirements(t *testing.T) {
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				newPVC("2Gi", sc),
+				newPVC("2Gi", elasticsearch.DefaultStorageClass),
 			},
 		})
 
