@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -286,14 +287,14 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	// we are fully migrated to node shutdown and do not need this logic anymore
-	if reconcile.HasOrchestrationFlag(d.ES, reconcile.NoDisabledAllocation) {
+	if d.ReconcileState.OrchestrationHints().NoAllocationsDisabled {
 		return results
 	}
 
-	updateOrchestrationVersion := func() {
+	updateOrchestrationHints := func() {
 		// all nodes are running a version that supports node shutdown remember this status
 		if supportsNodeShutdown(esClient.Version()) {
-			d.ReconcileState.UpdateOrchestrationVersion(reconcile.NoDisabledAllocation)
+			d.ReconcileState.UpdateOrchestrationHints(hints.OrchestrationsHints{NoAllocationsDisabled: true})
 		}
 	}
 
@@ -302,7 +303,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 		return results.WithError(err)
 	}
 	if alreadyEnabled {
-		updateOrchestrationVersion()
+		updateOrchestrationHints()
 		return results
 	}
 
@@ -338,7 +339,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	if err := esClient.EnableShardAllocation(ctx); err != nil {
 		return results.WithError(err)
 	}
-	updateOrchestrationVersion()
+	updateOrchestrationHints()
 	return results
 }
 

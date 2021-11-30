@@ -213,7 +213,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
-	if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
+	if err := d.maybeRemoveTransientAllocationExcludes(ctx, esClient); err != nil {
 		return results.WithError(err)
 	}
 

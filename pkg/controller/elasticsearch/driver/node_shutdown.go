@@ -10,8 +10,8 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 )
 
@@ -31,14 +31,14 @@ func supportsNodeShutdown(v version.Version) bool {
 	return v.GTE(version.MustParse("7.15.2"))
 }
 
-// maybeRemoveTransientSettings removes left-over transient settings if we are using node shutdown and have not removed
+// maybeRemoveTransientAllocationExcludes removes left-over transient settings if we are using node shutdown and have not removed
 // the settings previously that were used in the pre-node-shutdown orchestration approach.
-func (d *defaultDriver) maybeRemoveTransientSettings(ctx context.Context, c esclient.Client) error {
-	if supportsNodeShutdown(c.Version()) && !reconcile.HasOrchestrationFlag(d.ES, reconcile.NoTransients) {
+func (d *defaultDriver) maybeRemoveTransientAllocationExcludes(ctx context.Context, c esclient.Client) error {
+	if supportsNodeShutdown(c.Version()) && !d.ReconcileState.OrchestrationHints().NoTransientAllocationExcludes {
 		if err := c.ExcludeFromShardAllocation(ctx, nil); err != nil {
 			return err
 		}
-		d.ReconcileState.UpdateOrchestrationVersion(reconcile.NoTransients)
+		d.ReconcileState.UpdateOrchestrationHints(hints.OrchestrationsHints{NoTransientAllocationExcludes: true})
 	}
 	return nil
 }

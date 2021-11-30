@@ -6,7 +6,10 @@ package elasticsearch
 
 import (
 	"context"
+	"reflect"
 	"sync/atomic"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm"
@@ -175,8 +178,21 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	state := esreconcile.NewState(es)
+	state, err := esreconcile.NewState(es)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
 	results := r.internalReconcile(ctx, es, state)
+
+	if err := r.annotateResource(ctx, es, state); err != nil {
+		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
+			return reconcile.Result{Requeue: true}, nil
+		}
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+		return results.WithError(err).Aggregate()
+	}
+
 	err = r.updateStatus(ctx, es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -293,6 +309,29 @@ func (r *ReconcileElasticsearch) updateStatus(
 		"status", cluster.Status,
 	)
 	return common.UpdateStatus(r.Client, cluster)
+}
+
+func (r *ReconcileElasticsearch) annotateResource(
+	ctx context.Context,
+	es esv1.Elasticsearch,
+	reconcileState *esreconcile.State,
+) error {
+	span, _ := apm.StartSpan(ctx, "update_annotations", tracing.SpanTypeApp)
+	defer span.End()
+
+	// cluster-uuid is a special case that is not treated here but through an immediate update
+	newAnnotations, err := reconcileState.Annotations()
+	if err != nil {
+		return err
+	}
+
+	expected := maps.Merge(es.Annotations, newAnnotations)
+	if reflect.DeepEqual(expected, es.Annotations) {
+		log.V(1).Info("Skipping annotation update", "es_name", es.Name, "namespace", es.Namespace)
+		return nil
+	}
+	es.SetAnnotations(expected)
+	return r.Update(ctx, &es)
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
