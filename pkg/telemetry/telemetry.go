@@ -28,14 +28,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 const (
-	autoscaledResourceCount     = "autoscaled_resource_count"
-	resourceCount               = "resource_count"
-	podCount                    = "pod_count"
-	stackMonitoringLogsCount    = "stack_monitoring_logs_count"
-	stackMonitoringMetricsCount = "stack_monitoring_metrics_count"
+	resourceCount = "resource_count"
+	podCount      = "pod_count"
 
 	timestampFieldName = "timestamp"
 )
@@ -186,9 +184,24 @@ func (r *Reporter) getLicenseInfo() (map[string]string, error) {
 	return licenseConfigMap.Data, nil
 }
 
-func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0, autoscaledResourceCount: 0}
+type downwardNodeLabelsStats struct {
+	// ResourceCount is the number of resources which are relying on the node labels downward API.
+	ResourceCount int32 `json:"resource_count"`
+	// DistinctNodeLabelsCount is the number of distinct labels used.
+	DistinctNodeLabelsCount int32 `json:"distinct_node_labels_count"`
+}
 
+func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := struct {
+		ResourceCount               int32                    `json:"resource_count"`
+		PodCount                    int32                    `json:"pod_count"`
+		AutoscaledResourceCount     int32                    `json:"autoscaled_resource_count"`
+		StackMonitoringLogsCount    int32                    `json:"stack_monitoring_logs_count"`
+		StackMonitoringMetricsCount int32                    `json:"stack_monitoring_metrics_count"`
+		DownwardNodeLabels          *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
 	var esList esv1.ElasticsearchList
 	for _, ns := range managedNamespaces {
 		if err := k8sClient.List(context.Background(), &esList, client.InNamespace(ns)); err != nil {
@@ -197,17 +210,27 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 
 		for _, es := range esList.Items {
 			es := es
-			stats[resourceCount]++
-			stats[podCount] += es.Status.AvailableNodes
+			stats.ResourceCount++
+			stats.PodCount += es.Status.AvailableNodes
 			if es.IsAutoscalingDefined() {
-				stats[autoscaledResourceCount]++
+				stats.AutoscaledResourceCount++
+			}
+			if es.HasDownwardNodeLabels() {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(es.DownwardNodeLabels()...))
 			}
 			if monitoring.IsLogsDefined(&es) {
-				stats[stackMonitoringLogsCount]++
+				stats.StackMonitoringLogsCount++
 			}
 			if monitoring.IsMetricsDefined(&es) {
-				stats[stackMonitoringMetricsCount]++
+				stats.StackMonitoringMetricsCount++
 			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()),
 		}
 	}
 	return "elasticsearches", stats, nil
