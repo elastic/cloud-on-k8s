@@ -21,7 +21,7 @@ For Elastic Stack upgrade, check <<{p}-upgrading-stack,Upgrade the Elastic Stack
 
 ECK reached general availability (GA) status with the link:https://www.elastic.co/blog/elastic-cloud-on-kubernetes-ECK-is-now-generally-available[release of version 1.0.0]. The latest available GA version is {eck_version}. It is compatible with the previous GA releases (1.0.x and higher) and the beta release (1.0.0-beta1), and can be upgraded in-place (<<{p}-ga-openshift, with a few exceptions>>) by applying the new set of deployment manifests. Previous alpha releases, up to and including version 0.9.0, are not compatible with the GA and beta releases and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.0-beta/k8s-upgrading-eck.html[require extra work to upgrade].
 
-Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to make sure that the release does not contain any breaking changes that could affect you. The <<release-highlights-{eck_version},release highlights document>> provides more details and possible workarounds for any breaking changes or known issues in each release.
+Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to make sure that the release does not contain any breaking changes that could affect you. The <<release-notes-{eck_version},release notes>> also provide more details and possible workarounds for any breaking changes or known issues in each release.
 
 Note that the release notes and highlights only list the changes since the last release. If you are skipping over any intermediate versions during the upgrade -- such as going directly from 1.0.0-beta1 to {eck_version} -- review the release notes and highlights of each of the skipped releases to fully understand all the breaking changes you might encounter during and after the upgrade.
 
@@ -69,7 +69,7 @@ Then upgrade the main chart as usual:
 helm upgrade elastic-operator elastic/eck-operator -n elastic-system
 ----
 
-If you are using ECK through an OLM-managed distribution channel like operatorhub.io or the OpenShift OperatorHub then the CRD version upgrade will be handled by OLM for you and you do not need to take special action.
+If you are using ECK through an OLM-managed distribution channel like link:https://operatorhub.io[operatorhub.io] or the OpenShift OperatorHub then the CRD version upgrade will be handled by OLM for you and you do not need to take special action.
 
 This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
 
