@@ -24,6 +24,7 @@ require (
 	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/magiconair/properties v1.8.5
 	github.com/pkg/errors v0.9.1
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.26.0
 	github.com/sethvargo/go-password v0.2.0
