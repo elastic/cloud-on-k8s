@@ -40,21 +40,10 @@ const (
 	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg    = "Unsupported version"
+	notAllowedNodesLabelMsg  = "Node label not in the exposed node labels list"
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
-
-// validations are the validation funcs that apply to creates or updates
-var validations = []validation{
-	noUnknownFields,
-	validName,
-	hasCorrectNodeRoles,
-	supportedVersion,
-	validSanIP,
-	validAutoscalingConfiguration,
-	validPVCNaming,
-	validMonitoring,
-}
 
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
 
@@ -67,6 +56,41 @@ func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []update
 			return validPVCModification(current, proposed, k8sClient, validateStorageClass)
 		},
 	}
+}
+
+// validations are the validation funcs that apply to creates or updates
+func validations(exposedNodeLabels NodeLabels) []validation {
+	return []validation{
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validNodeLabels(proposed, exposedNodeLabels)
+		},
+		noUnknownFields,
+		validName,
+		hasCorrectNodeRoles,
+		supportedVersion,
+		validSanIP,
+		validAutoscalingConfiguration,
+		validPVCNaming,
+		validMonitoring,
+	}
+}
+
+func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
+	var errs field.ErrorList
+	for _, nodeLabel := range proposed.DownwardNodeLabels() {
+		if exposedNodeLabels.IsAllowed(nodeLabel) {
+			continue
+		}
+		errs = append(
+			errs,
+			field.Invalid(
+				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation),
+				nodeLabel,
+				notAllowedNodesLabelMsg,
+			),
+		)
+	}
+	return errs
 }
 
 func check(es esv1.Elasticsearch, validations []validation) field.ErrorList {

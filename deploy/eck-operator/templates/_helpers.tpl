@@ -295,3 +295,17 @@ RBAC permissions on non-namespaced resources
   - patch
   - delete
 {{- end -}}
+
+{{/*
+RBAC permissions to read node labels
+*/}}
+{{- define "eck-operator.readNodeLabelsRbacRule" -}}
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+{{- end -}}

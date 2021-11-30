@@ -10,29 +10,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-var downwardAPIVolume = corev1.Volume{
-	Name: volume.DownwardAPIVolumeName,
-	VolumeSource: corev1.VolumeSource{
-		DownwardAPI: &corev1.DownwardAPIVolumeSource{
-			Items: []corev1.DownwardAPIVolumeFile{
-				{
-					Path: volume.LabelsFile,
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.labels",
-					},
-				},
-			},
-		},
-	},
-}
-
 var downwardAPIVolumeMount = corev1.VolumeMount{
 	Name:      volume.DownwardAPIVolumeName,
 	MountPath: volume.DownwardAPIMountPath,
 	ReadOnly:  true,
 }
 
-type DownwardAPI struct{}
+type DownwardAPI struct {
+	withAnnotations bool
+}
+
+// WithAnnotations defines if the metadata.annotations must be available in the downward API volume.
+func (d DownwardAPI) WithAnnotations(withAnnotations bool) DownwardAPI {
+	d.withAnnotations = withAnnotations
+	return d
+}
 
 var _ VolumeLike = DownwardAPI{}
 
@@ -40,7 +32,33 @@ func (DownwardAPI) Name() string {
 	return volume.DownwardAPIVolumeName
 }
 
-func (DownwardAPI) Volume() corev1.Volume {
+func (d DownwardAPI) Volume() corev1.Volume {
+	downwardAPIVolume := corev1.Volume{
+		Name: volume.DownwardAPIVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			DownwardAPI: &corev1.DownwardAPIVolumeSource{
+				Items: []corev1.DownwardAPIVolumeFile{
+					{
+						Path: volume.LabelsFile,
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.labels",
+						},
+					},
+				},
+			},
+		},
+	}
+	if d.withAnnotations {
+		downwardAPIVolume.VolumeSource.DownwardAPI.Items = append(
+			downwardAPIVolume.VolumeSource.DownwardAPI.Items,
+			corev1.DownwardAPIVolumeFile{
+				Path: volume.AnnotationsFile,
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.annotations",
+				},
+			},
+		)
+	}
 	return downwardAPIVolume
 }
 

@@ -17,12 +17,51 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
+
+type esSampleBuilder struct {
+	userConfig              map[string]interface{}
+	esAdditionalAnnotations map[string]string
+	keystoreResources       *keystore.Resources
+}
+
+func newEsSampleBuilder() *esSampleBuilder {
+	return &esSampleBuilder{}
+}
+
+func (esb *esSampleBuilder) build() esv1.Elasticsearch {
+	es := sampleES.DeepCopy()
+	for k, v := range esb.esAdditionalAnnotations {
+		es.Annotations[k] = v
+	}
+	if esb.userConfig != nil {
+		es.Spec.NodeSets[0].Config = &commonv1.Config{Data: esb.userConfig}
+	}
+	return *es
+}
+
+func (esb *esSampleBuilder) withUserConfig(userConfig map[string]interface{}) *esSampleBuilder {
+	esb.userConfig = userConfig
+	return esb
+}
+
+func (esb *esSampleBuilder) addEsAnnotations(esAnnotations map[string]string) *esSampleBuilder {
+	esb.esAdditionalAnnotations = esAnnotations
+	return esb
+}
+
+func (esb *esSampleBuilder) withKeystoreResources(keystoreResources *keystore.Resources) *esSampleBuilder {
+	esb.keystoreResources = keystoreResources
+	return esb
+}
 
 var sampleES = esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
@@ -162,7 +201,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			es := *sampleES.DeepCopy()
+			es := newEsSampleBuilder().build()
 			es.Spec.Version = tt.version.String()
 			es.Spec.NodeSets[0].PodTemplate.Spec.SecurityContext = tt.userSecurityContext
 
@@ -177,6 +216,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 }
 
 func TestBuildPodTemplateSpec(t *testing.T) {
+	sampleES := newEsSampleBuilder().build()
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
@@ -191,12 +231,12 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	terminationGracePeriodSeconds := DefaultTerminationGracePeriodSeconds
 	varFalse := false
 
-	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSet, nil)
+	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSet, nil, volume.DownwardAPI{})
 	// should be sorted
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
 
-	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil)
+	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil, nil)
 	require.NoError(t, err)
 	// init containers should be patched with volume and inherited env vars and image
 	headlessSvcEnvVar := corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}
@@ -280,6 +320,112 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 	deep.MaxDepth = 25
 	require.Nil(t, deep.Equal(expected, actual))
+}
+
+func Test_buildLabels(t *testing.T) {
+	type args struct {
+		cfg               map[string]interface{}
+		esAnnotations     map[string]string
+		keystoreResources *keystore.Resources
+	}
+	tests := []struct {
+		name             string
+		args             args
+		expectedLabels   map[string]string
+		unexpectedLabels []string
+		wantErr          bool
+	}{
+		{
+			name: "Sample Elasticsearch resource",
+			expectedLabels: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "3415561705",
+			},
+			unexpectedLabels: []string{label.SecureSettingsHashLabelName},
+		},
+		{
+			name: "Updated configuration",
+			args: args{
+				cfg: map[string]interface{}{
+					"node.attr.foo": "bar",
+					"node.master":   "false",
+					"node.data":     "true",
+				},
+			},
+			expectedLabels: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "651857461",
+			},
+			unexpectedLabels: []string{label.SecureSettingsHashLabelName},
+		},
+		{
+			name: "Simple Elasticsearch resource, with downward node labels",
+			args: args{
+				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone"},
+			},
+			expectedLabels: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "1775712178",
+			},
+			unexpectedLabels: []string{label.SecureSettingsHashLabelName},
+		},
+		{
+			name: "Simple Elasticsearch resource, with other downward node labels",
+			args: args{
+				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
+			},
+			expectedLabels: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "826289284",
+			},
+			unexpectedLabels: []string{label.SecureSettingsHashLabelName},
+		},
+		{
+			name: "With keystore",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Version: "42",
+				},
+			},
+			expectedLabels: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash":          "3415561705",
+				"elasticsearch.k8s.elastic.co/secure-settings-hash": "3d24353c0d9d445310597750ba9d4d4f3dcf7940eeb57ccd7fa70b3e",
+			},
+		},
+		{
+			name: "With another keystore version",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Version: "43",
+				},
+			},
+			expectedLabels: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash":          "3415561705",
+				"elasticsearch.k8s.elastic.co/secure-settings-hash": "66d178281474e50ee7040e2270f5c889cbfdfaf11a930aae6d6f5028",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := newEsSampleBuilder().withKeystoreResources(tt.args.keystoreResources).withUserConfig(tt.args.cfg).addEsAnnotations(tt.args.esAnnotations).build()
+			ver, err := version.Parse(sampleES.Spec.Version)
+			require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, commonv1.Config{})
+			require.NoError(t, err)
+			got, err := buildLabels(es, cfg, es.Spec.NodeSets[0], tt.args.keystoreResources)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildLabels() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			for expectedLabel, expectedValue := range tt.expectedLabels {
+				actualValue, exists := got[expectedLabel]
+				assert.True(t, exists, "expected label: %s", expectedLabel)
+				assert.Equal(t, expectedValue, actualValue, "expected value for label %s: %s, got %s", expectedLabel, expectedValue, actualValue)
+			}
+
+			for _, unexpectedLabel := range tt.unexpectedLabels {
+				_, exists := got[unexpectedLabel]
+				assert.False(t, exists, "unexpected label: %s", unexpectedLabel)
+			}
+		})
+	}
 }
 
 func Test_getDefaultContainerPorts(t *testing.T) {

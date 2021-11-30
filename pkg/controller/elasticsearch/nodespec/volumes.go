@@ -17,9 +17,12 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-var downwardAPIVolume = volume.DownwardAPI{}
-
-func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
+func buildVolumes(
+	esName string,
+	nodeSpec esv1.NodeSet,
+	keystoreResources *keystore.Resources,
+	downwardAPIVolume volume.DownwardAPI,
+) ([]corev1.Volume, []corev1.VolumeMount) {
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,

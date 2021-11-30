@@ -42,4 +42,5 @@ const (
 	DownwardAPIVolumeName = "downward-api"
 	DownwardAPIMountPath  = "/mnt/elastic-internal/downward-api"
 	LabelsFile            = "labels"
+	AnnotationsFile       = "annotations"
 )

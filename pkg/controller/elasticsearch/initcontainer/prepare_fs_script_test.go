@@ -11,6 +11,7 @@ import (
 )
 
 func TestRenderScriptTemplate(t *testing.T) {
+	expectedAnnotations := "topology.kubernetes.io/zone topology.kubernetes.io/region"
 	tests := []struct {
 		name           string
 		params         TemplateParams
@@ -32,6 +33,21 @@ func TestRenderScriptTemplate(t *testing.T) {
 				"yes | cp -avf /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
 				"yes | cp -avf /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
 				"ln -sf /secrets/users /usr/share/elasticsearch/users",
+			},
+			dontWantSubstr: []string{
+				"expected_annotations",
+			},
+		},
+		{
+			name: "With expected annotations",
+			params: TemplateParams{
+				PluginVolumes:       PluginVolumes,
+				ExpectedAnnotations: &expectedAnnotations,
+			},
+			wantSubstr: []string{
+				"echo \"Waiting for the following annotations to be set on Pod: topology.kubernetes.io/zone topology.kubernetes.io/region\"",
+				"expected_annotations=(topology.kubernetes.io/zone topology.kubernetes.io/region)",
+				"while ! annotations_exist \"${expected_annotations[@]}\"; do sleep 2; done",
 			},
 		},
 	}

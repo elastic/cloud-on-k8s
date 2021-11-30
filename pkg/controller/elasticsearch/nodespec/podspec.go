@@ -7,6 +7,7 @@ package nodespec
 import (
 	"crypto/sha256"
 	"fmt"
+	"hash/fnv"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -47,7 +48,9 @@ func BuildPodTemplateSpec(
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
-	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
+	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
+	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources, downwardAPIVolume)
+
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -59,6 +62,7 @@ func BuildPodTemplateSpec(
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
 		keystoreResources,
+		es.DownwardNodeLabels(),
 	)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -135,9 +139,16 @@ func buildLabels(
 	if err != nil {
 		return nil, err
 	}
-	node := unpackedCfg.Node
 	cfgHash := hash.HashObject(cfg)
+	if es.HasDownwardNodeLabels() {
+		// update the config checksum with the list of node labels expected on the pod to rotate the pod when the list is updated
+		configChecksum := fnv.New32()
+		_, _ = configChecksum.Write([]byte(cfgHash))
+		_, _ = configChecksum.Write([]byte(es.Annotations[esv1.DownwardNodeLabelsAnnotation]))
+		cfgHash = fmt.Sprint(configChecksum.Sum32())
+	}
 
+	node := unpackedCfg.Node
 	podLabels := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
 		esv1.StatefulSet(es.Name, nodeSet.Name),

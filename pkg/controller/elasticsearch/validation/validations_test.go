@@ -7,6 +7,8 @@ package validation
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -482,6 +484,53 @@ func Test_autoscalingValidation(t *testing.T) {
 			actualErrors := len(actual) > 0
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed validAutoscalingConfiguration(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.NodeSets)
+			}
+		})
+	}
+}
+
+func Test_validNodeLabels(t *testing.T) {
+	type args struct {
+		proposed          esv1.Elasticsearch
+		exposedNodeLabels []string
+	}
+	tests := []struct {
+		name         string
+		args         args
+		expectErrors bool
+	}{
+		{
+			name: "Invalid node label",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{esv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
+			},
+			expectErrors: true, // "failure-domain.beta.kubernetes.io/zone" does not match "topology.kubernetes.io/*"
+		},
+		{
+			name: "Valid node label",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{esv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/*", "failure-domain.beta.kubernetes.io/*"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exposedNodeLabels, err := NewExposedNodeLabels(tt.args.exposedNodeLabels)
+			assert.NoError(t, err)
+			actual := validNodeLabels(tt.args.proposed, exposedNodeLabels)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validNodeLabels(), actual %v, wanted: %v", actualErrors, tt.expectErrors)
 			}
 		})
 	}
