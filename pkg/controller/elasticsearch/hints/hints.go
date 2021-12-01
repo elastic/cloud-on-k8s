@@ -11,7 +11,7 @@ const OrchestrationsHintsAnnotation string = "eck.k8s.elastic.co/orchestration-h
 // OrchestrationsHints represent hints to the reconciler about use or non-use of certain Elasticsearch feature for
 // orchestration purposes.
 type OrchestrationsHints struct {
-	NoTransientSettings bool `json:"no_allocations_disabled"`
+	NoTransientSettings bool `json:"no_transient_settings"`
 }
 
 // Merge merges the hints in other into the receiver.
