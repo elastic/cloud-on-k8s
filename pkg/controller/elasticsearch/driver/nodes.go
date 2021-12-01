@@ -206,15 +206,18 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// When not reconciled, set the phase to ApplyingChanges only if it was Ready to avoid to
 	// override another "not Ready" phase like MigratingData.
-	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
+	reconciled := Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client)
+	if reconciled {
 		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
 	} else if reconcileState.IsElasticsearchReady(observedState) {
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
 	}
 
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
-	if err := d.maybeRemoveTransientAllocationExcludes(ctx, esClient); err != nil {
-		return results.WithError(err)
+	if reconciled {
+		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
+			return results.WithError(err)
+		}
 	}
 
 	// TODO:

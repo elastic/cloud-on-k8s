@@ -31,14 +31,15 @@ func supportsNodeShutdown(v version.Version) bool {
 	return v.GTE(version.MustParse("7.15.2"))
 }
 
-// maybeRemoveTransientAllocationExcludes removes left-over transient settings if we are using node shutdown and have not removed
+// maybeRemoveTransientSettings removes left-over transient settings if we are using node shutdown and have not removed
 // the settings previously that were used in the pre-node-shutdown orchestration approach.
-func (d *defaultDriver) maybeRemoveTransientAllocationExcludes(ctx context.Context, c esclient.Client) error {
-	if supportsNodeShutdown(c.Version()) && !d.ReconcileState.OrchestrationHints().NoTransientAllocationExcludes {
-		if err := c.ExcludeFromShardAllocation(ctx, nil); err != nil {
+func (d *defaultDriver) maybeRemoveTransientSettings(ctx context.Context, c esclient.Client) error {
+	if supportsNodeShutdown(c.Version()) && !d.ReconcileState.OrchestrationHints().NoTransientSettings {
+		log.V(1).Info("Removing transient settings", "es_name", d.ES.Name, "namespace", d.ES.Namespace)
+		if err := c.RemoveTransientAllocationSettings(ctx); err != nil {
 			return err
 		}
-		d.ReconcileState.UpdateOrchestrationHints(hints.OrchestrationsHints{NoTransientAllocationExcludes: true})
+		d.ReconcileState.UpdateOrchestrationHints(hints.OrchestrationsHints{NoTransientSettings: true})
 	}
 	return nil
 }

@@ -107,7 +107,7 @@ func TestModel_License(t *testing.T) {
 func TestClusterRoutingAllocation(t *testing.T) {
 	clusterSettingsSample := `{"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"enable":"none","exclude":{"_name":"excluded"}}}}}}`
 	name := "excluded"
-	expected := ClusterRoutingAllocation{Transient: AllocationSettings{Cluster: ClusterRoutingSettings{Routing: RoutingSettings{Allocation: RoutingAllocationSettings{Enable: "none", Exclude: AllocationExclude{Name: &name}}}}}}
+	expected := ClusterRoutingAllocation{Transient: AllocationSettings{Cluster: ClusterRoutingSettings{Routing: RoutingSettings{Allocation: RoutingAllocationSettings{Enable: "none", Exclude: AllocationExclude{Name: name}}}}}}
 
 	var settings ClusterRoutingAllocation
 	require.NoError(t, json.Unmarshal([]byte(clusterSettingsSample), &settings))

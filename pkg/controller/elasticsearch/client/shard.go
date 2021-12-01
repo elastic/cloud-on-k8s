@@ -12,7 +12,7 @@ import (
 type AllocationSetter interface {
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation exclusions for the given nodes.
-	ExcludeFromShardAllocation(ctx context.Context, nodes *string) error
+	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
 }
 
 // ShardLister captures Elasticsearch API calls around shards retrieval.
@@ -20,7 +20,7 @@ type ShardLister interface {
 	GetShards(ctx context.Context) (Shards, error)
 }
 
-func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes *string) error {
+func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
 	allocationSettings := ClusterRoutingAllocation{
 		Transient: AllocationSettings{
 			Cluster: ClusterRoutingSettings{

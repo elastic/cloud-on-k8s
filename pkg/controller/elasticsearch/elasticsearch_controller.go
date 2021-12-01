@@ -325,7 +325,7 @@ func (r *ReconcileElasticsearch) annotateResource(
 		return err
 	}
 
-	expected := maps.Merge(es.Annotations, newAnnotations)
+	expected := maps.Merge(es.ObjectMeta.DeepCopy().Annotations, newAnnotations)
 	if reflect.DeepEqual(expected, es.Annotations) {
 		log.V(1).Info("Skipping annotation update", "es_name", es.Name, "namespace", es.Namespace)
 		return nil
