@@ -19,15 +19,12 @@ var ManagedNamespacePredicate predicate.Predicate
 func NewManagedNamespacesPredicate(managedNamespaces []string) predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			// Ignore resources that do not exist within the managed namespaces
 			return IsNamespaceManaged(e.Object.GetNamespace(), managedNamespaces)
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Ignore resources that do not exist within the managed namespaces
 			return IsNamespaceManaged(e.ObjectNew.GetNamespace(), managedNamespaces)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			// Ignore resources that do not exist within the managed namespaces
 			return IsNamespaceManaged(e.Object.GetNamespace(), managedNamespaces)
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
