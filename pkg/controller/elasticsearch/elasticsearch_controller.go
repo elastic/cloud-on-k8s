@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-
 	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,6 +46,7 @@ import (
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 const name = "elasticsearch-controller"
@@ -319,7 +318,8 @@ func (r *ReconcileElasticsearch) annotateResource(
 	span, _ := apm.StartSpan(ctx, "update_annotations", tracing.SpanTypeApp)
 	defer span.End()
 
-	// cluster-uuid is a special case that is not treated here but through an immediate update
+	// cluster-uuid is a special case that is not treated here but through an immediate update due to the risk of data loss
+	// see bootstrap package.
 	newAnnotations, err := reconcileState.Annotations()
 	if err != nil {
 		return err

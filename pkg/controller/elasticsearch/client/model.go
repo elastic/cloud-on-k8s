@@ -217,7 +217,7 @@ type RoutingAllocationSettings struct {
 }
 
 type AllocationExclude struct {
-	Name string `json:"_name"`
+	Name string `json:"_name,omitempty"`
 }
 
 func (s AllocationSettings) IsShardsAllocationEnabled() bool {
