@@ -21,7 +21,7 @@ To run Elasticsearch with specific plugins or configuration files installed on E
 ** Requires a container registry and build infrastructure to build and host the custom image.
 ** Version upgrades require building a new container image.
 
-. Use init containers to install plugins and configuration files.::
+. Use init containers to install plugins and configuration files.
 +
 * *Pros*
 ** Easier to get started and upgrade versions.
