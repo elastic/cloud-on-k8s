@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -67,7 +66,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r.Client, predicates.ManagedNamespacePredicate)
+	return addWatches(c, r.Client)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -101,10 +100,10 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
-func addWatches(c controller.Controller, k8sClient k8s.Client, predicates ...predicate.Predicate) error {
+func addWatches(c controller.Controller, k8sClient k8s.Client) error {
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, predicates...,
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate,
 	); err != nil {
 		return err
 	}
@@ -130,7 +129,7 @@ func addWatches(c controller.Controller, k8sClient k8s.Client, predicates ...pre
 			return nil
 		}
 		return rs
-	}), predicates...,
+	}), predicates.ManagedNamespacePredicate,
 	); err != nil {
 		return err
 	}

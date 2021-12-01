@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -84,7 +83,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler, predicates.ManagedNamespacePredicate)
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -98,9 +97,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileApmServer, predicates ...predicate.Predicate) error {
+func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch for changes to ApmServer
-	err := c.Watch(&source.Kind{Type: &apmv1.ApmServer{}}, &handler.EnqueueRequestForObject{}, predicates...)
+	err := c.Watch(&source.Kind{Type: &apmv1.ApmServer{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate)
 	if err != nil {
 		return err
 	}
@@ -109,13 +108,13 @@ func addWatches(c controller.Controller, r *ReconcileApmServer, predicates ...pr
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
-	}, predicates...); err != nil {
+	}, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, ApmServerNameLabelName, predicates...); err != nil {
+	if err := watches.WatchPods(c, ApmServerNameLabelName, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
@@ -123,7 +122,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer, predicates ...pr
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
-	}, predicates...); err != nil {
+	}, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
@@ -131,15 +130,15 @@ func addWatches(c controller.Controller, r *ReconcileApmServer, predicates ...pr
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
-	}, predicates...); err != nil {
+	}, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, apmv1.Kind, predicates...); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, apmv1.Kind, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, predicates...)
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, predicates.ManagedNamespacePredicate)
 }
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}

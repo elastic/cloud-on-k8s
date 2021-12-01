@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -57,7 +56,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler, predicates.ManagedNamespacePredicate)
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -71,9 +70,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch, predicates ...predicate.Predicate) error {
+func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{}, predicates...)
+	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate)
 	if err != nil {
 		return err
 	}
@@ -88,7 +87,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch, predicate
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, EnterpriseSearchNameLabelName, predicates...); err != nil {
+	if err := watches.WatchPods(c, EnterpriseSearchNameLabelName, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
@@ -107,7 +106,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch, predicate
 	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, entv1.Kind, predicates...); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, entv1.Kind, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 

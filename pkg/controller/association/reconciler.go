@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
@@ -80,10 +79,6 @@ type AssociationInfo struct {
 	// namespace of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label
 	// pointing to the Beat resource).
 	AssociationResourceNamespaceLabelName string
-	// Predicates are a set of predicates (functions that return true/false that filter events that are sent to controllers)
-	// that should be applied when creating a controller for the associated resource.
-	Predicates []predicate.Predicate
-
 	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation

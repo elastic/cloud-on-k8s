@@ -14,7 +14,6 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
@@ -39,8 +38,6 @@ func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, par
 		AssociationConfAnnotationNameBase:     commonv1.KibanaConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
-
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
 			ElasticsearchRef: getElasticsearchFromKibana,
 			UserSecretSuffix: "agent-kb-user",

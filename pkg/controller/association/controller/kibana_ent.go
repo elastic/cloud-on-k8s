@@ -16,7 +16,6 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	entctl "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -42,7 +41,6 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      entctl.EnterpriseSearchNameLabelName,
 		AssociationResourceNamespaceLabelName: entctl.EnterpriseSearchNamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
 	})
 }

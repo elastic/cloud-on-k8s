@@ -13,7 +13,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -36,10 +35,10 @@ const (
 // Beats are configured to collect monitoring metrics and logs data of the associated Elasticsearch and send
 // them to the Elasticsearch referenced in the association.
 func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	return association.AddAssociationController(mgr, accessReviewer, params, esMonitoringAssociationInfo(params))
+	return association.AddAssociationController(mgr, accessReviewer, params, esMonitoringAssociationInfo())
 }
 
-func esMonitoringAssociationInfo(params operator.Parameters) association.AssociationInfo {
+func esMonitoringAssociationInfo() association.AssociationInfo {
 	return association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &esv1.Elasticsearch{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
@@ -59,8 +58,6 @@ func esMonitoringAssociationInfo(params operator.Parameters) association.Associa
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
-
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 				return true, association.AssociationRef(), nil

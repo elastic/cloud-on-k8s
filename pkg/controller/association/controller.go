@@ -9,11 +9,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -45,12 +45,12 @@ func AddAssociationController(
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r, associationInfo.Predicates)
+	return addWatches(c, r)
 }
 
-func addWatches(c controller.Controller, r *Reconciler, predicates []predicate.Predicate) error {
+func addWatches(c controller.Controller, r *Reconciler) error {
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
-	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}, predicates...); err != nil {
+	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
@@ -58,20 +58,20 @@ func addWatches(c controller.Controller, r *Reconciler, predicates []predicate.P
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    r.AssociatedObjTemplate(),
 		IsController: true,
-	}, predicates...); err != nil {
+	}, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
 	// Dynamically watch the referenced resources (e.g. Elasticsearch B for a Kibana A -> Elasticsearch B association)
-	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources, predicates...); err != nil {
+	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
 	// Dynamically watch Secrets (CA Secret of the referenced resource and ES user secret)
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets, predicates...); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets, predicates.ManagedNamespacePredicate); err != nil {
 		return err
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services, predicates...)
+	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services, predicates.ManagedNamespacePredicate)
 }
