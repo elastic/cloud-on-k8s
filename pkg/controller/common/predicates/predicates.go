@@ -45,5 +45,8 @@ func ManagedNamespacesPredicate(managedNamespaces []string) predicate.Predicate 
 			// Ignore resources that do not exist within the managed namespaces
 			return namespaceInSlice(e.Object.GetNamespace(), managedNamespaces)
 		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return namespaceInSlice(e.Object.GetNamespace(), managedNamespaces)
+		},
 	}
 }
