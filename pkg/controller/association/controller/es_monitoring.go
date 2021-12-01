@@ -59,7 +59,7 @@ func esMonitoringAssociationInfo(params operator.Parameters) association.Associa
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacesPredicate(params.ManagedNamespaces)),
+		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {

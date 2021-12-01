@@ -41,7 +41,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      agent.NameLabelName,
 		AssociationResourceNamespaceLabelName: agent.NamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacesPredicate(params.ManagedNamespaces)),
+		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
 
 		ElasticsearchUserCreation: nil,
 	})

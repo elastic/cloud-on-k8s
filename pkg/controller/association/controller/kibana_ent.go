@@ -42,7 +42,7 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      entctl.EnterpriseSearchNameLabelName,
 		AssociationResourceNamespaceLabelName: entctl.EnterpriseSearchNamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacesPredicate(params.ManagedNamespaces)),
+		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
 	})
 }

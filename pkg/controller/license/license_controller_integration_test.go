@@ -49,7 +49,7 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return addWatches(c, r.Client, p)
+		return addWatches(c, r.Client)
 
 	}, operator.Parameters{})
 	defer stop()

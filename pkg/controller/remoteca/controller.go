@@ -50,7 +50,7 @@ func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operato
 	if err != nil {
 		return err
 	}
-	return AddWatches(c, r, predicates.ManagedNamespacesPredicate(params.ManagedNamespaces))
+	return AddWatches(c, r, predicates.ManagedNamespacePredicate)
 }
 
 // NewReconciler returns a new reconcile.Reconciler

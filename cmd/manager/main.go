@@ -467,6 +467,9 @@ func startOperator(ctx context.Context) error {
 
 	// configure the manager cache based on the number of managed namespaces
 	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
+	// initialize the managed namespace predicate to ignore events outside of the namespaces the operator is concerned with
+	predicates.ManagedNamespacePredicate = predicates.NewManagedNamespacesPredicate(managedNamespaces)
+
 	switch {
 	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
@@ -809,7 +812,7 @@ func setupWebhook(mgr manager.Manager, params operator.Parameters, clientset kub
 			os.Exit(1)
 		}
 
-		if err := webhook.Add(mgr, webhookParams, clientset, wh, predicates.NewManagedNamespacesPredicate(params.ManagedNamespaces)); err != nil {
+		if err := webhook.Add(mgr, webhookParams, clientset, wh, predicates.ManagedNamespacePredicate); err != nil {
 			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
 			os.Exit(1)
 		}

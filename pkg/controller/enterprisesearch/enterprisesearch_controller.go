@@ -57,7 +57,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler, predicates.ManagedNamespacesPredicate(params.ManagedNamespaces))
+	return addWatches(c, reconciler, predicates.ManagedNamespacePredicate)
 }
 
 // newReconciler returns a new reconcile.Reconciler

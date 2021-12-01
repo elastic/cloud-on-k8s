@@ -39,7 +39,7 @@ func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, par
 		AssociationConfAnnotationNameBase:     commonv1.KibanaConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
-		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacesPredicate(params.ManagedNamespaces)),
+		Predicates:                            predicates.WithPredicates(predicates.ManagedNamespacePredicate),
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
 			ElasticsearchRef: getElasticsearchFromKibana,
