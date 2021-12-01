@@ -31,7 +31,7 @@ func NewManagedNamespacesPredicate(managedNamespaces []string) predicate.Predica
 			return IsNamespaceManaged(e.Object.GetNamespace(), managedNamespaces)
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
-			return namespaceInSlice(e.Object.GetNamespace(), managedNamespaces)
+			return IsNamespaceManaged(e.Object.GetNamespace(), managedNamespaces)
 		},
 	}
 }
