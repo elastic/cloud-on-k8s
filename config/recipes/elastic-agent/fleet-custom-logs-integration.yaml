@@ -12,7 +12,7 @@ spec:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.packages:
     - name: log
-      version: latest
+      version: 0.4.6 # pinning this version as the next one breaks this recipe, until https://github.com/elastic/cloud-on-k8s/issues/5105 is solved
     xpack.fleet.agentPolicies:
     - name: Default Fleet Server on ECK policy
       is_default_fleet_server: true
