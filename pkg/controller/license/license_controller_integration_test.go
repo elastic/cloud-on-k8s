@@ -29,6 +29,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -40,6 +41,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestReconcile(t *testing.T) {
+	predicates.ManagedNamespacePredicate = predicates.NewManagedNamespacesPredicate([]string{"default"})
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
 		r := &ReconcileLicenses{
 			Client:  mgr.GetClient(),
