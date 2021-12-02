@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
@@ -25,8 +26,6 @@ const (
 	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/owner-namespace"
 	SoftOwnerNameLabel      = "eck.k8s.elastic.co/owner-name"
 	SoftOwnerKindLabel      = "eck.k8s.elastic.co/owner-kind"
-
-	secretsGarbageCollectionFailedMessage = "Orphan secrets garbage collection failed, will be attempted again at next operator restart."
 )
 
 // ReconcileSecret creates or updates the actual secret to match the expected one.
@@ -172,47 +171,27 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 	return nil
 }
 
-// GarbageCollectAllSoftOwnedOrphanSecrets iterates over all Secrets in the namespaces that the operator
-// manages that reference a soft owner. If the owner
+// GarbageCollectAllSoftOwnedOrphanSecrets iterates over all Secrets that reference a soft owner. If the owner
 // doesn't exist anymore, it deletes the secrets.
 // Should be called on operator startup, after cache warm-up, to cover cases where
 // the operator is down when the owner is deleted.
 // If the operator is up, garbage collection is already handled by GarbageCollectSoftOwnedSecrets on owner deletion.
 func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]client.Object, managedNamespaces []string) error {
-	if len(managedNamespaces) == 0 {
-		return garbageCollectSecrets(c, ownerKinds, "")
-	}
-	for _, namespace := range managedNamespaces {
-		// The empty namespace is added to the managed namespaces when storage class validation is enabled to
-		// allow watching cluster-scoped resources, but since this isn't applicable to secrets, we ignore this
-		// namespace to prevent invalid "Orphan secrets garbage collection failed" error message.
-		if namespace == "" {
-			continue
-		}
-		if err := garbageCollectSecrets(c, ownerKinds, namespace); err != nil {
-			log.Error(err, secretsGarbageCollectionFailedMessage, "namespace", namespace)
-			continue
-		}
-	}
-
-	return nil
-}
-
-func garbageCollectSecrets(c k8s.Client, ownerKinds map[string]client.Object, namespace string) error {
 	// retrieve all secrets that reference a soft owner
 	var secrets corev1.SecretList
 	if err := c.List(context.Background(),
 		&secrets,
 		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
-		// since corev1.NamespaceAll is a string == "", this will also work when managing all namespaces
-		// and namespace == "".
-		client.InNamespace(namespace),
 	); err != nil {
 		return err
 	}
 	// remove any secret whose owner in the same namespace doesn't exist
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
+		// ignore this secret if it's in a namespace the operator doesn't manage
+		if !predicates.IsNamespaceManaged(secret.Namespace, managedNamespaces) {
+			continue
+		}
 		softOwner, referenced := SoftOwnerRefFromLabels(secret.Labels)
 		if !referenced {
 			continue
