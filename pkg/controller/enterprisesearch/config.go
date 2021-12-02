@@ -275,7 +275,7 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.Cano
 	}
 
 	cfg := settings.NewCanonicalConfig()
-	if ver.LT(version.MinFor(8, 0, 0)) {
+	if ver.LT(version.MinFor(7, 17, 0)) {
 		cfg = settings.MustCanonicalConfig(map[string]string{
 			"ent_search.auth.source": "elasticsearch-native",
 		})
