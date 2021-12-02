@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	kibana_network "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
@@ -259,6 +260,7 @@ func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) *settin
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         inAddrAnyFor(ipFamily),
 		"filebeat_log_directory":         LogVolumeMountPath,
+		"kibana.host":                    fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), kibana_network.HTTPPort),
 		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,
 	})

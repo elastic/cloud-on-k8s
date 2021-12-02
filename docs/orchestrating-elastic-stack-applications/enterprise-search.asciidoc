@@ -140,7 +140,7 @@ You can upgrade the Enterprise Search version or change settings by editing the 
 
 ECK sets up a default Enterprise Search link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[configuration]. To customize it, use the `config` element in the specification.
 
-At a minimum, you must set `ent_search.external_url` to the desired URL.
+At a minimum, you must set both `ent_search.external_url` and `kibana.host` to the desired URLs.
 
 [source,yaml,subs="attributes"]
 ----
@@ -156,6 +156,8 @@ spec:
   config:
     # define the exposed URL at which users will reach Enterprise Search
     ent_search.external_url: https://my-custom-domain:3002
+    # define the exposed URL at which users will reach Kibana
+    kibana.host: https://kibana.my-custom-domain:5601
     # configure app search document size limit
     app_search.engine.document_size.limit: 100kb
 ----
@@ -180,6 +182,7 @@ spec:
     name: quickstart
   config:
     ent_search.external_url: https://my-custom-domain:3002
+    kibana.host: https://kibana.my-custom-domain:5601
   configRef:
     secretName: smtp-credentials
 ---
@@ -241,7 +244,7 @@ By default ECK manages self-signed TLS certificates to secure the connection to 
 
 See link:k8s-accessing-elastic-services.html[how to access Elastic Stack services] to customize TLS settings and expose the service.
 
-NOTE: When exposed outside the scope of `localhost`, make sure to set `ent_search.external_url` accordingly in the Enterprise Search configuration.
+NOTE: When exposed outside the scope of `localhost`, make sure to set both `ent_search.external_url`, and `kibana.host` accordingly in the Enterprise Search configuration.
 
 [id="{p}-enterprise-search-connect-es"]
 === Customize the connection to an Elasticsearch cluster
