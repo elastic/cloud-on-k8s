@@ -193,7 +193,7 @@ go-run:
 				--enable-leader-election=false \
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
-				--operator-namespace=elastic-system \
+				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
 				--manage-webhook-certs=false \
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
