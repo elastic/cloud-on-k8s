@@ -36,7 +36,8 @@ spec:
             enabled: true
             vars:
             - name: paths
-              value: '/var/log/containers/*${kubernetes.container.id}.log'
+              value:
+              - '/var/log/containers/*${kubernetes.container.id}.log'
             - name: custom
               value: |
                 symlinks: true
