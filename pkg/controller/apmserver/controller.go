@@ -34,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -99,7 +98,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 
 func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch for changes to ApmServer
-	err := c.Watch(&source.Kind{Type: &apmv1.ApmServer{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate)
+	err := c.Watch(&source.Kind{Type: &apmv1.ApmServer{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -108,13 +107,13 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, ApmServerNameLabelName, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchPods(c, ApmServerNameLabelName); err != nil {
 		return err
 	}
 
@@ -122,7 +121,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -130,15 +129,15 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1.ApmServer{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, apmv1.Kind, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, apmv1.Kind); err != nil {
 		return err
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, predicates.ManagedNamespacePredicate)
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}

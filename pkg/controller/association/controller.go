@@ -13,7 +13,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -50,7 +49,7 @@ func AddAssociationController(
 
 func addWatches(c controller.Controller, r *Reconciler) error {
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
-	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate); err != nil {
+	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -58,20 +57,20 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    r.AssociatedObjTemplate(),
 		IsController: true,
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
 
 	// Dynamically watch the referenced resources (e.g. Elasticsearch B for a Kibana A -> Elasticsearch B association)
-	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources, predicates.ManagedNamespacePredicate); err != nil {
+	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources); err != nil {
 		return err
 	}
 
 	// Dynamically watch Secrets (CA Secret of the referenced resource and ES user secret)
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets, predicates.ManagedNamespacePredicate); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services, predicates.ManagedNamespacePredicate)
+	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services)
 }

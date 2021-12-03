@@ -31,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -83,7 +82,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate,
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -93,13 +92,13 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &esv1.Elasticsearch{},
-		}, predicates.ManagedNamespacePredicate,
+		},
 	); err != nil {
 		return err
 	}
 
 	// Watch pods belonging to ES clusters
-	if err := watches.WatchPods(c, label.ClusterNameLabelName, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchPods(c, label.ClusterNameLabelName); err != nil {
 		return err
 	}
 
@@ -107,12 +106,12 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &esv1.Elasticsearch{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, predicates.ManagedNamespacePredicate); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
@@ -123,12 +122,12 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind); err != nil {
 		return err
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	return c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler(), predicates.ManagedNamespacePredicate)
+	return c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler())
 }
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}

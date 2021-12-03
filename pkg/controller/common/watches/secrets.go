@@ -10,7 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -46,11 +45,10 @@ func WatchUserProvidedSecrets(
 }
 
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
-func WatchSoftOwnedSecrets(c controller.Controller, ownerKind string, predicates ...predicate.Predicate) error {
+func WatchSoftOwnedSecrets(c controller.Controller, ownerKind string) error {
 	return c.Watch(
 		&source.Kind{Type: &corev1.Secret{}},
 		handler.EnqueueRequestsFromMapFunc(reconcileReqForSoftOwner(ownerKind)),
-		predicates...,
 	)
 }
 

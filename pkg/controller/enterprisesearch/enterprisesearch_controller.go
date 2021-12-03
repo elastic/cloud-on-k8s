@@ -31,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -72,7 +71,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate)
+	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -87,7 +86,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, EnterpriseSearchNameLabelName, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchPods(c, EnterpriseSearchNameLabelName); err != nil {
 		return err
 	}
 
@@ -106,7 +105,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, entv1.Kind, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, entv1.Kind); err != nil {
 		return err
 	}
 

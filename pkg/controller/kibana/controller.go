@@ -29,7 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -68,7 +67,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 
 func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
-	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}, predicates.ManagedNamespacePredicate); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -76,13 +75,13 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kbv1.Kibana{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, KibanaNameLabelName, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchPods(c, KibanaNameLabelName); err != nil {
 		return err
 	}
 
@@ -90,7 +89,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kbv1.Kibana{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -98,15 +97,15 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kbv1.Kibana{},
-	}, predicates.ManagedNamespacePredicate); err != nil {
+	}); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, kbv1.Kind, predicates.ManagedNamespacePredicate); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(c, kbv1.Kind); err != nil {
 		return err
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets, predicates.ManagedNamespacePredicate)
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileKibana{}

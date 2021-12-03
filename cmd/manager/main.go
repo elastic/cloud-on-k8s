@@ -812,7 +812,7 @@ func setupWebhook(mgr manager.Manager, params operator.Parameters, clientset kub
 			os.Exit(1)
 		}
 
-		if err := webhook.Add(mgr, webhookParams, clientset, wh, predicates.ManagedNamespacePredicate); err != nil {
+		if err := webhook.Add(mgr, webhookParams, clientset, wh, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
 			os.Exit(1)
 		}
@@ -842,7 +842,7 @@ func setupWebhook(mgr manager.Manager, params operator.Parameters, clientset kub
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-    esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, params.ExposedNodeLabels)
+	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, params.ExposedNodeLabels)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
