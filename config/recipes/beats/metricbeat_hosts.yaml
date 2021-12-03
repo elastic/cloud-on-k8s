@@ -16,7 +16,7 @@ spec:
         - hints:
             default_config: {}
             enabled: "true"
-          host: ${NODE_NAME}
+          node: ${NODE_NAME}
           type: kubernetes
       modules:
       - module: system
@@ -48,7 +48,7 @@ spec:
                     mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib)($|/)
       - module: kubernetes
         period: 10s
-        host: ${NODE_NAME}
+        node: ${NODE_NAME}
         hosts:
         - https://${NODE_NAME}:10250
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
