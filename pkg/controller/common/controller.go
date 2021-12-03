@@ -42,6 +42,8 @@ type namespaceAwareController struct {
 	namespacePredicate predicate.Predicate
 }
 
+// newNamespaceAwareWatchersController creates a new namespaceAwareController, ensuring that a predicate exists to ignore any
+// namespaced events outside of managed namespaces, and the operator namespace.
 func newNamespaceAwareWatchersController(c controller.Controller, managedNamespaces []string, operatorNamespace string) controller.Controller {
 	watchedNamespaces := managedNamespaces
 	if !slices.Contains(managedNamespaces, operatorNamespace) {
