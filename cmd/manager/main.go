@@ -619,7 +619,14 @@ func startOperator(ctx context.Context) error {
 		}
 	}()
 
-	return <-exitOnErr
+	for {
+		select {
+		case err = <-exitOnErr:
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
