@@ -58,7 +58,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/predicates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -467,8 +466,6 @@ func startOperator(ctx context.Context) error {
 
 	// configure the manager cache based on the number of managed namespaces
 	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
-	// initialize the managed namespace predicate to ignore events outside of the namespaces the operator is concerned with
-	predicates.ManagedNamespacePredicate = predicates.NewManagedNamespacesPredicate(managedNamespaces)
 
 	switch {
 	case len(managedNamespaces) == 0:

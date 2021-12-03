@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -25,19 +24,19 @@ import (
 )
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
-func AddWatches(c controller.Controller, r *ReconcileRemoteCa, predicates ...predicate.Predicate) error {
+func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 	// Watch for changes to RemoteCluster
-	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}, predicates...); err != nil {
+	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch Secrets that contain remote certificate authorities managed by this controller
-	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels()), predicates...); err != nil {
+	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels())); err != nil {
 		return err
 	}
 
 	// Dynamically watches the certificate authorities involved in a cluster relationship
-	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, r.watches.Secrets, predicates...); err != nil {
+	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}
 

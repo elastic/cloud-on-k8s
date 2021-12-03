@@ -10,10 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// ManagedNamespacePredicate is a predicate that will ignore events that exist
-// outside of the namespaces that the operator manages.
-var ManagedNamespacePredicate predicate.Predicate
-
 // NewManagedNamespacesPredicate will return a predicate that will ignore events
 // that exist outside of the given managed namespaces,
 func NewManagedNamespacesPredicate(managedNamespaces []string) predicate.Predicate {
@@ -36,10 +32,4 @@ func NewManagedNamespacesPredicate(managedNamespaces []string) predicate.Predica
 // IsNamespaceManaged returns true if the namespace is managed by the operator.
 func IsNamespaceManaged(namespace string, managedNamespaces []string) bool {
 	return len(managedNamespaces) == 0 || slices.Contains(managedNamespaces, namespace)
-}
-
-// WithPredicates is a helper function to convert one or more predicates
-// into a slice of predicates.
-func WithPredicates(predicates ...predicate.Predicate) []predicate.Predicate {
-	return predicates
 }
