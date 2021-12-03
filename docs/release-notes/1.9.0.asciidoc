@@ -8,7 +8,7 @@
 [float]
 === Breaking changes
 
-IMPORTANT: For OLM users that run with automatic upgrades enabled, it is advised to set `set-default-security-context` link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[operator flag] explicitly before next ECK release. Next version of ECK will introduce a link:https://github.com/elastic/cloud-on-k8s/issues/5061[change] that could result in setting an invalid Pod Security Context to Elasticsearch Pods.
+IMPORTANT: For Operator Lifecycle Manager (OLM) users that run with automatic upgrades enabled, it is advised to set `set-default-security-context` link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[operator flag] explicitly before next ECK release. Next version of ECK will introduce a link:https://github.com/elastic/cloud-on-k8s/issues/5061[change] that could result in setting an invalid Pod Security Context to Elasticsearch Pods.
 
 * Inherit resource requirements in init containers {pull}4963[#4963]
 
