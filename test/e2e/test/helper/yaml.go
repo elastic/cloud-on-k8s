@@ -391,15 +391,15 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	data := config.Data
 
-	elasticsearchHostKey := "xpack.fleet.agents.elasticsearch.host"
-	if val1, ok := data[elasticsearchHostKey]; ok {
+	elasticsearchHostsKey := "xpack.fleet.agents.elasticsearch.hosts"
+	if val1, ok := data[elasticsearchHostsKey]; ok {
 		if val2, ok := val1.(string); ok {
 			val2 = strings.ReplaceAll(
 				val2,
 				"elasticsearch-es-http.default",
 				fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
 			)
-			data[elasticsearchHostKey] = val2
+			data[elasticsearchHostsKey] = val2
 		}
 	}
 

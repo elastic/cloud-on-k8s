@@ -78,7 +78,7 @@ spec:
   elasticsearchRef:
     name: elasticsearch-quickstart
   config:
-    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-quickstart-es-http.default.svc:9200"
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-quickstart-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-quickstart-agent-http.default.svc:8220"]
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
@@ -230,11 +230,11 @@ metadata:
   name: kibana-sample
 spec:
   config:
-    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-sample-es-http.default.svc:9200"
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-quickstart-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-sample-agent-http.default.svc:8220"]
 ----
 
-*  `xpack.fleet.agents.elasticsearch.host`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
+*  `xpack.fleet.agents.elasticsearch.hosts`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
 *  `xpack.fleet.agents.fleet_server.hosts` must point to Fleet Server that Elastic Agents should connect to. For ECK-managed Fleet Server instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
@@ -268,7 +268,7 @@ spec:
 ----
 
 
-Set `elasticsearchRefs` element in your Fleet Server to point to the Elasticsearch cluster that will manage Fleet. Leave `elasticsearchRefs` empty or unset for any Elastic Agent running in Fleet mode as the Elasticsearch cluster to target will come from Kibana `xpack.fleet.agents.elasticsearch.host` configuration element.
+Set `elasticsearchRefs` element in your Fleet Server to point to the Elasticsearch cluster that will manage Fleet. Leave `elasticsearchRefs` empty or unset for any Elastic Agent running in Fleet mode as the Elasticsearch cluster to target will come from Kibana `xpack.fleet.agents.elasticsearch.hosts` configuration element.
 
 NOTE: Currently, Elastic Agent in Fleet mode supports only a single output, so only a single Elasticsearch cluster can be referenced.
 
