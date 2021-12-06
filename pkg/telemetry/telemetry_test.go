@@ -9,9 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
@@ -26,18 +28,33 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var testOperatorInfo = about.OperatorInfo{
-	OperatorUUID:            "15039433-f873-41bd-b6e7-10ee3665cafa",
-	CustomOperatorNamespace: true,
-	Distribution:            "v1.16.13-gke.1",
-	DistributionChannel:     "test-channel",
-	BuildInfo: about.BuildInfo{
-		Version:  "1.1.0",
-		Hash:     "b5316231",
-		Date:     "2019-09-20T07:00:00Z",
-		Snapshot: "true",
-	},
-}
+var (
+	testOperatorInfo = about.OperatorInfo{
+		OperatorUUID:            "15039433-f873-41bd-b6e7-10ee3665cafa",
+		CustomOperatorNamespace: true,
+		Distribution:            "v1.16.13-gke.1",
+		DistributionChannel:     "test-channel",
+		BuildInfo: about.BuildInfo{
+			Version:  "1.1.0",
+			Hash:     "b5316231",
+			Date:     "2019-09-20T07:00:00Z",
+			Snapshot: "true",
+		},
+	}
+
+	licenceConfigMap = &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "elastic-licensing",
+			Namespace: "elastic-system",
+		},
+		Data: map[string]string{
+			"eck_license_level":         "basic",
+			"enterprise_resource_units": "1",
+			"timestamp":                 "2020-10-07T07:49:36+02:00",
+			"total_managed_memory":      "3.22GB",
+		},
+	}
+)
 
 func TestMarshalTelemetry(t *testing.T) {
 	for _, tt := range []struct {
@@ -104,26 +121,26 @@ func TestMarshalTelemetry(t *testing.T) {
 	}
 }
 
-func TestNewReporter(t *testing.T) {
-	createKbAndSecret := func(name, namespace string, count int32) (kbv1.Kibana, corev1.Secret) {
-		kb := kbv1.Kibana{
-			TypeMeta: metav1.TypeMeta{},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
-			Spec: kbv1.KibanaSpec{
-				Count: count,
-			},
-		}
-		return kb, corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      kibana.SecretName(kb),
-				Namespace: namespace,
-			},
-		}
+func createKbAndSecret(name, namespace string, count int32) (kbv1.Kibana, corev1.Secret) {
+	kb := kbv1.Kibana{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: kbv1.KibanaSpec{
+			Count: count,
+		},
 	}
+	return kb, corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kibana.SecretName(kb),
+			Namespace: namespace,
+		},
+	}
+}
 
+func TestNewReporter(t *testing.T) {
 	kb1, s1 := createKbAndSecret("kb1", "ns1", 1)
 	kb2, s2 := createKbAndSecret("kb2", "ns2", 2)
 	kb3, s3 := createKbAndSecret("kb3", "ns3", 3)
@@ -284,20 +301,10 @@ func TestNewReporter(t *testing.T) {
 				},
 			},
 		},
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "elastic-licensing",
-				Namespace: "elastic-system",
-			},
-			Data: map[string]string{
-				"eck_license_level":         "basic",
-				"enterprise_resource_units": "1",
-				"timestamp":                 "2020-10-07T07:49:36+02:00",
-				"total_managed_memory":      "3.22GB",
-			},
-		},
+		licenceConfigMap,
 	)
 
+	// We only want the reporter to handle the managed namespaces, in this test only ns1 and ns2 are managed.
 	r := NewReporter(testOperatorInfo, client, "elastic-system", []string{kb1.Namespace, kb2.Namespace}, 1*time.Hour)
 	r.report()
 
@@ -354,11 +361,228 @@ func TestNewReporter(t *testing.T) {
 	}
 
 	require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s1), &s1))
-	require.Equal(t, wantData, s1.Data)
+	assertSameSecretContent(t, wantData, s1.Data)
 
+	// We expect Kibana instances in s1 and s2 to have the same content.
 	require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s2), &s2))
-	require.Equal(t, wantData, s2.Data)
+	assertSameSecretContent(t, wantData, s2.Data)
 
+	// No data expected in s3 since it is not a managed namespace.
 	require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s3), &s3))
 	require.Nil(t, s3.Data)
+}
+
+// assertSameSecretContent compares 2 data secrets and print a human friendly diff if not equal.
+func assertSameSecretContent(t *testing.T, expectedData, actualData map[string][]byte) {
+	t.Helper()
+	require.Equal(t, len(expectedData), len(actualData))
+	for k, expected := range expectedData {
+		actual, exists := actualData[k]
+		require.True(t, exists)
+		diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(expected)),
+			B:        difflib.SplitLines(string(actual)),
+			FromFile: "expected",
+			ToFile:   "actual",
+			Context:  3,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual, "unexpected content for %s, diff:\n%s", k, diff)
+	}
+}
+
+// TestReporter_report allows testing different combinations of resources.
+func TestReporter_report(t *testing.T) {
+	testNS := "ns1"
+	type fields struct {
+		objects []runtime.Object
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		wantData TemplateData
+	}{
+		{
+			name: "With metrics monitoring only",
+			fields: fields{
+				objects: []runtime.Object{
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "non-autoscaled",
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 6,
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "monitored",
+						},
+						Spec: esv1.ElasticsearchSpec{
+							Monitoring: esv1.Monitoring{
+								Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 1,
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "monitored2",
+						},
+						Spec: esv1.ElasticsearchSpec{
+							Monitoring: esv1.Monitoring{
+								Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+				},
+			},
+			wantData: TemplateData{
+				ElasticsearchTemplateData{
+					PodCount:                    9,
+					ResourceCount:               3,
+					StackMonitoringMetricsCount: 2,
+				},
+			},
+		},
+		{
+			name: "With log monitoring only",
+			fields: fields{
+				objects: []runtime.Object{
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "non-autoscaled",
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "monitored",
+						},
+						Spec: esv1.ElasticsearchSpec{
+							Monitoring: esv1.Monitoring{
+								Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 8,
+						},
+					},
+				},
+			},
+			wantData: TemplateData{
+				ElasticsearchTemplateData{
+					PodCount:                 10,
+					ResourceCount:            2,
+					StackMonitoringLogsCount: 1,
+				},
+			},
+		}, {
+			name: "With downward API and one label",
+			fields: fields{
+				objects: []runtime.Object{
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "node-labels1",
+							Annotations: map[string]string{
+								esv1.DownwardNodeLabelsAnnotation: "ns/label1",
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "simple",
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+				},
+			},
+			wantData: TemplateData{
+				ElasticsearchTemplateData{
+					PodCount:      4,
+					ResourceCount: 2,
+					NodeLabelsTemplateData: &NodeLabelsTemplateData{
+						ResourceWithNodeLabelsCount: 1,
+						DistinctNodeLabelsCount:     1,
+					},
+				},
+			},
+		}, {
+			name: "With downward API and several labels",
+			fields: fields{
+				objects: []runtime.Object{
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "node-labels1",
+							Annotations: map[string]string{
+								esv1.DownwardNodeLabelsAnnotation: "ns/label1",
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "node-labels2",
+							Annotations: map[string]string{
+								esv1.DownwardNodeLabelsAnnotation: "ns/label2,ns/label1,ns/label3",
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+				},
+			},
+			wantData: TemplateData{
+				ElasticsearchTemplateData{
+					PodCount:      4,
+					ResourceCount: 2,
+					NodeLabelsTemplateData: &NodeLabelsTemplateData{
+						ResourceWithNodeLabelsCount: 2,
+						DistinctNodeLabelsCount:     3, // ns/label1,ns/label2 and ns/label3
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb1, s1 := createKbAndSecret("kb1", testNS, 1)
+			client := k8s.NewFakeClient(append(tt.fields.objects, &kb1, &s1, licenceConfigMap)...)
+			r := &Reporter{
+				operatorInfo:      testOperatorInfo,
+				client:            client,
+				operatorNamespace: "elastic-system",
+				managedNamespaces: []string{testNS},
+				telemetryInterval: 1 * time.Hour,
+			}
+			r.report()
+			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s1), &s1))
+			wantData := map[string][]byte{"telemetry.yml": renderExpectedTemplate(t, tt.wantData)}
+			assertSameSecretContent(t, wantData, s1.Data)
+		})
+	}
 }
