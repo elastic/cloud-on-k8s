@@ -10,7 +10,7 @@ endif::[]
 
 experimental[]
 
-This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/7.16/install-standalone-elastic-agent.html[standalone mode] with ECK. Check the link:k8s-elastic-agent-fleet.html[Fleet section] if you want to manage your Elastic Agents with link:https://www.elastic.co/guide/en/fleet/7.16/elastic-agent-installation.html[Fleet].
+This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/install-standalone-elastic-agent.html[standalone mode] with ECK. Check the link:k8s-elastic-agent-fleet.html[Fleet section] if you want to manage your Elastic Agents with link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet].
 
 * <<{p}-elastic-agent-quickstart,Quickstart>>
 * <<{p}-elastic-agent-configuration,Configuration>>
@@ -209,7 +209,7 @@ stringData:
             period: 10s
 ----
 
-You can use the Fleet application in Kibana to generate the configuration for Elastic Agent, even when running in standalone mode. Check the link:https://www.elastic.co/guide/en/fleet/7.16/install-standalone-elastic-agent.html[Elastic Agent standalone] documentation. Adding the corresponding integration package to Kibana also adds the related dashboards and visualizations.
+You can use the Fleet application in Kibana to generate the configuration for Elastic Agent, even when running in standalone mode. Check the link:https://www.elastic.co/guide/en/fleet/current/install-standalone-elastic-agent.html[Elastic Agent standalone] documentation. Adding the corresponding integration package to Kibana also adds the related dashboards and visualizations.
 
 
 [id="{p}-elastic-agent-multi-output"]
@@ -384,7 +384,7 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 
 experimental[]
 
-This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance. Add the corresponding integration package to Kibana to install the dashboards, visualizations and other assets for each of these examples as described in link:https://www.elastic.co/guide/en/fleet/7.16/elastic-agent-installation.html[the Elastic Agent documentation].
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance. Add the corresponding integration package to Kibana to install the dashboards, visualizations and other assets for each of these examples as described in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[the Elastic Agent documentation].
 
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
