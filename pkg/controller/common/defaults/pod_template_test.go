@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
 
 var varFalse = false
@@ -218,14 +220,16 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 			readinessProbe: corev1.Probe{
 				Handler: corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/probe",
+						Path:        "/probe",
+						HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
 					},
 				},
 			},
 			want: &corev1.Probe{
 				Handler: corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/probe",
+						Path:        "/probe",
+						HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
 					},
 				},
 			},
@@ -251,7 +255,8 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 			readinessProbe: corev1.Probe{
 				Handler: corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/probe",
+						Path:        "/probe",
+						HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
 					},
 				},
 			},

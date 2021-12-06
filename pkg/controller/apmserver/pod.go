@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -55,9 +56,10 @@ func readinessProbe(tls bool) corev1.Probe {
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/",
-				Scheme: scheme,
+				Port:        intstr.FromInt(HTTPPort),
+				Path:        "/",
+				Scheme:      scheme,
+				HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
 			},
 		},
 	}
