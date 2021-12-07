@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -95,7 +96,7 @@ func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernet
 func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface, operatorParams operator.Parameters) error {
 	r := newReconciler(mgr, webhookParams, clientset)
 	// Create a new controller
-	c, err := common.NewController(mgr, ControllerName, r, operatorParams)
+	c, err := common.NewControllerWithOptions(mgr, ControllerName, operatorParams, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}

@@ -33,6 +33,15 @@ func NewController(mgr manager.Manager, name string, r reconcile.Reconciler, p o
 	return newNamespaceAwareWatchersController(c, p.ManagedNamespaces, p.OperatorNamespace), nil
 }
 
+// NewControllerWithOptions creates a new controller with the given name, reconciler, parameters, options and registers it with the manager.
+func NewControllerWithOptions(mgr manager.Manager, name string, p operator.Parameters, options controller.Options) (controller.Controller, error) {
+	c, err := controller.New(name, mgr, options)
+	if err != nil {
+		return nil, err
+	}
+	return newNamespaceAwareWatchersController(c, p.ManagedNamespaces, p.OperatorNamespace), nil
+}
+
 var _ controller.Controller = &namespaceAwareController{}
 
 // namespaceAwareController implements the controller.Controller interface and automatically include a predicate to filter events
