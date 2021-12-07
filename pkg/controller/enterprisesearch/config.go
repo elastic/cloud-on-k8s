@@ -165,10 +165,7 @@ func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily cor
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := defaultConfig(ent, ipFamily)
-	if err != nil {
-		return nil, err
-	}
+	cfg := defaultConfig(ent, ipFamily)
 
 	// merge with user settings last so they take precedence
 	err = cfg.MergeWith(reusedCfg, tlsCfg, associationCfg, userProvidedCfg, userProvidedSecretCfg)
@@ -256,26 +253,14 @@ func inAddrAnyFor(ipFamily corev1.IPFamily) string {
 	return "0:0:0:0:0:0:0:0"
 }
 
-func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
-	settingsMap := map[string]interface{}{
+func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) *settings.CanonicalConfig {
+	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         inAddrAnyFor(ipFamily),
 		"filebeat_log_directory":         LogVolumeMountPath,
 		"log_directory":                  LogVolumeMountPath,
 		"allow_es_settings_modification": true,
-	}
-
-	ver, err := version.Parse(ent.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	// kibana.host is available starting with Enterprise Search 7.15
-	if ver.GTE(version.From(7, 15, 0)) {
-		settingsMap["kibana.host"] = fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), kibana_network.HTTPPort)
-	}
-
-	return settings.MustCanonicalConfig(settingsMap), nil
+	})
 }
 
 func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
