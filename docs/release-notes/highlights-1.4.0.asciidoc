@@ -11,7 +11,7 @@ New and notable changes in version 1.4.0 of {n}. See <<release-notes-1.4.0>> for
 [id="{p}-140-agent-support"]
 ==== Support for Elastic Agent
 
-link:https://www.elastic.co/guide/en/fleet/7.16/elastic-agent-installation-configuration.html[Elastic Agent] provides a unified way to monitor logs, metrics, and other types of data from your Kubernetes infrastructure quickly and easily. You can use a single Elastic Agent deployment to replace multiple Beats deployments that were previously required to collect the different types of data you want to monitor. ECK 1.4.0 introduces experimental support for Elastic Agent in link:https://www.elastic.co/guide/en/fleet/7.16/install-standalone-elastic-agent.html[standalone mode] as a technology preview.
+link:https://www.elastic.co/guide/en/fleet/7.16/elastic-agent-installation.html[Elastic Agent] provides a unified way to monitor logs, metrics, and other types of data from your Kubernetes infrastructure quickly and easily. You can use a single Elastic Agent deployment to replace multiple Beats deployments that were previously required to collect the different types of data you want to monitor. ECK 1.4.0 introduces experimental support for Elastic Agent in link:https://www.elastic.co/guide/en/fleet/7.16/install-standalone-elastic-agent.html[standalone mode] as a technology preview.
 
 
 [float]
