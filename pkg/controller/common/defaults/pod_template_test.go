@@ -221,7 +221,7 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				Handler: corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path:        "/probe",
-						HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+						HTTPHeaders: common.InternalProductHTTPHeaders,
 					},
 				},
 			},
@@ -229,7 +229,7 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				Handler: corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path:        "/probe",
-						HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+						HTTPHeaders: common.InternalProductHTTPHeaders,
 					},
 				},
 			},
@@ -256,7 +256,7 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				Handler: corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path:        "/probe",
-						HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+						HTTPHeaders: common.InternalProductHTTPHeaders,
 					},
 				},
 			},

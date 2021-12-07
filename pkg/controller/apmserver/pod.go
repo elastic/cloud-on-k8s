@@ -59,7 +59,7 @@ func readinessProbe(tls bool) corev1.Probe {
 				Port:        intstr.FromInt(HTTPPort),
 				Path:        "/",
 				Scheme:      scheme,
-				HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+				HTTPHeaders: common.InternalProductHTTPHeaders,
 			},
 		},
 	}

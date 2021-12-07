@@ -180,7 +180,7 @@ func expectedDeploymentParams() testParams {
 									Port:        intstr.FromInt(8200),
 									Path:        "/",
 									Scheme:      corev1.URISchemeHTTPS,
-									HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+									HTTPHeaders: common.InternalProductHTTPHeaders,
 								},
 							},
 						},

@@ -66,7 +66,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 				Port:        intstr.FromInt(network.HTTPPort),
 				Path:        "/login",
 				Scheme:      scheme,
-				HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+				HTTPHeaders: common.InternalProductHTTPHeaders,
 			},
 		},
 	}

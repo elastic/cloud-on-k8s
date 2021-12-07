@@ -582,7 +582,7 @@ func expectedDeploymentParams() deployment.Params {
 								Port:        intstr.FromInt(5601),
 								Path:        "/login",
 								Scheme:      corev1.URISchemeHTTPS,
-								HTTPHeaders: common.CreateInternalProductHTTPHeaders(),
+								HTTPHeaders: common.InternalProductHTTPHeaders,
 							},
 						},
 					},
