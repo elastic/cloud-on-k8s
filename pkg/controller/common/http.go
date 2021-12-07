@@ -15,26 +15,19 @@ const (
 	internalProductRequestHeaderValue = "cloud"
 )
 
+// InternalProductHTTPHeaders is a slice that contains header that specifies which product is making the request.
+var InternalProductHTTPHeaders = []corev1.HTTPHeader{
+	{
+		Name:  internalProductRequestHeaderKey,
+		Value: internalProductRequestHeaderValue,
+	},
+}
+
 // SetInternalProductRequestHeader sets header that specifies which internal product is making the request.
 func SetInternalProductRequestHeader(req *http.Request) {
-	req.Header.Set(GetInternalProductRequestHeaderKey(), GetInternalProductRequestHeaderValue())
-}
-
-// CreateInternalProductHTTPHeaders creates header slice that contains header that specifies which internal
-// product is making the request.
-func CreateInternalProductHTTPHeaders() []corev1.HTTPHeader {
-	return []corev1.HTTPHeader{
-		{
-			Name:  GetInternalProductRequestHeaderKey(),
-			Value: GetInternalProductRequestHeaderValue(),
-		},
+	if req == nil || req.Header == nil {
+		return
 	}
-}
 
-func GetInternalProductRequestHeaderKey() string {
-	return internalProductRequestHeaderKey
-}
-
-func GetInternalProductRequestHeaderValue() string {
-	return internalProductRequestHeaderValue
+	req.Header.Set(internalProductRequestHeaderKey, internalProductRequestHeaderValue)
 }
