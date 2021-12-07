@@ -69,7 +69,7 @@ Then upgrade the main chart as usual:
 helm upgrade elastic-operator elastic/eck-operator -n elastic-system
 ----
 
-If you are using ECK through an OLM-managed distribution channel like operatorhub.io or the OpenShift OperatorHub then the CRD version upgrade will be handled by OLM for you and you do not need to take special action.
+If you are using ECK through an OLM-managed distribution channel like link:https://operatorhub.io[operatorhub.io] or the OpenShift OperatorHub then the CRD version upgrade will be handled by OLM for you and you do not need to take special action.
 
 This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
 
