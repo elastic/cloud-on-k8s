@@ -12,6 +12,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +24,9 @@ import (
 	"go.uber.org/automaxprocs/maxprocs"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
@@ -284,10 +287,10 @@ func Command() *cobra.Command {
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
-	cmd.Flags().Bool(
+	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
-		true,
-		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0.",
+		"",
+		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0. Possible values: true, false, \"\" (= auto-detect)",
 	)
 
 	// hide development mode flags from the usage message
@@ -549,6 +552,12 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), clientset)
+	if err != nil {
+		log.Error(err, "failed to determine how to set default security context")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:            dialer,
 		ExposedNodeLabels: exposedNodeLabels,
@@ -564,7 +573,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
-		SetDefaultSecurityContext: viper.GetBool(operator.SetDefaultSecurityContextFlag),
+		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
 	}
@@ -672,6 +681,56 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 	default:
 		return ipFamilyDefault, fmt.Errorf("IP family can be one of: IPv4, IPv6 or \"\" to auto-detect, but was %s", ipFamilyStr)
 	}
+}
+
+// determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:
+// 1. If the setDefaultSecurityContext is explicitly set to either true, or false, use this value.
+// 2. use openshift detection pulled from kubevirt
+//    https://github.com/kubevirt/kubevirt/blob/f71e9c9615a6c36178169d66814586a93ba515b5/pkg/util/cluster/cluster.go#L21
+//    to determine whether or not we are running within an openshift cluster.  If we determine we are on an openshift cluster,
+//    then default to false, otherwise, return true.
+func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
+	isSet, err := strconv.ParseBool(setDefaultSecurityContext)
+	if err == nil {
+		return isSet, nil
+	}
+	apis, err := clientset.Discovery().ServerResources()
+	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
+		return false, err
+	}
+
+	openshiftSecurityGroupName := "security.openshift.io"
+	openshiftSecurityGroupVersion := schema.GroupVersion{Group: openshiftSecurityGroupName, Version: "v1"}
+
+	// In case of an error, check if security.openshift.io is the reason (unlikely).
+	// If it is, we are obviously on an openshift cluster.
+	if discovery.IsGroupDiscoveryFailedError(err) {
+		e := err.(*discovery.ErrGroupDiscoveryFailed)
+		if _, exists := e.Groups[openshiftSecurityGroupVersion]; exists {
+			// since we have determined we are absolutely running within an openshift cluster,
+			// behave as if "setDefaultSecurityContext" was set to false.
+			return false, nil
+		}
+	}
+
+	// search for "securitycontextconstraints" within the cluster's api resources,
+	// since this is an openshift specific api resource that does not exist outside of openshift.
+	for _, api := range apis {
+		if api.GroupVersion == openshiftSecurityGroupVersion.String() {
+			for _, resource := range api.APIResources {
+				if resource.Name == "securitycontextconstraints" {
+					// since we have determined we are absolutely running within an openshift cluster,
+					// behave as if "setDefaultSecurityContext" was set to false.
+					return false, nil
+				}
+			}
+		}
+	}
+
+	// we could not determine that we are running within an openshift cluster,
+	// so we will behave as if "setDefaultSecurityContext" was set to true.
+	log.V(1).Info("returning true as fallback")
+	return true, nil
 }
 
 func registerControllers(mgr manager.Manager, params operator.Parameters, accessReviewer rbac.AccessReviewer) error {

@@ -159,7 +159,12 @@ config:
   exposedNodeLabels: [ "topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*" ]
 
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
-  setDefaultSecurityContext: true
+  # *note* that the default option now is "", which is using "auto-detect" to attempt to set this properly automatically when both running
+  # in an openshift cluster, and a standard kubernetes cluster.  Valid values are as follows:
+  #   ""    : auto detect
+  # "true"  : set pod security context when creating resources.
+  # "false" : do not set pod security context when creating resources.
+  setDefaultSecurityContext: ""
 
   # kubeClientTimeout sets the request timeout for Kubernetes API calls made by the operator.
   kubeClientTimeout: 60s
