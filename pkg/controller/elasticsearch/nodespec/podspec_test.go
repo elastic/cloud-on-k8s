@@ -205,7 +205,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			es.Spec.Version = tt.version.String()
 			es.Spec.NodeSets[0].PodTemplate.Spec.SecurityContext = tt.userSecurityContext
 
-			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, commonv1.Config{})
+			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config)
 			require.NoError(t, err)
 
 			actual, err := BuildPodTemplateSpec(k8s.NewFakeClient(), es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
@@ -220,7 +220,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *nodeSet.Config, commonv1.Config{})
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *nodeSet.Config)
 	require.NoError(t, err)
 
 	actual, err := BuildPodTemplateSpec(k8s.NewFakeClient(), sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
@@ -406,7 +406,7 @@ func Test_buildLabels(t *testing.T) {
 			es := newEsSampleBuilder().withKeystoreResources(tt.args.keystoreResources).withUserConfig(tt.args.cfg).addEsAnnotations(tt.args.esAnnotations).build()
 			ver, err := version.Parse(sampleES.Spec.Version)
 			require.NoError(t, err)
-			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, commonv1.Config{})
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config)
 			require.NoError(t, err)
 			got, err := buildLabels(es, cfg, es.Spec.NodeSets[0], tt.args.keystoreResources)
 			if (err != nil) != tt.wantErr {
