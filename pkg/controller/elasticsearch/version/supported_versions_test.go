@@ -62,7 +62,7 @@ func TestSupportedVersions(t *testing.T) {
 				version.MustParse("8.9.0"),
 			},
 			unsupported: []version.Version{
-				version.MustParse("7.15.0"), // supported by ECK but no direct upgrade path to 8.x
+				version.MustParse("7.16.99"), // supported by ECK but no direct upgrade path to 8.x
 			},
 		},
 	}
