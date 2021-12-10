@@ -1,5 +1,5 @@
 # Docker image used for continuous integration
-FROM golang:1.17.2
+FROM golang:1.17.5
 
 ENV GOLANGCILINT_VERSION=1.38.0
 ENV SHELLCHECK_VERSION=0.7.1
