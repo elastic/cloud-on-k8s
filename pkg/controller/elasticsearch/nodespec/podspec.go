@@ -105,7 +105,10 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	maybeAlterJvmOpts(builder, ver)
+	if ver.LT(version.From(7, 2, 0)) {
+	        // mitigate CVE-2021-44228
+		enableLog4JFormatMsgNoLookups(builder)
+	}
 
 	return builder.PodTemplate, nil
 }
