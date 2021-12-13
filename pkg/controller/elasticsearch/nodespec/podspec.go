@@ -172,30 +172,34 @@ func buildLabels(
 	return podLabels, nil
 }
 
-// maybeAlterJvmOpts adds the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
+const (
+	log4j2FormatMsgNoLookupsParamName = "-Dlog4j2.formatMsgNoLookups"
+)
+
+// enableLog4JFormatMsgNoLookups adds the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
 // in order to mitigate the possible Log4Shell vulnerability CVE-2021-44228, if it is not yet defined by the user, for
 // versions of Elasticsearch lower than 7.2.0.
-func maybeAlterJvmOpts(builder *defaults.PodTemplateBuilder, ver version.Version) {
-	if ver.LT(version.From(7, 2, 0)) { //nolint:nestif
-		log4j2ParamName := "-Dlog4j2.formatMsgNoLookups"
-		log4j2Param := fmt.Sprintf("%s=true", log4j2ParamName)
-
-		for c, esContainer := range builder.PodTemplate.Spec.Containers {
-			if esContainer.Name == esv1.ElasticsearchContainerName {
-				currentJvmOpts := ""
-				for e, envVar := range esContainer.Env {
-					if envVar.Name == settings.EnvEsJavaOpts {
-						currentJvmOpts = envVar.Value
-						if !strings.Contains(currentJvmOpts, log4j2ParamName) {
-							builder.PodTemplate.Spec.Containers[c].Env[e].Value = log4j2Param + " " + currentJvmOpts
-						}
-					}
-				}
-				if currentJvmOpts == "" {
-					env := append(esContainer.Env, corev1.EnvVar{Name: settings.EnvEsJavaOpts, Value: log4j2Param})
-					builder.PodTemplate.Spec.Containers[c].Env = env
-				}
+func enableLog4JFormatMsgNoLookups(builder *defaults.PodTemplateBuilder) {
+	log4j2Param := fmt.Sprintf("%s=true", log4j2FormatMsgNoLookupsParamName)
+	for c, esContainer := range builder.PodTemplate.Spec.Containers {
+		if esContainer.Name != esv1.ElasticsearchContainerName {
+			continue
+		}
+		currentJvmOpts := ""
+		for e, envVar := range esContainer.Env {
+			if envVar.Name != settings.EnvEsJavaOpts {
+				continue
 			}
+			currentJvmOpts = envVar.Value
+			if !strings.Contains(currentJvmOpts, log4j2FormatMsgNoLookupsParamName) {
+				builder.PodTemplate.Spec.Containers[c].Env[e].Value = log4j2Param + " " + currentJvmOpts
+			}
+		}
+		if currentJvmOpts == "" {
+			builder.PodTemplate.Spec.Containers[c].Env = append(
+				builder.PodTemplate.Spec.Containers[c].Env,
+				corev1.EnvVar{Name: settings.EnvEsJavaOpts, Value: log4j2Param},
+			)
 		}
 	}
 }
