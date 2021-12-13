@@ -55,7 +55,9 @@ type namespaceAwareController struct {
 // namespaced events outside of managed namespaces, and the operator namespace.
 func newNamespaceAwareWatchersController(c controller.Controller, managedNamespaces []string, operatorNamespace string) controller.Controller {
 	watchedNamespaces := managedNamespaces
-	if !slices.Contains(watchedNamespaces, operatorNamespace) {
+	// if the length of watchedNamespaces is 0, then we're watching all namespaces, and shouldn't append anything to the slice, as
+	// it will just cause issues wth the managed namespaces predicate.
+	if len(watchedNamespaces) > 0 && !slices.Contains(watchedNamespaces, operatorNamespace) {
 		watchedNamespaces = append(watchedNamespaces, operatorNamespace)
 	}
 	return &namespaceAwareController{
