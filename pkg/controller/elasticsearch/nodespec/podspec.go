@@ -106,7 +106,7 @@ func BuildPodTemplateSpec(
 	}
 
 	if ver.LT(version.From(7, 2, 0)) {
-	        // mitigate CVE-2021-44228
+		// mitigate CVE-2021-44228
 		enableLog4JFormatMsgNoLookups(builder)
 	}
 
