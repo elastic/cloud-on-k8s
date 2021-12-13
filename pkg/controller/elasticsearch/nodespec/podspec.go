@@ -170,7 +170,8 @@ func buildLabels(
 }
 
 // maybeAlterJvmOpts adds the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
-// in order to mitigate the possible Log4Shell vulnerability CVE-2021-44228, if it is not yet defined by the user.
+// in order to mitigate the possible Log4Shell vulnerability CVE-2021-44228, if it is not yet defined by the user, for
+// versions of Elasticsearch lower than 7.2.0.
 func maybeAlterJvmOpts(builder *defaults.PodTemplateBuilder, ver version.Version) {
 	if ver.LT(version.From(7, 2, 0)) { //nolint:nestif
 		log4j2ParamName := "-Dlog4j2.formatMsgNoLookups"
