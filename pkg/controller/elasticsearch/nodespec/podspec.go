@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash/fnv"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -104,6 +105,8 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	maybeAlterJvmOpts(builder, ver)
+
 	return builder.PodTemplate, nil
 }
 
@@ -164,4 +167,31 @@ func buildLabels(
 	}
 
 	return podLabels, nil
+}
+
+// maybeAlterJvmOpts adds the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
+// in order to mitigate the possible Log4Shell vulnerability CVE-2021-44228, if it is not yet defined by the user.
+func maybeAlterJvmOpts(builder *defaults.PodTemplateBuilder, ver version.Version) {
+	if ver.LT(version.From(7, 2, 0)) { //nolint:nestif
+		log4j2ParamName := "-Dlog4j2.formatMsgNoLookups"
+		log4j2Param := fmt.Sprintf("%s=true", log4j2ParamName)
+
+		for c, esContainer := range builder.PodTemplate.Spec.Containers {
+			if esContainer.Name == esv1.ElasticsearchContainerName {
+				currentJvmOpts := ""
+				for e, envVar := range esContainer.Env {
+					if envVar.Name == settings.EnvEsJavaOpts {
+						currentJvmOpts = envVar.Value
+						if !strings.Contains(currentJvmOpts, log4j2ParamName) {
+							builder.PodTemplate.Spec.Containers[c].Env[e].Value = log4j2Param + " " + currentJvmOpts
+						}
+					}
+				}
+				if currentJvmOpts == "" {
+					env := append(esContainer.Env, corev1.EnvVar{Name: settings.EnvEsJavaOpts, Value: log4j2Param})
+					builder.PodTemplate.Spec.Containers[c].Env = env
+				}
+			}
+		}
+	}
 }
