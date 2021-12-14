@@ -469,7 +469,7 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	}
 }
 
-func Test_maybeAlterJvmOpts(t *testing.T) {
+func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 	tt := []struct {
 		name                       string
 		version                    string
