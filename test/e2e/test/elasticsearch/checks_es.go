@@ -165,7 +165,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 	// check if node is coming from the expected stateful set based on its name,
 	// ignore nodes coming from StatefulSets in the process of being downscaled
 	if !strings.Contains(node.Name, topoElem.Name) {
-		return fmt.Errorf("node does not belong to nodeSet" )
+		return fmt.Errorf("node does not belong to nodeSet")
 	}
 	// get config to check roles
 	v, err := version.Parse(es.Spec.Version)
