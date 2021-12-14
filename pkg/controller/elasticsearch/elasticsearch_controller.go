@@ -310,7 +310,9 @@ func (r *ReconcileElasticsearch) updateStatus(
 	return common.UpdateStatus(r.Client, cluster)
 }
 
-// annotateResource adds the orchestration hints annotation to the Elasticsearch resource.
+// annotateResource adds the orchestration hints annotation to the Elasticsearch resource. The purpose of this annotation
+// is to capture additional state about aspects of the operator's orchestration of Elasticsearch resources. Currently,
+// it captures whether transient settings are in use.  Future expansion is possible if deemed necessary.
 func (r *ReconcileElasticsearch) annotateResource(
 	ctx context.Context,
 	es esv1.Elasticsearch,
