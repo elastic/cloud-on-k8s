@@ -149,7 +149,7 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 				if err != nil {
 					// node reported from ES API does not match any expected node in the spec
 					// (could be normal and transient on downscales)
-					return fmt.Errorf("actual node %s in the cluster does not match any expected nodes: %v", node.Name, allErrors)
+					return fmt.Errorf("actual node %s in the cluster does not match any expected nodes: %v", node.Name, strings.Join(allErrors, ", "))
 				}
 			}
 			// expected topology should have matched all nodes
@@ -165,7 +165,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 	// check if node is coming from the expected stateful set based on its name,
 	// ignore nodes coming from StatefulSets in the process of being downscaled
 	if !strings.Contains(node.Name, topoElem.Name) {
-		return fmt.Errorf("node %s does not belong to nodeSet %s", node.Name, topoElem.Name)
+		return fmt.Errorf("node does not belong to nodeSet" )
 	}
 	// get config to check roles
 	v, err := version.Parse(es.Spec.Version)
