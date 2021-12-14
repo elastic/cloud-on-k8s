@@ -694,7 +694,7 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 	if err == nil {
 		return isSet, nil
 	}
-	apis, err := clientset.Discovery().ServerResources()
+	_, apiResources, err := clientset.Discovery().ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
 		return false, err
 	}
@@ -705,19 +705,21 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 	// In case of an error, check if security.openshift.io is the reason (unlikely).
 	// If it is, we are obviously on an openshift cluster.
 	if discovery.IsGroupDiscoveryFailedError(err) {
-		e := err.(*discovery.ErrGroupDiscoveryFailed)
-		if _, exists := e.Groups[openshiftSecurityGroupVersion]; exists {
-			// since we have determined we are absolutely running within an openshift cluster,
-			// behave as if "setDefaultSecurityContext" was set to false.
-			return false, nil
+		var e *discovery.ErrGroupDiscoveryFailed
+		if ok := errors.As(err, &e); ok {
+			if _, exists := e.Groups[openshiftSecurityGroupVersion]; exists {
+				// since we have determined we are absolutely running within an openshift cluster,
+				// behave as if "setDefaultSecurityContext" was set to false.
+				return false, nil
+			}
 		}
 	}
 
 	// search for "securitycontextconstraints" within the cluster's api resources,
 	// since this is an openshift specific api resource that does not exist outside of openshift.
-	for _, api := range apis {
-		if api.GroupVersion == openshiftSecurityGroupVersion.String() {
-			for _, resource := range api.APIResources {
+	for _, apiResource := range apiResources {
+		if apiResource.GroupVersion == openshiftSecurityGroupVersion.String() {
+			for _, resource := range apiResource.APIResources {
 				if resource.Name == "securitycontextconstraints" {
 					// since we have determined we are absolutely running within an openshift cluster,
 					// behave as if "setDefaultSecurityContext" was set to false.
