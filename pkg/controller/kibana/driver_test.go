@@ -242,12 +242,6 @@ func TestDriverDeploymentParams(t *testing.T) {
 				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
-				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.HTTPHeaders = []corev1.HTTPHeader{
-					{
-						Name:  "x-elastic-product-origin",
-						Value: "cloud",
-					},
-				}
 				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
 			}(),
@@ -579,10 +573,9 @@ func expectedDeploymentParams() deployment.Params {
 						TimeoutSeconds:      5,
 						Handler: corev1.Handler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Port:        intstr.FromInt(5601),
-								Path:        "/login",
-								Scheme:      corev1.URISchemeHTTPS,
-								HTTPHeaders: common.InternalProductHTTPHeaders,
+								Port:   intstr.FromInt(5601),
+								Path:   "/login",
+								Scheme: corev1.URISchemeHTTPS,
 							},
 						},
 					},

@@ -17,7 +17,6 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -177,10 +176,9 @@ func expectedDeploymentParams() testParams {
 							TimeoutSeconds:      5,
 							Handler: corev1.Handler{
 								HTTPGet: &corev1.HTTPGetAction{
-									Port:        intstr.FromInt(8200),
-									Path:        "/",
-									Scheme:      corev1.URISchemeHTTPS,
-									HTTPHeaders: common.InternalProductHTTPHeaders,
+									Port:   intstr.FromInt(8200),
+									Path:   "/",
+									Scheme: corev1.URISchemeHTTPS,
 								},
 							},
 						},

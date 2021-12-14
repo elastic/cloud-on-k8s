@@ -6,22 +6,13 @@ package common
 
 import (
 	"net/http"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	internalProductRequestHeaderKey   = "x-elastic-product-origin"
-	internalProductRequestHeaderValue = "cloud"
+	InternalProductRequestHeaderString = "x-elastic-product-origin: cloud"
+	internalProductRequestHeaderKey    = "x-elastic-product-origin"
+	internalProductRequestHeaderValue  = "cloud"
 )
-
-// InternalProductHTTPHeaders is a slice that contains header that specifies which product is making the request.
-var InternalProductHTTPHeaders = []corev1.HTTPHeader{
-	{
-		Name:  internalProductRequestHeaderKey,
-		Value: internalProductRequestHeaderValue,
-	},
-}
 
 // SetInternalProductRequestHeader sets header that specifies which internal product is making the request.
 func SetInternalProductRequestHeader(req *http.Request) {
