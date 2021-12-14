@@ -5,7 +5,7 @@
 package common
 
 const (
-	InternalProductRequestHeaderString = "x-elastic-product-origin: cloud"
 	InternalProductRequestHeaderKey    = "x-elastic-product-origin"
 	InternalProductRequestHeaderValue  = "cloud"
+	InternalProductRequestHeaderString = InternalProductRequestHeaderKey + ": " + InternalProductRequestHeaderValue
 )
