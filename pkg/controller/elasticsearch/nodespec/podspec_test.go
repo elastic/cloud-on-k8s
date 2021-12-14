@@ -468,3 +468,62 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 		})
 	}
 }
+
+func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
+	tt := []struct {
+		name                       string
+		version                    string
+		userEnv                    []corev1.EnvVar
+		expectedEsJavaOptsEnvValue string
+	}{
+		{
+			name:                       "before 7.2.0, JVM log4j2.formatMsgNoLookups parameter is set by default",
+			version:                    "7.0.0",
+			userEnv:                    []corev1.EnvVar{{Name: "YO", Value: "LO"}},
+			expectedEsJavaOptsEnvValue: "-Dlog4j2.formatMsgNoLookups=true",
+		},
+		{
+			name:                       "before 7.2.0, JVM log4j2.formatMsgNoLookups parameter is merged with user-provided JVM parameters",
+			version:                    "7.1.0",
+			userEnv:                    []corev1.EnvVar{{Name: "ES_JAVA_OPTS", Value: "-Xms=42000 -Xmx=42000"}},
+			expectedEsJavaOptsEnvValue: "-Dlog4j2.formatMsgNoLookups=true -Xms=42000 -Xmx=42000",
+		},
+		{
+			name:                       "before 7.2.0, JVM log4j2.formatMsgNoLookups user-provided parameter is not overridden by us",
+			version:                    "7.1.0",
+			userEnv:                    []corev1.EnvVar{{Name: "ES_JAVA_OPTS", Value: "-Xms=42000 -Dlog4j2.formatMsgNoLookups=false -Xmx=42000"}},
+			expectedEsJavaOptsEnvValue: "-Xms=42000 -Dlog4j2.formatMsgNoLookups=false -Xmx=42000",
+		},
+		{
+			name:                       "since 7.2.0, JVM log4j2.formatMsgNoLookups parameter is not set by default",
+			version:                    "7.2.0",
+			userEnv:                    []corev1.EnvVar{{Name: "ES_JAVA_OPTS", Value: "-Xms=42000 -Xmx=42000"}},
+			expectedEsJavaOptsEnvValue: "-Xms=42000 -Xmx=42000",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			sampleES := newEsSampleBuilder().build()
+			// set version
+			sampleES.Spec.Version = tc.version
+			// set user env
+			sampleES.Spec.NodeSets[0].PodTemplate.Spec.Containers[1].Env = tc.userEnv
+
+			ver, err := version.Parse(sampleES.Spec.Version)
+			require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config)
+			require.NoError(t, err)
+			actual, err := BuildPodTemplateSpec(k8s.NewFakeClient(), sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
+			require.NoError(t, err)
+
+			env := actual.Spec.Containers[1].Env
+			envMap := make(map[string]string)
+			for _, e := range env {
+				envMap[e.Name] = e.Value
+			}
+			assert.Equal(t, len(env), len(envMap))
+			assert.Equal(t, tc.expectedEsJavaOptsEnvValue, envMap[settings.EnvEsJavaOpts])
+		})
+	}
+}
