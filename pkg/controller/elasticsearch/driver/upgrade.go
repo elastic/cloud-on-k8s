@@ -285,6 +285,11 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	esState ESState,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
+	// we are fully migrated to node shutdown and do not need this logic anymore
+	if d.ReconcileState.OrchestrationHints().NoTransientSettings {
+		return results
+	}
+
 	alreadyEnabled, err := esState.ShardAllocationsEnabled()
 	if err != nil {
 		return results.WithError(err)
@@ -325,7 +330,6 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	if err := esClient.EnableShardAllocation(ctx); err != nil {
 		return results.WithError(err)
 	}
-
 	return results
 }
 

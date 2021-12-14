@@ -41,7 +41,7 @@ const (
 // On some restricted environments (custom PSPs or Openshift), setting the Pod security context
 // is forbidden: the user can either set `--set-default-security-context=false`, or override the
 // podTemplate securityContext to an empty value.
-var minDefaultSecurityContextVersion = version.MustParse("8.0.0")
+var minDefaultSecurityContextVersion = version.MinFor(8, 0, 0)
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(

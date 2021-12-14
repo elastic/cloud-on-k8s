@@ -200,7 +200,7 @@ func TestState_Apply(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState(tt.cluster)
+			s := MustNewState(tt.cluster)
 			if tt.effects != nil {
 				tt.effects(s)
 			}
@@ -309,7 +309,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState(tt.cluster)
+			s := MustNewState(tt.cluster)
 			s.UpdateElasticsearchState(tt.args.resourcesState, tt.args.observedState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
@@ -344,7 +344,7 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState(tt.cluster)
+			s := MustNewState(tt.cluster)
 			s.UpdateElasticsearchMigrating(tt.args.resourcesState, tt.args.observedState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
