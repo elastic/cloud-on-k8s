@@ -135,7 +135,10 @@ func (c *baseClient) request(
 	}
 
 	// Sets headers allowing ES to distinguish between deprecated APIs used internally and by the user
-	common.SetInternalProductRequestHeader(request)
+	if request.Header == nil {
+		request.Header = make(http.Header)
+	}
+	request.Header.Set(common.InternalProductRequestHeaderKey, common.InternalProductRequestHeaderValue)
 
 	var skippedErr error
 	resp, err := c.doRequest(ctx, request)
