@@ -20,7 +20,7 @@ func TestNewFromAnnotations(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "OK valid annoations",
+			name: "OK, valid annotations",
 			args: args{
 				ann: map[string]string{
 					OrchestrationsHintsAnnotation: `{"no_transient_settings": true}`,

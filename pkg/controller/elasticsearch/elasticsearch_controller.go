@@ -310,17 +310,18 @@ func (r *ReconcileElasticsearch) updateStatus(
 	return common.UpdateStatus(r.Client, cluster)
 }
 
+// annotateResource adds the orchestration hints annotation to the Elasticsearch resource.
 func (r *ReconcileElasticsearch) annotateResource(
 	ctx context.Context,
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	span, _ := apm.StartSpan(ctx, "update_annotations", tracing.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "update_hints_annotations", tracing.SpanTypeApp)
 	defer span.End()
 
-	// cluster-uuid is a special case that is not treated here but through an immediate update due to the risk of data loss
-	// see bootstrap package.
-	newAnnotations, err := reconcileState.Annotations()
+	// cluster-uuid is a special case of an annotation on the Elasticsearch resource that is not treated here but through
+	// an immediate update due to the risk of data loss. See bootstrap package.
+	newAnnotations, err := reconcileState.OrchestrationHints().AsAnnotation()
 	if err != nil {
 		return err
 	}

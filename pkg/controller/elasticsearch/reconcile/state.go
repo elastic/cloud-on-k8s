@@ -179,11 +179,6 @@ func (s *State) Apply() ([]events.Event, *esv1.Elasticsearch) {
 	return s.Events(), &s.cluster
 }
 
-// Annotations returns annotation updates to apply to the Elasticsearch resource at the end of a reconciliation run.
-func (s *State) Annotations() (map[string]string, error) {
-	return s.hints.AsAnnotation()
-}
-
 func (s *State) UpdateElasticsearchInvalid(err error) {
 	s.status.Phase = esv1.ElasticsearchResourceInvalid
 	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
