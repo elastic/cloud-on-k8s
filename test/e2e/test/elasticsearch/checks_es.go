@@ -124,19 +124,7 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 			}
 			// match each actual node to an expected node
 			for nodeID, node := range nodes.Nodes {
-				// check if node is coming from the expected stateful set based on its name,
-				// ignore nodes coming from StatefulSets in the process of being downscaled
 				found := false
-				for _, spec := range es.Spec.NodeSets {
-					if strings.Contains(node.Name, spec.Name) {
-						found = true
-					}
-				}
-				if !found {
-					return fmt.Errorf("none of spec names was found in %s", node.Name)
-				}
-
-				found = false
 				for k := range nodesStats.Nodes {
 					if k == nodeID {
 						found = true
@@ -149,17 +137,19 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 				// match the actual Elasticsearch node to an expected one in expectedTopology
 				nodeStats := nodesStats.Nodes[nodeID]
 				var err error
+				var allErrors []string
 				for i, topoElem := range expectedTopology {
 					if err = e.compareTopology(es, topoElem, node, nodeStats); err == nil {
 						// found it! no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break
 					}
+					allErrors = append(allErrors, fmt.Sprintf("%s: %s", topoElem.Name, err.Error()))
 				}
 				if err != nil {
 					// node reported from ES API does not match any expected node in the spec
 					// (could be normal and transient on downscales)
-					return fmt.Errorf("actual node in the cluster does not match any expected node: %w", err)
+					return fmt.Errorf("actual node %s in the cluster does not match any expected nodes: %v", node.Name, strings.Join(allErrors, ", "))
 				}
 			}
 			// expected topology should have matched all nodes
@@ -172,6 +162,11 @@ func (e *esClusterChecks) CheckESNodesTopology() test.Step {
 }
 
 func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.NodeSet, node client.Node, nodeStats client.NodeStats) error {
+	// check if node is coming from the expected stateful set based on its name,
+	// ignore nodes coming from StatefulSets in the process of being downscaled
+	if !strings.Contains(node.Name, topoElem.Name) {
+		return fmt.Errorf("node does not belong to nodeSet")
+	}
 	// get config to check roles
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
