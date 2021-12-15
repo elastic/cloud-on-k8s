@@ -5,9 +5,9 @@
 package stackmon
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash/fnv"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -75,7 +75,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 		return builder, nil
 	}
 
-	configHash := sha256.New224()
+	configHash := fnv.New32()
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&kb) {
@@ -108,7 +108,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 	}
 
 	// add the config hash annotation to ensure pod rotation when an ES password or a CA are rotated
-	builder.WithAnnotations(map[string]string{cfgHashAnnotation: fmt.Sprintf("%x", configHash.Sum(nil))})
+	builder.WithAnnotations(map[string]string{cfgHashAnnotation: fmt.Sprint(configHash.Sum32())})
 	// inject all volumes
 	builder.WithVolumes(volumes...)
 

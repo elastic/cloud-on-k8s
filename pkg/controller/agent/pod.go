@@ -153,7 +153,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		VersionLabelName: spec.Version})
 
 	annotations := map[string]string{
-		ConfigHashAnnotationLabelName: fmt.Sprint(configHash.Sum32()),
+		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
 
 	builder = builder.
