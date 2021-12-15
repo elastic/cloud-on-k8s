@@ -693,6 +693,10 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 	if len(setDefaultSecurityContext) > 0 {
 		return strconv.ParseBool(setDefaultSecurityContext)
 	}
+	return isOpenShift(clientset)
+}
+
+func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 	openshiftSecurityGroupVersion := schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}
 	apiResourceList, err := clientset.Discovery().ServerResourcesForGroupVersion(openshiftSecurityGroupVersion.String())
 	if err != nil {
@@ -720,7 +724,6 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 
 	// we could not determine that we are running within an openshift cluster,
 	// so we will behave as if "setDefaultSecurityContext" was set to true.
-	log.V(1).Info("returning true as fallback")
 	return true, nil
 }
 
