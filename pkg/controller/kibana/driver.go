@@ -257,9 +257,9 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	}
 	_, _ = configChecksum.Write(configSecret.Data[SettingsFilename])
 
-	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+	// add the checksum to an annotation for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)
-	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+	kibanaPodSpec.Annotations[configHashAnnotationName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
 	// decide the strategy type
 	strategyType, err := d.getStrategyType(kb)
