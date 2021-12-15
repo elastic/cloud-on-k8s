@@ -5,8 +5,8 @@
 package common
 
 import (
-	"crypto/sha256"
 	"hash"
+	"hash/fnv"
 	"reflect"
 	"testing"
 
@@ -25,7 +25,7 @@ import (
 func Test_buildPodTemplate(t *testing.T) {
 	type args struct {
 		params       DriverParams
-		initialHash  hash.Hash
+		initialHash  hash.Hash32
 		defaultImage container.Image
 	}
 	type want struct {
@@ -79,7 +79,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				},
 				annotations: map[string]string{
 					// SHA224 should be the same as the initial one.
-					"beat.k8s.elastic.co/config-hash": "de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8",
+					"beat.k8s.elastic.co/config-hash": "837857890",
 				},
 			},
 		},
@@ -148,7 +148,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				},
 				annotations: map[string]string{
 					// The sum below should reflect the version of the Secret which contain the secure settings.
-					"beat.k8s.elastic.co/config-hash": "220c210de3485d7856038d8c14075904a8f809ba4e9e59079dfc47f3",
+					"beat.k8s.elastic.co/config-hash": "4293447796",
 				},
 			},
 		},
@@ -202,8 +202,8 @@ func assertConfiguration(t *testing.T, pod corev1.PodTemplateSpec) {
 }
 
 // newHash creates a hash with some initial data.
-func newHash(initialData string) hash.Hash {
-	hash := sha256.New224()
-	hash.Write([]byte(initialData))
-	return hash
+func newHash(initialData string) hash.Hash32 {
+	dataHash := fnv.New32()
+	_, _ = dataHash.Write([]byte(initialData))
+	return dataHash
 }

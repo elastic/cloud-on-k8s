@@ -70,7 +70,7 @@ func initContainerParameters(typ string) keystore.InitContainerParameters {
 func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
-	configHash hash.Hash,
+	configHash hash.Hash32,
 ) (corev1.PodTemplateSpec, error) {
 	podTemplate := params.GetPodTemplate()
 
@@ -129,7 +129,7 @@ func buildPodTemplate(
 		VersionLabelName: spec.Version})
 
 	annotations := map[string]string{
-		ConfigHashAnnotationName: fmt.Sprintf("%x", configHash.Sum(nil)),
+		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
 
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
