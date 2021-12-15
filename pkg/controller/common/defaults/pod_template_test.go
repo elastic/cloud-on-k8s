@@ -216,14 +216,14 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 			name:        "no readiness probe in pod template: use default one",
 			PodTemplate: corev1.PodTemplateSpec{},
 			readinessProbe: corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/probe",
 					},
 				},
 			},
 			want: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/probe",
 					},
@@ -238,7 +238,7 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 						{
 							Name: containerName,
 							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/user-provided",
 									},
@@ -249,14 +249,14 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				},
 			},
 			readinessProbe: corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/probe",
 					},
 				},
 			},
 			want: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/user-provided",
 					},
