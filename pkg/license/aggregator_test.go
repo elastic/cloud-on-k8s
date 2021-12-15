@@ -67,27 +67,6 @@ func TestMemFromJavaOpts(t *testing.T) {
 			expected: resource.MustParse("2Mi"),
 		},
 		{
-			name:   "without value",
-			actual: "-XmxM",
-			isErr:  true,
-		},
-		{
-			name:   "with an invalid Xmx",
-			actual: "-XMX1k",
-			isErr:  true,
-		},
-		{
-			name:   "with an invalid unit",
-			actual: "-Xmx64GB",
-			isErr:  true,
-		},
-		{
-			name:     "without xmx",
-			actual:   "-Xms1k",
-			expected: resource.MustParse("16777216k"),
-			isErr:    true,
-		},
-		{
 			name:     "with trailing spaces at the end",
 			actual:   "-Xms1k -Xmx8388608k   ",
 			expected: resource.MustParse("16777216Ki"),
@@ -96,6 +75,11 @@ func TestMemFromJavaOpts(t *testing.T) {
 			name:     "with trailing space at the beginning",
 			actual:   "  -Xms1k -Xmx8388608k",
 			expected: resource.MustParse("16777216Ki"),
+		},
+		{
+			name:     "no memory setting detected",
+			actual:   "-Dlog4j2.formatMsgNoLookups=true",
+			expected: resource.MustParse("0"),
 		},
 	}
 	for _, tt := range tests {
