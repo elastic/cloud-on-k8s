@@ -11,7 +11,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -27,7 +26,6 @@ import (
 type esSampleBuilder struct {
 	userConfig              map[string]interface{}
 	esAdditionalAnnotations map[string]string
-	keystoreResources       *keystore.Resources
 }
 
 func newEsSampleBuilder() *esSampleBuilder {
