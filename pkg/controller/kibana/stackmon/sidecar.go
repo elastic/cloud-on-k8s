@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	// cfgHashLabel is used to store a hash of the Metricbeat and Filebeat configurations.
+	// cfgHashAnnotation is used to store a hash of the Metricbeat and Filebeat configurations.
 	// Using only one label for both configs to save labels.
-	cfgHashLabel = "kibana.k8s.elastic.co/monitoring-config-hash"
+	cfgHashAnnotation = "kibana.k8s.elastic.co/monitoring-config-hash"
 
 	kibanaLogsVolumeName = "kibana-logs"
 	kibanaLogsMountPath  = "/usr/share/kibana/logs"
@@ -107,8 +107,8 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
-	// add the config hash label to ensure pod rotation when an ES password or a CA are rotated
-	builder.WithLabels(map[string]string{cfgHashLabel: fmt.Sprintf("%x", configHash.Sum(nil))})
+	// add the config hash annotation to ensure pod rotation when an ES password or a CA are rotated
+	builder.WithAnnotations(map[string]string{cfgHashAnnotation: fmt.Sprintf("%x", configHash.Sum(nil))})
 	// inject all volumes
 	builder.WithVolumes(volumes...)
 
