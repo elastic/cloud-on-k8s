@@ -693,17 +693,10 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 	if len(setDefaultSecurityContext) > 0 {
 		return strconv.ParseBool(setDefaultSecurityContext)
 	}
-	_, apiResources, err := clientset.Discovery().ServerGroupsAndResources()
-	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return false, err
-	}
-
-	openshiftSecurityGroupName := "security.openshift.io"
-	openshiftSecurityGroupVersion := schema.GroupVersion{Group: openshiftSecurityGroupName, Version: "v1"}
-
-	// In case of an error, check if security.openshift.io is the reason (unlikely).
-	// If it is, we are obviously on an openshift cluster.
-	if discovery.IsGroupDiscoveryFailedError(err) {
+	openshiftSecurityGroupVersion := schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}
+	apiResourceList, err := clientset.Discovery().ServerResourcesForGroupVersion(openshiftSecurityGroupVersion.String())
+	if err != nil {
+		// In case of an error, check if security.openshift.io is the reason (unlikely).
 		var e *discovery.ErrGroupDiscoveryFailed
 		if ok := errors.As(err, &e); ok {
 			if _, exists := e.Groups[openshiftSecurityGroupVersion]; exists {
@@ -712,19 +705,16 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 				return false, nil
 			}
 		}
+		return false, err
 	}
 
 	// search for "securitycontextconstraints" within the cluster's api resources,
 	// since this is an openshift specific api resource that does not exist outside of openshift.
-	for _, apiResource := range apiResources {
-		if apiResource.GroupVersion == openshiftSecurityGroupVersion.String() {
-			for _, resource := range apiResource.APIResources {
-				if resource.Name == "securitycontextconstraints" {
-					// since we have determined we are absolutely running within an openshift cluster,
-					// behave as if "setDefaultSecurityContext" was set to false.
-					return false, nil
-				}
-			}
+	for _, apiResource := range apiResourceList.APIResources {
+		if apiResource.Name == "securitycontextconstraints" {
+			// since we have determined we are absolutely running within an openshift cluster,
+			// behave as if "setDefaultSecurityContext" was set to false.
+			return false, nil
 		}
 	}
 
