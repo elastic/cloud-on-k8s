@@ -2082,11 +2082,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cobra
-Version : v1.2.1
-Time    : 2021-07-02T15:25:47Z
+Version : v1.3.0
+Time    : 2021-12-14T18:22:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.2.1/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.3.0/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
