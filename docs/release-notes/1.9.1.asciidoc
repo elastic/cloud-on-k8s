@@ -1,0 +1,28 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.9.1]]
+== {n} version 1.9.1
+
+
+
+
+[[enhancement-1.9.1]]
+[float]
+=== Enhancements
+
+* Add log4j2.formatMsgNoLookups logging property to ES < 7.12 {pull}5157[#5157]
+* Add internal product header to requests {pull}5129[#5129]
+
+[[bug-1.9.1]]
+[float]
+=== Bug fixes
+
+* Resource aggregator should handle missing memory settings {pull}5158[#5158]
+
+[[nogroup-1.9.1]]
+[float]
+=== Misc
+
+* Update golang Docker tag to v1.17.5 {pull}5149[#5149]
+
