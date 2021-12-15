@@ -154,8 +154,8 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
 		require.NoError(t, err)
 		require.True(t, *dep.Spec.Replicas == 3)
-		// with the config hash label set
-		require.NotEmpty(t, dep.Spec.Template.Labels[ConfigHashLabelName])
+		// with the config hash annotation set
+		require.NotEmpty(t, dep.Spec.Template.Annotations[ConfigHashAnnotationName])
 	}
 
 	// first call
