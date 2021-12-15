@@ -690,9 +690,8 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 //    to determine whether or not we are running within an openshift cluster.  If we determine we are on an openshift cluster,
 //    then default to false, otherwise, return true.
 func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
-	isSet, err := strconv.ParseBool(setDefaultSecurityContext)
-	if err == nil {
-		return isSet, nil
+	if len(setDefaultSecurityContext) > 0 {
+		return strconv.ParseBool(setDefaultSecurityContext)
 	}
 	_, apiResources, err := clientset.Discovery().ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
