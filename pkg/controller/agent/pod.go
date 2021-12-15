@@ -112,7 +112,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -153,7 +153,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		VersionLabelName: spec.Version})
 
 	annotations := map[string]string{
-		ConfigHashAnnotationLabelName: fmt.Sprintf("%x", configHash.Sum(nil)),
+		ConfigHashAnnotationLabelName: fmt.Sprint(configHash.Sum32()),
 	}
 
 	builder = builder.
