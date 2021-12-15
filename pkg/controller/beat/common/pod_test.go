@@ -31,6 +31,7 @@ func Test_buildPodTemplate(t *testing.T) {
 	type want struct {
 		initContainers int
 		labels         map[string]string
+		annotations    map[string]string
 		err            bool
 	}
 	tests := []struct {
@@ -72,11 +73,13 @@ func Test_buildPodTemplate(t *testing.T) {
 			want: want{
 				initContainers: 1,
 				labels: map[string]string{
+					"beat.k8s.elastic.co/name":    "beat-name",
+					"beat.k8s.elastic.co/version": "7.15.0",
+					"common.k8s.elastic.co/type":  "beat",
+				},
+				annotations: map[string]string{
 					// SHA224 should be the same as the initial one.
-					"beat.k8s.elastic.co/config-checksum": "de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8",
-					"beat.k8s.elastic.co/name":            "beat-name",
-					"beat.k8s.elastic.co/version":         "7.15.0",
-					"common.k8s.elastic.co/type":          "beat",
+					"beat.k8s.elastic.co/config-hash": "de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8",
 				},
 			},
 		},
@@ -142,8 +145,10 @@ func Test_buildPodTemplate(t *testing.T) {
 					"beat.k8s.elastic.co/name":    "beat-name",
 					"beat.k8s.elastic.co/version": "7.15.0",
 					"common.k8s.elastic.co/type":  "beat",
+				},
+				annotations: map[string]string{
 					// The sum below should reflect the version of the Secret which contain the secure settings.
-					"beat.k8s.elastic.co/config-checksum": "220c210de3485d7856038d8c14075904a8f809ba4e9e59079dfc47f3",
+					"beat.k8s.elastic.co/config-hash": "220c210de3485d7856038d8c14075904a8f809ba4e9e59079dfc47f3",
 				},
 			},
 		},
@@ -159,6 +164,10 @@ func Test_buildPodTemplate(t *testing.T) {
 			assertConfiguration(t, podTemplateSpec)
 			if !reflect.DeepEqual(tt.want.labels, podTemplateSpec.Labels) {
 				t.Errorf("Labels do not match: %s", cmp.Diff(tt.want.labels, podTemplateSpec.Labels))
+				return
+			}
+			if !reflect.DeepEqual(tt.want.annotations, podTemplateSpec.Annotations) {
+				t.Errorf("Annotations do not match: %s", cmp.Diff(tt.want.annotations, podTemplateSpec.Annotations))
 				return
 			}
 		})

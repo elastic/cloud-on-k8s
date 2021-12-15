@@ -30,8 +30,8 @@ const (
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
-	// ConfigChecksumLabel is a label used to store a Beat config checksum.
-	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
+	// ConfigHashAnnotationName is an annotation used to store a Beat config hash.
+	ConfigHashAnnotationName = "beat.k8s.elastic.co/config-hash"
 
 	// VersionLabelName is a label used to track the version of a Beat Pod.
 	VersionLabelName = "beat.k8s.elastic.co/version"
@@ -126,10 +126,15 @@ func buildPodTemplate(
 	}
 
 	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
-		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-		VersionLabelName:    spec.Version})
+		VersionLabelName: spec.Version})
+
+	annotations := map[string]string{
+		ConfigHashAnnotationName: fmt.Sprintf("%x", configHash.Sum(nil)),
+	}
+
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithResources(defaultResources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
 		WithArgs("-e", "-c", ConfigMountPath).
