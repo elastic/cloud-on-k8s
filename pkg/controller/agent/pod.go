@@ -49,8 +49,8 @@ const (
 	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
 	DataMountPath             = "/usr/share/data"
 
-	// ConfigChecksumLabel is a label used to store Agent config checksum.
-	ConfigChecksumLabel = "agent.k8s.elastic.co/config-checksum"
+	// ConfigHashAnnotationName is an annotation used to store Agent config hash.
+	ConfigHashAnnotationName = "agent.k8s.elastic.co/config-hash"
 
 	// VersionLabelName is a label used to track the version of a Agent Pod.
 	VersionLabelName = "agent.k8s.elastic.co/version"
@@ -150,11 +150,15 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	vols = append(vols, getVolumesFromAssociations(params.Agent.GetAssociations())...)
 
 	labels := maps.Merge(NewLabels(params.Agent), map[string]string{
-		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-		VersionLabelName:    spec.Version})
+		VersionLabelName: spec.Version})
+
+	annotations := map[string]string{
+		ConfigHashAnnotationLabelName: fmt.Sprintf("%x", configHash.Sum(nil)),
+	}
 
 	builder = builder.
 		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, spec.Version)).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).
