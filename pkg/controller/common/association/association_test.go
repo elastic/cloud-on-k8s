@@ -6,6 +6,7 @@ package association
 
 import (
 	"crypto/sha256"
+	"hash/fnv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -81,13 +82,13 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			configHashPassed := sha256.New224()
+			configHashPassed := fnv.New32()
 			gotErr := writeAuthSecretToConfigHash(tt.client, tt.assoc, configHashPassed)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 
-			configHash := sha256.New224()
+			configHash := fnv.New32()
 			_, _ = configHash.Write([]byte(tt.wantHashed))
-			require.Equal(t, configHash.Sum(nil), configHashPassed.Sum(nil))
+			require.Equal(t, configHash.Sum32(), configHashPassed.Sum32())
 		})
 	}
 }
