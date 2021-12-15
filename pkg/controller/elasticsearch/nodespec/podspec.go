@@ -7,6 +7,7 @@ package nodespec
 import (
 	"crypto/sha256"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -27,6 +28,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
+const (
+	defaultFsGroup                    = 1000
+	log4j2FormatMsgNoLookupsParamName = "-Dlog4j2.formatMsgNoLookups"
+)
+
 // Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,
 // we cannot chown the mounted volumes to the right user (id 1000) in an init container.
 // Instead, we can rely on Kubernetes `securityContext.fsGroup` feature: by setting it to 1000
@@ -35,8 +41,6 @@ import (
 // is forbidden: the user can either set `--set-default-security-context=false`, or override the
 // podTemplate securityContext to an empty value.
 var minDefaultSecurityContextVersion = version.MustParse("8.0.0")
-
-const defaultFsGroup = 1000
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
@@ -100,6 +104,11 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	if ver.LT(version.From(7, 2, 0)) {
+		// mitigate CVE-2021-44228
+		enableLog4JFormatMsgNoLookups(builder)
+	}
+
 	return builder.PodTemplate, nil
 }
 
@@ -153,4 +162,32 @@ func buildLabels(
 	}
 
 	return podLabels, nil
+}
+
+// enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
+// in order to mitigate the Log4Shell vulnerability CVE-2021-44228, if it is not yet defined by the user, for
+// versions of Elasticsearch before 7.2.0.
+func enableLog4JFormatMsgNoLookups(builder *defaults.PodTemplateBuilder) {
+	log4j2Param := fmt.Sprintf("%s=true", log4j2FormatMsgNoLookupsParamName)
+	for c, esContainer := range builder.PodTemplate.Spec.Containers {
+		if esContainer.Name != esv1.ElasticsearchContainerName {
+			continue
+		}
+		currentJvmOpts := ""
+		for e, envVar := range esContainer.Env {
+			if envVar.Name != settings.EnvEsJavaOpts {
+				continue
+			}
+			currentJvmOpts = envVar.Value
+			if !strings.Contains(currentJvmOpts, log4j2FormatMsgNoLookupsParamName) {
+				builder.PodTemplate.Spec.Containers[c].Env[e].Value = log4j2Param + " " + currentJvmOpts
+			}
+		}
+		if currentJvmOpts == "" {
+			builder.PodTemplate.Spec.Containers[c].Env = append(
+				builder.PodTemplate.Spec.Containers[c].Env,
+				corev1.EnvVar{Name: settings.EnvEsJavaOpts, Value: log4j2Param},
+			)
+		}
+	}
 }
