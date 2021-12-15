@@ -6,8 +6,8 @@ package maps
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"hash/fnv"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -290,7 +290,7 @@ func NewService(ems emsv1alpha1.ElasticMapsServer) *corev1.Service {
 
 func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecret corev1.Secret) (string, error) {
 	// build a hash of various settings to rotate the Pod on any change
-	configHash := sha256.New224()
+	configHash := fnv.New32()
 
 	// - in the Elastic Maps Server configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
@@ -319,7 +319,7 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 		}
 	}
 
-	return fmt.Sprintf("%x", configHash.Sum(nil)), nil
+	return fmt.Sprint(configHash.Sum32()), nil
 }
 
 func (r *ReconcileMapsServer) reconcileDeployment(

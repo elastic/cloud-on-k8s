@@ -308,7 +308,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsWithAssoc,
 				configSecret: cfgFixture,
 			},
-			want:    "617f1ef5547de7a7c41cc8ae1275ae9734d71549385de682782b9d89",
+			want:    "1891306348",
 			wantErr: false,
 		},
 		{
@@ -318,7 +318,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsNoTLS,
 				configSecret: cfgFixture,
 			},
-			want:    "f6400f877a3bb3a6530075729e3db69ac093d53185439b82ecd6ea60",
+			want:    "3841320549",
 			wantErr: false,
 		},
 		{
@@ -328,7 +328,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsFixture,
 				configSecret: cfgFixture,
 			},
-			want:    "da5a1cba8225f2383138d4055180307f751bd267e9381f27ed5dbf63",
+			want:    "2605536104",
 			wantErr: false,
 		},
 		{
