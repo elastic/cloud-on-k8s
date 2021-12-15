@@ -6,8 +6,8 @@ package enterprisesearch
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"hash/fnv"
 	"reflect"
 	"sync/atomic"
 
@@ -312,7 +312,7 @@ func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 
 func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {
 	// build a hash of various settings to rotate the Pod on any change
-	configHash := sha256.New224()
+	configHash := fnv.New32()
 
 	// - in the Enterprise Search configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
@@ -343,5 +343,5 @@ func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret core
 		}
 	}
 
-	return fmt.Sprintf("%x", configHash.Sum(nil)), nil
+	return fmt.Sprint(configHash.Sum32()), nil
 }
