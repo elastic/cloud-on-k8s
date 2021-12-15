@@ -47,7 +47,7 @@ If you skipped a release in which new CRDs where introduced, you will see an err
 
 [source,shell,subs="attributes"]
 ----
-kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml`
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 ----
 
 ================================
