@@ -188,7 +188,6 @@ func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.Enterprise
 
 // inGB converts a resource.Quantity in gigabytes
 func inGB(q resource.Quantity) float64 {
-	// divide the value (in bytes) per 1 billion (1GB)
 	return float64(q.Value()) / 1000000000
 }
 

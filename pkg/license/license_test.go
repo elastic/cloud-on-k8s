@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestToMap(t *testing.T) {

@@ -2,18 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package main
+package shared
 
-import (
-	"log"
-	"os"
-
-	redhat_cmd "github.com/elastic/cloud-on-k8s/hack/operatorhub/cmd"
-)
-
-func main() {
-	if err := redhat_cmd.Root.Execute(); err != nil {
-		log.Printf("failed to run redhat command: %s", err)
-		os.Exit(1)
-	}
+// PBool returns a pointer to a given boolean
+func PBool(b bool) *bool {
+	return &b
 }
