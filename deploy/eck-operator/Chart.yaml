@@ -11,9 +11,9 @@ home: https://github.com/elastic/cloud-on-k8s
 
 type: application
 
-version: 1.9.0
+version: 1.9.1
 
-appVersion: 1.9.0
+appVersion: 1.9.1
 
 kubeVersion: ">=1.12.0-0"
 
@@ -32,5 +32,5 @@ maintainers:
 
 dependencies:
   - name: eck-operator-crds
-    version: 1.9.0
+    version: 1.9.1
     condition: installCRDs
