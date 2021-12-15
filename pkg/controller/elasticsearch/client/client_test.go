@@ -233,6 +233,7 @@ func TestClient_request(t *testing.T) {
 		HTTP: &http.Client{
 			Transport: requestAssertion(func(req *http.Request) {
 				assert.Equal(t, testPath, req.URL.Path)
+				assert.Equal(t, "cloud", req.Header.Get("x-elastic-product-origin"))
 			}),
 		},
 		Endpoint: "http://example.com",
