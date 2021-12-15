@@ -88,12 +88,11 @@ func TestExtractVersion(t *testing.T) {
 
 func TestNewPodLabels(t *testing.T) {
 	type args struct {
-		es         types.NamespacedName
-		ssetName   string
-		ver        version.Version
-		nodeRoles  *v1.Node
-		configHash string
-		scheme     string
+		es        types.NamespacedName
+		ssetName  string
+		ver       version.Version
+		nodeRoles *v1.Node
+		scheme    string
 	}
 	nameFixture := types.NamespacedName{
 		Namespace: "ns",
@@ -118,8 +117,7 @@ func TestNewPodLabels(t *testing.T) {
 					ML:        pointer.BoolPtr(false),
 					Transform: pointer.BoolPtr(false),
 				},
-				configHash: "hash",
-				scheme:     "https",
+				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:             "name",
@@ -129,7 +127,6 @@ func TestNewPodLabels(t *testing.T) {
 				string(NodeTypesDataLabelName):   "false",
 				string(NodeTypesIngestLabelName): "false",
 				string(NodeTypesMLLabelName):     "false",
-				ConfigHashLabelName:              "hash",
 				HTTPSchemeLabelName:              "https",
 				StatefulSetNameLabelName:         "sset",
 			},
@@ -149,8 +146,7 @@ func TestNewPodLabels(t *testing.T) {
 					Transform:  pointer.BoolPtr(true),
 					VotingOnly: pointer.BoolPtr(true),
 				},
-				configHash: "hash",
-				scheme:     "https",
+				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                 "name",
@@ -161,7 +157,6 @@ func TestNewPodLabels(t *testing.T) {
 				string(NodeTypesIngestLabelName):     "false",
 				string(NodeTypesMLLabelName):         "false",
 				string(NodeTypesVotingOnlyLabelName): "true",
-				ConfigHashLabelName:                  "hash",
 				HTTPSchemeLabelName:                  "https",
 				StatefulSetNameLabelName:             "sset",
 			},
@@ -180,8 +175,7 @@ func TestNewPodLabels(t *testing.T) {
 					ML:        pointer.BoolPtr(false),
 					Transform: pointer.BoolPtr(true),
 				},
-				configHash: "hash",
-				scheme:     "https",
+				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
@@ -194,7 +188,6 @@ func TestNewPodLabels(t *testing.T) {
 				string(NodeTypesTransformLabelName):           "true",
 				string(NodeTypesRemoteClusterClientLabelName): "true",
 				string(NodeTypesVotingOnlyLabelName):          "false",
-				ConfigHashLabelName:                           "hash",
 				HTTPSchemeLabelName:                           "https",
 				StatefulSetNameLabelName:                      "sset",
 			},
@@ -203,7 +196,7 @@ func TestNewPodLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodLabels(tt.args.es, tt.args.ssetName, tt.args.ver, tt.args.nodeRoles, tt.args.configHash, tt.args.scheme)
+			got := NewPodLabels(tt.args.es, tt.args.ssetName, tt.args.ver, tt.args.nodeRoles, tt.args.scheme)
 			require.Nil(t, deep.Equal(got, tt.want))
 		})
 	}
