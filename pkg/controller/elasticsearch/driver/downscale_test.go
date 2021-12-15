@@ -152,7 +152,7 @@ func TestHandleDownscale(t *testing.T) {
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
 		expectations:   expectations.NewExpectations(k8sClient),
-		reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
+		reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 		nodeShutdown:   migration.NewShardMigration(es, esClient, shardLister),
 		esClient:       esClient,
 		es:             es,
@@ -634,7 +634,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			name: "downscale not possible: data migration not complete",
 			args: args{
 				ctx: downscaleContext{
-					reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
+					reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 					nodeShutdown: migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{
 						{
 							Index:    "index-1",
@@ -721,7 +721,7 @@ func Test_attemptDownscale(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
+				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})),
 				esClient:       &fakeESClient{},
 			}
@@ -850,7 +850,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
+				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
 				parentCtx:      context.Background(),
@@ -949,7 +949,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
+				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
 				parentCtx:      context.Background(),

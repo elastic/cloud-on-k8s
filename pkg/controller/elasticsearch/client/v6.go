@@ -61,6 +61,16 @@ func (c *clientV6) DisableReplicaShardsAllocation(ctx context.Context) error {
 	return c.updateAllocationEnable(ctx, "primaries")
 }
 
+func (c *clientV6) RemoveTransientAllocationSettings(ctx context.Context) error {
+	allocationSettings := struct {
+		Transient struct {
+			Exclude *string `json:"cluster.routing.allocation.exclude._name"`
+			Enable  *string `json:"cluster.routing.allocation.enable"`
+		} `json:"transient"`
+	}{}
+	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
+}
+
 func (c *clientV6) SyncedFlush(ctx context.Context) error {
 	return c.post(ctx, "/_flush/synced", nil, nil)
 }

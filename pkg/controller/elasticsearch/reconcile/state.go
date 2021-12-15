@@ -13,6 +13,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -27,11 +28,25 @@ type State struct {
 	*events.Recorder
 	cluster esv1.Elasticsearch
 	status  esv1.ElasticsearchStatus
+	hints   hints.OrchestrationsHints
 }
 
 // NewState creates a new reconcile state based on the given cluster
-func NewState(c esv1.Elasticsearch) *State {
-	return &State{Recorder: events.NewRecorder(), cluster: c, status: *c.Status.DeepCopy()}
+func NewState(c esv1.Elasticsearch) (*State, error) {
+	hints, err := hints.NewFromAnnotations(c.Annotations)
+	if err != nil {
+		return nil, err
+	}
+	return &State{Recorder: events.NewRecorder(), cluster: c, status: *c.Status.DeepCopy(), hints: hints}, nil
+}
+
+// MustNewState like NewState but panics on error. Use recommended only in test code.
+func MustNewState(c esv1.Elasticsearch) *State {
+	state, err := NewState(c)
+	if err != nil {
+		panic(err)
+	}
+	return state
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
@@ -171,4 +186,16 @@ func (s *State) UpdateElasticsearchInvalid(err error) {
 
 func (s *State) UpdateElasticsearchStatusPhase(orchPhase esv1.ElasticsearchOrchestrationPhase) {
 	s.status.Phase = orchPhase
+}
+
+// UpdateOrchestrationHints updates the orchestration hints collected so far with the hints in hint.
+func (s *State) UpdateOrchestrationHints(hint hints.OrchestrationsHints) {
+	s.hints = s.hints.Merge(hint)
+}
+
+// OrchestrationHints returns the current annotation hints as maintained in reconciliation state. Initially these will be
+// populated from the Elasticsearch resource. But after calls to UpdateOrchestrationHints they can deviate from the state
+// stored in the API server.
+func (s *State) OrchestrationHints() hints.OrchestrationsHints {
+	return s.hints
 }

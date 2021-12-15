@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"context"
+	"reflect"
 	"sync/atomic"
 
 	pkgerrors "github.com/pkg/errors"
@@ -45,6 +46,7 @@ import (
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 const name = "elasticsearch-controller"
@@ -175,8 +177,21 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	state := esreconcile.NewState(es)
+	state, err := esreconcile.NewState(es)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
 	results := r.internalReconcile(ctx, es, state)
+
+	if err := r.annotateResource(ctx, es, state); err != nil {
+		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
+			return reconcile.Result{Requeue: true}, nil
+		}
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+		return results.WithError(err).Aggregate()
+	}
+
 	err = r.updateStatus(ctx, es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -293,6 +308,33 @@ func (r *ReconcileElasticsearch) updateStatus(
 		"status", cluster.Status,
 	)
 	return common.UpdateStatus(r.Client, cluster)
+}
+
+// annotateResource adds the orchestration hints annotation to the Elasticsearch resource. The purpose of this annotation
+// is to capture additional state about aspects of the operator's orchestration of Elasticsearch resources. Currently,
+// it captures whether transient settings are in use.  Future expansion is possible if deemed necessary.
+func (r *ReconcileElasticsearch) annotateResource(
+	ctx context.Context,
+	es esv1.Elasticsearch,
+	reconcileState *esreconcile.State,
+) error {
+	span, _ := apm.StartSpan(ctx, "update_hints_annotations", tracing.SpanTypeApp)
+	defer span.End()
+
+	// cluster-uuid is a special case of an annotation on the Elasticsearch resource that is not treated here but through
+	// an immediate update due to the risk of data loss. See bootstrap package.
+	newAnnotations, err := reconcileState.OrchestrationHints().AsAnnotation()
+	if err != nil {
+		return err
+	}
+
+	expected := maps.Merge(es.ObjectMeta.DeepCopy().Annotations, newAnnotations)
+	if reflect.DeepEqual(expected, es.Annotations) {
+		log.V(1).Info("Skipping annotation update", "es_name", es.Name, "namespace", es.Namespace)
+		return nil
+	}
+	es.SetAnnotations(expected)
+	return r.Update(ctx, &es)
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted

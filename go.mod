@@ -28,14 +28,14 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.26.0
 	github.com/sethvargo/go-password v0.2.0
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.9.0
+	github.com/spf13/viper v1.10.0
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
-	go.elastic.co/apm v1.14.0
-	go.elastic.co/apm/module/apmelasticsearch v1.14.0
+	go.elastic.co/apm v1.15.0
+	go.elastic.co/apm/module/apmelasticsearch v1.15.0
 	go.uber.org/automaxprocs v1.4.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5

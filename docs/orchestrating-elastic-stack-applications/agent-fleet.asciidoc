@@ -10,7 +10,7 @@ endif::[]
 
 experimental[]
 
-This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK. Check the link:k8s-elastic-agent.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/7.16/install-standalone-elastic-agent.html[standalone mode].
+This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK. Check the link:k8s-elastic-agent.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/install-standalone-elastic-agent.html[standalone mode].
 
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
