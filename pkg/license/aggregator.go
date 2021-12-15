@@ -207,8 +207,13 @@ var maxHeapSizeRe = regexp.MustCompile(`-Xmx([0-9]+)([gGmMkK]?)(?:\s.*|$)`)
 // memFromJavaOpts extracts the maximum Java heap size from a Java options string, multiplies the value by 2
 // (giving twice the JVM memory to the container is a common thing people do)
 // and converts it to a resource.Quantity
+// If no value is found the function returns the 0 value.
 func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	match := maxHeapSizeRe.FindStringSubmatch(javaOpts)
+	if match == nil {
+		// Xmx is not set, return a 0 quantity
+		return resource.Quantity{}, nil
+	}
 	if len(match) != 3 {
 		return resource.Quantity{}, errors.Errorf("cannot extract max jvm heap size from %s", javaOpts)
 	}
