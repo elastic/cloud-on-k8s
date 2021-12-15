@@ -11,6 +11,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -22,6 +23,27 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type esSampleBuilder struct {
+	userConfig              map[string]interface{}
+	esAdditionalAnnotations map[string]string
+	keystoreResources       *keystore.Resources
+}
+
+func newEsSampleBuilder() *esSampleBuilder {
+	return &esSampleBuilder{}
+}
+
+func (esb *esSampleBuilder) build() esv1.Elasticsearch {
+	es := sampleES.DeepCopy()
+	for k, v := range esb.esAdditionalAnnotations {
+		es.Annotations[k] = v
+	}
+	if esb.userConfig != nil {
+		es.Spec.NodeSets[0].Config = &commonv1.Config{Data: esb.userConfig}
+	}
+	return *es
+}
 
 var sampleES = esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
