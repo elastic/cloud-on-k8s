@@ -235,8 +235,8 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-resource-ems"}, &dep)
 				require.NoError(t, err)
 				require.Equal(t, int32(1), *dep.Spec.Replicas)
-				// with the config hash label set
-				require.NotEmpty(t, dep.Spec.Template.Labels[configHashLabel])
+				// with the config hash annotation set
+				require.NotEmpty(t, dep.Spec.Template.Annotations[configHashAnnotationName])
 			},
 			wantRequeue:      false,
 			wantRequeueAfter: true, // certificate refresh
