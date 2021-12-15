@@ -84,13 +84,13 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 	}
 }
 
-func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey) test.Step {
+func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey, esLicenseType client.ElasticsearchLicenseType) test.Step {
 	//nolint:thelper
 	return test.Step{
 		Name: "Creating a trial extension secret",
 		Test: func(t *testing.T) {
 			signer := license.NewSigner(privateKey)
-			clusterLicense, err := GenerateTestLicense(signer)
+			clusterLicense, err := GenerateTestLicense(signer, esLicenseType)
 			require.NoError(t, err)
 			trialExtension := license.EnterpriseLicense{
 				License: license.LicenseSpec{

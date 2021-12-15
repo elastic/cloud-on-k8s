@@ -165,8 +165,8 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 			licenseTestContext.Init(),
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeTrial),
 			licenseTestContext.CheckEnterpriseTrialLicenseValid(trialSecretName),
-			// simulate a trial extension
-			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
+			// simulate a trial extension: old style with Enterprise Elasticsearch license
+			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey), client.ElasticsearchLicenseTypeEnterprise),
 			licenseTestContext.CheckElasticsearchLicense(
 				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
 				client.ElasticsearchLicenseTypeEnterprise,
@@ -174,11 +174,10 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 			// revert to basic again
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
-			// repeatedly extending a trial is possible
-			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
+			// repeatedly extending a trial is possible: new style with Elasticsearch trial license
+			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey), client.ElasticsearchLicenseTypeTrial),
 			licenseTestContext.CheckElasticsearchLicense(
-				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
-				client.ElasticsearchLicenseTypeEnterprise,
+				client.ElasticsearchLicenseTypeTrial,
 			),
 			// cleanup license for the next tests
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),

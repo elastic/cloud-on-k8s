@@ -225,14 +225,13 @@ func Test_bestMatchAt(t *testing.T) {
 							Type:               LicenseTypeEnterpriseTrial,
 							Issuer:             "API",
 							ClusterLicenses: []ElasticsearchLicense{
-								{License: license(twelveMonth, platinum)},
-								{License: license(twoMonth, gold)},
+								{License: license(twelveMonth, trial)},
 							},
 						},
 					},
 				},
 			},
-			want:      license(twelveMonth, platinum),
+			want:      license(twelveMonth, trial),
 			wantFound: true,
 		},
 		{
