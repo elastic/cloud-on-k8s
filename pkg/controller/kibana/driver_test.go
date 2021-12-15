@@ -312,7 +312,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "c5496152d789682387b90ea9b94efcd82a2c6f572f40c016fb86c0d7"
+				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "112536640"
 				return p
 			}(),
 			wantErr: false,
@@ -433,8 +433,8 @@ func expectedDeploymentParams() deployment.Params {
 					"kibana.k8s.elastic.co/version": "7.0.0",
 				},
 				Annotations: map[string]string{
-					"co.elastic.logs/module":                "kibana",
-					"kibana.k8s.elastic.co/config-hash": "c530a02188193a560326ce91e34fc62dcbd5722b45534a3f60957663",
+					"co.elastic.logs/module":            "kibana",
+					"kibana.k8s.elastic.co/config-hash": "2623196249",
 				},
 			},
 			Spec: corev1.PodSpec{
