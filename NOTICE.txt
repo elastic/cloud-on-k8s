@@ -2304,11 +2304,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/viper
-Version : v1.10.0
-Time    : 2021-12-12T03:00:30Z
+Version : v1.10.1
+Time    : 2021-12-15T13:10:06Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.10.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.10.1/LICENSE:
 
 The MIT License (MIT)
 
@@ -17083,11 +17083,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.0.0-20211205182925-97ca703d548d
-Time    : 2021-12-05T18:29:25Z
+Version : v0.0.0-20211210111614-af8b64212486
+Time    : 2021-12-10T11:16:14Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20211205182925-97ca703d548d/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20211210111614-af8b64212486/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -17973,11 +17973,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/grpc
-Version : v1.42.0
-Time    : 2021-11-02T18:24:25Z
+Version : v1.43.0
+Time    : 2021-12-14T21:16:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/grpc@v1.42.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/grpc@v1.43.0/LICENSE:
 
 
                                  Apache License
