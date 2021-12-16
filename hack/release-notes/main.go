@@ -45,6 +45,7 @@ var (
 		">feature":     "New features",
 		">enhancement": "Enhancements",
 		">bug":         "Bug fixes",
+		">docs":        "Documentation improvements",
 		noGroup:        "Misc",
 	}
 
@@ -54,13 +55,13 @@ var (
 		">feature",
 		">enhancement",
 		">bug",
+		">docs",
 		noGroup,
 	}
 
 	ignoredLabels = map[string]struct{}{
 		">non-issue":                 {},
 		">refactoring":               {},
-		">docs":                      {},
 		">test":                      {},
 		":ci":                        {},
 		"backport":                   {},
