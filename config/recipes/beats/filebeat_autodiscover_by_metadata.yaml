@@ -72,6 +72,7 @@ rules:
   resources:
   - namespaces
   - pods
+  - nodes
   verbs:
   - get
   - watch
