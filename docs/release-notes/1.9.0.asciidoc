@@ -48,6 +48,8 @@ spec:
 [float]
 === Enhancements
 
+* Stop using deprecated xpack.monitoring.* settings {pull}5136[#5136] (issue: {issue}5083[#5083])
+* Stop using Enterprise Search deprecated setting in 7.17+ {pull}5085[#5085] (issue: {issue}5082[#5082])
 * Add logging for call to ES {pull}4958[#4958] (issue: {issue}4935[#4935])
 * Shorten the reconciliation loop duration if Elasticsearch is down {pull}4938[#4938] (issues: {issue}2939[#2939], {issue}3496[#3496])
 * Ignore ClusterIPs, and IPFamilyPolicy in services, and timestamp in license during reconciliation {pull}4929[#4929]
@@ -61,6 +63,7 @@ spec:
 [float]
 === Bug fixes
 
+* Add kibana.host setting only to Enterprise Search 7.15+ {pull}5122[#5122]
 * Avoid updating the association status when no association {pull}4986[#4986] (issue: {issue}4985[#4985])
 * Forcibly recreate Beat keystore {pull}4942[#4942] (issues: {issue}4527[#4527], {issue}4926[#4926])
 * Init. fs container: make cp more resilient {pull}4888[#4888] (issue: {issue}4877[#4877])
@@ -73,4 +76,3 @@ spec:
 * Update module github.com/go-test/deep to v1.0.8 {pull}4948[#4948]
 * Update golang Docker tag to v1.17.2 {pull}4934[#4934]
 * Update module github.com/spf13/viper to v1.9.0 {pull}4847[#4847]
-
