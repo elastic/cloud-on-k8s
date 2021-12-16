@@ -1,0 +1,29 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.9.1]]
+== {n} version 1.9.1
+
+
+[[enhancement-1.9.1]]
+[float]
+=== Enhancements
+
+* Add log4j2.formatMsgNoLookups logging property to ES < 7.2 {pull}5157[#5157]
+
+This change will mitigate the link:https://github.com/advisories/GHSA-jfh8-c2jp-5v3q[Log4Shell] vulnerability (CVE-2021-44228) in susceptible Elasticsearch clusters (below version `7.2`). ECK will prepend the `-Dlog4j2.formatMsgNoLookups=true` JVM parameter to the environment variable `ES_JAVA_OPTS`` if it is not yet defined by the user. This triggers a rolling restart of all Pods of the affected Elasticsearch clusters to apply these changes.
+
+* Add internal product header to requests {pull}5129[#5129]
+
+[[bug-1.9.1]]
+[float]
+=== Bug fixes
+
+* Resource aggregator should handle missing memory settings {pull}5158[#5158]
+
+[[nogroup-1.9.1]]
+[float]
+=== Misc
+
+* Update golang Docker tag to v1.17.5 {pull}5149[#5149]
+

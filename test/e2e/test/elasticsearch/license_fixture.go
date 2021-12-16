@@ -32,33 +32,43 @@ type licenseSpec struct {
 }
 
 func (e ESLicense) SignableContentBytes() ([]byte, error) {
-	return json.Marshal(licenseSpec{
+	spec := licenseSpec{
 		UID:                e.UID,
 		LicenseType:        e.Type,
 		IssueDateInMillis:  e.IssueDateInMillis,
 		ExpiryDateInMillis: e.ExpiryDateInMillis,
-		MaxNodes:           nil, // assume v5 license w/ ERU
+		MaxNodes:           &e.MaxNodes,
 		MaxResourceUnits:   e.MaxResourceUnits,
 		IssuedTo:           e.IssuedTo,
 		Issuer:             e.Issuer,
 		StartDateInMillis:  e.StartDateInMillis,
-	})
+	}
+
+	// v3 and v5 are handling maxNodes differently: v3 requires max_nodes v5 does not tolerate any other value than null
+	if e.MaxNodes == 0 {
+		spec.MaxNodes = nil
+	}
+
+	return json.Marshal(spec)
 }
 
 func (e ESLicense) Version() int {
-	return 5 // we only test the new enterprise capable license version
+	if e.Type == string(client.ElasticsearchLicenseTypeTrial) {
+		return 3 // we either test trials
+	}
+	return 5 // or the new enterprise capable license version
 }
 
 var _ license.Signable = &ESLicense{}
 
-func GenerateTestLicense(signer *license.Signer) (client.License, error) {
+func GenerateTestLicense(signer *license.Signer, typ client.ElasticsearchLicenseType) (client.License, error) {
 	uuid, err := uuid.NewUUID()
 	if err != nil {
 		return client.License{}, err
 	}
 	licenseSpec := client.License{
 		UID:                uuid.String(),
-		Type:               "enterprise",
+		Type:               string(typ),
 		IssueDateInMillis:  chrono.ToMillis(time.Now().Add(-3 * 24 * time.Hour)),
 		ExpiryDateInMillis: chrono.ToMillis(time.Now().Add(30 * 24 * time.Hour)),
 		MaxResourceUnits:   100,
@@ -66,6 +76,11 @@ func GenerateTestLicense(signer *license.Signer) (client.License, error) {
 		Issuer:             "ECK e2e job",
 		StartDateInMillis:  chrono.ToMillis(time.Now().Add(-3 * 24 * time.Hour)),
 	}
+	if typ == client.ElasticsearchLicenseTypeTrial {
+		licenseSpec.MaxResourceUnits = 0
+		licenseSpec.MaxNodes = 100
+	}
+
 	sign, err := signer.Sign(ESLicense{License: licenseSpec})
 	if err != nil {
 		return client.License{}, err

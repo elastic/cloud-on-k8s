@@ -39,9 +39,9 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.11.0 | Apache-2.0
 | link:https://github.com/prometheus/common[$$github.com/prometheus/common$$] | v0.28.0 | Apache-2.0
 | link:https://github.com/sethvargo/go-password[$$github.com/sethvargo/go-password$$] | v0.2.0 | MIT
-| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.2.1 | Apache-2.0
+| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.3.0 | Apache-2.0
 | link:https://github.com/spf13/pflag[$$github.com/spf13/pflag$$] | v1.0.5 | BSD-3-Clause
-| link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.10.0 | MIT
+| link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.10.1 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.7.0 | MIT
 | link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
 | link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.15.0 | Apache-2.0
@@ -165,7 +165,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.5.0 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20210825183410-e898025ed96a | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20211104180415-d3ed0bb246c8 | BSD-3-Clause
-| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20211205182925-97ca703d548d | BSD-3-Clause
+| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20211210111614-af8b64212486 | BSD-3-Clause
 | link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.0.0-20210615171337-6886f2dfbf5b | BSD-3-Clause
 | link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.3.7 | BSD-3-Clause
 | link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20210723032227-1f47c861a9ac | BSD-3-Clause
@@ -175,7 +175,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/gonum/gonum[$$gonum.org/v1/gonum$$] | v0.0.0-20181121035319-3f7ecaa7e8ca | BSD-3-Clause
 | link:https://google.golang.org/appengine[$$google.golang.org/appengine$$] | v1.6.7 | Apache-2.0
 | link:https://google.golang.org/genproto[$$google.golang.org/genproto$$] | v0.0.0-20211208223120-3a66f561d7aa | Apache-2.0
-| link:https://google.golang.org/grpc[$$google.golang.org/grpc$$] | v1.42.0 | Apache-2.0
+| link:https://google.golang.org/grpc[$$google.golang.org/grpc$$] | v1.43.0 | Apache-2.0
 | link:https://google.golang.org/protobuf[$$google.golang.org/protobuf$$] | v1.27.1 | BSD-3-Clause
 | link:https://gopkg.in/check.v1[$$gopkg.in/check.v1$$] | v1.0.0-20200227125254-8fa46927fb4f | BSD-2-Clause
 | link:https://gopkg.in/inf.v0[$$gopkg.in/inf.v0$$] | v0.9.1 | BSD-3-Clause
