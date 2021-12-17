@@ -35,9 +35,9 @@ processors:
     - mountPath: /var/log/pods
       name: varlogpods
     env:
-	- name: NODE_NAME 
+    - name: NODE_NAME 
       valueFrom:
-	    fieldRef:
+        fieldRef:
           fieldPath: spec.nodeName
   dnsPolicy: ClusterFirstWithHostNet
   hostNetwork: true
