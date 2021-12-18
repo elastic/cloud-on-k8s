@@ -230,7 +230,7 @@ metadata:
   name: kibana-sample
 spec:
   config:
-    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-quickstart-es-http.default.svc:9200"]
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-sample-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-sample-agent-http.default.svc:8220"]
 ----
 
