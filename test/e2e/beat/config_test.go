@@ -142,7 +142,7 @@ filebeat:
           - /var/log/containers/*${data.kubernetes.container.id}.log
           type: container
         enabled: true
-      host: ${HOSTNAME}
+      node: ${NODE_NAME}
       type: kubernetes
 processors:
 - add_cloud_metadata: {}
@@ -173,7 +173,7 @@ filebeat:
           - /var/log/containers/*${data.kubernetes.container.id}.log
           type: container
         enabled: true
-      host: ${HOSTNAME}
+      host: ${NODE_NAME}
       type: kubernetes
 processors:
 - add_cloud_metadata: {}
