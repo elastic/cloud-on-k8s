@@ -478,11 +478,6 @@ func startOperator(ctx context.Context) error {
 		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 
-		// Add the empty namespace to allow watching cluster-scoped resources if storage class validation is enabled.
-		if viper.GetBool(operator.ValidateStorageClassFlag) {
-			managedNamespaces = append(managedNamespaces, "")
-		}
-
 		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
 
