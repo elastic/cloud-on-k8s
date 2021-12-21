@@ -7,7 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Create custom images
 
-You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch {version} image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
+You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch {version} image with the https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
 
 . Create a `Dockerfile` containing:
 +
