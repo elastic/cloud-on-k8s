@@ -114,7 +114,7 @@ func buildGeneralNames(
 
 // buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
 func buildCertificateCommonName(pod corev1.Pod, es esv1.Elasticsearch) string {
-	userConfiguredSuffix := es.Spec.Transport.TLS.CommonNameSuffix
+	userConfiguredSuffix := es.Spec.Transport.TLS.OtherNameSuffix
 	if userConfiguredSuffix == "" {
 		return fmt.Sprintf("%s.node.%s.%s.es.local", pod.Name, es.Name, es.Namespace)
 	}

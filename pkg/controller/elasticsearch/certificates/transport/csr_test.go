@@ -185,7 +185,7 @@ func Test_buildGeneralNames(t *testing.T) {
 			args: args{
 				cluster: func() esv1.Elasticsearch {
 					es := testES
-					es.Spec.Transport.TLS.CommonNameSuffix = "user.provided.suffix"
+					es.Spec.Transport.TLS.OtherNameSuffix = "user.provided.suffix"
 					return es
 				}(),
 				pod: testPod,
@@ -207,7 +207,7 @@ func Test_buildGeneralNames(t *testing.T) {
 			args: args{
 				cluster: func() esv1.Elasticsearch {
 					es := testES
-					es.Spec.Transport.TLS.CommonNameSuffix = "user.provided.suffix"
+					es.Spec.Transport.TLS.OtherNameSuffix = "user.provided.suffix"
 					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
 						{
 							DNS: "my-custom-domain",
