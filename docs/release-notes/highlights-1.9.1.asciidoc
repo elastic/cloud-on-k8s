@@ -15,7 +15,7 @@ New and notable changes in version 1.9.1 of {n}. See <<release-notes-1.9.1>> for
 This release introduces a preemptive measure to mitigate link:https://github.com/advisories/GHSA-jfh8-c2jp-5v3q[Log4Shell] vulnerability in Elasticsearch versions below `7.2`.
 
 [float]
-[id="{p}-120-known-issues"]
+[id="{p}-191-known-issues"]
 === Known issues
 
 - Openshift versions 4.6 and below, upon installing/upgrading to 1.9.[0,1], the operator will be stuck in a state of `Installing` within the Openshift UI, and seen in a `CrashLoopBackoff` within Kubernetes because of Webhook certification location mismatches. More information can be found in link:https://github.com/elastic/cloud-on-k8s/issues/5191[the issue].
