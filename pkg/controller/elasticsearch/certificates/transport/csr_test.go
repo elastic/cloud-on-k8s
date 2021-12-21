@@ -67,18 +67,22 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 func Test_buildGeneralNames(t *testing.T) {
 	expectedCommonName := "test-pod-name.node.test-es-name.test-namespace.es.local"
 	expectedTransportSvcName := "test-es-name-es-transport.test-namespace.svc"
-	otherName, err := (&certificates.UTF8StringValuedOtherName{
-		OID:   certificates.CommonNameObjectIdentifier,
-		Value: expectedCommonName,
-	}).ToOtherName()
-	require.NoError(t, err)
+
+	mkOtherName := func(name string) certificates.OtherName {
+		otherName, err := (&certificates.UTF8StringValuedOtherName{
+			OID:   certificates.CommonNameObjectIdentifier,
+			Value: name,
+		}).ToOtherName()
+		require.NoError(t, err)
+		return *otherName
+	}
 
 	type args struct {
 		cluster esv1.Elasticsearch
 		pod     corev1.Pod
 	}
 	expectedGeneralNames := []certificates.GeneralName{
-		{OtherName: *otherName},
+		{OtherName: mkOtherName(expectedCommonName)},
 		{DNSName: expectedCommonName},
 		{DNSName: expectedTransportSvcName},
 		{DNSName: "test-pod-name.test-sset"},
@@ -175,6 +179,56 @@ func Test_buildGeneralNames(t *testing.T) {
 			want: append(expectedGeneralNames, []certificates.GeneralName{
 				{DNSName: "my-custom-domain"},
 			}...),
+		},
+		{
+			name: "custom name suffix",
+			args: args{
+				cluster: func() esv1.Elasticsearch {
+					es := testES
+					es.Spec.Transport.TLS.CommonNameSuffix = "user.provided.suffix"
+					return es
+				}(),
+				pod: testPod,
+			},
+			want: func() []certificates.GeneralName {
+				expectedCommonName := "test-pod-name.user.provided.suffix"
+				return []certificates.GeneralName{
+					{OtherName: mkOtherName(expectedCommonName)},
+					{DNSName: expectedCommonName},
+					{DNSName: expectedTransportSvcName},
+					{DNSName: "test-pod-name.test-sset"},
+					{IPAddress: net.ParseIP(testIP).To4()},
+					{IPAddress: net.ParseIP("127.0.0.1").To4()},
+				}
+			}(),
+		},
+		{
+			name: "custom name suffix with additional SANs",
+			args: args{
+				cluster: func() esv1.Elasticsearch {
+					es := testES
+					es.Spec.Transport.TLS.CommonNameSuffix = "user.provided.suffix"
+					es.Spec.Transport.TLS.SubjectAlternativeNames = []commonv1.SubjectAlternativeName{
+						{
+							DNS: "my-custom-domain",
+						},
+					}
+					return es
+				}(),
+				pod: testPod,
+			},
+			want: func() []certificates.GeneralName {
+				expectedCommonName := "test-pod-name.user.provided.suffix"
+				return []certificates.GeneralName{
+					{OtherName: mkOtherName(expectedCommonName)},
+					{DNSName: expectedCommonName},
+					{DNSName: expectedTransportSvcName},
+					{DNSName: "test-pod-name.test-sset"},
+					{IPAddress: net.ParseIP(testIP).To4()},
+					{IPAddress: net.ParseIP("127.0.0.1").To4()},
+					{DNSName: "my-custom-domain"},
+				}
+			}(),
 		},
 	}
 	for _, tt := range tests {

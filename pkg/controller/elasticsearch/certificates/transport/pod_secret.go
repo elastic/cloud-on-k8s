@@ -108,7 +108,7 @@ func shouldIssueNewCertificate(
 	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
-	certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
+	certCommonName := buildCertificateCommonName(pod, es)
 
 	generalNames, err := buildGeneralNames(es, pod)
 	if err != nil {
