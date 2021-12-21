@@ -29,3 +29,9 @@ To provide more functionalities and better user experience we are moving away fr
 [id="{p}-190-elastic-license-v2"]
 ==== Elastic Cloud on Kubernetes moves to Elastic License v2
 Following the Elastic Stack licensing changes in `7.11.0`, ECK `1.9.0` moves to Elastic License v2. For more details, check this link:https://www.elastic.co/blog/elastic-license-v2[blog post].
+
+[float]
+[id="{p}-120-known-issues"]
+=== Known issues
+
+- Openshift versions 4.6 and below, upon installing/upgrading to 1.9.[0,1], the operator will be stuck in a state of `Installing` within the Openshift UI, and seen in a `CrashLoopBackoff` within Kubernetes because of Webhook certification location mismatches. More information can be found in link:https://github.com/elastic/cloud-on-k8s/issues/5191[the issue].
