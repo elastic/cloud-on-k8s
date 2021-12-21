@@ -7,7 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Create custom images
 
-You can create your own custom application images ({eck_resources_list}) instead of using the base images provided by Elastic. You might want to do this to have a canonical image with all the necessary plugins pre-loaded rather than <<{p}-init-containers-plugin-downloads,installing them via an init container>> each time a Pod starts.  You must use the official image as the base for custom images. For example, if you want to create an Elasticsearch {version} image with the link:https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
+You can create your own custom application images ({eck_resources_list}) instead of using the base images provided by Elastic. You might want to do this to have a canonical image with all the necessary plugins pre-loaded rather than <<{p}-init-containers-plugin-downloads,installing them via an init container>> each time a Pod starts.  You must use the official image as the base for custom images. For example, if you want to create an Elasticsearch {version} image with the link:https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
 
 
 
