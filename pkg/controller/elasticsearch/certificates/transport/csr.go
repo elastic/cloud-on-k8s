@@ -112,7 +112,9 @@ func buildGeneralNames(
 	return generalNames, nil
 }
 
-// buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
+// buildCertificateCommonName returns the CN (and ES otherName) entry for a given Elasticsearch Pod.
+// If the user provided an otherName suffix in the spec, it prepends the pod name to it (<pod_name>.<user-suffix).
+// Otherwise, it defaults to <pod_name>.node.<es_name>.es.local.
 func buildCertificateCommonName(pod corev1.Pod, es esv1.Elasticsearch) string {
 	userConfiguredSuffix := es.Spec.Transport.TLS.OtherNameSuffix
 	if userConfiguredSuffix == "" {
