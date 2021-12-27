@@ -93,7 +93,7 @@ func newStatusBuilder(log logr.Logger, autoscalingSpec esv1.AutoscalingSpec) *st
 // Check if the Service is available.
 func (r *ReconcileElasticsearch) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
 	defer tracing.Span(&ctx)()
-	externalService, err := services.GetExternalService(r.Client, es)
+	externalService, err := services.GetInternalService(r.Client, es)
 	if apierrors.IsNotFound(err) {
 		return false, nil
 	}
