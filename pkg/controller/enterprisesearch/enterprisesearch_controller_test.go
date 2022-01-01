@@ -560,7 +560,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          entWithAssociation,
 				configSecret: configSecret,
 			},
-			wantHash: "4049308315",
+			wantHash: "2502058051",
 		},
 		{
 			name: "different config: different hash",
@@ -569,7 +569,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          ent,
 				configSecret: configSecret2,
 			},
-			wantHash: "2634507069",
+			wantHash: "3735097097",
 		},
 		{
 			name: "no TLS configured: different hash",
@@ -578,7 +578,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          entWithoutTLS,
 				configSecret: configSecret,
 			},
-			wantHash: "147815536",
+			wantHash: "275672346",
 		},
 		{
 			name: "no ES association: different hash",
@@ -587,7 +587,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          ent,
 				configSecret: configSecret,
 			},
-			wantHash: "2669383023",
+			wantHash: "1696769747",
 		},
 	}
 	for _, tt := range tests {

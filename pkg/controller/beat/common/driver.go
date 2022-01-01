@@ -82,7 +82,7 @@ func Reconcile(
 		return results // will eventually retry
 	}
 
-	configHash := fnv.New32()
+	configHash := fnv.New32a()
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
 		return results.WithError(err)
 	}

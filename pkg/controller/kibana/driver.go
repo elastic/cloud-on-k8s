@@ -224,7 +224,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
 	// This is done because Kibana does not support updating those without restarting the process.
-	configHash := fnv.New32()
+	configHash := fnv.New32a()
 	if keystoreResources != nil {
 		_, _ = configHash.Write([]byte(keystoreResources.Version))
 	}

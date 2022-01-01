@@ -312,7 +312,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "112536640"
+				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
 				return p
 			}(),
 			wantErr: false,
@@ -434,7 +434,7 @@ func expectedDeploymentParams() deployment.Params {
 				},
 				Annotations: map[string]string{
 					"co.elastic.logs/module":            "kibana",
-					"kibana.k8s.elastic.co/config-hash": "2623196249",
+					"kibana.k8s.elastic.co/config-hash": "272660573",
 				},
 			},
 			Spec: corev1.PodSpec{

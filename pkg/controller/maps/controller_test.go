@@ -308,7 +308,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsWithAssoc,
 				configSecret: cfgFixture,
 			},
-			want:    "1891306348",
+			want:    "4245313166",
 			wantErr: false,
 		},
 		{
@@ -318,7 +318,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsNoTLS,
 				configSecret: cfgFixture,
 			},
-			want:    "3841320549",
+			want:    "1008449133",
 			wantErr: false,
 		},
 		{
@@ -328,7 +328,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsFixture,
 				configSecret: cfgFixture,
 			},
-			want:    "2605536104",
+			want:    "3032871734",
 			wantErr: false,
 		},
 		{

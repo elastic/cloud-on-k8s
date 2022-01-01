@@ -286,7 +286,7 @@ func ElasticsearchConfigAnnotationName(esNsn types.NamespacedName) string {
 	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
 	// based on ElasticsearchRefs
 
-	nsNameHash := fnv.New32()
+	nsNameHash := fnv.New32a()
 	// concat with dot to avoid collisions, as namespace can't contain dots
 	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", esNsn.Namespace, esNsn.Name)))
 	hash := fmt.Sprint(nsNameHash.Sum32())

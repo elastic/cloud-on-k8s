@@ -144,7 +144,7 @@ func buildLabels(
 	if err != nil {
 		return nil, err
 	}
-	
+
 	unpackedCfg, err := cfg.Unpack(ver)
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func buildAnnotations(
 	// start from our defaults
 	annotations := DefaultAnnotations
 
-	configHash := fnv.New32()
+	configHash := fnv.New32a()
 	// hash of the ES config to rotate the pod on config changes
 	hash.WriteHashObject(configHash, cfg)
 

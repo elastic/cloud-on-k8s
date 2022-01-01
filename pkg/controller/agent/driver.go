@@ -87,7 +87,7 @@ func internalReconcile(params Params) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	configHash := fnv.New32()
+	configHash := fnv.New32a()
 	var fleetCerts *certificates.CertificatesSecret
 	if params.Agent.Spec.FleetServerEnabled {
 		var caResults *reconciler.Results

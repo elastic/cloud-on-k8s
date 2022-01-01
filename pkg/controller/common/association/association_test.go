@@ -82,11 +82,11 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			configHashPassed := fnv.New32()
+			configHashPassed := fnv.New32a()
 			gotErr := writeAuthSecretToConfigHash(tt.client, tt.assoc, configHashPassed)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 
-			configHash := fnv.New32()
+			configHash := fnv.New32a()
 			_, _ = configHash.Write([]byte(tt.wantHashed))
 			require.Equal(t, configHash.Sum32(), configHashPassed.Sum32())
 		})

@@ -79,7 +79,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				},
 				annotations: map[string]string{
 					// SHA224 should be the same as the initial one.
-					"beat.k8s.elastic.co/config-hash": "837857890",
+					"beat.k8s.elastic.co/config-hash": "3214735720",
 				},
 			},
 		},
@@ -148,7 +148,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				},
 				annotations: map[string]string{
 					// The sum below should reflect the version of the Secret which contain the secure settings.
-					"beat.k8s.elastic.co/config-hash": "4293447796",
+					"beat.k8s.elastic.co/config-hash": "4263282862",
 				},
 			},
 		},
@@ -203,7 +203,7 @@ func assertConfiguration(t *testing.T, pod corev1.PodTemplateSpec) {
 
 // newHash creates a hash with some initial data.
 func newHash(initialData string) hash.Hash32 {
-	dataHash := fnv.New32()
+	dataHash := fnv.New32a()
 	_, _ = dataHash.Write([]byte(initialData))
 	return dataHash
 }

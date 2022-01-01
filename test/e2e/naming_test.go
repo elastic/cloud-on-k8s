@@ -43,7 +43,7 @@ func testLongestPossibleName(t *testing.T) {
 	// StatefulSet name would look like <esName>-es-<nodeSpecName>
 	// Pods created by the StatefulSet will have the ordinal appended to the name and a controller revision hash
 	// label created by appending a revision hash to the pod name.
-	revisionHash := fnv.New32()
+	revisionHash := fnv.New32a()
 	_, _ = revisionHash.Write([]byte("some random data"))
 	fullRevisionHash := rand.SafeEncodeString(strconv.FormatInt(int64(revisionHash.Sum32()), 10))
 

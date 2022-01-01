@@ -60,7 +60,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es 
 		return builder, nil
 	}
 
-	configHash := fnv.New32()
+	configHash := fnv.New32a()
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&es) {

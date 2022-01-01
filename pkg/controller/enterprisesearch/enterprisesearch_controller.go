@@ -312,7 +312,7 @@ func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 
 func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {
 	// build a hash of various settings to rotate the Pod on any change
-	configHash := fnv.New32()
+	configHash := fnv.New32a()
 
 	// - in the Enterprise Search configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])

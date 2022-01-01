@@ -275,7 +275,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3415561705",
+				"elasticsearch.k8s.elastic.co/config-hash": "1382203021",
 				"pod-template-annotation-name":             "pod-template-annotation-value",
 				"co.elastic.logs/module":                   "elasticsearch",
 			},
@@ -336,7 +336,7 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "Sample Elasticsearch resource",
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3415561705",
+				"elasticsearch.k8s.elastic.co/config-hash": "1382203021",
 			},
 		},
 		{
@@ -349,7 +349,7 @@ func Test_buildAnnotations(t *testing.T) {
 				},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "651857461",
+				"elasticsearch.k8s.elastic.co/config-hash": "2958662249",
 			},
 		},
 		{
@@ -358,7 +358,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "535195143",
+				"elasticsearch.k8s.elastic.co/config-hash": "481468635",
 			},
 		},
 		{
@@ -367,7 +367,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3032890357",
+				"elasticsearch.k8s.elastic.co/config-hash": "3276316785",
 			},
 		},
 		{
@@ -378,7 +378,7 @@ func Test_buildAnnotations(t *testing.T) {
 				},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "553883743",
+				"elasticsearch.k8s.elastic.co/config-hash": "2597721387",
 			},
 		},
 		{
@@ -389,7 +389,7 @@ func Test_buildAnnotations(t *testing.T) {
 				},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "553883742",
+				"elasticsearch.k8s.elastic.co/config-hash": "2580943768",
 			},
 		},
 	}
