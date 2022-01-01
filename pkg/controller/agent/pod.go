@@ -49,7 +49,7 @@ const (
 	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
 	DataMountPath             = "/usr/share/data"
 
-	// ConfigHashAnnotationName is an annotation used to store Agent config hash.
+	// ConfigHashAnnotationName is an annotation used to store the Agent config hash.
 	ConfigHashAnnotationName = "agent.k8s.elastic.co/config-hash"
 
 	// VersionLabelName is a label used to track the version of a Agent Pod.

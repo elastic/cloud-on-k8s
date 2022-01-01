@@ -11,11 +11,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -145,8 +144,7 @@ func buildLabels(
 	if err != nil {
 		return nil, err
 	}
-
-	// label with a hash of the config to rotate the pod on config changes
+	
 	unpackedCfg, err := cfg.Unpack(ver)
 	if err != nil {
 		return nil, err

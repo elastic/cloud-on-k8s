@@ -328,11 +328,10 @@ func Test_buildAnnotations(t *testing.T) {
 		keystoreResources *keystore.Resources
 	}
 	tests := []struct {
-		name                  string
-		args                  args
-		expectedAnnotations   map[string]string
-		unexpectedAnnotations []string
-		wantErr               bool
+		name                string
+		args                args
+		expectedAnnotations map[string]string
+		wantErr             bool
 	}{
 		{
 			name: "Sample Elasticsearch resource",
@@ -407,11 +406,6 @@ func Test_buildAnnotations(t *testing.T) {
 				actualValue, exists := got[expectedAnnotation]
 				assert.True(t, exists, "expected annotation: %s", expectedAnnotation)
 				assert.Equal(t, expectedValue, actualValue, "expected value for annotation %s: %s, got %s", expectedAnnotation, expectedValue, actualValue)
-			}
-
-			for _, unexpectedAnnotation := range tt.unexpectedAnnotations {
-				_, exists := got[unexpectedAnnotation]
-				assert.False(t, exists, "unexpected annotation: %s", unexpectedAnnotation)
 			}
 		})
 	}
