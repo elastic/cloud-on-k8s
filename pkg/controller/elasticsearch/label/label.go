@@ -5,6 +5,8 @@
 package label
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/spf13/viper"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,26 +126,28 @@ func NewPodLabels(
 	// version label
 	labels[VersionLabelName] = ver.String()
 
-	// node types labels
-	NodeTypesMasterLabelName.Set(nodeRoles.HasRole(esv1.MasterRole), labels)
-	NodeTypesDataLabelName.Set(nodeRoles.HasRole(esv1.DataRole), labels)
-	NodeTypesIngestLabelName.Set(nodeRoles.HasRole(esv1.IngestRole), labels)
-	NodeTypesMLLabelName.Set(nodeRoles.HasRole(esv1.MLRole), labels)
-	// transform and remote_cluster_client roles were only added in 7.7.0 so we should not annotate previous versions with them
-	if ver.GTE(version.From(7, 7, 0)) {
-		NodeTypesTransformLabelName.Set(nodeRoles.HasRole(esv1.TransformRole), labels)
-		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRole(esv1.RemoteClusterClientRole), labels)
-	}
-	// voting_only master eligible nodes were added only in 7.3.0 so we don't want to label prior versions with it
-	if ver.GTE(version.From(7, 3, 0)) {
-		NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasRole(esv1.VotingOnlyRole), labels)
-	}
-	// data tiers were added in 7.10.0
-	if ver.GTE(version.From(7, 10, 0)) {
-		NodeTypesDataContentLabelName.Set(nodeRoles.HasRole(esv1.DataContentRole), labels)
-		NodeTypesDataColdLabelName.Set(nodeRoles.HasRole(esv1.DataColdRole), labels)
-		NodeTypesDataHotLabelName.Set(nodeRoles.HasRole(esv1.DataHotRole), labels)
-		NodeTypesDataWarmLabelName.Set(nodeRoles.HasRole(esv1.DataWarmRole), labels)
+	if !viper.GetBool(operator.DisableESNodeRolesPodLabels) {
+		// node types labels
+		NodeTypesMasterLabelName.Set(nodeRoles.HasRole(esv1.MasterRole), labels)
+		NodeTypesDataLabelName.Set(nodeRoles.HasRole(esv1.DataRole), labels)
+		NodeTypesIngestLabelName.Set(nodeRoles.HasRole(esv1.IngestRole), labels)
+		NodeTypesMLLabelName.Set(nodeRoles.HasRole(esv1.MLRole), labels)
+		// transform and remote_cluster_client roles were only added in 7.7.0 so we should not annotate previous versions with them
+		if ver.GTE(version.From(7, 7, 0)) {
+			NodeTypesTransformLabelName.Set(nodeRoles.HasRole(esv1.TransformRole), labels)
+			NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRole(esv1.RemoteClusterClientRole), labels)
+		}
+		// voting_only master eligible nodes were added only in 7.3.0 so we don't want to label prior versions with it
+		if ver.GTE(version.From(7, 3, 0)) {
+			NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasRole(esv1.VotingOnlyRole), labels)
+		}
+		// data tiers were added in 7.10.0
+		if ver.GTE(version.From(7, 10, 0)) {
+			NodeTypesDataContentLabelName.Set(nodeRoles.HasRole(esv1.DataContentRole), labels)
+			NodeTypesDataColdLabelName.Set(nodeRoles.HasRole(esv1.DataColdRole), labels)
+			NodeTypesDataHotLabelName.Set(nodeRoles.HasRole(esv1.DataHotRole), labels)
+			NodeTypesDataWarmLabelName.Set(nodeRoles.HasRole(esv1.DataWarmRole), labels)
+		}
 	}
 
 	// config hash label, to rotate pods on config changes

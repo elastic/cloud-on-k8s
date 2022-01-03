@@ -289,6 +289,11 @@ func Command() *cobra.Command {
 		true,
 		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0.",
 	)
+	cmd.Flags().Bool(
+		operator.DisableESNodeRolesPodLabels,
+		false,
+		"Disable adding node roles labels to ES Instances.",
+	)
 
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)

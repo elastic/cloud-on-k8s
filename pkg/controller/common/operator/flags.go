@@ -36,4 +36,5 @@ const (
 	WebhookCertDirFlag            = "webhook-cert-dir"
 	WebhookNameFlag               = "webhook-name"
 	WebhookSecretFlag             = "webhook-secret"
+	DisableESNodeRolesPodLabels   = "disable-es-node-roles-pod-labels"
 )
