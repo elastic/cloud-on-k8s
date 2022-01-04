@@ -20,7 +20,7 @@ spec:
       - volume
       - event
       period: 10s
-      host: ${NODE_NAME}
+      node: ${NODE_NAME}
       hosts: ["https://${NODE_NAME}:10250"]
       bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
       ssl.verification_mode: "none"
@@ -231,7 +231,7 @@ spec:
     filebeat.autodiscover:
       providers:
       - type: kubernetes
-        host: ${NODE_NAME}
+        node: ${NODE_NAME}
         hints.enabled: true
         hints.default_config:
           type: container

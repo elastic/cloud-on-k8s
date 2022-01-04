@@ -231,7 +231,7 @@ spec:
       autodiscover:
         providers:
         - type: kubernetes
-          host: ${HOSTNAME}
+          node: ${NODE_NAME}
           hints:
             enabled: true
             default_config:
@@ -261,6 +261,11 @@ spec:
             mountPath: /var/log/pods
           - name: varlibdockercontainers
             mountPath: /var/lib/docker/containers
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         volumes:
         - name: varlogcontainers
           hostPath:
@@ -281,6 +286,7 @@ rules:
   resources:
   - namespaces
   - pods
+  - nodes
   verbs:
   - get
   - watch

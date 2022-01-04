@@ -1,0 +1,21 @@
+[[release-highlights-1.9.1]]
+== 1.9.1 release highlights
+
+[float]
+[id="{p}-191-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.9.1 of {n}. See <<release-notes-1.9.1>> for the full list of changes.
+
+
+[float]
+[id="{p}-191-mitigate"]
+==== Mitigate CVE-2021-44228 in vulnerable Elasticsearch clusters
+
+This release introduces a preemptive measure to mitigate link:https://github.com/advisories/GHSA-jfh8-c2jp-5v3q[Log4Shell] vulnerability in Elasticsearch versions below `7.2`.
+
+[float]
+[id="{p}-191-known-issues"]
+=== Known issues
+
+- On Openshift versions 4.6 and below, upon installing/upgrading to 1.9.[0,1], the operator will be stuck in a state of `Installing` within the Openshift UI, and seen in a `CrashLoopBackoff` within Kubernetes because of Webhook certificate location mismatches. More information and work-around can be found in link:https://github.com/elastic/cloud-on-k8s/issues/5191[the issue].
