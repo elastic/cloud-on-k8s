@@ -148,6 +148,11 @@ type TransportConfig struct {
 }
 
 type TransportTLSOptions struct {
+	// OtherNameSuffix when defined will be prefixed with the Pod name and used as the common name,
+	// and the first DNSName, as well as an OtherName required by Elasticsearch in the Subject Alternative Name
+	// extension of each Elasticsearch node's transport TLS certificate.
+	// Example: if set to "node.cluster.local", the generated certificate will have its otherName set to "<pod_name>.node.cluster.local".
+	OtherNameSuffix string `json:"otherNameSuffix,omitempty"`
 	// SubjectAlternativeNames is a list of SANs to include in the generated node transport TLS certificates.
 	SubjectAlternativeNames []commonv1.SubjectAlternativeName `json:"subjectAltNames,omitempty"`
 	// Certificate is a reference to a Kubernetes secret that contains the CA certificate
