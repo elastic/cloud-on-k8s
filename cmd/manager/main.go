@@ -289,8 +289,8 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
-		"",
-		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0. Possible values: true, false, \"\" (= auto-detect)",
+		"auto-detect",
+		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0. Possible values: true, false, auto-detect",
 	)
 
 	// hide development mode flags from the usage message
@@ -690,10 +690,10 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 //    to determine whether or not we are running within an openshift cluster.  If we determine we are on an openshift cluster,
 //    then default to false, otherwise, return true.
 func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
-	if len(setDefaultSecurityContext) > 0 {
-		return strconv.ParseBool(setDefaultSecurityContext)
+	if setDefaultSecurityContext == "auto-detect" {
+		return isOpenShift(clientset)
 	}
-	return isOpenShift(clientset)
+	return strconv.ParseBool(setDefaultSecurityContext)
 }
 
 func isOpenShift(clientset kubernetes.Interface) (bool, error) {
