@@ -122,7 +122,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		); err != nil {
 			return err
 		}
-		certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
+		certCommonName := buildCertificateCommonName(pod, es)
 		cert := extractTransportCert(*secret, pod, certCommonName)
 		if cert == nil {
 			return errors.New("no certificate found for pod")

@@ -307,7 +307,7 @@ func (b *PodTemplateBuilder) WithResources(resources corev1.ResourceRequirements
 	return b
 }
 
-func (b *PodTemplateBuilder) WithPreStopHook(handler corev1.Handler) *PodTemplateBuilder {
+func (b *PodTemplateBuilder) WithPreStopHook(handler corev1.LifecycleHandler) *PodTemplateBuilder {
 	b.containerDefaulter.WithPreStopHook(&handler)
 	return b
 }

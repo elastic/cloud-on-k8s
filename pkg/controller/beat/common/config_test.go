@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -175,7 +174,7 @@ func Test_buildBeatConfig(t *testing.T) {
 			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Logger:        logr.DiscardLogger{},
+				Logger:        logr.Discard(),
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat,
@@ -369,7 +368,7 @@ func Test_getUserConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			params := DriverParams{
 				Context:       context.Background(),
-				Logger:        log.NullLogger{},
+				Logger:        logr.Discard(),
 				Client:        tt.client,
 				EventRecorder: &record.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),
