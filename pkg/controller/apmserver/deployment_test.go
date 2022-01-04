@@ -174,7 +174,7 @@ func expectedDeploymentParams() testParams {
 							PeriodSeconds:       10,
 							SuccessThreshold:    1,
 							TimeoutSeconds:      5,
-							Handler: corev1.Handler{
+							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Port:   intstr.FromInt(8200),
 									Path:   "/",

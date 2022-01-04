@@ -21,7 +21,7 @@ func NewReadinessProbe() *corev1.Probe {
 		PeriodSeconds:       5,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		Handler: corev1.Handler{
+		ProbeHandler: corev1.ProbeHandler{
 			Exec: &corev1.ExecAction{
 				Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, ReadinessProbeScriptConfigKey)},
 			},
