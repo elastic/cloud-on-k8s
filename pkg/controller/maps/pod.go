@@ -70,7 +70,6 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.Pod
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
 		WithLabels(labels).
 		WithResources(DefaultResources).
-		WithEnv(corev1.EnvVar{Name: "ELASTICSEARCH_PREVALIDATED", Value: "true"}). // supported as of 7.14, harmless on prior versions
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, ems.Spec.Version)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
@@ -80,6 +79,11 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.Pod
 
 	builder = withESCertsVolume(builder, ems)
 	builder = withHTTPCertsVolume(builder, ems)
+
+	if !ems.AssociationConf().IsConfigured() {
+		// supported as of 7.14, harmless on prior versions, but both Elasticsearch connection and this must not be specified
+		builder = builder.WithEnv(corev1.EnvVar{Name: "ELASTICSEARCH_PREVALIDATED", Value: "true"})
+	}
 
 	return builder.PodTemplate
 }
