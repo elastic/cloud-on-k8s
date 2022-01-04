@@ -131,9 +131,9 @@ Before you start, pull the latest files from these repos:
 * [elastic/cloud-on-k8s](https://github.com/elastic/cloud-on-k8s): Contains the docs source files for Elastic Cloud on Kubernetes.
 * [elastic/docs](https://github.com/elastic/docs): Has the tools to publish locally your changes before committing them.
 
-To update existing content, find the right file in the [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/master/docs) repo and make your change.
+To update existing content, find the right file in the [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/main/docs) repo and make your change.
 
-To create new content in a new file, add the file to [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/master/docs), and include it in the [index.asciidoc](https://github.com/elastic/cloud-on-k8s/blob/master/docs/index.asciidoc).
+To create new content in a new file, add the file to [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/main/docs), and include it in the [index.asciidoc](https://github.com/elastic/cloud-on-k8s/blob/main/docs/index.asciidoc).
 
 NOTE: For searchability purposes, the file name should match the first top-level section ID of the document. For example:
  * File name: `apm-server.asciidoc`
@@ -151,6 +151,6 @@ Push a PR for review and add the label `>docs`.
 
 ## Design documents
 
-We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/cloud-on-k8s/tree/master/docs/design) to understand the technical choices that we make.
+We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/cloud-on-k8s/tree/main/docs/design) to understand the technical choices that we make.
 
 Thank you for taking the time to contribute.

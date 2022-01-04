@@ -144,7 +144,7 @@ CFG
 ;;
 
 ######################################
-  e2e/master)
+  e2e/main)
 ######################################
 
 write_env <<ENV
@@ -157,7 +157,7 @@ export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
-PIPELINE=e2e/master
+PIPELINE=e2e/main
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
