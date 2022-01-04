@@ -28,6 +28,15 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
     ```bash
     make switch-aks bootstrap-cloud
     ```
+* Kind
+  * No need to install the Kind CLI. Deployer will do that for you and run Kind inside a Docker container without changing the host system.
+  * Run from the [project root](/):
+
+    ```bash
+    make switch-kind bootstrap-cloud
+    ```
+
+  * This will give you a working Kind cluster based on default values. See [Advanced usage](#advanced-usage) on how to tweak these configuration defaults if the need arises. Relevant parameters for Kind are: `client_version` which is the version of Kind to use. Make sure to check the [Kind release notes](https://github.com/kubernetes-sigs/kind/releases) when changing the client version and make sure `kubernetesVersion` and `client_version` are compatible. `kind.nodeImage` allows you to use a specific Kind node image matching your chosen Kind version. Again, the [Kind release notes](https://github.com/kubernetes-sigs/kind/releases) list the compatible pre-built node images for each version. `kind.ipFamily` allows you to switch between either an IPv4 or IPv6 network setup.
 
 ### Deprovision
 
