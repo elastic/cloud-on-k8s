@@ -14,7 +14,7 @@ If you cannot connect to Elastic Maps Service from the Kibana server or browser 
 
 The following sections describe how to customize an {ems} deployment to suit your requirements.
 
-* <<{p}-maps-es,Connect to an Elasticsearch cluster>>
+* <<{p}-maps-es,Deploy Elastic Maps Server>>
 * <<{p}-maps-data>>
 ** <<{p}-maps-basemap-download,Basemap Download>>
 ** <<{p}-maps-pod-configuration,Pod Configuration>>
@@ -28,11 +28,11 @@ The following sections describe how to customize an {ems} deployment to suit you
 ** <<{p}-maps-ingress>>
 
 [id="{p}-maps-es"]
-== Connect to an Elasticsearch cluster
+== Deploy Elastic Maps Server
 
 experimental[]
 
-{ems} needs a connection to Elasticseach to verify the installed license. You define the connection via the `elasticsearchRef` attribute:
+Deploying {ems} can be done with a simple manifest:
 
 [source,yaml,subs="attributes"]
 ----
@@ -42,6 +42,19 @@ metadata:
   name: quickstart
 spec:
   version: {version}
+  count: 1
+----
+
+Versions of {ems} prior to 7.14 need a connection to Elasticseach to verify the installed license. You define the connection via the `elasticsearchRef` attribute:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: quickstart
+spec:
+  version: 7.13
   count: 1
   elasticsearchRef:
     name: quickstart
@@ -67,7 +80,7 @@ You have to download the basemap ahead of time on a machine that is not air-gapp
 The procedure on how to get a Kubernetes volume populated with that data is outside the scope of this document, as it depends on your specific Kubernetes setup and choice of volume provisioner. This is a possible approach that works for most setups:
 
 . Download the basemap zip archive using the link shown in the {ems} UI or extracted from the `/status` endpoint.
-. Create a PersistentVolumeClaim of sufficient size (> 90G) and a temporary Pod to mount the corresponding volume.
+. Create a PersistentVolumeClaim of sufficient size (> 90G for the maximal resolution) and a temporary Pod to mount the corresponding volume.
 +
 [source,yaml]
 ----
@@ -135,8 +148,6 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  elasticsearchRef:
-    name: "quickstart"
   count: 1
   podTemplate:
     spec:
@@ -184,8 +195,6 @@ metadata:
 spec:
   version: {version}
   count: 1
-  elasticsearchRef:
-    name: "elasticsearch-sample"
   config:
      logging.level: debug
 ----
@@ -199,8 +208,6 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  elasticsearchRef:
-    name: elasticsearch-sample
   configRef:
     secretName: maps-config
 ---
