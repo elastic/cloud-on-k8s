@@ -9,6 +9,7 @@ package ems
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/maps"
@@ -34,6 +35,20 @@ func TestElasticMapsServerCrossNSAssociation(t *testing.T) {
 	esWithLicense.BuildingThis = esBuilder
 
 	test.Sequence(nil, test.EmptySteps, esWithLicense, emsBuilder).RunSequential(t)
+}
+
+func TestElasticMapsServerStandalone(t *testing.T) {
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(7, 14, 0)) {
+		// standalone mode is only supported as of 7.14
+		t.SkipNow()
+	}
+
+	name := "test-ems-standalone"
+	emsBuilder := maps.NewBuilder(name).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
+
+	test.Sequence(nil, test.EmptySteps, emsBuilder).RunSequential(t)
 }
 
 func TestElasticMapsServerTLSDisabled(t *testing.T) {
