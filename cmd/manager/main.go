@@ -23,6 +23,7 @@ import (
 	"go.elastic.co/apm"
 	"go.uber.org/automaxprocs/maxprocs"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -708,6 +709,9 @@ func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 				// behave as if "setDefaultSecurityContext" was set to false.
 				return false, nil
 			}
+		}
+		if apierrors.IsNotFound(err) {
+			return false, nil
 		}
 		return false, err
 	}
