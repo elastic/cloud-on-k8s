@@ -48,7 +48,10 @@ func TestElasticMapsServerStandalone(t *testing.T) {
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
 
-	test.Sequence(nil, test.EmptySteps, emsBuilder).RunSequential(t)
+	emsWithLicense := test.LicenseTestBuilder()
+	emsWithLicense.BuildingThis = emsBuilder
+
+	test.Sequence(nil, test.EmptySteps, emsWithLicense).RunSequential(t)
 }
 
 func TestElasticMapsServerTLSDisabled(t *testing.T) {
