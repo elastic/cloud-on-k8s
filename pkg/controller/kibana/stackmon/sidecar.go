@@ -24,7 +24,6 @@ import (
 
 const (
 	// cfgHashAnnotation is used to store a hash of the Metricbeat and Filebeat configurations.
-	// Using only one label for both configs to save labels.
 	cfgHashAnnotation = "kibana.k8s.elastic.co/monitoring-config-hash"
 
 	kibanaLogsVolumeName = "kibana-logs"

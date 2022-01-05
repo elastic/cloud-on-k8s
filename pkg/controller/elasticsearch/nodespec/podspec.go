@@ -31,7 +31,7 @@ import (
 const (
 	defaultFsGroup                    = 1000
 	log4j2FormatMsgNoLookupsParamName = "-Dlog4j2.formatMsgNoLookups"
-	// ConfigHashAnnotationName is a label used to store a hash of the Elasticsearch configuration.
+	// ConfigHashAnnotationName is an annotation used to store a hash of the Elasticsearch configuration.
 	configHashAnnotationName = "elasticsearch.k8s.elastic.co/config-hash"
 )
 
