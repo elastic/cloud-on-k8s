@@ -6,6 +6,7 @@ package hash
 
 import (
 	"fmt"
+	"hash"
 	"hash/fnv"
 
 	"github.com/davecgh/go-spew/spew"
@@ -36,21 +37,27 @@ func GetTemplateHashLabel(labels map[string]string) string {
 	return labels[TemplateHashLabelName]
 }
 
-// HashObject writes the specified object to a hash using the spew library
-// which follows pointers and prints actual values of the nested objects
-// ensuring the hash does not change when a pointer changes.
-// The returned hash can be used for object comparisons.
-//
+// HashObject returns a hash of a given object using the 32-bit FNV-1 hash function
+// and the spew library to print the object (see WriteHashObject).
 // This is inspired by controller revisions in StatefulSets:
 // https://github.com/kubernetes/kubernetes/blob/8de1569ddae62e8fab559fe6bd210a5d6100a277/pkg/controller/history/controller_history.go#L89-L101
 func HashObject(object interface{}) string {
-	hf := fnv.New32()
+	objHash := fnv.New32a()
+	WriteHashObject(objHash, object)
+	return fmt.Sprint(objHash.Sum32())
+}
+
+// WriteHashObject writes specified object to hash using the spew library
+// which follows pointers and prints actual values of the nested objects
+// ensuring the hash does not change when a pointer changes.
+// The hash can be used for object comparisons.
+// Copy of https://github.com/kubernetes/kubernetes/blob/ea0764452222146c47ec826977f49d7001b0ea8c/pkg/util/hash/hash.go#L28
+func WriteHashObject(hasher hash.Hash, objectToWrite interface{}) {
 	printer := spew.ConfigState{
 		Indent:         " ",
 		SortKeys:       true,
 		DisableMethods: true,
 		SpewKeys:       true,
 	}
-	_, _ = printer.Fprintf(hf, "%#v", object)
-	return fmt.Sprint(hf.Sum32())
+	printer.Fprintf(hasher, "%#v", objectToWrite)
 }

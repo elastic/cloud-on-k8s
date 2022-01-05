@@ -5,9 +5,8 @@
 package v1
 
 import (
-	"crypto/sha256"
-	"encoding/base32"
 	"fmt"
+	"hash/fnv"
 	"sort"
 	"strings"
 
@@ -287,13 +286,10 @@ func ElasticsearchConfigAnnotationName(esNsn types.NamespacedName) string {
 	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
 	// based on ElasticsearchRefs
 
-	nsNameHash := sha256.New224()
+	nsNameHash := fnv.New32a()
 	// concat with dot to avoid collisions, as namespace can't contain dots
 	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", esNsn.Namespace, esNsn.Name)))
-	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
-	// give too long output
-	// no padding to avoid illegal '=' character in the annotation name
-	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
+	hash := fmt.Sprint(nsNameHash.Sum32())
 
 	return FormatNameWithID(
 		ElasticsearchConfigAnnotationNameBase+"%s",

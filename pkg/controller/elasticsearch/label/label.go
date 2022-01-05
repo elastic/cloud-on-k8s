@@ -27,12 +27,6 @@ const (
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
 	// StatefulSetNameLabelName used to store the name of the statefulset.
 	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset-name"
-
-	// ConfigHashLabelName is a label used to store a hash of the Elasticsearch configuration.
-	ConfigHashLabelName = "elasticsearch.k8s.elastic.co/config-hash"
-	// SecureSettingsHashLabelName is a label used to store a hash of the Elasticsearch secure settings secret.
-	SecureSettingsHashLabelName = "elasticsearch.k8s.elastic.co/secure-settings-hash"
-
 	// NodeTypesMasterLabelName is a label set to true on nodes with the master role
 	NodeTypesMasterLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
 	// NodeTypesDataLabelName is a label set to true on nodes with the data role
@@ -116,7 +110,6 @@ func NewPodLabels(
 	ssetName string,
 	ver version.Version,
 	nodeRoles *esv1.Node,
-	configHash string,
 	scheme string,
 ) map[string]string {
 	// cluster name based labels
@@ -145,9 +138,6 @@ func NewPodLabels(
 		NodeTypesDataHotLabelName.Set(nodeRoles.HasRole(esv1.DataHotRole), labels)
 		NodeTypesDataWarmLabelName.Set(nodeRoles.HasRole(esv1.DataWarmRole), labels)
 	}
-
-	// config hash label, to rotate pods on config changes
-	labels[ConfigHashLabelName] = configHash
 
 	labels[HTTPSchemeLabelName] = scheme
 

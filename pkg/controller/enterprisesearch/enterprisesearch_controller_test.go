@@ -154,8 +154,8 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
 		require.NoError(t, err)
 		require.True(t, *dep.Spec.Replicas == 3)
-		// with the config hash label set
-		require.NotEmpty(t, dep.Spec.Template.Labels[ConfigHashLabelName])
+		// with the config hash annotation set
+		require.NotEmpty(t, dep.Spec.Template.Annotations[ConfigHashAnnotationName])
 	}
 
 	// first call
@@ -560,7 +560,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          entWithAssociation,
 				configSecret: configSecret,
 			},
-			wantHash: "e018290576675dead3a9bd73aee0fa0294f88d5932d538adb6e29e25",
+			wantHash: "2502058051",
 		},
 		{
 			name: "different config: different hash",
@@ -569,7 +569,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          ent,
 				configSecret: configSecret2,
 			},
-			wantHash: "0557212aade10e98fba51d0031749730dc5c12c2491243866a1c2409",
+			wantHash: "3735097097",
 		},
 		{
 			name: "no TLS configured: different hash",
@@ -578,7 +578,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          entWithoutTLS,
 				configSecret: configSecret,
 			},
-			wantHash: "b2b7f40d500cbee52c1a3265e02fcdde4ddc0929763a108a4358f5db",
+			wantHash: "275672346",
 		},
 		{
 			name: "no ES association: different hash",
@@ -587,7 +587,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          ent,
 				configSecret: configSecret,
 			},
-			wantHash: "f7f145b1c83e63e6445c85cbf2c4bf7c5cc95f85bd06171b7a88cdf2",
+			wantHash: "1696769747",
 		},
 	}
 	for _, tt := range tests {

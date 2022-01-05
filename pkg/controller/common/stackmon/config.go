@@ -6,9 +6,9 @@ package stackmon
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"hash"
+	"hash/fnv"
 	"path/filepath"
 	"text/template"
 
@@ -77,7 +77,7 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 		return beatConfig{}, err
 	}
 
-	configHash := sha256.New224()
+	configHash := fnv.New32a()
 	configHash.Write(configBytes)
 
 	configSecret := corev1.Secret{

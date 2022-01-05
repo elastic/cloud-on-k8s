@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	HTTPPort           = 8080
-	configHashLabel    = "maps.k8s.elastic.co/config-hash"
-	logVolumeMountPath = "/var/log/elastic-maps-server"
+	HTTPPort                 = 8080
+	configHashAnnotationName = "maps.k8s.elastic.co/config-hash"
+	logVolumeMountPath       = "/var/log/elastic-maps-server"
 )
 
 var (
@@ -58,7 +58,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 
 func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.PodTemplateSpec {
 	// ensure the Pod gets rotated on config change
-	labels := map[string]string{configHashLabel: configHash}
+	annotations := map[string]string{configHashAnnotationName: configHash}
 
 	defaultContainerPorts := []corev1.ContainerPort{
 		{Name: ems.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
@@ -68,7 +68,7 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.Pod
 	logsVolume := volume.NewEmptyDirVolume("logs", logVolumeMountPath)
 
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
-		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithResources(DefaultResources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, ems.Spec.Version)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).

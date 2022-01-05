@@ -37,8 +37,8 @@ import (
 )
 
 const (
-	controllerName      = "kibana-controller"
-	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
+	controllerName           = "kibana-controller"
+	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
 )
 
 var log = ulog.Log.WithName(controllerName)

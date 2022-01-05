@@ -6,7 +6,7 @@ package common
 
 import (
 	"context"
-	"crypto/sha256"
+	"hash/fnv"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -82,7 +82,7 @@ func Reconcile(
 		return results // will eventually retry
 	}
 
-	configHash := sha256.New224()
+	configHash := fnv.New32a()
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
 		return results.WithError(err)
 	}

@@ -5,9 +5,9 @@
 package stackmon
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash/fnv"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -23,9 +23,8 @@ import (
 )
 
 const (
-	// cfgHashLabel is used to store a hash of the Metricbeat and Filebeat configurations.
-	// Using only one label for both configs to save labels.
-	cfgHashLabel = "kibana.k8s.elastic.co/monitoring-config-hash"
+	// cfgHashAnnotation is used to store a hash of the Metricbeat and Filebeat configurations.
+	cfgHashAnnotation = "kibana.k8s.elastic.co/monitoring-config-hash"
 
 	kibanaLogsVolumeName = "kibana-logs"
 	kibanaLogsMountPath  = "/usr/share/kibana/logs"
@@ -75,7 +74,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 		return builder, nil
 	}
 
-	configHash := sha256.New224()
+	configHash := fnv.New32a()
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&kb) {
@@ -107,8 +106,8 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb 
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
-	// add the config hash label to ensure pod rotation when an ES password or a CA are rotated
-	builder.WithLabels(map[string]string{cfgHashLabel: fmt.Sprintf("%x", configHash.Sum(nil))})
+	// add the config hash annotation to ensure pod rotation when an ES password or a CA are rotated
+	builder.WithAnnotations(map[string]string{cfgHashAnnotation: fmt.Sprint(configHash.Sum32())})
 	// inject all volumes
 	builder.WithVolumes(volumes...)
 

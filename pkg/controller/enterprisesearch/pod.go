@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	EnvJavaOpts         = "JAVA_OPTS"
-	HTTPPort            = 3002
-	DefaultJavaOpts     = "-Xms3500m -Xmx3500m"
-	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
-	LogVolumeMountPath  = "/var/log/enterprise-search"
+	EnvJavaOpts              = "JAVA_OPTS"
+	HTTPPort                 = 3002
+	DefaultJavaOpts          = "-Xms3500m -Xmx3500m"
+	ConfigHashAnnotationName = "enterprisesearch.k8s.elastic.co/config-hash"
+	LogVolumeMountPath       = "/var/log/enterprise-search"
 )
 
 var (
@@ -54,7 +54,7 @@ var (
 
 func newPodSpec(ent entv1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	// ensure the Pod gets rotated on config change
-	labels := map[string]string{ConfigHashLabelName: configHash}
+	annotations := map[string]string{ConfigHashAnnotationName: configHash}
 
 	defaultContainerPorts := []corev1.ContainerPort{
 		{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
@@ -65,7 +65,7 @@ func newPodSpec(ent entv1.EnterpriseSearch, configHash string) corev1.PodTemplat
 	logsVolume := volume.NewEmptyDirVolume("logs", LogVolumeMountPath)
 
 	builder := defaults.NewPodTemplateBuilder(ent.Spec.PodTemplate, entv1.EnterpriseSearchContainerName).
-		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithResources(DefaultResources).
 		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ent.Spec.Version)).
 		WithPorts(defaultContainerPorts).
