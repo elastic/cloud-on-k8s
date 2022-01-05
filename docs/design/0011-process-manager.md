@@ -31,7 +31,7 @@ The problem is knowing where to run the keystore updater.
 ### Full Elasticsearch cluster restart
 
 We established that we need to be able to schedule full cluster restart to optimize cluster mutation by reusing pods. 
-This is detailed in this [design proposal](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0009-pod-reuse-es-restart.md).
+This is detailed in this [design proposal](https://github.com/elastic/cloud-on-k8s/blob/main/docs/design/0009-pod-reuse-es-restart.md).
 
 The primary use case for pods reuse was switching for one license type to another with network configuration change. 
 Non-TLS to TLS migration is no more relevant as TLS is now in basic.

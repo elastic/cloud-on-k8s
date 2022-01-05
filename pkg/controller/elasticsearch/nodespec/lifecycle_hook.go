@@ -12,8 +12,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-func NewPreStopHook() *v1.Handler {
-	return &v1.Handler{
+func NewPreStopHook() *v1.LifecycleHandler {
+	return &v1.LifecycleHandler{
 		Exec: &v1.ExecAction{
 			Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, PreStopHookScriptConfigKey)}},
 	}

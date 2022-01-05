@@ -1,0 +1,7 @@
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: ems-sample
+spec:
+  version: 7.15.2
+  count: 1

@@ -41,7 +41,7 @@ func createValidatedCertificateTemplate(
 	// TODO: csr signature is not checked
 	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:         buildCertificateCommonName(pod, cluster.Name, cluster.Namespace),
+			CommonName:         buildCertificateCommonName(pod, cluster),
 			OrganizationalUnit: []string{cluster.Name},
 		},
 
@@ -76,7 +76,7 @@ func buildGeneralNames(
 	ssetName := pod.Labels[label.StatefulSetNameLabelName]
 	svcName := nodespec.HeadlessServiceName(ssetName)
 
-	commonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
+	commonName := buildCertificateCommonName(pod, cluster)
 
 	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
 		OID:   certificates.CommonNameObjectIdentifier,
@@ -112,7 +112,13 @@ func buildGeneralNames(
 	return generalNames, nil
 }
 
-// buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
-func buildCertificateCommonName(pod corev1.Pod, clusterName, namespace string) string {
-	return fmt.Sprintf("%s.node.%s.%s.es.local", pod.Name, clusterName, namespace)
+// buildCertificateCommonName returns the CN (and ES otherName) entry for a given Elasticsearch Pod.
+// If the user provided an otherName suffix in the spec, it prepends the pod name to it (<pod_name>.<user-suffix).
+// Otherwise, it defaults to <pod_name>.node.<es_name>.es.local.
+func buildCertificateCommonName(pod corev1.Pod, es esv1.Elasticsearch) string {
+	userConfiguredSuffix := es.Spec.Transport.TLS.OtherNameSuffix
+	if userConfiguredSuffix == "" {
+		return fmt.Sprintf("%s.node.%s.%s.es.local", pod.Name, es.Name, es.Namespace)
+	}
+	return fmt.Sprintf("%s.%s", pod.Name, userConfiguredSuffix)
 }

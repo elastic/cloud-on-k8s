@@ -241,7 +241,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
 				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
-				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
+				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Scheme = corev1.URISchemeHTTP
 				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
 			}(),
@@ -571,7 +571,7 @@ func expectedDeploymentParams() deployment.Params {
 						PeriodSeconds:       10,
 						SuccessThreshold:    1,
 						TimeoutSeconds:      5,
-						Handler: corev1.Handler{
+						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Port:   intstr.FromInt(5601),
 								Path:   "/login",

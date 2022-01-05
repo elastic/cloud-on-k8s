@@ -46,7 +46,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		Handler: corev1.Handler{
+		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(HTTPPort),
 				Path:   "/status",
@@ -79,6 +79,11 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.Pod
 
 	builder = withESCertsVolume(builder, ems)
 	builder = withHTTPCertsVolume(builder, ems)
+
+	if !ems.AssociationConf().IsConfigured() {
+		// supported as of 7.14, harmless on prior versions, but both Elasticsearch connection and this must not be specified
+		builder = builder.WithEnv(corev1.EnvVar{Name: "ELASTICSEARCH_PREVALIDATED", Value: "true"})
+	}
 
 	return builder.PodTemplate
 }

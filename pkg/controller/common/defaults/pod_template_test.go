@@ -216,14 +216,14 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 			name:        "no readiness probe in pod template: use default one",
 			PodTemplate: corev1.PodTemplateSpec{},
 			readinessProbe: corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/probe",
 					},
 				},
 			},
 			want: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/probe",
 					},
@@ -238,7 +238,7 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 						{
 							Name: containerName,
 							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/user-provided",
 									},
@@ -249,14 +249,14 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				},
 			},
 			readinessProbe: corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/probe",
 					},
 				},
 			},
 			want: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/user-provided",
 					},
@@ -1102,14 +1102,14 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 
 func TestPodTemplateBuilder_WithPreStopHook(t *testing.T) {
 	containerName := "mycontainer"
-	defaultHook := corev1.Handler{Exec: &corev1.ExecAction{Command: []string{"default", "command"}}}
-	userHook := &corev1.Handler{}
+	defaultHook := corev1.LifecycleHandler{Exec: &corev1.ExecAction{Command: []string{"default", "command"}}}
+	userHook := &corev1.LifecycleHandler{}
 	tests := []struct {
 		name          string
 		podTemplate   corev1.PodTemplateSpec
-		preStopHook   corev1.Handler
-		wantPreStop   corev1.Handler
-		wantPostStart *corev1.Handler
+		preStopHook   corev1.LifecycleHandler
+		wantPreStop   corev1.LifecycleHandler
+		wantPostStart *corev1.LifecycleHandler
 	}{
 		{
 			name:          "no pre stop hook in pod template: use default one",
@@ -1160,7 +1160,7 @@ func TestPodTemplateBuilder_WithPreStopHook(t *testing.T) {
 						{
 							Name: containerName,
 							Lifecycle: &corev1.Lifecycle{
-								PostStart: &corev1.Handler{},
+								PostStart: &corev1.LifecycleHandler{},
 								PreStop:   userHook,
 							},
 						},

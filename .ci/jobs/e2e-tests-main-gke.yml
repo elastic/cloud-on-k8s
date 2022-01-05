@@ -1,7 +1,7 @@
 ---
 - job:
-    description: Run ECK E2E tests on GKE, on every merge in master
-    name: cloud-on-k8s-e2e-tests-master
+    description: Run ECK E2E tests on GKE, on every merge in main
+    name: cloud-on-k8s-e2e-tests-main
     project-type: pipeline
     parameters:
       - bool:
@@ -16,7 +16,7 @@
         - git:
             url: https://github.com/elastic/cloud-on-k8s
             branches:
-              - master
+              - main
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
-      script-path: .ci/pipelines/e2e-tests-master-gke.Jenkinsfile
+      script-path: .ci/pipelines/e2e-tests-main-gke.Jenkinsfile
       lightweight-checkout: true
