@@ -153,15 +153,7 @@ func (b Builder) SkipTest() bool {
 	if test.Ctx().TestLicense == "" {
 		return true
 	}
-
 	ver := version.MustParse(b.EMS.Spec.Version)
-
-	// remove or adjust as snapshot builds of EMS become available
-	// https://github.com/elastic/cloud-on-k8s/issues/4479
-	if test.IsSnapshotVersion(ver) {
-		return true
-	}
-
 	return version.SupportedMapsVersions.WithinRange(ver) != nil
 }
 
