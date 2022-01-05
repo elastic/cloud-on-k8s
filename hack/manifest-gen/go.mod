@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/spf13/cobra v1.3.0
 	helm.sh/helm/v3 v3.7.2
-	sigs.k8s.io/kustomize/kyaml v0.13.0
+	sigs.k8s.io/kustomize/kyaml v0.13.1
 )
 
 exclude (

@@ -1717,6 +1717,8 @@ sigs.k8s.io/kustomize/kyaml v0.12.0 h1:k08l8SLwnKa/eXXB5GW2/OnEc/4gJF90VDFebsOwq
 sigs.k8s.io/kustomize/kyaml v0.12.0/go.mod h1:FTJxEZ86ScK184NpGSAQcfEqee0nul8oLCK30D47m4E=
 sigs.k8s.io/kustomize/kyaml v0.13.0 h1:9c+ETyNfSrVhxvphs+K2dzT3dh5oVPPEqPOE/cUpScY=
 sigs.k8s.io/kustomize/kyaml v0.13.0/go.mod h1:FTJxEZ86ScK184NpGSAQcfEqee0nul8oLCK30D47m4E=
+sigs.k8s.io/kustomize/kyaml v0.13.1 h1:tdiwbVyuwP4vSbAYKml824Ylz4NG5MVMc+uI0mPm5ug=
+sigs.k8s.io/kustomize/kyaml v0.13.1/go.mod h1:FTJxEZ86ScK184NpGSAQcfEqee0nul8oLCK30D47m4E=
 sigs.k8s.io/structured-merge-diff/v4 v4.0.2/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.0.3/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.1.2 h1:Hr/htKFmJEbtMgS/UD0N+gtgctAqz81t3nu+sPzynno=
