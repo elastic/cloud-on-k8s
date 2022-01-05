@@ -45,7 +45,3 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
 	return validMajorDigit && !srcVer.GTE(dstVer), nil
 }
-
-func IsSnapshotVersion(v version.Version) bool {
-	return len(v.Pre) > 0
-}
