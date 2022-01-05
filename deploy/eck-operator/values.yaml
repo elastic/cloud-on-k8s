@@ -186,7 +186,7 @@ podMonitor:
   annotations: {}
 
   # namespace determines in which namespace the podMonitor will be deployed.
-  # If not set the podMonitor will be created in the namespace to release is installed into
+  # If not set the podMonitor will be created in the namespace where the Helm release is installed into
   # namespace: monitoring
 
   # interval specifies the interval at which metrics should be scraped
