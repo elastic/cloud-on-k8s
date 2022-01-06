@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.7.0
+    controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
@@ -6446,12 +6445,12 @@ spec:
                                       spread constraint. - DoNotSchedule (default)
                                       tells the scheduler not to schedule it. - ScheduleAnyway
                                       tells the scheduler to schedule the pod in any
-                                      location,   but giving higher precedence to
-                                      topologies that would help reduce the   skew.
-                                      A constraint is considered "Unsatisfiable" for
-                                      an incoming pod if and only if every possible
-                                      node assignment for that pod would violate "MaxSkew"
-                                      on some topology. For example, in a 3-zone cluster,
+                                      location, but giving higher precedence to topologies
+                                      that would help reduce the skew. A constraint
+                                      is considered "Unsatisfiable" for an incoming
+                                      pod if and only if every possible node assignment
+                                      for that pod would violate "MaxSkew" on some
+                                      topology. For example, in a 3-zone cluster,
                                       MaxSkew is set to 1, and pods with the same
                                       labelSelector spread as 3/1/1: | zone1 | zone2
                                       | zone3 | | P P P |   P   |   P   | If WhenUnsatisfiable
@@ -6925,13 +6924,13 @@ spec:
                                       and deleted when the pod is removed. \n Use
                                       this if: a) the volume is only needed while
                                       the pod runs, b) features of normal volumes
-                                      like restoring from snapshot or capacity    tracking
+                                      like restoring from snapshot or capacity tracking
                                       are needed, c) the storage driver is specified
                                       through a storage class, and d) the storage
                                       driver supports dynamic volume provisioning
-                                      through    a PersistentVolumeClaim (see EphemeralVolumeSource
-                                      for more    information on the connection between
-                                      this volume type    and PersistentVolumeClaim).
+                                      through a PersistentVolumeClaim (see EphemeralVolumeSource
+                                      for more information on the connection between
+                                      this volume type and PersistentVolumeClaim).
                                       \n Use PersistentVolumeClaim or one of the vendor-specific
                                       APIs for volumes that persist for longer than
                                       the lifecycle of an individual pod. \n Use CSI
@@ -7067,16 +7066,15 @@ spec:
                                                   differences between DataSource and
                                                   DataSourceRef: * While DataSource
                                                   only allows two specific types of
-                                                  objects, DataSourceRef   allows
-                                                  any non-core object, as well as
-                                                  PersistentVolumeClaim objects. *
-                                                  While DataSource ignores disallowed
-                                                  values (dropping them), DataSourceRef   preserves
-                                                  all values, and generates an error
-                                                  if a disallowed value is   specified.
-                                                  (Alpha) Using this field requires
-                                                  the AnyVolumeDataSource feature
-                                                  gate to be enabled.'
+                                                  objects, DataSourceRef allows any
+                                                  non-core object, as well as PersistentVolumeClaim
+                                                  objects. * While DataSource ignores
+                                                  disallowed values (dropping them),
+                                                  DataSourceRef preserves all values,
+                                                  and generates an error if a disallowed
+                                                  value is specified. (Alpha) Using
+                                                  this field requires the AnyVolumeDataSource
+                                                  feature gate to be enabled.'
                                                 properties:
                                                   apiGroup:
                                                     description: APIGroup is the group
@@ -8315,13 +8313,13 @@ spec:
                                   automatically if one of them is empty and the other
                                   is non-empty. There are two important differences
                                   between DataSource and DataSourceRef: * While DataSource
-                                  only allows two specific types of objects, DataSourceRef   allows
-                                  any non-core object, as well as PersistentVolumeClaim
+                                  only allows two specific types of objects, DataSourceRef
+                                  allows any non-core object, as well as PersistentVolumeClaim
                                   objects. * While DataSource ignores disallowed values
-                                  (dropping them), DataSourceRef   preserves all values,
-                                  and generates an error if a disallowed value is   specified.
-                                  (Alpha) Using this field requires the AnyVolumeDataSource
-                                  feature gate to be enabled.'
+                                  (dropping them), DataSourceRef preserves all values,
+                                  and generates an error if a disallowed value is
+                                  specified. (Alpha) Using this field requires the
+                                  AnyVolumeDataSource feature gate to be enabled.'
                                 properties:
                                   apiGroup:
                                     description: APIGroup is the group for the resource
@@ -15529,12 +15527,12 @@ spec:
                                       spread constraint. - DoNotSchedule (default)
                                       tells the scheduler not to schedule it. - ScheduleAnyway
                                       tells the scheduler to schedule the pod in any
-                                      location,   but giving higher precedence to
-                                      topologies that would help reduce the   skew.
-                                      A constraint is considered "Unsatisfiable" for
-                                      an incoming pod if and only if every possible
-                                      node assignment for that pod would violate "MaxSkew"
-                                      on some topology. For example, in a 3-zone cluster,
+                                      location, but giving higher precedence to topologies
+                                      that would help reduce the skew. A constraint
+                                      is considered "Unsatisfiable" for an incoming
+                                      pod if and only if every possible node assignment
+                                      for that pod would violate "MaxSkew" on some
+                                      topology. For example, in a 3-zone cluster,
                                       MaxSkew is set to 1, and pods with the same
                                       labelSelector spread as 3/1/1: | zone1 | zone2
                                       | zone3 | | P P P |   P   |   P   | If WhenUnsatisfiable
@@ -16008,13 +16006,13 @@ spec:
                                       and deleted when the pod is removed. \n Use
                                       this if: a) the volume is only needed while
                                       the pod runs, b) features of normal volumes
-                                      like restoring from snapshot or capacity    tracking
+                                      like restoring from snapshot or capacity tracking
                                       are needed, c) the storage driver is specified
                                       through a storage class, and d) the storage
                                       driver supports dynamic volume provisioning
-                                      through    a PersistentVolumeClaim (see EphemeralVolumeSource
-                                      for more    information on the connection between
-                                      this volume type    and PersistentVolumeClaim).
+                                      through a PersistentVolumeClaim (see EphemeralVolumeSource
+                                      for more information on the connection between
+                                      this volume type and PersistentVolumeClaim).
                                       \n Use PersistentVolumeClaim or one of the vendor-specific
                                       APIs for volumes that persist for longer than
                                       the lifecycle of an individual pod. \n Use CSI
@@ -16150,16 +16148,15 @@ spec:
                                                   differences between DataSource and
                                                   DataSourceRef: * While DataSource
                                                   only allows two specific types of
-                                                  objects, DataSourceRef   allows
-                                                  any non-core object, as well as
-                                                  PersistentVolumeClaim objects. *
-                                                  While DataSource ignores disallowed
-                                                  values (dropping them), DataSourceRef   preserves
-                                                  all values, and generates an error
-                                                  if a disallowed value is   specified.
-                                                  (Alpha) Using this field requires
-                                                  the AnyVolumeDataSource feature
-                                                  gate to be enabled.'
+                                                  objects, DataSourceRef allows any
+                                                  non-core object, as well as PersistentVolumeClaim
+                                                  objects. * While DataSource ignores
+                                                  disallowed values (dropping them),
+                                                  DataSourceRef preserves all values,
+                                                  and generates an error if a disallowed
+                                                  value is specified. (Alpha) Using
+                                                  this field requires the AnyVolumeDataSource
+                                                  feature gate to be enabled.'
                                                 properties:
                                                   apiGroup:
                                                     description: APIGroup is the group
@@ -17397,13 +17394,13 @@ spec:
                                   automatically if one of them is empty and the other
                                   is non-empty. There are two important differences
                                   between DataSource and DataSourceRef: * While DataSource
-                                  only allows two specific types of objects, DataSourceRef   allows
-                                  any non-core object, as well as PersistentVolumeClaim
+                                  only allows two specific types of objects, DataSourceRef
+                                  allows any non-core object, as well as PersistentVolumeClaim
                                   objects. * While DataSource ignores disallowed values
-                                  (dropping them), DataSourceRef   preserves all values,
-                                  and generates an error if a disallowed value is   specified.
-                                  (Alpha) Using this field requires the AnyVolumeDataSource
-                                  feature gate to be enabled.'
+                                  (dropping them), DataSourceRef preserves all values,
+                                  and generates an error if a disallowed value is
+                                  specified. (Alpha) Using this field requires the
+                                  AnyVolumeDataSource feature gate to be enabled.'
                                 properties:
                                   apiGroup:
                                     description: APIGroup is the group for the resource
