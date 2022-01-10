@@ -12,11 +12,11 @@ endif::[]
 
 On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting killed with a `OOMKilled` message. This is an issue with the `controller-runtime` framework on top of which the operator is built. Even though the operator is only interested in the resources created by itself, the framework code needs to gather information about all relevant resources in the Kubernetes cluster in order to provide the filtered view of cluster state required by the operator. On very large clusters, this information gathering can use up a lot of memory and exceed the default resource limit defined for the operator pod.
 
-The default link:https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory[memory limit] for the operator pod is set to 512 MiB. You can increase (or decrease) this limit to a value suited to your cluster as follows:
+The default link:https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory[memory limit] for the operator pod is set to 1 Gi. You can increase (or decrease) this limit to a value suited to your cluster as follows:
 
 [source,sh]
 ----
-kubectl patch sts elastic-operator -n elastic-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager", "resources":{"limits":{"memory":"768Mi"}}}]}}}}'
+kubectl patch sts elastic-operator -n elastic-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager", "resources":{"limits":{"memory":"2Gi"}}}]}}}}'
 ----
 
 
