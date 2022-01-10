@@ -692,7 +692,8 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 //    then default to false, otherwise, return true.
 func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
 	if setDefaultSecurityContext == "auto-detect" {
-		return isOpenShift(clientset)
+		openshift, err := isOpenShift(clientset)
+		return !openshift, err
 	}
 	return strconv.ParseBool(setDefaultSecurityContext)
 }
@@ -701,15 +702,15 @@ func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 	openshiftSecurityGroupVersion := schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}
 	apiResourceList, err := clientset.Discovery().ServerResourcesForGroupVersion(openshiftSecurityGroupVersion.String())
 	if err != nil {
-		// In case of an error, check if security.openshift.io is the reason (unlikely).
+		// in case of an error, check if security.openshift.io is the reason (unlikely).
 		var e *discovery.ErrGroupDiscoveryFailed
 		if ok := errors.As(err, &e); ok {
 			if _, exists := e.Groups[openshiftSecurityGroupVersion]; exists {
-				// since we have determined we are absolutely running within an openshift cluster,
-				// behave as if "setDefaultSecurityContext" was set to false.
-				return false, nil
+				// If security.openshift.io is the reason for the error, we are absolutely in openshift
+				return true, nil
 			}
 		}
+		// if the security.openshift.io group isn't found, we are not in openshift
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
@@ -720,15 +721,14 @@ func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 	// since this is an openshift specific api resource that does not exist outside of openshift.
 	for _, apiResource := range apiResourceList.APIResources {
 		if apiResource.Name == "securitycontextconstraints" {
-			// since we have determined we are absolutely running within an openshift cluster,
-			// behave as if "setDefaultSecurityContext" was set to false.
-			return false, nil
+			// we have determined we are absolutely running within an openshift cluster
+			return true, nil
 		}
 	}
 
 	// we could not determine that we are running within an openshift cluster,
 	// so we will behave as if "setDefaultSecurityContext" was set to true.
-	return true, nil
+	return false, nil
 }
 
 func registerControllers(mgr manager.Manager, params operator.Parameters, accessReviewer rbac.AccessReviewer) error {
