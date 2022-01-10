@@ -686,10 +686,9 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 
 // determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:
 // 1. If the setDefaultSecurityContext is explicitly set to either true, or false, use this value.
-// 2. use openshift detection pulled from kubevirt
-//    https://github.com/kubevirt/kubevirt/blob/f71e9c9615a6c36178169d66814586a93ba515b5/pkg/util/cluster/cluster.go#L21
-//    to determine whether or not we are running within an openshift cluster.  If we determine we are on an openshift cluster,
-//    then default to false, otherwise, return true.
+// 2. use OpenShift detection to determine whether or not we are running within an OpenShift cluster.
+//    If we determine we are on an OpenShift cluster, and since OpenShift automatically sets security context, return false,
+//    otherwise, return true as we'll need to set this security context on non-OpenShift clusters.
 func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
 	if setDefaultSecurityContext == "auto-detect" {
 		openshift, err := isOpenShift(clientset)
@@ -698,6 +697,8 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 	return strconv.ParseBool(setDefaultSecurityContext)
 }
 
+// OpenShift detection inspired by kubevirt
+//    https://github.com/kubevirt/kubevirt/blob/f71e9c9615a6c36178169d66814586a93ba515b5/pkg/util/cluster/cluster.go#L21
 func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 	openshiftSecurityGroupVersion := schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}
 	apiResourceList, err := clientset.Discovery().ServerResourcesForGroupVersion(openshiftSecurityGroupVersion.String())
