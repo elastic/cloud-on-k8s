@@ -242,6 +242,14 @@ spec:
                         If left empty, the default HTTP service of the referenced
                         resource is used.
                       type: string
+                    type:
+                      description: Type determines the type of the Kubernetes object.
+                        Defaults to empty, which indicates the object is a local Elastic
+                        resource managed by ECK in the local Kubernetes cluster. Other
+                        option is 'Secret'. 'Secret' indicates the object is a Secret
+                        holding information (URL, username, password, CA cert) to
+                        reach an Elastic resource not managed by ECK.
+                      type: string
                   required:
                   - name
                   type: object
@@ -268,6 +276,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -704,6 +720,14 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
+                    type: string
                 required:
                 - name
                 type: object
@@ -895,6 +919,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -1329,6 +1361,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -2238,6 +2278,14 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
+                    type: string
                 required:
                 - name
                 type: object
@@ -2263,6 +2311,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -2460,6 +2516,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -3476,6 +3540,15 @@ spec:
                                 the default HTTP service of the referenced resource
                                 is used.
                               type: string
+                            type:
+                              description: Type determines the type of the Kubernetes
+                                object. Defaults to empty, which indicates the object
+                                is a local Elastic resource managed by ECK in the
+                                local Kubernetes cluster. Other option is 'Secret'.
+                                'Secret' indicates the object is a Secret holding
+                                information (URL, username, password, CA cert) to
+                                reach an Elastic resource not managed by ECK.
+                              type: string
                           required:
                           - name
                           type: object
@@ -3508,6 +3581,15 @@ spec:
                                 namespace as the referenced resource. If left empty,
                                 the default HTTP service of the referenced resource
                                 is used.
+                              type: string
+                            type:
+                              description: Type determines the type of the Kubernetes
+                                object. Defaults to empty, which indicates the object
+                                is a local Elastic resource managed by ECK in the
+                                local Kubernetes cluster. Other option is 'Secret'.
+                                'Secret' indicates the object is a Secret holding
+                                information (URL, username, password, CA cert) to
+                                reach an Elastic resource not managed by ECK.
                               type: string
                           required:
                           - name
@@ -3993,6 +4075,15 @@ spec:
                             object. It has to be in the same namespace as the referenced
                             resource. If left empty, the default HTTP service of the
                             referenced resource is used.
+                          type: string
+                        type:
+                          description: Type determines the type of the Kubernetes
+                            object. Defaults to empty, which indicates the object
+                            is a local Elastic resource managed by ECK in the local
+                            Kubernetes cluster. Other option is 'Secret'. 'Secret'
+                            indicates the object is a Secret holding information (URL,
+                            username, password, CA cert) to reach an Elastic resource
+                            not managed by ECK.
                           type: string
                       required:
                       - name
@@ -5640,6 +5731,14 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
+                    type: string
                 required:
                 - name
                 type: object
@@ -6184,6 +6283,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -6747,6 +6854,14 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
+                    type: string
                 required:
                 - name
                 type: object
@@ -6768,6 +6883,14 @@ spec:
                       It has to be in the same namespace as the referenced resource.
                       If left empty, the default HTTP service of the referenced resource
                       is used.
+                    type: string
+                  type:
+                    description: Type determines the type of the Kubernetes object.
+                      Defaults to empty, which indicates the object is a local Elastic
+                      resource managed by ECK in the local Kubernetes cluster. Other
+                      option is 'Secret'. 'Secret' indicates the object is a Secret
+                      holding information (URL, username, password, CA cert) to reach
+                      an Elastic resource not managed by ECK.
                     type: string
                 required:
                 - name
@@ -7218,6 +7341,15 @@ spec:
                                 the default HTTP service of the referenced resource
                                 is used.
                               type: string
+                            type:
+                              description: Type determines the type of the Kubernetes
+                                object. Defaults to empty, which indicates the object
+                                is a local Elastic resource managed by ECK in the
+                                local Kubernetes cluster. Other option is 'Secret'.
+                                'Secret' indicates the object is a Secret holding
+                                information (URL, username, password, CA cert) to
+                                reach an Elastic resource not managed by ECK.
+                              type: string
                           required:
                           - name
                           type: object
@@ -7250,6 +7382,15 @@ spec:
                                 namespace as the referenced resource. If left empty,
                                 the default HTTP service of the referenced resource
                                 is used.
+                              type: string
+                            type:
+                              description: Type determines the type of the Kubernetes
+                                object. Defaults to empty, which indicates the object
+                                is a local Elastic resource managed by ECK in the
+                                local Kubernetes cluster. Other option is 'Secret'.
+                                'Secret' indicates the object is a Secret holding
+                                information (URL, username, password, CA cert) to
+                                reach an Elastic resource not managed by ECK.
                               type: string
                           required:
                           - name
