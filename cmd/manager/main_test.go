@@ -6,6 +6,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -191,4 +196,145 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			tt.assert(c, t)
 		})
 	}
+}
+
+func Test_determineSetDefaultSecurityContext(t *testing.T) {
+	type args struct {
+		setDefaultSecurityContext string
+		clientset                 kubernetes.Interface
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			"auto-detect on OpenShift cluster does not set security context",
+			args{
+				"auto-detect",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{
+					{
+						GroupVersion: schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}.String(),
+						APIResources: []metav1.APIResource{
+							{
+								Name: "securitycontextconstraints",
+							},
+						},
+					},
+				}, nil),
+			},
+			false,
+			false,
+		},
+		{
+			"auto-detect on OpenShift cluster, returning group discovery failed error for OpenShift security group+version, does not set security context",
+			args{
+				"auto-detect",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, &discovery.ErrGroupDiscoveryFailed{
+					Groups: map[schema.GroupVersion]error{
+						{Group: "security.openshift.io", Version: "v1"}: nil,
+					},
+				}),
+			},
+			false,
+			false,
+		},
+		{
+			"auto-detect on non-OpenShift cluster, returning not found error, sets security context",
+			args{
+				"auto-detect",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, apierrors.NewNotFound(schema.GroupResource{
+					Group:    "security.openshift.io",
+					Resource: "none",
+				}, "fake")),
+			},
+			true,
+			false,
+		},
+		{
+			"auto-detect on non-OpenShift cluster, returning random error, returns error",
+			args{
+				"auto-detect",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, fmt.Errorf("random error")),
+			},
+			true,
+			true,
+		},
+		{
+			"true set, returning no error, will set security context",
+			args{
+				"true",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, nil),
+			},
+			true,
+			false,
+		}, {
+			"false set, returning no error, will not set security context",
+			args{
+				"false",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, nil),
+			},
+			false,
+			false,
+		}, {
+			"invalid bool set, returns error",
+			args{
+				"invalid",
+				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, nil),
+			},
+			false,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := determineSetDefaultSecurityContext(tt.args.setDefaultSecurityContext, tt.args.clientset)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("determineSetDefaultSecurityContext() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("determineSetDefaultSecurityContext() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type fakeClientset struct {
+	kubernetes.Interface
+	discovery discovery.DiscoveryInterface
+}
+
+type fakeDiscovery struct {
+	discovery.DiscoveryInterface
+	resources                         []*metav1.APIResourceList
+	errServerResourcesForGroupVersion error
+}
+
+func (c *fakeClientset) Discovery() discovery.DiscoveryInterface {
+	return c.discovery
+}
+
+func (d *fakeDiscovery) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
+	if d.errServerResourcesForGroupVersion != nil {
+		return nil, d.errServerResourcesForGroupVersion
+	}
+	for _, resourceList := range d.resources {
+		if resourceList.GroupVersion == groupVersion {
+			return resourceList, nil
+		}
+	}
+	return nil, fmt.Errorf("GroupVersion %q not found", groupVersion)
+}
+
+func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, discoveryError error) kubernetes.Interface {
+	discoveryClient := &fakeDiscovery{
+		resources:                         resources,
+		errServerResourcesForGroupVersion: discoveryError,
+	}
+	client := &fakeClientset{
+		discovery: discoveryClient,
+	}
+	return client
 }
