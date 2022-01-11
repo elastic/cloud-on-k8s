@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -167,23 +166,18 @@ type inputConfigData struct {
 // buildMetricbeatBaseConfig builds the base configuration for Metricbeat with the Elasticsearch or Kibana modules used
 // to collect metrics for Stack Monitoring
 func buildMetricbeatBaseConfig(
-	client k8s.Client,
 	associationType commonv1.AssociationType,
 	nsn types.NamespacedName,
-	esNsn types.NamespacedName,
 	namer name.Namer,
 	url string,
+	username string,
+	password string,
 	isTLS bool,
 	configTemplate string,
 ) (string, volume.VolumeLike, error) {
-	password, err := user.GetMonitoringUserPassword(client, esNsn)
-	if err != nil {
-		return "", nil, err
-	}
-
 	configData := inputConfigData{
 		URL:      url,
-		Username: user.MonitoringUserName,
+		Username: username,
 		Password: password,
 		IsSSL:    isTLS,
 	}
@@ -202,7 +196,7 @@ func buildMetricbeatBaseConfig(
 
 	// render the config template with the config data
 	var metricbeatConfig bytes.Buffer
-	err = template.Must(template.New("").Parse(configTemplate)).Execute(&metricbeatConfig, configData)
+	err := template.Must(template.New("").Parse(configTemplate)).Execute(&metricbeatConfig, configData)
 	if err != nil {
 		return "", nil, err
 	}

@@ -13,11 +13,13 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -40,15 +42,27 @@ func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error)
 		associatedEsNsn.Namespace = kb.Namespace
 	}
 
+	username, password, err := association.GetAuthFromSecretOr(client, kb.Spec.ElasticsearchRef, func() (string, string, error) {
+		password, err := user.GetMonitoringUserPassword(client, associatedEsNsn)
+		if err != nil {
+			return "", "", err
+		}
+		return user.MonitoringUserName, password, nil
+	})
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		client,
 		commonv1.KbMonitoringAssociationType,
 		&kb,
 		kb.Spec.Version,
-		associatedEsNsn,
 		metricbeatConfigTemplate,
 		kbv1.KBNamer,
 		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
+		username,
+		password,
 		kb.Spec.HTTP.TLS.Enabled(),
 	)
 	if err != nil {

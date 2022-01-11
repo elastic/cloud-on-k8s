@@ -8,12 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestBuildMetricbeatBaseConfig(t *testing.T) {
@@ -52,20 +49,15 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				{{- end }}`
 	sampleURL := "scheme://localhost:1234"
 
-	fakeClient := k8s.NewFakeClient(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "name-es-internal-users", Namespace: "namespace"},
-		Data:       map[string][]byte{"elastic-internal-monitoring": []byte("1234567890")},
-	})
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			baseConfig, _, err := buildMetricbeatBaseConfig(
-				fakeClient,
 				"xx-monitoring",
-				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				name.NewNamer("xx"),
 				sampleURL,
+				"elastic-internal-monitoring",
+				"1234567890",
 				tc.isTLS,
 				baseConfigTemplate,
 			)

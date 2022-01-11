@@ -8,7 +8,6 @@ import (
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -24,19 +23,20 @@ func NewMetricBeatSidecar(
 	associationType commonv1.AssociationType,
 	resource monitoring.HasMonitoring,
 	version string,
-	esNsn types.NamespacedName,
 	baseConfigTemplate string,
 	namer name.Namer,
 	url string,
+	username string,
+	password string,
 	isTLS bool,
 ) (BeatSidecar, error) {
 	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
-		client,
 		associationType,
 		k8s.ExtractNamespacedName(resource),
-		esNsn,
 		namer,
 		url,
+		username,
+		password,
 		isTLS,
 		baseConfigTemplate,
 	)

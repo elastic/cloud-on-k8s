@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -26,15 +27,21 @@ const (
 )
 
 func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
+	username := user.MonitoringUserName
+	password, err := user.GetMonitoringUserPassword(client, k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		client,
 		commonv1.KbMonitoringAssociationType,
 		&es,
 		es.Spec.Version,
-		k8s.ExtractNamespacedName(&es),
 		metricbeatConfigTemplate,
 		esv1.ESNamer,
 		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		username,
+		password,
 		es.Spec.HTTP.TLS.Enabled(),
 	)
 	if err != nil {
