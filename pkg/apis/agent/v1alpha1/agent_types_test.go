@@ -9,26 +9,27 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 func TestAgentESAssociation_AssociationConfAnnotationName(t *testing.T) {
 	for _, tt := range []struct {
 		name string
-		ref  types.NamespacedName
+		ref  commonv1.ObjectSelector
 		want string
 	}{
 		{
 			name: "average length names",
-			ref:  types.NamespacedName{Namespace: "namespace1", Name: "elasticsearch1"},
-			want: "association.k8s.elastic.co/es-conf-3131739917",
+			ref:  commonv1.ObjectSelector{Namespace: "namespace1", Name: "elasticsearch1"},
+			want: "association.k8s.elastic.co/es-conf-1951435392",
 		},
 		{
 			name: "max length namespace and name (63 and 36 respectively)",
-			ref: types.NamespacedName{
+			ref: commonv1.ObjectSelector{
 				Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
 				Name:      "elasticsearch1elasticsearch1elastics"},
-			want: "association.k8s.elastic.co/es-conf-2048827260",
+			want: "association.k8s.elastic.co/es-conf-1930005463",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

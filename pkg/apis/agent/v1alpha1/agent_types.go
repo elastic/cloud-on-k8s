@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
@@ -193,11 +192,11 @@ type Agent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec         AgentSpec                                         `json:"spec,omitempty"`
-	Status       AgentStatus                                       `json:"status,omitempty"`
-	esAssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
-	kbAssocConf  *commonv1.AssociationConf                         `json:"-"`
-	fsAssocConf  *commonv1.AssociationConf                         `json:"-"`
+	Spec         AgentSpec                                            `json:"spec,omitempty"`
+	Status       AgentStatus                                          `json:"status,omitempty"`
+	esAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
+	kbAssocConf  *commonv1.AssociationConf                            `json:"-"`
+	fsAssocConf  *commonv1.AssociationConf                            `json:"-"`
 }
 
 // +kubebuilder:object:root=true
@@ -209,7 +208,7 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 	for _, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
 			Agent: a,
-			ref:   ref.WithDefaultNamespace(a.Namespace).NamespacedName(),
+			ref:   ref.WithDefaultNamespace(a.Namespace),
 		})
 	}
 
@@ -285,7 +284,7 @@ func (a *Agent) SecureSettings() []commonv1.SecretSource {
 type AgentESAssociation struct {
 	*Agent
 	// ref is the namespaced name of the Elasticsearch used in Association
-	ref types.NamespacedName
+	ref commonv1.ObjectSelector
 }
 
 var _ commonv1.Association = &AgentESAssociation{}
@@ -309,10 +308,7 @@ func (aea *AgentESAssociation) AssociationType() commonv1.AssociationType {
 }
 
 func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
-		Name:      aea.ref.Name,
-		Namespace: aea.ref.Namespace,
-	}
+	return aea.ref
 }
 
 func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
@@ -333,7 +329,7 @@ func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.esAssocConfs == nil {
-		aea.esAssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+		aea.esAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if conf != nil {
 		aea.esAssocConfs[aea.ref] = *conf

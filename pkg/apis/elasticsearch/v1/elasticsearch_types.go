@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
@@ -458,9 +457,9 @@ type Elasticsearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec       ElasticsearchSpec                                 `json:"spec,omitempty"`
-	Status     ElasticsearchStatus                               `json:"status,omitempty"`
-	AssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
+	Spec       ElasticsearchSpec                                    `json:"spec,omitempty"`
+	Status     ElasticsearchStatus                                  `json:"status,omitempty"`
+	AssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
 // DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
@@ -532,7 +531,7 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
-				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+				ref:           ref.WithDefaultNamespace(es.Namespace),
 			})
 		}
 	}
@@ -540,7 +539,7 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
-				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+				ref:           ref.WithDefaultNamespace(es.Namespace),
 			})
 		}
 	}
@@ -571,7 +570,7 @@ type EsMonitoringAssociation struct {
 	// The monitored Elasticsearch cluster from where are collected logs and monitoring metrics
 	*Elasticsearch
 	// ref is the namespaced name of the Elasticsearch referenced in the Association used to send and store monitoring data
-	ref types.NamespacedName
+	ref commonv1.ObjectSelector
 }
 
 var _ commonv1.Association = &EsMonitoringAssociation{}
@@ -595,10 +594,7 @@ func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
 }
 
 func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
-		Name:      ema.ref.Name,
-		Namespace: ema.ref.Namespace,
-	}
+	return ema.ref
 }
 
 func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
@@ -615,7 +611,7 @@ func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf 
 
 func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	if ema.AssocConfs == nil {
-		ema.AssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+		ema.AssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if assocConf != nil {
 		ema.AssocConfs[ema.ref] = *assocConf
@@ -639,6 +635,6 @@ func (es *Elasticsearch) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
 func (es *Elasticsearch) MonitoringAssociation(ref commonv1.ObjectSelector) commonv1.Association {
 	return &EsMonitoringAssociation{
 		Elasticsearch: es,
-		ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+		ref:           ref.WithDefaultNamespace(es.Namespace),
 	}
 }
