@@ -219,7 +219,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), r.ReferencedObjTemplate())
+	referencedObj := r.ReferencedObjTemplate()
+	if association.AssociationRef().IsObjectTypeSecret() {
+		referencedObj = &corev1.Secret{}
+	}
+	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), referencedObj)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
@@ -230,6 +234,14 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	associationRef := association.AssociationRef()
 	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
+
+	if associationRef.IsObjectTypeSecret() {
+		expectedAssocConf, err := reconcileRefSecret(r.Client, associationRef)
+		if err != nil {
+			return commonv1.AssociationFailed, err
+		}
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
+	}
 
 	caSecret, err := r.ReconcileCASecret(
 		association,

@@ -48,6 +48,15 @@ type SecretRef struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
+// Objepct Type string describes the type of a referenced object
+// +enum
+type ObjectType string
+
+const (
+	// ObjectTypeSecret means a referenced object is a Secret.
+	ObjectTypeSecret ObjectType = "Secret"
+)
+
 // ObjectSelector defines a reference to a Kubernetes object.
 type ObjectSelector struct {
 	// Name of the Kubernetes object.
@@ -58,6 +67,11 @@ type ObjectSelector struct {
 	// object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
 	// the referenced resource is used.
 	ServiceName string `json:"serviceName,omitempty"`
+	// Type determines the type of the Kubernetes object. Defaults to empty, which indicates the object is a local
+	// Elastic resource managed by ECK in the local Kubernetes cluster. Other option is 'Secret'. 'Secret' indicates the
+	// object is a Secret holding information (URL, username, password, CA cert) to reach an Elastic resource not managed
+	// by ECK.
+	Type ObjectType `json:"type,omitempty"`
 }
 
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
@@ -69,6 +83,7 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 		Namespace:   defaultNamespace,
 		Name:        o.Name,
 		ServiceName: o.ServiceName,
+		Type:        o.Type,
 	}
 }
 
@@ -84,6 +99,11 @@ func (o ObjectSelector) NamespacedName() types.NamespacedName {
 // Namespace is not mandatory as it may be inherited by the parent object.
 func (o *ObjectSelector) IsDefined() bool {
 	return o != nil && o.Name != ""
+}
+
+// IsObjectTypeSecret returns true when the object selector references a Kubernetes secret describing the referenced object.
+func (o ObjectSelector) IsObjectTypeSecret() bool {
+	return o.IsDefined() && o.Type == ObjectTypeSecret
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.

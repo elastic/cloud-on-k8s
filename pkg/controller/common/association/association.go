@@ -13,7 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	commonhash "github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -24,6 +26,9 @@ func WriteAssocsToConfigHash(client k8s.Client, associations []commonv1.Associat
 			return err
 		}
 		if err := writeCASecretToConfigHash(client, assoc, configHash); err != nil {
+			return err
+		}
+		if err := writeRefSecretToConfigHash(client, assoc, configHash); err != nil {
 			return err
 		}
 	}
@@ -76,5 +81,19 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 
 	_, _ = configHash.Write(certPem)
 
+	return nil
+}
+
+func writeRefSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
+	if !assoc.AssociationRef().IsObjectTypeSecret() {
+		return nil
+	}
+
+	refObject, err := association.GetRefObjectFromSecret(client, assoc.AssociationRef())
+	if err != nil {
+		return err
+	}
+
+	commonhash.WriteHashObject(configHash, refObject)
 	return nil
 }
