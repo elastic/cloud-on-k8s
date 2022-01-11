@@ -198,44 +198,6 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	}
 }
 
-type fakeClientset struct {
-	kubernetes.Interface
-	discovery discovery.DiscoveryInterface
-}
-
-type fakeDiscovery struct {
-	discovery.DiscoveryInterface
-	resources                         []*metav1.APIResourceList
-	errServerResourcesForGroupVersion error
-}
-
-func (c *fakeClientset) Discovery() discovery.DiscoveryInterface {
-	return c.discovery
-}
-
-func (d *fakeDiscovery) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
-	if d.errServerResourcesForGroupVersion != nil {
-		return nil, d.errServerResourcesForGroupVersion
-	}
-	for _, resourceList := range d.resources {
-		if resourceList.GroupVersion == groupVersion {
-			return resourceList, nil
-		}
-	}
-	return nil, fmt.Errorf("GroupVersion %q not found", groupVersion)
-}
-
-func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, discoveryError error) kubernetes.Interface {
-	discoveryClient := &fakeDiscovery{
-		resources:                         resources,
-		errServerResourcesForGroupVersion: discoveryError,
-	}
-	client := &fakeClientset{
-		discovery: discoveryClient,
-	}
-	return client
-}
-
 func Test_determineSetDefaultSecurityContext(t *testing.T) {
 	type args struct {
 		setDefaultSecurityContext string
@@ -337,4 +299,42 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 			}
 		})
 	}
+}
+
+type fakeClientset struct {
+	kubernetes.Interface
+	discovery discovery.DiscoveryInterface
+}
+
+type fakeDiscovery struct {
+	discovery.DiscoveryInterface
+	resources                         []*metav1.APIResourceList
+	errServerResourcesForGroupVersion error
+}
+
+func (c *fakeClientset) Discovery() discovery.DiscoveryInterface {
+	return c.discovery
+}
+
+func (d *fakeDiscovery) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
+	if d.errServerResourcesForGroupVersion != nil {
+		return nil, d.errServerResourcesForGroupVersion
+	}
+	for _, resourceList := range d.resources {
+		if resourceList.GroupVersion == groupVersion {
+			return resourceList, nil
+		}
+	}
+	return nil, fmt.Errorf("GroupVersion %q not found", groupVersion)
+}
+
+func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, discoveryError error) kubernetes.Interface {
+	discoveryClient := &fakeDiscovery{
+		resources:                         resources,
+		errServerResourcesForGroupVersion: discoveryError,
+	}
+	client := &fakeClientset{
+		discovery: discoveryClient,
+	}
+	return client
 }
