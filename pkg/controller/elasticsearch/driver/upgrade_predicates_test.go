@@ -194,6 +194,39 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		wantShardsAllocationDisabled bool
 	}{
 		{
+			name: "1 master and 2 data_content nodes, wait for all the data_content nodes to be upgraded first",
+			fields: fields{
+				esVersion: "7.15.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("master-0").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+					newTestPod("node-0").withRoles(esv1.DataContentRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+					newTestPod("node-1").withRoles(esv1.DataContentRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+				),
+				maxUnavailable: 2,
+				shardLister: migration.NewFakeShardLister(client.Shards{
+					client.Shard{
+						Index:    "index_a",
+						Shard:    "0",
+						State:    "STARTED",
+						NodeName: "node-0",
+						Type:     "p",
+					},
+					client.Shard{
+						Index:    "index_a",
+						Shard:    "0",
+						State:    "STARTED",
+						NodeName: "node-1",
+						Type:     "r",
+					},
+				}),
+				health:    client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter: nothing,
+			},
+			deleted:                      []string{"node-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
 			name: "Do not attempt to delete an already terminating Pod",
 			fields: fields{
 				esVersion: "7.5.0",
