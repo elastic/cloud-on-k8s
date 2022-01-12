@@ -351,7 +351,7 @@ var predicates = [...]Predicate{
 		},
 	},
 	{
-		// Force an upgrade of all the data nodes before upgrading the last master
+		// Force an upgrade of all the master-ineligible nodes before upgrading the last master-eligible
 		name: "do_not_delete_last_master_if_data_nodes_are_not_upgraded",
 		fn: func(
 			context PredicateContext,
@@ -372,13 +372,13 @@ var predicates = [...]Predicate{
 					return true, nil
 				}
 			}
-			// This is the last master, check if all data nodes are up to date
+			// This is the last master, check if all master-ineligible nodes are up to date
 			for _, pod := range context.toUpdate {
 				if candidate.Name == pod.Name {
 					continue
 				}
-				if label.IsDataNode(pod) {
-					// There's still a data node to update
+				if !label.IsMasterNode(pod) {
+					// There's still some master-ineligible nodes to update
 					return false, nil
 				}
 			}
