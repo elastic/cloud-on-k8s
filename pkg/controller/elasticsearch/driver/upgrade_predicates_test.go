@@ -52,8 +52,8 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			fields: fields{
 				esVersion: "7.2.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masterdata-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).inStatefulset("masterdata"),
-					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).inStatefulset("other-master"),
+					newTestPod("masterdata-0").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).inStatefulset("masterdata"),
+					newTestPod("other-master-0").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).inStatefulset("other-master"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
@@ -69,8 +69,8 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			fields: fields{
 				esVersion: "6.8.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masterdata-0").withVersion("6.8.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("other-master-0").withVersion("6.8.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masterdata-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("other-master-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
@@ -89,8 +89,8 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			fields: fields{
 				esVersion: "7.2.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masterdata-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(false).needsUpgrade(false).isInCluster(true),
-					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masterdata-0").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(false).isInCluster(true),
+					newTestPod("other-master-0").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
@@ -105,9 +105,9 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			fields: fields{
 				esVersion: "7.2.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("data-to-masters-0").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("data-to-masters-0").withVersion("7.2.0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("data-to-masters-1").withVersion("7.2.0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
@@ -122,9 +122,9 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			fields: fields{
 				esVersion: "7.2.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("data-to-masters-0").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-0").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("data-to-masters-0").withVersion("7.2.0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("data-to-masters-1").withVersion("7.2.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
@@ -198,10 +198,10 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("node-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("node-1").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("node-2").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
+					newTestPod("master-0").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-1").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-2").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -217,9 +217,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -235,9 +235,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -253,9 +253,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -271,9 +271,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -289,11 +289,11 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("master-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
-					newTestPod("master-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("master-3").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("master-4").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(false),
+					newTestPod("master-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-3").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-4").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -309,8 +309,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("node-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-0").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -326,7 +326,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -342,7 +342,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -358,9 +358,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(false),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -376,8 +376,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -409,8 +409,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -441,7 +441,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -473,7 +473,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -505,9 +505,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(false).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -538,9 +538,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -571,11 +571,11 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
-					newTestPod("masters-3").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-4").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-3").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-4").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -620,9 +620,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -653,9 +653,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
@@ -679,8 +679,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
 				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
@@ -720,8 +720,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(false),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -737,9 +737,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -758,15 +758,15 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					// 5 data nodes
-					newTestPod("elasticsearch-sample-es-nodes-4").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("elasticsearch-sample-es-nodes-3").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("elasticsearch-sample-es-nodes-2").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("elasticsearch-sample-es-nodes-1").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("elasticsearch-sample-es-nodes-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-4").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-3").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-2").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-1").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					// 3 masters
-					newTestPod("elasticsearch-sample-es-masters-2").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("elasticsearch-sample-es-masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("elasticsearch-sample-es-masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-masters-2").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-masters-1").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-masters-0").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				shardLister:    migration.NewFakeShardFromFile("shards.json"),
 				maxUnavailable: 2, // Allow 2 to be upgraded at the same time
@@ -785,7 +785,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.15.2",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				shutdowns: map[string]client.NodeShutdown{
 					"masters-0": {Status: client.ShutdownStarted},
@@ -804,8 +804,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.15.2",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(false),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(false),
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -821,7 +821,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			fields: fields{
 				esVersion: "7.15.2",
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				shutdowns: map[string]client.NodeShutdown{
 					"masters-0": {Status: client.ShutdownComplete},
@@ -887,12 +887,12 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					// use "amasters" rather than "masters" to ensure we are not relying on the name sort accidentally
-					newTestPod("amasters-0").isMaster(true).needsUpgrade(true),
-					newTestPod("data-0").isData(true).needsUpgrade(true),
-					newTestPod("masters-0").isMaster(true).needsUpgrade(true),
-					newTestPod("amasters-1").isMaster(true).needsUpgrade(true),
-					newTestPod("data-1").isData(true).needsUpgrade(true),
-					newTestPod("amasters-2").isMaster(true).needsUpgrade(true),
+					newTestPod("amasters-0").withRoles(esv1.MasterRole).needsUpgrade(true),
+					newTestPod("data-0").withRoles(esv1.DataRole).needsUpgrade(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole).needsUpgrade(true),
+					newTestPod("amasters-1").withRoles(esv1.MasterRole).needsUpgrade(true),
+					newTestPod("data-1").withRoles(esv1.DataRole).needsUpgrade(true),
+					newTestPod("amasters-2").withRoles(esv1.MasterRole).needsUpgrade(true),
 				),
 				esState: &testESState{
 					inCluster: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0", "masters-0"},
@@ -906,12 +906,12 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					// use "amasters" rather than "masters" to ensure we are not relying on the name sort accidentally
-					newTestPod("amasters-0").isMaster(true).needsUpgrade(true),
-					newTestPod("amasters-1").isMaster(true).needsUpgrade(true),
-					newTestPod("amasters-2").isMaster(true).needsUpgrade(true),
-					newTestPod("data-0").isData(true).needsUpgrade(true),
-					newTestPod("data-1").isData(true).needsUpgrade(true),
-					newTestPod("data-2").isData(true).needsUpgrade(true),
+					newTestPod("amasters-0").withRoles(esv1.MasterRole).needsUpgrade(true),
+					newTestPod("amasters-1").withRoles(esv1.MasterRole).needsUpgrade(true),
+					newTestPod("amasters-2").withRoles(esv1.MasterRole).needsUpgrade(true),
+					newTestPod("data-0").withRoles(esv1.DataRole).needsUpgrade(true),
+					newTestPod("data-1").withRoles(esv1.DataRole).needsUpgrade(true),
+					newTestPod("data-2").withRoles(esv1.DataRole).needsUpgrade(true),
 				),
 				esState: &testESState{
 					inCluster: []string{"data-2", "data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},

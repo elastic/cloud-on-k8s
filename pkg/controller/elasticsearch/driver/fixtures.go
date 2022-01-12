@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -25,12 +26,13 @@ const (
 )
 
 type testPod struct {
-	name                                                     string
-	version                                                  string
-	ssetName                                                 string
-	master, data, healthy, toUpgrade, inCluster, terminating bool
-	uid                                                      types.UID
-	resourceVersion                                          string
+	name                                       string
+	version                                    string
+	ssetName                                   string
+	roles                                      []string
+	healthy, toUpgrade, inCluster, terminating bool
+	uid                                        types.UID
+	resourceVersion                            string
 }
 
 func newTestPod(name string) testPod {
@@ -41,8 +43,6 @@ func newTestPod(name string) testPod {
 	}
 }
 
-func (t testPod) isMaster(v bool) testPod               { t.master = v; return t }
-func (t testPod) isData(v bool) testPod                 { t.data = v; return t }
 func (t testPod) isInCluster(v bool) testPod            { t.inCluster = v; return t }
 func (t testPod) isHealthy(v bool) testPod              { t.healthy = v; return t }
 func (t testPod) needsUpgrade(v bool) testPod           { t.toUpgrade = v; return t }
@@ -50,6 +50,13 @@ func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; ret
 func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
 func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t }
 func (t testPod) withResourceVersion(rv string) testPod { t.resourceVersion = rv; return t } //nolint:unparam
+func (t testPod) withRoles(roles ...esv1.NodeRole) testPod {
+	t.roles = make([]string, len(roles))
+	for i := range roles {
+		t.roles[i] = string(roles[i])
+	}
+	return t
+}
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
@@ -253,13 +260,23 @@ func (t testPod) toPod() corev1.Pod {
 			ResourceVersion:   t.resourceVersion,
 		},
 	}
-	labels := map[string]string{}
-	labels[label.VersionLabelName] = t.version
-	labels[label.ClusterNameLabelName] = TestEsName
-	label.NodeTypesMasterLabelName.Set(t.master, labels)
-	label.NodeTypesDataLabelName.Set(t.data, labels)
-	labels[label.StatefulSetNameLabelName] = t.ssetName
-	pod.Labels = labels
+
+	if t.version == "" {
+		t.version = "7.4.0"
+	}
+	pod.Labels = label.NewPodLabels(
+		types.NamespacedName{
+			Namespace: TestEsNamespace,
+			Name:      TestEsName,
+		},
+		t.ssetName,
+		version.MustParse(t.version),
+		&esv1.Node{
+			Roles: t.roles,
+		},
+		"https",
+	)
+
 	if t.healthy {
 		pod.Status = corev1.PodStatus{
 			Conditions: []corev1.PodCondition{
