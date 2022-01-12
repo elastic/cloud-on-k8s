@@ -417,9 +417,9 @@ func Test_adjustZenConfig(t *testing.T) {
 			es:          bootstrappedES,
 			statefulSet: sset.TestSset{Name: "masters", Version: "7.2.0", Replicas: 3, Master: true, Data: true},
 			pods: []runtime.Object{
-				newTestPod("masters-0").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
-				newTestPod("masters-1").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
-				newTestPod("masters-2").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+				newTestPod("masters-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
+				newTestPod("masters-1").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
+				newTestPod("masters-2").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
 			},
 			wantMinimumMasterNodesSet: true,
 			wantInitialMasterNodesSet: false,
