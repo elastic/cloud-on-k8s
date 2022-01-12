@@ -118,25 +118,25 @@ func NewPodLabels(
 	labels[VersionLabelName] = ver.String()
 
 	// node types labels
-	NodeTypesMasterLabelName.Set(nodeRoles.HasRole(esv1.MasterRole), labels)
-	NodeTypesDataLabelName.Set(nodeRoles.HasRole(esv1.DataRole), labels)
-	NodeTypesIngestLabelName.Set(nodeRoles.HasRole(esv1.IngestRole), labels)
-	NodeTypesMLLabelName.Set(nodeRoles.HasRole(esv1.MLRole), labels)
+	NodeTypesMasterLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.MasterRole), labels)
+	NodeTypesDataLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataRole), labels)
+	NodeTypesIngestLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.IngestRole), labels)
+	NodeTypesMLLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.MLRole), labels)
 	// transform and remote_cluster_client roles were only added in 7.7.0 so we should not annotate previous versions with them
 	if ver.GTE(version.From(7, 7, 0)) {
-		NodeTypesTransformLabelName.Set(nodeRoles.HasRole(esv1.TransformRole), labels)
-		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRole(esv1.RemoteClusterClientRole), labels)
+		NodeTypesTransformLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.TransformRole), labels)
+		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.RemoteClusterClientRole), labels)
 	}
 	// voting_only master eligible nodes were added only in 7.3.0 so we don't want to label prior versions with it
 	if ver.GTE(version.From(7, 3, 0)) {
-		NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasRole(esv1.VotingOnlyRole), labels)
+		NodeTypesVotingOnlyLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.VotingOnlyRole), labels)
 	}
 	// data tiers were added in 7.10.0
 	if ver.GTE(version.From(7, 10, 0)) {
-		NodeTypesDataContentLabelName.Set(nodeRoles.HasRole(esv1.DataContentRole), labels)
-		NodeTypesDataColdLabelName.Set(nodeRoles.HasRole(esv1.DataColdRole), labels)
-		NodeTypesDataHotLabelName.Set(nodeRoles.HasRole(esv1.DataHotRole), labels)
-		NodeTypesDataWarmLabelName.Set(nodeRoles.HasRole(esv1.DataWarmRole), labels)
+		NodeTypesDataContentLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataContentRole), labels)
+		NodeTypesDataColdLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataColdRole), labels)
+		NodeTypesDataHotLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataHotRole), labels)
+		NodeTypesDataWarmLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataWarmRole), labels)
 	}
 
 	labels[HTTPSchemeLabelName] = scheme

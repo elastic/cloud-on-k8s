@@ -278,7 +278,7 @@ func TestConfig_HasRole(t *testing.T) {
 			for _, r := range tc.wantRoles {
 				wantRolesSet[r] = struct{}{}
 
-				require.True(t, tc.node.HasRole(r), "Missing wanted role [%s]", r)
+				require.True(t, tc.node.IsConfiguredWithRole(r), "Missing wanted role [%s]", r)
 			}
 
 			// check that the node does not have any other roles
@@ -287,7 +287,7 @@ func TestConfig_HasRole(t *testing.T) {
 					continue
 				}
 
-				require.False(t, tc.node.HasRole(r), "Unexpected role [%s]", r)
+				require.False(t, tc.node.IsConfiguredWithRole(r), "Unexpected role [%s]", r)
 			}
 		})
 	}

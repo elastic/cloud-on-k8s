@@ -5,6 +5,8 @@
 package nodespec
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -26,6 +28,15 @@ type Resources struct {
 }
 
 type ResourcesList []Resources
+
+func (l ResourcesList) ForStatefulSet(name string) (Resources, error) {
+	for _, resource := range l {
+		if resource.StatefulSet.Name == name {
+			return resource, nil
+		}
+	}
+	return Resources{}, fmt.Errorf("no expected resources for StatefulSet %s", name)
+}
 
 func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	ssetList := make(sset.StatefulSetList, 0, len(l))
