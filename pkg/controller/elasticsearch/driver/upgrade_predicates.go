@@ -352,7 +352,7 @@ var predicates = [...]Predicate{
 	},
 	{
 		// Force an upgrade of all the master-ineligible nodes before upgrading the last master-eligible
-		name: "do_not_delete_last_master_if_data_nodes_are_not_upgraded",
+		name: "do_not_delete_last_master_if_all_master_ineligible_nodes_are_not_upgraded",
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
