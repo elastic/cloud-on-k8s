@@ -61,6 +61,24 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			want: admission.Allowed(""),
 		},
 		{
+			name: "request from un-managed namespace is ignored, and just accepted",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "unmanaged", Name: "name"},
+							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					}},
+				},
+			},
+			want: admission.Allowed(""),
+		},
+		{
 			name: "reject invalid creation (no version provided)",
 			fields: fields{
 				client: k8s.NewFakeClient(),
@@ -133,6 +151,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client:               tt.fields.client,
 				decoder:              decoder,
 				validateStorageClass: tt.fields.validateStorageClass,
+				managedNamespaces:    []string{"ns"},
 			}
 			got := wh.Handle(context.Background(), tt.args.req)
 			require.Equal(t, tt.want.Allowed, got.Allowed)

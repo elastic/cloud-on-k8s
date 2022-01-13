@@ -565,7 +565,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels)
+		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels, managedNamespaces)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -782,7 +782,8 @@ func setupWebhook(
 	certRotation certificates.RotationParams,
 	validateStorageClass bool,
 	clientset kubernetes.Interface,
-	exposedNodeLabels esvalidation.NodeLabels) {
+	exposedNodeLabels esvalidation.NodeLabels,
+	managedNamespaces []string) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -837,7 +838,7 @@ func setupWebhook(
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels)
+	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
