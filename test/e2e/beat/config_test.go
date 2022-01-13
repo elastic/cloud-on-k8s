@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -270,6 +271,11 @@ func TestPacketbeatConfig(t *testing.T) {
 }
 
 func TestJournalbeatConfig(t *testing.T) {
+	// Journalbeat was removed in 7.16
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(7, 16, 0)) {
+		t.SkipNow()
+	}
+
 	name := "test-jb-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
