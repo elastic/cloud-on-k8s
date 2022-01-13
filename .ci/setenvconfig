@@ -433,6 +433,9 @@ IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
+GO_TAGS=release
+export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+
 TESTS_MATCH=TestSmoke
 MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
