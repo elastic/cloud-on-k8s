@@ -63,7 +63,6 @@ func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
 	// for this operator ignore this request.
 	if !slices.Contains(wh.managedNamespaces, es.Namespace) {
 		return nil
-
 	}
 
 	eslog.V(1).Info("validate create", "name", es.Name)
@@ -75,10 +74,9 @@ func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.E
 	// for this operator ignore this request.
 	if !slices.Contains(wh.managedNamespaces, curr.Namespace) {
 		return nil
-
 	}
-	eslog.V(1).Info("validate update", "name", curr.Name)
 
+	eslog.V(1).Info("validate update", "name", curr.Name)
 	var errs field.ErrorList
 	for _, val := range updateValidations(wh.client, wh.validateStorageClass) {
 		if err := val(prev, curr); err != nil {
