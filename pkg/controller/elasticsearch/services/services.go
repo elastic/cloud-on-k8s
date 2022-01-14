@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -68,7 +69,7 @@ func ExternalServiceName(esName string) string {
 }
 
 // InternalServiceName returns the name for the internal service
-// associated to this cluster, managed by the operator exclusively
+// associated to this cluster, managed by the operator exclusively.
 func InternalServiceName(esName string) string {
 	return esv1.InternalHTTPService(esName)
 }
@@ -78,7 +79,7 @@ func ExternalTransportServiceHost(es types.NamespacedName) string {
 	return stringsutil.Concat(TransportServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
 }
 
-// ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
+// ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint.
 func ExternalServiceURL(es esv1.Elasticsearch) string {
 	return stringsutil.Concat(es.Spec.HTTP.Protocol(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
@@ -95,15 +96,32 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 }
 
 // NewInternalService returns the internal service associated to the given cluster.
-// It is used by the operator to perform requests against the elasticsearch cluster nodes,
+// It is used by the operator to perform requests against the Elasticsearch cluster nodes,
 // and does not inherit the spec defined within the Elasticsearch custom resource,
 // to remove the possibility of the user misconfiguring access to the ES cluster.
 func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
-	svc := newServiceWithName(es, InternalServiceName(es.Name))
-	svc.Spec.Selector = nil
-	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
-
-	return defaults.SetServiceDefaults(svc, labels, labels, svc.Spec.Ports)
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      InternalServiceName(es.Name),
+			Namespace: es.Namespace,
+			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:     es.Spec.HTTP.Protocol(),
+					Protocol: corev1.ProtocolTCP,
+					Port:     network.HTTPPort,
+				},
+			},
+			Selector:                 label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			PublishNotReadyAddresses: false,
+			IPFamilies: []corev1.IPFamily{
+				corev1.IPv4Protocol,
+			},
+		},
+	}
 }
 
 func newServiceWithName(es esv1.Elasticsearch, serviceName string) *corev1.Service {

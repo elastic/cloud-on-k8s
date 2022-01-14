@@ -241,7 +241,9 @@ func TestNewInternalService(t *testing.T) {
 			},
 			wantSvc: func() corev1.Service {
 				svc := mkHTTPService()
+				svc.Spec.Type = corev1.ServiceTypeClusterIP
 				svc.Spec.Ports[0].Name = "https"
+				svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv4Protocol}
 				svc.Name = "elasticsearch-test-es-internal-http"
 				return svc
 			},
