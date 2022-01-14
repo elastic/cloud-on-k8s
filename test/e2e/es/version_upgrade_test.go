@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build es || e2e
 // +build es e2e
 
 package es
@@ -23,7 +24,7 @@ func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -45,7 +46,7 @@ func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -68,7 +69,7 @@ func TestVersionUpgrade3Nodes68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -94,7 +95,7 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -129,7 +130,7 @@ func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
