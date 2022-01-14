@@ -58,7 +58,7 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.16.0-SNAPSHOT") {
+                stage("7.17.0-SNAPSHOT") {
                      agent {
                         label 'linux'
                     }

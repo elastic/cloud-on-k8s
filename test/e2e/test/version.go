@@ -13,9 +13,9 @@ import (
 
 // Elastic Stack versions used in the E2E tests
 const (
-	// Minimum version for 6.8.x tested with the operator
+	// MinVersion68x minimum version for 6.8.x tested with the operator
 	MinVersion68x = "6.8.20"
-	// Current latest version for 7.x
+	// LatestVersion7x current latest version for 7.x
 	LatestVersion7x = "7.16.2" // version to synchronize with the latest release of the Elastic Stack
 )
 
@@ -38,6 +38,11 @@ func isValidUpgrade(from string, to string) (bool, error) {
 		return false, fmt.Errorf("failed to parse version '%s': %w", from, err)
 	}
 	dstVer, err := version.Parse(to)
+	if srcVer.Pre != nil && dstVer.Pre == nil {
+		// an upgrade from a pre-release version to a released version must not be tested (mainly due to incompatible licensing)
+		// but an upgrade from a released version to a pre-release version is to be tested (to catch any new issues before the release)
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("failed to parse version '%s': %w", to, err)
 	}
