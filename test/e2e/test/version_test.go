@@ -28,6 +28,7 @@ func TestIsValidUpgrade(t *testing.T) {
 		{from: "7.6.1", to: "7.6.0", isValid: false},
 		{from: "7.6.0", to: "6.8.5", isValid: false},
 		{from: "7.6.0", to: "9.0.0", isValid: false},
+		{from: "7.6.0-SNAPSHOT", to: "7.7.0", isValid: false},
 	}
 
 	for _, tt := range tests {
