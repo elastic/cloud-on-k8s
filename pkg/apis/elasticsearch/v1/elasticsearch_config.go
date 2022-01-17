@@ -8,10 +8,9 @@ import (
 	"github.com/elastic/go-ucfg"
 	"k8s.io/utils/pointer"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 type NodeRole string
@@ -82,8 +81,9 @@ func (n *Node) HasRole(role NodeRole) bool {
 		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataColdRole)
 	case DataFrozenRole:
 		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataFrozenRole)
+	default:
+		return n.IsConfiguredWithRole(role)
 	}
-	return n.IsConfiguredWithRole(role)
 }
 
 // IsConfiguredWithRole returns true if the node has the given role in its configuration.

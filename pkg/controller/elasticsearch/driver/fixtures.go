@@ -7,6 +7,7 @@ package driver
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -226,11 +226,9 @@ func (u upgradeTestPods) toResourcesList(t *testing.T) nodespec.ResourcesList {
 		resourcesByStatefulSet[statefulSetName] = resources
 	}
 
-	resources := make(nodespec.ResourcesList, len(resourcesByStatefulSet))
-	i := 0
+	resources := make(nodespec.ResourcesList, 0, len(resourcesByStatefulSet))
 	for _, r := range resourcesByStatefulSet {
-		resources[i] = r
-		i++
+		resources = append(resources, r)
 	}
 
 	return resources
