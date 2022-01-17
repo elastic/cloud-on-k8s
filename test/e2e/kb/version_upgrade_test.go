@@ -142,8 +142,8 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 
 	name := "test-version-upgrade-to-8x"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithVersion(dstVersion)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithVersion(srcVersion)
 
 	srcNodeCount := 3
 	kbBuilder := kibana.NewBuilder(name).
@@ -166,7 +166,10 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
-		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
+		[]test.Builder{
+			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
+			kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder),
+		},
 		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
 	)
 }

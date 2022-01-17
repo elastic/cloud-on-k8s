@@ -16,7 +16,7 @@ const (
 	// LatestVersion6x is the current latest version for 6.x
 	LatestVersion6x = "6.8.20"
 	// LatestVersion7x is the current latest version for 7.x
-	LatestVersion7x = "7.16.2"
+	LatestVersion7x = "7.17.0-SNAPSHOT"
 	// LatestVersion8x is the current latest version for 8.x
 	LatestVersion8x = "8.0.0-SNAPSHOT"
 )
@@ -60,12 +60,14 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	}
 
 	// special case of major upgrade: last minor of major 6 to any major 7
-	if srcVer.Major == 6 && srcVer.Minor == 8 && dstVer.Major == 7 {
+	latest6x := version.MustParse(LatestVersion6x)
+	if srcVer.Major == 6 && srcVer.Minor == latest6x.Minor && dstVer.Major == 7 {
 		return true, nil
 	}
 
 	// special case of major upgrade: last minor of major 7 to any major 8
-	if srcVer.Major == 7 && srcVer.Minor == 16 && dstVer.Major == 8 {
+	latest7x := version.MustParse(LatestVersion7x)
+	if srcVer.Major == 7 && srcVer.Minor == latest7x.Minor && dstVer.Major == 8 {
 		return true, nil
 	}
 

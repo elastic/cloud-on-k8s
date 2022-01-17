@@ -98,6 +98,8 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 }
 
 func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
+	// todo skipping until https://github.com/elastic/cloud-on-k8s/issues/5251 is fixed.
+	t.SkipNow()
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion8x
 
@@ -105,8 +107,8 @@ func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
 
 	name := "test-ems-version-upgrade-8x"
 	es := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithVersion(dstVersion)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithVersion(srcVersion)
 
 	ems := maps.NewBuilder(name).
 		WithElasticsearchRef(es.Ref()).
