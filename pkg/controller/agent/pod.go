@@ -6,7 +6,6 @@ package agent
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"hash"
 	"path"
 	"sort"
@@ -29,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
@@ -387,10 +387,10 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 	return &fs, nil
 }
 
-func trustCAScript(version version.Version, caPath string) string {
+func trustCAScript(ver version.Version, caPath string) string {
 	sharedCAPath := "/etc/pki/ca-trust/source/anchors/"
 	updateCmd := "update-ca-trust"
-	if version.Major == 8 {
+	if ver.GTE(version.MinFor(8, 0, 0)) {
 		sharedCAPath = "/usr/local/share/ca-certificates"
 		updateCmd = "update-ca-certificates"
 	}

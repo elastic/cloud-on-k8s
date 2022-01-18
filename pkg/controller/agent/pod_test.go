@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"github.com/go-test/deep"
 	"path"
 	"testing"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/go-test/deep"
 )
 
 func Test_amendBuilderForFleetMode(t *testing.T) {
