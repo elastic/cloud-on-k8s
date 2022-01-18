@@ -61,6 +61,7 @@ func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
 			"MachineType":       plan.MachineType,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"Location":          plan.Aks.Location,
+			"Zones":             plan.Aks.Zones,
 		},
 		vaultClient: vaultClient,
 	}, nil
@@ -151,7 +152,7 @@ func (d *AksDriver) create() error {
 
 	cmd := `az aks create --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --location {{.Location}} ` +
 		`--node-count {{.NodeCount}} --node-vm-size {{.MachineType}} --kubernetes-version {{.KubernetesVersion}} ` +
-		`--node-osdisk-size 30 --enable-addons http_application_routing --output none --generate-ssh-keys` + servicePrincipal
+		`--node-osdisk-size 30 --enable-addons http_application_routing --output none --generate-ssh-keys --zones {{.Zones}}` + servicePrincipal
 
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
