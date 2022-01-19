@@ -2,8 +2,8 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
+  # uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods
   #annotations:
-  #  uncomment the line below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods
   #  eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: elasticsearch-sample
 spec:
