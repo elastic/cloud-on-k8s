@@ -92,7 +92,26 @@ func InternalServiceURL(es esv1.Elasticsearch) string {
 // NewExternalService returns the external service associated to the given cluster.
 // It is used by users to perform requests against one of the cluster nodes.
 func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
-	return newServiceWithName(es, ExternalServiceName(es.Name))
+	nsn := k8s.ExtractNamespacedName(&es)
+
+	svc := corev1.Service{
+		ObjectMeta: es.Spec.HTTP.Service.ObjectMeta,
+		Spec:       es.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = es.Namespace
+	svc.ObjectMeta.Name = ExternalServiceName(es.Name)
+
+	labels := label.NewLabels(nsn)
+	ports := []corev1.ServicePort{
+		{
+			Name:     es.Spec.HTTP.Protocol(),
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.HTTPPort,
+		},
+	}
+
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
 // NewInternalService returns the internal service associated to the given cluster.
@@ -119,29 +138,6 @@ func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
 			PublishNotReadyAddresses: false,
 		},
 	}
-}
-
-func newServiceWithName(es esv1.Elasticsearch, serviceName string) *corev1.Service {
-	nsn := k8s.ExtractNamespacedName(&es)
-
-	svc := corev1.Service{
-		ObjectMeta: es.Spec.HTTP.Service.ObjectMeta,
-		Spec:       es.Spec.HTTP.Service.Spec,
-	}
-
-	svc.ObjectMeta.Namespace = es.Namespace
-	svc.ObjectMeta.Name = serviceName
-
-	labels := label.NewLabels(nsn)
-	ports := []corev1.ServicePort{
-		{
-			Name:     es.Spec.HTTP.Protocol(),
-			Protocol: corev1.ProtocolTCP,
-			Port:     network.HTTPPort,
-		},
-	}
-
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
 // IsServiceReady checks if a service has one or more ready endpoints.
