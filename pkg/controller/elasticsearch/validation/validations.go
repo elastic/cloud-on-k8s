@@ -272,16 +272,9 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 
 func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
-	// if available use the status version which reflects the lowest version currently running in the cluster
-	currentVer, err := version.Parse(current.Status.Version)
-	if err != nil {
-		// let's swallow that error which could be caused because we do not have a version in status yet and fall back
-		// to the Spec version which is better than nothing
-		currentVer, err = version.Parse(current.Spec.Version)
-		if err != nil {
-			// this should not happen, since this is the already persisted version
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
-		}
+	currentVer, ferr := currentVersion(current)
+	if ferr != nil {
+		errs = append(errs, ferr)
 	}
 
 	proposedVer, err := version.Parse(proposed.Spec.Version)
@@ -303,6 +296,26 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedUpgradeMsg))
 	}
 	return errs
+}
+
+func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) {
+	// if available use the status version which reflects the lowest version currently running in the cluster
+	if current.Status.Version == "" {
+		currentVer, err := version.Parse(current.Spec.Version)
+		if err != nil {
+			// this should not happen, since this is the version from the spec copied to the status by the operator
+			return version.Version{}, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg)
+		}
+		return currentVer, nil
+	}
+	// we do not have a version in the status let's use the version in the current spec instead which will not reflect
+	// actually runnning Pods but which is still better than no validation. 
+	currentVer, err := version.Parse(current.Status.Version)
+	if err != nil {
+		// this should not happen, since this is the already persisted version
+		return version.Version{}, field.Invalid(field.NewPath("status").Child("version"), current.Status.Version, parseStoredVersionErrMsg)
+	}
+	return currentVer, nil
 }
 
 func validMonitoring(es esv1.Elasticsearch) field.ErrorList {
