@@ -36,8 +36,8 @@ func technicallySupportedVersions(v version.Version) *version.MinMaxVersion {
 		}
 	case 8:
 		return &version.MinMaxVersion{
-			// 7.4.0 is the lowest version that offers a direct upgrade path to 8.0
-			Min: version.MustParse("7.4.0"),
+			// 7.17.0 is the lowest version that offers a direct upgrade path to 8.0
+			Min: version.MinFor(7, 17, 0), // allow snapshot builds here for testing
 			Max: version.MustParse("8.99.99"),
 		}
 	default:
