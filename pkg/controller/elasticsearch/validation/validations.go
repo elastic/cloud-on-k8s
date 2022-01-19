@@ -299,7 +299,8 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 }
 
 func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) {
-	// if available use the status version which reflects the lowest version currently running in the cluster
+	// we do not have a version in the status let's use the version in the current spec instead which will not reflect
+	// actually running Pods but which is still better than no validation.
 	if current.Status.Version == "" {
 		currentVer, err := version.Parse(current.Spec.Version)
 		if err != nil {
@@ -308,8 +309,7 @@ func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) 
 		}
 		return currentVer, nil
 	}
-	// we do not have a version in the status let's use the version in the current spec instead which will not reflect
-	// actually runnning Pods but which is still better than no validation. 
+	// if available use the status version which reflects the lowest version currently running in the cluster
 	currentVer, err := version.Parse(current.Status.Version)
 	if err != nil {
 		// this should not happen, since this is the already persisted version
