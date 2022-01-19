@@ -272,11 +272,17 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 
 func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
-	currentVer, err := version.Parse(current.Spec.Version)
+	// if available use the status version which reflects the lowest version currently running in the cluster
+	currentVer, err := version.Parse(current.Status.Version)
 	if err != nil {
-		// this should not happen, since this is the already persisted version
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
+		// let's swallow that error and fall back to the Spec version which is better than nothing
+		currentVer, err = version.Parse(current.Spec.Version)
+		if err != nil {
+			// this should not happen, since this is the already persisted version
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
+		}
 	}
+
 	proposedVer, err := version.Parse(proposed.Spec.Version)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, parseVersionErrMsg))
