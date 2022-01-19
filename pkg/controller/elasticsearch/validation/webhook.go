@@ -59,23 +59,11 @@ func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 }
 
 func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
-	// If this Elasticsearch instance is not within the set of managed namespaces
-	// for this operator ignore this request.
-	if !slices.Contains(wh.managedNamespaces, es.Namespace) {
-		return nil
-	}
-
 	eslog.V(1).Info("validate create", "name", es.Name)
 	return ValidateElasticsearch(es, wh.exposedNodeLabels)
 }
 
 func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.Elasticsearch) error {
-	// If this Elasticsearch instance is not within the set of managed namespaces
-	// for this operator ignore this request.
-	if !slices.Contains(wh.managedNamespaces, curr.Namespace) {
-		return nil
-	}
-
 	eslog.V(1).Info("validate update", "name", curr.Name)
 	var errs field.ErrorList
 	for _, val := range updateValidations(wh.client, wh.validateStorageClass) {
@@ -97,6 +85,13 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 	err := wh.decoder.DecodeRaw(req.Object, es)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	// If this Elasticsearch instance is not within the set of managed namespaces
+	// for this operator ignore this request.
+	if len(wh.managedNamespaces) > 0 && !slices.Contains(wh.managedNamespaces, es.Namespace) {
+		eslog.V(1).Info("Skip Elasticsearch resource validation", "name", es.Name, "namespace", es.Namespace)
+		return admission.Allowed("")
 	}
 
 	if req.Operation == admissionv1.Create {
