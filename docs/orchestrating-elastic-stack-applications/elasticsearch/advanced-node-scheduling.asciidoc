@@ -207,8 +207,8 @@ Starting with ECK 2.0 the operator can make Kubernetes Node labels available as 
 [id="{p}-availability-zone-awareness-downward-api"]
 === Exposing Kubernetes node topology labels in Pods
 
-. First, ensure that the operator's flag `exposed-node-labels` contains the list of the Kubernetes node labels that should be exposed in the Elasticsearch Pods. If you are using the provided installation manifest, or the Helm chart, then this flag is already set with some well-known node labels that describe Kubernetes cluster topology, like `topology.kubernetes.io/.*` and `failure-domain.beta.kubernetes.io/.*`.
-. On the Elasticsearch resources set the `eck.k8s.elastic.co/downward-node-labels` annotations with the list of the Kubernetes node labels that must be copied as Pods annotations.
+. First, ensure that the operator's flag `exposed-node-labels` contains the list of the Kubernetes node labels that should be exposed in the Elasticsearch Pods. If you are using the provided installation manifest, or the Helm chart, then this flag is already preset with two wildcard patterns for well-known node labels that describe Kubernetes cluster topology, like `topology.kubernetes.io/.*` and `failure-domain.beta.kubernetes.io/.*`.
+. On the Elasticsearch resources set the `eck.k8s.elastic.co/downward-node-labels` annotations with the list of the Kubernetes node labels that should be copied as Pod annotations.
 . Use the link:https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/[Kubernetes downward API] in the `podTemplate` to make those annotations available as environment variables in Elasticsearch Pods.
 
 Refer to the next section or to the link:{eck_github}/tree/{eck_release_branch}/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample resource in the ECK source repository] for a complete example.
@@ -216,9 +216,9 @@ Refer to the next section or to the link:{eck_github}/tree/{eck_release_branch}/
 [id="{p}-availability-zone-awareness-example"]
 === Using node topology labels, Kubernetes topology spread constraints, and Elasticsearch shard allocation awareness
 
-The following example demonstrates how to use the `topology.kubernetes.io/zone` node labels to spread a NodeSet among the availability zones of a Kubernetes cluster.
+The following example demonstrates how to use the `topology.kubernetes.io/zone` node labels to spread a NodeSet across the availability zones of a Kubernetes cluster.
 
-Note that by default ECK creates a `k8s_node_name` attribute with the name of the Kubernetes node running the Pod, and configures Elasticsearch to use this attribute. This ensures that Elasticsearch allocates primary and replica shards to pods running on different Kubernetes nodes and never to pods that are scheduled onto a single Kubernetes node. To preserve this behavior while making Elasticsearch aware of the availability zone, include the `k8s_node_name` attribute in the comma-separated `cluster.routing.allocation.awareness.attributes` list.
+Note that by default ECK creates a `k8s_node_name` attribute with the name of the Kubernetes node running the Pod, and configures Elasticsearch to use this attribute. This ensures that Elasticsearch allocates primary and replica shards to Pods running on different Kubernetes nodes and never to Pods that are scheduled onto the same Kubernetes node. To preserve this behavior while making Elasticsearch aware of the availability zone, include the `k8s_node_name` attribute in the comma-separated `cluster.routing.allocation.awareness.attributes` list.
 
 [source,yaml,subs="attributes"]
 ----
