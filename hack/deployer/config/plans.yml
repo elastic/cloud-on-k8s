@@ -53,6 +53,7 @@ plans:
   aks:
     nodeCount: 3
     location: westeurope
+    zones: "1 2 3"
 - id: aks-dev
   operation: create
   clusterName: dev
@@ -64,6 +65,7 @@ plans:
   aks:
     nodeCount: 3
     location: northeurope
+    zones: "1 2 3"
 - id: ocp-ci
   operation: create
   clusterName: ci
