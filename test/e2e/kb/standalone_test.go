@@ -7,65 +7,90 @@
 package kb
 
 import (
-	"bufio"
-	"bytes"
+	"context"
+	"fmt"
 	"testing"
-	"text/template"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/util/rand"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestKibanaStandalone tests running Kibana without an automatic association to Elasticsearch.
 func TestKibanaStandalone(t *testing.T) {
-	builders := mkKibanaStandaloneBuilders(t)
-	test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
-}
+	fileRealmSecretName := "kibana-user"
+	kbUser := "kb-user"
+	kbPassword := "mypassword"
+	kbPasswordHash := "$2a$10$qrurU7ju08g0eCXgh5qZmOWfKLhWMs/ca3uXz1l6.eFf09UH6YXFy" // nolint
 
-func mkKibanaStandaloneBuilders(t *testing.T) []test.Builder {
-	t.Helper()
-
-	tmpl, err := template.ParseFiles("testdata/kibana_standalone.yaml")
-	require.NoError(t, err, "Failed to parse template")
-
-	buf := new(bytes.Buffer)
-	rndSuffix := rand.String(4)
-	esName := "test-kibana-standalone-es-" + rndSuffix
-	require.NoError(t, tmpl.Execute(buf, map[string]string{
-		"ESName": esName,
-		"Suffix": rndSuffix,
-	}))
-
-	namespace := test.Ctx().ManagedNamespace(0)
-	stackVersion := test.Ctx().ElasticStackVersion
-
-	transform := func(builder test.Builder) test.Builder {
-		switch b := builder.(type) {
-		case elasticsearch.Builder:
-			return b.WithNamespace(namespace).
-				WithVersion(stackVersion).
-				WithRestrictedSecurityContext()
-		case kibana.Builder:
-			return b.WithNamespace(namespace).
-				WithVersion(stackVersion).
-				WithExternalElasticsearchRef(commonv1.ObjectSelector{
-					Namespace: namespace,
-					Name:      esName,
-				}).
-				WithRestrictedSecurityContext()
-		default:
-			return b
-		}
+	fileRealmSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fileRealmSecretName,
+			Namespace: test.Ctx().ManagedNamespace(0),
+		},
+		StringData: map[string]string{
+			filerealm.UsersFile:      kbUser + ":" + kbPasswordHash,
+			filerealm.UsersRolesFile: controller.KibanaSystemUserBuiltinRole + ":" + kbUser,
+		},
 	}
 
-	decoder := helper.NewYAMLDecoder()
-	builders, err := decoder.ToBuilders(bufio.NewReader(buf), transform)
-	require.NoError(t, err, "Failed to create builders")
+	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.WithStep(test.Step{
+			Name: "Create file realm secret",
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdateSecrets(fileRealmSecret)
+			}),
+		})
+	})
 
-	return builders
+	after := test.StepsFunc(func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.WithStep(
+			test.Step{
+				Name: "Delete file realm secret",
+				Test: test.Eventually(func() error {
+					err := k.Client.Delete(context.Background(), &fileRealmSecret)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
+			})
+	})
+
+	// set up a 1-node Kibana deployment manually connected to Elasticsearch
+	name := "test-kb-standalone"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+	esBuilder.Elasticsearch.Spec.Auth = esv1.Auth{
+		FileRealm: []esv1.FileRealmSource{
+			{SecretRef: commonv1.SecretRef{SecretName: fileRealmSecretName}}},
+	}
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithNodeCount(1).
+		WithConfig(map[string]interface{}{
+			"elasticsearch.hosts": []string{
+				fmt.Sprintf("https://%s-es-http:9200", esBuilder.Name()),
+			},
+			"elasticsearch.username":             kbUser,
+			"elasticsearch.password":             kbPassword,
+			"elasticsearch.ssl.verificationMode": "none",
+		}).
+		// this is necessary for the Kibana e2e test steps to be able to run successfully
+		// it does not actually set up the association
+		WithExternalElasticsearchRef(commonv1.ObjectSelector{
+			Namespace: esBuilder.Namespace(),
+			Name:      esBuilder.Name(),
+		}).
+		WithRestrictedSecurityContext()
+
+	test.BeforeAfterSequence(before, after, esBuilder, kbBuilder).RunSequential(t)
 }
