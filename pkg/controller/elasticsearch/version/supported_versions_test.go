@@ -58,7 +58,7 @@ func TestSupportedVersions(t *testing.T) {
 				v: version.MustParse("8.0.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("7.4.0"),
+				version.MustParse("7.17.0"),
 				version.MustParse("8.9.0"),
 			},
 			unsupported: []version.Version{
