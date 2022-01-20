@@ -629,7 +629,8 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 			MountPath: "/mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs",
 		},
 	}
-	expected8xCmd := []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
+	// as of version 7.17 Agent uses an Ubuntu base image
+	expectedUbuntuCmd := []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
 set -e
 if [[ -f /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt ]]; then
   cp /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt /usr/local/share/ca-certificates
@@ -681,6 +682,27 @@ fi
 			}),
 		},
 		{
+			name: "fleet server disabled, same namespace 7.17.0",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "7.17.0-SNAPSHOT",
+					FleetServerEnabled: false,
+				},
+			},
+			assoc:   assocToSameNs,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = expectedCAVolume
+				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
+				ps.Containers[0].Command = expectedUbuntuCmd
+				return ps
+			}),
+		},
+		{
 			name: "fleet server disabled, same namespace 8x",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
@@ -697,7 +719,7 @@ fi
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = expectedCAVolume
 				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
-				ps.Containers[0].Command = expected8xCmd
+				ps.Containers[0].Command = expectedUbuntuCmd
 				return ps
 			}),
 		},
@@ -718,7 +740,7 @@ fi
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = expectedCAVolume
 				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
-				ps.Containers[0].Command = expected8xCmd
+				ps.Containers[0].Command = expectedUbuntuCmd
 				return ps
 			}),
 		},
