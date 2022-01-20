@@ -17,11 +17,11 @@ import (
 )
 
 func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
-	// todo skipping until https://github.com/elastic/cloud-on-k8s/issues/5250 is fixed.
-	t.SkipNow()
 	name := "test-agent-upgrade"
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion8x
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithVersion(srcVersion).

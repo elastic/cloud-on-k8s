@@ -98,8 +98,6 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 }
 
 func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
-	// todo skipping until https://github.com/elastic/cloud-on-k8s/issues/5251 is fixed.
-	t.SkipNow()
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestVersion8x
 
@@ -116,10 +114,11 @@ func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
 		WithVersion(srcVersion).
 		WithRestrictedSecurityContext()
 
+	esUpgraded := es.WithVersion(dstVersion).WithMutatedFrom(&es)
 	emsUpgraded := ems.WithVersion(dstVersion).WithMutatedFrom(&ems)
 
 	esWithLicense := test.LicenseTestBuilder()
-	esWithLicense.BuildingThis = es
+	esWithLicense.BuildingThis = esUpgraded
 
 	test.RunMutations(t, []test.Builder{esWithLicense, ems}, []test.Builder{esWithLicense, emsUpgraded})
 }
