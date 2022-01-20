@@ -304,7 +304,7 @@ func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) 
 	if current.Status.Version == "" {
 		currentVer, err := version.Parse(current.Spec.Version)
 		if err != nil {
-			// this should not happen, since this is the version from the spec copied to the status by the operator
+			// this should not happen, since this is the already persisted version
 			return version.Version{}, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg)
 		}
 		return currentVer, nil
@@ -312,7 +312,7 @@ func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) 
 	// if available use the status version which reflects the lowest version currently running in the cluster
 	currentVer, err := version.Parse(current.Status.Version)
 	if err != nil {
-		// this should not happen, since this is the already persisted version
+		// this should not happen, since this is the version from the spec copied to the status by the operator
 		return version.Version{}, field.Invalid(field.NewPath("status").Child("version"), current.Status.Version, parseStoredVersionErrMsg)
 	}
 	return currentVer, nil
