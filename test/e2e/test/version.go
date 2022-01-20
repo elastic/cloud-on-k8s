@@ -13,12 +13,12 @@ import (
 
 // Elastic Stack versions used in the E2E tests. These should be updated as new versions for each major are released.
 const (
-	// LatestVersion6x is the current latest production version for 6.x
-	LatestVersion6x = "6.8.20"
-	// LatestVersion7x is the current latest production version for 7.x
-	LatestVersion7x = "7.16.2"
-	// LatestVersion8x is the current latest snapshot version for 8.x
-	LatestVersion8x = "8.0.0-SNAPSHOT"
+	// LatestReleasedVersion6x is the latest released version for 6.x
+	LatestReleasedVersion6x = "6.8.20"
+	// LatestReleasedVersion7x is the latest released version for 7.x
+	LatestReleasedVersion7x = "7.16.2"
+	// LatestSnapshotVersion8x is the latest snapshot version for 8.x
+	LatestSnapshotVersion8x = "8.0.0-SNAPSHOT"
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
@@ -60,14 +60,12 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	}
 
 	// special case of major upgrade: last minor of major 6 to any major 7
-	latest6x := version.MustParse(LatestVersion6x)
-	if srcVer.Major == 6 && srcVer.Minor == latest6x.Minor && dstVer.Major == 7 {
+	if srcVer.Major == 6 && srcVer.Minor == 8 && dstVer.Major == 7 {
 		return true, nil
 	}
 
 	// special case of major upgrade: last minor of major 7 to any major 8
-	latest7x := version.MustParse(LatestVersion7x)
-	if srcVer.Major == 7 && srcVer.Minor == latest7x.Minor && dstVer.Major == 8 {
+	if srcVer.Major == 7 && srcVer.Minor == 17 && dstVer.Major == 8 {
 		return true, nil
 	}
 

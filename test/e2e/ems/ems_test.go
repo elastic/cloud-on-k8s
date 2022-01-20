@@ -74,7 +74,7 @@ func TestElasticMapsServerTLSDisabled(t *testing.T) {
 
 func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -99,7 +99,7 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 
 func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

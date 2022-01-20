@@ -25,7 +25,7 @@ const (
 	ArchARMTag = "arch:arm"
 )
 
-var defaultElasticStackVersion = LatestVersion7x
+var defaultElasticStackVersion = LatestReleasedVersion7x
 
 var (
 	testContextPath = flag.String("testContextPath", "", "Path to the test context file")

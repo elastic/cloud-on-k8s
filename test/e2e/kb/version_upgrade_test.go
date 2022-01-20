@@ -23,7 +23,7 @@ import (
 
 func TestVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -66,7 +66,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 
 func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -136,7 +136,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 
 func TestVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -176,7 +176,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 
 func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

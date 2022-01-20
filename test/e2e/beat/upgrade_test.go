@@ -25,7 +25,7 @@ import (
 // data directory stays locked it happens to be scheduled on the same node.
 func TestVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -64,7 +64,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 
 func TestVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

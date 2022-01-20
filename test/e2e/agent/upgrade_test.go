@@ -17,12 +17,12 @@ import (
 )
 
 func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
-	name := "test-agent-upgrade"
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
+	name := "test-agent-upgrade"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithVersion(srcVersion).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)

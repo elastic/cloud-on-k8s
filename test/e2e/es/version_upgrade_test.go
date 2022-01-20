@@ -24,7 +24,7 @@ func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.LatestVersion6x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -46,7 +46,7 @@ func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
-	srcVersion := test.LatestVersion6x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -69,7 +69,7 @@ func TestVersionUpgrade3Nodes68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
-	srcVersion := test.LatestVersion6x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -95,7 +95,7 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.LatestVersion6x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -130,7 +130,7 @@ func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.LatestVersion6x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -150,7 +150,7 @@ func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
 
 func TestVersionUpgradeSingleToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -167,7 +167,7 @@ func TestVersionUpgradeSingleToLatest7x(t *testing.T) {
 
 func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -184,7 +184,7 @@ func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
 
 func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -201,7 +201,7 @@ func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
 
 func TestVersionUpgradeTwoNodesToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

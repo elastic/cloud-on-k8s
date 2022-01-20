@@ -51,7 +51,7 @@ func TestEnterpriseSearchTLSDisabled(t *testing.T) {
 
 func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -76,7 +76,7 @@ func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 
 func TestEnterpriseSearchVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion8x
+	dstVersion := test.LatestSnapshotVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
