@@ -188,7 +188,9 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
-	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+	_, permissive := d.ES.Annotations[esv1.PermissiveVersionValidation]
+
+	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); !permissive && err != nil {
 		return results.WithError(err)
 	}
 

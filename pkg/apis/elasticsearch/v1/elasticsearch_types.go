@@ -25,6 +25,8 @@ const (
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
+	// PermissiveVersionValidation allows circumventing downgrade/upgrade checks.
+	PermissiveVersionValidation = "eck.k8s.elastic.co/permissive-version-validation"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"

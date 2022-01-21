@@ -252,6 +252,12 @@ func checkNodeSetNameUniqueness(es esv1.Elasticsearch) field.ErrorList {
 
 func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
+
+	// allow disabling version validation
+	if _, ok := proposed.Annotations[esv1.PermissiveVersionValidation]; ok {
+		return errs
+	}
+
 	currentVer, err := version.Parse(current.Spec.Version)
 	if err != nil {
 		// this should not happen, since this is the already persisted version
