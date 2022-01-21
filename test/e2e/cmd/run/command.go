@@ -81,7 +81,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.autoPortForwarding, "auto-port-forwarding", false, "Enable port forwarding to pods")
 	cmd.Flags().DurationVar(&flags.commandTimeout, "command-timeout", 90*time.Second, "Timeout for commands executed")
 	cmd.Flags().StringVar(&flags.e2eImage, "e2e-image", "", "E2E test image")
-	cmd.Flags().StringVar(&flags.elasticStackVersion, "elastic-stack-version", test.LatestVersion7x, "Elastic Stack version")
+	cmd.Flags().StringVar(&flags.elasticStackVersion, "elastic-stack-version", test.LatestReleasedVersion7x, "Elastic Stack version")
 	cmd.Flags().StringVar(&flags.kubeConfig, "kubeconfig", "", "Path to kubeconfig")
 	cmd.Flags().BoolVar(&flags.local, "local", false, "Create the environment for running tests locally")
 	cmd.Flags().StringSliceVar(&flags.managedNamespaces, "managed-namespaces", []string{"mercury", "venus"}, "List of managed namespaces")

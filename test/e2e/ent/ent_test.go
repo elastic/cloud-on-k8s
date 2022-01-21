@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build ent || e2e
 // +build ent e2e
 
 package ent
@@ -50,7 +51,7 @@ func TestEnterpriseSearchTLSDisabled(t *testing.T) {
 
 func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -71,4 +72,30 @@ func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 	// We don't verify this behaviour here. Instead, we just check Enterprise Search eventually
 	// runs fine in the new version: it would fail to run if read-only mode wasn't toggled.
 	test.RunMutations(t, []test.Builder{es, ent}, []test.Builder{es, entUpgraded})
+}
+
+func TestEnterpriseSearchVersionUpgradeToLatest8x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestSnapshotVersion8x
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	name := "test-ent-version-upgrade-8x"
+	es := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithVersion(srcVersion)
+
+	ent := enterprisesearch.NewBuilder(name).
+		WithElasticsearchRef(es.Ref()).
+		WithNodeCount(2).
+		WithVersion(srcVersion).
+		WithRestrictedSecurityContext()
+
+	esUpgraded := es.WithVersion(dstVersion).WithMutatedFrom(&es)
+	entUpgraded := ent.WithVersion(dstVersion).WithMutatedFrom(&ent)
+
+	// During the version upgrade, the operator will toggle Enterprise Search read-only mode.
+	// We don't verify this behaviour here. Instead, we just check Enterprise Search eventually
+	// runs fine in the new version: it would fail to run if read-only mode wasn't toggled.
+	test.RunMutations(t, []test.Builder{es, ent}, []test.Builder{esUpgraded, entUpgraded})
 }
