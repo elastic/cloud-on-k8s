@@ -23,14 +23,14 @@ func mustNumNodes(role esv1.NodeRole, es esv1.Elasticsearch) int {
 	var numNodes int
 	ver := version.MustParse(es.Spec.Version)
 	for _, n := range es.Spec.NodeSets {
-		if hasRoles(role, n, ver) {
+		if hasRole(role, n, ver) {
 			numNodes += int(n.Count)
 		}
 	}
 	return numNodes
 }
 
-func hasRoles(role esv1.NodeRole, node esv1.NodeSet, ver version.Version) bool {
+func hasRole(role esv1.NodeRole, node esv1.NodeSet, ver version.Version) bool {
 	if node.Config == nil {
 		return esv1.DefaultCfg(ver).Node.HasRole(esv1.DataRole)
 	}
