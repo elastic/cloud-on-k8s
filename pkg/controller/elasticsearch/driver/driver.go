@@ -188,10 +188,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
-	_, permissive := d.ES.Annotations[esv1.DisableDowngradeValidationAnnotation]
-
-	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); !permissive && err != nil {
-		return results.WithError(err)
+	allowDownscales := d.ES.IsConfiguredToAllowDowngrades()
+	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+		if !allowDownscales {
+			return results.WithError(err)
+		}
+		log.Info("Allowing downgrade on user request", "warning", err.Error())
 	}
 
 	// TODO: support user-supplied certificate (non-ca)

@@ -483,6 +483,12 @@ func (es Elasticsearch) IsMarkedForDeletion() bool {
 	return !es.DeletionTimestamp.IsZero()
 }
 
+// IsConfiguredToAllowDowngrades returns true if the DisableDowngradeValidation annotation is set to the value of true.
+func (es Elasticsearch) IsConfiguredToAllowDowngrades() bool {
+	val, exists := es.Annotations[DisableDowngradeValidationAnnotation]
+	return exists && val == "true"
+}
+
 func (es *Elasticsearch) ServiceAccountName() string {
 	return es.Spec.ServiceAccountName
 }

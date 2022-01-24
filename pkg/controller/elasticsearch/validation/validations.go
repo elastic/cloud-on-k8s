@@ -254,7 +254,7 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 
 	// allow disabling version validation
-	if _, ok := proposed.Annotations[esv1.DisableDowngradeValidationAnnotation]; ok {
+	if proposed.IsConfiguredToAllowDowngrades() {
 		return errs
 	}
 
