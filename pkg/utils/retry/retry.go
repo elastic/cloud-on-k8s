@@ -47,7 +47,6 @@ func UntilSuccess(f func() error, timeout time.Duration, retryInterval time.Dura
 			if err == nil {
 				return nil
 			}
-			println(err.Error())
 			lastErr = err
 			retryTimer := time.NewTimer(retryInterval)
 			select {
