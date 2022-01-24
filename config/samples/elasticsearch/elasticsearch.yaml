@@ -2,6 +2,9 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
+  # uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods
+  #annotations:
+  #  eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: elasticsearch-sample
 spec:
   version: 7.16.2
@@ -12,6 +15,9 @@ spec:
       node.roles: ["master", "data", "ingest", "ml"]
       # this allows ES to run on nodes even if their vm.max_map_count has not been increased, at a performance cost
       node.store.allow_mmap: false
+      # uncomment the lines below to use the zone attribute from the node labels
+      #cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
+      #node.attr.zone: $ZONE
     podTemplate:
       metadata:
         labels:
@@ -37,8 +43,22 @@ spec:
               memory: 4Gi
               cpu: 1
           env:
+          # uncomment the lines below to make the topology.kubernetes.io/zone annotation available as an environment variable and
+          # use it as a cluster routing allocation attribute.
+          #- name: ZONE
+          #  valueFrom:
+          #    fieldRef:
+          #      fieldPath: metadata.annotations['topology.kubernetes.io/zone']
           - name: ES_JAVA_OPTS
             value: "-Xms2g -Xmx2g"
+        #topologySpreadConstraints:
+        #  - maxSkew: 1
+        #    topologyKey: topology.kubernetes.io/zone
+        #    whenUnsatisfiable: DoNotSchedule
+        #    labelSelector:
+        #      matchLabels:
+        #        elasticsearch.k8s.elastic.co/cluster-name: elasticsearch-sample
+        #        elasticsearch.k8s.elastic.co/statefulset-name: elasticsearch-sample-es-default
     count: 3
   #   # request 2Gi of persistent data storage for pods in this topology element
   #   volumeClaimTemplates:

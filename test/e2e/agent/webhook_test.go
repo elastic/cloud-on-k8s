@@ -28,7 +28,7 @@ func TestWebhook(t *testing.T) {
 			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Spec: v1alpha1.AgentSpec{
-			Version: test.LatestVersion7x,
+			Version: test.LatestReleasedVersion7x,
 		},
 	}
 

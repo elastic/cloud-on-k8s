@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -67,17 +68,28 @@ func ExternalServiceName(esName string) string {
 	return esv1.HTTPService(esName)
 }
 
+// InternalServiceName returns the name for the internal service
+// associated to this cluster, managed by the operator exclusively.
+func InternalServiceName(esName string) string {
+	return esv1.InternalHTTPService(esName)
+}
+
 // ExternalTransportServiceHost returns the hostname and the port used to reach Elasticsearch's transport endpoint.
 func ExternalTransportServiceHost(es types.NamespacedName) string {
 	return stringsutil.Concat(TransportServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
 }
 
-// ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
+// ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint.
 func ExternalServiceURL(es esv1.Elasticsearch) string {
 	return stringsutil.Concat(es.Spec.HTTP.Protocol(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
-// NewExternalService returns the external service associated to the given cluster
+// InternalServiceURL returns the URL used to reach Elasticsearch's internally managed service
+func InternalServiceURL(es esv1.Elasticsearch) string {
+	return stringsutil.Concat(es.Spec.HTTP.Protocol(), "://", InternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
+}
+
+// NewExternalService returns the external service associated to the given cluster.
 // It is used by users to perform requests against one of the cluster nodes.
 func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
@@ -102,6 +114,32 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
+// NewInternalService returns the internal service associated to the given cluster.
+// It is used by the operator to perform requests against the Elasticsearch cluster nodes,
+// and does not inherit the spec defined within the Elasticsearch custom resource,
+// to remove the possibility of the user misconfiguring access to the ES cluster.
+func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      InternalServiceName(es.Name),
+			Namespace: es.Namespace,
+			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:     es.Spec.HTTP.Protocol(),
+					Protocol: corev1.ProtocolTCP,
+					Port:     network.HTTPPort,
+				},
+			},
+			Selector:                 label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			PublishNotReadyAddresses: false,
+		},
+	}
+}
+
 // IsServiceReady checks if a service has one or more ready endpoints.
 func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 	endpoints := corev1.Endpoints{}
@@ -120,11 +158,20 @@ func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 
 // GetExternalService returns the external service associated to the given Elasticsearch cluster.
 func GetExternalService(c k8s.Client, es esv1.Elasticsearch) (corev1.Service, error) {
+	return getServiceByName(c, es, ExternalServiceName(es.Name))
+}
+
+// GetInternalService returns the internally managed service associated to the given Elasticsearch cluster.
+func GetInternalService(c k8s.Client, es esv1.Elasticsearch) (corev1.Service, error) {
+	return getServiceByName(c, es, InternalServiceName(es.Name))
+}
+
+func getServiceByName(c k8s.Client, es esv1.Elasticsearch, serviceName string) (corev1.Service, error) {
 	var svc corev1.Service
 
 	namespacedName := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      ExternalServiceName(es.Name),
+		Name:      serviceName,
 	}
 
 	if err := c.Get(context.Background(), namespacedName, &svc); err != nil {
@@ -153,7 +200,7 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 			return podURL
 		}
 	}
-	return ExternalServiceURL(es)
+	return InternalServiceURL(es)
 }
 
 // ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.

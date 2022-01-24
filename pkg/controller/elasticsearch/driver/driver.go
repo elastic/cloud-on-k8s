@@ -134,11 +134,17 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	var internalService *corev1.Service
+	internalService, err = common.ReconcileService(ctx, d.Client, services.NewInternalService(d.ES), &d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	certificateResources, res := certificates.Reconcile(
 		ctx,
 		d,
 		d.ES,
-		[]corev1.Service{*externalService},
+		[]corev1.Service{*externalService, *internalService},
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
@@ -195,7 +201,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	esReachable, err := services.IsServiceReady(d.Client, *externalService)
+	esReachable, err := services.IsServiceReady(d.Client, *internalService)
 	if err != nil {
 		return results.WithError(err)
 	}

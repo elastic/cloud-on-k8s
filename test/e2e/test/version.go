@@ -11,12 +11,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
-// Elastic Stack versions used in the E2E tests
+// Elastic Stack versions used in the E2E tests. These should be updated as new versions for each major are released.
 const (
-	// MinVersion68x minimum version for 6.8.x tested with the operator
-	MinVersion68x = "6.8.20"
-	// LatestVersion7x current latest version for 7.x
-	LatestVersion7x = "7.16.2" // version to synchronize with the latest release of the Elastic Stack
+	// LatestReleasedVersion6x is the latest released version for 6.x
+	LatestReleasedVersion6x = "6.8.20"
+	// LatestReleasedVersion7x is the latest released version for 7.x
+	LatestReleasedVersion7x = "7.16.2"
+	// LatestSnapshotVersion8x is the latest snapshot version for 8.x
+	LatestSnapshotVersion8x = "8.0.0-SNAPSHOT"
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
@@ -46,7 +48,27 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to parse version '%s': %w", to, err)
 	}
-	// major digits must be equal or differ by only 1
-	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
-	return validMajorDigit && !srcVer.GTE(dstVer), nil
+
+	// downgrades are not supported
+	if srcVer.GTE(dstVer) {
+		return false, nil
+	}
+
+	// upgrades within the same major are always ok
+	if srcVer.Major == dstVer.Major {
+		return true, nil
+	}
+
+	// special case of major upgrade: last minor of major 6 to any major 7
+	if srcVer.Major == 6 && srcVer.Minor == 8 && dstVer.Major == 7 {
+		return true, nil
+	}
+
+	// special case of major upgrade: last minor of major 7 to any major 8
+	if srcVer.Major == 7 && srcVer.Minor == 17 && dstVer.Major == 8 {
+		return true, nil
+	}
+
+	// all valid cases are capture above
+	return false, nil
 }

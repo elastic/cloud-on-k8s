@@ -51,13 +51,13 @@ var (
 	fakeService = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "testns",
-			Name:      services.ExternalServiceName("testes"),
+			Name:      services.InternalServiceName("testes"),
 		},
 	}
 	fakeEndpoints = &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "testns",
-			Name:      services.ExternalServiceName("testes"),
+			Name:      services.InternalServiceName("testes"),
 		},
 		Subsets: []corev1.EndpointSubset{{
 			Addresses: []corev1.EndpointAddress{{

@@ -88,7 +88,7 @@ func TestElasticsearchURL(t *testing.T) {
 					},
 				},
 			},
-			want: "https://my-cluster-es-http.my-ns.svc:9200",
+			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
 		},
 		{
 			name: "scheme change in progress: random pod address",
@@ -127,7 +127,7 @@ func TestElasticsearchURL(t *testing.T) {
 					{},
 				},
 			},
-			want: "https://my-cluster-es-http.my-ns.svc:9200",
+			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
 		},
 		{
 			name: "unexpected: partially missing pod labels: fallback to service",
@@ -148,7 +148,7 @@ func TestElasticsearchURL(t *testing.T) {
 					},
 				},
 			},
-			want: "https://my-cluster-es-http.my-ns.svc:9200",
+			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
 		},
 	}
 	for _, tt := range tests {
@@ -217,6 +217,42 @@ func TestNewExternalService(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			es := mkElasticsearch(tc.httpConf)
 			haveSvc := NewExternalService(es)
+			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
+		})
+	}
+}
+
+func TestNewInternalService(t *testing.T) {
+	testCases := []struct {
+		name     string
+		httpConf commonv1.HTTPConfig
+		wantSvc  func() corev1.Service
+	}{
+		{
+			name: "user supplied selector is not applied to internal service",
+			httpConf: commonv1.HTTPConfig{
+				Service: commonv1.ServiceTemplate{
+					Spec: corev1.ServiceSpec{
+						Selector: map[string]string{
+							"app": "coordinating-node",
+						},
+					},
+				},
+			},
+			wantSvc: func() corev1.Service {
+				svc := mkHTTPService()
+				svc.Spec.Type = corev1.ServiceTypeClusterIP
+				svc.Spec.Ports[0].Name = "https"
+				svc.Name = "elasticsearch-test-es-internal-http"
+				return svc
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			es := mkElasticsearch(tc.httpConf)
+			haveSvc := NewInternalService(es)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}

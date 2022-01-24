@@ -20,9 +20,10 @@ func TestIsValidUpgrade(t *testing.T) {
 		{from: "6.8.5", to: "6.8.6", isValid: true},
 		{from: "6.8.5", to: "7.1.1", isValid: true},
 		{from: "7.1.1", to: "7.6.0", isValid: true},
-		{from: "7.6.0", to: "8.0.0", isValid: true},
-		{from: "7.6.0", to: "8.0.0-SNAPSHOT", isValid: true},
+		{from: "7.17.0", to: "8.0.0", isValid: true},
 		// invalid upgrade paths
+		{from: "7.16.0", to: "8.0.0", isValid: false},
+		{from: "7.6.0", to: "8.0.0-SNAPSHOT", isValid: false},
 		{from: "7.6.0", to: "7.6.0", isValid: false},
 		{from: "7.6.0", to: "7.5.0", isValid: false},
 		{from: "7.6.1", to: "7.6.0", isValid: false},

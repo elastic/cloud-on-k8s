@@ -390,7 +390,7 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 func trustCAScript(ver version.Version, caPath string) string {
 	sharedCAPath := "/etc/pki/ca-trust/source/anchors/"
 	updateCmd := "update-ca-trust"
-	if ver.Major >= 8 {
+	if ver.GTE(version.MinFor(7, 17, 0)) {
 		sharedCAPath = "/usr/local/share/ca-certificates"
 		updateCmd = "update-ca-certificates"
 	}

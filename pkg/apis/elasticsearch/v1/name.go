@@ -19,6 +19,7 @@ const (
 	configSecretSuffix                           = "config"
 	secureSettingsSecretSuffix                   = "secure-settings"
 	httpServiceSuffix                            = "http"
+	internalHTTPServiceSuffix                    = "internal-http"
 	transportServiceSuffix                       = "transport"
 	elasticUserSecretSuffix                      = "elastic-user"
 	internalUsersSecretSuffix                    = "internal-users"
@@ -126,6 +127,10 @@ func LegacyTransportCertsSecretSuffix(esName string) string {
 
 func TransportService(esName string) string {
 	return ESNamer.Suffix(esName, transportServiceSuffix)
+}
+
+func InternalHTTPService(esName string) string {
+	return ESNamer.Suffix(esName, internalHTTPServiceSuffix)
 }
 
 func HTTPService(esName string) string {
