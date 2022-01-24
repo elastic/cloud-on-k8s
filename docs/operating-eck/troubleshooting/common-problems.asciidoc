@@ -218,6 +218,6 @@ On OpenShift the same workaround can be performed in the UI by clicking on "Unin
 [id="{p}-{page_id}-version-downgrade"]
 == If you upgraded Elasticsearch to the wrong version
 If you accidentally upgrade one of your Elasticsearch clusters to a version that does not exist or a version to which a direct upgrade is not possible from your currently deployed version, a validation will prevent you from going back to the previous version.
-The reason for this validation is that ECK will not allow downgrades as this is not supported by Elasticsearch and once the data directory of Elasticsearch has been upgraded there is no way back to the old version.
+The reason for this validation is that ECK will not allow downgrades as this is not supported by Elasticsearch and once the data directory of Elasticsearch has been upgraded there is no way back to the old version without a link:https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-upgrade.html[snapshot restore].
 
-The two scenarios described above however are exceptions because Elasticsearch never started up successfully. If you annotate the Elasticsearch resource with `k8s.eck.elastic.co/disable-downgrade-validation` ECK will allow you to go back to the old version at your own risk. Please remove the annotation afterwards to prevent accidental downgrades and reduced availability.
+The two scenarios described above however are exceptions because Elasticsearch never started up successfully. If you annotate the Elasticsearch resource with `k8s.eck.elastic.co/disable-downgrade-validation=true` ECK will allow you to go back to the old version at your own risk. Please remove the annotation afterwards to prevent accidental downgrades and reduced availability.
