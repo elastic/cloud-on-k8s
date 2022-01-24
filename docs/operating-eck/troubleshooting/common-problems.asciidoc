@@ -221,3 +221,37 @@ If you accidentally upgrade one of your Elasticsearch clusters to a version that
 The reason for this validation is that ECK will not allow downgrades as this is not supported by Elasticsearch and once the data directory of Elasticsearch has been upgraded there is no way back to the old version.
 
 The two scenarios described above however are exceptions because Elasticsearch never started up successfully. If you annotate the Elasticsearch resource with `k8s.eck.elastic.co/disable-downgrade-validation` ECK will allow you to go back to the old version at your own risk. Please remove the annotation afterwards to prevent accidental downgrades and reduced availability.
+
+
+[id="{p}-{page_id}-incorrect-8x-upgrade"]
+== If you upgraded to Elasticsearch 8.0 from another version than 7.17
+
+If you upgraded to Elasticsearch 8.0 from a version of Elasticsearch other than 7.17 the upgrade will not complete successfully. This is because 7.17 is the only version from which an upgrade to 8.0 is possible. ECK 2.0 validates that you follow the required upgrade path but older versions of ECK will allow you to apply the upgrade without warning.
+
+Once you mistakenly upraded to 8.0 from a version that is not on the upgrade path you will see the following symptoms:
+
+* one or more nodes in your cluster are in `CrashLoopBackOff` status
+* on inspection the Elasticsearch logs for the affected node contain a message that an upgrade from your current version to 8.0 is not possible
+
+To recover from this situation follow these steps below. But do not forget to adjust names and versions to your environment. Consider an Elasticsearch cluster called `es` with a nodeSet called `default` for this example:
+
+[source,sh]
+----
+# disable the strict downgrade validations for this procedure
+kubectl annotate es es eck.k8s.elastic.co/disable-downgrade-validation=true
+
+# go back to last version $PREVIOUS_VERSION should contain the version from which you upgraded
+kubectl patch es es --type merge --patch '{"spec": {"version": $PREVIOUS_VERSION }}'
+
+# suspend the affected Pod or Pods (es-es-default-2 in this example)
+kubectl annotate es es eck.k8s.elastic.co/suspend=es-es-default-2
+
+# remove the nodes file created by Elasticsearch 8.0
+kubectl exec es-es-default-2 -c elastic-internal-suspend -- rm data/nodes
+
+# remove annotations added in the previous steps
+kubectl annotate es es eck.k8s.elastic.co/suspend-
+kubectl annotate es es eck.k8s.elastic.co/permissive-version-validation-
+----
+
+Once you completed these steps you should be able to do a regular version upgrade to 7.17 and once complete to 8.0.
