@@ -85,7 +85,7 @@ func GetRefObjectFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*RefObject
 	}
 
 	ref := RefObject{URL: string(url), Username: string(username), Password: string(password)}
-	caCert, ok := secretRef.Data["ca.cert"]
+	caCert, ok := secretRef.Data[certificates.CAFileName]
 	if ok {
 		ref.CaCert = string(caCert)
 	}

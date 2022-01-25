@@ -277,7 +277,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 								Namespace: "default",
 							},
 							Data: map[string][]byte{
-								certificates.CertFileName: nil,
+								certificates.CAFileName: nil,
 							},
 						},
 						&corev1.Secret{
@@ -642,7 +642,7 @@ func defaultInitialObjects() []runtime.Object {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				certificates.CertFileName: nil,
+				certificates.CAFileName: nil,
 			},
 		},
 		&corev1.Secret{

@@ -851,7 +851,7 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 							Namespace: "ns",
 						},
 						Data: map[string][]byte{
-							"tls.crt": []byte("def"),
+							"ca.crt": []byte("def"),
 						},
 					},
 				),
