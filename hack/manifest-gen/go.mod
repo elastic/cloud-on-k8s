@@ -138,6 +138,7 @@ require (
 )
 
 exclude (
+	github.com/Microsoft/hcsshim v0.9.1
 	github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44
 	github.com/containernetworking/cni v0.7.1
 	github.com/containernetworking/cni v0.8.0
