@@ -27,10 +27,10 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 	type fields struct {
 		esVersion       string
 		upgradeTestPods upgradeTestPods
-		ES              esv1.Elasticsearch
 		health          client.Health
 		mutation        mutation
 		maxUnavailable  int
+		esAnnotations   map[string]string
 	}
 	tests := []struct {
 		name                         string
@@ -141,8 +141,8 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			health:    tt.fields.health,
 		}
 		esClient := &fakeESClient{version: version.MustParse("7.13.0")}
-		es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable)
-		k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, nothing)...)
+		es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations)
+		k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, nothing, tt.fields.esAnnotations)...)
 		ctx := rollingUpgradeCtx{
 			parentCtx:       context.Background(),
 			client:          k8sClient,
@@ -180,11 +180,11 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		upgradeTestPods upgradeTestPods
 		shardLister     client.ShardLister
 		shutdowns       map[string]client.NodeShutdown
-		ES              esv1.Elasticsearch
 		health          client.Health
 		maxUnavailable  int
 		podFilter       filter
 		esVersion       string
+		esAnnotations   map[string]string
 	}
 	tests := []struct {
 		name                         string
@@ -300,6 +300,48 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
+			name: "3 healthy masters, allow the deletion of 2 if 'one_master_at_a_time' predicate is disabled, and maxUnavailable == 2",
+			fields: fields{
+				esVersion: "7.5.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 2,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+				esAnnotations: map[string]string{
+					disableUpgradePredicatesAnnotation: "one_master_at_a_time",
+				},
+			},
+			deleted:                      []string{"masters-1", "masters-2"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "3 unhealthy masters, red cluster, allow the deletion of all if all predicates are disabled, and maxUnavailable is 3 more than number of unhealthy pods",
+			fields: fields{
+				esVersion: "7.5.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(false).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 6,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
+				podFilter:      nothing,
+				esAnnotations: map[string]string{
+					disableUpgradePredicatesAnnotation: "*",
+				},
+			},
+			deleted:                      []string{"masters-0", "masters-1", "masters-2"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
 			name: "3 healthy masters, allow the deletion of 1 even if maxUnavailable > 1",
 			fields: fields{
 				esVersion: "7.5.0",
@@ -369,6 +411,25 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			deleted:                      []string{},
 			wantErr:                      false,
 			wantShardsAllocationDisabled: false,
+		},
+		{
+			name: "Delete healthy node if red only with disabled predicate annotation",
+			fields: fields{
+				esVersion: "7.5.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("master-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 1,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
+				podFilter:      nothing,
+				esAnnotations: map[string]string{
+					disableUpgradePredicatesAnnotation: "only_restart_healthy_node_if_green_or_yellow",
+				},
+			},
+			deleted:                      []string{"master-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 		{
 			name: "Do not delete healthy node if health is unknown",
@@ -876,12 +937,12 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:    tt.fields.health,
 			}
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
-			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter)...)
+			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
 			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", log)
 			ctx := rollingUpgradeCtx{
 				parentCtx:       context.Background(),
 				client:          k8sClient,
-				ES:              tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable),
+				ES:              tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations),
 				statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 				esClient:        esClient,
 				shardLister:     tt.fields.shardLister,

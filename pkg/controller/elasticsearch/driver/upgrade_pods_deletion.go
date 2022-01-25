@@ -50,7 +50,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
+	podsToDelete, err := applyPredicates(predicateContext, candidates, ctx.ES.Annotations, maxUnavailableReached, allowedDeletions)
 	if err != nil {
 		return podsToDelete, err
 	}
@@ -186,6 +186,7 @@ func runPredicates(
 	ctx PredicateContext,
 	candidate corev1.Pod,
 	deletedPods []corev1.Pod,
+	annotations map[string]string,
 	maxUnavailableReached bool,
 ) (*failedPredicate, error) {
 	for _, predicate := range predicates {
@@ -194,6 +195,13 @@ func runPredicates(
 			return nil, err
 		}
 		if !canDelete {
+			// if this specific predicate name is disabled by the disable predicate annotation
+			// "eck.k8s.elastic.co/disable-upgrade-predicates", then ignore this predicate,
+			// and continue processing the remaining predicates.
+			if predicateDisabled(predicate, annotations) {
+				log.V(0).Info("disabling upgrade predicate because of annotation", "predicate", predicate.name)
+				continue
+			}
 			// Skip this Pod, it can't be deleted for the moment
 			return &failedPredicate{
 				pod:       candidate.Name,
@@ -203,4 +211,14 @@ func runPredicates(
 	}
 	// All predicates passed!
 	return nil, nil
+}
+
+// predicateDisabled determines whether a given predicate has been disabled by providing the
+// disable predicate annotation "eck.k8s.elastic.co/disable-upgrade-predicates", and either providing
+// the predicate name as the value to the annotations map, or providing "*" as the value to disable all predicates.
+func predicateDisabled(predicate Predicate, annotations map[string]string) bool {
+	if val, ok := annotations[disableUpgradePredicatesAnnotation]; ok && (predicate.name == val || val == "*") {
+		return true
+	}
+	return false
 }
