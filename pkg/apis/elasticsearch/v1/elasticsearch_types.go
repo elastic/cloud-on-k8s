@@ -25,6 +25,8 @@ const (
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
+	// DisableDowngradeValidationAnnotation allows circumventing downgrade/upgrade checks.
+	DisableDowngradeValidationAnnotation = "eck.k8s.elastic.co/disable-downgrade-validation"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
@@ -479,6 +481,12 @@ func (es Elasticsearch) HasDownwardNodeLabels() bool {
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted
 func (es Elasticsearch) IsMarkedForDeletion() bool {
 	return !es.DeletionTimestamp.IsZero()
+}
+
+// IsConfiguredToAllowDowngrades returns true if the DisableDowngradeValidation annotation is set to the value of true.
+func (es Elasticsearch) IsConfiguredToAllowDowngrades() bool {
+	val, exists := es.Annotations[DisableDowngradeValidationAnnotation]
+	return exists && val == "true"
 }
 
 func (es *Elasticsearch) ServiceAccountName() string {
