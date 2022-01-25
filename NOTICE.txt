@@ -3182,11 +3182,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.23.1
-Time    : 2021-12-16T17:26:59Z
+Version : v0.23.2
+Time    : 2022-01-19T21:33:26Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.2/LICENSE:
 
 
                                  Apache License
@@ -3394,11 +3394,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.23.1
-Time    : 2021-12-13T21:21:22Z
+Version : v0.23.2
+Time    : 2022-01-15T05:24:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.2/LICENSE:
 
 
                                  Apache License
@@ -3606,11 +3606,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.1/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.23.1
-Time    : 2021-12-16T17:35:44Z
+Version : v0.23.2
+Time    : 2022-01-19T21:45:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.2/LICENSE:
 
 
                                  Apache License
@@ -19699,11 +19699,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/structured-merge-diff/v4
-Version : v4.2.0
-Time    : 2021-10-27T23:59:03Z
+Version : v4.2.1
+Time    : 2021-12-04T18:42:31Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.2.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
