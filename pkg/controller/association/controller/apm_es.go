@@ -72,6 +72,7 @@ func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (stri
 	if !esRef.IsDefined() {
 		return "", nil
 	}
+
 	es := esv1.Elasticsearch{}
 	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 		return "", err

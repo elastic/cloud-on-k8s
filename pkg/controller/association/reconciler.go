@@ -70,7 +70,7 @@ type AssociationInfo struct {
 	AssociationConfAnnotationNameBase string
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
-	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
+	ReferencedResourceVersion func(c k8s.Client, referencedResource commonv1.ObjectSelector) (string, error)
 	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
 	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
 	// Beat resource).
@@ -232,21 +232,42 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	associationRef := association.AssociationRef()
+	assocRef := association.AssociationRef()
 	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
 
-	if associationRef.IsObjectTypeSecret() {
-		expectedAssocConf, err := reconcileRefSecret(r.Client, associationRef)
+	if assocRef.IsObjectTypeSecret() {
+		ref, err := GetRefObjectFromSecret(r.Client, assocRef)
 		if err != nil {
 			return commonv1.AssociationFailed, err
 		}
-		return r.updateAssocConf(ctx, expectedAssocConf, association)
+
+		var ver string
+		ver, err = r.ReferencedResourceVersion(r.Client, assocRef)
+		if err != nil {
+			return commonv1.AssociationFailed, err
+		}
+
+		// set url, version
+		expectedAssocConf := commonv1.AssociationConf{
+			Version: ver,
+			URL:     ref.URL,
+			// points the auth secret to the ref secret
+			AuthSecretName: assocRef.Name,
+			AuthSecretKey:  authPasswordRefSecretKey,
+			CACertProvided: ref.CaCert != "",
+		}
+		// points the ca secret to the ref secret if needed
+		if expectedAssocConf.CACertProvided {
+			expectedAssocConf.CASecretName = assocRef.Name
+		}
+
+		return r.updateAssocConf(ctx, &expectedAssocConf, association)
 	}
 
 	caSecret, err := r.ReconcileCASecret(
 		association,
 		r.AssociationInfo.ReferencedResourceNamer,
-		associationRef.NamespacedName(),
+		assocRef.NamespacedName(),
 	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
@@ -259,7 +280,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// Propagate the currently running version of the referenced resource (example: Elasticsearch version).
 	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
-	ver, err := r.ReferencedResourceVersion(r.Client, associationRef.NamespacedName())
+	ver, err := r.ReferencedResourceVersion(r.Client, assocRef)
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}

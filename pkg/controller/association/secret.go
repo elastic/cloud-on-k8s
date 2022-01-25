@@ -5,44 +5,23 @@
 package association
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/jsonpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func reconcileRefSecret(c k8s.Client, assocRef commonv1.ObjectSelector) (*commonv1.AssociationConf, error) {
-	ref, err := GetRefObjectFromSecret(c, assocRef)
-	if err != nil {
-		return nil, err
-	}
-
-	// request / to extract version and check the HTTP connexion
-	clusterInfo, err := ref.requestRoot()
-	if err != nil {
-		return nil, err
-	}
-
-	// set url, version
-	assocConf := commonv1.AssociationConf{
-		Version:        clusterInfo.Version.Number,
-		URL:            ref.URL,
-		CACertProvided: ref.CaCert == "",
-	}
-	// points the ca secret to the ref secret if needed
-	if assocConf.CACertProvided {
-		assocConf.CASecretName = assocRef.Name
-	}
-
-	return &assocConf, nil
-}
+// authPasswordRefSecretKey is the name of the key for the password when using a custom secret
+const authPasswordRefSecretKey = "password"
 
 func GetAuthFromSecretOr(client k8s.Client, assocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {
 	if assocRef.IsObjectTypeSecret() {
@@ -55,7 +34,7 @@ func GetAuthFromSecretOr(client k8s.Client, assocRef commonv1.ObjectSelector, ot
 	return other()
 }
 
-// RefObject holds data stored in a custom Secret to reach over HTTP a referenced Elastic resource external to the
+// RefObject holds connection information stored in a custom Secret to reach over HTTP a referenced Elastic resource external to the
 // local Kubernetes cluster.
 type RefObject struct {
 	URL      string
@@ -79,7 +58,7 @@ func GetRefObjectFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*RefObject
 	if !ok {
 		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", o.Name)
 	}
-	password, ok := secretRef.Data["password"]
+	password, ok := secretRef.Data[authPasswordRefSecretKey]
 	if !ok {
 		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", o.Name)
 	}
@@ -93,28 +72,47 @@ func GetRefObjectFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*RefObject
 	return &ref, nil
 }
 
-func (r RefObject) requestRoot() (*esclient.Info, error) {
-	req, err := http.NewRequest("GET", r.URL, nil) //nolint:noctx
+func (r RefObject) Request(path string, jsonPath string) (string, error) {
+	req, err := http.NewRequest("GET", r.URL+path, nil) //nolint:noctx
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	req.SetBasicAuth(r.Username, r.Password)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error requesting /, statusCode = %d", resp.StatusCode)
+		return "", fmt.Errorf("error requesting %s, statusCode = %d", path, resp.StatusCode)
 	}
+
 	defer resp.Body.Close()
-
-	var clusterInfo esclient.Info // TODO: handle Elastic resource other than ES
-	if err := json.NewDecoder(resp.Body).Decode(&clusterInfo); err != nil {
-		return nil, errors.Wrap(err, "Error request /")
+	var obj interface{}
+	err = json.NewDecoder(resp.Body).Decode(&obj)
+	if err != nil {
+		return "", err
 	}
 
-	return &clusterInfo, nil
+	// extract the version using the json path
+	j := jsonpath.New(jsonPath)
+	if err := j.Parse(jsonPath); err != nil {
+		return "", err
+	}
+	buf := new(bytes.Buffer)
+	err = j.Execute(buf, obj)
+	if err != nil {
+		return "", err
+	}
+	ver := buf.String()
+
+	// valid the version
+	_, err = version.Parse(ver)
+	if err != nil {
+		return "", err
+	}
+
+	return ver, nil
 }
 
 // filterSecretRef returns those associations that reference a Kubernetes secret.

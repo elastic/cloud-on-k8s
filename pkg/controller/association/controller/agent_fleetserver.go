@@ -64,9 +64,21 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 
 // referencedFleetServerStatusVersion returns the currently running version of Agent
 // reported in its status.
-func referencedFleetServerStatusVersion(c k8s.Client, fsRef types.NamespacedName) (string, error) {
+func referencedFleetServerStatusVersion(c k8s.Client, fsRef commonv1.ObjectSelector) (string, error) {
+	if fsRef.IsObjectTypeSecret() {
+		ref, err := association.GetRefObjectFromSecret(c, fsRef)
+		if err != nil {
+			return "", err
+		}
+		ver, err := ref.Request("/?", "{ .number }") // FIXME
+		if err != nil {
+			return "", err
+		}
+		return ver, nil
+	}
+
 	var fleetServer agentv1alpha1.Agent
-	err := c.Get(context.Background(), fsRef, &fleetServer)
+	err := c.Get(context.Background(), fsRef.NamespacedName(), &fleetServer)
 	if err != nil {
 		return "", err
 	}
