@@ -16,7 +16,7 @@ const (
 	// LatestReleasedVersion6x is the latest released version for 6.x
 	LatestReleasedVersion6x = "6.8.20"
 	// LatestReleasedVersion7x is the latest released version for 7.x
-	LatestReleasedVersion7x = "7.16.2"
+	LatestReleasedVersion7x = "7.16.3"
 	// LatestSnapshotVersion8x is the latest snapshot version for 8.x
 	LatestSnapshotVersion8x = "8.0.0-SNAPSHOT"
 )

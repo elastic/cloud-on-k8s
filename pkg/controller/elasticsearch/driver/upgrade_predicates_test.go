@@ -313,7 +313,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 				esAnnotations: map[string]string{
-					disableUpgradePredicatesAnnotation: "one_master_at_a_time",
+					DisableUpgradePredicatesAnnotation: "one_master_at_a_time",
 				},
 			},
 			deleted:                      []string{"masters-1", "masters-2"},
@@ -334,7 +334,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
 				podFilter:      nothing,
 				esAnnotations: map[string]string{
-					disableUpgradePredicatesAnnotation: "*",
+					DisableUpgradePredicatesAnnotation: "*",
 				},
 			},
 			deleted:                      []string{"masters-0", "masters-1", "masters-2"},
@@ -424,7 +424,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
 				podFilter:      nothing,
 				esAnnotations: map[string]string{
-					disableUpgradePredicatesAnnotation: "only_restart_healthy_node_if_green_or_yellow",
+					DisableUpgradePredicatesAnnotation: "only_restart_healthy_node_if_green_or_yellow",
 				},
 			},
 			deleted:                      []string{"master-0"},

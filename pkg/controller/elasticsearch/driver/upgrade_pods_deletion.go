@@ -217,7 +217,7 @@ func runPredicates(
 // disable predicate annotation "eck.k8s.elastic.co/disable-upgrade-predicates", and either providing
 // the predicate name as the value to the annotations map, or providing "*" as the value to disable all predicates.
 func predicateDisabled(predicate Predicate, annotations map[string]string) bool {
-	if val, ok := annotations[disableUpgradePredicatesAnnotation]; ok && (predicate.name == val || val == "*") {
+	if val, ok := annotations[DisableUpgradePredicatesAnnotation]; ok && (predicate.name == val || val == "*") {
 		return true
 	}
 	return false

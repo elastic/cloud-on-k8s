@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// disableUpgradePredicatesAnnotation is the annontation that can be applied to an
+	// DisableUpgradePredicatesAnnotation is the annontation that can be applied to an
 	// Elasticsearch cluster to disable certain predicates during rolling upgrades.
 	//
 	// Example:
@@ -26,7 +26,7 @@ const (
 	//   metadata:
 	//     annotations:
 	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
-	disableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
+	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
 )
 
 // PredicateContext is the set of fields used while determining what set of pods
