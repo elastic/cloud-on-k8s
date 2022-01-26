@@ -153,6 +153,18 @@ func (c *CanonicalConfig) HasKeys(keys []string) []string {
 	return has
 }
 
+// HasChildConfig returns true if c has a child config object below key.
+func (c *CanonicalConfig) HasChildConfig(key string) bool {
+	if c == nil {
+		return false
+	}
+	_, err := c.asUCfg().Child(key, -1, Options...)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // Render returns the content of the configuration file,
 // with fields sorted alphabetically
 func (c *CanonicalConfig) Render() ([]byte, error) {
