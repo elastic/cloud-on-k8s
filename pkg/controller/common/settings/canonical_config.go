@@ -159,10 +159,7 @@ func (c *CanonicalConfig) HasChildConfig(key string) bool {
 		return false
 	}
 	_, err := c.asUCfg().Child(key, -1, Options...)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // Render returns the content of the configuration file,
