@@ -7,11 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Upgrade ECK
 
-This page provides instructions on how to upgrade ECK.
-
-- <<{p}-ga-upgrade>>
-- <<{p}-beta-to-ga-upgrade>>
-- <<{p}-ga-openshift>>
+This page provides instructions on how to upgrade the ECK operator.
 
 For Elastic Stack upgrade, check <<{p}-upgrading-stack,Upgrade the Elastic Stack version>>.
 
@@ -26,12 +22,11 @@ Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to
 Note that the release notes and highlights only list the changes since the last release. If you are skipping over any intermediate versions during the upgrade -- such as going directly from 1.0.0-beta1 to {eck_version} -- review the release notes and highlights of each of the skipped releases to fully understand all the breaking changes you might encounter during and after the upgrade.
 
 [float]
-[id="{p}-beta-to-ga-upgrade"]
-== Upgrade from beta or previous GA releases to ECK {eck_version}
+[id="{p}-upgrade-instructions"]
+== Upgrade instructions
 
 CAUTION: The upgrade process results in an update to all the existing managed resources. This potentially triggers a rolling restart of all Elasticsearch and Kibana pods. This <<{p}-beta-to-ga-rolling-restart, list>> details the affected target versions that will cause a rolling restart. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. Furthermore, <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
 
-IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, and want to upgrade from beta, jump to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
 Release 1.7.0 moves the link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/[CustomResourceDefinitions] (CRD) used by ECK to the v1 version. If you upgrade from a previous version of ECK, the new version of the CRDs replaces the existing CRDs. If you cannot remove the current ECK installation because you have production workloads that must not be deleted, the following approach is recommended.
 
@@ -75,13 +70,14 @@ This will update the ECK installation to the latest binary and update the CRDs a
 
 [float]
 [id="{p}-beta-to-ga-rolling-restart"]
-=== Control rolling restarts during the upgrade
+== Control rolling restarts during the upgrade
 
 Upgrading the operator results in a one-time update to existing managed resources in the cluster. This potentially triggers a rolling restart of pods by Kubernetes to apply those changes. The following table shows the target version that would cause a rolling restart.
 
 * 1.6
 * 1.7
 * 1.9
+* 2.0
 
 If you have a very large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart might be disruptive or inconvenient. To have more control over when the pods belonging to a particular deployment should be restarted, you can <<{p}-exclude-resource,add an annotation>> to the corresponding resources to temporarily exclude them from being managed by the operator. When the time is convenient, you can remove the annotation and let the rolling restart go through.
 
@@ -119,10 +115,3 @@ kubectl annotate elasticsearch quickstart $RM_ANNOTATION
 <1> Before ECK 1.1.0, the annotation used to exclude resources was `common.k8s.elastic.co/pause=true`.
 
 NOTE: The ECK source repository contains a link:{eck_github}/tree/{eck_release_branch}/hack/annotator[shell script] to assist with mass addition/deletion of annotations.
-
-
-[float]
-[id="{p}-ga-openshift"]
-== Upgrade from beta to GA on older versions of Kubernetes
-
-If you are running Openshift 3.11 or a Kubernetes version older than 1.13 and have existing resources created using the `v1beta1` API version that are being updated to `v1` API version as part of the ECK upgrade, then in-place upgrade is not possible due to an link:https://github.com/kubernetes/kubernetes/issues/73752[upstream bug]. You have to completely uninstall the existing ECK operator (which will cause all existing Elastic Stack applications to be deleted) and install the new version of the operator. Make sure to backup your existing manifests and <<{p}-snapshots,take snapshots of Elasticsearch clusters>> before <<{p}-uninstalling-eck,uninstalling ECK>>. Then you can <<{p}-deploy-eck,install the new version of ECK>>, update your manifests to the `v1` API version, re-create the Elastic Stack deployments, and restore data from the snapshots.
