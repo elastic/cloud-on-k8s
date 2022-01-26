@@ -173,3 +173,68 @@ Specifically, if the Elasticsearch index settings demand a higher number of shar
 
 ** Adjust the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-update-settings.html[index settings] to a number of replicas that allow the desired node removal.
 ** Use link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#dynamic-index-settings[`auto_expand_replicas`] to automatically adjust the replicas to the number of data nodes in the cluster.
+
+[id="{p}-advanced-upgrade-control"]
+== Advanced control during rolling upgrades
+
+The rules (otherwise known as predicates) that the ECK operator follows during an Elasticsearch upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an Elasticsearch cluster upgrade because it deems it to be "unsafe".
+
+WARNING: Selectively disabling the predicates below are extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable.  Use only if you are absolutely positive you are not causing permanent damage to an Elasticsearch cluster.
+
+* The following named predicates control the upgrade process
+
+** do_not_restart_healthy_node_if_MaxUnavailable_reached
++
+If `maxUnavailable` is reached, only allow unhealthy Pods to be deleted.
+** skip_already_terminating_pods
++
+Do not attempt to restart pods that are already in the process of being terminated.
+** only_restart_healthy_node_if_green_or_yellow
++
+Only restart healthy Elasticsearch nodes if the health of the cluster is either green or yellow, never red.
+** if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas
++
+During a rolling upgrade, primary shards assigned to a node running a new version cannot have their replicas assigned to a node with the old version. Therefore we must allow some Pods to be restarted even if cluster health is Yellow so the replicas can be assigned.
+** require_started_replica
++
+If a cluster is yellow, allow deleting a node, but only if they do not contain the only replica of a shard since it would make the cluster go red.
+** one_master_at_a_time
++
+Only allow a single master to be upgraded at a time.
+** do_not_delete_last_master_if_all_master_ineligible_nodes_are_not_upgraded
++
+Force an upgrade of all the master-ineligible nodes before upgrading the last master-eligible node.
+** do_not_delete_pods_with_same_shards
++
+Do not allow 2 pods to be deleted at the same time, that contain the same shard.
+
+Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch spec, specifically naming the predicate that is needing to be disabled.
+
+* Example use case
+
+Assume a given Elasticsearch cluster is a "red" state because of ab un-allocatable shard setting that was applied to the cluster
+
+```json
+{
+	"settings": {
+		"index.routing.allocation.include._id": "does not exist"
+	}
+}
+```
+
+This cluster would never be allowed to be upgraded with the standard set of upgrade predicates in place, as the cluster is in a "red" state, and the named predicate `only_restart_healthy_node_if_green_or_yellow` prevents the upgrade.
+
+If the following annotation was added to the cluster specification, and the version was increased from 7.15.2 -> 7.15.3
+
+```yaml
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: testing
+  annotations:
+    eck.k8s.elastic.co/disable-upgrade-predicates: "only_restart_healthy_node_if_green_or_yellow"
+spec:
+  version: 7.15.3 # previously set to 7.15.2, for example
+```
+
+The ECK operator would allow this upgrade to proceed, even though the cluster was in a "red" state during this upgrade process.
