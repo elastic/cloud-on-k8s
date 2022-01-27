@@ -435,6 +435,10 @@ const (
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
+	// ObservedGeneration represents the .metadata.generation that the status is based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.observedGeneration is 9,
+	// then the status is out of date with respect to the current state of the specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// AvailableNodes is the number of available instances.
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run

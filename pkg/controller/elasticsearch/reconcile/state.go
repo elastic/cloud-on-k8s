@@ -38,6 +38,7 @@ func NewState(c esv1.Elasticsearch) (*State, error) {
 		return nil, err
 	}
 	status := *c.Status.DeepCopy()
+    status.ObservedGeneration = c.Generation
 	// reset the health to 'unknown' so that if reconciliation fails before the observer has had a chance to get it,
 	// we stop reporting a health that may be out of date
 	status.Health = esv1.ElasticsearchUnknownHealth

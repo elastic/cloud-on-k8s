@@ -201,6 +201,24 @@ func TestState_Apply(t *testing.T) {
 				Phase:          esv1.ElasticsearchApplyingChangesPhase,
 			},
 		},
+		{
+			name: "Status.observedGeneration is set from metadata.generation",
+			cluster: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: int64(1),
+				},
+			},
+			effects: func(s *State) {
+				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
+			},
+			wantEvents: []events.Event{},
+			wantStatus: &esv1.ElasticsearchStatus{
+				ObservedGeneration: int64(1),
+				AvailableNodes:     0,
+				Health:             esv1.ElasticsearchRedHealth,
+				Phase:              esv1.ElasticsearchApplyingChangesPhase,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

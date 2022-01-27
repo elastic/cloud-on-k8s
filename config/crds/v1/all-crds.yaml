@@ -4490,6 +4490,13 @@ spec:
                   single Association of a given type (for ex. single ES reference),
                   this map contains a single entry.
                 type: object
+              observedGeneration:
+                description: ObservedGeneration represents the .metadata.generation
+                  that the status is based upon. For instance, if .metadata.generation
+                  is currently 12, but the .status.observedGeneration is 9, then the
+                  status is out of date with respect to the current state of the specification.
+                format: int64
+                type: integer
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.
