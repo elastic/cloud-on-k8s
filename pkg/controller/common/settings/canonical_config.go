@@ -158,6 +158,10 @@ func (c *CanonicalConfig) HasChildConfig(key string) bool {
 	if c == nil {
 		return false
 	}
+	// We are expecting two kinds of error here:
+	// type mismatch: if key is pointing to a primitive value that means we don't have a child config
+	// missing path: if the key does not exist in the config we also do not have a child config
+	// There should be no other errors thrown by ucfg thus there is no error return type in this function.
 	_, err := c.asUCfg().Child(key, -1, Options...)
 	return err == nil
 }
