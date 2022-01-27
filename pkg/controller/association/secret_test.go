@@ -85,6 +85,28 @@ func TestGetRefObjectFromSecret(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "invalid secret: missing username",
+			args: args{
+				c: func() k8s.Client {
+					s := refObjectSecretFixture.DeepCopy()
+					delete(s.Data, "username")
+					return k8s.NewFakeClient(invalidRefObjectSecretFixture)
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid secret: missing password",
+			args: args{
+				c: func() k8s.Client {
+					s := refObjectSecretFixture.DeepCopy()
+					delete(s.Data, "password")
+					return k8s.NewFakeClient(invalidRefObjectSecretFixture)
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
