@@ -12,7 +12,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/strings/slices"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -20,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 // +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1,name=elastic-es-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
@@ -31,12 +31,12 @@ const (
 var eslog = ulog.Log.WithName("es-validation")
 
 // RegisterWebhook will register the Elasticsearch validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, manaedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, managedNamespaces []string) {
 	wh := &validatingWebhook{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
 		exposedNodeLabels:    exposedNodeLabels,
-		managedNamespaces:    manaedNamespaces,
+		managedNamespaces:    set.Make(managedNamespaces...),
 	}
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
 	mgr.GetWebhookServer().Register(webhookPath, &webhook.Admission{Handler: wh})
@@ -47,7 +47,7 @@ type validatingWebhook struct {
 	decoder              *admission.Decoder
 	validateStorageClass bool
 	exposedNodeLabels    NodeLabels
-	managedNamespaces    []string
+	managedNamespaces    set.StringSet
 }
 
 var _ admission.DecoderInjector = &validatingWebhook{}
@@ -89,7 +89,7 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 
 	// If this Elasticsearch instance is not within the set of managed namespaces
 	// for this operator ignore this request.
-	if len(wh.managedNamespaces) > 0 && !slices.Contains(wh.managedNamespaces, es.Namespace) {
+	if !wh.managedNamespaces.Has(es.Namespace) {
 		eslog.V(1).Info("Skip Elasticsearch resource validation", "name", es.Name, "namespace", es.Namespace)
 		return admission.Allowed("")
 	}
