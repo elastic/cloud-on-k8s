@@ -117,7 +117,7 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 	return admission.Allowed("")
 }
 
-// ValidateElasticsearch validates an elasticsearch instance against a set of validation funcs.
+// ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
 func ValidateElasticsearch(es esv1.Elasticsearch, exposedNodeLabels NodeLabels) error {
 	errs := check(es, validations(exposedNodeLabels))
 	if len(errs) > 0 {
