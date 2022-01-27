@@ -304,7 +304,7 @@ spec:
 
 *  `xpack.fleet.packages` are required packages to enable Fleet Server and Elastic Agents to enroll. 
 
-*  `xpack.fleet.agentPolicies` policies are needed for Fleet Server and Elastic Agents to enroll to, see https://www.elastic.co/guide/en/fleet/current/agent-policy.html for more information.
+*  `xpack.fleet.agentPolicies` policies are needed for Fleet Server and Elastic Agents to enroll to, check https://www.elastic.co/guide/en/fleet/current/agent-policy.html for more information.
 
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
 === Set referenced resources
