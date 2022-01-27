@@ -17,6 +17,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 func asJSON(obj interface{}) []byte {
@@ -151,7 +152,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client:               tt.fields.client,
 				decoder:              decoder,
 				validateStorageClass: tt.fields.validateStorageClass,
-				managedNamespaces:    []string{"ns"},
+				managedNamespaces:    set.Make("ns"),
 			}
 			got := wh.Handle(context.Background(), tt.args.req)
 			require.Equal(t, tt.want.Allowed, got.Allowed)

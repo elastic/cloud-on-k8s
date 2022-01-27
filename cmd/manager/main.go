@@ -35,6 +35,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
@@ -62,6 +63,7 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	commonwebhook "github.com/elastic/cloud-on-k8s/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -817,7 +819,8 @@ func setupWebhook(
 	// setup webhooks for supported types
 	webhookObjects := []interface {
 		runtime.Object
-		SetupWebhookWithManager(manager.Manager) error
+		admission.Validator
+		WebhookPath() string
 	}{
 		&agentv1alpha1.Agent{},
 		&apmv1.ApmServer{},
@@ -831,7 +834,12 @@ func setupWebhook(
 		&emsv1alpha1.ElasticMapsServer{},
 	}
 	for _, obj := range webhookObjects {
-		if err := obj.SetupWebhookWithManager(mgr); err != nil {
+		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
+			Manager:          mgr,
+			WebhookPath:      obj.WebhookPath(),
+			ManagedNamespace: managedNamespaces,
+			Validator:        obj,
+		}); err != nil {
 			gvk := obj.GetObjectKind().GroupVersionKind()
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
 		}
