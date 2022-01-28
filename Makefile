@@ -362,13 +362,9 @@ switch-tanzu:
 #################################
 ##  --    Docker images    --  ##
 #################################
-# This regex will only match the below, without a trailing build/release candidate
-# 1. an optional preceding 'v'
-# 2. a standard semver '1.9.0'
-tag_regex_no_build_candidates := ^v{0,1}([0-9]{1,}\.){2}[0-9]{1,}$$
 
 docker-multiarch-build: go-generate generate-config-file 
-ifeq ($(shell echo ${IMG_VERSION} | egrep "${tag_regex_no_build_candidates}"),)
+ifeq ($(SNAPSHOT),true)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
 	docker buildx build . \
 		--progress=plain \
