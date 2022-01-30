@@ -364,17 +364,7 @@ switch-tanzu:
 #################################
 
 docker-multiarch-build: go-generate generate-config-file 
-ifeq ($(SNAPSHOT),true)
-	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	docker buildx build . \
-		--progress=plain \
-		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
-		--build-arg GO_TAGS='$(GO_TAGS)' \
-		--build-arg VERSION='$(VERSION)' \
-		--platform linux/amd64,linux/arm64 \
-		-t $(OPERATOR_IMAGE) \
-		--push
-else
+ifeq ($(SNAPSHOT),false)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
 	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
@@ -385,6 +375,16 @@ else
 		--platform linux/amd64,linux/arm64 \
 		-t $(OPERATOR_IMAGE) \
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
+		--push
+else
+	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		-t $(OPERATOR_IMAGE) \
 		--push
 endif
 	
