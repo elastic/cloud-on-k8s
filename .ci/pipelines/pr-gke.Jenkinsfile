@@ -71,7 +71,7 @@ pipeline {
                         }
                     }
                     steps {
-                        sh '.ci/setenvconfig pr kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047 0.11.1 ipv4'
+                        sh '.ci/setenvconfig pr'
                         script {
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
 
