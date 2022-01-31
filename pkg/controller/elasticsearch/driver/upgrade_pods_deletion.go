@@ -199,7 +199,7 @@ func runPredicates(
 			// "eck.k8s.elastic.co/disable-upgrade-predicates", then ignore this predicate,
 			// and continue processing the remaining predicates.
 			if predicateDisabled(predicate, annotations) {
-				log.V(0).Info("disabling upgrade predicate because of annotation", "predicate", predicate.name)
+				log.Info("Warning: disabling upgrade predicate because of annotation", "predicate", predicate.name, "namespace", ctx.es.Namespace, "es_name", ctx.es.Name)
 				continue
 			}
 			// Skip this Pod, it can't be deleted for the moment
