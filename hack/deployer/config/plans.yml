@@ -152,7 +152,7 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.11.0
+  clientVersion: 0.11.1
   provider: kind
   kubernetesVersion: 1.21.1
   kind:
@@ -162,7 +162,7 @@ plans:
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.11.0
+  clientVersion: 0.11.1
   provider: kind
   kubernetesVersion: 1.21.1
   kind:
