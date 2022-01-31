@@ -93,7 +93,7 @@ func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (userna
 		return "", "", nil
 	}
 
-	return GetAuthFromSecretOr(c, assoc.AssociationRef(), func() (string, string, error) {
+	return GetAuthFromUnmanagedSecretOr(c, assoc.AssociationRef(), func() (string, string, error) {
 		secretObjKey := types.NamespacedName{Namespace: assoc.GetNamespace(), Name: assocConf.AuthSecretName}
 		var secret corev1.Secret
 		if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {

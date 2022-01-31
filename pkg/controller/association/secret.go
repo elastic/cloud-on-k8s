@@ -20,31 +20,61 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// authPasswordRefSecretKey is the name of the key for the password when using a custom secret
-const authPasswordRefSecretKey = "password"
+// authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
+const authPasswordUnmanagedSecretKey = "password"
 
-func GetAuthFromSecretOr(client k8s.Client, assocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {
-	if assocRef.IsObjectTypeSecret() {
-		ref, err := GetRefObjectFromSecret(client, assocRef)
+func (r *Reconciler) ReconcileUnmanagedAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
+	assocRef := association.AssociationRef()
+	info, err := GetUnmanagedAssociationConnexionInfoFromSecret(r.Client, assocRef)
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+
+	var ver string
+	ver, err = r.ReferencedResourceVersion(r.Client, assocRef)
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+
+	// set url, version
+	expectedAssocConf := commonv1.AssociationConf{
+		Version: ver,
+		URL:     info.URL,
+		// points the auth secret to the custom secret
+		AuthSecretName: assocRef.Name,
+		AuthSecretKey:  authPasswordUnmanagedSecretKey,
+		CACertProvided: info.CaCert != "",
+	}
+	// points the ca secret to the custom secret if needed
+	if expectedAssocConf.CACertProvided {
+		expectedAssocConf.CASecretName = assocRef.Name
+	}
+
+	return r.updateAssocConf(ctx, &expectedAssocConf, association)
+}
+
+func GetAuthFromUnmanagedSecretOr(client k8s.Client, unmanagedAssocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {
+	if unmanagedAssocRef.IsObjectTypeSecret() {
+		info, err := GetUnmanagedAssociationConnexionInfoFromSecret(client, unmanagedAssocRef)
 		if err != nil {
 			return "", "", err
 		}
-		return ref.Username, ref.Password, nil
+		return info.Username, info.Password, nil
 	}
 	return other()
 }
 
-// RefObject holds connection information stored in a custom Secret to reach over HTTP a referenced Elastic resource external to the
-// local Kubernetes cluster.
-type RefObject struct {
+// UnmanagedAssociationConnexionInfo holds connection information stored in a custom Secret to reach over HTTP an Elastic resource not managed by ECK
+// referenced in an Association. The resource can thus be external to the local Kubernetes cluster.
+type UnmanagedAssociationConnexionInfo struct {
 	URL      string
 	Username string
 	Password string
 	CaCert   string
 }
 
-// GetRefObjectFromSecret returns the RefObject corresponding to the Secret referenced in the ObjectSelector o
-func GetRefObjectFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*RefObject, error) {
+// GetUnmanagedAssociationConnexionInfoFromSecret returns the UnmanagedAssociationConnexionInfo corresponding to the Secret referenced in the ObjectSelector o.
+func GetUnmanagedAssociationConnexionInfoFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*UnmanagedAssociationConnexionInfo, error) {
 	var secretRef corev1.Secret
 	secretRefKey := o.NamespacedName()
 	if err := c.Get(context.Background(), secretRefKey, &secretRef); err != nil {
@@ -58,12 +88,12 @@ func GetRefObjectFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*RefObject
 	if !ok {
 		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", o.Name)
 	}
-	password, ok := secretRef.Data[authPasswordRefSecretKey]
+	password, ok := secretRef.Data[authPasswordUnmanagedSecretKey]
 	if !ok {
 		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", o.Name)
 	}
 
-	ref := RefObject{URL: string(url), Username: string(username), Password: string(password)}
+	ref := UnmanagedAssociationConnexionInfo{URL: string(url), Username: string(username), Password: string(password)}
 	caCert, ok := secretRef.Data[certificates.CAFileName]
 	if ok {
 		ref.CaCert = string(caCert)
@@ -72,7 +102,7 @@ func GetRefObjectFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*RefObject
 	return &ref, nil
 }
 
-func (r RefObject) Request(path string, jsonPath string) (string, error) {
+func (r UnmanagedAssociationConnexionInfo) Request(path string, jsonPath string) (string, error) {
 	req, err := http.NewRequest("GET", r.URL+path, nil) //nolint:noctx
 	if err != nil {
 		return "", err
@@ -89,8 +119,7 @@ func (r RefObject) Request(path string, jsonPath string) (string, error) {
 
 	defer resp.Body.Close()
 	var obj interface{}
-	err = json.NewDecoder(resp.Body).Decode(&obj)
-	if err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&obj); err != nil {
 		return "", err
 	}
 
@@ -100,23 +129,21 @@ func (r RefObject) Request(path string, jsonPath string) (string, error) {
 		return "", err
 	}
 	buf := new(bytes.Buffer)
-	err = j.Execute(buf, obj)
-	if err != nil {
+	if err := j.Execute(buf, obj); err != nil {
 		return "", err
 	}
 	ver := buf.String()
 
-	// valid the version
-	_, err = version.Parse(ver)
-	if err != nil {
+	// validate the version
+	if _, err := version.Parse(ver); err != nil {
 		return "", err
 	}
 
 	return ver, nil
 }
 
-// filterSecretRef returns those associations that reference a Kubernetes secret.
-func filterSecretRef(associations []commonv1.Association) []commonv1.Association {
+// filterUnmanagedElasticRef returns those associations that reference using a Kubernetes secret an Elastic resource not managed by ECK.
+func filterUnmanagedElasticRef(associations []commonv1.Association) []commonv1.Association {
 	var r []commonv1.Association
 	for _, a := range associations {
 		if a.AssociationRef().IsObjectTypeSecret() {
@@ -126,8 +153,8 @@ func filterSecretRef(associations []commonv1.Association) []commonv1.Association
 	return r
 }
 
-// filterElasticRef returns those associations that reference an Elastic resource.
-func filterElasticRef(associations []commonv1.Association) []commonv1.Association {
+// filterManagedElasticRef returns those associations that reference an Elastic resource managed by ECK.
+func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Association {
 	var r []commonv1.Association
 	for _, a := range associations {
 		if !a.AssociationRef().IsObjectTypeSecret() {

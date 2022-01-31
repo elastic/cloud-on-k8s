@@ -66,12 +66,14 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 // reported in its status.
 func referencedFleetServerStatusVersion(c k8s.Client, fsRef commonv1.ObjectSelector) (string, error) {
 	if fsRef.IsObjectTypeSecret() {
-		ref, err := association.GetRefObjectFromSecret(c, fsRef)
+		info, err := association.GetUnmanagedAssociationConnexionInfoFromSecret(c, fsRef)
 		if err != nil {
 			return "", err
 		}
-		ver, err := ref.Request("/?", "{ .number }") // FIXME
+		// only available starting FleetServer 8.1
+		ver, err := info.Request("/api/status", "{ .version.number }") // FIXME
 		if err != nil {
+			// TODO: tolerate an error and handle empty ver?
 			return "", err
 		}
 		return ver, nil

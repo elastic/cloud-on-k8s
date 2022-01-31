@@ -36,7 +36,7 @@ func serviceWatchName(associated types.NamespacedName) string {
 }
 
 // reconcileWatches sets up dynamic watches for:
-// * the referenced resource(s) (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
+// * the referenced resource(s) managed or not by ECK (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
 // * the CA secret of the referenced resource in the referenced resource namespace
 // * the referenced service to access the referenced resource
 // * the referenced secret to access the referenced resource
@@ -44,17 +44,25 @@ func serviceWatchName(associated types.NamespacedName) string {
 // All watches for all given associations are set under the same watch name and replaced with each reconciliation.
 // The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
 func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associations []commonv1.Association) error {
-	elasticRefAssocs := filterElasticRef(associations)
+	managedElasticRef := filterManagedElasticRef(associations)
+	unmanagedElasticRef := filterUnmanagedElasticRef(associations)
 
-	// watch the referenced resource
-	if err := ReconcileWatch(associated, elasticRefAssocs, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	// we have 2 modes (exclusive) for the referenced resource: managed or not managed by ECK and referencedResourceWatchName is shared between both.
+	// either watch the referenced resource managed by ECK
+	if err := ReconcileWatch(associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		return association.AssociationRef().NamespacedName()
+	}); err != nil {
+		return err
+	}
+	// or watch the custom user secret that describes how to connect to the referenced resource not managed by ECK
+	if err := ReconcileWatch(associated, unmanagedElasticRef, r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 
 	// watch the CA secret of the referenced resource in the referenced resource namespace
-	if err := ReconcileWatch(associated, elasticRefAssocs, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.Name),
@@ -76,16 +84,9 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 		return err
 	}
 
-	// watch the custom user secret, if needed
-	if err := ReconcileWatch(associated, filterSecretRef(associations), r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-		return association.AssociationRef().NamespacedName()
-	}); err != nil {
-		return err
-	}
-
 	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
 	if r.ElasticsearchUserCreation != nil {
-		if err := ReconcileWatch(associated, elasticRefAssocs, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
 		}); err != nil {
 			return err

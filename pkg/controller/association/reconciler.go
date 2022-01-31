@@ -236,32 +236,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
 
 	if assocRef.IsObjectTypeSecret() {
-		ref, err := GetRefObjectFromSecret(r.Client, assocRef)
-		if err != nil {
-			return commonv1.AssociationFailed, err
-		}
-
-		var ver string
-		ver, err = r.ReferencedResourceVersion(r.Client, assocRef)
-		if err != nil {
-			return commonv1.AssociationFailed, err
-		}
-
-		// set url, version
-		expectedAssocConf := commonv1.AssociationConf{
-			Version: ver,
-			URL:     ref.URL,
-			// points the auth secret to the ref secret
-			AuthSecretName: assocRef.Name,
-			AuthSecretKey:  authPasswordRefSecretKey,
-			CACertProvided: ref.CaCert != "",
-		}
-		// points the ca secret to the ref secret if needed
-		if expectedAssocConf.CACertProvided {
-			expectedAssocConf.CASecretName = assocRef.Name
-		}
-
-		return r.updateAssocConf(ctx, &expectedAssocConf, association)
+		return r.ReconcileUnmanagedAssociation(ctx, association)
 	}
 
 	caSecret, err := r.ReconcileCASecret(

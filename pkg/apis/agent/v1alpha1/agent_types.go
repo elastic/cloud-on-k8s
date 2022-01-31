@@ -283,7 +283,7 @@ func (a *Agent) SecureSettings() []commonv1.SecretSource {
 
 type AgentESAssociation struct {
 	*Agent
-	// ref is the namespaced name of the Elasticsearch used in Association
+	// ref is the object selector of the Elasticsearch used in Association
 	ref commonv1.ObjectSelector
 }
 

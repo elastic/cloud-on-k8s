@@ -14,12 +14,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func TestGetRefObjectFromSecret(t *testing.T) {
+func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 	type args struct {
 		c func() k8s.Client
 	}
 	refObjectSelector := commonv1.ObjectSelector{Namespace: "a", Name: "b"}
-	refObjectSecretFixture := &corev1.Secret{
+	unmanagedRefSecretFixture := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
 		Data: map[string][]byte{
 			"url":      []byte("https://es.io:9243"),
@@ -27,40 +27,32 @@ func TestGetRefObjectFromSecret(t *testing.T) {
 			"password": []byte("elastic"),
 		},
 	}
-	invalidRefObjectSecretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
-		Data: map[string][]byte{
-			"url":       []byte("https://es.io:9243"),
-			"username":  []byte("elastic"),
-			"passworxd": []byte("elastic"),
-		},
-	}
-	refObjectFixture := RefObject{URL: "https://es.io:9243", Username: "elastic", Password: "elastic", CaCert: ""}
+	refObjectFixture := UnmanagedAssociationConnexionInfo{URL: "https://es.io:9243", Username: "elastic", Password: "elastic", CaCert: ""}
 
 	tests := []struct {
 		name    string
 		args    args
-		want    func() RefObject
+		want    func() UnmanagedAssociationConnexionInfo
 		wantErr bool
 	}{
 		{
 			name: "happy path",
 			args: args{
-				c: func() k8s.Client { return k8s.NewFakeClient(refObjectSecretFixture) },
+				c: func() k8s.Client { return k8s.NewFakeClient(unmanagedRefSecretFixture) },
 			},
-			want:    func() RefObject { return refObjectFixture },
+			want:    func() UnmanagedAssociationConnexionInfo { return refObjectFixture },
 			wantErr: false,
 		},
 		{
 			name: "happy path with a ca",
 			args: args{
 				c: func() k8s.Client {
-					s := refObjectSecretFixture.DeepCopy()
-					s.Data["ca.crt"] = []byte("XXXXXXXXXXXX")
-					return k8s.NewFakeClient(s)
+					secretCopy := unmanagedRefSecretFixture.DeepCopy()
+					secretCopy.Data["ca.crt"] = []byte("XXXXXXXXXXXX")
+					return k8s.NewFakeClient(secretCopy)
 				},
 			},
-			want: func() RefObject {
+			want: func() UnmanagedAssociationConnexionInfo {
 				o := refObjectFixture
 				o.CaCert = "XXXXXXXXXXXX"
 				return o
@@ -78,9 +70,9 @@ func TestGetRefObjectFromSecret(t *testing.T) {
 			name: "invalid secret: missing url",
 			args: args{
 				c: func() k8s.Client {
-					s := refObjectSecretFixture.DeepCopy()
-					delete(s.Data, "url")
-					return k8s.NewFakeClient(invalidRefObjectSecretFixture)
+					secretCopy := unmanagedRefSecretFixture.DeepCopy()
+					delete(secretCopy.Data, "url")
+					return k8s.NewFakeClient(secretCopy)
 				},
 			},
 			wantErr: true,
@@ -89,9 +81,9 @@ func TestGetRefObjectFromSecret(t *testing.T) {
 			name: "invalid secret: missing username",
 			args: args{
 				c: func() k8s.Client {
-					s := refObjectSecretFixture.DeepCopy()
-					delete(s.Data, "username")
-					return k8s.NewFakeClient(invalidRefObjectSecretFixture)
+					secretCopy := unmanagedRefSecretFixture.DeepCopy()
+					delete(secretCopy.Data, "username")
+					return k8s.NewFakeClient(secretCopy)
 				},
 			},
 			wantErr: true,
@@ -100,9 +92,9 @@ func TestGetRefObjectFromSecret(t *testing.T) {
 			name: "invalid secret: missing password",
 			args: args{
 				c: func() k8s.Client {
-					s := refObjectSecretFixture.DeepCopy()
-					delete(s.Data, "password")
-					return k8s.NewFakeClient(invalidRefObjectSecretFixture)
+					secretCopy := unmanagedRefSecretFixture.DeepCopy()
+					delete(secretCopy.Data, "password")
+					return k8s.NewFakeClient(secretCopy)
 				},
 			},
 			wantErr: true,
@@ -110,13 +102,13 @@ func TestGetRefObjectFromSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetRefObjectFromSecret(tt.args.c(), refObjectSelector)
+			got, err := GetUnmanagedAssociationConnexionInfoFromSecret(tt.args.c(), refObjectSelector)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetRefObjectFromSecret() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetUnmanagedAssociationConnexionInfoFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != nil && *got != tt.want() {
-				t.Errorf("GetRefObjectFromSecret() got = %v, want %v", *got, tt.want())
+				t.Errorf("GetUnmanagedAssociationConnexionInfoFromSecret() got = %v, want %v", *got, tt.want())
 			}
 		})
 	}

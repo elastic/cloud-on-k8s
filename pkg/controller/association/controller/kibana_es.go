@@ -73,11 +73,11 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 // reported in its status.
 func referencedElasticsearchStatusVersion(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
 	if esRef.IsObjectTypeSecret() {
-		ref, err := association.GetRefObjectFromSecret(c, esRef)
+		info, err := association.GetUnmanagedAssociationConnexionInfoFromSecret(c, esRef)
 		if err != nil {
 			return "", err
 		}
-		ver, err := ref.Request("/", "{ .version.number }")
+		ver, err := info.Request("/", "{ .version.number }")
 		if err != nil {
 			return "", err
 		}

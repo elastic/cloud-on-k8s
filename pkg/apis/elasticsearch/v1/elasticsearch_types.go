@@ -569,7 +569,7 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 type EsMonitoringAssociation struct {
 	// The monitored Elasticsearch cluster from where are collected logs and monitoring metrics
 	*Elasticsearch
-	// ref is the namespaced name of the Elasticsearch referenced in the Association used to send and store monitoring data
+	// ref is the object selector of the Elasticsearch referenced in the Association used to send and store monitoring data
 	ref commonv1.ObjectSelector
 }
 

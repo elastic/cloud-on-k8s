@@ -348,7 +348,7 @@ func (kbent *KibanaEntAssociation) AssociationID() string {
 type KbMonitoringAssociation struct {
 	// The associated Kibana
 	*Kibana
-	// ref is the namespaced name of the monitoring Elasticsearch referenced in the Association
+	// ref is the object selector of the monitoring Elasticsearch referenced in the Association
 	ref commonv1.ObjectSelector
 }
 

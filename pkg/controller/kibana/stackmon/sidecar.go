@@ -42,7 +42,7 @@ func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error)
 		associatedEsNsn.Namespace = kb.Namespace
 	}
 
-	username, password, err := association.GetAuthFromSecretOr(client, kb.Spec.ElasticsearchRef, func() (string, string, error) {
+	username, password, err := association.GetAuthFromUnmanagedSecretOr(client, kb.Spec.ElasticsearchRef, func() (string, string, error) {
 		password, err := user.GetMonitoringUserPassword(client, associatedEsNsn)
 		if err != nil {
 			return "", "", err
