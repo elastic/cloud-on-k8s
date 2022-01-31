@@ -17,8 +17,8 @@ metricbeat.modules:
     hosts: ["{{ .URL }}"]
     username: {{ .Username }}
     password: {{ .Password }}
-    {{- if .IsSSL }}
-    ssl.certificate_authorities: ["{{ .SSLPath }}"]
+    {{- if .IsCA }}
+    ssl.certificate_authorities: ["{{ .CAPath }}"]
     ssl.verification_mode: "{{ .SSLMode }}"
     {{- end }}
 

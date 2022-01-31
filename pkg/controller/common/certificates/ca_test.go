@@ -15,6 +15,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func init() {
@@ -84,4 +89,37 @@ func TestNewSelfSignedCA(t *testing.T) {
 	require.Equal(t, ca.Cert.Subject.CommonName, opts.Subject.CommonName)
 	require.Equal(t, testRSAPrivateKey, ca.PrivateKey)
 	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
+}
+
+func Test_HasPublicCA(t *testing.T) {
+	certsWithCA := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "c1-es-http-certs-public",
+		},
+		Data: map[string][]byte{
+			CAFileName: []byte("..."),
+			CertFileName: []byte("..."),
+		},
+	}
+	hasCA, err := HasPublicCA(k8s.NewFakeClient(&certsWithCA), esv1.ESNamer, "ns", "c1")
+	assert.NoError(t, err)
+	assert.True(t, hasCa)
+
+	certsWithoutCA := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "c2-es-http-certs-public",
+		},
+		Data: map[string][]byte{
+			CertFileName: []byte("..."),
+		},
+	}
+	hasCA, err = HasPublicCA(k8s.NewFakeClient(&certsWithoutCA), esv1.ESNamer, "ns", "c2")
+	assert.NoError(t, err)
+	assert.False(t, hasCA)
+
+	// no certs secret
+	_, err = HasPublicCA(k8s.NewFakeClient(), esv1.ESNamer, "ns", "c3")
+	assert.Error(t, err)
 }
