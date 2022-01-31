@@ -5,7 +5,7 @@
 pipeline {
 
     agent {
-        label 'linux'
+        label 'eck'
     }
 
     options {
