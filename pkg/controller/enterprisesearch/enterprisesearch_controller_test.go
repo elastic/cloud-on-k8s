@@ -560,7 +560,7 @@ func Test_buildConfigHash(t *testing.T) {
 				ent:          entWithAssociation,
 				configSecret: configSecret,
 			},
-			wantHash: "2502058051",
+			wantHash: "1696769747",
 		},
 		{
 			name: "different config: different hash",

@@ -69,9 +69,9 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 	if err := client.Get(context.Background(), publicCASecretNsName, &publicCASecret); err != nil {
 		return err
 	}
-	certPem, ok := publicCASecret.Data[certificates.CertFileName]
+	certPem, ok := publicCASecret.Data[certificates.CAFileName]
 	if !ok {
-		return errors.Errorf("public CA secret key %s doesn't exist", certificates.CertFileName)
+		return errors.Errorf("public CA secret key %s doesn't exist", certificates.CAFileName)
 	}
 
 	_, _ = configHash.Write(certPem)

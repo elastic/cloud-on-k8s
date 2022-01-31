@@ -338,7 +338,7 @@ func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret core
 		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
 			return "", err
 		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
 			_, _ = configHash.Write(certPem)
 		}
 	}

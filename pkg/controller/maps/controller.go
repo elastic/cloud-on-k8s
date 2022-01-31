@@ -314,7 +314,7 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
 			return "", err
 		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
 			_, _ = configHash.Write(certPem)
 		}
 	}

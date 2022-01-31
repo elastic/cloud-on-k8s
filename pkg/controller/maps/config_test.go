@@ -135,7 +135,7 @@ ui: true
   host: https://elasticsearch-sample-es-http.default.svc:9200
   password: password
   ssl:
-    certificateAuthorities: /mnt/elastic-internal/es-certs/tls.crt
+    certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
     verificationMode: certificate
   username: ns-sample-maps-user
 host: '::'
