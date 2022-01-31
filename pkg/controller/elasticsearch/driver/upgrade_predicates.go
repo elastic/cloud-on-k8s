@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// DisableUpgradePredicatesAnnotation is the annontation that can be applied to an
+	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
 	// Elasticsearch cluster to disable certain predicates during rolling upgrades.
 	//
 	// Example:
