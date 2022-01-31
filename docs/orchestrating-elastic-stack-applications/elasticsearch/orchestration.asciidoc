@@ -208,7 +208,7 @@ Force an upgrade of all the master-ineligible nodes before upgrading the last ma
 +
 Do not allow 2 pods to be deleted at the same time, that contain the same shard.
 
-Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch spec, specifically naming the predicate that is needing to be disabled.
+Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch spec, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicatae with "*".
 
 * Example use case
 
@@ -233,6 +233,7 @@ metadata:
   name: testing
   annotations:
     eck.k8s.elastic.co/disable-upgrade-predicates: "only_restart_healthy_node_if_green_or_yellow"
+    # Also note that eck.k8s.elastic.co/disable-upgrade-predicates: "*" would work as well, but is much less selective.
 spec:
   version: 7.15.3 # previously set to 7.15.2, for example
 ```

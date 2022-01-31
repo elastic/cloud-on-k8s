@@ -313,7 +313,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 				esAnnotations: map[string]string{
-					DisableUpgradePredicatesAnnotation: "one_master_at_a_time",
+					esv1.DisableUpgradePredicatesAnnotation: "one_master_at_a_time",
 				},
 			},
 			deleted:                      []string{"masters-1", "masters-2"},
@@ -334,7 +334,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
 				podFilter:      nothing,
 				esAnnotations: map[string]string{
-					DisableUpgradePredicatesAnnotation: "*",
+					esv1.DisableUpgradePredicatesAnnotation: "*",
 				},
 			},
 			deleted:                      []string{"masters-0", "masters-1", "masters-2"},
@@ -424,7 +424,26 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
 				podFilter:      nothing,
 				esAnnotations: map[string]string{
-					DisableUpgradePredicatesAnnotation: "only_restart_healthy_node_if_green_or_yellow",
+					esv1.DisableUpgradePredicatesAnnotation: "only_restart_healthy_node_if_green_or_yellow",
+				},
+			},
+			deleted:                      []string{"master-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "Also delete healthy node if red with all predicates disabled via annotation",
+			fields: fields{
+				esVersion: "7.5.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("master-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 1,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
+				podFilter:      nothing,
+				esAnnotations: map[string]string{
+					esv1.DisableUpgradePredicatesAnnotation: "*",
 				},
 			},
 			deleted:                      []string{"master-0"},

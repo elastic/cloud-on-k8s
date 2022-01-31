@@ -501,17 +501,21 @@ func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {
 }
 
 func (es Elasticsearch) SuspendedPodNames() set.StringSet {
-	suspended, exists := es.Annotations[SuspendAnnotation]
+	return setFromAnnotations(SuspendAnnotation, es.Annotations)
+}
+
+func setFromAnnotations(annotationKey string, annotations map[string]string) set.StringSet {
+	allValues, exists := annotations[annotationKey]
 	if !exists {
 		return nil
 	}
 
-	podNames := strings.Split(suspended, ",")
-	suspendedPods := set.Make()
-	for _, p := range podNames {
-		suspendedPods.Add(strings.TrimSpace(p))
+	splitValues := strings.Split(allValues, ",")
+	valueSet := set.Make()
+	for _, p := range splitValues {
+		valueSet.Add(strings.TrimSpace(p))
 	}
-	return suspendedPods
+	return valueSet
 }
 
 // -- associations
@@ -633,4 +637,25 @@ func (es *Elasticsearch) MonitoringAssociation(ref commonv1.ObjectSelector) comm
 		Elasticsearch: es,
 		ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
 	}
+}
+
+const (
+	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
+	// Elasticsearch cluster to disable certain predicates during rolling upgrades.  Multiple
+	// predicates names can be separated by ",".
+	//
+	// Example:
+	//
+	//   To disable "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas" predicate
+	//
+	//   metadata:
+	//     annotations:
+	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
+	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
+)
+
+// DisabledPredicates will return the set of predicates that are currently disabled by the
+// DisableUpgradePredicatesAnnotation annotation.
+func (es Elasticsearch) DisabledPredicates() set.StringSet {
+	return setFromAnnotations(DisableUpgradePredicatesAnnotation, es.Annotations)
 }

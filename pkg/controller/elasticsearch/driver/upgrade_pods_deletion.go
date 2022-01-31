@@ -198,7 +198,7 @@ func runPredicates(
 			// if this specific predicate name is disabled by the disable predicate annotation
 			// "eck.k8s.elastic.co/disable-upgrade-predicates", then ignore this predicate,
 			// and continue processing the remaining predicates.
-			if predicateDisabled(predicate, annotations) {
+			if ctx.es.DisabledPredicates().Has(predicate.name) || ctx.es.DisabledPredicates().Has("*") {
 				log.Info("Warning: disabling upgrade predicate because of annotation", "predicate", predicate.name, "namespace", ctx.es.Namespace, "es_name", ctx.es.Name)
 				continue
 			}
@@ -211,14 +211,4 @@ func runPredicates(
 	}
 	// All predicates passed!
 	return nil, nil
-}
-
-// predicateDisabled determines whether a given predicate has been disabled by providing the
-// disable predicate annotation "eck.k8s.elastic.co/disable-upgrade-predicates", and either providing
-// the predicate name as the value to the annotations map, or providing "*" as the value to disable all predicates.
-func predicateDisabled(predicate Predicate, annotations map[string]string) bool {
-	if val, ok := annotations[DisableUpgradePredicatesAnnotation]; ok && (predicate.name == val || val == "*") {
-		return true
-	}
-	return false
 }

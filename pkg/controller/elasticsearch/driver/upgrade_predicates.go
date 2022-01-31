@@ -15,20 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
-const (
-	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
-	// Elasticsearch cluster to disable certain predicates during rolling upgrades.
-	//
-	// Example:
-	//
-	//   To disable "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas" predicate
-	//
-	//   metadata:
-	//     annotations:
-	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
-	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
-)
-
 // PredicateContext is the set of fields used while determining what set of pods
 // can be upgraded when performing a rolling upgrade on an Elasticsearch cluster.
 type PredicateContext struct {
