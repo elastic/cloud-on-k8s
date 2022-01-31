@@ -356,7 +356,7 @@ type LicenseResponse struct {
 	License License `json:"license"`
 }
 
-// StartTrialResponse is the response to the start trial API call.
+// StartBasicResponse is the response to the start trial API call.
 type StartBasicResponse struct {
 	Acknowledged    bool   `json:"acknowledged"`
 	BasicWasStarted bool   `json:"basic_was_started"`
@@ -378,7 +378,7 @@ type RemoteClusters struct {
 	RemoteClusters map[string]RemoteCluster `json:"remote,omitempty"`
 }
 
-// RemoteClusterSeeds is the set of seeds to use in a remote cluster setting.
+// RemoteCluster is the set of seeds to use in a remote cluster setting.
 type RemoteCluster struct {
 	Seeds []string `json:"seeds"`
 }
@@ -421,8 +421,8 @@ var (
 type ShutdownStatus string
 
 var (
-	// ShutdownStarted means a shutdown request has been accepted and is being processed in Elasticsearch.
-	ShutdownStarted ShutdownStatus = "STARTED"
+	// ShutdownInProgress means a shutdown request has been accepted and is being processed in Elasticsearch.
+	ShutdownInProgress ShutdownStatus = "IN_PROGRESS"
 	// ShutdownComplete means a shutdown request has been processed and the node can be either restarted or taken out
 	// of the cluster by an orchestrator.
 	ShutdownComplete ShutdownStatus = "COMPLETE"
@@ -435,9 +435,9 @@ var (
 
 // ShardMigration is the status of shards that are being migrated away from a node that goes through a shutdown.
 type ShardMigration struct {
-	Status          ShutdownStatus `json:"status"`
-	ShardsRemaining int            `json:"shards_remaining"`
-	Explanation     string         `json:"explanation"`
+	Status                   ShutdownStatus `json:"status"`
+	ShardMigrationsRemaining int            `json:"shard_migrations_remaining"`
+	Explanation              string         `json:"explanation"`
 }
 
 // PersistentTasks expresses the status of preparing ongoing persistent tasks for a node shutdown.
@@ -455,7 +455,7 @@ type NodeShutdown struct {
 	NodeID                string          `json:"node_id"`
 	Type                  string          `json:"type"`
 	Reason                string          `json:"reason"`
-	ShutdownStartedMillis int             `json:"shutdown_started_millis"`
+	ShutdownStartedMillis int             `json:"shutdown_startedmillis"` // missing _ is a serialization inconsistency in Elasticsearch
 	Status                ShutdownStatus  `json:"status"`
 	ShardMigration        ShardMigration  `json:"shard_migration"`
 	PersistentTasks       PersistentTasks `json:"persistent_tasks"`

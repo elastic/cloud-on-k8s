@@ -133,7 +133,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			fixture: shutdownFixture,
 			args: args{
 				typ:    esclient.Remove,
-				status: &esclient.ShutdownStarted,
+				status: &esclient.ShutdownInProgress,
 			},
 			wantErr:    false,
 			wantDelete: false,
