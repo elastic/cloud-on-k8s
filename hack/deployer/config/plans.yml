@@ -157,7 +157,7 @@ plans:
   kubernetesVersion: 1.21.1
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.21.1
+    nodeImage: kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
     ipFamily: ipv4
 - id: kind-ci
   operation: create
