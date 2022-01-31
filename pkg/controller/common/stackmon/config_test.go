@@ -19,11 +19,11 @@ import (
 func TestBuildMetricbeatBaseConfig(t *testing.T) {
 	tests := []struct {
 		name       string
-		isCA      bool
+		isCA       bool
 		baseConfig string
 	}{
 		{
-			name:  "with tls",
+			name: "with tls",
 			isCA: true,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
@@ -33,7 +33,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				ssl.verification_mode: "certificate"`,
 		},
 		{
-			name:  "without CA",
+			name: "without CA",
 			isCA: false,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]

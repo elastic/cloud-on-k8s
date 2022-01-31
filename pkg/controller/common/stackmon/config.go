@@ -159,8 +159,8 @@ type inputConfigData struct {
 	URL      string
 	Username string
 	Password string
-	IsCA    bool
-	CAPath  string
+	IsCA     bool
+	CAPath   string
 	SSLMode  string
 }
 
@@ -185,7 +185,7 @@ func buildMetricbeatBaseConfig(
 		URL:      url,
 		Username: user.MonitoringUserName,
 		Password: password,
-		IsCA:    isCA,
+		IsCA:     isCA,
 	}
 
 	var caVolume volume.VolumeLike

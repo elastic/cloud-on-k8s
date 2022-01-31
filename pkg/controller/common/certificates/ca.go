@@ -135,7 +135,7 @@ func (c *CA) CreateCertificate(
 // namespace and name.
 func HasPublicCA(client k8s.Client, namer name.Namer, namespace string, name string) (bool, error) {
 	certsNsn := types.NamespacedName{
-		Name: PublicCertsSecretName(namer, name),
+		Name:      PublicCertsSecretName(namer, name),
 		Namespace: namespace,
 	}
 	var certsSecret corev1.Secret
