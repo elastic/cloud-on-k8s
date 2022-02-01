@@ -32,8 +32,8 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				username: elastic-internal-monitoring
 				password: 1234567890
 				ssl.enabled: true
-				ssl.certificate_authorities: ["/mnt/elastic-internal/xx-monitoring/namespace/name/certs/ca.crt"]
-				ssl.verification_mode: "certificate"`,
+				ssl.verification_mode: "certificate"
+				ssl.certificate_authorities: ["/mnt/elastic-internal/xx-monitoring/namespace/name/certs/ca.crt"]`,
 		},
 		{
 			name:  "with TLS and no CA",
@@ -58,16 +58,16 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				ssl.verification_mode: "certificate"`,
 		},
 	}
-
 	baseConfigTemplate := `
 				hosts: ["{{ .URL }}"]
 				username: {{ .Username }}
 				password: {{ .Password }}
 				ssl.enabled: {{ .IsSSL }}
+				ssl.verification_mode: "{{ .SSLMode }}"
 				{{- if .HasCA }}
 				ssl.certificate_authorities: ["{{ .CAPath }}"]
-				{{- end }}
-				ssl.verification_mode: "{{ .SSLMode }}"`
+				{{- end }}`
+
 	sampleURL := "scheme://localhost:1234"
 
 	fakeClient := k8s.NewFakeClient(&corev1.Secret{
