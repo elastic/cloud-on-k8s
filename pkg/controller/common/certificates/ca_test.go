@@ -92,34 +92,57 @@ func TestNewSelfSignedCA(t *testing.T) {
 }
 
 func Test_HasPublicCA(t *testing.T) {
-	certsWithCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "c1-es-http-certs-public",
+	tests := []struct {
+		name    string
+		secret  corev1.Secret
+		wantErr bool
+		want   bool
+	}{
+		{
+			name: "Happy path: with ca.crt",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "c1-es-http-certs-public",
+				},
+				Data: map[string][]byte{
+					CAFileName: []byte("..."),
+					CertFileName: []byte("..."),
+				},
+			},
+			wantErr: false,
+			want: true,
 		},
-		Data: map[string][]byte{
-			CAFileName: []byte("..."),
-			CertFileName: []byte("..."),
+		{
+			name: "Happy path, without ca.crt",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "c1-es-http-certs-public",
+				},
+				Data: map[string][]byte{
+					CertFileName: []byte("..."),
+				},
+			},
+			wantErr: false,
+			want: false,
+		},
+		{
+			name: "Error if secret",
+			wantErr: true,
+			want: false,
 		},
 	}
-	hasCA, err := HasPublicCA(k8s.NewFakeClient(&certsWithCA), esv1.ESNamer, "ns", "c1")
-	assert.NoError(t, err)
-	assert.True(t, hasCa)
 
-	certsWithoutCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "c2-es-http-certs-public",
-		},
-		Data: map[string][]byte{
-			CertFileName: []byte("..."),
-		},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := HasPublicCA(k8s.NewFakeClient(&tt.secret), esv1.ESNamer, "ns", "c1")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HasPublicCA() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("HasPublicCA() got = %v, want = %v", got, tt.want)
+			}
+		})
 	}
-	hasCA, err = HasPublicCA(k8s.NewFakeClient(&certsWithoutCA), esv1.ESNamer, "ns", "c2")
-	assert.NoError(t, err)
-	assert.False(t, hasCA)
-
-	// no certs secret
-	_, err = HasPublicCA(k8s.NewFakeClient(), esv1.ESNamer, "ns", "c3")
-	assert.Error(t, err)
 }
