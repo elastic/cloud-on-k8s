@@ -821,7 +821,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				shutdowns: map[string]client.NodeShutdown{
-					"masters-0": {Status: client.ShutdownStarted},
+					"masters-0": {Status: client.ShutdownInProgress},
 				},
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
