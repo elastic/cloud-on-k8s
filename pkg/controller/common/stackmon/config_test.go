@@ -19,26 +19,43 @@ import (
 func TestBuildMetricbeatBaseConfig(t *testing.T) {
 	tests := []struct {
 		name       string
-		hasCA       bool
+		isTLS      bool
+		hasCA      bool
 		baseConfig string
 	}{
 		{
-			name: "with tls",
+			name:  "with TLS and a CA",
+			isTLS: true,
 			hasCA: true,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
 				password: 1234567890
+				ssl.enabled: true
 				ssl.certificate_authorities: ["/mnt/elastic-internal/xx-monitoring/namespace/name/certs/ca.crt"]
 				ssl.verification_mode: "certificate"`,
 		},
 		{
-			name: "without CA",
+			name:  "with TLS and no CA",
+			isTLS: true,
 			hasCA: false,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
-				password: 1234567890`,
+				password: 1234567890
+				ssl.enabled: true
+				ssl.verification_mode: "certificate"`,
+		},
+		{
+			name:  "without TLS",
+			isTLS: false,
+			hasCA: false,
+			baseConfig: `
+				hosts: ["scheme://localhost:1234"]
+				username: elastic-internal-monitoring
+				password: 1234567890
+				ssl.enabled: false
+				ssl.verification_mode: "certificate"`,
 		},
 	}
 
@@ -46,10 +63,11 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				hosts: ["{{ .URL }}"]
 				username: {{ .Username }}
 				password: {{ .Password }}
+				ssl.enabled: {{ .IsSSL }}
 				{{- if .HasCA }}
 				ssl.certificate_authorities: ["{{ .CAPath }}"]
-				ssl.verification_mode: "{{ .SSLMode }}"
-				{{- end }}`
+				{{- end }}
+				ssl.verification_mode: "{{ .SSLMode }}"`
 	sampleURL := "scheme://localhost:1234"
 
 	fakeClient := k8s.NewFakeClient(&corev1.Secret{
@@ -66,6 +84,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				name.NewNamer("xx"),
 				sampleURL,
+				tc.isTLS,
 				tc.hasCA,
 				baseConfigTemplate,
 			)

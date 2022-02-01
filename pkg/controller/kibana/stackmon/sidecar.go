@@ -54,6 +54,7 @@ func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error)
 		metricbeatConfigTemplate,
 		kbv1.KBNamer,
 		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
+		kb.Spec.HTTP.TLS.Enabled(),
 		hasCA,
 	)
 	if err != nil {

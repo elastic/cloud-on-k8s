@@ -17,10 +17,11 @@ metricbeat.modules:
     hosts: ["{{ .URL }}"]
     username: {{ .Username }}
     password: {{ .Password }}
+    ssl.enabled: {{ .IsSSL }}
     {{- if .HasCA }}
     ssl.certificate_authorities: ["{{ .CAPath }}"]
-    ssl.verification_mode: "{{ .SSLMode }}"
     {{- end }}
+    ssl.verification_mode: "{{ .SSLMode }}"
 
 processors:
   - add_cloud_metadata: {}

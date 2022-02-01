@@ -28,6 +28,7 @@ func NewMetricBeatSidecar(
 	baseConfigTemplate string,
 	namer name.Namer,
 	url string,
+	isTLS bool,
 	hasCA bool,
 ) (BeatSidecar, error) {
 	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
@@ -37,6 +38,7 @@ func NewMetricBeatSidecar(
 		esNsn,
 		namer,
 		url,
+		isTLS,
 		hasCA,
 		baseConfigTemplate,
 	)

@@ -40,6 +40,7 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar,
 		metricbeatConfigTemplate,
 		esv1.ESNamer,
 		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		es.Spec.HTTP.TLS.Enabled(),
 		hasCA,
 	)
 	if err != nil {
