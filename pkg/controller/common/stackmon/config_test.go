@@ -63,7 +63,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				username: {{ .Username }}
 				password: {{ .Password }}
 				ssl.enabled: {{ .IsSSL }}
-				ssl.verification_mode: "{{ .SSLMode }}"
+				ssl.verification_mode: "certificate"
 				{{- if .HasCA }}
 				ssl.certificate_authorities: ["{{ .CAPath }}"]
 				{{- end }}`

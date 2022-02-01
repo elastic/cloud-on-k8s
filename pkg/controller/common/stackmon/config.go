@@ -162,7 +162,6 @@ type inputConfigData struct {
 	IsSSL    bool
 	HasCA    bool
 	CAPath   string
-	SSLMode  string
 }
 
 // buildMetricbeatBaseConfig builds the base configuration for Metricbeat with the Elasticsearch or Kibana modules used
@@ -186,13 +185,9 @@ func buildMetricbeatBaseConfig(
 	configData := inputConfigData{
 		Username: user.MonitoringUserName,
 		Password: password,
-		URL:      url,   // Metricbeat in the sidecar connects to the monitored resource using localhost
+		URL:      url,   // Metricbeat in the sidecar connects to the monitored resource using `localhost`
 		IsSSL:    isTLS, // enable SSL configuration based on whether the monitored resource has TLS enabled
 		HasCA:    hasCA, // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
-		// the ssl verification_mode is set to `certificate` to verify that the certificate is signed by a trusted authority, but does not perform any hostname verification.
-		// this is used when SSL is enabled with or without CA, to support self-signed certificate with a custom CA or custom certificates with or without a CA that most likely
-		// are not issued for localhost.
-		SSLMode: "certificate",
 	}
 
 	var caVolume volume.VolumeLike
