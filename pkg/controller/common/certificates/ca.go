@@ -131,9 +131,9 @@ func (c *CA) CreateCertificate(
 	return certData, err
 }
 
-// HasPublicCA returns true if an Elastic resource has a CA (ca.crt) in its public HTTP certs secret given its namer,
+// PublicCertsHasCACert returns true if an Elastic resource has a CA (ca.crt) in its public HTTP certs secret given its namer,
 // namespace and name.
-func HasPublicCA(client k8s.Client, namer name.Namer, namespace string, name string) (bool, error) {
+func PublicCertsHasCACert(client k8s.Client, namer name.Namer, namespace string, name string) (bool, error) {
 	certsNsn := types.NamespacedName{
 		Name:      PublicCertsSecretName(namer, name),
 		Namespace: namespace,

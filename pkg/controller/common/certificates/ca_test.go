@@ -91,7 +91,7 @@ func TestNewSelfSignedCA(t *testing.T) {
 	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
 }
 
-func Test_HasPublicCA(t *testing.T) {
+func Test_PublicCertsHasCACert(t *testing.T) {
 	tests := []struct {
 		name    string
 		secret  corev1.Secret
@@ -136,12 +136,12 @@ func Test_HasPublicCA(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := HasPublicCA(k8s.NewFakeClient(&tt.secret), esv1.ESNamer, "ns", "c1")
+			got, err := PublicCertsHasCACert(k8s.NewFakeClient(&tt.secret), esv1.ESNamer, "ns", "c1")
 			if (err != nil) != tt.wantErr {
-				t.Errorf("HasPublicCA() error = %v, wantErr = %v", err, tt.wantErr)
+				t.Errorf("PublicCertsHasCACert() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 			if got != tt.want {
-				t.Errorf("HasPublicCA() got = %v, want = %v", got, tt.want)
+				t.Errorf("PublicCertsHasCACert() got = %v, want = %v", got, tt.want)
 			}
 		})
 	}

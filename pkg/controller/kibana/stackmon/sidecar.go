@@ -41,7 +41,7 @@ func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error)
 		associatedEsNsn.Namespace = kb.Namespace
 	}
 
-	hasCA, err := certificates.HasPublicCA(client, kbv1.KBNamer, kb.Namespace, kb.Name)
+	hasCA, err := certificates.PublicCertsHasCACert(client, kbv1.KBNamer, kb.Namespace, kb.Name)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

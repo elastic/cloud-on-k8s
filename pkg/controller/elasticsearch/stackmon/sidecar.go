@@ -27,7 +27,7 @@ const (
 )
 
 func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	hasCA, err := certificates.HasPublicCA(client, esv1.ESNamer, es.Namespace, es.Name)
+	hasCA, err := certificates.PublicCertsHasCACert(client, esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
