@@ -161,3 +161,50 @@ func TestLicenseUpdateResponse_IsSuccess(t *testing.T) {
 		})
 	}
 }
+
+func TestShutdownResponse(t *testing.T) {
+	nodeShudownSample := `{
+	"nodes": [{
+		"node_id": "PQKHA4xCQd2xErO2fUK-hg",
+		"type": "REMOVE",
+		"reason": "2331481",
+		"shutdown_startedmillis": 1643648932189,
+		"status": "IN_PROGRESS",
+		"shard_migration": {
+			"status": "IN_PROGRESS",
+			"shard_migrations_remaining": 1
+		},
+		"persistent_tasks": {
+			"status": "COMPLETE"
+		},
+		"plugins": {
+			"status": "COMPLETE"
+		}
+	}]
+}`
+	expected := ShutdownResponse{Nodes: []NodeShutdown{
+		{
+			NodeID:                "PQKHA4xCQd2xErO2fUK-hg",
+			Type:                  "REMOVE",
+			Reason:                "2331481",
+			ShutdownStartedMillis: 1643648932189,
+			Status:                ShutdownInProgress,
+			ShardMigration: ShardMigration{
+				Status:                   ShutdownInProgress,
+				ShardMigrationsRemaining: 1,
+				Explanation:              "",
+			},
+			PersistentTasks: PersistentTasks{
+				Status: ShutdownComplete,
+			},
+			Plugins: Plugins{
+				Status: ShutdownComplete,
+			},
+		},
+	},
+	}
+
+	var actual ShutdownResponse
+	require.NoError(t, json.Unmarshal([]byte(nodeShudownSample), &actual))
+	require.Equal(t, expected, actual)
+}
