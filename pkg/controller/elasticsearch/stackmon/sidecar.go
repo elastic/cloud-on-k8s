@@ -12,7 +12,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
@@ -27,10 +26,6 @@ const (
 )
 
 func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	hasCA, err := certificates.PublicCertsHasCACert(client, esv1.ESNamer, es.Namespace, es.Name)
-	if err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		client,
 		commonv1.KbMonitoringAssociationType,
@@ -41,7 +36,6 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar,
 		esv1.ESNamer,
 		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
 		es.Spec.HTTP.TLS.Enabled(),
-		hasCA,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err

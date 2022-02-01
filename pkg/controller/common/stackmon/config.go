@@ -174,12 +174,20 @@ func buildMetricbeatBaseConfig(
 	namer name.Namer,
 	url string,
 	isTLS bool,
-	hasCA bool,
 	configTemplate string,
 ) (string, volume.VolumeLike, error) {
 	password, err := user.GetMonitoringUserPassword(client, esNsn)
 	if err != nil {
 		return "", nil, err
+	}
+
+	hasCA := false
+	if isTLS {
+		var err error
+		hasCA, err = certificates.PublicCertsHasCACert(client, namer, nsn.Namespace, nsn.Name)
+		if err != nil {
+			return "", nil, err
+		}
 	}
 
 	configData := inputConfigData{
