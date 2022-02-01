@@ -27,7 +27,7 @@ const (
 )
 
 func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	isCA, err := certificates.HasPublicCA(client, esv1.ESNamer, es.Namespace, es.Name)
+	hasCA, err := certificates.HasPublicCA(client, esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -40,7 +40,7 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar,
 		metricbeatConfigTemplate,
 		esv1.ESNamer,
 		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
-		isCA,
+		hasCA,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err

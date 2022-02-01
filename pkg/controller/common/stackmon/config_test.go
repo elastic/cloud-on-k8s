@@ -19,12 +19,12 @@ import (
 func TestBuildMetricbeatBaseConfig(t *testing.T) {
 	tests := []struct {
 		name       string
-		isCA       bool
+		hasCA       bool
 		baseConfig string
 	}{
 		{
 			name: "with tls",
-			isCA: true,
+			hasCA: true,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
@@ -34,7 +34,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 		},
 		{
 			name: "without CA",
-			isCA: false,
+			hasCA: false,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
@@ -46,7 +46,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				hosts: ["{{ .URL }}"]
 				username: {{ .Username }}
 				password: {{ .Password }}
-				{{- if .IsCA }}
+				{{- if .HasCA }}
 				ssl.certificate_authorities: ["{{ .CAPath }}"]
 				ssl.verification_mode: "{{ .SSLMode }}"
 				{{- end }}`
@@ -66,7 +66,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				name.NewNamer("xx"),
 				sampleURL,
-				tc.isCA,
+				tc.hasCA,
 				baseConfigTemplate,
 			)
 			assert.NoError(t, err)

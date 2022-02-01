@@ -159,7 +159,7 @@ type inputConfigData struct {
 	URL      string
 	Username string
 	Password string
-	IsCA     bool
+	HasCA    bool
 	CAPath   string
 	SSLMode  string
 }
@@ -173,7 +173,7 @@ func buildMetricbeatBaseConfig(
 	esNsn types.NamespacedName,
 	namer name.Namer,
 	url string,
-	isCA bool,
+	hasCA bool,
 	configTemplate string,
 ) (string, volume.VolumeLike, error) {
 	password, err := user.GetMonitoringUserPassword(client, esNsn)
@@ -185,11 +185,11 @@ func buildMetricbeatBaseConfig(
 		URL:      url,
 		Username: user.MonitoringUserName,
 		Password: password,
-		IsCA:     isCA,
+		HasCA:    hasCA,
 	}
 
 	var caVolume volume.VolumeLike
-	if configData.IsCA {
+	if configData.HasCA {
 		caVolume = volume.NewSecretVolumeWithMountPath(
 			certificates.PublicCertsSecretName(namer, nsn.Name),
 			fmt.Sprintf("%s-local-ca", string(associationType)),
