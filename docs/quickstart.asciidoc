@@ -42,13 +42,20 @@ IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempt
 
 ====
 
-. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
+. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions]:
 +
 [source,sh,subs="attributes"]
 ----
 kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+----
+
+. Install the operator with its RBAC rules:
++
+[source,sh,subs="attributes"]
+----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
+NOTE: The ECK operator runs by default in the `elastic-system` namespace. It is recommended that you choose a dedicated namespace for your workloads, rather than using the `elastic-system` or the `default` namespace.
 
 . Monitor the operator logs:
 +
