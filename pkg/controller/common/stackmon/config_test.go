@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -18,15 +19,22 @@ import (
 
 func TestBuildMetricbeatBaseConfig(t *testing.T) {
 	tests := []struct {
-		name       string
-		isTLS      bool
-		hasCA      bool
-		baseConfig string
+		name        string
+		isTLS       bool
+		certsSecret *corev1.Secret
+		hasCA       bool
+		baseConfig  string
 	}{
 		{
 			name:  "with TLS and a CA",
 			isTLS: true,
-			hasCA: true,
+			certsSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "name-es-http-certs-public", Namespace: "namespace"},
+				Data: map[string][]byte{
+					"tls.crt": []byte("1234567890"),
+					"ca.crt":  []byte("1234567890"),
+				},
+			},
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
@@ -38,7 +46,12 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 		{
 			name:  "with TLS and no CA",
 			isTLS: true,
-			hasCA: false,
+			certsSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "name-es-http-certs-public", Namespace: "namespace"},
+				Data: map[string][]byte{
+					"tls.crt": []byte("1234567890"),
+				},
+			},
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
@@ -49,7 +62,6 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 		{
 			name:  "without TLS",
 			isTLS: false,
-			hasCA: false,
 			baseConfig: `
 				hosts: ["scheme://localhost:1234"]
 				username: elastic-internal-monitoring
@@ -69,23 +81,26 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				{{- end }}`
 
 	sampleURL := "scheme://localhost:1234"
-
-	fakeClient := k8s.NewFakeClient(&corev1.Secret{
+	internalUsersSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "name-es-internal-users", Namespace: "namespace"},
 		Data:       map[string][]byte{"elastic-internal-monitoring": []byte("1234567890")},
-	})
+	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			initObjects := []runtime.Object{internalUsersSecret}
+			if tc.certsSecret != nil {
+				initObjects = append(initObjects, tc.certsSecret)
+			}
+			fakeClient := k8s.NewFakeClient(initObjects...)
 			baseConfig, _, err := buildMetricbeatBaseConfig(
 				fakeClient,
 				"xx-monitoring",
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
-				name.NewNamer("xx"),
+				name.NewNamer("es"),
 				sampleURL,
 				tc.isTLS,
-				tc.hasCA,
 				baseConfigTemplate,
 			)
 			assert.NoError(t, err)
