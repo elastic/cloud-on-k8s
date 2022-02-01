@@ -68,7 +68,7 @@ IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes 
 
 You can send metrics and logs to two different Elasticsearch monitoring clusters.
 
-You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (see link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
+You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (check link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
 
 == When to use it
 
@@ -77,7 +77,7 @@ This feature is a good solution if you need to monitor your Elastic applications
 - to Metricbeat to allow queriying the k8s API
 - to Filebeat to deploy a privileged DaemonSet
 
-However, for maximum efficiency and minimising resource consumption, or advanced use cases that require specific Beats configurations, you can deploy a standalone Metricbeat Deployment and a Filebeat Daemonset. See the <<{p}-beat-configuration-examples,Beats configuration Examples>> for more information.
+However, for maximum efficiency and minimising resource consumption, or advanced use cases that require specific Beats configurations, you can deploy a standalone Metricbeat Deployment and a Filebeat Daemonset. Check the <<{p}-beat-configuration-examples,Beats configuration Examples>> for more information.
 
 == How it works
 

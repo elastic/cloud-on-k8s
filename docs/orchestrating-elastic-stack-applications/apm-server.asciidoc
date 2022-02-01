@@ -227,9 +227,9 @@ spec:
 
 By default the operator manages a private CA and generates a self-signed certificate used to secure the communication between APM agents and the server.
 
-This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. See link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[Setting up your own certificate] for more information on how to use your own certificate to configure the TLS endpoint of the APM Server.
+This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. Check link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[Setting up your own certificate] for more information on how to use your own certificate to configure the TLS endpoint of the APM Server.
 
-For more details on how to configure the APM agents to work with custom certificates, see the https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation].
+For more details on how to configure the APM agents to work with custom certificates, check the https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation].
 
 [id="{p}-apm-connecting"]
 == Connect to the APM Server
@@ -244,7 +244,7 @@ This section covers the following topics:
 [id="{p}-apm-service"]
 === APM Server service
 
-The APM Server is exposed with a Service. For information on accessing it, see link:k8s-accessing-elastic-services.html[How to access Elastic Stack services].
+The APM Server is exposed with a Service. For information on accessing it, check link:k8s-accessing-elastic-services.html[How to access Elastic Stack services].
 
 To retrieve the list of all the APM Services, use the following command:
 
@@ -271,9 +271,9 @@ This token is stored in a secret named `{APM-server-name}-apm-token` and can be 
 kubectl get secret/apm-server-quickstart-apm-token -o go-template='{{index .data "secret-token" | base64decode}}'
 ----
 
-For more information, see https://www.elastic.co/guide/en/apm/server/current/index.html[APM Server Reference].
+For more information, check https://www.elastic.co/guide/en/apm/server/current/index.html[APM Server Reference].
 
 [id="{p}-apm-api-keys"]
 === APM Server API keys
 
-If you want to configure API keys to authorize requests to the APM Server, instead of using the APM Server CLI, you have to create API keys using the Elasticsearch  https://www.elastic.co/guide/en/elasticsearch/reference/7.14/security-api-create-api-key.html[create API key API], see the https://www.elastic.co/guide/en/apm/server/current/api-key.html#create-api-key-workflow-es[APM Server documentation].
+If you want to configure API keys to authorize requests to the APM Server, instead of using the APM Server CLI, you have to create API keys using the Elasticsearch  https://www.elastic.co/guide/en/elasticsearch/reference/7.14/security-api-create-api-key.html[create API key API], check the https://www.elastic.co/guide/en/apm/server/current/api-key.html#create-api-key-workflow-es[APM Server documentation].

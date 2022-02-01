@@ -108,9 +108,9 @@ Option 1 and 2 are both valid as two separate implementation phases. Without a r
 * What kind of license will we support? gold, platinum, standard license?
     * assume all license types for now  
 * What do we do when the license expires. How do we recover from that?
-    * The cluster does not disintegrate when the license expires. The operator will see the cluster as unhealthy as our current health checks start failing only if the cluster never had a license. But we might continue starting out with a trial license until the cluster forms and is issued a proper license.  The license API stays responsive even without any license attached to the cluster and cluster bounces back as soon as a valid license is put into place. 
+    * The cluster does not disintegrate when the license expires. The operator will detect the cluster as unhealthy as our current health checks start failing only if the cluster never had a license. But we might continue starting out with a trial license until the cluster forms and is issued a proper license.  The license API stays responsive even without any license attached to the cluster and cluster bounces back as soon as a valid license is put into place. 
 * How do we handle license downgrades to basic? 
-    * As basic does not support internal TLS I don't see a way at the moment to downgrade to basic. Should we prevent/validate this with a CRD and validation?
+    * As basic does not support internal TLS, there is no way at the moment to downgrade to basic. Should we prevent/validate this with a CRD and validation?
 * Do we have have way of testing licensing. Can we generate test licenses?
     * Not really. The only option is to unit/integration test the code around license management. We can think about two options in the future: dev licenses similar to what Elasticsearch does (would require us to use dev Docker images) or loading a valid license in vault for CI to run a set of integration and e2e tests on it
 * Do we need to support enterprise licenses that contain individual cluster licenses?

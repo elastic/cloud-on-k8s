@@ -11,25 +11,25 @@ Elastic Cloud on Kubernetes has graduated from beta and is now in general availa
 [id="{p}-release-v1"]
 === Resource version promotion
 
-Custom resources have graduated to version `v1`.  Manifests for `v1beta1` will still function, but are deprecated and should be updated to `v1`. Support for `v1beta1` will be removed in a future release. Support for `v1alpha1` has been removed. See <<{p}-upgrading-eck>> for more information.
+Custom resources have graduated to version `v1`.  Manifests for `v1beta1` will still function, but are deprecated and should be updated to `v1`. Support for `v1beta1` will be removed in a future release. Support for `v1alpha1` has been removed. Check <<{p}-upgrading-eck>> for more information.
 
 [float]
 [id="{p}-release-webhook"]
 === Webhook validation
 
-Webhook validation has been re-introduced. This allows for additional validation when Elastic resources are created or updated. See <<{p}-webhook>> for more information.
+Webhook validation has been re-introduced. This allows for additional validation when Elastic resources are created or updated. Check <<{p}-webhook>> for more information.
 
 [float]
 [id="{p}-multi-namespace"]
 === Multiple namespace management
 
-ECK can now manage multiple specific namespaces simultaneously. Previously a single instance of ECK could manage either all namespaces or a single namespace. See <<{p}-operator-config>> for more information.
+ECK can now manage multiple specific namespaces simultaneously. Previously a single instance of ECK could manage either all namespaces or a single namespace. Check <<{p}-operator-config>> for more information.
 
 [float]
 [id="{p}-release-license-mgmt"]
 === License management
 
-Handling of licenses has been greatly improved. If the license changes, all new clusters will use it and all existing clusters will be upgraded to the new license. See <<{p}-licensing>> for more information.
+Handling of licenses has been greatly improved. If the license changes, all new clusters will use it and all existing clusters will be upgraded to the new license. Check <<{p}-licensing>> for more information.
 
 [float]
 [id="{p}-release-mesh-compat"]

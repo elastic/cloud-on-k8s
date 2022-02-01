@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Elasticsearch autoscaling
 
-NOTE: Elasticsearch autoscaling requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing,the license documentation>> for more details about managing licenses.
+NOTE: Elasticsearch autoscaling requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
 experimental[]
 

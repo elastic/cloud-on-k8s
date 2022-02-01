@@ -19,7 +19,7 @@ You can connect ECK and managed Elastic Stack applications to some of the most p
 [id="{p}-service-mesh-istio"]
 == Istio
 
-The instructions in this section describe how to connect the operator and managed resources to the Istio service mesh and assume that Istio is already installed and configured on your Kubernetes cluster. To know more about Istio and how to install it, see the link:https://istio.io[product documentation].
+The instructions in this section describe how to connect the operator and managed resources to the Istio service mesh and assume that Istio is already installed and configured on your Kubernetes cluster. To know more about Istio and how to install it, check the link:https://istio.io[product documentation].
 
 These instructions have been tested with Istio {istio_version}. Older or newer versions of Istio might require additional configuration steps not documented here.
 
@@ -117,7 +117,7 @@ spec:
 
 <3> Optional. Only set `automountServiceAccountToken` to `true` if your Kubernetes cluster does not have support for issuing third-party security tokens.
 
-If you do not have https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/[automatic mutual TLS] enabled, you may need to create a link:https://istio.io/docs/reference/config/networking/destination-rule/[Destination Rule] to allow the operator to communicate with the Elasticsearch cluster. A communication issue between the operator and the managed Elasticsearch cluster can be detected by looking at the operator logs to see if there are any errors reported with the text `503 Service Unavailable`.
+If you do not have https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/[automatic mutual TLS] enabled, you may need to create a link:https://istio.io/docs/reference/config/networking/destination-rule/[Destination Rule] to allow the operator to communicate with the Elasticsearch cluster. A communication issue between the operator and the managed Elasticsearch cluster can be detected by looking at the operator logs to check if there are any errors reported with the text `503 Service Unavailable`.
 
 [source,sh]
 ----
@@ -281,7 +281,7 @@ kubectl annotate namespace elastic-stack linkerd.io/inject=enabled
 
 Any Elasticsearch, Kibana, or APM Server resources deployed to a namespace with the above annotation will automatically join the mesh.
 
-Alternatively, if you only want specific resources to join the mesh, add the `linkerd.io/inject: enabled` annotation to the `podTemplate` (see <<{p}-api-reference, API documentation>>) of the resource as follows:
+Alternatively, if you only want specific resources to join the mesh, add the `linkerd.io/inject: enabled` annotation to the `podTemplate` (check <<{p}-api-reference, API documentation>>) of the resource as follows:
 
 [source,yaml]
 ----

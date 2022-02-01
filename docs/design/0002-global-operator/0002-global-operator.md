@@ -70,5 +70,5 @@ Superseded by [005](https://github.com/elastic/cloud-on-k8s/blob/main/docs/desig
 
 ### Negative Consequences <!-- optional -->
 
-- Introduces more than one operator, complicating deployment and debugging. (See section for future improvements)
+- Introduces more than one operator, complicating deployment and debugging. 
 - Controllers in the global operator, such as the CCR controller still need to be scaled on a number-of-clusters / associations basis (but it does not need to connect to individual ES clusters).

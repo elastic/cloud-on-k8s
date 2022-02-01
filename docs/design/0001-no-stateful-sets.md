@@ -1,6 +1,6 @@
 # 1. Stateful set or custom controller
 
-**Update (2019-07-30):** we decided to refactor the code towards using StatefulSets in order to manage Elasticsearch pods. Mostly in order to get closer to Kubernetes standards, simplify PersistentVolumes management, and stay open to future improvements in the ecosystem. For more details, see [the StatefulSets discussion issue](https://github.com/elastic/cloud-on-k8s/issues/1173).
+**Update (2019-07-30):** we decided to refactor the code towards using StatefulSets in order to manage Elasticsearch pods. Mostly in order to get closer to Kubernetes standards, simplify PersistentVolumes management, and stay open to future improvements in the ecosystem. For more details, check [the StatefulSets discussion issue](https://github.com/elastic/cloud-on-k8s/issues/1173).
 
 * Status: ~~accepted~~ rejected, superseded by https://github.com/elastic/cloud-on-k8s/issues/1173
 * Deciders: @nkvoll
@@ -89,7 +89,7 @@ We decided to implement our own controller that manages pods directly.
 
 - [StatefulSets documentation](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
 
-- [etcd-operator](https://github.com/coreos/etcd-operator): one of the first and most popular operator out there. Does not rely on StatefulSets. See [this comment](https://github.com/coreos/etcd-operator/issues/1323#issuecomment-317875165) from _xiang90_:
+- [etcd-operator](https://github.com/coreos/etcd-operator): one of the first and most popular operator out there. Does not rely on StatefulSets. Check [this comment](https://github.com/coreos/etcd-operator/issues/1323#issuecomment-317875165) from _xiang90_:
 > Statefulset is not flexible enough to achieve quite a few things easily, and the benefits it bring in right now are not significant.
 
 - [Best practices for building Kubernetes Operators and stateful apps (Google)](https://cloud.google.com/blog/products/containers-kubernetes/best-practices-for-building-kubernetes-operators-and-stateful-apps)

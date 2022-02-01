@@ -136,7 +136,7 @@ roleRef:
 EOF
 ----
 +
-See <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
+Check <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 
 ECK automatically configures secure connections between all components. Fleet will be set up, and all agents are enrolled in the default policy.
 
