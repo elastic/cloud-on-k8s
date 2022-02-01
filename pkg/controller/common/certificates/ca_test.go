@@ -128,7 +128,7 @@ func Test_PublicCertsHasCACert(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "Error if secret",
+			name: "Error if no certs secret",
 			wantErr: true,
 			want: false,
 		},
