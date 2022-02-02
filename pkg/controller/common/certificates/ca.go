@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"crypto"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
@@ -14,6 +15,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var (
@@ -123,4 +129,19 @@ func (c *CA) CreateCertificate(
 	)
 
 	return certData, err
+}
+
+// PublicCertsHasCACert returns true if an Elastic resource has a CA (ca.crt) in its public HTTP certs secret given its namer,
+// namespace and name.
+func PublicCertsHasCACert(client k8s.Client, namer name.Namer, namespace string, name string) (bool, error) {
+	certsNsn := types.NamespacedName{
+		Name:      PublicCertsSecretName(namer, name),
+		Namespace: namespace,
+	}
+	var certsSecret corev1.Secret
+	if err := client.Get(context.Background(), certsNsn, &certsSecret); err != nil {
+		return false, err
+	}
+	_, ok := certsSecret.Data[CAFileName]
+	return ok, nil
 }

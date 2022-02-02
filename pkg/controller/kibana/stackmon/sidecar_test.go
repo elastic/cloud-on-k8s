@@ -48,9 +48,19 @@ func TestWithMonitoring(t *testing.T) {
 	}
 	fakeEsHTTPCertSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-http-certs-public", Namespace: "aerospace"},
-		Data:       map[string][]byte{"ca.crt": []byte("7H1515N074r341C3r71F1C473")},
+		Data: map[string][]byte{
+			"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
+			"ca.crt":  []byte("7H1515N074r341C3r71F1C473"),
+		},
 	}
-	fakeClient := k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret)
+	fakeKbHTTPCertSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "sample-kb-http-certs-public", Namespace: "aerospace"},
+		Data: map[string][]byte{
+			"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
+			"ca.crt":  []byte("7H1515N074r341C3r71F1C473"),
+		},
+	}
+	fakeClient := k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret, &fakeKbHTTPCertSecret)
 
 	monitoringAssocConf := commonv1.AssociationConf{
 		AuthSecretName: "sample-observability-monitoring-beat-es-mon-user",

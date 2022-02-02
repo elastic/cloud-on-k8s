@@ -15,6 +15,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func init() {
@@ -84,4 +89,60 @@ func TestNewSelfSignedCA(t *testing.T) {
 	require.Equal(t, ca.Cert.Subject.CommonName, opts.Subject.CommonName)
 	require.Equal(t, testRSAPrivateKey, ca.PrivateKey)
 	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
+}
+
+func Test_PublicCertsHasCACert(t *testing.T) {
+	tests := []struct {
+		name    string
+		secret  corev1.Secret
+		wantErr bool
+		want   bool
+	}{
+		{
+			name: "Happy path: with ca.crt",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "c1-es-http-certs-public",
+				},
+				Data: map[string][]byte{
+					CAFileName: []byte("..."),
+					CertFileName: []byte("..."),
+				},
+			},
+			wantErr: false,
+			want: true,
+		},
+		{
+			name: "Happy path, without ca.crt",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "c1-es-http-certs-public",
+				},
+				Data: map[string][]byte{
+					CertFileName: []byte("..."),
+				},
+			},
+			wantErr: false,
+			want: false,
+		},
+		{
+			name: "Error if no certs secret",
+			wantErr: true,
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := PublicCertsHasCACert(k8s.NewFakeClient(&tt.secret), esv1.ESNamer, "ns", "c1")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PublicCertsHasCACert() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("PublicCertsHasCACert() got = %v, want = %v", got, tt.want)
+			}
+		})
+	}
 }
