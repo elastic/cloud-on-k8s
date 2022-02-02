@@ -135,7 +135,7 @@ Pros:
 Cons:
 
 * Need for a "hybrid" version to deploy everything in a single restricted namespace (eg. "default"), which is a bit confusing
-* The global-operator needs elevated permissions on the cluster (eg. read access to all secrets)
+* The global-operator needs elevated permissions on the cluster (eg. get access to all secrets)
 * One might want to use several global-operators on a single cluster
 * One operator per namespace might lead to deploy too many operators
 

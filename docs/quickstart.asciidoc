@@ -29,7 +29,7 @@ include::supported-versions.asciidoc[]
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
 
-IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
+IMPORTANT: Check the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
 
 [NOTE]
 ====
