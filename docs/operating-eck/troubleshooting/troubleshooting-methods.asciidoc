@@ -321,7 +321,7 @@ This can also be done for Kibana and APM Server.
 [id="{p}-suspend-elasticsearch"]
 == Suspend Elasticsearch
 
-In exceptional cases, you might need to suspend the Elasticsearch process while using `kubectl exec`. Check the (<<{p}-exec-into-containers,previous section>>) to troubleshoot.
+In exceptional cases, you might need to suspend the Elasticsearch process while using `kubectl exec` (as in the <<{p}-exec-into-containers,previous section>>) to troubleshoot.
 One such example where Elasticsearch has to be stopped are the unsafe operations on Elasticsearch nodes that can be executed with the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/node-tool.html[elasticsearch-node] tool.
 
 To suspend an Elasticearch node, while keeping the corresponding Pod running, you can annotate the Elasticsearch resource with the `eck.k8s.elastic.co/suspend` annotation. The value should be a comma-separated list of the names of the Pods whose Elasticsearch process you want to suspend.
