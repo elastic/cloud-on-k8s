@@ -38,7 +38,7 @@ spec:
       monitoring_enabled:
       - logs
       - metrics
-      unenroll_timeout: 900  
+      unenroll_timeout: 900
       is_default: true
       package_policies:
       - name: system-1
