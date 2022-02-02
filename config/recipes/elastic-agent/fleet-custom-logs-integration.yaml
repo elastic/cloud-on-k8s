@@ -11,19 +11,40 @@ spec:
     xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.packages:
-    - name: log
+    - name: system
       version: latest
+    - name: elastic_agent
+      version: latest
+    - name: fleet_server
+      version: latest
+    - name: log
+      version: latest  
     xpack.fleet.agentPolicies:
-    - name: Default Fleet Server on ECK policy
+    - name: Fleet Server on ECK policy
+      id: eck-fleet-server
+      namespace: default
+      monitoring_enabled:
+      - logs
+      - metrics
       is_default_fleet_server: true
       package_policies:
-      - package:
+      - name: fleet_server-1
+        id: fleet_server-1
+        package:
           name: fleet_server
-        name: fleet_server-1
-    - name: Default Elastic Agent on ECK policy
+    - name: Elastic Agent on ECK policy
+      id: eck-agent
+      namespace: default
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900  
       is_default: true
-      unenroll_timeout: 900
       package_policies:
+      - name: system-1
+        id: system-1
+        package:
+          name: system
       - package:
           name: log
         name: log-1
