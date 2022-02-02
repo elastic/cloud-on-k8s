@@ -5,7 +5,7 @@
 [id="{p}-140-new-and-notable"]
 === New and notable
 
-New and notable changes in version 1.4.0 of {n}. See <<release-notes-1.4.0>> for the full list of changes.
+New and notable changes in version 1.4.0 of {n}. Check <<release-notes-1.4.0>> for the full list of changes.
 
 [float]
 [id="{p}-140-agent-support"]

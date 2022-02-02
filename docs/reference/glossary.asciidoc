@@ -55,4 +55,4 @@ This glossary supplements the link:https://kubernetes.io/docs/reference/glossary
   Quality of Service. When a Kubernetes cluster is under heavy load, the Kubernetes scheduler makes pod eviction decisions based on the link:https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/[QoS class of individual pods]. <<{p}-managing-compute-resources>> explains how to define QoS classes for Elasticsearch, Kibana and APM Server pods.
 
 [[RBAC]]RBAC::
-  Role-based Access Control. A security mechanism in Kubernetes where access to cluster resources is restricted to principals having the appropriate role. See https://kubernetes.io/docs/reference/access-authn-authz/rbac/ for more information.
+  Role-based Access Control. A security mechanism in Kubernetes where access to cluster resources is restricted to principals having the appropriate role. Check https://kubernetes.io/docs/reference/access-authn-authz/rbac/ for more information.

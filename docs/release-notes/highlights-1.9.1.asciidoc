@@ -5,7 +5,7 @@
 [id="{p}-191-new-and-notable"]
 === New and notable
 
-New and notable changes in version 1.9.1 of {n}. See <<release-notes-1.9.1>> for the full list of changes.
+New and notable changes in version 1.9.1 of {n}. Check <<release-notes-1.9.1>> for the full list of changes.
 
 
 [float]

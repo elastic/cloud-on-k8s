@@ -15,7 +15,7 @@ When using remote cluster connections with ECK, the setup process depends on whe
 [id="{p}-remote-clusters-connect-internal"]
 == Connect from an Elasticsearch cluster running in the same Kubernetes cluster
 
-NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing,the license documentation>> for more details about managing licenses.
+NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
 To create a remote cluster connection to another Elasticsearch cluster deployed within the same Kubernetes cluster, specify the `remoteClusters` attribute in your Elasticsearch spec.
 
@@ -73,7 +73,7 @@ kubectl get secret cluster-one-es-transport-certs-public \
 
 You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, simply add the CA certificate extracted in the above step to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`].
 
-NOTE: Beware of copying the source Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
+NOTE: Beware of copying the source Secret as-is into a different namespace. Check <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
 
 NOTE: CA certificates are automatically rotated after one year by default. You can link:k8s-operator-config.html[configure] this period. Make sure to keep the copy of the certificates Secret up-to-date.
 

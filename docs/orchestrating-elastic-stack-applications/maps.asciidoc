@@ -10,7 +10,7 @@ endif::[]
 
 experimental[]
 
-If you cannot connect to Elastic Maps Service from the Kibana server or browser clients, and you are running ECK with an Enterprise license, you can opt to host the service on your Kubernetes cluster. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
+If you cannot connect to Elastic Maps Service from the Kibana server or browser clients, and you are running ECK with an Enterprise license, you can opt to host the service on your Kubernetes cluster. Check also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
 
 The following sections describe how to customize an {ems} deployment to suit your requirements.
 
@@ -63,7 +63,7 @@ spec:
 
 The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as {ems}.
 
-NOTE: Any {ems} can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to the {ems} namespace. {ems} cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, see <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
+NOTE: Any {ems} can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to the {ems} namespace. {ems} cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, check <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
 
 The {ems} configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
@@ -75,7 +75,7 @@ experimental[]
 The {ems} Docker image contains only a few zoom levels of data. To get the map data up to the highest zoom level, {ems} needs a basemap file mounted into its container.
 [id="{p}-maps-basemap-download"]
 === Basemap download
-You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods. See also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
+You have to download the basemap ahead of time on a machine that is not air-gapped and populate a volume that can be mounted into the {ems} Pods. Check also the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server[{ems} documentation.]
 
 The procedure on how to get a Kubernetes volume populated with that data is outside the scope of this document, as it depends on your specific Kubernetes setup and choice of volume provisioner. This is a possible approach that works for most setups:
 
@@ -242,14 +242,14 @@ Refer to <<{p}-static-ip-custom-domain>> for more details.
 [id="{p}-maps-http-custom-tls"]
 === Provide your own certificate
 
-If you want to use your own certificate, the required configuration is identical to Elasticsearch. See <<{p}-custom-http-certificate>>.
+If you want to use your own certificate, the required configuration is identical to Elasticsearch. Check <<{p}-custom-http-certificate>>.
 
 [id="{p}-maps-http-disable-tls"]
 === Disable TLS
 
-You can disable the generation of the self-signed certificate and hence disable TLS. See <<{p}-disable-tls>>.
+You can disable the generation of the self-signed certificate and hence disable TLS. Check <<{p}-disable-tls>>.
 
 
 [id="{p}-maps-ingress"]
 ==== Ingress and Kibana configuration
-To use {ems} from your Kibana instances, you need to configure Kibana to fetch maps from your {ems} instance by using the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-kibana[`map.emsUrl`] configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. The certificates presented by {ems} need to be trusted by the browser, and the URL must have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues. See the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example on how to set this up using an Ingress resource.
+To use {ems} from your Kibana instances, you need to configure Kibana to fetch maps from your {ems} instance by using the link:https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-kibana[`map.emsUrl`] configuration key. The value of this setting needs to be the URL where the {ems} instance is reachable from your browser. The certificates presented by {ems} need to be trusted by the browser, and the URL must have the same origin as the URL where your Kibana is hosted to avoid cross origin resource issues. Check the link:{eck_github}/tree/{eck_release_branch}/config/recipes/[recipe section] for an example on how to set this up using an Ingress resource.

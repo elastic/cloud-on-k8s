@@ -194,7 +194,7 @@ quickstart-es-default-2   0/1     Pending   0          134m
 +
 In this case, you have to add more K8s nodes, or free up resources.
 
-For more information, see <<{p}-troubleshooting-methods>>.
+For more information, check <<{p}-troubleshooting-methods>>.
 
 [id="{p}-{page_id}-olm-upgrade"]
 == ECK operator upgrade stays pending when using OLM
