@@ -467,7 +467,7 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 [id="{p}-elastic-agent-fleet-configuration-customize-fleet-server-service"]
 === Customize Fleet Server Service
 
-By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. You can read more about link:k8s-services.html[making changes] to the Service and link:k8s-tls-certificates.html[customizing] TLS configuration in the documentation.
+By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. Check more information on how to link:k8s-services.html[make changes] to the Service and link:k8s-tls-certificates.html[customize] the TLS configuration.
 
 [id="{p}-elastic-agent-fleet-configuration-override-default-fleet-configuration-settings"]
 === Override default Fleet configuration settings
