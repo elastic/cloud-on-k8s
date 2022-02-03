@@ -88,7 +88,6 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 // DeleteAll unconditionally deletes all upgradeable Pods after calling the node shutdown API and accounting for quorum
 // changes on older versions of Elasticsearch as applicable.
 func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
-
 	if len(ctx.podsToUpgrade) == 0 {
 		return nil, nil
 	}
