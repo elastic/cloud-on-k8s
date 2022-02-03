@@ -143,7 +143,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 		esClient := &fakeESClient{version: version.MustParse("7.13.0")}
 		es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable)
 		k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, nothing)...)
-		ctx := rollingUpgradeCtx{
+		ctx := upgradeCtx{
 			parentCtx:       context.Background(),
 			client:          k8sClient,
 			ES:              es,
@@ -878,7 +878,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
 			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter)...)
 			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", log)
-			ctx := rollingUpgradeCtx{
+			ctx := upgradeCtx{
 				parentCtx:       context.Background(),
 				client:          k8sClient,
 				ES:              tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable),

@@ -16,13 +16,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func (d *defaultDriver) handleRollingUpgrades(
+func (d *defaultDriver) handleUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
@@ -74,8 +75,11 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithError(err)
 	}
 	numberOfPods := len(currentPods)
+
+	var deletedPods []corev1.Pod
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMaster)
 	// Maybe upgrade some of the nodes.
-	deletedPods, err := newRollingUpgrade(
+	upgrade := newUpgrade(
 		ctx,
 		d,
 		statefulSets,
@@ -87,7 +91,15 @@ func (d *defaultDriver) handleRollingUpgrades(
 		podsToUpgrade,
 		healthyPods,
 		numberOfPods,
-	).run()
+	)
+
+	if shouldDoFullRestartUpgrade {
+		// unconditional full cluster upgrade
+		deletedPods, err = run(upgrade.DeleteAll)
+	} else {
+		// regular rolling upgrade
+		deletedPods, err = run(upgrade.Delete)
+	}
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -107,7 +119,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	return results
 }
 
-type rollingUpgradeCtx struct {
+type upgradeCtx struct {
 	parentCtx       context.Context
 	client          k8s.Client
 	ES              esv1.Elasticsearch
@@ -125,7 +137,7 @@ type rollingUpgradeCtx struct {
 	numberOfPods    int
 }
 
-func newRollingUpgrade(
+func newUpgrade(
 	ctx context.Context,
 	d *defaultDriver,
 	statefulSets sset.StatefulSetList,
@@ -137,8 +149,8 @@ func newRollingUpgrade(
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 	numberOfPods int,
-) rollingUpgradeCtx {
-	return rollingUpgradeCtx{
+) upgradeCtx {
+	return upgradeCtx{
 		parentCtx:       ctx,
 		client:          d.Client,
 		ES:              d.ES,
@@ -157,8 +169,8 @@ func newRollingUpgrade(
 	}
 }
 
-func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
-	deletedPods, err := ctx.Delete()
+func run(upgrade func() ([]corev1.Pod, error)) ([]corev1.Pod, error) {
+	deletedPods, err := upgrade() // ctx.Delete()
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
 		// (could be the statefulset controller)
@@ -169,6 +181,17 @@ func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
 		return deletedPods, err
 	}
 	return deletedPods, nil
+}
+
+// isNonHACluster returns true if the expected and actual number of master nodes indicates that the quorum of that cluster
+// does not allow the loss of any node in which case a regular rolling upgrade might not be possible especially when doing
+// a major version upgrade.
+func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
+	if len(expectedMasters) > 2 {
+		return false
+	}
+	actualMasters := label.FilterMasterNodePods(actualPods)
+	return len(actualMasters) <= 2
 }
 
 func healthyPods(
@@ -333,7 +356,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	return results
 }
 
-func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
+func (ctx *upgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	if !supportsNodeShutdown(ctx.esClient.Version()) {
 		return true, nil // always OK to restart pre node shutdown support
 	}
@@ -348,7 +371,7 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	return response.Status == esclient.ShutdownComplete, nil
 }
 
-func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
+func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 	var podNames []string //nolint:prealloc
 	for _, p := range podsToRestart {
 		if !k8s.IsPodReady(p) {
@@ -367,7 +390,7 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
 }
 
-func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
+func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
 	// use client.Version here as we want the minimal version in the cluster not the one in the spec.
 	if supportsNodeShutdown(ctx.esClient.Version()) {
 		return ctx.requestNodeRestarts(podsToUpgrade)

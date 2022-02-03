@@ -231,3 +231,77 @@ func Test_doFlush(t *testing.T) {
 		})
 	}
 }
+
+func Test_isNonHACluster(t *testing.T) {
+	type args struct {
+		actualPods      []corev1.Pod
+		expectedMasters []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "single node cluster is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0"},
+			},
+			want: true,
+		},
+		{
+			name: "two node cluster is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1"},
+			},
+			want: true,
+		},
+		{
+			name: "multi-node cluster with two masters is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "master-0", StatefulSetName: "masters", Master: true}.Build(),
+					sset.TestPod{Name: "master-1", StatefulSetName: "masters", Master: true}.Build(),
+					sset.TestPod{Name: "data-0", StatefulSetName: "data", Data: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1"},
+			},
+			want: true,
+		},
+		{
+			name: "more than two master nodes is HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+					sset.TestPod{Name: "pod-2", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1", "pod-2"},
+			},
+			want: false,
+		},
+		{
+			name: "more than two master nodes but only two rolled out should be considered HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1", "pod-2"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, isNonHACluster(tt.args.actualPods, tt.args.expectedMasters), "isNonHACluster(%v, %v)", tt.args.actualPods, tt.args.expectedMasters)
+		})
+	}
+}
