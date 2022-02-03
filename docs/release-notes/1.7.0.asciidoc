@@ -35,7 +35,7 @@
 [float]
 === Bug fixes
 
-* Beats: allow unprivileged Pods to access the configuration file {pull}4572[#4572] (issue: {issue}4562[#4562])
+* Beats: allow unprivileged Pods to read configuration file {pull}4572[#4572] (issue: {issue}4562[#4562])
 * Fix heap memory parsing with trailing white spaces {pull}4571[#4571] (issue: {issue}4564[#4564])
 * Detect admission registration API version {pull}4569[#4569] (issue: {issue}4555[#4555])
 
