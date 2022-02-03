@@ -211,7 +211,8 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 					"namespace", secret.Namespace, "secret_name", secret.Name,
 					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
 				)
-				if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
+				options := client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
+				if err := c.Delete(context.Background(), &secret, &options); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 				continue
