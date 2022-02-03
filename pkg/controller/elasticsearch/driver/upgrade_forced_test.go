@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 		name              string
 		actualPods        []corev1.Pod
 		podsToUpgrade     []corev1.Pod
+		expectedMasters   []string
 		wantAttempted     bool
 		wantRemainingPods []corev1.Pod
 	}{
@@ -31,8 +33,9 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetB", Ready: true, ResourceVersion: "999"}.Build(),
 			},
-			podsToUpgrade: nil,
-			wantAttempted: false,
+			podsToUpgrade:   nil,
+			expectedMasters: []string{"pod1", "pod2"},
+			wantAttempted:   false,
 			wantRemainingPods: []corev1.Pod{
 				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetB", Ready: true, ResourceVersion: "999"}.Build(),
@@ -50,6 +53,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
+			expectedMasters:   []string{"podA1", "podB1", "podB2"},
 			wantAttempted:     true,
 			wantRemainingPods: nil,
 		},
@@ -65,7 +69,8 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
-			wantAttempted: true,
+			expectedMasters: []string{"podA1", "podB1", "podB2"},
+			wantAttempted:   true,
 			wantRemainingPods: []corev1.Pod{
 				sset.TestPod{Name: "podA1", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
 			},
@@ -82,6 +87,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
+			expectedMasters:   []string{"podA1", "podB1", "podB2"},
 			wantAttempted:     true,
 			wantRemainingPods: nil,
 		},
@@ -97,7 +103,8 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
 			},
-			wantAttempted: true,
+			expectedMasters: []string{"podA1", "podB1", "podB2"},
+			wantAttempted:   true,
 			wantRemainingPods: []corev1.Pod{
 				sset.TestPod{Name: "podB1", StatefulSetName: "ssetB", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "podB2", StatefulSetName: "ssetB", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
@@ -112,9 +119,25 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			podsToUpgrade: []corev1.Pod{
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
-			wantAttempted: true,
+			expectedMasters: []string{"pod1", "pod2"},
+			wantAttempted:   true,
 			wantRemainingPods: []corev1.Pod{
 				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
+			},
+		},
+		{
+			name: "Non-HA cluster to upgrade",
+			actualPods: []corev1.Pod{
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
+			},
+			podsToUpgrade: []corev1.Pod{
+				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
+			},
+			expectedMasters: []string{"pod1", "pod2"},
+			wantAttempted:   true,
+			wantRemainingPods: []corev1.Pod{
+				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Phase: corev1.PodRunning, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
@@ -129,7 +152,8 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 			},
-			wantAttempted: false,
+			expectedMasters: []string{"pod1", "pod2", "pod3"},
+			wantAttempted:   false,
 			wantRemainingPods: []corev1.Pod{
 				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, Phase: corev1.PodPending, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: true, ResourceVersion: "999"}.Build(),
@@ -148,7 +172,8 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "pod3", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 			},
-			wantAttempted: false,
+			expectedMasters: []string{"pod1", "pod2", "pod3"},
+			wantAttempted:   false,
 			wantRemainingPods: []corev1.Pod{
 				sset.TestPod{Name: "pod1", StatefulSetName: "ssetA", Ready: false, RestartCount: 1, ResourceVersion: "999"}.Build(),
 				sset.TestPod{Name: "pod2", StatefulSetName: "ssetA", Ready: false, RestartCount: 0, ResourceVersion: "999"}.Build(),
@@ -170,12 +195,86 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				},
 			}
 
-			attempted, err := d.maybeForceUpgradePods(tt.actualPods, tt.podsToUpgrade)
+			attempted, err := d.maybeForceUpgradePods(tt.actualPods, tt.podsToUpgrade, tt.expectedMasters)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var pods corev1.PodList
 			require.NoError(t, k8sClient.List(context.Background(), &pods))
 			require.ElementsMatch(t, tt.wantRemainingPods, pods.Items)
+		})
+	}
+}
+
+func Test_isNonHACluster(t *testing.T) {
+	type args struct {
+		actualPods      []corev1.Pod
+		expectedMasters []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "single node cluster is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0"},
+			},
+			want: true,
+		},
+		{
+			name: "two node cluster is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1"},
+			},
+			want: true,
+		},
+		{
+			name: "multi-node cluster with two masters is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "master-0", StatefulSetName: "masters", Master: true}.Build(),
+					sset.TestPod{Name: "master-1", StatefulSetName: "masters", Master: true}.Build(),
+					sset.TestPod{Name: "data-0", StatefulSetName: "data", Data: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1"},
+			},
+			want: true,
+		},
+		{
+			name: "more than two master nodes is HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+					sset.TestPod{Name: "pod-2", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1", "pod-2"},
+			},
+			want: false,
+		},
+		{
+			name: "more than two master nodes but only two rolled out should be considered HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1", "pod-2"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, isNonHACluster(tt.args.actualPods, tt.args.expectedMasters), "isNonHACluster(%v, %v)", tt.args.actualPods, tt.args.expectedMasters)
 		})
 	}
 }

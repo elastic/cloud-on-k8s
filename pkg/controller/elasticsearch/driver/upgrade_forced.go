@@ -14,25 +14,38 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bool, error) {
+func (d *defaultDriver) MaybeForceUpgrade(actualStatefulSets sset.StatefulSetList, expectedMasters []string) (bool, error) {
 	// Get the pods to upgrade
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	podsToUpgrade, err := podsToUpgrade(d.Client, actualStatefulSets)
 	if err != nil {
 		return false, err
 	}
-	actualPods, err := statefulSets.GetActualPods(d.Client)
+	actualPods, err := actualStatefulSets.GetActualPods(d.Client)
 	if err != nil {
 		return false, err
 	}
-	return d.maybeForceUpgradePods(actualPods, podsToUpgrade)
+
+	return d.maybeForceUpgradePods(actualPods, podsToUpgrade, expectedMasters)
+}
+
+// isNonHACluster returns true if the expected and actual number of master nodes indicates that the quorum of that cluster
+// does not allow the loss of any node in which case a regular rolling upgrade might not be possible especially when doing
+// a major version upgrade.
+func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
+	if len(expectedMasters) > 2 {
+		return false
+	}
+	actualMasters := label.FilterMasterNodePods(actualPods)
+	return len(actualMasters) <= 2
 }
 
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,
 // in order to unlock situations where the reconciliation may otherwise be stuck
 // (eg. no cluster formed, all nodes have a bad spec).
-func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
+func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpgrade []corev1.Pod, expectedMasters []string) (attempted bool, err error) {
 	actualBySset := podsByStatefulSetName(actualPods)
 	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade)
+	isNonHACluster := isNonHACluster(actualPods, expectedMasters)
 
 	attempted = false
 
@@ -41,7 +54,7 @@ func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpg
 		if !exists || len(toUpgrade) == 0 {
 			continue
 		}
-		if !shouldForceUpgrade(actual) {
+		if !shouldForceUpgrade(actual, isNonHACluster) {
 			continue
 		}
 		attempted = true
@@ -83,8 +96,8 @@ func podsByStatefulSetName(pods []corev1.Pod) map[string][]corev1.Pod {
 // without further safety checks.
 // /!\ race condition: since the readiness is based on a cached value, we may allow
 // a forced rolling upgrade to go through based on out-of-date Pod data.
-func shouldForceUpgrade(pods []corev1.Pod) bool {
-	return allPodsPending(pods) || allPodsBootlooping(pods)
+func shouldForceUpgrade(pods []corev1.Pod, nonHACluster bool) bool {
+	return nonHACluster || allPodsPending(pods) || allPodsBootlooping(pods)
 }
 
 func allPodsPending(pods []corev1.Pod) bool {

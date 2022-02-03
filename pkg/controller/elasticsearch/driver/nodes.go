@@ -128,8 +128,8 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
-	attempted, err := d.MaybeForceUpgrade(actualStatefulSets)
+	// Phase 2: if there is any Pending or bootlooping Pod or a non-HA setup to upgrade, do it.
+	attempted, err := d.MaybeForceUpgrade(actualStatefulSets, expectedResources.MasterNodesNames())
 	if err != nil || attempted {
 		// If attempted, we're in a transient state where it's safer to requeue.
 		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
