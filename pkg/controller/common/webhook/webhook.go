@@ -2,16 +2,20 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	admissionv1 "k8s.io/api/admission/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
+
+var whlog = ulog.Log.WithName("common-webhook")
 
 // SetupValidatingWebhookWithConfig will register a set of validation functions
 // at a given path, with a given controller manager, ensuring that the objects
@@ -50,16 +54,22 @@ func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 
 // Handle satisfies the admission.Handler interface
 func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {
-	obj := &unstructured.Unstructured{}
-	err := v.decoder.DecodeRaw(req.Object, obj)
+	obj := v.validator.DeepCopyObject().(admission.Validator)
+	err := v.decoder.Decode(req, obj)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to convert webhook object (%T) into metav1.Object: %v", obj, obj))
+	}
+
 	// If this instance is not within the set of managed namespaces
 	// for this operator ignore this request.
-	if !v.managedNamespaces.Has(obj.GetNamespace()) {
-		return admission.Allowed("")
+	if !v.managedNamespaces.Has(metaObj.GetNamespace()) {
+		whlog.V(1).Info("Skipping resource validation", "name", metaObj.GetName(), "namespace", metaObj.GetNamespace())
+		return admission.Allowed(fmt.Sprintf("object namespace (%s) outside of managed namespaces: %s", metaObj.GetNamespace(), v.managedNamespaces.AsSlice()))
 	}
 
 	if req.Operation == admissionv1.Create {
