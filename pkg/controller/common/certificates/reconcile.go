@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,7 +17,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	commonname "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
@@ -53,9 +51,6 @@ type Reconciler struct {
 // - a Secret containing the public-facing HTTP certificates (same as the internal one, but without the key)
 // If TLS is disabled, self-signed certificates are still reconciled, for simplicity/consistency, but not used.
 func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesSecret, *reconciler.Results) {
-	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
-	defer span.End()
-
 	results := reconciler.NewResult(ctx)
 
 	if !r.TLSOptions.Enabled() && r.GarbageCollectSecrets {

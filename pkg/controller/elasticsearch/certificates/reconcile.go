@@ -35,16 +35,16 @@ type CertificateResources struct {
 	TransportCA *certificates.CA
 }
 
-// Reconcile reconciles the certificates of a cluster.
-func Reconcile(
+// Reconcile reconciles the HTTP layer certificates of a cluster.
+func ReconcileHTTP(
 	ctx context.Context,
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	services []corev1.Service,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
-) (*CertificateResources, *reconciler.Results) {
-	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
+) ([]*x509.Certificate, *reconciler.Results) {
+	span, _ := apm.StartSpan(ctx, "reconcile_http_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	var results *reconciler.Results
@@ -81,6 +81,30 @@ func Reconcile(
 		k8s.EmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return nil, results
 	}
+
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	return trustedHTTPCertificates, nil
+}
+
+// Reconcile reconciles the transport layer certificates of a cluster.
+func ReconcileTransport(
+	ctx context.Context,
+	driver driver.Interface,
+	es esv1.Elasticsearch,
+	caRotation certificates.RotationParams,
+	certRotation certificates.RotationParams,
+) (*certificates.CA, *reconciler.Results) {
+	span, _ := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
+	defer span.End()
+
+	results := reconciler.NewResult(ctx)
+
+	// label certificates secrets with the cluster name
+	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	// reconcile transport CA and certs
 	transportCA, err := transport.ReconcileOrRetrieveCA(
@@ -119,13 +143,5 @@ func Reconcile(
 		return nil, results
 	}
 
-	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
-	return &CertificateResources{
-		TrustedHTTPCertificates: trustedHTTPCertificates,
-		TransportCA:             transportCA,
-	}, results
+	return transportCA, results
 }
