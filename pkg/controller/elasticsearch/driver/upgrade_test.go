@@ -305,3 +305,60 @@ func Test_isNonHACluster(t *testing.T) {
 		})
 	}
 }
+
+func Test_isMajorVersionUpgrade(t *testing.T) {
+	tests := []struct {
+		name    string
+		es      esv1.Elasticsearch
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "major upgrade",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "7.17.0"},
+				Status: esv1.ElasticsearchStatus{Version: "6.8.0"},
+			},
+			want:    true,
+			wantErr: false,
+		},
+
+		{
+			name: "not a major upgrade",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "7.17.0"},
+				Status: esv1.ElasticsearchStatus{Version: "7.16.0"},
+			},
+			want:    false,
+			wantErr: false,
+		},
+
+		{
+			name: "corrupted status version",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "7.17.0"},
+				Status: esv1.ElasticsearchStatus{Version: "NaV"},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "corrupted spec version",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "should never happen"},
+				Status: esv1.ElasticsearchStatus{Version: "7.17.0"},
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := isMajorVersionUpgrade(tt.es)
+			if tt.wantErr != (err != nil) {
+				t.Errorf("wantErr %v got %v", tt.wantErr, err)
+			}
+			assert.Equalf(t, tt.want, got, "isMajorVersionUpgrade(%v)", tt.es)
+		})
+	}
+}

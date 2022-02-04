@@ -27,7 +27,7 @@ func (d *defaultDriver) handleUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
-	expectedMaster []string,
+	expectedMasters []string,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -76,8 +76,12 @@ func (d *defaultDriver) handleUpgrades(
 	}
 	numberOfPods := len(currentPods)
 
+	isMajorVersionUpgrade, err := isMajorVersionUpgrade(d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
 	var deletedPods []corev1.Pod
-	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMaster)
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isMajorVersionUpgrade
 	// Maybe upgrade some of the nodes.
 	upgrade := newUpgrade(
 		ctx,
@@ -86,7 +90,7 @@ func (d *defaultDriver) handleUpgrades(
 		esClient,
 		esState,
 		nodeShutdown,
-		expectedMaster,
+		expectedMasters,
 		actualMasters,
 		podsToUpgrade,
 		healthyPods,
@@ -192,6 +196,18 @@ func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
 	}
 	actualMasters := label.FilterMasterNodePods(actualPods)
 	return len(actualMasters) <= 2
+}
+
+func isMajorVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
+	specVersion, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return false, err
+	}
+	statusVersion, err := version.Parse(es.Status.Version)
+	if err != nil {
+		return false, err
+	}
+	return specVersion.Major > statusVersion.Major, nil
 }
 
 func healthyPods(
