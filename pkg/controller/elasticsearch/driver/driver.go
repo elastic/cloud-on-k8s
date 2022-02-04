@@ -140,7 +140,23 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	certificateResources, res := certificates.Reconcile(
+	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
+
+	// reset the health status to avoid reporting an old health status that can occur if there is a reconciliation error
+	// before the health status observer is started
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observer.State{ClusterHealth: &esclient.Health{Status: "unknown"}})
+
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	trustedHTTPCertificates, res := certificates.ReconcileHTTP(
 		ctx,
 		d,
 		d.ES,
@@ -148,23 +164,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
-	if results.WithResults(res).HasError() {
+	results.WithResults(res)
+	if res != nil && res.HasError() {
 		return results
 	}
 
-	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
-	// reconciliation loop as we don't want to prevent other updates from being applied to the cluster.
-	results.WithResults(annotatePodsWithNodeLabels(ctx, d.Client, d.ES))
-
-	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
+	// start the ES observer
 	min, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
 	if err != nil {
 		return results.WithError(err)
@@ -172,21 +177,34 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	if min == nil {
 		min = &d.Version
 	}
-
-	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
-
 	observedState := d.Observers.ObservedStateResolver(
 		d.ES,
 		d.newElasticsearchClient(
 			resourcesState,
 			controllerUser,
 			*min,
-			certificateResources.TrustedHTTPCertificates,
+			trustedHTTPCertificates,
 		),
 	)
 
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
+
+	_, res = certificates.ReconcileTransport(
+		ctx,
+		d,
+		d.ES,
+		d.OperatorParameters.CACertRotation,
+		d.OperatorParameters.CertRotation,
+	)
+	results.WithResults(res)
+	if res != nil && res.HasError() {
+		return results
+	}
+
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied to the cluster.
+	results.WithResults(annotatePodsWithNodeLabels(ctx, d.Client, d.ES))
 
 	allowDownscales := d.ES.IsConfiguredToAllowDowngrades()
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
@@ -201,7 +219,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		resourcesState,
 		controllerUser,
 		*min,
-		certificateResources.TrustedHTTPCertificates,
+		trustedHTTPCertificates,
 	)
 	defer esClient.Close()
 
@@ -306,9 +324,8 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// reconcile StatefulSets and nodes configuration
 	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState(), *resourcesState, keystoreResources)
-	results = results.WithResults(res)
-
-	if res.HasError() {
+	results.WithResults(res)
+	if res != nil && res.HasError() {
 		return results
 	}
 
