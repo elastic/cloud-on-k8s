@@ -17,26 +17,33 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-func TestRedClusterCanBeUpgradedByDisablingPredicate(t *testing.T) {
-	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestReleasedVersion7x
-
-	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
+	podTemplate1 := elasticsearch.ESPodTemplate(elasticsearch.DefaultResources)
+	podTemplate1.Annotations = map[string]string{"foo": "bar"}
 
 	k := test.NewK8sClientOrFatal()
 	initial := elasticsearch.NewBuilder("test-v-up-with-red-cluster-7x").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithAnnotation(driver.DisableUpgradePredicatesAnnotation, "only_restart_healthy_node_if_green_or_yellow")
+		WithNodeSet(esv1.NodeSet{
+			Name:        "default",
+			Count:       1,
+			PodTemplate: podTemplate1,
+		}).
+		WithAnnotation(esv1.DisableUpgradePredicatesAnnotation, "only_restart_healthy_node_if_green_or_yellow")
+
+	podTemplate2 := elasticsearch.ESPodTemplate(elasticsearch.DefaultResources)
+	podTemplate2.Annotations = map[string]string{"foo": "bar2"}
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(dstVersion).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithAnnotation(driver.DisableUpgradePredicatesAnnotation, "only_restart_healthy_node_if_green_or_yellow")
+		WithNodeSet(esv1.NodeSet{
+			Name:        "default",
+			Count:       1,
+			PodTemplate: podTemplate2,
+		}).
+		WithAnnotation(esv1.DisableUpgradePredicatesAnnotation, "only_restart_healthy_node_if_green_or_yellow")
 
 	var esClient client.Client
 

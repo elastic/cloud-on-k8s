@@ -179,7 +179,7 @@ Specifically, if the Elasticsearch index settings demand a higher number of shar
 
 The rules (otherwise known as predicates) that the ECK operator follows during an Elasticsearch upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an Elasticsearch cluster upgrade because it deems it to be "unsafe".
 
-WARNING: Selectively disabling the predicates below are extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable.  Use only if you are absolutely positive you are not causing permanent damage to an Elasticsearch cluster.
+WARNING: Selectively disabling the predicates below are extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable. Use only if you are absolutely positive you are not causing permanent damage to an Elasticsearch cluster. Note that these predicates have the potential to change in the future. We will be adding, removing, and renaming these over time, so take great care in adding these to any automation.  Also please ensure you remove them after use. `kublectl annotate elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample eck.k8s.elastic.co/disable-upgrade-predicates-`
 
 * The following named predicates control the upgrade process
 
@@ -208,7 +208,7 @@ Force an upgrade of all the master-ineligible nodes before upgrading the last ma
 +
 Do not allow 2 pods to be deleted at the same time, that contain the same shard.
 
-Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch spec, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicatae with "*".
+Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch metadata, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicatae with "*".
 
 * Example use case
 

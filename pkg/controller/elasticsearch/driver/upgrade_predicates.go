@@ -54,7 +54,7 @@ func groupByPredicates(fp failedPredicates) map[string][]string {
 	return podsByPredicates
 }
 
-// NewPredicateContext will return a new predicate context for use when
+// NewPredicateContext returns a new predicate context for use when
 // processing an Elasticsearch rolling upgrade.
 func NewPredicateContext(
 	ctx context.Context,
@@ -85,7 +85,7 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, annotations 
 
 Loop:
 	for _, candidate := range candidates {
-		switch predicateErr, err := runPredicates(ctx, candidate, deletedPods, annotations, maxUnavailableReached); {
+		switch predicateErr, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); {
 		case err != nil:
 			return deletedPods, err
 		case predicateErr != nil:

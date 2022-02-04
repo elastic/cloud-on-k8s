@@ -20,6 +20,18 @@ import (
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
+	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
+	// Elasticsearch cluster to disable certain predicates during rolling upgrades.  Multiple
+	// predicates names can be separated by ",".
+	//
+	// Example:
+	//
+	//   To disable "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas" predicate
+	//
+	//   metadata:
+	//     annotations:
+	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
+	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
 	// DownwardNodeLabelsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
 	DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
@@ -639,22 +651,7 @@ func (es *Elasticsearch) MonitoringAssociation(ref commonv1.ObjectSelector) comm
 	}
 }
 
-const (
-	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
-	// Elasticsearch cluster to disable certain predicates during rolling upgrades.  Multiple
-	// predicates names can be separated by ",".
-	//
-	// Example:
-	//
-	//   To disable "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas" predicate
-	//
-	//   metadata:
-	//     annotations:
-	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
-	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
-)
-
-// DisabledPredicates will return the set of predicates that are currently disabled by the
+// DisabledPredicates returns the set of predicates that are currently disabled by the
 // DisableUpgradePredicatesAnnotation annotation.
 func (es Elasticsearch) DisabledPredicates() set.StringSet {
 	return setFromAnnotations(DisableUpgradePredicatesAnnotation, es.Annotations)
