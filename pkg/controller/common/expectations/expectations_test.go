@@ -19,9 +19,10 @@ func TestExpectations_Satisfied(t *testing.T) {
 	e := NewExpectations(client)
 
 	// initially satisfied
-	satisfied, err := e.Satisfied()
+	satisfied, reason, err := e.Satisfied()
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 
 	// expect a Pod to be deleted
 	pod := newPod("pod1", uuid.NewUUID())
@@ -29,9 +30,10 @@ func TestExpectations_Satisfied(t *testing.T) {
 	e.ExpectDeletion(pod)
 
 	// expectations should not be satisfied
-	satisfied, err = e.Satisfied()
+	satisfied, reason, err = e.Satisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 
 	// expect a StatefulSet generation
 	sset := newStatefulSet("sset1", uuid.NewUUID(), 1)
@@ -41,21 +43,24 @@ func TestExpectations_Satisfied(t *testing.T) {
 	e.ExpectGeneration(updatedSset)
 
 	// expectations should not be satisfied
-	satisfied, err = e.Satisfied()
+	satisfied, reason, err = e.Satisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 
 	// observe the StatefulSet with the updated generation
 	require.NoError(t, client.Update(context.Background(), &updatedSset))
 	// expectations should not be satisfied (because of the deletions)
-	satisfied, err = e.Satisfied()
+	satisfied, reason, err = e.Satisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 
 	// delete the Pod
 	require.NoError(t, client.Delete(context.Background(), &pod))
 	// expectations should be satisfied
-	satisfied, err = e.Satisfied()
+	satisfied, reason, err = e.Satisfied()
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 }

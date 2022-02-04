@@ -7,20 +7,16 @@ package reconcile
 import (
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 )
 
 func TestNodesAvailable(t *testing.T) {
@@ -146,18 +142,17 @@ func TestState_Apply(t *testing.T) {
 			name:       "defaults",
 			cluster:    esv1.Elasticsearch{},
 			wantEvents: []events.Event{},
-			wantStatus: nil,
+			wantStatus: &esv1.ElasticsearchStatus{},
 		},
 		{
 			name:    "no degraded health event on cluster formation",
 			cluster: esv1.Elasticsearch{},
 			effects: func(s *State) {
-				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
+				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
 			},
 			wantEvents: []events.Event{},
 			wantStatus: &esv1.ElasticsearchStatus{
 				AvailableNodes: 0,
-				Health:         esv1.ElasticsearchRedHealth,
 				Phase:          esv1.ElasticsearchApplyingChangesPhase,
 			},
 		},
@@ -169,9 +164,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
-					ClusterHealth: nil,
-				})
+				s.UpdateClusterHealth(esv1.ElasticsearchUnknownHealth)
 			},
 			wantEvents: []events.Event{},
 			wantStatus: &esv1.ElasticsearchStatus{
@@ -188,7 +181,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
+				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase).UpdateClusterHealth(esv1.ElasticsearchRedHealth)
 			},
 			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
 			wantStatus: &esv1.ElasticsearchStatus{
@@ -212,17 +205,33 @@ func TestState_Apply(t *testing.T) {
 			if cluster != nil {
 				actual = &cluster.Status
 			}
-			if !reflect.DeepEqual(actual, tt.wantStatus) {
-				t.Errorf("State.Apply() cluster = %v, wantStatus %v", cluster.Status, tt.wantStatus)
-			}
+			assertSemanticEqualStatuses(t, actual, tt.wantStatus)
 		})
 	}
+}
+
+func assertSemanticEqualStatuses(t *testing.T, actual, expected *esv1.ElasticsearchStatus) {
+	t.Helper()
+	if expected == nil || actual == nil {
+		if !(expected == actual) {
+			t.Errorf("State.Apply() cluster = %v, wantStatus %v", actual, expected)
+			return
+		}
+	}
+	assert.EqualValues(t, expected.Version, actual.Version)
+	assert.EqualValues(t, expected.Phase, actual.Phase)
+	assert.EqualValues(t, expected.Health, actual.Health)
+	assert.EqualValues(t, expected.Health, actual.Health)
+	assert.ElementsMatch(t, expected.DownscaleOperation.Nodes, actual.DownscaleOperation.Nodes)
+	assert.EqualValues(t, expected.DownscaleOperation.Stalled, actual.DownscaleOperation.Stalled)
+	assert.ElementsMatch(t, expected.UpscaleOperation.Nodes, actual.UpscaleOperation.Nodes)
+	assert.ElementsMatch(t, expected.RollingUpgradeOperation.Nodes, actual.RollingUpgradeOperation.Nodes)
 }
 
 func TestState_UpdateElasticsearchState(t *testing.T) {
 	type args struct {
 		resourcesState ResourcesState
-		observedState  observer.State
+		observedHealth esv1.ElasticsearchHealth
 	}
 	tests := []struct {
 		name            string
@@ -298,9 +307,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			name:    "health is set if returned by Elasticsearch",
 			cluster: esv1.Elasticsearch{},
 			args: args{
-				observedState: observer.State{
-					ClusterHealth: &client.Health{Status: "green"},
-				},
+				observedHealth: esv1.ElasticsearchGreenHealth,
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "green", s.status.Health)
@@ -310,42 +317,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := MustNewState(tt.cluster)
-			s.UpdateElasticsearchState(tt.args.resourcesState, tt.args.observedState)
-			if tt.stateAssertions != nil {
-				tt.stateAssertions(s)
-			}
-		})
-	}
-}
-
-func TestState_UpdateElasticsearchMigrating(t *testing.T) {
-	type args struct {
-		result         reconcile.Result
-		resourcesState ResourcesState
-		observedState  observer.State
-	}
-	tests := []struct {
-		name            string
-		cluster         esv1.Elasticsearch
-		args            args
-		stateAssertions func(s *State)
-	}{
-		{
-			name:    "base case",
-			cluster: esv1.Elasticsearch{},
-			args: args{
-				result: reconcile.Result{RequeueAfter: 10 * time.Minute},
-			},
-			stateAssertions: func(s *State) {
-				assert.EqualValues(t, esv1.ElasticsearchMigratingDataPhase, s.status.Phase)
-				assert.Equal(t, []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonDelayed, Message: "Requested topology change delayed by data migration. Ensure index settings allow node removal."}}, s.Recorder.Events())
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := MustNewState(tt.cluster)
-			s.UpdateElasticsearchMigrating(tt.args.resourcesState, tt.args.observedState)
+			s.UpdateClusterHealth(tt.args.observedHealth).UpdateMinRunningVersion(tt.args.resourcesState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
 			}

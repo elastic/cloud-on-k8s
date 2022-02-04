@@ -6,9 +6,12 @@ package observer
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
@@ -44,7 +48,7 @@ func createAndRunTestObserver(onObs OnObservation) *Observer {
 
 func TestObserver_retrieveState(t *testing.T) {
 	counter := int32(0)
-	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
+	onObservation := func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		atomic.AddInt32(&counter, 1)
 	}
 	fakeEsClient := fakeEsClient200(client.BasicAuth{})
@@ -71,7 +75,7 @@ func TestObserver_retrieveState_nilFunction(t *testing.T) {
 
 func TestNewObserver(t *testing.T) {
 	events := make(chan types.NamespacedName)
-	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
+	onObservation := func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		events <- cluster
 	}
 	observer := createAndRunTestObserver(onObservation)
@@ -84,7 +88,7 @@ func TestNewObserver(t *testing.T) {
 
 func TestObserver_Stop(t *testing.T) {
 	counter := int32(0)
-	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
+	onObservation := func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		atomic.AddInt32(&counter, 1)
 	}
 	observer := createAndRunTestObserver(onObservation)
@@ -104,4 +108,53 @@ func TestObserver_Stop(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func fakeEsClient(healthRespErr bool) client.Client {
+	return client.NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
+		statusCode := 200
+		var respBody io.ReadCloser
+
+		if strings.Contains(req.URL.RequestURI(), "health") {
+			respBody = ioutil.NopCloser(bytes.NewBufferString(fixtures.HealthSample))
+			if healthRespErr {
+				statusCode = 500
+			}
+		}
+
+		return &http.Response{
+			StatusCode: statusCode,
+			Body:       respBody,
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	})
+}
+
+func TestRetrieveHealth(t *testing.T) {
+	tests := []struct {
+		name          string
+		healthRespErr bool
+		expected      esv1.ElasticsearchHealth
+	}{
+		{
+			name:          "health ok",
+			healthRespErr: true,
+			expected:      esv1.ElasticsearchGreenHealth,
+		},
+		{
+			name:          "unknown health",
+			healthRespErr: false,
+			expected:      esv1.ElasticsearchUnknownHealth,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cluster := types.NamespacedName{Namespace: "ns1", Name: "es1"}
+			esClient := fakeEsClient(!tt.healthRespErr)
+			health := retrieveHealth(context.Background(), cluster, esClient)
+			require.Equal(t, tt.expected, health)
+		})
+	}
 }

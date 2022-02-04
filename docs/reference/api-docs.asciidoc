@@ -883,6 +883,48 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
+
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation"]
+=== DownscaleOperation 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode[$$DownscaledNode$$]__ | Nodes are the nodes that must be restarted for upgrade.
+| *`stalled`* __boolean__ | Stalled represents a state where not progress can be made. It is only available for clusters managed with the shutdown API.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode"]
+=== DownscaledNode 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation[$$DownscaleOperation$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`name`* __string__ | 
+| *`shutdownStatus`* __string__ | 
+| *`explanation`* __string__ | Explanation is only available for clusters managed with the shutdown API
+|===
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch"]
 === Elasticsearch 
 
@@ -948,6 +990,8 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 |===
 
 
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-logsmonitoring"]
 === LogsMonitoring 
 
@@ -997,6 +1041,23 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 | Field | Description
 | *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which receive monitoring data from this Elasticsearch cluster.
 | *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which receive log data from this Elasticsearch cluster.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode"]
+=== NewNode 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation[$$UpscaleOperation$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`name`* __string__ | 
 |===
 
 
@@ -1116,6 +1177,60 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation"]
+=== UpgradeOperation 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode[$$UpgradedNode$$]__ | Nodes are the nodes that must be restarted for upgrade.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode"]
+=== UpgradedNode 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation[$$UpgradeOperation$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`name`* __string__ | 
+| *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for upgrade.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation"]
+=== UpscaleOperation 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$]__ | Nodes are the nodes scheduled to be added by the operator.
+|===
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy"]
 === VolumeClaimDeletePolicy (string) 
 
@@ -1125,8 +1240,6 @@ VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolum
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
 ****
-
-
 
 
 

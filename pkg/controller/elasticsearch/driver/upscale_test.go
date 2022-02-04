@@ -262,41 +262,6 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	require.Len(t, es.Annotations, 2) // initial master nodes + sset to recreate
 }
 
-func Test_isReplicaIncrease(t *testing.T) {
-	tests := []struct {
-		name     string
-		actual   appsv1.StatefulSet
-		expected appsv1.StatefulSet
-		want     bool
-	}{
-		{
-			name:     "increase",
-			actual:   sset.TestSset{Replicas: 3}.Build(),
-			expected: sset.TestSset{Replicas: 5}.Build(),
-			want:     true,
-		},
-		{
-			name:     "decrease",
-			actual:   sset.TestSset{Replicas: 5}.Build(),
-			expected: sset.TestSset{Replicas: 3}.Build(),
-			want:     false,
-		},
-		{
-			name:     "same value",
-			actual:   sset.TestSset{Replicas: 3}.Build(),
-			expected: sset.TestSset{Replicas: 3}.Build(),
-			want:     false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := isReplicaIncrease(tt.actual, tt.expected); got != tt.want {
-				t.Errorf("isReplicaIncrease() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_adjustStatefulSetReplicas(t *testing.T) {
 	type args struct {
 		state              *upscaleState
@@ -532,7 +497,7 @@ func Test_adjustResources(t *testing.T) {
 				k8sClient:    k8sClient,
 				expectations: expectations.NewExpectations(k8sClient),
 			}
-			got, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
+			got, _, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
 			require.NoError(t, err)
 			require.Nil(t, deep.Equal(got.StatefulSets(), tt.wantSsets))
 		})

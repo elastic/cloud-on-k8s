@@ -128,8 +128,7 @@ var (
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
-	requeueResults = (&reconciler.Results{}).WithResult(defaultRequeue)
-	emptyResults   = &reconciler.Results{}
+	emptyResults = &reconciler.Results{}
 )
 
 // -- Tests start here
@@ -188,7 +187,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
-	require.Equal(t, (&reconciler.Results{}).WithResult(defaultRequeue).WithResult(defaultRequeue), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
 
 	// voting config exclusion should have been added for leaving masters
 	require.True(t, esClient.AddVotingConfigExclusionsCalled)
@@ -211,7 +210,7 @@ func TestHandleDownscale(t *testing.T) {
 	// and also requeue since data migration is still not over for data nodes
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
-	require.Equal(t, requeueResults, results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
 
 	// one less master
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
@@ -578,7 +577,7 @@ func Test_calculateDownscales(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownscales, gotDeletions := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets)
+			gotDownscales, gotDeletions := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
 			require.Equal(t, tt.wantDownscales, gotDownscales)
 			require.Equal(t, tt.wantDeletions, gotDeletions)
 		})

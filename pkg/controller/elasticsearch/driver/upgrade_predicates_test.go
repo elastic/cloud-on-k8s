@@ -878,10 +878,12 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
 			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter)...)
 			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", log)
+			es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable)
 			ctx := rollingUpgradeCtx{
 				parentCtx:       context.Background(),
+				reconcileState:  reconcile.MustNewState(es),
 				client:          k8sClient,
-				ES:              tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable),
+				ES:              es,
 				statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 				esClient:        esClient,
 				shardLister:     tt.fields.shardLister,
@@ -984,25 +986,17 @@ func Test_groupByPredicates(t *testing.T) {
 		},
 		{
 			name: "Do not fail if empty",
-			args: args{fp: []failedPredicate{}},
+			args: args{fp: map[string]string{}},
 			want: map[string][]string{},
 		},
 		{
 			name: "Simple test",
-			args: args{fp: []failedPredicate{
-				{
-					pod:       "pod-0",
-					predicate: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
-				},
-				{
-					pod:       "pod-1",
-					predicate: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
-				},
-				{
-					pod:       "pod-3",
-					predicate: "skip_already_terminating_pods",
-				},
-			}},
+			args: args{fp: map[string]string{
+				"pod-0": "do_not_restart_healthy_node_if_MaxUnavailable_reached",
+				"pod-1": "do_not_restart_healthy_node_if_MaxUnavailable_reached",
+				"pod-3": "skip_already_terminating_pods",
+			},
+			},
 			want: map[string][]string{
 				"do_not_restart_healthy_node_if_MaxUnavailable_reached": {"pod-0", "pod-1"},
 				"skip_already_terminating_pods":                         {"pod-3"},

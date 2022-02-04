@@ -380,69 +380,6 @@ func (cb ChangeBudget) GetMaxUnavailableOrDefault() *int32 {
 	return maxUnavailable
 }
 
-// ElasticsearchHealth is the health of the cluster as returned by the health API.
-type ElasticsearchHealth string
-
-// Possible traffic light states Elasticsearch health can have.
-const (
-	ElasticsearchRedHealth     ElasticsearchHealth = "red"
-	ElasticsearchYellowHealth  ElasticsearchHealth = "yellow"
-	ElasticsearchGreenHealth   ElasticsearchHealth = "green"
-	ElasticsearchUnknownHealth ElasticsearchHealth = "unknown"
-)
-
-var elasticsearchHealthOrder = map[ElasticsearchHealth]int{
-	ElasticsearchRedHealth:    1,
-	ElasticsearchYellowHealth: 2,
-	ElasticsearchGreenHealth:  3,
-}
-
-// Less for ElasticsearchHealth means green > yellow > red
-func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
-	l := elasticsearchHealthOrder[h]
-	r := elasticsearchHealthOrder[other]
-	// 0 is not found/unknown and less is not defined for that
-	return l != 0 && r != 0 && l < r
-}
-
-// ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
-type ElasticsearchOrchestrationPhase string
-
-const (
-	// ElasticsearchReadyPhase is operating at the desired spec.
-	ElasticsearchReadyPhase ElasticsearchOrchestrationPhase = "Ready"
-	// ElasticsearchApplyingChangesPhase controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchApplyingChangesPhase ElasticsearchOrchestrationPhase = "ApplyingChanges"
-	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
-	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
-	// ElasticsearchNodeShutdownStalledPhase Elasticsearch cannot make progress with a node shutdown during downscale or rolling upgrade.
-	ElasticsearchNodeShutdownStalledPhase ElasticsearchOrchestrationPhase = "Stalled"
-	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
-	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
-)
-
-// ElasticsearchStatus defines the observed state of Elasticsearch
-type ElasticsearchStatus struct {
-	// AvailableNodes is the number of available instances.
-	AvailableNodes int32 `json:"availableNodes,omitempty"`
-	// Version of the stack resource currently running. During version upgrades, multiple versions may run
-	// in parallel: this value specifies the lowest version currently running.
-	Version string                          `json:"version,omitempty"`
-	Health  ElasticsearchHealth             `json:"health,omitempty"`
-	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
-
-	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
-}
-
-type ZenDiscoveryStatus struct {
-	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
-}
-
-// IsDegraded returns true if the current status is worse than the previous.
-func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
-	return es.Health.Less(prev.Health)
-}
-
 // +kubebuilder:object:root=true
 
 // Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
@@ -545,23 +482,6 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		}
 	}
 	return associations
-}
-
-func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ != commonv1.EsMonitoringAssociationType {
-		return commonv1.AssociationStatusMap{}
-	}
-
-	return es.Status.MonitoringAssociationsStatus
-}
-
-func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
-	if typ != commonv1.EsMonitoringAssociationType {
-		return fmt.Errorf("association type %s not known", typ)
-	}
-
-	es.Status.MonitoringAssociationsStatus = status
-	return nil
 }
 
 // -- association with monitoring Elasticsearch clusters

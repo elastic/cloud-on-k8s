@@ -65,22 +65,22 @@ func TestResults(t *testing.T) {
 		for j, b := range args {
 			// test mergeResult method
 			t.Run(fmt.Sprintf("mergeResult_%d_%d", i, j), func(t *testing.T) {
-				have := &Results{currKind: a.kind, currResult: a.result}
-				have.mergeResult(b.kind, b.result)
+				have := &Results{currKind: a.kind, currResult: ReconciliationState{Result: a.result}}
+				have.mergeResult(b.kind, ReconciliationState{Result: b.result})
 				want := wantRes[idx]
 				require.Equal(t, want.kind, have.currKind, "Kinds do not match")
-				require.Equal(t, want.result, have.currResult, "Results do not match")
+				require.Equal(t, want.result, have.currResult.Result, "Results do not match")
 			})
 
 			// test WithResults method
 			t.Run(fmt.Sprintf("withResults_%d_%d", i, j), func(t *testing.T) {
-				this := &Results{currKind: a.kind, currResult: a.result, errors: []error{err1}}
-				that := &Results{currKind: b.kind, currResult: b.result, errors: []error{err2}}
+				this := &Results{currKind: a.kind, currResult: ReconciliationState{Result: a.result}, errors: []error{err1}}
+				that := &Results{currKind: b.kind, currResult: ReconciliationState{Result: b.result}, errors: []error{err2}}
 				have := this.WithResults(that)
 				want := wantRes[idx]
 
 				require.Equal(t, want.kind, have.currKind, "Unexpected kind")
-				require.Equal(t, want.result, have.currResult, "Unexpected result")
+				require.Equal(t, want.result, have.currResult.Result, "Unexpected result")
 				require.Equal(t, []error{err1, err2}, have.errors, "Errors not merged")
 			})
 
@@ -102,12 +102,12 @@ func TestResultsAggregate(t *testing.T) {
 		},
 		{
 			name:    "generic result",
-			results: &Results{currResult: reconcile.Result{Requeue: true}, currKind: genericKind},
+			results: &Results{currResult: ReconciliationState{Result: reconcile.Result{Requeue: true}}, currKind: genericKind},
 			want:    reconcile.Result{Requeue: true},
 		},
 		{
 			name:    "specific result",
-			results: &Results{currResult: reconcile.Result{RequeueAfter: 24 * time.Hour}, currKind: specificKind},
+			results: &Results{currResult: ReconciliationState{Result: reconcile.Result{RequeueAfter: 24 * time.Hour}}, currKind: specificKind},
 			want:    reconcile.Result{RequeueAfter: 24 * time.Hour},
 		},
 	}

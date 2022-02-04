@@ -15,16 +15,24 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 )
 
-func newShutdownInterface(es esv1.Elasticsearch, client esclient.Client, state ESState) (shutdown.Interface, error) {
+func newShutdownInterface(
+	es esv1.Elasticsearch,
+	client esclient.Client,
+	state ESState,
+	observer shutdown.Observer,
+) (shutdown.Interface, error) {
+	var shutdownService shutdown.Interface
 	if supportsNodeShutdown(client.Version()) {
 		idLookup, err := state.NodeNameToID()
 		if err != nil {
 			return nil, err
 		}
 		logger := log.WithValues("namespace", es.Namespace, "es_name", es.Name)
-		return shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, logger), nil
+		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, logger)
+	} else {
+		shutdownService = migration.NewShardMigration(es, client, client)
 	}
-	return migration.NewShardMigration(es, client, client), nil
+	return shutdown.WithObserver(shutdownService, observer), nil
 }
 
 func supportsNodeShutdown(v version.Version) bool {

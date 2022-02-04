@@ -12,7 +12,9 @@ import (
 	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
@@ -29,7 +31,7 @@ type Settings struct {
 const defaultObservationInterval = 10 * time.Second
 
 // OnObservation is a function that gets executed when a new state is observed
-type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
+type OnObservation func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth)
 
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
@@ -41,7 +43,7 @@ type Observer struct {
 	stopChan      chan struct{}
 	stopOnce      sync.Once
 	onObservation OnObservation
-	lastState     State
+	lastHealth    esv1.ElasticsearchHealth
 	mutex         sync.RWMutex
 }
 
@@ -55,6 +57,7 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 		stopChan:      make(chan struct{}),
 		stopOnce:      sync.Once{},
 		onObservation: onObservation,
+		lastHealth:    esv1.ElasticsearchUnknownHealth, // We don't know the health of the cluster until a first query succeeds
 		mutex:         sync.RWMutex{},
 	}
 
@@ -75,11 +78,11 @@ func (o *Observer) Stop() {
 	})
 }
 
-// LastState returns the last observed state
-func (o *Observer) LastState() State {
+// LastHealth returns the last observed state
+func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
-	return o.lastState
+	return o.lastHealth
 }
 
 // runPeriodically triggers a state retrieval every tick,
@@ -115,13 +118,27 @@ func (o *Observer) retrieveState() {
 		ctx = apm.ContextWithTransaction(ctx, tx)
 	}
 
-	newState := RetrieveState(ctx, o.cluster, o.esClient)
-
+	newHealth := retrieveHealth(ctx, o.cluster, o.esClient)
 	if o.onObservation != nil {
-		o.onObservation(o.cluster, o.LastState(), newState)
+		o.onObservation(o.cluster, o.LastHealth(), newHealth)
 	}
 
 	o.mutex.Lock()
-	o.lastState = newState
+	o.lastHealth = newHealth
 	o.mutex.Unlock()
+}
+
+// retrieveHealth returns the current Elasticsearch cluster health
+func retrieveHealth(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) esv1.ElasticsearchHealth {
+	health, err := esClient.GetClusterHealth(ctx)
+	if err != nil {
+		log.V(1).Info(
+			"Unable to retrieve cluster health",
+			"error", err,
+			"namespace", cluster.Namespace,
+			"es_name", cluster.Name,
+		)
+		return esv1.ElasticsearchUnknownHealth
+	}
+	return health.Status
 }

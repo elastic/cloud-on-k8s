@@ -5,15 +5,11 @@
 package reconcile
 
 import (
-	"context"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -31,15 +27,11 @@ type ResourcesState struct {
 	DeletingPods []corev1.Pod
 	// StatefulSets are all existing StatefulSets for the cluster.
 	StatefulSets sset.StatefulSetList
-	// ExternalService is the user-facing service related to the Elasticsearch cluster.
-	ExternalService corev1.Service
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
 func NewResourcesStateFromAPI(c k8s.Client, es esv1.Elasticsearch) (*ResourcesState, error) {
-	labelSelector := label.NewLabelSelectorForElasticsearch(es)
-
-	allPods, err := getPods(c, es, labelSelector)
+	allPods, err := k8s.PodsMatchingLabels(c, es.Namespace, label.NewLabelSelectorForElasticsearch(es))
 	if err != nil {
 		return nil, err
 	}
@@ -70,35 +62,24 @@ func NewResourcesStateFromAPI(c k8s.Client, es esv1.Elasticsearch) (*ResourcesSt
 		return nil, err
 	}
 
-	externalService, err := services.GetExternalService(c, es)
-	if err != nil {
-		return nil, err
-	}
-
 	state := ResourcesState{
 		AllPods:            allPods,
 		CurrentPods:        currentPods,
 		CurrentPodsByPhase: currentPodsByPhase,
 		DeletingPods:       deletingPods,
 		StatefulSets:       ssets,
-		ExternalService:    externalService,
 	}
 
 	return &state, nil
 }
 
-// getPods returns list of pods in the current namespace with a specific set of selectors.
-func getPods(
-	c k8s.Client,
-	es esv1.Elasticsearch,
-	labelSelector client.MatchingLabels,
-) ([]corev1.Pod, error) {
-	var podList corev1.PodList
-	ns := client.InNamespace(es.Namespace)
-
-	if err := c.List(context.Background(), &podList, ns, labelSelector); err != nil {
-		return nil, err
+// AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
+func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
+	var nodesAvailable []corev1.Pod
+	for _, pod := range pods {
+		if k8s.IsPodReady(pod) {
+			nodesAvailable = append(nodesAvailable, pod)
+		}
 	}
-
-	return podList.Items, nil
+	return nodesAvailable
 }

@@ -181,17 +181,35 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
+
+	// ReconciliationComplete is initially set to True until another condition with the same type is reported.
+	state.ReportCondition(esv1.ReconciliationComplete, corev1.ConditionTrue, "")
+
 	results := r.internalReconcile(ctx, es, state)
 
+	// Update orchestration related annotations
 	if err := r.annotateResource(ctx, es, state); err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
-			return reconcile.Result{Requeue: true}, nil
+			results.WithReconciliationState(reconciler.Requeue.WithReason("Conflict while updating annotations"))
+		} else {
+			log.Error(err, "Error while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
+			results.WithError(err)
+			k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 		}
-		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
-		return results.WithError(err).Aggregate()
 	}
 
+	if isReconciled, message := results.IsReconciled(); !isReconciled {
+		// Do not overwrite other "non-ready" phases like MigratingData
+		if state.IsElasticsearchReady() {
+			state.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+		}
+		state.ReportCondition(esv1.ReconciliationComplete, corev1.ConditionFalse, message)
+	} else {
+		state.UpdateWithPhase(esv1.ElasticsearchReadyPhase)
+	}
+
+	// Last step of the reconciliation loop is always to update the Elasticsearch resource status.
 	err = r.updateStatus(ctx, es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -247,7 +265,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 		)
-		reconcileState.UpdateElasticsearchInvalid(err)
+		reconcileState.UpdateElasticsearchInvalidWithEvent(err.Error())
 		return results
 	}
 

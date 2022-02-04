@@ -110,9 +110,9 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 				e.ExpectGeneration(tt.expectGenerations[i])
 				require.Contains(t, e.generations, k8s.ExtractNamespacedName(&tt.expectGenerations[i]))
 			}
-			satisfied, err := e.GenerationsSatisfied()
+			pendingGenerations, err := e.PendingGenerations()
 			require.NoError(t, err)
-			require.Equal(t, tt.wantSatisfied, satisfied)
+			require.Equal(t, tt.wantSatisfied, len(pendingGenerations) == 0)
 			require.Equal(t, tt.wantExpectedGenerations, e.generations)
 		})
 	}

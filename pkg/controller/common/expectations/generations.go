@@ -38,7 +38,7 @@ func NewExpectedStatefulSetUpdates(client k8s.Client) *ExpectedStatefulSetUpdate
 
 // ExpectGeneration registers the Generation of the given StatefulSets as expected.
 // The StatefulSet we receive as argument here is the "updated" StatefulSet.
-// We expect to see its generation (at least) in GenerationsSatisfied().
+// We expect to see its generation (at least) in PendingGenerations().
 func (e *ExpectedStatefulSetUpdates) ExpectGeneration(statefulSet appsv1.StatefulSet) {
 	resource := types.NamespacedName{Namespace: statefulSet.Namespace, Name: statefulSet.Name}
 	e.generations[resource] = ResourceGeneration{
@@ -47,24 +47,24 @@ func (e *ExpectedStatefulSetUpdates) ExpectGeneration(statefulSet appsv1.Statefu
 	}
 }
 
-// GenerationsSatisfied compares expected StatefulSets generations with the ones we have in the cache,
-// and returns true if they all match.
+// PendingGenerations compares expected StatefulSets generations with the ones we have in the cache,
+// and returns the list of StatefulSets for which the generation has not been updated yet.
 // Expectations are cleared once they are matched.
-func (e *ExpectedStatefulSetUpdates) GenerationsSatisfied() (bool, error) {
-	allSatisfied := true
+func (e *ExpectedStatefulSetUpdates) PendingGenerations() ([]string, error) {
+	var pendingStatefulSet []string
 	for statefulSet, expectedGen := range e.generations {
 		satisfied, err := e.generationSatisfied(statefulSet, expectedGen)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if !satisfied {
-			allSatisfied = false
+			pendingStatefulSet = append(pendingStatefulSet, statefulSet.Name)
 		} else {
 			// cache is up-to-date: remove the existing expectation
 			delete(e.generations, statefulSet)
 		}
 	}
-	return allSatisfied, nil
+	return pendingStatefulSet, nil
 }
 
 // generationSatisfied returns true if the generation of the cached StatefulSet matches what is expected.

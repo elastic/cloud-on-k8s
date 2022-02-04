@@ -33,6 +33,7 @@ type upscaleCtx struct {
 type UpscaleResults struct {
 	ActualStatefulSets sset.StatefulSetList
 	Requeue            bool
+	UpscaleInProgress  bool
 }
 
 // HandleUpscaleAndSpecChanges reconciles expected NodeSet resources.
@@ -52,9 +53,12 @@ func HandleUpscaleAndSpecChanges(
 ) (UpscaleResults, error) {
 	results := UpscaleResults{}
 	// adjust expected replicas to control nodes creation and deletion
-	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
+	adjusted, upscaleInProgress, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
 		return results, fmt.Errorf("adjust resources: %w", err)
+	}
+	if upscaleInProgress {
+		results.UpscaleInProgress = true
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
@@ -86,26 +90,43 @@ func HandleUpscaleAndSpecChanges(
 	return results, nil
 }
 
+func podsToCreate(
+	actualStatefulSets, expectedStatefulSets sset.StatefulSetList,
+) []string {
+	var pods []string
+	for _, expectedStatefulSet := range expectedStatefulSets {
+		actualSset, _ := actualStatefulSets.GetByName(expectedStatefulSet.Name)
+		expectedReplicas := sset.GetReplicas(expectedStatefulSet)
+		for expectedReplicas > sset.GetReplicas(actualSset) {
+			pods = append(pods, sset.PodName(expectedStatefulSet.Name, expectedReplicas-1))
+			expectedReplicas--
+		}
+	}
+	return pods
+}
+
 func adjustResources(
 	ctx upscaleCtx,
 	actualStatefulSets sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
-) (nodespec.ResourcesList, error) {
+) (nodespec.ResourcesList, bool, error) {
+	upscaleInProgress := false
 	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
 		adjusted, err := adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
 		if err != nil {
-			return nil, err
+			return nil, upscaleInProgress, err
 		}
+		upscaleInProgress = upscaleInProgress || isAdjusted(nodeSpecRes.StatefulSet, adjusted)
 		nodeSpecRes.StatefulSet = adjusted
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
 	if err := adjustZenConfig(ctx.k8sClient, ctx.es, adjustedResources); err != nil {
-		return nil, fmt.Errorf("adjust discovery config: %w", err)
+		return nil, upscaleInProgress, fmt.Errorf("adjust discovery config: %w", err)
 	}
-	return adjustedResources, nil
+	return adjustedResources, upscaleInProgress, nil
 }
 
 func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
@@ -115,6 +136,12 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 	}
 	// patch configs to consider zen2 initial master nodes
 	return zen2.SetupInitialMasterNodes(es, k8sClient, resources)
+}
+
+func isAdjusted(desired, expected appsv1.StatefulSet) bool {
+	desiredReplicas := sset.GetReplicas(desired)
+	expectedReplicas := sset.GetReplicas(expected)
+	return desiredReplicas > expectedReplicas
 }
 
 // adjustStatefulSetReplicas updates the replicas count in expected according to
@@ -139,9 +166,4 @@ func adjustStatefulSetReplicas(
 	}
 
 	return expected, nil
-}
-
-// isReplicaIncrease returns true if expected replicas are higher than actual replicas.
-func isReplicaIncrease(actual appsv1.StatefulSet, expected appsv1.StatefulSet) bool {
-	return sset.GetReplicas(expected) > sset.GetReplicas(actual)
 }

@@ -4477,10 +4477,114 @@ spec:
                 description: AvailableNodes is the number of available instances.
                 format: int32
                 type: integer
+              conditions:
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               health:
                 description: ElasticsearchHealth is the health of the cluster as returned
                   by the health API.
                 type: string
+              inProgressOperations:
+                properties:
+                  downscale:
+                    properties:
+                      lastUpdatedTime:
+                        format: date-time
+                        type: string
+                      nodes:
+                        description: Nodes are the nodes that must be restarted for
+                          upgrade.
+                        items:
+                          properties:
+                            explanation:
+                              description: Explanation is only available for clusters
+                                managed with the shutdown API
+                              type: string
+                            name:
+                              type: string
+                            shutdownStatus:
+                              type: string
+                          required:
+                          - name
+                          - shutdownStatus
+                          type: object
+                        type: array
+                      stalled:
+                        description: Stalled represents a state where not progress
+                          can be made. It is only available for clusters managed with
+                          the shutdown API.
+                        type: boolean
+                    required:
+                    - nodes
+                    type: object
+                  upgrade:
+                    properties:
+                      lastUpdatedTime:
+                        format: date-time
+                        type: string
+                      nodes:
+                        description: Nodes are the nodes that must be restarted for
+                          upgrade.
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            predicate:
+                              description: Predicate is the name of the predicate
+                                currently preventing this node from being deleted
+                                for upgrade.
+                              type: string
+                            status:
+                              type: string
+                          required:
+                          - name
+                          - status
+                          type: object
+                        type: array
+                    required:
+                    - nodes
+                    type: object
+                  upscale:
+                    properties:
+                      lastUpdatedTime:
+                        format: date-time
+                        type: string
+                      nodes:
+                        description: Nodes are the nodes scheduled to be added by
+                          the operator.
+                        items:
+                          properties:
+                            name:
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                    required:
+                    - nodes
+                    type: object
+                required:
+                - downscale
+                - upgrade
+                - upscale
+                type: object
               monitoringAssociationStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
