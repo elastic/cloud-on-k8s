@@ -23,9 +23,6 @@ func AreAssocConfigured(resource HasMonitoring) bool {
 }
 
 func IsMetricsAssocConfigured(resource HasMonitoring) bool {
-	if !IsMetricsDefined(resource) {
-		return false
-	}
 	refs := resource.GetMonitoringMetricsRefs()
 	for _, ref := range refs {
 		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
@@ -36,9 +33,6 @@ func IsMetricsAssocConfigured(resource HasMonitoring) bool {
 }
 
 func IsLogsAssocConfigured(resource HasMonitoring) bool {
-	if !IsLogsDefined(resource) {
-		return false
-	}
 	refs := resource.GetMonitoringLogsRefs()
 	for _, ref := range refs {
 		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
