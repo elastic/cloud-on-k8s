@@ -25,7 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// newtestReonciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to be
+// newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to be
 // modified to be a potential failing client, and contain certain objects.
 func newTestReconciler(failing bool, err error, objects ...runtime.Object) *ReconcileElasticsearch {
 	r := &ReconcileElasticsearch{
