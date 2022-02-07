@@ -98,7 +98,6 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		objects []runtime.Object
 	}
 	type args struct {
-		ctx     context.Context
 		request reconcile.Request
 	}
 	tests := []struct {
