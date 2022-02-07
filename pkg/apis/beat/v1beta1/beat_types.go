@@ -115,6 +115,13 @@ type BeatStatus struct {
 
 	// +kubebuilder:validation:Optional
 	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
+
+	// ObservedGeneration represents the .metadata.generation that the status is based upon.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Beats
+	// controller has not yet processed the changes contained in the APM Server specification.
+	// +kubebuilder:validation:Optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 type BeatHealth string
@@ -219,6 +226,11 @@ func (b *Beat) IsMarkedForDeletion() bool {
 
 func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
 	return b.Spec.ElasticsearchRef
+}
+
+// GetObservedGeneration will return the observedGeneration from the Elastic Beat's status.
+func (b *Beat) GetObservedGeneration() int64 {
+	return b.Status.ObservedGeneration
 }
 
 type BeatESAssociation struct {

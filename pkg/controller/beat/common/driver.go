@@ -27,7 +27,7 @@ import (
 type Type string
 
 type Driver interface {
-	Reconcile() *reconciler.Results
+	Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus)
 }
 
 type DriverParams struct {
@@ -38,7 +38,8 @@ type DriverParams struct {
 	EventRecorder record.EventRecorder
 	Watches       watches.DynamicWatches
 
-	Beat beatv1beta1.Beat
+	Status *beatv1beta1.BeatStatus
+	Beat   beatv1beta1.Beat
 }
 
 func (dp DriverParams) K8sClient() k8s.Client {
@@ -71,31 +72,31 @@ func Reconcile(
 	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
-) *reconciler.Results {
+) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(params.Context)
 
 	beatVersion, err := version.Parse(params.Beat.Spec.Version)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	if !association.AllowVersion(beatVersion, &params.Beat, params.Logger, params.Recorder()) {
-		return results // will eventually retry
+		return results, params.Status
 	}
 
 	configHash := fnv.New32a()
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
 	if err := commonassociation.WriteAssocsToConfigHash(params.Client, params.Beat.GetAssociations(), configHash); err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	podTemplate, err := buildPodTemplate(params, defaultImage, configHash)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	results.WithResults(reconcilePodVehicle(podTemplate, params))
-	return results
+	return results, params.Status
 }

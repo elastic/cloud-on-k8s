@@ -6,6 +6,7 @@ package common
 
 import (
 	"context"
+	"reflect"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +16,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -71,13 +71,12 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		results.WithError(err)
 	}
 
-	err = updateStatus(params, ready, desired)
-	if err != nil && apierrors.IsConflict(err) {
+	err = calculateStatus(params, ready, desired, params.Status)
+	if err != nil {
 		params.Logger.V(1).Info(
-			"Conflict while updating status",
+			"Error while calculating new status",
 			"namespace", params.Beat.Namespace,
 			"beat_name", params.Beat.Name)
-		return results.WithResult(reconcile.Result{Requeue: true})
 	}
 
 	return results.WithError(err)
@@ -133,17 +132,28 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
-func updateStatus(params DriverParams, ready, desired int32) error {
+// calculateStatus will calculate a new status from the state of the pods within the k8s cluster
+// and will return any error encountered.
+func calculateStatus(params DriverParams, ready, desired int32, status *beatv1beta1.BeatStatus) error {
 	beat := params.Beat
 
 	pods, err := k8s.PodsMatchingLabels(params.K8sClient(), beat.Namespace, map[string]string{NameLabelName: beat.Name})
 	if err != nil {
 		return err
 	}
-	beat.Status.AvailableNodes = ready
-	beat.Status.ExpectedNodes = desired
-	beat.Status.Health = CalculateHealth(beat.GetAssociations(), ready, desired)
-	beat.Status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
+	status.AvailableNodes = ready
+	status.ExpectedNodes = desired
+	status.Health = CalculateHealth(beat.GetAssociations(), ready, desired)
+	status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
 
-	return params.Client.Status().Update(context.Background(), &beat)
+	return nil
+}
+
+// UpdateStatus will update the Elastic Beat's status within the k8s cluster, using the given Elastic Beat and status.
+func UpdateStatus(beat beatv1beta1.Beat, client client.Client, status *beatv1beta1.BeatStatus) error {
+	if status == nil || reflect.DeepEqual(beat.Status, *status) {
+		return nil
+	}
+	beat.Status = *status
+	return common.UpdateStatus(client, &beat)
 }
