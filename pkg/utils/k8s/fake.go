@@ -109,7 +109,7 @@ func (fc *FailingClient) EnableFailing() {
 }
 
 func (fc *FailingClient) Status() client.StatusWriter {
-	return failingStatusWriter{err: fc.err} //nolint:gosimple
+	return failingStatusWriter{err: fc.err}
 }
 
 func (fc *FailingClient) Scheme() *runtime.Scheme {
