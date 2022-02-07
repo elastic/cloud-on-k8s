@@ -86,7 +86,7 @@ func (e *esBuilder) Build() *esv1.Elasticsearch {
 	return e.es
 }
 
-// BuildAndCopy builds the final ES object.
+// BuildAndCopy builds the final ES object and returns a copy.
 func (e *esBuilder) BuildAndCopy() esv1.Elasticsearch {
 	return *e.es
 }
