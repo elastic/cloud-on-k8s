@@ -109,6 +109,9 @@ func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (userna
 	})
 }
 
+// UnknownVersion is used when the version of the referenced resource is unknown.
+const UnknownVersion = "unknown_version"
+
 // AllowVersion returns true if the given resourceVersion is lower or equal to the associations' versions.
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
 // A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
@@ -125,6 +128,10 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
 				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
 			return false
+		}
+		if assoc.AssociationConf().Version == UnknownVersion {
+			// unknown version (happens with an unmanaged FleetServer < 8.x), move on
+			return true
 		}
 		refVer, err := version.Parse(assoc.AssociationConf().Version)
 		if err != nil {

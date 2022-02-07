@@ -70,10 +70,12 @@ func referencedFleetServerStatusVersion(c k8s.Client, fsRef commonv1.ObjectSelec
 		if err != nil {
 			return "", err
 		}
-		// only available starting FleetServer 8.1
-		ver, err := info.Request("/api/status", "{ .version.number }") // FIXME
+		ver, err := info.Request("/api/status", "{ .version.number }")
 		if err != nil {
-			// TODO: tolerate an error and handle empty ver?
+			// version is in the status API from version 8.0
+			if err.Error() == "version is not found" {
+				return association.UnknownVersion, err
+			}
 			return "", err
 		}
 		return ver, nil
