@@ -50,7 +50,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, ctx.ES.Annotations, maxUnavailableReached, allowedDeletions)
+	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
 	if err != nil {
 		return podsToDelete, err
 	}

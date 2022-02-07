@@ -80,7 +80,7 @@ func NewPredicateContext(
 	}
 }
 
-func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, annotations map[string]string, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
+func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
 	var failedPredicates failedPredicates
 
 Loop:
