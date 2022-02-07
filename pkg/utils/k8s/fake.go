@@ -98,7 +98,7 @@ func (fc *FailingClient) DeleteAllOf(ctx context.Context, obj client.Object, opt
 	return fc.err
 }
 
-// DisableFailing will stop the client from failing, and will call the underyling k8s client.
+// DisableFailing will stop the client from failing, and will call the underlying k8s client.
 func (fc *FailingClient) DisableFailing() {
 	fc.erroring = false
 }
