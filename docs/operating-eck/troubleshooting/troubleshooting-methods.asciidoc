@@ -60,7 +60,7 @@ kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TC
 
 If an Elasticsearch node does not start up, it is probably because Kubernetes cannot schedule the associated Pod.
 
-First, check the StatefulSets to see if the current number of replicas match the desired number of replicas.
+First, check the StatefulSets to verify if the current number of replicas match the desired number of replicas.
 
 [source,sh]
 ----
@@ -99,7 +99,7 @@ Events:
   Normal   NotTriggerScaleUp  4s (x11 over 1m)  cluster-autoscaler  pod didn't trigger scale-up (it wouldn't fit if a new node is added)
 ----
 
-If you see an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (e.g. Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to see events of the PVCs.
+If you get an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (for example Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to monitor events of the PVCs.
 
 [id="{p}-eck-debug-logs"]
 == Enable ECK debug logs
@@ -243,13 +243,13 @@ LAST SEEN   FIRST SEEN   COUNT     NAME                                    KIND 
 ----
 
 You can set filters for Kibana and APM Server too.
-Note that the default TTL for events in Kubernetes is 1h, so unless your cluster settings have been modified you will not see events older than 1h.
+Note that the default TTL for events in Kubernetes is 1h, so unless your cluster settings have been modified you will not get events older than 1h.
 
 
 [id="{p}-resize-pv"]
 == Resizing persistent volumes
 
-To increase or decrease the size of a disk, you cannot change the size of the volumeClaimTemplate directly. This is because StatefulSets do not allow modifications to volumeClaimTemplates. To work around this, you can create a new nodeSet with the new size, and remove the old nodeSet from your Elasticsearch spec. For instance, just changing the name of nodeSet and the size in the existing Elasticsearch spec. ECK will automatically begin to migrate data to the new nodeSet and remove the old one when it is fully drained. Please see the <<{p}-statefulsets>> documentation for more detail.
+To increase or decrease the size of a disk, you cannot change the size of the volumeClaimTemplate directly. This is because StatefulSets do not allow modifications to volumeClaimTemplates. To work around this, you can create a new nodeSet with the new size, and remove the old nodeSet from your Elasticsearch spec. For instance, just changing the name of nodeSet and the size in the existing Elasticsearch spec. ECK will automatically begin to migrate data to the new nodeSet and remove the old one when it is fully drained. Check the <<{p}-statefulsets>> documentation for more detail.
 
 For a concrete example, imagine you started with this:
 
@@ -321,7 +321,7 @@ This can also be done for Kibana and APM Server.
 [id="{p}-suspend-elasticsearch"]
 == Suspend Elasticsearch
 
-In exceptional cases, you might need to suspend the Elasticsearch process while using `kubectl exec` (<<{p}-exec-into-containers,see previous section>>) to troubleshoot.
+In exceptional cases, you might need to suspend the Elasticsearch process while using `kubectl exec` (as in the <<{p}-exec-into-containers,previous section>>) to troubleshoot.
 One such example where Elasticsearch has to be stopped are the unsafe operations on Elasticsearch nodes that can be executed with the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/node-tool.html[elasticsearch-node] tool.
 
 To suspend an Elasticearch node, while keeping the corresponding Pod running, you can annotate the Elasticsearch resource with the `eck.k8s.elastic.co/suspend` annotation. The value should be a comma-separated list of the names of the Pods whose Elasticsearch process you want to suspend.

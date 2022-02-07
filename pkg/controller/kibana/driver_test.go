@@ -669,7 +669,7 @@ func defaultInitialObjects() []runtime.Object {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				"tls.crt": nil,
+				"ca.crt": nil,
 			},
 		},
 	}

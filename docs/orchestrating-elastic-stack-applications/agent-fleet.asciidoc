@@ -80,6 +80,39 @@ spec:
   config:
     xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-quickstart-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-quickstart-agent-http.default.svc:8220"]
+    xpack.fleet.packages:
+      - name: system
+        version: latest
+      - name: elastic_agent
+        version: latest
+      - name: fleet_server
+        version: latest
+    xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy
+        id: eck-fleet-server
+        is_default_fleet_server: true
+        namespace: default
+        monitoring_enabled:
+          - logs
+          - metrics
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server
+      - name: Elastic Agent on ECK policy
+        id: eck-agent
+        namespace: default
+        monitoring_enabled:
+          - logs
+          - metrics
+        unenroll_timeout: 900  
+        is_default: true
+        package_policies:
+          - name: system-1
+            id: system-1
+            package:
+              name: system
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
@@ -136,7 +169,7 @@ roleRef:
 EOF
 ----
 +
-See <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
+Check <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 
 ECK automatically configures secure connections between all components. Fleet will be set up, and all agents are enrolled in the default policy.
 
@@ -232,11 +265,48 @@ spec:
   config:
     xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-sample-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-sample-agent-http.default.svc:8220"]
+    xpack.fleet.packages:
+      - name: system
+        version: latest
+      - name: elastic_agent
+        version: latest
+      - name: fleet_server
+        version: latest
+    xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy
+        id: eck-fleet-server
+        is_default_fleet_server: true
+        namespace: default
+        monitoring_enabled:
+          - logs
+          - metrics
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server
+      - name: Elastic Agent on ECK policy
+        id: eck-agent
+        namespace: default
+        monitoring_enabled:
+          - logs
+          - metrics
+        unenroll_timeout: 900  
+        is_default: true
+        package_policies:
+          - name: system-1
+            id: system-1
+            package:
+              name: system
 ----
 
 *  `xpack.fleet.agents.elasticsearch.hosts`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
 *  `xpack.fleet.agents.fleet_server.hosts` must point to Fleet Server that Elastic Agents should connect to. For ECK-managed Fleet Server instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
+
+*  `xpack.fleet.packages` are required packages to enable Fleet Server and Elastic Agents to enroll. 
+
+*  `xpack.fleet.agentPolicies` policies are needed for Fleet Server and Elastic Agents to enroll to, check https://www.elastic.co/guide/en/fleet/current/agent-policy.html for more information.
 
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
 === Set referenced resources
@@ -397,7 +467,7 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 [id="{p}-elastic-agent-fleet-configuration-customize-fleet-server-service"]
 === Customize Fleet Server Service
 
-By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. You can read more about link:k8s-services.html[making changes] to the Service and link:k8s-tls-certificates.html[customizing] TLS configuration in the documentation.
+By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. Check more information on how to link:k8s-services.html[make changes] to the Service and link:k8s-tls-certificates.html[customize] the TLS configuration.
 
 [id="{p}-elastic-agent-fleet-configuration-override-default-fleet-configuration-settings"]
 === Override default Fleet configuration settings

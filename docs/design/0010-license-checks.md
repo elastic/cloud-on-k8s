@@ -15,7 +15,7 @@ behaviour are any commercial features available to licensed operators only.
 
 * we currently suppport multiple deployment options for the operator: single namespace and multi-namespace.
 * for the activation of commerical features we need a minimal amount of protection against tampering.
-* we see admission controllers as optional means of verification and don't want to rely on them for functionality that does not exist in other places as well.
+* we consider admission controllers as optional means of verification and don't want to rely on them for functionality that does not exist in other places as well.
 * we regard licenses as somewhat sensitive data that should not be shared freely across all namespaces and controllers.
   
 

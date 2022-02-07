@@ -26,7 +26,7 @@ RUN bin/elasticsearch-plugin install --batch repository-gcs
 docker build --tag elasticsearch-gcs:{version}
 ----
 
-There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry. See https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[Using Container Registry with Google Cloud] for more information. To use the image, you can then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with:
+There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry. Check https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[Using Container Registry with Google Cloud] for more information. To use the image, you can then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with:
 
 [subs="attributes"]
 ----
@@ -61,7 +61,7 @@ For more information, check the following references:
 [id="{p}-container-registry-override"]
 == Override the default container registry
 
-When creating custom resources ({eck_resources_list}), the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you could configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. See <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
+When creating custom resources ({eck_resources_list}), the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you could configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. Check <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
 
 The operator expects container images to be located at specific paths in the default container registry. Make sure that your container images are stored at the right path and are tagged correctly with the stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from stack version {version}, the following image paths should exist:
 

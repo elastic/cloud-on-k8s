@@ -31,6 +31,7 @@ func NewMetricBeatSidecar(
 	isTLS bool,
 ) (BeatSidecar, error) {
 	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
+		client,
 		associationType,
 		k8s.ExtractNamespacedName(resource),
 		namer,

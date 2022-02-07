@@ -337,7 +337,7 @@ func TestReconcileConfig(t *testing.T) {
 				"host: https://elasticsearch-sample-es-http.default.svc:9200",
 				"password: mypassword",
 				"ssl:",
-				"certificate_authority: /mnt/elastic-internal/es-certs/tls.crt",
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
 				"enabled: true",
 				"username: ns-sample-ent-user",
 				"ent_search:",
@@ -386,7 +386,7 @@ func TestReconcileConfig(t *testing.T) {
 				"host: https://elasticsearch-sample-es-http.default.svc:9200",
 				"password: mypassword",
 				"ssl:",
-				"certificate_authority: /mnt/elastic-internal/es-certs/tls.crt",
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
 				"enabled: true",
 				"username: ns-sample-ent-user",
 				"ent_search:",
@@ -431,6 +431,77 @@ func TestReconcileConfig(t *testing.T) {
 				"external_url: https://my.own.dns.com", // overridden default setting
 				"filebeat_log_directory: /var/log/enterprise-search",
 				"foo: bar", // new setting
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name:        "without auth source as of 7.14",
+			runtimeObjs: nil,
+			ent: entv1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1.EnterpriseSearchSpec{
+					Version: "7.14.0",
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"ent_search",
+				"external_url: https://localhost:3002",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name:        "with user-provided auth config overrides",
+			runtimeObjs: nil,
+			ent: entv1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1.EnterpriseSearchSpec{
+					Version: "7.10.0",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"ent_search.auth.native1.source.": "elasticsearch-native", // customized auth
+					}},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"ent_search:",
+				"auth",
+				"native1",
+				"source",
+				"elasticsearch-native",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"external_url: https://localhost:3002",
 				"listen_host: 0.0.0.0",
 				"log_directory: /var/log/enterprise-search",
 				"ssl:",

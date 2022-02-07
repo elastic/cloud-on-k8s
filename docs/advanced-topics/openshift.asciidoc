@@ -31,7 +31,7 @@ Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernete
 +
 Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level. This has performance implications and is not recommended for production workloads.
 +
-For more information, see <<{p}-virtual-memory>>.
+For more information, check <<{p}-virtual-memory>>.
 
 [id="{p}-openshift-deploy-the-operator"]
 == Deploy the operator
@@ -325,7 +325,7 @@ spec:
             path: /var/lib/docker/containers
 ----
 
-See the complete examples in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory].
+Check the complete examples in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/beats[recipes directory].
 
 
 [id="{p}-openshift-agent"]

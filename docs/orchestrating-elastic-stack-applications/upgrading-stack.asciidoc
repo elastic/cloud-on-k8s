@@ -13,4 +13,4 @@ Follow the instructions in the link:https://www.elastic.co/guide/en/elastic-stac
 
 ECK will make sure that Elastic Stack resources are upgraded in the correct order. Upgrades to dependent stack resources are delayed until the dependency is upgraded. For example, the Kibana upgrade will be rolled out only when the associated Elasticsearch cluster has been upgraded.
 
-See <<{p}-orchestration>> for more information on how the operator performs upgrades and how to tune its behavior.
+Check <<{p}-orchestration>> for more information on how the operator performs upgrades and how to tune its behavior.

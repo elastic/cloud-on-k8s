@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -32,18 +31,23 @@ func TestESSuspendPod(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Suspend all Pods",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					pods, err := k.GetPods(test.ESPodListOptions(builder.Elasticsearch.Namespace, builder.Elasticsearch.Name)...)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					var podNames []string
 					for _, p := range pods {
 						podNames = append(podNames, p.Name)
 					}
 					var es esv1.Elasticsearch
-					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&builder.Elasticsearch), &es))
+
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&builder.Elasticsearch), &es); err != nil {
+						return err
+					}
 					es.Annotations[esv1.SuspendAnnotation] = strings.Join(podNames, ",")
-					require.NoError(t, k.Client.Update(context.Background(), &es))
-				},
+					return k.Client.Update(context.Background(), &es)
+				}),
 			},
 			elasticsearch.CheckPodsCondition(builder, k, "all Pods should be suspended", func(p corev1.Pod) error {
 				nok := fmt.Errorf("pod %s/%s not suspended", p.Namespace, p.Name)
@@ -63,12 +67,14 @@ func TestESSuspendPod(t *testing.T) {
 			}),
 			{
 				Name: "Remove the suspend annotation",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
-					require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&builder.Elasticsearch), &es))
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&builder.Elasticsearch), &es); err != nil {
+						return err
+					}
 					delete(es.Annotations, esv1.SuspendAnnotation)
-					require.NoError(t, k.Client.Update(context.Background(), &es))
-				},
+					return k.Client.Update(context.Background(), &es)
+				}),
 			},
 			// Pods should become ready again
 			elasticsearch.CheckExpectedPodsEventuallyReady(builder, k),
