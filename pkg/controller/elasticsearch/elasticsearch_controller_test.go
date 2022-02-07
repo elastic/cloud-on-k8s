@@ -33,7 +33,7 @@ func newTestReconciler(failing bool, err error, objects ...runtime.Object) *Reco
 		recorder: record.NewFakeRecorder(100),
 	}
 	if failing {
-		r.Client = k8s.NewFailingClient(err)
+		r.Client = k8s.NewFailingClient(err, objects...)
 	}
 	return r
 }
@@ -241,10 +241,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				return
 			}
 
-			// get the actual ES from the k8s client, ensuring the k8s client is not a failing client
-			// comparing to the expected.
+			disableClientFailing(r, tt.k8sClientFields.failing)
 			var actualES esv1.Elasticsearch
-			ensureClient(r, tt.k8sClientFields.failing, tt.k8sClientFields.objects)
 			if err := r.Client.Get(context.Background(), tt.args.request.NamespacedName, &actualES); err != nil {
 				t.Error(err)
 				return
@@ -254,8 +252,9 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 	}
 }
 
-func ensureClient(r *ReconcileElasticsearch, failingClient bool, objects []runtime.Object) {
+func disableClientFailing(r *ReconcileElasticsearch, failingClient bool) {
 	if failingClient {
-		r.Client = newTestReconciler(false, nil, objects...).Client
+		r.Client.(*k8s.FailingClient).DisableFailing()
+		return
 	}
 }
