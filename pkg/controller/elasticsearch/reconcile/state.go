@@ -22,8 +22,8 @@ import (
 
 var log = ulog.Log.WithName("elasticsearch-controller")
 
-// State holds the accumulated state during the reconcile loop including the response and a pointer to an
-// Elasticsearch resource for status updates.
+// State holds the accumulated state during the reconcile loop including the response and a copy of the
+// Elasticsearch resource from the start of reconciliation, for status updates.
 type State struct {
 	*events.Recorder
 	cluster esv1.Elasticsearch
