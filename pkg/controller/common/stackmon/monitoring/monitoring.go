@@ -18,6 +18,36 @@ type HasMonitoring interface {
 	MonitoringAssociation(ref commonv1.ObjectSelector) commonv1.Association
 }
 
+func AreAssocConfigured(resource HasMonitoring) bool {
+	return IsMetricsAssocConfigured(resource) && IsLogsAssocConfigured(resource)
+}
+
+func IsMetricsAssocConfigured(resource HasMonitoring) bool {
+	if !IsMetricsDefined(resource) {
+		return false
+	}
+	refs := resource.GetMonitoringMetricsRefs()
+	for _, ref := range refs {
+		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
+			return false
+		}
+	}
+	return true
+}
+
+func IsLogsAssocConfigured(resource HasMonitoring) bool {
+	if !IsLogsDefined(resource) {
+		return false
+	}
+	refs := resource.GetMonitoringLogsRefs()
+	for _, ref := range refs {
+		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
+			return false
+		}
+	}
+	return true
+}
+
 func IsDefined(resource HasMonitoring) bool {
 	return IsMetricsDefined(resource) || IsLogsDefined(resource)
 }

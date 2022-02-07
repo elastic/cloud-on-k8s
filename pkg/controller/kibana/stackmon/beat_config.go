@@ -25,7 +25,7 @@ var (
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
 func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
-	if monitoring.IsMetricsDefined(&kb) {
+	if monitoring.IsMetricsAssocConfigured(&kb) {
 		b, err := Metricbeat(client, kb)
 		if err != nil {
 			return err
@@ -36,7 +36,7 @@ func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
 		}
 	}
 
-	if monitoring.IsLogsDefined(&kb) {
+	if monitoring.IsLogsAssocConfigured(&kb) {
 		b, err := Filebeat(client, kb)
 		if err != nil {
 			return err

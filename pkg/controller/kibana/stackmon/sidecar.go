@@ -69,8 +69,8 @@ func Filebeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
 // WithMonitoring updates the Kibana Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Kibana pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana) (*defaults.PodTemplateBuilder, error) {
-	// no monitoring defined, skip
-	if !monitoring.IsDefined(&kb) {
+	// no monitoring defined or yet configured, skip
+	if !monitoring.IsDefined(&kb) || !monitoring.AreAssocConfigured(&kb) {
 		return builder, nil
 	}
 
