@@ -81,7 +81,7 @@ func (e *esBuilder) WithVersion(version string) *esBuilder {
 	return e
 }
 
-// Build builds the final ES object, returning a pointer.
+// Build builds the final ES object and returns a pointer.
 func (e *esBuilder) Build() *esv1.Elasticsearch {
 	return e.es
 }
