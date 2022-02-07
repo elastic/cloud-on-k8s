@@ -33,12 +33,16 @@ var nsnFixture = types.NamespacedName{
 }
 var emsFixture = v1alpha1.ElasticMapsServer{
 	ObjectMeta: metav1.ObjectMeta{
-		Namespace: nsnFixture.Namespace,
-		Name:      nsnFixture.Name,
+		Namespace:  nsnFixture.Namespace,
+		Name:       nsnFixture.Name,
+		Generation: 2,
 	},
 	Spec: v1alpha1.MapsSpec{
 		Version: "7.12.0",
 		Count:   1,
+	},
+	Status: v1alpha1.MapsStatus{
+		ObservedGeneration: 1,
 	},
 }
 
@@ -76,7 +80,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Resource marked for deletion",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace, DeletionTimestamp: &timeFixture},
+					ObjectMeta: metav1.ObjectMeta{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace, DeletionTimestamp: &timeFixture, Generation: 2},
+					Status: v1alpha1.MapsStatus{
+						ObservedGeneration: 1,
+					},
 				}),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				dynamicWatches: watches.NewDynamicWatches(),
@@ -91,6 +98,11 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			post: func(r ReconcileMapsServer) {
 				// watches should have been cleared
 				require.Empty(t, r.DynamicWatches().Secrets.Registrations())
+
+				// observedGeneration should not have been updated
+				var ems v1alpha1.ElasticMapsServer
+				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+				require.Equal(t, int64(1), ems.Status.ObservedGeneration)
 			},
 			wantErr: false,
 		},
@@ -121,6 +133,11 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			post: func(r ReconcileMapsServer) {
 				e := <-r.recorder.(*record.FakeRecorder).Events
 				require.Equal(t, "Warning ReconciliationError Elastic Maps Server is an enterprise feature. Enterprise features are disabled", e)
+
+				// observedGeneration should have been updated
+				var ems v1alpha1.ElasticMapsServer
+				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
 			},
 			wantRequeue:      true,
 			wantRequeueAfter: true, // license recheck
@@ -131,15 +148,25 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
+						Name:       nsnFixture.Name,
+						Namespace:  nsnFixture.Namespace,
+						Generation: 2,
 					},
 					Spec: v1alpha1.MapsSpec{
 						Version: "7.10.0", // unsupported version
 					},
+					Status: v1alpha1.MapsStatus{
+						ObservedGeneration: 1,
+					},
 				}),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				recorder:       record.NewFakeRecorder(10),
+			},
+			post: func(r ReconcileMapsServer) {
+				// observedGeneration should have been updated
+				var ems v1alpha1.ElasticMapsServer
+				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
 			},
 			wantErr: true,
 		},
@@ -148,12 +175,16 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
+						Name:       nsnFixture.Name,
+						Namespace:  nsnFixture.Namespace,
+						Generation: 2,
 					},
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+					},
+					Status: v1alpha1.MapsStatus{
+						ObservedGeneration: 1,
 					},
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
@@ -163,6 +194,11 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			post: func(r ReconcileMapsServer) {
 				e := <-r.recorder.(*record.FakeRecorder).Events
 				require.Equal(t, "Warning AssociationError Association backend for elasticsearch is not configured", e)
+
+				// observedGeneration should have been updated
+				var ems v1alpha1.ElasticMapsServer
+				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
 			},
 			wantErr: false,
 		},
@@ -176,10 +212,14 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 						Annotations: map[string]string{
 							"association.k8s.elastic.co/es-conf": `{"authSecretName":"test-resource-maps-user","authSecretKey":"ns-test-resource-maps-user","caCertProvided":true,"caSecretName": "test-resource-es-ca","url":"https://es-es-http.ns.svc:9200","version":"7.10.0"}`,
 						},
+						Generation: 2,
 					},
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+					},
+					Status: v1alpha1.MapsStatus{
+						ObservedGeneration: 1,
 					},
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
@@ -189,8 +229,15 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			post: func(r ReconcileMapsServer) {
 				e := <-r.recorder.(*record.FakeRecorder).Events
 				require.Equal(t, "Warning Delayed Delaying deployment of version 7.12.0 since the referenced elasticsearch is not upgraded yet", e)
+
+				// observedGeneration should have been updated
+				var ems v1alpha1.ElasticMapsServer
+				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
 			},
 			wantErr: false,
+			// retry from certificate reconciliation.
+			wantRequeueAfter: true,
 		},
 		{
 			name: "Happy path: first reconciliation",
@@ -237,6 +284,11 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				require.Equal(t, int32(1), *dep.Spec.Replicas)
 				// with the config hash annotation set
 				require.NotEmpty(t, dep.Spec.Template.Annotations[configHashAnnotationName])
+
+				// observedGeneration should have been updated
+				var ems v1alpha1.ElasticMapsServer
+				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
 			},
 			wantRequeue:      false,
 			wantRequeueAfter: true, // certificate refresh
