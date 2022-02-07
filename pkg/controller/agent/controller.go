@@ -6,6 +6,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -157,19 +159,54 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		return results
 	}
 
-	// Run basic validations as a fallback in case webhook is disabled.
-	if err := r.validate(ctx, agent); err != nil {
-		return results.WithError(err)
-	}
-
-	driverResults := internalReconcile(Params{
+	params := Params{
 		Context:        ctx,
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Agent:          agent,
 		OperatorParams: r.Parameters,
-	})
+	}
+
+	status := newStatus(agent)
+
+	// Run basic validations as a fallback in case webhook is disabled.
+	if err := r.validate(ctx, agent); err != nil {
+		if statusErr := updateStatus(params, status); statusErr != nil && apierrors.IsConflict(statusErr) {
+			params.Logger().V(1).Info(
+				"Conflict while updating status",
+				"namespace", params.Agent.Namespace,
+				"agent_name", params.Agent.Name)
+			return results.WithResult(reconcile.Result{Requeue: true})
+		} else if err != nil {
+			params.Logger().Error(
+				err,
+				"Error while updating status",
+				"namespace", params.Agent.Namespace,
+				"agent_name", params.Agent.Name,
+			)
+			return results.WithError(errors.Wrapf(err, "while updating status: %s", statusErr))
+		}
+		return results.WithError(err)
+	}
+
+	driverResults := internalReconcile(params, &status)
+
+	if err := updateStatus(params, status); err != nil && apierrors.IsConflict(err) {
+		params.Logger().V(1).Info(
+			"Conflict while updating status",
+			"namespace", params.Agent.Namespace,
+			"agent_name", params.Agent.Name)
+		return results.WithResult(reconcile.Result{Requeue: true})
+	} else if err != nil {
+		params.Logger().Error(
+			err,
+			"Error while updating status",
+			"namespace", params.Agent.Namespace,
+			"agent_name", params.Agent.Name,
+		)
+		return results.WithError(fmt.Errorf("while updating status: %w", err))
+	}
 
 	return results.WithResults(driverResults)
 }

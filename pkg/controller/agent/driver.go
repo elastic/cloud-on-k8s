@@ -31,9 +31,11 @@ import (
 )
 
 const (
+	// FleetServerPort is the standard Elastic Fleet Server port.
 	FleetServerPort int32 = 8220
 )
 
+// Params are a set of parameters used during internal reconciliation of Elastic Agents.
 type Params struct {
 	Context context.Context
 
@@ -46,18 +48,22 @@ type Params struct {
 	OperatorParams operator.Parameters
 }
 
+// K8sClient returns the Kubernetes client.
 func (p Params) K8sClient() k8s.Client {
 	return p.Client
 }
 
+// Recorder returns the Kubernetes event recorder.
 func (p Params) Recorder() record.EventRecorder {
 	return p.EventRecorder
 }
 
+// DynamicWatches returns the set of stateful dynamic watches used during reconciliation.
 func (p Params) DynamicWatches() watches.DynamicWatches {
 	return p.Watches
 }
 
+// GetPodTemplate returns the configured pod template for the associated Elastic Agent.
 func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
 	if p.Agent.Spec.DaemonSet != nil {
 		return p.Agent.Spec.DaemonSet.PodTemplate
@@ -66,11 +72,18 @@ func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
 	return p.Agent.Spec.Deployment.PodTemplate
 }
 
+// Logger returns the configured logger for use during reconciliation.
 func (p *Params) Logger() logr.Logger {
 	return log.FromContext(p.Context)
 }
 
-func internalReconcile(params Params) *reconciler.Results {
+func newStatus(agent agentv1alpha1.Agent) agentv1alpha1.AgentStatus {
+	status := agent.Status
+	status.ObservedGeneration = agent.Generation
+	return status
+}
+
+func internalReconcile(params Params, status *agentv1alpha1.AgentStatus) *reconciler.Results {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -84,6 +97,7 @@ func internalReconcile(params Params) *reconciler.Results {
 
 	svc, err := reconcileService(params)
 	if err != nil {
+		params.Logger().Error(err, "reconciling service")
 		return results.WithError(err)
 	}
 
@@ -122,7 +136,7 @@ func internalReconcile(params Params) *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	return results.WithResults(reconcilePodVehicle(params, podTemplate))
+	return results.WithResults(reconcilePodVehicle(params, podTemplate, status))
 }
 
 func reconcileService(params Params) (*corev1.Service, error) {
