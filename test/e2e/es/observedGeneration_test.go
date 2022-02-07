@@ -20,11 +20,25 @@ import (
 // TestSettingObservedGeneration tests that es.Generation, and es.Status.ObservedGeneration are incremented, and kept in sync
 // when the spec of the ES cluster changes.
 func TestSettingObservedGeneration(t *testing.T) {
-	initialCluster := elasticsearch.NewBuilder("test-es-generation").
+	podTemplate1 := elasticsearch.ESPodTemplate(elasticsearch.DefaultResources)
+	podTemplate1.Annotations = map[string]string{"foo": "bar"}
+
+	initial := elasticsearch.NewBuilder("test-es-generation").
+		WithNodeSet(esv1.NodeSet{
+			Name:        "default",
+			Count:       1,
+			PodTemplate: podTemplate1,
+		}).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	// make any change so that the spec is updated, such as disabling tls.
-	mutated := initialCluster.WithTLSDisabled(true)
+	podTemplate2 := elasticsearch.ESPodTemplate(elasticsearch.DefaultResources)
+	podTemplate2.Annotations = map[string]string{"foo": "bar2"}
+	mutated := initial.WithNoESTopology().
+		WithNodeSet(esv1.NodeSet{
+			Name:        "default",
+			Count:       1,
+			PodTemplate: podTemplate2,
+		})
 
 	k := test.NewK8sClientOrFatal()
 
@@ -32,14 +46,14 @@ func TestSettingObservedGeneration(t *testing.T) {
 	var eventualES esv1.Elasticsearch
 
 	test.StepList{}.
-		WithSteps(initialCluster.InitTestSteps(k)).
-		WithSteps(initialCluster.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(initialCluster, k)).
+		WithSteps(initial.InitTestSteps(k)).
+		WithSteps(initial.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(initial, k)).
 		WithStep(test.Step{
 			Name: "Get initial generation",
 			Test: test.Eventually(func() error {
 				var createdES esv1.Elasticsearch
-				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&initialCluster.Elasticsearch), &createdES); err != nil {
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&initial.Elasticsearch), &createdES); err != nil {
 					return err
 				}
 				initialGeneration = createdES.Generation
@@ -48,12 +62,12 @@ func TestSettingObservedGeneration(t *testing.T) {
 			}),
 		}).
 		WithSteps(mutated.UpgradeTestSteps(k)).
-		WithSteps(test.CheckTestSteps(initialCluster, k)).
+		WithSteps(test.CheckTestSteps(initial, k)).
 		WithSteps(test.StepList{
 			{
 				Name: "Get Mutated ES Cluster",
 				Test: test.Eventually(func() error {
-					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&initialCluster.Elasticsearch), &eventualES); err != nil {
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&initial.Elasticsearch), &eventualES); err != nil {
 						return err
 					}
 					return nil
