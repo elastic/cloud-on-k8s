@@ -1410,6 +1410,15 @@ spec:
                 description: KibanaAssociationStatus is the status of any auto-linking
                   to Kibana.
                 type: string
+              observedGeneration:
+                description: ObservedGeneration represents the .metadata.generation
+                  that the status is based upon. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  APM Server controller has not yet processed the changes contained
+                  in the APM Server specification.
+                format: int64
+                type: integer
               secretTokenSecret:
                 description: SecretTokenSecretName is the name of the Secret that
                   contains the secret token

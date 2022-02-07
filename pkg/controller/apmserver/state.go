@@ -26,7 +26,9 @@ type State struct {
 // NewState creates a new reconcile state based on the given request and ApmServer resource with the resource
 // state reset to empty.
 func NewState(request reconcile.Request, as *apmv1.ApmServer) State {
-	return State{Request: request, ApmServer: as, originalApmServer: as.DeepCopy()}
+	current := as.DeepCopy()
+	current.Status.ObservedGeneration = as.Generation
+	return State{Request: request, ApmServer: current, originalApmServer: as}
 }
 
 // UpdateApmServerState updates the ApmServer status based on the given deployment.

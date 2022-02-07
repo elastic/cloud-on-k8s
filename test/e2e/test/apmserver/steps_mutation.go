@@ -10,10 +10,17 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	panic("not implemented")
+	var apmServerGenerationBeforeMutation, apmServerObservedGenerationBeforeMutation int64
+	return test.StepList{
+		generation.RetrieveAgentGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation),
+	}.WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation))
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {

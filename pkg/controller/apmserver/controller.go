@@ -87,9 +87,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
-	client := mgr.GetClient()
 	return &ReconcileApmServer{
-		Client:         client,
+		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
@@ -152,14 +151,18 @@ type ReconcileApmServer struct {
 	iteration uint64
 }
 
+// K8sClient returns the kubernetes client from the APM Server reconciler.
 func (r *ReconcileApmServer) K8sClient() k8s.Client {
 	return r.Client
 }
 
+// DynamicWatches returns the set of dynamic watches from the APM Server reconciler.
 func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
+// Recorder returns the kubernetes recorder that is responsible for recording and reporting
+// events from the APM Server reconciler.
 func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder
 }
@@ -207,18 +210,43 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 }
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
+	var (
+		err error
+		res reconcile.Result
+	)
+
+	state := NewState(request, as)
+	results := reconciler.NewResult(ctx)
+
+	// Always attempt to update the status of the APMServer object during reconcilation.
+	defer func() {
+		err = r.updateStatus(ctx, state)
+		if err != nil && apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
+			res, err = results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		} else if err != nil {
+			log.Error(
+				err,
+				"Error while updating status",
+				"namespace", as.Namespace,
+				"name", as.Name,
+			)
+			k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
+			res, err = results.WithError(err).Aggregate()
+		}
+	}()
+
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, as); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	state := NewState(request, as)
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	_, results := certificates.Reconciler{
+	_, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 as,
@@ -257,13 +285,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 	state.UpdateApmServerExternalService(*svc)
 
-	// update status
-	err = r.updateStatus(ctx, state)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
-		return reconcile.Result{Requeue: true}, nil
-	}
-	res, err := results.WithError(err).Aggregate()
+	res, err = results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, err
 }
@@ -337,6 +359,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 	return common.UpdateStatus(r.Client, state.ApmServer)
 }
 
+// NewService returns the service used by the APM Server.
 func NewService(as apmv1.ApmServer) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: as.Spec.HTTP.Service.ObjectMeta,
