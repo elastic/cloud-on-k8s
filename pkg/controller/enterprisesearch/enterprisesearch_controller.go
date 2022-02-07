@@ -162,11 +162,19 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, nil
 	}
 
-	if !association.IsConfiguredIfSet(&ent, r.recorder) {
-		return reconcile.Result{}, nil
+	results, status := r.doReconcile(ctx, ent)
+	updateStatusErr := r.updateStatus(ent, status)
+	if updateStatusErr != nil {
+		if apierrors.IsConflict(updateStatusErr) {
+			log.V(1).Info(
+				"Conflict while updating status",
+				"namespace", ent.Namespace,
+				"beat_name", ent.Name)
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
+		results.WithError(updateStatusErr)
 	}
-
-	return r.doReconcile(ctx, ent)
+	return results.Aggregate()
 }
 
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
@@ -177,18 +185,25 @@ func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
 	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1.Kind)
 }
 
-func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (reconcile.Result, error) {
+func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (*reconciler.Results, entv1.EnterpriseSearchStatus) {
+	results := reconciler.NewResult(ctx)
+	status := newStatus(ent)
+
+	if !association.IsConfiguredIfSet(&ent, r.recorder) {
+		return results, status
+	}
+
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, &ent); err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(ent), &ent)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
-	_, results := certificates.Reconciler{
+	_, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 &ent,
@@ -201,48 +216,56 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
-		res, err := results.Aggregate()
+		_, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return res, err
+		return results, status
 	}
 
 	entVersion, err := version.Parse(ent.Spec.Version)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
 	if !association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder) {
-		return reconcile.Result{}, nil // will eventually retry once updated
+		return results, status // will eventually retry once updated
 	}
 
 	configSecret, err := ReconcileConfig(r, ent, r.IPFamily)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
 	// toggle read-only mode for Enterprise Search version upgrades
 	upgrade := VersionUpgrade{k8sClient: r.K8sClient(), recorder: r.Recorder(), ent: ent, dialer: r.Dialer}
 	if err := upgrade.Handle(ctx); err != nil {
-		return reconcile.Result{}, fmt.Errorf("version upgrade: %w", err)
+		return results.WithError(fmt.Errorf("version upgrade: %w", err)), status
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
 	configHash, err := buildConfigHash(r.K8sClient(), ent, configSecret)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("build config hash: %w", err)
+		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
 	deploy, err := r.reconcileDeployment(ctx, ent, configHash)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("reconcile deployment: %w", err)
+		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
 
-	err = r.updateStatus(ent, deploy, svc.Name)
+	status, err = r.generateStatus(ent, deploy, svc.Name)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("updating status: %w", err)
+		return results.WithError(fmt.Errorf("updating status: %w", err)), status
 	}
 
-	return results.Aggregate()
+	return results, status
+}
+
+// newStatus will generate a new status, ensuring status.ObservedGeneration
+// follows the generation of the Enterprise Search object.
+func newStatus(ent entv1.EnterpriseSearch) entv1.EnterpriseSearchStatus {
+	status := ent.Status
+	status.ObservedGeneration = ent.Generation
+	return status
 }
 
 func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.EnterpriseSearch) error {
@@ -258,34 +281,35 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	return nil
 }
 
-func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) error {
-	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ent.Namespace, map[string]string{EnterpriseSearchNameLabelName: ent.Name})
-	if err != nil {
-		return err
-	}
-	deploymentStatus, err := common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
-	if err != nil {
-		return err
-	}
-	newStatus := entv1.EnterpriseSearchStatus{
-		DeploymentStatus: deploymentStatus,
-		ExternalService:  svcName,
-		Association:      ent.Status.Association,
+func (r *ReconcileEnterpriseSearch) generateStatus(ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
+	status := entv1.EnterpriseSearchStatus{
+		Association:        ent.Status.Association,
+		ExternalService:    svcName,
+		ObservedGeneration: ent.Generation,
 	}
 
-	if reflect.DeepEqual(newStatus, ent.Status) {
+	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ent.Namespace, map[string]string{EnterpriseSearchNameLabelName: ent.Name})
+	if err != nil {
+		return status, err
+	}
+	status.DeploymentStatus, err = common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
+	return status, err
+}
+
+func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1.EnterpriseSearch, status entv1.EnterpriseSearchStatus) error {
+	if reflect.DeepEqual(status, ent.Status) {
 		return nil // nothing to do
 	}
-	if newStatus.IsDegraded(ent.Status.DeploymentStatus) {
+	if status.IsDegraded(ent.Status.DeploymentStatus) {
 		r.recorder.Event(&ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Enterprise Search health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", ent.Namespace,
 		"ent_name", ent.Name,
-		"status", newStatus,
+		"status", status,
 	)
-	ent.Status = newStatus
+	ent.Status = status
 	return common.UpdateStatus(r.Client, &ent)
 }
 

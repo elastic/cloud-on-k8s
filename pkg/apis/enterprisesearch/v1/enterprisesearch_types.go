@@ -65,10 +65,19 @@ type EnterpriseSearchSpec struct {
 // EnterpriseSearchStatus defines the observed state of EnterpriseSearch
 type EnterpriseSearchStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
+
 	// ExternalService is the name of the service associated to the Enterprise Search Pods.
 	ExternalService string `json:"service,omitempty"`
+
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+
+	// ObservedGeneration represents the .metadata.generation that the status is based upon.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Enterprise Search
+	// controller has not yet processed the changes contained in the Enterprise Search specification.
+	// +kubebuilder:validation:Optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
