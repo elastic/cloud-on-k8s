@@ -58,7 +58,11 @@ func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 
 // Handle satisfies the admission.Handler interface
 func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {
-	obj := v.validator.DeepCopyObject().(admission.Validator)
+	obj, ok := v.validator.DeepCopyObject().(admission.Validator)
+	if !ok {
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("object (%T) to be validated couldn't be converted to admission.Validator", v.validator.DeepCopyObject()))
+	}
+
 	err := v.decoder.Decode(req, obj)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
