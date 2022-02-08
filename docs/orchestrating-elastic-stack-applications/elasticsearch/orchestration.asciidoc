@@ -179,7 +179,7 @@ Specifically, if the Elasticsearch index settings demand a higher number of shar
 
 The rules (otherwise known as predicates) that the ECK operator follows during an Elasticsearch upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an Elasticsearch cluster upgrade because it deems it to be "unsafe".
 
-WARNING: Selectively disabling the predicates below are extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable. Use only if you are absolutely positive you are not causing permanent damage to an Elasticsearch cluster. Note that these predicates have the potential to change in the future. We will be adding, removing, and renaming these over time, so take great care in adding these to any automation.  Also please ensure you remove them after use. `kublectl annotate elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample eck.k8s.elastic.co/disable-upgrade-predicates-`
+WARNING: Selectively disabling the predicates listed in this section are extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable. Use them only if you are sure that you are not causing permanent damage to an Elasticsearch cluster. These predicates might change in the future. We will be adding, removing, and renaming these over time, so be careful in adding these to any automation.  Also, make sure you remove them after use. `kublectl annotate elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample eck.k8s.elastic.co/disable-upgrade-predicates-`
 
 * The following named predicates control the upgrade process
 
