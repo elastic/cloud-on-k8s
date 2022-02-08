@@ -241,7 +241,9 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				return
 			}
 
-			disableClientFailing(r, tt.k8sClientFields.failing)
+			if client, ok := r.Client.(*k8s.FailingClient); ok {
+				client.DisableFailing()
+			}
 			var actualES esv1.Elasticsearch
 			if err := r.Client.Get(context.Background(), tt.args.request.NamespacedName, &actualES); err != nil {
 				t.Error(err)
@@ -249,12 +251,5 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 			}
 			comparison.AssertEqual(t, &actualES, &tt.expected)
 		})
-	}
-}
-
-func disableClientFailing(r *ReconcileElasticsearch, failingClient bool) {
-	if failingClient {
-		r.Client.(*k8s.FailingClient).DisableFailing()
-		return
 	}
 }
