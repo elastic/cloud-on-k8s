@@ -207,5 +207,4 @@ Chosen option: option 1, because that's the only one we have here? :)
 
 * [https://github.com/elastic/cloud-on-k8s/issues/454] Full cluster restart issue
 * [https://github.com/elastic/cloud-on-k8s/issues/453] Basic license support issue
-* [https://www.elastic.co/guide/en/elasticsearch/reference/current/restart-upgrade.html] Elasticsearch full cluster restart upgrade
-* [https://www.elastic.co/guide/en/elasticsearch/reference/current/rolling-upgrades.html] Elasticsearch rolling cluster restart upgrade
+* [{stack-ref}/upgrading-elasticsearch.html] Upgrade {es}
