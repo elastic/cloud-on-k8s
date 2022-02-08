@@ -89,7 +89,7 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 
 	// If this Elasticsearch instance is not within the set of managed namespaces
 	// for this operator ignore this request.
-	if !wh.managedNamespaces.Has(es.Namespace) {
+	if wh.managedNamespaces.Count() > 0 && !wh.managedNamespaces.Has(es.Namespace) {
 		eslog.V(1).Info("Skip Elasticsearch resource validation", "name", es.Name, "namespace", es.Namespace)
 		return admission.Allowed("")
 	}

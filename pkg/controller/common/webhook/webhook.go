@@ -75,7 +75,7 @@ func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) adm
 
 	// If this instance is not within the set of managed namespaces
 	// for this operator ignore this request.
-	if !v.managedNamespaces.Has(metaObj.GetNamespace()) {
+	if v.managedNamespaces.Count() > 0 && !v.managedNamespaces.Has(metaObj.GetNamespace()) {
 		whlog.V(1).Info("Skipping resource validation", "name", metaObj.GetName(), "namespace", metaObj.GetNamespace())
 		return admission.Allowed(fmt.Sprintf("object namespace (%s) outside of managed namespaces: %s", metaObj.GetNamespace(), v.managedNamespaces.AsSlice()))
 	}
