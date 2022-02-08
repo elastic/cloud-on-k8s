@@ -25,7 +25,12 @@ var (
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
 func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
-	if monitoring.IsMetricsAssocConfigured(&es) {
+	// no monitoring defined or yet configured, skip
+	if !monitoring.IsDefined(&es) || !monitoring.AreAssocConfigured(&es) {
+		return nil
+	}
+
+	if monitoring.IsMetricsDefined(&es) {
 		b, err := Metricbeat(client, es)
 		if err != nil {
 			return err
@@ -36,7 +41,7 @@ func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
 		}
 	}
 
-	if monitoring.IsLogsAssocConfigured(&es) {
+	if monitoring.IsMetricsDefined(&es) {
 		b, err := Filebeat(client, es)
 		if err != nil {
 			return err
