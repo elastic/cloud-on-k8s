@@ -194,7 +194,7 @@ Do not attempt to restart pods that are already in the process of being terminat
 Only restart healthy Elasticsearch nodes if the health of the cluster is either green or yellow, never red.
 ** if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas
 +
-During a rolling upgrade, primary shards assigned to a node running a new version cannot have their replicas assigned to a node with the old version. Therefore we must allow some Pods to be restarted even if cluster health is Yellow so the replicas can be assigned.
+During a rolling upgrade, primary shards assigned to a node running a new version cannot have their replicas assigned to a node with the old version. Therefore we must allow some Pods to be restarted even if cluster health is yellow so the replicas can be assigned.
 ** require_started_replica
 +
 If a cluster is yellow, allow deleting a node, but only if they do not contain the only replica of a shard since it would make the cluster go red.
