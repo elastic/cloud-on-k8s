@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -381,7 +382,7 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 		reconcile.Request{NamespacedName: fsRef.NamespacedName()},
 		&fs,
 	); err != nil {
-		return nil, err
+		return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
 	}
 
 	return &fs, nil
@@ -497,8 +498,10 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 		}
 
 		if assoc != nil {
-			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
 			fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
+		}
+		if assoc != nil && assoc.AssociationConf().CACertProvided {
+			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
 		}
 	}
 	return fleetCfg, nil
