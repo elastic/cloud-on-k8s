@@ -206,7 +206,7 @@ Only allow a single master to be upgraded at a time.
 Force an upgrade of all the master-ineligible nodes before upgrading the last master-eligible node.
 ** do_not_delete_pods_with_same_shards
 +
-Do not allow 2 pods to be deleted at the same time, that contain the same shard.
+Do not allow two pods containing the same shard to be deleted at the same time.
 
 Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch metadata, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicatae with "*".
 
