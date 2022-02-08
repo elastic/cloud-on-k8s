@@ -212,7 +212,7 @@ Any of these predicates can be disabled by adding an annotation with the key of 
 
 * Example use case
 
-Assume a given Elasticsearch cluster is a "red" state because of ab un-allocatable shard setting that was applied to the cluster
+Assume a given Elasticsearch cluster is a "red" state because of an un-allocatable shard setting that was applied to the cluster:
 
 ```json
 {
