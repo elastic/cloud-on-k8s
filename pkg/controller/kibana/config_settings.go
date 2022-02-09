@@ -319,7 +319,7 @@ func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 	if assocConf.URLIsConfigured() {
 		cfg[EnterpriseSearchHost] = assocConf.GetURL()
 	}
-	if assocConf.CAIsConfigured() {
+	if assocConf.GetCACertProvided() {
 		cfg[EnterpriseSearchSslCertificateAuthorities] = filepath.Join(entCertsVolumeMountPath, certificates.CAFileName)
 		// Rely on "certificate" verification mode rather than "full" to allow Kibana
 		// to connect to Enterprise Search through the k8s-internal service DNS name

@@ -124,7 +124,7 @@ func associationConfig(c k8s.Client, ems emsv1alpha1.ElasticMapsServer) (*settin
 		return nil, err
 	}
 
-	if ems.AssociationConf().CAIsConfigured() {
+	if ems.AssociationConf().GetCACertProvided() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"elasticsearch.ssl.verificationMode":       "certificate",
 			"elasticsearch.ssl.certificateAuthorities": filepath.Join(ESCertsPath, certificates.CAFileName),
