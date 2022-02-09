@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -100,23 +101,16 @@ func (r *ReconcileApmServer) deploymentParams(
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	for _, association := range as.GetAssociations() {
-		if association.AssociationConf().CAIsConfigured() {
-			caSecretName := association.AssociationConf().GetCASecretName()
+	if err := association.WriteAssocsToConfigHash(r.Client, as.GetAssociations(), configChecksum); err != nil {
+		return deployment.Params{}, err
+	}
 
-			var publicCASecret corev1.Secret
-			key := types.NamespacedName{Namespace: as.Namespace, Name: caSecretName}
-			if err := r.Get(context.Background(), key, &publicCASecret); err != nil {
-				return deployment.Params{}, err
-			}
-			if certPem, ok := publicCASecret.Data[certificates.CertFileName]; ok {
-				_, _ = configChecksum.Write(certPem)
-			}
-
+	for _, assoc := range as.GetAssociations() {
+		if assoc.AssociationConf().CAIsConfigured() {
 			caVolume := volume.NewSecretVolumeWithMountPath(
-				caSecretName,
-				fmt.Sprintf("%s-certs", association.AssociationType()),
-				filepath.Join(ApmBaseDir, certificatesDir(association.AssociationType())),
+				assoc.AssociationConf().GetCASecretName(),
+				fmt.Sprintf("%s-certs", assoc.AssociationType()),
+				filepath.Join(ApmBaseDir, certificatesDir(assoc.AssociationType())),
 			)
 			podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, caVolume.Volume())
 
