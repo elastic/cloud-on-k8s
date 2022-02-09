@@ -116,11 +116,12 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	return result
 }
 
-func (u upgradeTestPods) toES(version string, maxUnavailable int) esv1.Elasticsearch {
+func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations map[string]string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      TestEsName,
-			Namespace: TestEsNamespace,
+			Name:        TestEsName,
+			Namespace:   TestEsNamespace,
+			Annotations: annotations,
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: version,
@@ -159,7 +160,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter) []runtime.Object {
+func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter, annotations map[string]string) []runtime.Object {
 	var result []runtime.Object
 	for _, testPod := range u {
 		pod := testPod.toPod()
@@ -167,7 +168,7 @@ func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f 
 			result = append(result, &pod)
 		}
 	}
-	es := u.toES(version, maxUnavailable)
+	es := u.toES(version, maxUnavailable, annotations)
 	result = append(result, &es)
 	return result
 }
