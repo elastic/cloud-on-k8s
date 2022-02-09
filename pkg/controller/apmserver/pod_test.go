@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestNewPodSpec(t *testing.T) {
@@ -24,6 +25,11 @@ func TestNewPodSpec(t *testing.T) {
 		"config-secret",
 		"config",
 		"/usr/share/apm-server/config/config-secret",
+	)
+	httpCertsSecretVol := volume.NewSecretVolumeWithMountPath(
+		"fake-apm-apm-http-certs-internal",
+		"elastic-internal-http-certificates",
+		"/mnt/elastic-internal/http-certs",
 	)
 	varFalse := false
 	probe := readinessProbe(true)
@@ -65,10 +71,13 @@ func TestNewPodSpec(t *testing.T) {
 						"apm.k8s.elastic.co/version": "7.0.1",
 						"common.k8s.elastic.co/type": "apm-server",
 					},
+					Annotations: map[string]string{
+						"apm.k8s.elastic.co/config-hash": "2166136261",
+					},
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
-						configSecretVol.Volume(), configVolume.Volume(),
+						configSecretVol.Volume(), configVolume.Volume(), httpCertsSecretVol.Volume(),
 					},
 					AutomountServiceAccountToken: &varFalse,
 					Containers: []corev1.Container{
@@ -112,7 +121,7 @@ func TestNewPodSpec(t *testing.T) {
 							Ports:          []corev1.ContainerPort{{Name: "https", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}},
 							Command:        command,
 							VolumeMounts: []corev1.VolumeMount{
-								configSecretVol.VolumeMount(), configVolume.VolumeMount(),
+								configSecretVol.VolumeMount(), configVolume.VolumeMount(), httpCertsSecretVol.VolumeMount(),
 							},
 							Resources: DefaultResources,
 						},
@@ -121,9 +130,18 @@ func TestNewPodSpec(t *testing.T) {
 			},
 		},
 	}
+
+	httpCertsInternalSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fake-apm-apm-http-certs-internal",
+			Namespace: "default",
+		},
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newPodSpec(&tt.as, tt.p)
+			got, err := newPodSpec(k8s.NewFakeClient(&httpCertsInternalSecret), &tt.as, tt.p)
+			assert.NoError(t, err)
 			diff := deep.Equal(tt.want, got)
 			assert.Empty(t, diff)
 		})
@@ -181,21 +199,34 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 	}{
 		{
 			name: "user-provided init containers should inherit from the default main container image",
-			as: apmv1.ApmServer{Spec: apmv1.ApmServerSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						InitContainers: []corev1.Container{
-							{
-								Name: "user-init-container",
+			as: apmv1.ApmServer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fake-apm",
+					Namespace: "default",
+				},
+				Spec: apmv1.ApmServerSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							InitContainers: []corev1.Container{
+								{
+									Name: "user-init-container",
+								},
 							},
 						},
 					},
-				},
-			}},
+				}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
+				assert.Equal(t, pod.Spec.Containers[0].VolumeMounts, pod.Spec.InitContainers[0].VolumeMounts)
 			},
+		},
+	}
+
+	httpCertsInternalSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fake-apm-apm-http-certs-internal",
+			Namespace: "default",
 		},
 	}
 
@@ -206,7 +237,8 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 				CustomImageName: tt.as.Spec.Image,
 				PodTemplate:     tt.as.Spec.PodTemplate,
 			}
-			got := newPodSpec(&tt.as, params)
+			got, err := newPodSpec(k8s.NewFakeClient(&httpCertsInternalSecret), &tt.as, params)
+			assert.NoError(t, err)
 			tt.assertions(got)
 		})
 	}
