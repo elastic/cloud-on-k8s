@@ -213,7 +213,8 @@ func Test_applyEnvVars(t *testing.T) {
 		URL:            "kb-url",
 	})
 	agent.GetAssociations()[1].SetAssociationConf(&commonv1.AssociationConf{
-		URL: "fs-url",
+		URL:            "fs-url",
+		CACertProvided: true,
 	})
 
 	agent2.Spec.FleetServerEnabled = true
@@ -991,7 +992,8 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	}
 
 	assoc.SetAssociationConf(&commonv1.AssociationConf{
-		URL: "url",
+		URL:            "url",
+		CACertProvided: true,
 	})
 
 	assocWithKibanaRef := &agentv1alpha1.AgentFleetServerAssociation{
@@ -1014,7 +1016,8 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	}
 
 	assocWithKibanaRef.SetAssociationConf(&commonv1.AssociationConf{
-		URL: "url",
+		URL:            "url",
+		CACertProvided: true,
 	})
 
 	for _, tt := range []struct {
