@@ -8,6 +8,8 @@
 [float]
 === Breaking changes
 
+IMPORTANT: Operator Lifecycle Manager (OLM) and OpenShift OperatorHub users that run with automatic upgrades enabled, are advised to set the `set-default-security-context` link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[operator flag] explicitly before upgrading to ECK 2.0. If not set ECK can fail to link:https://github.com/elastic/cloud-on-k8s/issues/5061[auto-detect] the correct security context configuration and Elasticsearch Pods may not be allowed to run.
+
 * Remove legacy v1beta1 CRDs {pull}5029[#5029] (issue: {issue}4885[#4885])
 
 
