@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the apm validating webhook.
+	// webhookPath is the HTTP path for the APM Server validating webhook.
 	webhookPath = "/validate-apm-k8s-elastic-co-v1-apmserver"
 )
 
@@ -73,7 +73,7 @@ func (as *ApmServer) ValidateUpdate(old runtime.Object) error {
 	return as.validate(oldObj)
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (as *ApmServer) WebhookPath() string {
 	return webhookPath
 }

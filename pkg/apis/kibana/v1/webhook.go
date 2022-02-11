@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the kibana validating webhook.
+	// webhookPath is the HTTP path for the Kibana validating webhook.
 	webhookPath = "/validate-kibana-k8s-elastic-co-v1-kibana"
 )
 
@@ -71,7 +71,7 @@ func (k *Kibana) ValidateUpdate(old runtime.Object) error {
 	return k.validate(oldObj)
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (k *Kibana) WebhookPath() string {
 	return webhookPath
 }

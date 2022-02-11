@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the beats validating webhook.
+	// webhookPath is the HTTP path for the Elastic Beats validating webhook.
 	webhookPath = "/validate-beat-k8s-elastic-co-v1beta1-beat"
 )
 
@@ -56,7 +56,7 @@ func (b *Beat) ValidateUpdate(old runtime.Object) error {
 	return b.validate(oldObj)
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (b *Beat) WebhookPath() string {
 	return webhookPath
 }

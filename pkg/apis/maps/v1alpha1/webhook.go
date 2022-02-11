@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the elastic maps server validating webhook.
+	// webhookPath is the HTTP path for the Elastic Maps Server validating webhook.
 	webhookPath = "/validate-ems-k8s-elastic-co-v1alpha1-mapsservers"
 )
 
@@ -57,7 +57,7 @@ func (m *ElasticMapsServer) ValidateUpdate(_ runtime.Object) error {
 	return m.validate()
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (m *ElasticMapsServer) WebhookPath() string {
 	return webhookPath
 }

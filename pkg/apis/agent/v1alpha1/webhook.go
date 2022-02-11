@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the agent validating webhook.
+	// webhookPath is the HTTP path for the Elastic Agent validating webhook.
 	webhookPath = "/validate-agent-k8s-elastic-co-v1alpha1-agent"
 )
 
@@ -56,7 +56,7 @@ func (a *Agent) ValidateUpdate(old runtime.Object) error {
 	return a.validate(oldObj)
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (a *Agent) WebhookPath() string {
 	return webhookPath
 }

@@ -77,7 +77,7 @@ func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) adm
 
 	if req.Operation == admissionv1.Update {
 		oldObj := v.validator.DeepCopyObject()
-		err = v.decoder.DecodeRaw(req.Object, oldObj)
+		err = v.decoder.DecodeRaw(req.OldObject, oldObj)
 		if err != nil {
 			whlog.Error(err, "decoding old object from webhook request into type (%T)", oldObj)
 			return admission.Errored(http.StatusBadRequest, err)

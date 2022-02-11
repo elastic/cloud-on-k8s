@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the enterprise search validating webhook.
+	// webhookPath is the HTTP path for the Enterprise Search validating webhook.
 	webhookPath = "/validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch"
 )
 
@@ -68,7 +68,7 @@ func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) error {
 	return ent.validate(oldObj)
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (ent *EnterpriseSearch) WebhookPath() string {
 	return webhookPath
 }

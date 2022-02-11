@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// webhookPath is the http path for the apm validating webhook.
+	// webhookPath is the HTTP path for the Elasticsearch validating webhook.
 	webhookPath = "/validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch"
 )
 
@@ -62,7 +62,7 @@ func (es *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 	return es.validateElasticsearch()
 }
 
-// WebhookPath returns the http path used by the validating webhook.
+// WebhookPath returns the HTTP path used by the validating webhook.
 func (es *Elasticsearch) WebhookPath() string {
 	return webhookPath
 }
