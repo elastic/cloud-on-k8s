@@ -302,12 +302,18 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder, nil
 	}
 
-	if !agent.Spec.FleetServerEnabled && agent.Namespace != esAssociation.AssociationRef().Namespace {
+	esRef := esAssociation.AssociationRef()
+	if !esRef.IsObjectTypeSecret() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
 		return nil, fmt.Errorf(
 			"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
 			agent.Namespace,
 			esAssociation.AssociationRef().Namespace,
 		)
+	}
+
+	// no ES CA to configure, skip
+	if !esAssociation.AssociationConf().CAIsConfigured() {
+		return builder, nil
 	}
 
 	builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
