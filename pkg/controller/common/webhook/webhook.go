@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/davecgh/go-spew/spew"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
@@ -68,8 +67,6 @@ func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) adm
 		whlog.Error(err, "decoding object from webhook request into type (%T)", obj)
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-
-	whlog.V(1).Info("webhook validation object after decode", "object", spew.Sdump(obj))
 
 	if req.Operation == admissionv1.Create {
 		err = obj.ValidateCreate()
