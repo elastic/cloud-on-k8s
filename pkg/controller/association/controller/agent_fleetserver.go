@@ -74,7 +74,7 @@ func referencedFleetServerStatusVersion(c k8s.Client, fsRef commonv1.ObjectSelec
 		if err != nil {
 			// version is in the status API from version 8.0
 			if err.Error() == "version is not found" {
-				return association.UnknownVersion, err
+				return association.UnknownVersion, nil
 			}
 			return "", err
 		}
