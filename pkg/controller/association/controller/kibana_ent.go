@@ -66,7 +66,7 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 // reported in its status.
 func referencedEntStatusVersion(c k8s.Client, entRef commonv1.ObjectSelector) (string, error) {
 	if entRef.IsObjectTypeSecret() {
-		info, err := association.GetUnmanagedAssociationConnexionInfoFromSecret(c, entRef)
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, entRef)
 		if err != nil {
 			return "", err
 		}

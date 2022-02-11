@@ -89,7 +89,7 @@ func writeUnmanagedSecretToConfigHash(client k8s.Client, assoc commonv1.Associat
 		return nil
 	}
 
-	info, err := association.GetUnmanagedAssociationConnexionInfoFromSecret(client, assoc.AssociationRef())
+	info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, assoc.AssociationRef())
 	if err != nil {
 		return err
 	}

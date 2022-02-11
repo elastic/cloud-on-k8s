@@ -66,7 +66,7 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 // reported in its status.
 func referencedFleetServerStatusVersion(c k8s.Client, fsRef commonv1.ObjectSelector) (string, error) {
 	if fsRef.IsObjectTypeSecret() {
-		info, err := association.GetUnmanagedAssociationConnexionInfoFromSecret(c, fsRef)
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, fsRef)
 		if err != nil {
 			return "", err
 		}

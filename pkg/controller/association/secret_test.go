@@ -27,12 +27,12 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 			"password": []byte("elastic"),
 		},
 	}
-	refObjectFixture := UnmanagedAssociationConnexionInfo{URL: "https://es.io:9243", Username: "elastic", Password: "elastic", CaCert: ""}
+	refObjectFixture := UnmanagedAssociationConnectionInfo{URL: "https://es.io:9243", Username: "elastic", Password: "elastic", CaCert: ""}
 
 	tests := []struct {
 		name    string
 		args    args
-		want    func() UnmanagedAssociationConnexionInfo
+		want    func() UnmanagedAssociationConnectionInfo
 		wantErr bool
 	}{
 		{
@@ -40,7 +40,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 			args: args{
 				c: func() k8s.Client { return k8s.NewFakeClient(unmanagedRefSecretFixture) },
 			},
-			want:    func() UnmanagedAssociationConnexionInfo { return refObjectFixture },
+			want:    func() UnmanagedAssociationConnectionInfo { return refObjectFixture },
 			wantErr: false,
 		},
 		{
@@ -52,7 +52,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 					return k8s.NewFakeClient(secretCopy)
 				},
 			},
-			want: func() UnmanagedAssociationConnexionInfo {
+			want: func() UnmanagedAssociationConnectionInfo {
 				o := refObjectFixture
 				o.CaCert = "XXXXXXXXXXXX"
 				return o
@@ -102,13 +102,13 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetUnmanagedAssociationConnexionInfoFromSecret(tt.args.c(), refObjectSelector)
+			got, err := GetUnmanagedAssociationConnectionInfoFromSecret(tt.args.c(), refObjectSelector)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetUnmanagedAssociationConnexionInfoFromSecret() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetUnmanagedAssociationConnectionInfoFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != nil && *got != tt.want() {
-				t.Errorf("GetUnmanagedAssociationConnexionInfoFromSecret() got = %v, want %v", *got, tt.want())
+				t.Errorf("GetUnmanagedAssociationConnectionInfoFromSecret() got = %v, want %v", *got, tt.want())
 			}
 		})
 	}

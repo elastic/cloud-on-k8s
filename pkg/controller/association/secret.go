@@ -25,7 +25,7 @@ const authPasswordUnmanagedSecretKey = "password"
 
 func (r *Reconciler) ReconcileUnmanagedAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
 	assocRef := association.AssociationRef()
-	info, err := GetUnmanagedAssociationConnexionInfoFromSecret(r.Client, assocRef)
+	info, err := GetUnmanagedAssociationConnectionInfoFromSecret(r.Client, assocRef)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
@@ -49,13 +49,12 @@ func (r *Reconciler) ReconcileUnmanagedAssociation(ctx context.Context, associat
 	if expectedAssocConf.CACertProvided {
 		expectedAssocConf.CASecretName = assocRef.Name
 	}
-
 	return r.updateAssocConf(ctx, &expectedAssocConf, association)
 }
 
 func GetAuthFromUnmanagedSecretOr(client k8s.Client, unmanagedAssocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {
 	if unmanagedAssocRef.IsObjectTypeSecret() {
-		info, err := GetUnmanagedAssociationConnexionInfoFromSecret(client, unmanagedAssocRef)
+		info, err := GetUnmanagedAssociationConnectionInfoFromSecret(client, unmanagedAssocRef)
 		if err != nil {
 			return "", "", err
 		}
@@ -64,17 +63,17 @@ func GetAuthFromUnmanagedSecretOr(client k8s.Client, unmanagedAssocRef commonv1.
 	return other()
 }
 
-// UnmanagedAssociationConnexionInfo holds connection information stored in a custom Secret to reach over HTTP an Elastic resource not managed by ECK
+// UnmanagedAssociationConnectionInfo holds connection information stored in a custom Secret to reach over HTTP an Elastic resource not managed by ECK
 // referenced in an Association. The resource can thus be external to the local Kubernetes cluster.
-type UnmanagedAssociationConnexionInfo struct {
+type UnmanagedAssociationConnectionInfo struct {
 	URL      string
 	Username string
 	Password string
 	CaCert   string
 }
 
-// GetUnmanagedAssociationConnexionInfoFromSecret returns the UnmanagedAssociationConnexionInfo corresponding to the Secret referenced in the ObjectSelector o.
-func GetUnmanagedAssociationConnexionInfoFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*UnmanagedAssociationConnexionInfo, error) {
+// GetUnmanagedAssociationConnectionInfoFromSecret returns the UnmanagedAssociationConnectionInfo corresponding to the Secret referenced in the ObjectSelector o.
+func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*UnmanagedAssociationConnectionInfo, error) {
 	var secretRef corev1.Secret
 	secretRefKey := o.NamespacedName()
 	if err := c.Get(context.Background(), secretRefKey, &secretRef); err != nil {
@@ -93,7 +92,7 @@ func GetUnmanagedAssociationConnexionInfoFromSecret(c k8s.Client, o commonv1.Obj
 		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", o.Name)
 	}
 
-	ref := UnmanagedAssociationConnexionInfo{URL: string(url), Username: string(username), Password: string(password)}
+	ref := UnmanagedAssociationConnectionInfo{URL: string(url), Username: string(username), Password: string(password)}
 	caCert, ok := secretRef.Data[certificates.CAFileName]
 	if ok {
 		ref.CaCert = string(caCert)
@@ -102,7 +101,7 @@ func GetUnmanagedAssociationConnexionInfoFromSecret(c k8s.Client, o commonv1.Obj
 	return &ref, nil
 }
 
-func (r UnmanagedAssociationConnexionInfo) Request(path string, jsonPath string) (string, error) {
+func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string) (string, error) {
 	req, err := http.NewRequest("GET", r.URL+path, nil) //nolint:noctx
 	if err != nil {
 		return "", err

@@ -71,7 +71,7 @@ var (
 		},
 		ReferencedResourceVersion: func(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
 			if esRef.IsObjectTypeSecret() {
-				_, err := GetUnmanagedAssociationConnexionInfoFromSecret(c, esRef)
+				_, err := GetUnmanagedAssociationConnectionInfoFromSecret(c, esRef)
 				if err != nil {
 					return "", err
 				}

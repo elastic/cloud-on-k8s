@@ -75,7 +75,7 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 // reported in its status.
 func referencedKibanaStatusVersion(c k8s.Client, kbRef commonv1.ObjectSelector) (string, error) {
 	if kbRef.IsObjectTypeSecret() {
-		info, err := association.GetUnmanagedAssociationConnexionInfoFromSecret(c, kbRef)
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, kbRef)
 		if err != nil {
 			return "", err
 		}
