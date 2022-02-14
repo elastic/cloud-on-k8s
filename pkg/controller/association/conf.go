@@ -86,27 +86,38 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 
 // ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
-// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
+// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana).
+// This supports direct or transitive association to unmanaged Elasticsearch using a custom Secret.
 func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (username, password string, err error) {
 	assocConf := assoc.AssociationConf()
 	if !assocConf.AuthIsConfigured() {
 		return "", "", nil
 	}
 
-	return GetAuthFromUnmanagedSecretOr(c, assoc.AssociationRef(), func() (string, string, error) {
-		secretObjKey := types.NamespacedName{Namespace: assoc.GetNamespace(), Name: assocConf.AuthSecretName}
-		var secret corev1.Secret
-		if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
-			return "", "", err
-		}
+	// get the auth secret
+	secretObjKey := types.NamespacedName{Namespace: assoc.GetNamespace(), Name: assocConf.AuthSecretName}
+	var secret corev1.Secret
+	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
+		return "", "", err
+	}
 
-		data, ok := secret.Data[assocConf.AuthSecretKey]
-		if !ok {
-			return "", "", errors.Errorf("auth secret key %s doesn't exist", assocConf.AuthSecretKey)
-		}
+	passwordBytes, ok := secret.Data[assocConf.AuthSecretKey]
+	if !ok {
+		return "", "", errors.Errorf("auth secret key %s doesn't exist", assocConf.AuthSecretKey)
+	}
+	password = string(passwordBytes)
 
-		return assocConf.AuthSecretKey, string(data), nil
-	})
+	// if direct or transitive managed ES, the username is the name of the password key in the auth managed Secret
+	username = assocConf.AuthSecretKey
+
+	// if direct or transitive unmanaged ES, the auth secret points to an unmanaged Secret where the username key exists
+	if providedUsername, exists := secret.Data[authUsernameUnmanagedSecretKey]; exists {
+		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, read unmanaged auth Secret",
+			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().Name)
+		username = string(providedUsername)
+	}
+
+	return username, password, nil
 }
 
 // UnknownVersion is used when the version of the referenced resource is unknown.

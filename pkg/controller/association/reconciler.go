@@ -219,11 +219,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
+	ref := association.AssociationRef()
+
+	// the referenced object can be an Elastic resource or a custom Secret
 	referencedObj := r.ReferencedObjTemplate()
-	if association.AssociationRef().IsObjectTypeSecret() {
+	if ref.IsObjectTypeSecret() {
 		referencedObj = &corev1.Secret{}
 	}
-	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), referencedObj)
+
+	// check if the referenced object exists
+	exists, err := k8s.ObjectExists(r.Client, ref.NamespacedName(), referencedObj)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
@@ -233,10 +238,16 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	assocRef := association.AssociationRef()
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), ref.NamespacedName())
 
 	if assocRef.IsObjectTypeSecret() {
-		return r.ReconcileUnmanagedAssociation(ctx, association)
+		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+		// unmanaged object, update association conf from the unmanaged custom Secret
+		expectedAssocConf, err := r.ReconcileUnmanagedAssociation(association)
+		if err != nil {
+			return commonv1.AssociationFailed, err
+		}
+		return r.updateAssocConf(ctx, &expectedAssocConf, association)
 	}
 
 	caSecret, err := r.ReconcileCASecret(
@@ -253,7 +264,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, err // maybe not created yet
 	}
 
-	// Propagate the currently running version of the referenced resource (example: Elasticsearch version).
+	// propagate the currently running version of the referenced resource (example: Elasticsearch version).
 	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
 	ver, err := r.ReferencedResourceVersion(r.Client, assocRef)
 	if err != nil {
@@ -274,18 +285,27 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
 
-	// retrieve the Elasticsearch resource
-	// since it can be a transitive reference we need to use the provided ElasticsearchRef function
-	found, esRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
+	// since Elasticsearch can be a transitive reference we need to use the provided ElasticsearchRef function
+	found, esAssocRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
-	// the Elasticsearch resource does not exist yet, set status to Pending
+	// the Elasticsearch ref does not exist yet, set status to Pending
 	if !found {
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
+	if esAssocRef.IsObjectTypeSecret() {
+		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
+			"name", association.Associated().GetName(), "ref_name", assocRef.Name, "es_ref_name", esAssocRef.Name)
+		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
+		expectedAssocConf.AuthSecretName = esAssocRef.Name
+		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
+	}
+
+	// retrieve the Elasticsearch resource
+	es, associationStatus, err := r.getElasticsearch(ctx, association, esAssocRef)
 	if associationStatus != "" || err != nil {
 		return associationStatus, err
 	}

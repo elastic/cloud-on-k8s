@@ -21,19 +21,20 @@ import (
 )
 
 // authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
+const authUsernameUnmanagedSecretKey = "username"
 const authPasswordUnmanagedSecretKey = "password"
 
-func (r *Reconciler) ReconcileUnmanagedAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
+func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
 	assocRef := association.AssociationRef()
 	info, err := GetUnmanagedAssociationConnectionInfoFromSecret(r.Client, assocRef)
 	if err != nil {
-		return commonv1.AssociationFailed, err
+		return commonv1.AssociationConf{}, err
 	}
 
 	var ver string
 	ver, err = r.ReferencedResourceVersion(r.Client, assocRef)
 	if err != nil {
-		return commonv1.AssociationFailed, err
+		return commonv1.AssociationConf{}, err
 	}
 
 	// set url, version
@@ -49,7 +50,8 @@ func (r *Reconciler) ReconcileUnmanagedAssociation(ctx context.Context, associat
 	if expectedAssocConf.CACertProvided {
 		expectedAssocConf.CASecretName = assocRef.Name
 	}
-	return r.updateAssocConf(ctx, &expectedAssocConf, association)
+
+	return expectedAssocConf, err
 }
 
 func GetAuthFromUnmanagedSecretOr(client k8s.Client, unmanagedAssocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {

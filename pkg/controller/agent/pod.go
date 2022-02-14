@@ -191,6 +191,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		return nil, err
 	}
 
+	// ES, Kibana and FleetServer connection info are inject using environment variables
 	builder, err = applyEnvVars(params, builder)
 	if err != nil {
 		return nil, err
@@ -281,17 +282,30 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 	} else {
 		// As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
-		fs, err := getAssociatedFleetServer(params)
+		fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
 			return nil, err
 		}
+		fsRef := fsAssociation.AssociationRef()
 
-		if fs != nil {
-			var err error
-			esAssociation, err = association.SingleAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
-			if err != nil {
-				return nil, err
-			}
+		if fsRef.IsObjectTypeSecret() {
+			// the Fleet Server is not managed by ECK, no transitive ES association to get to apply
+			return nil, nil
+		}
+
+		fs := &agentv1alpha1.Agent{}
+		if err := association.FetchWithAssociations(
+			params.Context,
+			params.Client,
+			reconcile.Request{NamespacedName: fsRef.NamespacedName()},
+			fs,
+		); err != nil {
+			return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
+		}
+
+		esAssociation, err = association.SingleAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return esAssociation, nil
@@ -304,6 +318,7 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 
 	esRef := esAssociation.AssociationRef()
 	if !esRef.IsObjectTypeSecret() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
+		// check agent and ES share the same namespace
 		return nil, fmt.Errorf(
 			"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
 			agent.Namespace,
@@ -368,30 +383,6 @@ func getVolumesFromAssociations(associations []commonv1.Association) []volume.Vo
 		))
 	}
 	return vols
-}
-
-func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
-	assoc, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
-	if err != nil {
-		return nil, err
-	}
-	if assoc == nil {
-		return nil, nil
-	}
-
-	fsRef := assoc.AssociationRef()
-	fs := agentv1alpha1.Agent{}
-
-	if err := association.FetchWithAssociations(
-		params.Context,
-		params.Client,
-		reconcile.Request{NamespacedName: fsRef.NamespacedName()},
-		&fs,
-	); err != nil {
-		return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
-	}
-
-	return &fs, nil
 }
 
 func trustCAScript(ver version.Version, caPath string) string {
@@ -485,7 +476,7 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 
 	// Agent in Fleet mode can run as a Fleet Server or as an Elastic Agent that connects to Fleet Server.
 	// Both cases are handled below and the presence of FleetServerRef indicates the latter case.
-	if agent.Spec.FleetServerEnabled {
+	if agent.Spec.FleetServerEnabled { //nolint:nestif
 		fleetURL, err := association.ServiceURL(
 			client,
 			types.NamespacedName{Namespace: agent.Namespace, Name: HTTPServiceName(agent.Name)},
