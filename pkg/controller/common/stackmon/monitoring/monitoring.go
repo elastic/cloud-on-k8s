@@ -18,11 +18,19 @@ type HasMonitoring interface {
 	MonitoringAssociation(ref commonv1.ObjectSelector) commonv1.Association
 }
 
-func AreAssocConfigured(resource HasMonitoring) bool {
-	return IsMetricsAssocConfigured(resource) && IsLogsAssocConfigured(resource)
+// IsReconcilable return true if a resource has at least one association defined in its specification
+// and all defined associations are configured.
+func IsReconcilable(resource HasMonitoring) bool {
+	return IsDefined(resource) && isMetricsAssocConfigured(resource) && isLogsAssocConfigured(resource)
 }
 
-func IsMetricsAssocConfigured(resource HasMonitoring) bool {
+// IsDefined return true if a resource has at least one association for Stack Monitoring defined in its specification
+// (can be one for logs or one for metrics).
+func IsDefined(resource HasMonitoring) bool {
+	return IsMetricsDefined(resource) || IsLogsDefined(resource)
+}
+
+func isMetricsAssocConfigured(resource HasMonitoring) bool {
 	refs := resource.GetMonitoringMetricsRefs()
 	for _, ref := range refs {
 		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
@@ -32,7 +40,7 @@ func IsMetricsAssocConfigured(resource HasMonitoring) bool {
 	return true
 }
 
-func IsLogsAssocConfigured(resource HasMonitoring) bool {
+func isLogsAssocConfigured(resource HasMonitoring) bool {
 	refs := resource.GetMonitoringLogsRefs()
 	for _, ref := range refs {
 		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
@@ -40,10 +48,6 @@ func IsLogsAssocConfigured(resource HasMonitoring) bool {
 		}
 	}
 	return true
-}
-
-func IsDefined(resource HasMonitoring) bool {
-	return IsMetricsDefined(resource) || IsLogsDefined(resource)
 }
 
 func IsMetricsDefined(resource HasMonitoring) bool {

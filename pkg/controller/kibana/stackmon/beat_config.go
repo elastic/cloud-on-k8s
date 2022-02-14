@@ -25,8 +25,7 @@ var (
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
 func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
-	// no monitoring defined or yet configured, skip
-	if !monitoring.IsDefined(&kb) || !monitoring.AreAssocConfigured(&kb) {
+	if !monitoring.IsReconcilable(&kb) {
 		return nil
 	}
 
