@@ -40,12 +40,12 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		want   admission.Response
 	}{
 		{
-			"create properly validates valid agent, and returns allowed.",
-			fields{
+			name: "create properly validates valid agent, and returns allowed.",
+			fields: fields{
 				set.Make("elastic"),
 				&agentv1alpha1.Agent{},
 			},
-			admission.Request{
+			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
@@ -65,15 +65,15 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			admission.Allowed(""),
+			want: admission.Allowed(""),
 		},
 		{
-			"create agent is denied because of invalid version, and returns denied.",
-			fields{
+			name: "create agent is denied because of invalid version, and returns denied.",
+			fields: fields{
 				set.Make("elastic"),
 				&agentv1alpha1.Agent{},
 			},
-			admission.Request{
+			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
@@ -93,15 +93,15 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`),
+			want: admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`),
 		},
 		{
-			"delete agent is always allowed",
-			fields{
+			name: "delete agent is always allowed",
+			fields: fields{
 				set.Make("elastic"),
 				&agentv1alpha1.Agent{},
 			},
-			admission.Request{
+			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Delete,
 					Object: runtime.RawExtension{
@@ -121,15 +121,15 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			admission.Allowed(""),
+			want: admission.Allowed(""),
 		},
 		{
-			"update agent is allowed when label is updated",
-			fields{
+			name: "update agent is allowed when label is updated",
+			fields: fields{
 				set.Make("elastic"),
 				&agentv1alpha1.Agent{},
 			},
-			admission.Request{
+			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
@@ -164,15 +164,15 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			admission.Allowed(""),
+			want: admission.Allowed(""),
 		},
 		{
-			"update agent is denied when version downgrade is attempted",
-			fields{
+			name: "update agent is denied when version downgrade is attempted",
+			fields: fields{
 				set.Make("elastic"),
 				&agentv1alpha1.Agent{},
 			},
-			admission.Request{
+			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
@@ -207,7 +207,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Forbidden: Version downgrades are not supported`),
+			want: admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Forbidden: Version downgrades are not supported`),
 		},
 	}
 	for _, tt := range tests {
