@@ -23,3 +23,9 @@ Starting with ECK 2.0 the operator can make Kubernetes Node labels available as 
 ==== Smoother cluster operations using node lifecycle APIs
 
 When orchestrating Elasticsearch version 7.15.2 or later ECK will use the new link:https://www.elastic.co/guide/en/elasticsearch/reference/current/node-lifecycle-api.html[node lifecycle APIs] to orchestrate rolling upgrades and scale downs to make Elasticsearch aware of impending temporary or permanent shutdown of nodes.
+
+[float]
+[id="{p}-200-known-issues"]
+=== Known issues
+
+- When using the `elasticsearchRef` mechanism with Elastic Agent in version 7.17 its Pods will enter a `CrashLoopBackoff`. A workaround is described in link:https://github.com/elastic/cloud-on-k8s/issues/5323#issuecomment-1028954034[this issue].
