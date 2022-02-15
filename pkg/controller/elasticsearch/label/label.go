@@ -49,6 +49,8 @@ const (
 	NodeTypesDataHotLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_hot"
 	// NodeTypesDataWarmLabelName is a label set to true on nodes with the data_warm role.
 	NodeTypesDataWarmLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
+	// NodeTypesDataFrozenLabelName is a label set to true on nodes with the data_frozen role.
+	NodeTypesDataFrozenLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_frozen"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
@@ -137,6 +139,10 @@ func NewPodLabels(
 		NodeTypesDataColdLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataColdRole), labels)
 		NodeTypesDataHotLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataHotRole), labels)
 		NodeTypesDataWarmLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataWarmRole), labels)
+	}
+	// frozen tier has been introduced in 7.12.0
+	if ver.GTE(version.From(7, 12, 0)) {
+		NodeTypesDataFrozenLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataFrozenRole), labels)
 	}
 
 	labels[HTTPSchemeLabelName] = scheme
