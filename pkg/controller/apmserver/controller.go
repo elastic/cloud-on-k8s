@@ -43,8 +43,8 @@ import (
 )
 
 const (
-	controllerName          = "apmserver-controller"
-	configChecksumLabelName = "apm.k8s.elastic.co/config-files-checksum"
+	controllerName           = "apmserver-controller"
+	configHashAnnotationName = "apm.k8s.elastic.co/config-hash"
 
 	// ApmBaseDir is the base directory of the APM server
 	ApmBaseDir = "/usr/share/apm-server"
