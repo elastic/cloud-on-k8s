@@ -20,103 +20,56 @@ func NewFakeClient(initObjs ...runtime.Object) Client {
 }
 
 var (
-	_ Client              = &FailingClient{}
+	_ Client              = failingClient{}
 	_ client.StatusWriter = failingStatusWriter{}
 )
 
-// FailingClient is a k8s client that fails with a given error by default.  When erroring
-// is false by calling 'DisableFailing', then underlying client is called.
-type FailingClient struct {
-	client   Client
-	erroring bool
-	err      error
+type failingClient struct {
+	err error
 }
 
-// NewFailingClient returns a client that returns the provided error when called and 'DisableFailing' has not been called.
-// After 'DisableFailing' is called, the client calls the underlying k8s client.
-func NewFailingClient(err error, initObjs ...runtime.Object) Client {
-	return &FailingClient{
-		client:   fake.NewClientBuilder().WithRuntimeObjects(initObjs...).WithScheme(clientgoscheme.Scheme).Build(),
-		erroring: true,
-		err:      err,
-	}
+// NewFailingClient returns a client that always returns the provided error when called.
+func NewFailingClient(err error) Client {
+	return failingClient{err: err}
 }
 
-// Get satisfies the controller-runtime client interface.
-func (fc *FailingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
-	if !fc.erroring {
-		return fc.client.Get(ctx, key, obj)
-	}
+func (fc failingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	return fc.err
 }
 
-// List satisfies the controller-runtime client interface.
-func (fc *FailingClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	if !fc.erroring {
-		return fc.client.List(ctx, list, opts...)
-	}
+func (fc failingClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	return fc.err
 }
 
-// Create satisfies the controller-runtime client interface.
-func (fc *FailingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	if !fc.erroring {
-		return fc.client.Create(ctx, obj, opts...)
-	}
+func (fc failingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	return fc.err
 }
 
-// Delete satisfies the controller-runtime client interface.
-func (fc *FailingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	if !fc.erroring {
-		return fc.client.Delete(ctx, obj, opts...)
-	}
+func (fc failingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	return fc.err
 }
 
-// Update satisfies the controller-runtime client interface.
-func (fc *FailingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	if !fc.erroring {
-		return fc.client.Update(ctx, obj, opts...)
-	}
+func (fc failingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return fc.err
 }
 
-// Patch satisfies the controller-runtime client interface.
-func (fc *FailingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	if !fc.erroring {
-		return fc.client.Patch(ctx, obj, patch, opts...)
-	}
+func (fc failingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return fc.err
 }
 
-// DeleteAllOf satisfies the controller-runtime client interface.
-func (fc *FailingClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
-	if !fc.erroring {
-		return fc.client.DeleteAllOf(ctx, obj, opts...)
-	}
+func (fc failingClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return fc.err
 }
 
-// DisableFailing will stop the client from failing, and will call the underlying k8s client.
-func (fc *FailingClient) DisableFailing() {
-	fc.erroring = false
+func (fc failingClient) Status() client.StatusWriter {
+	return failingStatusWriter{err: fc.err} //nolint:gosimple
 }
 
-// EnableFailing will cause the client to begin failing.
-func (fc *FailingClient) EnableFailing() {
-	fc.erroring = true
-}
-
-func (fc *FailingClient) Status() client.StatusWriter {
-	return failingStatusWriter{err: fc.err}
-}
-
-func (fc *FailingClient) Scheme() *runtime.Scheme {
+func (fc failingClient) Scheme() *runtime.Scheme {
 	return Scheme()
 }
 
-func (fc *FailingClient) RESTMapper() meta.RESTMapper {
+func (fc failingClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
 

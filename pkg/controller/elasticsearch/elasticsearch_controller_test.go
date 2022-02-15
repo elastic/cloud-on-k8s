@@ -5,7 +5,6 @@ package elasticsearch
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,15 +20,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to be
-// modified to be a potential failing client, and contain certain objects.
-func newTestReconciler(failing bool, err error, objects ...runtime.Object) *ReconcileElasticsearch {
+// newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to
+// contain certain rintime objects.
+func newTestReconciler(objects ...runtime.Object) *ReconcileElasticsearch {
 	r := &ReconcileElasticsearch{
 		Client:   k8s.NewFakeClient(objects...),
 		recorder: record.NewFakeRecorder(100),
-	}
-	if failing {
-		r.Client = k8s.NewFailingClient(err, objects...)
 	}
 	return r
 }
@@ -89,8 +85,6 @@ func (e *esBuilder) BuildAndCopy() esv1.Elasticsearch {
 
 func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 	type k8sClientFields struct {
-		failing bool
-		err     error
 		objects []runtime.Object
 	}
 	type args struct {
@@ -104,33 +98,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		expected        esv1.Elasticsearch
 	}{
 		{
-			name: "fetch fails with error, and no observedGeneration update",
-			k8sClientFields: k8sClientFields{
-				true,
-				fmt.Errorf("internal error"),
-				[]runtime.Object{
-					newBuilder("testES", "test").
-						WithGeneration(2).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
-			},
-			args: args{
-				request: reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      "testES",
-						Namespace: "test",
-					},
-				},
-			},
-			wantErr: true,
-			expected: newBuilder("testES", "test").
-				WithGeneration(2).
-				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).BuildAndCopy(),
-		},
-		{
 			name: "unmanaged ES has no error, and no observedGeneration update",
 			k8sClientFields: k8sClientFields{
-				false,
-				nil,
 				[]runtime.Object{
 					newBuilder("testES", "test").
 						WithGeneration(2).
@@ -154,8 +123,6 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "ES with too long name, fails initial reconcile, but has observedGeneration updated",
 			k8sClientFields: k8sClientFields{
-				false,
-				nil,
 				[]runtime.Object{
 					newBuilder("testESwithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
@@ -180,8 +147,6 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "ES with too long name, and needing annotations update, fails initial reconcile, and does not have status.* updated because of a 409/resource conflict",
 			k8sClientFields: k8sClientFields{
-				false,
-				nil,
 				[]runtime.Object{
 					newBuilder("testESwithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
@@ -204,8 +169,6 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "Invalid ES version errors, and updates observedGeneration",
 			k8sClientFields: k8sClientFields{
-				false,
-				nil,
 				[]runtime.Object{
 					newBuilder("testES", "test").
 						WithGeneration(2).
@@ -231,15 +194,12 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newTestReconciler(tt.k8sClientFields.failing, tt.k8sClientFields.err, tt.k8sClientFields.objects...)
+			r := newTestReconciler(tt.k8sClientFields.objects...)
 			if _, err := r.Reconcile(context.Background(), tt.args.request); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileElasticsearch.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if client, ok := r.Client.(*k8s.FailingClient); ok {
-				client.DisableFailing()
-			}
 			var actualES esv1.Elasticsearch
 			if err := r.Client.Get(context.Background(), tt.args.request.NamespacedName, &actualES); err != nil {
 				t.Error(err)
