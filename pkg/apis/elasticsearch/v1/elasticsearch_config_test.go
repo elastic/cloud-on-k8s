@@ -190,7 +190,7 @@ func TestConfig_HasRole(t *testing.T) {
 			wantRoles: []NodeRole{MasterRole, DataContentRole, DataRole, DataHotRole, DataWarmRole, DataColdRole, DataFrozenRole},
 		},
 		{
-			name:      "master and data",
+			name:      "master and data_content",
 			node:      &Node{Roles: []string{"master", "data_content"}},
 			wantRoles: []NodeRole{MasterRole, DataContentRole},
 		},

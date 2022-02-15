@@ -86,6 +86,27 @@ func (n *Node) HasRole(role NodeRole) bool {
 	}
 }
 
+// DependsOn returns true if a tier should be upgraded before another one.
+func (n *Node) DependsOn(other *Node) bool {
+	switch {
+	case !n.HasRole(MasterRole) && other.HasRole(MasterRole):
+		// other might be a dependency, but it is also a master node. We don't want to enter a deadlock where other is
+		// the last master node, while the candidate is not and must be upgraded first.
+		return false
+	case n.HasRole(DataHotRole):
+		// hot tier must be upgraded after warm, cold and frozen
+		return other.HasRole(DataWarmRole) || other.HasRole(DataColdRole) || other.HasRole(DataFrozenRole)
+	case n.HasRole(DataWarmRole):
+		// warm tier must be upgraded after cold and frozen
+		return other.HasRole(DataColdRole) || other.HasRole(DataFrozenRole)
+	case n.HasRole(DataColdRole):
+		// cold tier must be upgraded after frozen
+		return other.HasRole(DataFrozenRole)
+	}
+	// frozen and content have no dependency
+	return false
+}
+
 // IsConfiguredWithRole returns true if the node has the given role in its configuration.
 func (n *Node) IsConfiguredWithRole(role NodeRole) bool {
 	if n == nil {

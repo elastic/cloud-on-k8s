@@ -70,32 +70,12 @@ func hasDependencyInOthers(node esv1.ElasticsearchSettings, others []esv1.Elasti
 			// this other node has no tier which requires upgrade prioritization.
 			continue
 		}
-		if dependsOn(node.Node, other.Node) && !dependsOn(other.Node, node.Node) {
+		if node.Node.DependsOn(other.Node) && !other.Node.DependsOn(node.Node) {
 			// candidate has this other node as a strict dependency
 			return true
 		}
 	}
 	// no dependency or roles are overlapping, we still allow the upgrade
-	return false
-}
-
-func dependsOn(candidate, other *esv1.Node) bool {
-	switch {
-	case !candidate.HasRole(esv1.MasterRole) && other.HasRole(esv1.MasterRole):
-		// other might be a dependency, but it is also a master node. We don't want to enter a deadlock where other is
-		// the last master node, while the candidate is not and must be upgraded first.
-		return false
-	case candidate.HasRole(esv1.DataHotRole):
-		// hot tier must be upgraded after warm, cold and frozen
-		return other.HasRole(esv1.DataWarmRole) || other.HasRole(esv1.DataColdRole) || other.HasRole(esv1.DataFrozenRole)
-	case candidate.HasRole(esv1.DataWarmRole):
-		// warm tier must be upgraded after cold and frozen
-		return other.HasRole(esv1.DataColdRole) || other.HasRole(esv1.DataFrozenRole)
-	case candidate.HasRole(esv1.DataColdRole):
-		// cold tier must be upgraded after frozen
-		return other.HasRole(esv1.DataFrozenRole)
-	}
-	// frozen and content have no dependency
 	return false
 }
 
