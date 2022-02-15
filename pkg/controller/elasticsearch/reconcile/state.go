@@ -13,6 +13,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -122,6 +123,12 @@ func (s *State) UpdateElasticsearchReady(
 	observedState observer.State,
 ) *State {
 	return s.updateWithPhase(esv1.ElasticsearchReadyPhase, resourcesState, observedState)
+}
+
+// UpdateElasticsearchUnknown marks Elasticsearch as being the applying changes phase with an unknown health in the resource status.
+func (s *State) UpdateElasticsearchPendingUnknownHealth() *State {
+	unknownState := observer.State{ClusterHealth: &esclient.Health{Status: esv1.ElasticsearchUnknownHealth}}
+	return s.updateWithPhase(esv1.ElasticsearchApplyingChangesPhase, ResourcesState{}, unknownState)
 }
 
 // IsElasticsearchReady reports if Elasticsearch is ready.

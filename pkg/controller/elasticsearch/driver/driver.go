@@ -115,6 +115,10 @@ var _ commondriver.Interface = &defaultDriver{}
 func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
 
+	// reset the Elasticsearch health to 'unknown' so that if reconciliation fails before the observer has had a chance to get it,
+	// we stop reporting a state that may be out of date
+	d.ReconcileState.UpdateElasticsearchPendingUnknownHealth()
+
 	// garbage collect secrets attached to this cluster that we don't need anymore
 	if err := cleanup.DeleteOrphanedSecrets(ctx, d.Client, d.ES); err != nil {
 		return results.WithError(err)
@@ -146,10 +150,6 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
-
-	// reset the health status to avoid reporting an old health status that can occur if there is a reconciliation error
-	// before the health status observer is started
-	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observer.State{ClusterHealth: &esclient.Health{Status: "unknown"}})
 
 	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
 	if err != nil {
@@ -187,7 +187,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		),
 	)
 
-	// always update the elasticsearch state bits
+	// always update the Elasticsearch state bits with the latest observed state
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
 	_, res = certificates.ReconcileTransport(
