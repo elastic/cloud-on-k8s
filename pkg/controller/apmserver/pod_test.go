@@ -20,6 +20,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+var (
+	testAgentNsn = metav1.ObjectMeta{
+		Name:      "fake-apm",
+		Namespace: "default",
+	}
+	// while the associations are optional the HTTP certs Secret has to exist to calculate the config hash and successfully build the pod spec
+	testHttpCertsInternalSecret = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fake-apm-apm-http-certs-internal",
+			Namespace: "default",
+		},
+	}
+)
+
 func TestNewPodSpec(t *testing.T) {
 	configSecretVol := volume.NewSecretVolumeWithMountPath(
 		"config-secret",
@@ -45,10 +59,7 @@ func TestNewPodSpec(t *testing.T) {
 				TypeMeta: metav1.TypeMeta{
 					Kind: apmv1.Kind,
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "fake-apm",
-					Namespace: "default",
-				},
+				ObjectMeta: testAgentNsn,
 			},
 			p: PodSpecParams{
 				Version: "7.0.1",
@@ -131,16 +142,9 @@ func TestNewPodSpec(t *testing.T) {
 		},
 	}
 
-	httpCertsInternalSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fake-apm-apm-http-certs-internal",
-			Namespace: "default",
-		},
-	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newPodSpec(k8s.NewFakeClient(&httpCertsInternalSecret), &tt.as, tt.p)
+			got, err := newPodSpec(k8s.NewFakeClient(&testHttpCertsInternalSecret), &tt.as, tt.p)
 			assert.NoError(t, err)
 			diff := deep.Equal(tt.want, got)
 			assert.Empty(t, diff)
@@ -200,10 +204,7 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 		{
 			name: "user-provided init containers should inherit from the default main container image",
 			as: apmv1.ApmServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "fake-apm",
-					Namespace: "default",
-				},
+				ObjectMeta: testAgentNsn,
 				Spec: apmv1.ApmServerSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -223,13 +224,6 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 		},
 	}
 
-	httpCertsInternalSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fake-apm-apm-http-certs-internal",
-			Namespace: "default",
-		},
-	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params := PodSpecParams{
@@ -237,7 +231,7 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 				CustomImageName: tt.as.Spec.Image,
 				PodTemplate:     tt.as.Spec.PodTemplate,
 			}
-			got, err := newPodSpec(k8s.NewFakeClient(&httpCertsInternalSecret), &tt.as, params)
+			got, err := newPodSpec(k8s.NewFakeClient(&testHttpCertsInternalSecret), &tt.as, params)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})
