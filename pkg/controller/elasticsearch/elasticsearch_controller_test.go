@@ -1,10 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
-
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License 2.0;
-// you may not use this file except in compliance with the Elastic License 2.0.
 package elasticsearch
 
 import (
@@ -108,8 +104,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		expected        esv1.Elasticsearch
 	}{
 		{
-			"fetch fails with error, and no observedGeneration update",
-			k8sClientFields{
+			name: "fetch fails with error, and no observedGeneration update",
+			k8sClientFields: k8sClientFields{
 				true,
 				fmt.Errorf("internal error"),
 				[]runtime.Object{
@@ -117,7 +113,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithGeneration(2).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
-			args{
+			args: args{
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "testES",
@@ -125,14 +121,14 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			true,
-			newBuilder("testES", "test").
+			wantErr: true,
+			expected: newBuilder("testES", "test").
 				WithGeneration(2).
 				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).BuildAndCopy(),
 		},
 		{
-			"unmanaged ES has no error, and no observedGeneration update",
-			k8sClientFields{
+			name: "unmanaged ES has no error, and no observedGeneration update",
+			k8sClientFields: k8sClientFields{
 				false,
 				nil,
 				[]runtime.Object{
@@ -141,7 +137,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithAnnotations(map[string]string{common.ManagedAnnotation: "false"}).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
-			args{
+			args: args{
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "testES",
@@ -149,15 +145,15 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			false,
-			newBuilder("testES", "test").
+			wantErr: false,
+			expected: newBuilder("testES", "test").
 				WithGeneration(2).
 				WithAnnotations(map[string]string{common.ManagedAnnotation: "false"}).
 				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).BuildAndCopy(),
 		},
 		{
-			"ES with too long name, fails initial reconcile, but has observedGeneration updated",
-			k8sClientFields{
+			name: "ES with too long name, fails initial reconcile, but has observedGeneration updated",
+			k8sClientFields: k8sClientFields{
 				false,
 				nil,
 				[]runtime.Object{
@@ -167,7 +163,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
 				},
 			},
-			args{
+			args: args{
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "testESwithtoolongofanamereallylongname",
@@ -175,15 +171,15 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			false,
-			newBuilder("testESwithtoolongofanamereallylongname", "test").
+			wantErr: false,
+			expected: newBuilder("testESwithtoolongofanamereallylongname", "test").
 				WithGeneration(2).
 				WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
 				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 2, Phase: esv1.ElasticsearchResourceInvalid}).BuildAndCopy(),
 		},
 		{
-			"ES with too long name, and needing annotations update, fails initial reconcile, and does not have status.* updated because of a 409/resource conflict",
-			k8sClientFields{
+			name: "ES with too long name, and needing annotations update, fails initial reconcile, and does not have status.* updated because of a 409/resource conflict",
+			k8sClientFields: k8sClientFields{
 				false,
 				nil,
 				[]runtime.Object{
@@ -191,7 +187,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithGeneration(2).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
-			args{
+			args: args{
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "testESwithtoolongofanamereallylongname",
@@ -199,15 +195,15 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			false,
-			newBuilder("testESwithtoolongofanamereallylongname", "test").
+			wantErr: false,
+			expected: newBuilder("testESwithtoolongofanamereallylongname", "test").
 				WithGeneration(2).
 				WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
 				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).BuildAndCopy(),
 		},
 		{
-			"Invalid ES version errors, and updates observedGeneration",
-			k8sClientFields{
+			name: "Invalid ES version errors, and updates observedGeneration",
+			k8sClientFields: k8sClientFields{
 				false,
 				nil,
 				[]runtime.Object{
@@ -217,7 +213,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
-			args{
+			args: args{
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "testES",
@@ -225,8 +221,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			false,
-			newBuilder("testES", "test").
+			wantErr: false,
+			expected: newBuilder("testES", "test").
 				WithGeneration(2).
 				WithVersion("invalid").
 				WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).

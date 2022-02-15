@@ -446,10 +446,10 @@ type ElasticsearchStatus struct {
 
 	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
-	// ObservedGeneration represents the .metadata.generation that the status is based upon.
-	// For instance, if .metadata.generation is currently 12, but the .status.observedGeneration is 9,
-	// then the status is out of date with respect to the current state of the specification.
-	// +kubebuilder:validation:Optional
+	// ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Elasticsearch
+	// controller has not yet processed the changes contained in the Elasticsearch specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
