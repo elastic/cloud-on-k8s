@@ -71,6 +71,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
+	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
 	mutatedFrom := b.MutatedFrom
@@ -109,6 +110,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		masterChangeBudgetWatcher.StartStep(k),
 		changeBudgetWatcher.StartStep(k),
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
+		RetrieveClusterGenerationsStep(b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
 	}.
 		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
@@ -116,6 +118,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
+			CompareClusterGenerations(b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
 			masterChangeBudgetWatcher.StopStep(k),
 			changeBudgetWatcher.StopStep(k),
 			test.Step{
