@@ -138,10 +138,10 @@ type AgentStatus struct {
 	// +kubebuilder:validation:Optional
 	FleetServerAssociationStatus commonv1.AssociationStatus `json:"fleetServerAssociationStatus,omitempty"`
 
-	// ObservedGeneration represents the .metadata.generation that the status is based upon.
-	// For instance, if .metadata.generation is currently 12, but the .status.observedGeneration is 9,
-	// then the status is out of date with respect to the current state of the specification.
-	// +kubebuilder:validation:Optional
+	// ObservedGeneration is the most recent generation observed for this Elastic Agent.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Elastic
+	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
