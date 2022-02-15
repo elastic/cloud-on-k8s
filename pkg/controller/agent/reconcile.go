@@ -134,7 +134,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
-// ReconciliationParams are the parameters used during an agent's reconciliation.
+// ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.
 type ReconciliationParams struct {
 	client      k8s.Client
 	agent       agentv1alpha1.Agent
