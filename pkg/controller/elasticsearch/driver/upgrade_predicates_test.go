@@ -22,6 +22,108 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+func Test_hasDependencyInOthers(t *testing.T) {
+	tests := []struct {
+		name      string
+		candidate esv1.ElasticsearchSettings
+		other     []esv1.ElasticsearchSettings
+		want      bool
+	}{
+		{
+			candidate: newSettings(esv1.DataColdRole),
+			other:     []esv1.ElasticsearchSettings{emptySettingsNode}, // all the roles, including master and frozen
+			want:      false,                                           // other is a dependency but is also a master node
+		},
+		{
+			candidate: newSettings(esv1.MasterRole, esv1.DataColdRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.MasterRole, esv1.DataFrozenRole)},
+			want:      true, // cold depends on frozen
+		},
+		{
+			candidate: newSettings(esv1.MasterRole, esv1.DataFrozenRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.MasterRole, esv1.DataColdRole)},
+			want:      false, // frozen does not depend on cold
+		},
+		{
+			candidate: newSettings(esv1.MasterRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataWarmRole)},
+			want:      false, // master only nodes have no data tier dependency
+		},
+		{
+			candidate: emptySettingsNode, // all the roles, including hot
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataWarmRole)},
+			want:      true, // hot depends on warm
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataColdRole)},
+			want:      false, // frozen does not depend on cold
+		},
+		{
+			candidate: newSettings(esv1.DataHotRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataWarmRole)},
+			want:      true, // hot does not depend on warm
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole, esv1.DataColdRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataColdRole, esv1.DataWarmRole)},
+			want:      false, // frozen+cold does not depend on cold+warm
+		},
+		{
+			candidate: newSettings(esv1.DataColdRole, esv1.DataWarmRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataColdRole)},
+			want:      true, // warm depends on cold
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole, esv1.DataWarmRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataColdRole)},
+			want:      false, // overlap: cold depends on frozen, but warm also depends on cold
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole, esv1.DataWarmRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataColdRole, esv1.DataHotRole)},
+			want:      false, // same kind of overlap as above
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole, esv1.DataColdRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataWarmRole, esv1.DataHotRole)},
+			want:      false, // frozen+cold can be upgraded before warm+hot
+		},
+		{
+			candidate: newSettings(esv1.DataWarmRole, esv1.DataHotRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataFrozenRole, esv1.DataColdRole)},
+			want:      true, // frozen+cold must be upgraded before warm+hot
+		},
+		{
+			candidate: newSettings(esv1.DataColdRole, esv1.DataHotRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataFrozenRole, esv1.DataHotRole)},
+			want:      false, // both nodes have hot role, cold can be upgraded before hot
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole, esv1.DataHotRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataColdRole, esv1.DataHotRole)},
+			want:      false, // overlap: cold depends on frozen but hot depends on cold
+		},
+		{
+			candidate: newSettings(esv1.DataColdRole, esv1.DataHotRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataRole)},
+			want:      false, // overlap: cold depends on data because it includes frozen, but also includes warm which depends on cold
+		},
+		{
+			candidate: newSettings(esv1.DataFrozenRole, esv1.DataHotRole),
+			other:     []esv1.ElasticsearchSettings{newSettings(esv1.DataRole)},
+			want:      false, // no strict dependency since data includes data_frozen
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasDependencyInOthers(tt.candidate, tt.other); got != tt.want {
+				t.Errorf("roles.compare() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 // These tests are focused on "type changes", i.e. when the type of a nodeSet is changed.
 func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 	type fields struct {
@@ -193,6 +295,45 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		wantErr                      bool
 		wantShardsAllocationDisabled bool
 	}{
+		{
+			name: "multi tiers topology, data_frozen nodes must be upgraded first",
+			fields: fields{
+				esVersion: "7.15.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("master-0").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+					newTestPod("cold-0").withRoles(esv1.DataColdRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+					newTestPod("frozen-0").withRoles(esv1.DataFrozenRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+					newTestPod("hot-warm-0").withRoles(esv1.DataWarmRole, esv1.DataHotRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+				),
+				maxUnavailable: 1,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"frozen-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "multi tiers topology, data_hot nodes must be upgraded before last master with default roles",
+			fields: fields{
+				esVersion: "7.15.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("default-0").isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+					newTestPod("default-1").isHealthy(true).needsUpgrade(false).withVersion("7.15.0").isInCluster(true),
+					newTestPod("default-2").isHealthy(true).needsUpgrade(false).withVersion("7.15.0").isInCluster(true),
+					newTestPod("cold-0").withRoles(esv1.DataColdRole).isHealthy(true).needsUpgrade(false).withVersion("7.15.0").isInCluster(true),
+					newTestPod("hot-0").withRoles(esv1.DataHotRole).isHealthy(true).needsUpgrade(true).withVersion("7.14.0").isInCluster(true),
+				),
+				maxUnavailable: 1,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"hot-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
 		{
 			name: "1 master and 2 data_content nodes, wait for all the data_content nodes to be upgraded first",
 			fields: fields{
@@ -961,6 +1102,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			ctx := rollingUpgradeCtx{
 				parentCtx:       context.Background(),
 				client:          k8sClient,
+				resourcesList:   tt.fields.upgradeTestPods.toResourcesList(t),
 				ES:              tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations),
 				statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 				esClient:        esClient,
