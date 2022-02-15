@@ -136,7 +136,7 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 					Namespace: "test-ns",
 				},
 				Data: map[string][]byte{
-					certificates.CertFileName: []byte("456"),
+					certificates.CAFileName: []byte("456"),
 				},
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{

@@ -61,7 +61,7 @@ spec:
 EOF
 ----
 +
-See <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
+Check <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
 
 . Monitor the status of Elastic Agent.
 +

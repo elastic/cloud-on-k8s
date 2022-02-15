@@ -1,5 +1,5 @@
-* Kubernetes 1.18-1.22
-* OpenShift 4.5-4.9
+* Kubernetes 1.19-1.23
+* OpenShift 4.6-4.10
 * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 * Helm: 3.2.0+
 * Elasticsearch, Kibana, APM Server: 6.8+, 7.1+
@@ -14,4 +14,4 @@ Alpha, beta, and stable API versions follow the same link:https://kubernetes.io/
 
 Elastic Stack application images for the OpenShift-certified Elasticsearch (ECK) Operator are only available from version 7.10 and later.
 
-See the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.
+Check the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.

@@ -79,6 +79,8 @@ func hasDependencyInOthers(node esv1.ElasticsearchSettings, others []esv1.Elasti
 	return false
 }
 
+// PredicateContext is the set of fields used while determining what set of pods
+// can be upgraded when performing a rolling upgrade on an Elasticsearch cluster.
 type PredicateContext struct {
 	es                     esv1.Elasticsearch
 	resourcesList          nodespec.ResourcesList
@@ -117,6 +119,8 @@ func groupByPredicates(fp failedPredicates) map[string][]string {
 	return podsByPredicates
 }
 
+// NewPredicateContext returns a new predicate context for use when
+// processing an Elasticsearch rolling upgrade.
 func NewPredicateContext(
 	ctx context.Context,
 	es esv1.Elasticsearch,

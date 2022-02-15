@@ -678,11 +678,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.5.6
-Time    : 2021-05-25T02:50:45Z
+Version : v0.5.7
+Time    : 2022-01-04T17:50:40Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.6/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.7/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
@@ -2845,11 +2845,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.20.0
-Time    : 2022-01-04T19:15:23Z
+Version : v1.21.0
+Time    : 2022-02-07T16:54:02Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.20.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.21.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -3182,11 +3182,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.23.1
-Time    : 2021-12-16T17:26:59Z
+Version : v0.23.3
+Time    : 2022-01-26T01:23:20Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.3/LICENSE:
 
 
                                  Apache License
@@ -3394,11 +3394,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.23.1
-Time    : 2021-12-13T21:21:22Z
+Version : v0.23.3
+Time    : 2022-01-24T17:21:04Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.3/LICENSE:
 
 
                                  Apache License
@@ -3606,11 +3606,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.1/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.23.1
-Time    : 2021-12-16T17:35:44Z
+Version : v0.23.3
+Time    : 2022-01-26T01:28:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.3/LICENSE:
 
 
                                  Apache License
@@ -4019,11 +4019,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/utils
-Version : v0.0.0-20210930125809-cb0fa318a74b
-Time    : 2021-09-30T12:58:09Z
+Version : v0.0.0-20211116205334-6203023598ed
+Time    : 2021-11-16T20:53:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20210930125809-cb0fa318a74b/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20211116205334-6203023598ed/LICENSE:
 
 
                                  Apache License
@@ -19699,11 +19699,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/structured-merge-diff/v4
-Version : v4.2.0
-Time    : 2021-10-27T23:59:03Z
+Version : v4.2.1
+Time    : 2021-12-04T18:42:31Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.2.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004

@@ -184,7 +184,7 @@ kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elas
 [id="{p}-{page_id}-troubleshooting"]
 == Troubleshooting
 
-You might see errors in your Kubernetes API server logs indicating that it cannot reach the operator service (`elastic-webhook-server`). This could be because no operator pods are available to handle request or because a network policy or a firewall rule is preventing the control plane from accessing the service. To help with troubleshooting, you can change the link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook configuration to `Fail`. This will cause create or update operations to fail if there is an error contacting the webhook. Usually the error message will contain helpful information about the failure that will allow you to diagnose the root cause.
+You might get errors in your Kubernetes API server logs indicating that it cannot reach the operator service (`elastic-webhook-server`). This could be because no operator pods are available to handle request or because a network policy or a firewall rule is preventing the control plane from accessing the service. To help with troubleshooting, you can change the link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook configuration to `Fail`. This will cause create or update operations to fail if there is an error contacting the webhook. Usually the error message will contain helpful information about the failure that will allow you to diagnose the root cause.
 
 [float]
 [id="{p}-{page_id}-troubleshooting-timeouts"]
@@ -205,7 +205,7 @@ kubectl --request-timeout=1m apply -f elasticsearch.yaml
 
 As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, the above command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource.
 
-On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], you may have to add a firewall rule allowing access to port 9443 from the API server so that it can contact the webhook. See the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on firewall rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more details.
+On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], you may have to add a firewall rule allowing access to port 9443 from the API server so that it can contact the webhook. Check the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on firewall rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more details.
 
 It is possible that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] is blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case, and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
 

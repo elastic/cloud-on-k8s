@@ -276,7 +276,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 							Name: "es-ca",
 						},
 						Data: map[string][]byte{
-							certificates.CertFileName: []byte("es-ca-cert"),
+							certificates.CAFileName: []byte("es-ca-cert"),
 						},
 					},
 				},
@@ -321,7 +321,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 							Name: "es-ca",
 						},
 						Data: map[string][]byte{
-							certificates.CertFileName: []byte("es-ca-cert"),
+							certificates.CAFileName: []byte("es-ca-cert"),
 						},
 					},
 					&corev1.Secret{
@@ -329,7 +329,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 							Name: "kb-ca",
 						},
 						Data: map[string][]byte{
-							certificates.CertFileName: []byte("kb-ca-cert"),
+							certificates.CAFileName: []byte("kb-ca-cert"),
 						},
 					},
 				},

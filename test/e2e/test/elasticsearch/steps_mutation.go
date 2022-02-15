@@ -94,10 +94,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
 			Skip: func() bool {
-				// Don't monitor cluster health if we're doing a rolling upgrade from a single data node cluster.
-				// The cluster will become either unavailable (single node) or red (multi-nodes) when
-				// that node goes down.
-				return IsRollingUpgradeFromOneDataNode(b)
+				// Don't monitor cluster health if we're doing a rolling upgrade from a single data node or non-HA cluster.
+				// The cluster will become either unavailable (1 or 2 node cluster due to loss of quorum) or red
+				// (single data node when that node goes down).
+				return IsNonHAUpgrade(b)
 			},
 			Test: func(t *testing.T) {
 				var err error
@@ -121,7 +121,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Skip: func() bool {
-					return IsRollingUpgradeFromOneDataNode(b)
+					return IsNonHAUpgrade(b)
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
@@ -143,11 +143,14 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
-func IsRollingUpgradeFromOneDataNode(b Builder) bool {
+func IsNonHAUpgrade(b Builder) bool {
 	if b.MutatedFrom == nil {
 		return false
 	}
-	if MustNumDataNodes(b.MutatedFrom.Elasticsearch) == 1 && b.TriggersRollingUpgrade() {
+	// a cluster of less than 3 nodes is by definition not HA will see some downtime during upgrades
+	// a cluster with just one data node will also see some index level unavailability
+	if (MustNumMasterNodes(b.MutatedFrom.Elasticsearch) < 3 || MustNumDataNodes(b.MutatedFrom.Elasticsearch) == 1) &&
+		b.TriggersRollingUpgrade() {
 		return true
 	}
 	return false

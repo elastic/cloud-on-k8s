@@ -433,25 +433,26 @@ IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
+GO_TAGS=release
+export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+
 TESTS_MATCH=TestSmoke
 MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 PIPELINE=pr
 BUILD_NUMBER=$BUILD_NUMBER
-E2E_PROVIDER=gke
+E2E_PROVIDER=kind
 CLUSTER_NAME=eck-pr-$BUILD_NUMBER
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
-id: gke-ci
+id: kind-ci
 overrides:
   clusterName: eck-pr-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
 CFG
 ;;
 

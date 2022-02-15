@@ -362,7 +362,9 @@ switch-tanzu:
 #################################
 ##  --    Docker images    --  ##
 #################################
+
 docker-multiarch-build: go-generate generate-config-file 
+ifeq ($(SNAPSHOT),false)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
 	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
@@ -374,6 +376,18 @@ docker-multiarch-build: go-generate generate-config-file
 		-t $(OPERATOR_IMAGE) \
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
 		--push
+else
+	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		-t $(OPERATOR_IMAGE) \
+		--push
+endif
+	
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
@@ -415,7 +429,7 @@ ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it 
 endif
 
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 7.16.2
+E2E_STACK_VERSION          ?= 7.17.0
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
@@ -496,7 +510,7 @@ e2e-local: go-generate
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci-check: check-license-header lint shellcheck generate check-local-changes
+ci-check: check-license-header lint shellcheck generate check-local-changes check-predicates
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
@@ -528,6 +542,16 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+# Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
+# defined in the user documentation in orchestration.asciidoc.
+check-predicates: CODE = pkg/controller/elasticsearch/driver/upgrade_predicates.go
+check-predicates: DOC = docs/orchestrating-elastic-stack-applications/elasticsearch/orchestration.asciidoc
+check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
+check-predicates:
+	@ diff \
+		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
+		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
 
 # Runs small Go tool to validate syntax correctness of Jenkins pipelines
 validate-jenkins-pipelines:

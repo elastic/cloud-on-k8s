@@ -391,30 +391,31 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	data := config.Data
 
-	elasticsearchHostKey := "xpack.fleet.agents.elasticsearch.host"
-	if val1, ok := data[elasticsearchHostKey]; ok {
-		if val2, ok := val1.(string); ok {
-			val2 = strings.ReplaceAll(
-				val2,
-				"elasticsearch-es-http.default",
-				fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
-			)
-			data[elasticsearchHostKey] = val2
+	elasticsearchHostsKey := "xpack.fleet.agents.elasticsearch.hosts"
+	if untypedHosts, ok := data[elasticsearchHostsKey]; ok {
+		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+			for i, untypedHost := range untypedHostsSlice {
+				if host, ok := untypedHost.(string); ok {
+					untypedHostsSlice[i] = strings.ReplaceAll(
+						host,
+						"elasticsearch-es-http.default",
+						fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+					)
+				}
+			}
 		}
 	}
 
 	fleetServerHostsKey := "xpack.fleet.agents.fleet_server.hosts"
-	//nolint:nestif
-	if val1, ok := data[fleetServerHostsKey]; ok {
-		if val2, ok := val1.([]interface{}); ok {
-			if len(val2) > 0 {
-				if val3, ok := val2[0].(string); ok {
-					val3 = strings.ReplaceAll(
-						val3,
+	if untypedHosts, ok := data[fleetServerHostsKey]; ok {
+		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+			for i, untypedHost := range untypedHostsSlice {
+				if host, ok := untypedHost.(string); ok {
+					untypedHostsSlice[i] = strings.ReplaceAll(
+						host,
 						"fleet-server-agent-http.default",
 						fmt.Sprintf("fleet-server-%s-agent-http.%s", suffix, namespace),
 					)
-					data[fleetServerHostsKey] = []interface{}{val3}
 				}
 			}
 		}

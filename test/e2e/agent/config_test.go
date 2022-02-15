@@ -169,11 +169,13 @@ func TestFleetMode(t *testing.T) {
 
 func fleetConfigForKibana(esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {
 	return map[string]interface{}{
-		"xpack.fleet.agents.elasticsearch.host": fmt.Sprintf(
-			"https://%s-es-http.%s.svc:9200",
-			esRef.Name,
-			esRef.Namespace,
-		),
+		"xpack.fleet.agents.elasticsearch.hosts": []string{
+			fmt.Sprintf(
+				"https://%s-es-http.%s.svc:9200",
+				esRef.Name,
+				esRef.Namespace,
+			),
+		},
 		"xpack.fleet.agents.fleet_server.hosts": []string{
 			fmt.Sprintf(
 				"https://%s-agent-http.%s.svc:8220",

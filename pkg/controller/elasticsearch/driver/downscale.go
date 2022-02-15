@@ -203,7 +203,7 @@ func calculatePerformableDownscale(
 			ctx.reconcileState.UpdateElasticsearchShutdownStalled(ctx.resourcesState, ctx.observedState, response.Explanation)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
-		case esclient.ShutdownStarted:
+		case esclient.ShutdownInProgress:
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil

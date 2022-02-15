@@ -70,4 +70,4 @@ data:
   gcs_client_2: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykgLSBHQ1MgY2xpZW50IDIK
 ----
 
-See <<{p}-snapshots,How to create automated snapshots>> for an example use case.
+Check <<{p}-snapshots,How to create automated snapshots>> for an example use case.

@@ -151,10 +151,7 @@ func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily cor
 		return nil, err
 	}
 	tlsCfg := tlsConfig(ent)
-	associationCfg, err := associationConfig(driver.K8sClient(), ent)
-	if err != nil {
-		return nil, err
-	}
+
 	specConfig := ent.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1.Config{}
@@ -172,9 +169,21 @@ func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily cor
 		return nil, err
 	}
 
+	userCfgHasAuth := userConfigHasAuth(userProvidedCfg, userProvidedSecretCfg)
+
+	associationCfg, err := associationConfig(driver.K8sClient(), ent, userCfgHasAuth)
+	if err != nil {
+		return nil, err
+	}
+
 	// merge with user settings last so they take precedence
 	err = cfg.MergeWith(reusedCfg, tlsCfg, associationCfg, userProvidedCfg, userProvidedSecretCfg)
 	return cfg, err
+}
+
+func userConfigHasAuth(userProvidedCfg, userProvidedSecretCfg *settings.CanonicalConfig) bool {
+	authSettings := "ent_search.auth"
+	return userProvidedCfg.HasChildConfig(authSettings) || userProvidedSecretCfg.HasChildConfig(authSettings)
 }
 
 // reusableSettings captures secrets settings in the Enterprise Search configuration that we want to reuse.
@@ -280,7 +289,7 @@ func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*setti
 	return settings.MustCanonicalConfig(settingsMap), nil
 }
 
-func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth bool) (*settings.CanonicalConfig, error) {
 	if !ent.AssociationConf().IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
@@ -291,7 +300,7 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.Cano
 	}
 
 	cfg := settings.NewCanonicalConfig()
-	if ver.LT(version.MinFor(7, 17, 0)) {
+	if !userCfgHasAuth && ver.LT(version.MinFor(7, 14, 0)) {
 		cfg = settings.MustCanonicalConfig(map[string]string{
 			"ent_search.auth.source": "elasticsearch-native",
 		})
@@ -312,7 +321,7 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.Cano
 	if ent.AssociationConf().CAIsConfigured() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"elasticsearch.ssl.enabled":               true,
-			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CertFileName),
+			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CAFileName),
 		})); err != nil {
 			return nil, err
 		}

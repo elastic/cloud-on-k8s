@@ -5,7 +5,7 @@
 pipeline {
 
     agent {
-        label 'linux'
+        label 'eck'
     }
 
     options {
@@ -73,7 +73,7 @@ pipeline {
                     steps {
                         sh '.ci/setenvconfig pr'
                         script {
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci monitoring-secrets.json TARGET=ci-build-operator-e2e-run ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
 
                             sh 'make -C .ci TARGET=e2e-generate-xml ci'
                             junit "e2e-tests.xml"

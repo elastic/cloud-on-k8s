@@ -74,7 +74,7 @@ func TestElasticMapsServerTLSDisabled(t *testing.T) {
 
 func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -94,5 +94,36 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 	esWithLicense := test.LicenseTestBuilder()
 	esWithLicense.BuildingThis = es
 
-	test.RunMutations(t, []test.Builder{esWithLicense, ems}, []test.Builder{esWithLicense, emsUpgraded})
+	test.RunMutations(t, []test.Builder{esWithLicense, ems}, []test.Builder{emsUpgraded})
+}
+
+func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
+	// TODO restore this to test.Ctx().ElasticStackVersion once 8.0 is released
+	srcVersion := "7.17.0-SNAPSHOT"
+	dstVersion := test.LatestSnapshotVersion8x
+	// TODO remove skip once 8.0 is released, we cannot test upgrades from production builds to
+	// development/snapshot builds when licensed functionality is under test due to incompatible license keys
+	if test.Ctx().TestLicensePKeyPath == "" {
+		// skip this test if the dev private key is not configured e.g. because we are testing a production build
+		t.SkipNow()
+	}
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	name := "test-ems-version-upgrade-8x"
+	es := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithVersion(dstVersion) // we are not testing the Elasticsearch upgrade here
+
+	ems := maps.NewBuilder(name).
+		WithElasticsearchRef(es.Ref()).
+		WithNodeCount(2).
+		WithVersion(srcVersion).
+		WithRestrictedSecurityContext()
+
+	emsUpgraded := ems.WithVersion(dstVersion).WithMutatedFrom(&ems)
+
+	esWithLicense := test.LicenseTestBuilder()
+	esWithLicense.BuildingThis = es
+
+	test.RunMutations(t, []test.Builder{esWithLicense, ems}, []test.Builder{emsUpgraded})
 }

@@ -36,10 +36,10 @@ EOF
 
 Note that this requires the ability to run privileged containers, which is likely not the case on many secure clusters.
 
-For more information, see the Elasticsearch documentation on
+For more information, check the Elasticsearch documentation on
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
-Optionally, you can select a different type of file system implementation for the storage. For possible options, see the
+Optionally, you can select a different type of file system implementation for the storage. For possible options, check the
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
 
 [source,yaml]

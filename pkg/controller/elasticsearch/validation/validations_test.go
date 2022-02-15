@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -381,6 +380,21 @@ func Test_validUpgradePath(t *testing.T) {
 			current:      es("6.8.0"),
 			proposed:     es("7.1.0"),
 			expectErrors: false,
+		},
+		{
+			name: "not yet fully upgraded rejected",
+			current: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "foo",
+				},
+				Spec: esv1.ElasticsearchSpec{Version: "7.17.0"},
+				Status: esv1.ElasticsearchStatus{
+					Version: "7.16.2",
+				},
+			},
+			proposed:     es("8.0.0"),
+			expectErrors: true, // still running at least one node with 7.16.2
 		},
 	}
 	for _, tt := range tests {

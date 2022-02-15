@@ -11,12 +11,16 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+)
+
+const (
+	// webhookPath is the HTTP path for the Kibana validating webhook.
+	webhookPath = "/validate-kibana-k8s-elastic-co-v1beta1-kibana"
 )
 
 var (
@@ -38,22 +42,22 @@ var (
 
 var _ webhook.Validator = &Kibana{}
 
-func (k *Kibana) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(k).
-		Complete()
-}
-
+// ValidateCreate is called by the validating webhook to validate the create operation.
+// Satisfies the webhook.Validator interface.
 func (k *Kibana) ValidateCreate() error {
 	validationLog.V(1).Info("Validate create", "name", k.Name)
 	return k.validate(nil)
 }
 
+// ValidateDelete is called by the validating webhook to validate the delete operation.
+// Satisfies the webhook.Validator interface.
 func (k *Kibana) ValidateDelete() error {
 	validationLog.V(1).Info("Validate delete", "name", k.Name)
 	return nil
 }
 
+// ValidateUpdate is called by the validating webhook to validate the update operation.
+// Satisfies the webhook.Validator interface.
 func (k *Kibana) ValidateUpdate(old runtime.Object) error {
 	validationLog.V(1).Info("Validate update", "name", k.Name)
 	oldObj, ok := old.(*Kibana)
@@ -62,6 +66,11 @@ func (k *Kibana) ValidateUpdate(old runtime.Object) error {
 	}
 
 	return k.validate(oldObj)
+}
+
+// WebhookPath returns the HTTP path used by the validating webhook.
+func (k *Kibana) WebhookPath() string {
+	return webhookPath
 }
 
 func (k *Kibana) validate(old *Kibana) error {

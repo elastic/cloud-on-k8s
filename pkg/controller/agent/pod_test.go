@@ -17,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/go-test/deep"
+
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -609,6 +611,33 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 		},
 	}).GetAssociations()[0]
 
+	expectedCAVolume := []corev1.Volume{
+		{
+			Name: "elasticsearch-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "elasticsearch-es-http-certs-public",
+					Optional:   &optional,
+				},
+			},
+		},
+	}
+	expectedCAVolumeMount := []corev1.VolumeMount{
+		{
+			Name:      "elasticsearch-certs",
+			ReadOnly:  true,
+			MountPath: "/mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs",
+		},
+	}
+	// as of version 7.17 Agent uses an Ubuntu base image
+	expectedUbuntuCmd := []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
+set -e
+if [[ -f /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt ]]; then
+  cp /mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs/ca.crt /usr/local/share/ca-certificates
+  update-ca-certificates
+fi
+/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
+`}
 	for _, tt := range []struct {
 		name        string
 		agent       agentv1alpha1.Agent
@@ -629,31 +658,16 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 					Namespace: agentNs,
 				},
 				Spec: agentv1alpha1.AgentSpec{
+					Version:            "7.16.2",
 					FleetServerEnabled: false,
 				},
 			},
 			assoc:   assocToSameNs,
 			wantErr: false,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
-				ps.Volumes = []corev1.Volume{
-					{
-						Name: "elasticsearch-certs",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "elasticsearch-es-http-certs-public",
-								Optional:   &optional,
-							},
-						},
-					},
-				}
+				ps.Volumes = expectedCAVolume
 
-				ps.Containers[0].VolumeMounts = []corev1.VolumeMount{
-					{
-						Name:      "elasticsearch-certs",
-						ReadOnly:  true,
-						MountPath: "/mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs",
-					},
-				}
+				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
 
 				ps.Containers[0].Command = []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
 set -e
@@ -668,6 +682,69 @@ fi
 			}),
 		},
 		{
+			name: "fleet server disabled, same namespace 7.17.0",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "7.17.0-SNAPSHOT",
+					FleetServerEnabled: false,
+				},
+			},
+			assoc:   assocToSameNs,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = expectedCAVolume
+				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
+				ps.Containers[0].Command = expectedUbuntuCmd
+				return ps
+			}),
+		},
+		{
+			name: "fleet server disabled, same namespace 8x",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: false,
+				},
+			},
+			assoc:   assocToSameNs,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = expectedCAVolume
+				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
+				ps.Containers[0].Command = expectedUbuntuCmd
+				return ps
+			}),
+		},
+		{
+			name: "fleet server enabled 8x",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+				},
+			},
+			assoc:   assocToSameNs,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = expectedCAVolume
+				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
+				ps.Containers[0].Command = expectedUbuntuCmd
+				return ps
+			}),
+		},
+		{
 			name: "fleet server disabled, different namespace",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
@@ -676,20 +753,35 @@ fi
 				},
 				Spec: agentv1alpha1.AgentSpec{
 					FleetServerEnabled: false,
+					Version:            "7.16.2",
 				},
 			},
 			assoc:   assocToOtherNs,
+			wantErr: true,
+		},
+		{
+			name: "garbage version",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: false,
+					Version:            "NaN",
+				},
+			},
+			assoc:   assocToSameNs,
 			wantErr: true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
 			gotBuilder, gotErr := applyRelatedEsAssoc(tt.agent, tt.assoc, builder)
-
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
-				require.Equal(t, tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
+				require.Nil(t, deep.Equal(tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
 			}
 		})
 	}
@@ -759,7 +851,7 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 							Namespace: "ns",
 						},
 						Data: map[string][]byte{
-							"tls.crt": []byte("def"),
+							"ca.crt": []byte("def"),
 						},
 					},
 				),

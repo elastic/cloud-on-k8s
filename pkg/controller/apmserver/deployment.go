@@ -109,7 +109,7 @@ func (r *ReconcileApmServer) deploymentParams(
 			if err := r.Get(context.Background(), key, &publicCASecret); err != nil {
 				return deployment.Params{}, err
 			}
-			if certPem, ok := publicCASecret.Data[certificates.CertFileName]; ok {
+			if certPem, ok := publicCASecret.Data[certificates.CAFileName]; ok {
 				_, _ = configChecksum.Write(certPem)
 			}
 

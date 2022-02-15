@@ -6,47 +6,32 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.16.2
+  version: 7.17.0
   nodeSets:
   - name: master
     count: 1
     config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: ["master"]
       node.store.allow_mmap: false
   - name: data
     count: 1
     config:
-      node.master: false
-      node.data: true
-      node.ingest: false
-      node.ml: false
+      node.roles: ["data"]
       node.store.allow_mmap: false
   - name: ingest
     count: 1
     config:
-      node.master: false
-      node.data: false
-      node.ingest: true
-      node.ml: false
+      node.roles: ["ingest"]
       node.store.allow_mmap: false
   - name: coordinating
     count: 1
     config:
-      node.master: false
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: []
       node.store.allow_mmap: false
   - name: ml
     count: 1
     config:
-      node.master: false
-      node.data: false
-      node.ingest: false
-      node.ml: true
+      node.roles: ["ml"]
       node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -56,7 +41,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.16.2
+  version: 7.17.0
   count: 1
   elasticsearchRef:
     name: hulk
@@ -68,7 +53,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 7.16.2
+  version: 7.17.0
   count: 1
   elasticsearchRef:
     name: hulk

@@ -134,11 +134,17 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	var internalService *corev1.Service
+	internalService, err = common.ReconcileService(ctx, d.Client, services.NewInternalService(d.ES), &d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	certificateResources, res := certificates.Reconcile(
 		ctx,
 		d,
 		d.ES,
-		[]corev1.Service{*externalService},
+		[]corev1.Service{*externalService, *internalService},
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
@@ -182,8 +188,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
+	allowDownscales := d.ES.IsConfiguredToAllowDowngrades()
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
-		return results.WithError(err)
+		if !allowDownscales {
+			return results.WithError(err)
+		}
+		log.Info("Allowing downgrade on user request", "warning", err.Error())
 	}
 
 	// TODO: support user-supplied certificate (non-ca)
@@ -195,7 +205,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	esReachable, err := services.IsServiceReady(d.Client, *externalService)
+	esReachable, err := services.IsServiceReady(d.Client, *internalService)
 	if err != nil {
 		return results.WithError(err)
 	}

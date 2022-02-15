@@ -48,7 +48,7 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 		return shutdown.NodeShutdownStatus{}, err
 	}
 	if migrating {
-		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownStarted}, nil
+		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownInProgress}, nil
 	}
 	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownComplete}, nil
 }

@@ -257,3 +257,60 @@ func TestElasticsearch_SuspendedPodNames(t *testing.T) {
 		})
 	}
 }
+
+func TestElasticsearch_DisabledPredicates(t *testing.T) {
+	tests := []struct {
+		name string
+		es   Elasticsearch
+		want set.StringSet
+	}{
+		{
+			name: "no annotations",
+			es: Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+				Annotations: nil,
+			}},
+			want: nil,
+		},
+		{
+			name: "no annotation",
+			es: Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{},
+			}},
+			want: nil,
+		},
+		{
+			name: "1 disabled predicate",
+			es: Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					DisableUpgradePredicatesAnnotation: "foo",
+				},
+			}},
+			want: set.Make("foo"),
+		},
+		{
+			name: "2 disabled predicates",
+			es: Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					DisableUpgradePredicatesAnnotation: "foo,bar",
+				},
+			}},
+			want: set.Make("foo", "bar"),
+		},
+		{
+			name: "all predicates disabled",
+			es: Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					DisableUpgradePredicatesAnnotation: "*",
+				},
+			}},
+			want: set.Make("*"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.es.DisabledPredicates(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Elasticsearch.DisabledPredicates() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
