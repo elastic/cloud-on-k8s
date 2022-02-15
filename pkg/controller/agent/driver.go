@@ -97,7 +97,6 @@ func internalReconcile(params Params, status *agentv1alpha1.AgentStatus) *reconc
 
 	svc, err := reconcileService(params)
 	if err != nil {
-		params.Logger().Error(err, "reconciling service")
 		return results.WithError(err)
 	}
 
