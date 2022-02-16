@@ -21,7 +21,7 @@ import (
 )
 
 // newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to
-// contain certain rintime objects.
+// contain certain runtime objects.
 func newTestReconciler(objects ...runtime.Object) *ReconcileElasticsearch {
 	r := &ReconcileElasticsearch{
 		Client:   k8s.NewFakeClient(objects...),

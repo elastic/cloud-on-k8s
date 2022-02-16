@@ -6,9 +6,8 @@ package elasticsearch
 
 import (
 	"context"
-	"testing"
+	"fmt"
 
-	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -51,22 +50,37 @@ func RetrieveClusterGenerationsStep(es esv1.Elasticsearch, k *test.K8sClient, ge
 	}
 }
 
-// CompareClusterGenerations compares the current clusterUUID with previousClusterUUID,
-// and fails if they don't match
+// CompareClusterGenerations compares the current metadata.generation, and status.observedGeneration
+// and fails if they don't match expectations.
 func CompareClusterGenerations(es esv1.Elasticsearch, k *test.K8sClient, previousClusterGeneration, previousClusterObservedGeneration *int64) test.Step {
 	//nolint:thelper
 	return test.Step{
 		Name: "Cluster metadata.generation, and status.observedGeneration should have been incremented from previous state, and should be equal",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			newClusterGeneration, err := clusterGeneration(es, k)
-			require.NoError(t, err)
-			require.NotEmpty(t, newClusterGeneration)
+			if err != nil {
+				return err
+			}
+			if newClusterGeneration == 0 {
+				return fmt.Errorf("expected metadata.generation to not be empty")
+			}
 			newClusterObservedGeneration, err := clusterObservedGeneration(es, k)
-			require.NoError(t, err)
-			require.NotEmpty(t, newClusterObservedGeneration)
-			require.Greater(t, newClusterGeneration, *previousClusterGeneration)
-			require.Greater(t, newClusterObservedGeneration, *previousClusterObservedGeneration)
-			require.Equal(t, newClusterGeneration, newClusterObservedGeneration)
-		},
+			if err != nil {
+				return err
+			}
+			if newClusterObservedGeneration == 0 {
+				return fmt.Errorf("expected status.observedGeneration to not be empty")
+			}
+			if newClusterGeneration <= *previousClusterGeneration {
+				return fmt.Errorf("expected metadata.generation to be incremented")
+			}
+			if newClusterObservedGeneration <= *previousClusterObservedGeneration {
+				return fmt.Errorf("expected status.observedGeneration to be incremented")
+			}
+			if newClusterGeneration != newClusterObservedGeneration {
+				return fmt.Errorf("expected metadata.generation and status.observedGeneration to be equal; generation: %d, observedGeneration: %d", newClusterGeneration, newClusterObservedGeneration)
+			}
+			return nil
+		}),
 	}
 }
