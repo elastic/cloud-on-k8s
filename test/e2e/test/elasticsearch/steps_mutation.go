@@ -118,7 +118,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-			CompareClusterGenerations(b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
+			CompareClusterGenerationsStep(b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
 			masterChangeBudgetWatcher.StopStep(k),
 			changeBudgetWatcher.StopStep(k),
 			test.Step{
