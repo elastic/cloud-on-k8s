@@ -123,24 +123,38 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 			}
 		}
 
-		return builder.
-			WithRoles(beat.PSPClusterRoleName).
-			WithESValidations(
-				// metricbeat validations
-				// TODO: see if we can add validation for ccr, ml_job, and shard metricsets
+		metricbeatValidations := []beat.ValidationFunc{
+			beat.HasMonitoringEvent("metricset.name:cluster_stats"),
+			beat.HasMonitoringEvent("metricset.name:enrich"),
+			beat.HasMonitoringEvent("metricset.name:index"),
+			beat.HasMonitoringEvent("metricset.name:index_summary"),
+			beat.HasMonitoringEvent("metricset.name:node_stats"),
+			beat.HasMonitoringEvent("metricset.name:stats"),
+			beat.HasMonitoringEvent("metricset.name:shard"),
+			beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
+		}
+
+		if version.MustParse(builder.Beat.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+			// before 8.0.0, `metricset.name` was not indexed
+			metricbeatValidations = []beat.ValidationFunc{
 				beat.HasMonitoringEvent("type:cluster_stats"),
 				beat.HasMonitoringEvent("type:enrich_coordinator_stats"),
-				// from the elasticsearch.index metricset
 				beat.HasMonitoringEvent("type:index_stats"),
 				beat.HasMonitoringEvent("type:index_recovery"),
-				// elasticsearch.index.summary metricset
 				beat.HasMonitoringEvent("type:indices_stats"),
 				beat.HasMonitoringEvent("node_stats.node_master:true"),
 				beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
+			}
+		}
+
+		return builder.
+			WithRoles(beat.PSPClusterRoleName).
+			WithESValidations(append(
+				metricbeatValidations,
 				// filebeat validations
 				beat.HasEventFromPod(pod.Name),
 				beat.HasMessageContaining(loggedString),
-			)
+			)...)
 	}
 
 	runBeatRecipe(t, "stack_monitoring.yaml", customize, pod)

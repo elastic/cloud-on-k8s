@@ -10,15 +10,80 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
+
+// getNodeSettings returns the node settings for a given Pod.
+func getNodeSettings(
+	version version.Version,
+	resourcesList nodespec.ResourcesList,
+	pod corev1.Pod,
+) (esv1.ElasticsearchSettings, error) {
+	// Get the expected configuration
+	statefulSetName, _, err := sset.StatefulSetName(pod.Name)
+	if err != nil {
+		return esv1.ElasticsearchSettings{}, err
+	}
+	resources, err := resourcesList.ForStatefulSet(statefulSetName)
+	if err != nil {
+		return esv1.ElasticsearchSettings{}, err
+	}
+	nodeCfg, err := resources.Config.Unpack(version)
+	if err != nil {
+		return esv1.ElasticsearchSettings{}, err
+	}
+	return nodeCfg, nil
+}
+
+// getNodesSettings returns the node settings for a given list of Pods.
+func getNodesSettings(
+	version version.Version,
+	resourcesList nodespec.ResourcesList,
+	pods ...corev1.Pod,
+) ([]esv1.ElasticsearchSettings, error) {
+	rolesList := make([]esv1.ElasticsearchSettings, len(pods))
+	for i := range pods {
+		roles, err := getNodeSettings(version, resourcesList, pods[i])
+		if err != nil {
+			return nil, err
+		}
+		rolesList[i] = roles
+	}
+	return rolesList, nil
+}
+
+// hasDependencyInOthers returns true if, for a given node, at least one other node in a slice can be considered as a
+// strong dependency and must be upgraded first. A strong dependency is a unidirectional dependency, if a circular
+// dependency exists between two nodes the dependency is not considered as a strong one.
+func hasDependencyInOthers(node esv1.ElasticsearchSettings, others []esv1.ElasticsearchSettings) bool {
+	if !node.Node.CanContainData() {
+		// node has no tier which requires upgrade prioritization.
+		return false
+	}
+	for _, other := range others {
+		if !other.Node.CanContainData() {
+			// this other node has no tier which requires upgrade prioritization.
+			continue
+		}
+		if node.Node.DependsOn(other.Node) && !other.Node.DependsOn(node.Node) {
+			// candidate has this other node as a strict dependency
+			return true
+		}
+	}
+	// no dependency or roles are overlapping, we still allow the upgrade
+	return false
+}
 
 // PredicateContext is the set of fields used while determining what set of pods
 // can be upgraded when performing a rolling upgrade on an Elasticsearch cluster.
 type PredicateContext struct {
 	es                     esv1.Elasticsearch
+	resourcesList          nodespec.ResourcesList
 	masterNodesNames       []string
 	actualMasters          []corev1.Pod
 	healthyPods            map[string]corev1.Pod
@@ -59,6 +124,7 @@ func groupByPredicates(fp failedPredicates) map[string][]string {
 func NewPredicateContext(
 	ctx context.Context,
 	es esv1.Elasticsearch,
+	resourcesList nodespec.ResourcesList,
 	state ESState,
 	shardLister client.ShardLister,
 	healthyPods map[string]corev1.Pod,
@@ -69,6 +135,7 @@ func NewPredicateContext(
 ) PredicateContext {
 	return PredicateContext{
 		es:               es,
+		resourcesList:    resourcesList,
 		masterNodesNames: masterNodesNames,
 		actualMasters:    actualMasters,
 		healthyPods:      healthyPods,
@@ -121,6 +188,52 @@ Loop:
 }
 
 var predicates = [...]Predicate{
+	{
+		name: "data_tier_with_higher_priority_must_be_upgraded_first",
+		fn: func(
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
+		) (b bool, e error) {
+			if candidate.Labels[label.VersionLabelName] == context.es.Spec.Version {
+				// This predicate is only relevant during version upgrade.
+				return true, nil
+			}
+
+			currentVersion, err := label.ExtractVersion(candidate.Labels)
+			if err != nil {
+				return false, err
+			}
+			if currentVersion.LT(version.From(7, 10, 0)) {
+				// This predicate is only valid for an Elasticsearch node handling data tiers.
+				return true, nil
+			}
+
+			expectedVersion, err := version.Parse(context.es.Spec.Version)
+			if err != nil {
+				return false, err
+			}
+			// Get roles for the candidate.
+			candidateRoles, err := getNodeSettings(expectedVersion, context.resourcesList, candidate)
+			if err != nil {
+				return false, err
+			}
+
+			// Get all the roles from the Pods to be upgraded, including the ones already scheduled for an upgrade:
+			// the intent is to upgrade all the nodes with a same priority before moving on to a tier with a lower priority.
+			allPods := append(context.toUpdate, deletedPods...)
+			otherRoles, err := getNodesSettings(expectedVersion, context.resourcesList, allPods...)
+			if err != nil {
+				return false, err
+			}
+
+			if hasDependencyInOthers(candidateRoles, otherRoles) {
+				return false, err
+			}
+			return true, nil
+		},
+	},
 	{
 		// If MaxUnavailable is reached, only allow unhealthy Pods to be deleted.
 		// This is to prevent a situation where MaxUnavailable is reached and we

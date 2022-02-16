@@ -478,7 +478,7 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 
 	// Agent in Fleet mode can run as a Fleet Server or as an Elastic Agent that connects to Fleet Server.
 	// Both cases are handled below and the presence of FleetServerRef indicates the latter case.
-	if agent.Spec.FleetServerEnabled {
+	if agent.Spec.FleetServerEnabled { //nolint:nestif
 		fleetURL, err := association.ServiceURL(
 			client,
 			types.NamespacedName{Namespace: agent.Namespace, Name: HTTPServiceName(agent.Name)},
@@ -488,19 +488,23 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 			return nil, err
 		}
 
-		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
 		fleetCfg[FleetURL] = fleetURL
+		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
 	} else if agent.Spec.FleetServerRef.IsDefined() {
 		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
 			return nil, err
 		}
+		if assoc == nil {
+			return fleetCfg, nil
+		}
 
-		if assoc != nil {
+		fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
+		if assoc.AssociationConf().GetCACertProvided() {
 			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
-			fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
 		}
 	}
+
 	return fleetCfg, nil
 }
 

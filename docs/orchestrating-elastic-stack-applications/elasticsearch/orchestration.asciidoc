@@ -183,6 +183,9 @@ WARNING: Selectively disabling the predicates listed in this section are extreme
 
 * The following named predicates control the upgrade process
 
+** data_tier_with_higher_priority_must_be_upgraded_first
++
+Upgrade the frozen tier first, then the cold tier, then the warm tier, and the hot tier last. This ensures ILM can continue to move data through the tiers during the upgrade.
 ** do_not_restart_healthy_node_if_MaxUnavailable_reached
 +
 If `maxUnavailable` is reached, only allow unhealthy Pods to be deleted.

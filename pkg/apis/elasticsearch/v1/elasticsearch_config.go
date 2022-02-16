@@ -8,10 +8,9 @@ import (
 	"github.com/elastic/go-ucfg"
 	"k8s.io/utils/pointer"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 type NodeRole string
@@ -19,6 +18,7 @@ type NodeRole string
 const (
 	DataColdRole            NodeRole = "data_cold"
 	DataContentRole         NodeRole = "data_content"
+	DataFrozenRole          NodeRole = "data_frozen"
 	DataHotRole             NodeRole = "data_hot"
 	DataRole                NodeRole = "data"
 	DataWarmRole            NodeRole = "data_warm"
@@ -58,8 +58,57 @@ type Node struct {
 	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
 }
 
-// HasRole returns true if the node has the given role.
+// CanContainData returns true if a node can contain data, it returns false otherwise.
+func (n *Node) CanContainData() bool {
+	return n.HasRole(DataRole) ||
+		n.HasRole(DataHotRole) ||
+		n.HasRole(DataWarmRole) ||
+		n.HasRole(DataColdRole) ||
+		n.HasRole(DataFrozenRole) ||
+		n.HasRole(DataContentRole)
+}
+
+// HasRole returns true if the node runs with the given role.
 func (n *Node) HasRole(role NodeRole) bool {
+	switch role {
+	case DataContentRole:
+		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataContentRole)
+	case DataHotRole:
+		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataHotRole)
+	case DataWarmRole:
+		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataWarmRole)
+	case DataColdRole:
+		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataColdRole)
+	case DataFrozenRole:
+		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataFrozenRole)
+	default:
+		return n.IsConfiguredWithRole(role)
+	}
+}
+
+// DependsOn returns true if a tier should be upgraded before another one.
+func (n *Node) DependsOn(other *Node) bool {
+	switch {
+	case !n.HasRole(MasterRole) && other.HasRole(MasterRole):
+		// other might be a dependency, but it is also a master node. We don't want to enter a deadlock where other is
+		// the last master node, while the candidate is not and must be upgraded first.
+		return false
+	case n.HasRole(DataHotRole):
+		// hot tier must be upgraded after warm, cold and frozen
+		return other.HasRole(DataWarmRole) || other.HasRole(DataColdRole) || other.HasRole(DataFrozenRole)
+	case n.HasRole(DataWarmRole):
+		// warm tier must be upgraded after cold and frozen
+		return other.HasRole(DataColdRole) || other.HasRole(DataFrozenRole)
+	case n.HasRole(DataColdRole):
+		// cold tier must be upgraded after frozen
+		return other.HasRole(DataFrozenRole)
+	}
+	// frozen and content have no dependency
+	return false
+}
+
+// IsConfiguredWithRole returns true if the node has the given role in its configuration.
+func (n *Node) IsConfiguredWithRole(role NodeRole) bool {
 	if n == nil {
 		// Nodes have all the roles by default except for the voting_only role.
 		return role != VotingOnlyRole
@@ -72,7 +121,7 @@ func (n *Node) HasRole(role NodeRole) bool {
 	switch role {
 	case DataRole:
 		return pointer.BoolPtrDerefOr(n.Data, true)
-	case DataColdRole, DataContentRole, DataHotRole, DataWarmRole:
+	case DataFrozenRole, DataColdRole, DataContentRole, DataHotRole, DataWarmRole:
 		// These roles should really be defined in node.roles. Since they were not, assume they are enabled unless node.data is set to false.
 		return pointer.BoolPtrDerefOr(n.Data, true)
 	case IngestRole:
@@ -85,7 +134,7 @@ func (n *Node) HasRole(role NodeRole) bool {
 		return pointer.BoolPtrDerefOr(n.RemoteClusterClient, true)
 	case TransformRole:
 		// all data nodes are transform nodes by default as well.
-		return pointer.BoolPtrDerefOr(n.Transform, n.HasRole(DataRole))
+		return pointer.BoolPtrDerefOr(n.Transform, n.IsConfiguredWithRole(DataRole))
 	case VotingOnlyRole:
 		return pointer.BoolPtrDerefOr(n.VotingOnly, false)
 	}

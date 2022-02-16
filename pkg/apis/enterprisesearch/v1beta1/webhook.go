@@ -11,12 +11,16 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+)
+
+const (
+	// webhookPath is the HTTP path for the Enterprise Search validating webhook.
+	webhookPath = "/validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch"
 )
 
 var (
@@ -38,22 +42,22 @@ var (
 
 var _ webhook.Validator = &EnterpriseSearch{}
 
-func (ent *EnterpriseSearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(ent).
-		Complete()
-}
-
+// ValidateCreate is called by the validating webhook to validate the create operation.
+// Satisfies the webhook.Validator interface.
 func (ent *EnterpriseSearch) ValidateCreate() error {
 	validationLog.V(1).Info("Validate create", "name", ent.Name)
 	return ent.validate(nil)
 }
 
+// ValidateDelete is called by the validating webhook to validate the delete operation.
+// Satisfies the webhook.Validator interface.
 func (ent *EnterpriseSearch) ValidateDelete() error {
 	validationLog.V(1).Info("Validate delete", "name", ent.Name)
 	return nil
 }
 
+// ValidateUpdate is called by the validating webhook to validate the update operation.
+// Satisfies the webhook.Validator interface.
 func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) error {
 	validationLog.V(1).Info("Validate update", "name", ent.Name)
 	oldObj, ok := old.(*EnterpriseSearch)
@@ -62,6 +66,11 @@ func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) error {
 	}
 
 	return ent.validate(oldObj)
+}
+
+// WebhookPath returns the HTTP path used by the validating webhook.
+func (ent *EnterpriseSearch) WebhookPath() string {
+	return webhookPath
 }
 
 func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) error {

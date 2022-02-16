@@ -11,10 +11,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+)
+
+const (
+	// webhookPath is the HTTP path for the Elastic Beats validating webhook.
+	webhookPath = "/validate-beat-k8s-elastic-co-v1beta1-beat"
 )
 
 var (
@@ -26,22 +30,22 @@ var (
 
 var _ webhook.Validator = &Beat{}
 
-func (b *Beat) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(b).
-		Complete()
-}
-
+// ValidateCreate is called by the validating webhook to validate the create operation.
+// Satisfies the webhook.Validator interface.
 func (b *Beat) ValidateCreate() error {
 	validationLog.V(1).Info("Validate create", "name", b.Name)
 	return b.validate(nil)
 }
 
+// ValidateDelete is called by the validating webhook to validate the delete operation.
+// Satisfies the webhook.Validator interface.
 func (b *Beat) ValidateDelete() error {
 	validationLog.V(1).Info("Validate delete", "name", b.Name)
 	return nil
 }
 
+// ValidateUpdate is called by the validating webhook to validate the update operation.
+// Satisfies the webhook.Validator interface.
 func (b *Beat) ValidateUpdate(old runtime.Object) error {
 	validationLog.V(1).Info("Validate update", "name", b.Name)
 	oldObj, ok := old.(*Beat)
@@ -50,6 +54,11 @@ func (b *Beat) ValidateUpdate(old runtime.Object) error {
 	}
 
 	return b.validate(oldObj)
+}
+
+// WebhookPath returns the HTTP path used by the validating webhook.
+func (b *Beat) WebhookPath() string {
+	return webhookPath
 }
 
 func (b *Beat) validate(old *Beat) error {

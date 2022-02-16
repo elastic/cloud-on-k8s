@@ -58,7 +58,7 @@ func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, 
 
 func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
 	assocConf := assoc.AssociationConf()
-	if !assocConf.CAIsConfigured() {
+	if !assocConf.GetCACertProvided() {
 		return nil
 	}
 

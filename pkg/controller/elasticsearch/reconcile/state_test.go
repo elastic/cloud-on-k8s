@@ -146,7 +146,11 @@ func TestState_Apply(t *testing.T) {
 			name:       "defaults",
 			cluster:    esv1.Elasticsearch{},
 			wantEvents: []events.Event{},
-			wantStatus: nil,
+			wantStatus: &esv1.ElasticsearchStatus{
+				AvailableNodes: 0,
+				Health:         esv1.ElasticsearchUnknownHealth,
+				Phase:          "",
+			},
 		},
 		{
 			name:    "no degraded health event on cluster formation",

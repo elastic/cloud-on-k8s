@@ -38,6 +38,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	predicateContext := NewPredicateContext(
 		ctx.parentCtx,
 		ctx.ES,
+		ctx.resourcesList,
 		ctx.esState,
 		ctx.shardLister,
 		ctx.healthyPods,
