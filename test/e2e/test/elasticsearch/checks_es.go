@@ -205,7 +205,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 
 func compareRoles(expected *esv1.Node, actualRoles []string) error {
 	for _, r := range actualRoles {
-		if !expected.HasRole(esv1.NodeRole(r)) {
+		if !expected.IsConfiguredWithRole(esv1.NodeRole(r)) {
 			return fmt.Errorf("actual role %s not expected", r)
 		}
 	}

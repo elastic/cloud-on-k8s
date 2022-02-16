@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -27,7 +28,7 @@ func (d *defaultDriver) handleUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
-	expectedMasters []string,
+	expectedResources nodespec.ResourcesList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -76,6 +77,8 @@ func (d *defaultDriver) handleUpgrades(
 	}
 	numberOfPods := len(currentPods)
 
+	expectedMasters := expectedResources.MasterNodesNames()
+
 	isMajorVersionUpgrade, err := isMajorVersionUpgrade(d.ES)
 	if err != nil {
 		return results.WithError(err)
@@ -87,6 +90,7 @@ func (d *defaultDriver) handleUpgrades(
 		ctx,
 		d,
 		statefulSets,
+		expectedResources,
 		esClient,
 		esState,
 		nodeShutdown,
@@ -127,6 +131,7 @@ type upgradeCtx struct {
 	parentCtx       context.Context
 	client          k8s.Client
 	ES              esv1.Elasticsearch
+	resourcesList   nodespec.ResourcesList
 	statefulSets    sset.StatefulSetList
 	esClient        esclient.Client
 	shardLister     esclient.ShardLister
@@ -145,6 +150,7 @@ func newUpgrade(
 	ctx context.Context,
 	d *defaultDriver,
 	statefulSets sset.StatefulSetList,
+	resourcesList nodespec.ResourcesList,
 	esClient esclient.Client,
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
@@ -159,6 +165,7 @@ func newUpgrade(
 		client:          d.Client,
 		ES:              d.ES,
 		statefulSets:    statefulSets,
+		resourcesList:   resourcesList,
 		esClient:        esClient,
 		shardLister:     esClient,
 		nodeShutdown:    nodeShutdown,

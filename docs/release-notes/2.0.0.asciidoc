@@ -1,0 +1,79 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.0.0]]
+== {n} version 2.0.0
+
+[[breaking-2.0.0]]
+[float]
+=== Breaking changes
+
+IMPORTANT: Operator Lifecycle Manager (OLM) and OpenShift OperatorHub users that run with automatic upgrades enabled, are advised to set the `set-default-security-context` link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[operator flag] explicitly before upgrading to ECK 2.0. If not set ECK can fail to link:https://github.com/elastic/cloud-on-k8s/issues/5061[auto-detect] the correct security context configuration and Elasticsearch Pods may not be allowed to run.
+
+* Remove legacy v1beta1 CRDs {pull}5029[#5029] (issue: {issue}4885[#4885])
+
+
+[[feature-2.0.0]]
+[float]
+=== New features
+
+* Allow K8S node labels to be propagated as Pod annotations {pull}5054[#5054] (issue: {issue}3933[#3933])
+
+[[enhancement-2.0.0]]
+[float]
+=== Enhancements
+
+* Allow users to disable version validation to downgrade clusters  {pull}5272[#5272] (issue: {issue}5259[#5259])
+* Add support for transport TLS certificate other/common name suffix {pull}5189[#5189] (issue: {issue}5148[#5148])
+* Bump the operator memory limit to 1Gi for larger deployments {pull}5185[#5185] (issue: {issue}5177[#5177])
+* Move config hash stored in Pod labels to Pod annotations {pull}5175[#5175] (issue: {issue}5071[#5071])
+* Elastic Maps Server: no Elasticsearch connection required since 7.14 {pull}5172[#5172]
+* Add autodetect option to security context configuration {pull}5150[#5150] (issue: {issue}5061[#5061])
+* Stop using deprecated host field in Beat configs {pull}5113[#5113] (issue: {issue}4954[#4954])
+* Stop using deprecated xpack.fleet.agents.elasticsearch.host Kibana config {pull}5112[#5112] (issue: {issue}5091[#5091])
+* Set Enterprise Search config kibana.host defaults in advance of 8.0 {pull}5109[#5109] (issue: {issue}4952[#4952])
+* Support trial licenses inside enterprise_trial orchestration licenses {pull}5097[#5097]
+* Include license expiry date in licensing config map {pull}5013[#5013] (issue: {issue}5008[#5008])
+* Reuse existing private key for CA rotation {pull}4947[#4947] (issue: {issue}507[#507])
+* Use node shutdown API for rolling upgrades and downscales {pull}4597[#4597]
+
+[[bug-2.0.0]]
+[float]
+=== Bug fixes
+
+* Fix Stack Monitoring with custom certificate without CA {pull}5310[#5310] (issue: {issue}5309[#5309])
+* Enterprise Search: avoid generating invalid config in the presence of user overrides {pull}5298[#5298] (issue: {issue}5290[#5290])
+* Change upgrade path validation for 8.0 to only allow 7.17 {pull}5261[#5261] (issue: {issue}5258[#5258])
+* Adjust Agent startup command to Ubuntu base image {pull}5253[#5253] (issue: {issue}5250[#5250])
+* Do not delete last master-eligible node if other nodes are not up-to-date {pull}5242[#5242] (issue: {issue}5241[#5241])
+* Add missing nodes resource RBAC permission in recipes {pull}5178[#5178]
+* Main go routine does not exit if there's no error {pull}5106[#5106]
+
+[[docs-2.0.0]]
+[float]
+=== Documentation improvements
+
+* Document node labels propagation feature {pull}5254[#5254] (issue: {issue}5098[#5098])
+* Update Kubernetes/OCP compatibility statements for ECK 2.0 {pull}5239[#5239]
+
+[[nogroup-2.0.0]]
+[float]
+=== Misc
+
+* Update golang Docker tag to v1.17.6 {pull}5234[#5234]
+* Update module sigs.k8s.io/controller-tools to v0.8.0 {pull}5233[#5233]
+* Update module go.uber.org/zap to v1.20.0 {pull}5224[#5224]
+* Update module github.com/go-logr/logr to v1.2.2 {pull}5220[#5220]
+* Update k8s to v0.23.1 {pull}5219[#5219]
+* Update module github.com/hashicorp/vault/api to v1.3.1 {pull}5208[#5208]
+* Update module k8s.io/klog/v2 to v2.40.1 {pull}5184[#5184]
+* Update module github.com/spf13/viper to v1.10.1 {pull}5171[#5171]
+* Update module github.com/spf13/cobra to v1.3.0 {pull}5163[#5163]
+* Update module sigs.k8s.io/controller-runtime to v0.11.0 {pull}5161[#5161]
+* Update module github.com/elastic/go-ucfg to v0.8.4 {pull}5037[#5037]
+* Update registry.access.redhat.com/ubi8/ubi-minimal Docker tag to v8.5 {pull}5034[#5034]
+* Update golang Docker tag to v1.17.3 {pull}5018[#5018]
+* Update module sigs.k8s.io/kustomize/kyaml to v0.12.0 {pull}5004[#5004]
+* Update module go.elastic.co/apm/module/apmelasticsearch to v1.14.0 {pull}5002[#5002]
+* Update module go.elastic.co/apm to v1.14.0 {pull}5001[#5001]
+

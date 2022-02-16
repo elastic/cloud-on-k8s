@@ -10,6 +10,7 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -50,7 +51,7 @@ func deleteOrphanedResources(
 
 		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
 		log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
-		if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
+		if err := c.Delete(context.Background(), &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 
