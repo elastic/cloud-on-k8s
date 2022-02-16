@@ -34,8 +34,6 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 	type k8sFields struct {
 		objs []runtime.Object
 	}
-	type args struct {
-	}
 	tests := []struct {
 		name      string
 		k8sfields k8sFields
