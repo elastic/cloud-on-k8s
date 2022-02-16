@@ -214,7 +214,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			"Conflict while updating status",
 			"namespace", associatedKey.Namespace,
 			"name", associatedKey.Name)
-		return results.WithResult(reconcile.Result{Requeue: true}).Aggregate(), nil
+		return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 	} else if err != nil {
 		log.Error(
 			err,
