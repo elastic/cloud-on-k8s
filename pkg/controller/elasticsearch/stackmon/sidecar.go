@@ -62,8 +62,7 @@ func Filebeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, e
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
-	// no monitoring defined, skip
-	if !monitoring.IsDefined(&es) {
+	if !monitoring.IsReconcilable(&es) {
 		return builder, nil
 	}
 

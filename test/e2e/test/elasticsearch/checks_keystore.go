@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -29,7 +30,7 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 			if err := checkExpectedPodsReady(b, k); err != nil {
 				return err
 			}
-			if err := clusterHealthGreen(b, k); err != nil {
+			if err := clusterHealthIs(b, k, esv1.ElasticsearchGreenHealth); err != nil {
 				return err
 			}
 			// check keystore entries on all Pods

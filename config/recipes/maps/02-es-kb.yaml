@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.15.2
+  version: 7.17.0
   nodeSets:
     - name: default
       count: 3
@@ -27,7 +27,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.15.2
+  version: 7.17.0
   count: 1
   config:
     # Configure this to a domain you control

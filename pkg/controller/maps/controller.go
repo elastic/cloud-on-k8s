@@ -27,6 +27,7 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -307,16 +308,9 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 		}
 	}
 
-	// - in the Elasticsearch TLS certificates
-	if ems.AssociationConf().CAIsConfigured() {
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: ems.Namespace, Name: ems.AssociationConf().GetCASecretName()}
-		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
-			return "", err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			_, _ = configHash.Write(certPem)
-		}
+	// - in the associated Elasticsearch TLS certificates
+	if err := commonassociation.WriteAssocsToConfigHash(c, ems.GetAssociations(), configHash); err != nil {
+		return "", err
 	}
 
 	return fmt.Sprint(configHash.Sum32()), nil

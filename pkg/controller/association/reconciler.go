@@ -210,6 +210,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// we want to attempt a status update even in the presence of errors
 	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil {
+		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status")
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
 		return defaultRequeue, tracing.CaptureError(ctx, err)
 	}
 	return results.

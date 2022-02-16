@@ -279,7 +279,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	} else if params.Agent.Spec.FleetServerRef.IsDefined() {
 		// As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
 		fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
@@ -486,21 +486,23 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 			return nil, err
 		}
 
-		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
 		fleetCfg[FleetURL] = fleetURL
+		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
 	} else if agent.Spec.FleetServerRef.IsDefined() {
 		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
 			return nil, err
 		}
-
-		if assoc != nil {
-			fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
+		if assoc == nil {
+			return fleetCfg, nil
 		}
-		if assoc != nil && assoc.AssociationConf().CACertProvided {
+
+		fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
+		if assoc.AssociationConf().GetCACertProvided() {
 			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
 		}
 	}
+
 	return fleetCfg, nil
 }
 
