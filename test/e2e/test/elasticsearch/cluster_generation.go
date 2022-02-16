@@ -54,7 +54,6 @@ func RetrieveClusterGenerationsStep(es esv1.Elasticsearch, k *test.K8sClient, ge
 // CompareClusterGenerations compares the current metadata.generation, and status.observedGeneration
 // and fails if they don't match expectations.
 func CompareClusterGenerations(es esv1.Elasticsearch, k *test.K8sClient, previousClusterGeneration, previousClusterObservedGeneration *int64) test.Step {
-	//nolint:thelper
 	return test.Step{
 		Name: "Cluster metadata.generation, and status.observedGeneration should have been incremented from previous state, and should be equal",
 		Test: test.Eventually(func() error {
