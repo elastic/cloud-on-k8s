@@ -4231,11 +4231,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20211116205334
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.11.0
-Time    : 2021-12-08T21:25:46Z
+Version : v0.11.1
+Time    : 2022-02-10T18:33:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.11.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
