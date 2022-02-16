@@ -134,7 +134,6 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 			beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
 		}
 
-		fmt.Println("DEBUG", builder.Beat.Spec.Version)
 		if version.MustParse(builder.Beat.Spec.Version).LT(version.MinFor(8, 0, 0)) {
 			// before 8.0.0, `metricset.name` was not indexed
 			metricbeatValidations = []beat.ValidationFunc{
