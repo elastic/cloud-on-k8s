@@ -22,11 +22,9 @@ func TestAgentObservedGenerationIncrement(t *testing.T) {
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithVersion(version).
 		WithRoles(agent.PSPClusterRoleName).
-		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"))
+		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default"))
 
-	mutatedAgentBuilder := agentBuilder.
-		WithPodLabel("new", "label")
+	mutatedAgentBuilder := agentBuilder.WithPodLabel("key", "value")
 
 	k := test.NewK8sClientOrFatal()
 
