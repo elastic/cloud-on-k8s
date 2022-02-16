@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -62,20 +63,20 @@ func CompareClusterGenerations(es esv1.Elasticsearch, k *test.K8sClient, previou
 				return err
 			}
 			if newClusterGeneration == 0 {
-				return fmt.Errorf("expected metadata.generation to not be empty")
+				return errors.New("expected metadata.generation to not be empty")
 			}
 			newClusterObservedGeneration, err := clusterObservedGeneration(es, k)
 			if err != nil {
 				return err
 			}
 			if newClusterObservedGeneration == 0 {
-				return fmt.Errorf("expected status.observedGeneration to not be empty")
+				return errors.New("expected status.observedGeneration to not be empty")
 			}
 			if newClusterGeneration <= *previousClusterGeneration {
-				return fmt.Errorf("expected metadata.generation to be incremented")
+				return errors.New("expected metadata.generation to be incremented")
 			}
 			if newClusterObservedGeneration <= *previousClusterObservedGeneration {
-				return fmt.Errorf("expected status.observedGeneration to be incremented")
+				return errors.New("expected status.observedGeneration to be incremented")
 			}
 			if newClusterGeneration != newClusterObservedGeneration {
 				return fmt.Errorf("expected metadata.generation and status.observedGeneration to be equal; generation: %d, observedGeneration: %d", newClusterGeneration, newClusterObservedGeneration)
