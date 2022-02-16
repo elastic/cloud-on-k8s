@@ -186,7 +186,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// always update the Elasticsearch state bits with the latest observed state
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState())
 
-	_, res = certificates.ReconcileTransport(
+	res = certificates.ReconcileTransport(
 		ctx,
 		d,
 		d.ES,

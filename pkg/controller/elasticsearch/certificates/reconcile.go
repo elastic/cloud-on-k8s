@@ -27,15 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-type CertificateResources struct {
-	// TrustedHTTPCertificates contains the latest HTTP certificates that should be trusted.
-	TrustedHTTPCertificates []*x509.Certificate
-
-	// TransportCA is the CA used for Transport certificates
-	TransportCA *certificates.CA
-}
-
-// Reconcile reconciles the HTTP layer certificates of a cluster.
+// ReconcileHTTP reconciles the HTTP layer certificates of a cluster.
 func ReconcileHTTP(
 	ctx context.Context,
 	driver driver.Interface,
@@ -90,14 +82,14 @@ func ReconcileHTTP(
 	return trustedHTTPCertificates, nil
 }
 
-// Reconcile reconciles the transport layer certificates of a cluster.
+// ReconcileTransport reconciles the transport layer certificates of a cluster.
 func ReconcileTransport(
 	ctx context.Context,
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
-) (*certificates.CA, *reconciler.Results) {
+) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -114,7 +106,7 @@ func ReconcileTransport(
 		caRotation,
 	)
 	if err != nil {
-		return nil, results.WithError(err)
+		return results.WithError(err)
 	}
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
@@ -123,7 +115,7 @@ func ReconcileTransport(
 
 	// reconcile transport public certs secret
 	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {
-		return nil, results.WithError(err)
+		return results.WithError(err)
 	}
 
 	// reconcile transport certificates
@@ -140,8 +132,8 @@ func ReconcileTransport(
 	}
 
 	if results.WithResults(transportResults).HasError() {
-		return nil, results
+		return results
 	}
 
-	return transportCA, results
+	return results
 }
