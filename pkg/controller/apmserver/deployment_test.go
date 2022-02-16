@@ -269,7 +269,8 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			name: "associated Elasticsearch CA influences checksum and volumes",
 			args: args{
 				as: withAssociations(apmFixture.DeepCopy(), &commonv1.AssociationConf{
-					CASecretName: "es-ca",
+					CACertProvided: true,
+					CASecretName:   "es-ca",
 				}, nil),
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []runtime.Object{
@@ -311,10 +312,12 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			args: args{
 				as: withAssociations(apmFixture.DeepCopy(),
 					&commonv1.AssociationConf{
-						CASecretName: "es-ca",
+						CACertProvided: true,
+						CASecretName:   "es-ca",
 					},
 					&commonv1.AssociationConf{
-						CASecretName: "kb-ca",
+						CACertProvided: true,
+						CASecretName:   "kb-ca",
 					}),
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []runtime.Object{
