@@ -380,4 +380,3 @@ spec:
   version: {{ .NewVersion }}
   webhookdefinitions:
 {{ .OperatorWebhooks | trim | indent 4 }}
-...
