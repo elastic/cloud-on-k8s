@@ -234,7 +234,7 @@ spec:
   - name: default
     count: 3
     config:
-      node.attr.zone: $ZONE
+      node.attr.zone: ${ZONE}
       cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
     podTemplate:
       spec:
