@@ -97,14 +97,24 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 		return nil, err
 	}
 
+	var nonReadyPods []string
 	for _, podToDelete := range ctx.podsToUpgrade {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
 			return nil, err
 		}
 		// do not delete any Pods if at least one is not ready for deletion
-		if readyToDelete, err := ctx.readyToDelete(podToDelete); err != nil || !readyToDelete {
+		readyToDelete, err := ctx.readyToDelete(podToDelete)
+		if err != nil {
 			return nil, err
 		}
+		if !readyToDelete {
+			nonReadyPods = append(nonReadyPods, podToDelete.Name)
+		}
+	}
+
+	if len(nonReadyPods) > 0 {
+		log.Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		return nil, nil
 	}
 
 	var deletedPods []corev1.Pod //nolint:prealloc

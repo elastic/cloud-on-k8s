@@ -182,7 +182,7 @@ func newUpgrade(
 }
 
 func run(upgrade func() ([]corev1.Pod, error)) ([]corev1.Pod, error) {
-	deletedPods, err := upgrade() // ctx.Delete()
+	deletedPods, err := upgrade()
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
 		// (could be the statefulset controller)
