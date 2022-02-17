@@ -221,13 +221,25 @@ spec:
                 items:
                   properties:
                     name:
-                      description: Name of the Kubernetes object.
+                      description: Name of an existing Kubernetes object corresponding
+                        to an Elastic custom resource managed by ECK.
                       type: string
                     namespace:
                       description: Namespace of the Kubernetes object. If empty, defaults
                         to the current namespace.
                       type: string
                     outputName:
+                      type: string
+                    secretName:
+                      description: 'SecretName is the name of an existing Kubernetes
+                        secret that contains connection information for associating
+                        an Elastic resource not managed by ECK. The referenced secret
+                        must contain the following: - `url`: the URL to reach the
+                        Elastic resource - `username`: the username of the user to
+                        be authenticated to the Elastic resource - `password`: the
+                        password of the user to be authenticated to the Elastic resource
+                        - `ca.crt`: the CA certificate in PEM format (optional). This
+                        field cannot be defined if a name or a serviceName is defined.'
                       type: string
                     serviceName:
                       description: ServiceName is the name of an existing Kubernetes
@@ -236,16 +248,6 @@ spec:
                         If left empty, the default HTTP service of the referenced
                         resource is used.
                       type: string
-                    type:
-                      description: Type determines the type of the Kubernetes object.
-                        Defaults to empty, which indicates the object is a local Elastic
-                        resource managed by ECK in the local Kubernetes cluster. Other
-                        option is 'Secret'. 'Secret' indicates the object is a Secret
-                        holding information (URL, username, password, CA cert) to
-                        reach an Elastic resource not managed by ECK.
-                      type: string
-                  required:
-                  - name
                   type: object
                 type: array
               fleetServerEnabled:
@@ -258,11 +260,23 @@ spec:
                   unless `mode` is set to `fleet`.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -271,16 +285,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for the Agent
@@ -701,11 +705,23 @@ spec:
                   is set to `fleet`.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -714,16 +730,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               mode:
                 description: Mode specifies the source of configuration for the Agent.
@@ -895,11 +901,23 @@ spec:
                   cluster running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -908,16 +926,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for the APM Server
@@ -1337,11 +1345,23 @@ spec:
                   management in Kibana.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -1350,16 +1370,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               podTemplate:
                 description: PodTemplate provides customisation options (labels, annotations,
@@ -2247,11 +2257,23 @@ spec:
                   running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -2260,16 +2282,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               image:
                 description: Image is the Beat Docker image to deploy. Version and
@@ -2281,11 +2293,23 @@ spec:
                   and visualizations.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -2294,16 +2318,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
@@ -2480,11 +2494,23 @@ spec:
                   running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -2493,16 +2519,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for Elastic Maps
@@ -3493,14 +3509,28 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object.
+                            object which can be an Elastic custom resource or a Secret.
                           properties:
                             name:
-                              description: Name of the Kubernetes object.
+                              description: Name of an existing Kubernetes object corresponding
+                                to an Elastic custom resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
                                 empty, defaults to the current namespace.
+                              type: string
+                            secretName:
+                              description: 'SecretName is the name of an existing
+                                Kubernetes secret that contains connection information
+                                for associating an Elastic resource not managed by
+                                ECK. The referenced secret must contain the following:
+                                - `url`: the URL to reach the Elastic resource - `username`:
+                                the username of the user to be authenticated to the
+                                Elastic resource - `password`: the password of the
+                                user to be authenticated to the Elastic resource -
+                                `ca.crt`: the CA certificate in PEM format (optional).
+                                This field cannot be defined if a name or a serviceName
+                                is defined.'
                               type: string
                             serviceName:
                               description: ServiceName is the name of an existing
@@ -3510,17 +3540,6 @@ spec:
                                 the default HTTP service of the referenced resource
                                 is used.
                               type: string
-                            type:
-                              description: Type determines the type of the Kubernetes
-                                object. Defaults to empty, which indicates the object
-                                is a local Elastic resource managed by ECK in the
-                                local Kubernetes cluster. Other option is 'Secret'.
-                                'Secret' indicates the object is a Secret holding
-                                information (URL, username, password, CA cert) to
-                                reach an Elastic resource not managed by ECK.
-                              type: string
-                          required:
-                          - name
                           type: object
                         type: array
                     type: object
@@ -3535,14 +3554,28 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object.
+                            object which can be an Elastic custom resource or a Secret.
                           properties:
                             name:
-                              description: Name of the Kubernetes object.
+                              description: Name of an existing Kubernetes object corresponding
+                                to an Elastic custom resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
                                 empty, defaults to the current namespace.
+                              type: string
+                            secretName:
+                              description: 'SecretName is the name of an existing
+                                Kubernetes secret that contains connection information
+                                for associating an Elastic resource not managed by
+                                ECK. The referenced secret must contain the following:
+                                - `url`: the URL to reach the Elastic resource - `username`:
+                                the username of the user to be authenticated to the
+                                Elastic resource - `password`: the password of the
+                                user to be authenticated to the Elastic resource -
+                                `ca.crt`: the CA certificate in PEM format (optional).
+                                This field cannot be defined if a name or a serviceName
+                                is defined.'
                               type: string
                             serviceName:
                               description: ServiceName is the name of an existing
@@ -3552,17 +3585,6 @@ spec:
                                 the default HTTP service of the referenced resource
                                 is used.
                               type: string
-                            type:
-                              description: Type determines the type of the Kubernetes
-                                object. Defaults to empty, which indicates the object
-                                is a local Elastic resource managed by ECK in the
-                                local Kubernetes cluster. Other option is 'Secret'.
-                                'Secret' indicates the object is a Secret holding
-                                information (URL, username, password, CA cert) to
-                                reach an Elastic resource not managed by ECK.
-                              type: string
-                          required:
-                          - name
                           type: object
                         type: array
                     type: object
@@ -4033,11 +4055,24 @@ spec:
                         cluster running within the same k8s cluster.
                       properties:
                         name:
-                          description: Name of the Kubernetes object.
+                          description: Name of an existing Kubernetes object corresponding
+                            to an Elastic custom resource managed by ECK.
                           type: string
                         namespace:
                           description: Namespace of the Kubernetes object. If empty,
                             defaults to the current namespace.
+                          type: string
+                        secretName:
+                          description: 'SecretName is the name of an existing Kubernetes
+                            secret that contains connection information for associating
+                            an Elastic resource not managed by ECK. The referenced
+                            secret must contain the following: - `url`: the URL to
+                            reach the Elastic resource - `username`: the username
+                            of the user to be authenticated to the Elastic resource
+                            - `password`: the password of the user to be authenticated
+                            to the Elastic resource - `ca.crt`: the CA certificate
+                            in PEM format (optional). This field cannot be defined
+                            if a name or a serviceName is defined.'
                           type: string
                         serviceName:
                           description: ServiceName is the name of an existing Kubernetes
@@ -4046,17 +4081,6 @@ spec:
                             resource. If left empty, the default HTTP service of the
                             referenced resource is used.
                           type: string
-                        type:
-                          description: Type determines the type of the Kubernetes
-                            object. Defaults to empty, which indicates the object
-                            is a local Elastic resource managed by ECK in the local
-                            Kubernetes cluster. Other option is 'Secret'. 'Secret'
-                            indicates the object is a Secret holding information (URL,
-                            username, password, CA cert) to reach an Elastic resource
-                            not managed by ECK.
-                          type: string
-                      required:
-                      - name
                       type: object
                     name:
                       description: Name is the name of the remote cluster as it is
@@ -5849,11 +5873,23 @@ spec:
                   cluster running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -5862,16 +5898,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for Enterprise
@@ -6402,11 +6428,23 @@ spec:
                   cluster running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -6415,16 +6453,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for Enterprise
@@ -6966,11 +6994,23 @@ spec:
                   running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -6979,16 +7019,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               enterpriseSearchRef:
                 description: EnterpriseSearchRef is a reference to an EnterpriseSearch
@@ -6996,11 +7026,23 @@ spec:
                   Enterprise Search UI starting version 7.14.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic custom resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by ECK. The referenced secret
+                      must contain the following: - `url`: the URL to reach the Elastic
+                      resource - `username`: the username of the user to be authenticated
+                      to the Elastic resource - `password`: the password of the user
+                      to be authenticated to the Elastic resource - `ca.crt`: the
+                      CA certificate in PEM format (optional). This field cannot be
+                      defined if a name or a serviceName is defined.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -7009,16 +7051,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                  type:
-                    description: Type determines the type of the Kubernetes object.
-                      Defaults to empty, which indicates the object is a local Elastic
-                      resource managed by ECK in the local Kubernetes cluster. Other
-                      option is 'Secret'. 'Secret' indicates the object is a Secret
-                      holding information (URL, username, password, CA cert) to reach
-                      an Elastic resource not managed by ECK.
-                    type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for Kibana.
@@ -7449,14 +7481,28 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object.
+                            object which can be an Elastic custom resource or a Secret.
                           properties:
                             name:
-                              description: Name of the Kubernetes object.
+                              description: Name of an existing Kubernetes object corresponding
+                                to an Elastic custom resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
                                 empty, defaults to the current namespace.
+                              type: string
+                            secretName:
+                              description: 'SecretName is the name of an existing
+                                Kubernetes secret that contains connection information
+                                for associating an Elastic resource not managed by
+                                ECK. The referenced secret must contain the following:
+                                - `url`: the URL to reach the Elastic resource - `username`:
+                                the username of the user to be authenticated to the
+                                Elastic resource - `password`: the password of the
+                                user to be authenticated to the Elastic resource -
+                                `ca.crt`: the CA certificate in PEM format (optional).
+                                This field cannot be defined if a name or a serviceName
+                                is defined.'
                               type: string
                             serviceName:
                               description: ServiceName is the name of an existing
@@ -7466,17 +7512,6 @@ spec:
                                 the default HTTP service of the referenced resource
                                 is used.
                               type: string
-                            type:
-                              description: Type determines the type of the Kubernetes
-                                object. Defaults to empty, which indicates the object
-                                is a local Elastic resource managed by ECK in the
-                                local Kubernetes cluster. Other option is 'Secret'.
-                                'Secret' indicates the object is a Secret holding
-                                information (URL, username, password, CA cert) to
-                                reach an Elastic resource not managed by ECK.
-                              type: string
-                          required:
-                          - name
                           type: object
                         type: array
                     type: object
@@ -7491,14 +7526,28 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object.
+                            object which can be an Elastic custom resource or a Secret.
                           properties:
                             name:
-                              description: Name of the Kubernetes object.
+                              description: Name of an existing Kubernetes object corresponding
+                                to an Elastic custom resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
                                 empty, defaults to the current namespace.
+                              type: string
+                            secretName:
+                              description: 'SecretName is the name of an existing
+                                Kubernetes secret that contains connection information
+                                for associating an Elastic resource not managed by
+                                ECK. The referenced secret must contain the following:
+                                - `url`: the URL to reach the Elastic resource - `username`:
+                                the username of the user to be authenticated to the
+                                Elastic resource - `password`: the password of the
+                                user to be authenticated to the Elastic resource -
+                                `ca.crt`: the CA certificate in PEM format (optional).
+                                This field cannot be defined if a name or a serviceName
+                                is defined.'
                               type: string
                             serviceName:
                               description: ServiceName is the name of an existing
@@ -7508,17 +7557,6 @@ spec:
                                 the default HTTP service of the referenced resource
                                 is used.
                               type: string
-                            type:
-                              description: Type determines the type of the Kubernetes
-                                object. Defaults to empty, which indicates the object
-                                is a local Elastic resource managed by ECK in the
-                                local Kubernetes cluster. Other option is 'Secret'.
-                                'Secret' indicates the object is a Secret holding
-                                information (URL, username, password, CA cert) to
-                                reach an Elastic resource not managed by ECK.
-                              type: string
-                          required:
-                          - name
                           type: object
                         type: array
                     type: object
