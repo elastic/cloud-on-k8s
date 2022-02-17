@@ -84,7 +84,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	esState := NewMemoizingESState(ctx, esClient)
-	reconcileState.RecordNewNodes(podsToCreate(actualStatefulSets, expectedResources.StatefulSets()))
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
 		parentCtx:            ctx,
@@ -93,6 +92,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		esState:              esState,
 		expectations:         d.Expectations,
 		validateStorageClass: d.OperatorParameters.ValidateStorageClass,
+		upscaleReporter:      reconcileState.UpscaleReporter,
 	}
 	upscaleResults, err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
@@ -108,7 +108,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if upscaleResults.Requeue {
 		return results.WithReconciliationState(defaultRequeue.WithReason("StatefulSet is scheduled for recreation"))
 	}
-	if upscaleResults.UpscaleInProgress {
+	if reconcileState.HasPendingNewNodes() {
 		results.WithReconciliationState(defaultRequeue.WithReason("Upscale in progress"))
 	}
 	actualStatefulSets = upscaleResults.ActualStatefulSets

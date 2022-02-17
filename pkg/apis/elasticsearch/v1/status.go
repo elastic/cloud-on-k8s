@@ -139,8 +139,23 @@ func (c Conditions) MergeWith(nextCondition Condition) Conditions {
 	return cp
 }
 
+// NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.
+type NewNodeStatus string
+
+const (
+	// NewNodePending surfaces a situation where a node creation is delayed.
+	NewNodePending NewNodeStatus = "PENDING"
+
+	// NewNodeExpected states that the node is expected to be created because the underlying StatefulSet has been upscaled.
+	NewNodeExpected NewNodeStatus = "EXPECTED"
+)
+
 type NewNode struct {
-	Name string `json:"name"`
+	Name   string        `json:"name"`
+	Status NewNodeStatus `json:"status"`
+
+	// +optional
+	Message *string `json:"message"`
 }
 
 type UpscaleOperation struct {

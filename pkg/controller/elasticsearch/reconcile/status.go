@@ -15,6 +15,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 )
 
 type StatusReporter struct {
@@ -54,18 +55,49 @@ func (s *StatusReporter) ReportCondition(
 
 type UpscaleReporter struct {
 	// Expected nodes to be upscaled
-	nodes []string
+	nodes map[string]esv1.NewNode
 }
 
 func (u *UpscaleReporter) RecordNewNodes(nodes []string) {
 	if u == nil {
 		return
 	}
+	if u.nodes == nil {
+		u.nodes = make(map[string]esv1.NewNode, len(nodes))
+	}
 	if nodes == nil {
 		nodes = []string{}
 	}
-	sort.Strings(nodes)
-	u.nodes = nodes
+	for _, node := range nodes {
+		newNode := u.nodes[node]
+		newNode.Name = node
+		newNode.Status = esv1.NewNodePending
+		u.nodes[node] = newNode
+	}
+}
+
+// UpdateNodesStatuses the status and the message fields for a set of nodes.
+func (u *UpscaleReporter) UpdateNodesStatuses(status esv1.NewNodeStatus, statefulSetName, message string, minOrdinal, maxOrdinal int32) {
+	if u == nil {
+		return
+	}
+	if u.nodes == nil {
+		u.nodes = make(map[string]esv1.NewNode)
+	}
+	for ord := minOrdinal - 1; ord < maxOrdinal; ord++ {
+		podName := sset.PodName(statefulSetName, ord)
+		newNode := u.nodes[podName]
+		newNode.Status = status
+		newNode.Message = pointer.String(message)
+		u.nodes[podName] = newNode
+	}
+}
+
+func (u *UpscaleReporter) HasPendingNewNodes() bool {
+	if u == nil {
+		return false
+	}
+	return len(u.nodes) > 0
 }
 
 func (u *UpscaleReporter) Merge(other esv1.UpscaleOperation) esv1.UpscaleOperation {
@@ -74,9 +106,11 @@ func (u *UpscaleReporter) Merge(other esv1.UpscaleOperation) esv1.UpscaleOperati
 		return *upscaleOperation
 	}
 	nodes := make([]esv1.NewNode, 0, len(u.nodes))
-	for _, node := range u.nodes {
+	for name, node := range u.nodes {
 		nodes = append(nodes, esv1.NewNode{
-			Name: node,
+			Name:    name,
+			Status:  node.Status,
+			Message: node.Message,
 		})
 	}
 	// Sort for stable comparison

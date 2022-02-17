@@ -4601,10 +4601,18 @@ spec:
                           the operator.
                         items:
                           properties:
+                            message:
+                              type: string
                             name:
+                              type: string
+                            status:
+                              description: NewNodeStatus provides details about the
+                                status of nodes which are expected to be created and
+                                added to the Elasticsearch cluster.
                               type: string
                           required:
                           - name
+                          - status
                           type: object
                         type: array
                     required:

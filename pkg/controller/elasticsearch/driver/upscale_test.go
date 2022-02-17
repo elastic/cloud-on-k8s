@@ -497,7 +497,7 @@ func Test_adjustResources(t *testing.T) {
 				k8sClient:    k8sClient,
 				expectations: expectations.NewExpectations(k8sClient),
 			}
-			got, _, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
+			got, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
 			require.NoError(t, err)
 			require.Nil(t, deep.Equal(got.StatefulSets(), tt.wantSsets))
 		})
