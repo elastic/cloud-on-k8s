@@ -58,21 +58,27 @@ const (
 	ObjectTypeSecret ObjectType = "Secret"
 )
 
-// ObjectSelector defines a reference to a Kubernetes object.
+// ObjectSelector defines a reference to a Kubernetes object which can be an Elastic custom resource or a Secret.
 type ObjectSelector struct {
-	// Name of the Kubernetes object.
-	Name string `json:"name"`
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 	Namespace string `json:"namespace,omitempty"`
+
+	// Name of an existing Kubernetes object corresponding to an Elastic custom resource managed by ECK.
+	Name string `json:"name,omitempty"`
+
 	// ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
 	// object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
 	// the referenced resource is used.
 	ServiceName string `json:"serviceName,omitempty"`
-	// Type determines the type of the Kubernetes object. Defaults to empty, which indicates the object is a local
-	// Elastic resource managed by ECK in the local Kubernetes cluster. Other option is 'Secret'. 'Secret' indicates the
-	// object is a Secret holding information (URL, username, password, CA cert) to reach an Elastic resource not managed
-	// by ECK.
-	Type ObjectType `json:"type,omitempty"`
+
+	// SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
+	// Elastic resource not managed by ECK. The referenced secret must contain the following:
+	// - `url`: the URL to reach the Elastic resource
+	// - `username`: the username of the user to be authenticated to the Elastic resource
+	// - `password`: the password of the user to be authenticated to the Elastic resource
+	// - `ca.crt`: the CA certificate in PEM format (optional).
+	// This field cannot be defined if a name or a serviceName is defined.
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
@@ -84,7 +90,7 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 		Namespace:   defaultNamespace,
 		Name:        o.Name,
 		ServiceName: o.ServiceName,
-		Type:        o.Type,
+		SecretName:  o.SecretName,
 	}
 }
 
@@ -99,12 +105,12 @@ func (o ObjectSelector) NamespacedName() types.NamespacedName {
 // IsDefined checks if the object selector is not nil and has a name.
 // Namespace is not mandatory as it may be inherited by the parent object.
 func (o *ObjectSelector) IsDefined() bool {
-	return o != nil && o.Name != ""
+	return o != nil && (o.Name != "" || o.SecretName != "")
 }
 
 // IsObjectTypeSecret returns true when the object selector references a Kubernetes secret describing the referenced object.
 func (o ObjectSelector) IsObjectTypeSecret() bool {
-	return o.IsDefined() && o.Type == ObjectTypeSecret
+	return o.IsDefined() && o.SecretName != ""
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.
