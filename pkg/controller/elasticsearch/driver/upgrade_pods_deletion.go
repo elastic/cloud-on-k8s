@@ -96,17 +96,21 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 	if err := ctx.prepareClusterForNodeRestart(ctx.podsToUpgrade); err != nil {
 		return nil, err
 	}
-	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
-	var deletedPods []corev1.Pod //nolint:prealloc
+
 	for _, podToDelete := range ctx.podsToUpgrade {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
-			return deletedPods, err
+			return nil, err
 		}
+		// do not delete any Pods if at least one is not ready for deletion
 		if readyToDelete, err := ctx.readyToDelete(podToDelete); err != nil || !readyToDelete {
-			return deletedPods, err
+			return nil, err
 		}
+	}
 
+	var deletedPods []corev1.Pod //nolint:prealloc
+	for _, podToDelete := range ctx.podsToUpgrade {
 		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, "Deleting Pod for full cluster upgrade"); err != nil {
+			// an error during deletion violates the "delete all or nothing" invariant but there is no way around it
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)

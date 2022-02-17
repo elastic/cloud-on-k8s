@@ -79,12 +79,6 @@ func (d *defaultDriver) handleUpgrades(
 
 	expectedMasters := expectedResources.MasterNodesNames()
 
-	isMajorVersionUpgrade, err := isMajorVersionUpgrade(d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
-	var deletedPods []corev1.Pod
-	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isMajorVersionUpgrade
 	// Maybe upgrade some of the nodes.
 	upgrade := newUpgrade(
 		ctx,
@@ -101,6 +95,13 @@ func (d *defaultDriver) handleUpgrades(
 		numberOfPods,
 	)
 
+	var deletedPods []corev1.Pod
+
+	isMajorVersionUpgrade, err := isMajorVersionUpgrade(d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isMajorVersionUpgrade
 	if shouldDoFullRestartUpgrade {
 		// unconditional full cluster upgrade
 		deletedPods, err = run(upgrade.DeleteAll)
