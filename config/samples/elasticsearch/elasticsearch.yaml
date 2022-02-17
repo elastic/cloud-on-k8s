@@ -17,7 +17,7 @@ spec:
       node.store.allow_mmap: false
       # uncomment the lines below to use the zone attribute from the node labels
       #cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
-      #node.attr.zone: $ZONE
+      #node.attr.zone: ${ZONE}
     podTemplate:
       metadata:
         labels:
