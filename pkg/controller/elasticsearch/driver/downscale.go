@@ -167,8 +167,9 @@ func noDownscaleFilter(_ downscaleState, _ appsv1.StatefulSet, requestedDeletes 
 	return requestedDeletes
 }
 
-// downscaleBudgetFilter is a filter which rely on checkDownscaleInvariants.
+// downscaleBudgetFilter is a filter which relies on checkDownscaleInvariants.
 // It ensures that we only downscale nodes we're allowed to.
+// Note that this function may have side effects on the downscaleState and should not be considered as idempotent.
 func downscaleBudgetFilter(state downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
 	allowedDeletes, reason := checkDownscaleInvariants(state, actualSset, requestedDeletes)
 	if allowedDeletes == 0 {

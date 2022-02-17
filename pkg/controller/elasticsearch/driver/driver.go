@@ -205,9 +205,8 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// reconciliation loop as we don't want to prevent other updates from being applied to the cluster.
 	results.WithResults(annotatePodsWithNodeLabels(ctx, d.Client, d.ES))
 
-	allowDownscales := d.ES.IsConfiguredToAllowDowngrades()
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
-		if !allowDownscales {
+		if !d.ES.IsConfiguredToAllowDowngrades() {
 			return results.WithError(err)
 		}
 		log.Info("Allowing downgrade on user request", "warning", err.Error())

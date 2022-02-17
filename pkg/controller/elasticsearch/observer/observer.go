@@ -88,7 +88,7 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 // runPeriodically triggers a state retrieval every tick,
 // until the given context is cancelled
 func (o *Observer) runPeriodically() {
-	o.retrieveState()
+	o.observe()
 
 	ticker := time.NewTicker(o.settings.ObservationInterval)
 	defer ticker.Stop()
@@ -96,7 +96,7 @@ func (o *Observer) runPeriodically() {
 	for {
 		select {
 		case <-ticker.C:
-			o.retrieveState()
+			o.observe()
 		case <-o.stopChan:
 			log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "es_name", o.cluster.Name)
 			return
@@ -104,9 +104,9 @@ func (o *Observer) runPeriodically() {
 	}
 }
 
-// retrieveState retrieves the current ES state, executes onObservation,
+// observe retrieves the current ES state, executes onObservation,
 // and stores the new state
-func (o *Observer) retrieveState() {
+func (o *Observer) observe() {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), o.settings.ObservationInterval)
 	defer cancelFunc()
 

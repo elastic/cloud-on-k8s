@@ -195,7 +195,7 @@ func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, string, erro
 	return true, "", nil
 }
 
-// PendingReconciliation returns the list StatefulSet for which status.observedGeneration does not match the metadata.generation.
+// PendingReconciliation returns the list of StatefulSets for which status.observedGeneration does not match the metadata.generation.
 // The status is automatically updated by the StatefulSet controller: if the observedGeneration does not match
 // the metadata generation, it means the resource has not been processed by the StatefulSet controller yet.
 // When that happens, other fields in the StatefulSet status (eg. "updateRevision") may not be up to date.

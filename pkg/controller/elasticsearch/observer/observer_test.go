@@ -46,7 +46,7 @@ func createAndRunTestObserver(onObs OnObservation) *Observer {
 	return obs
 }
 
-func TestObserver_retrieveState(t *testing.T) {
+func TestObserver_observe(t *testing.T) {
 	counter := int32(0)
 	onObservation := func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		atomic.AddInt32(&counter, 1)
@@ -56,13 +56,13 @@ func TestObserver_retrieveState(t *testing.T) {
 		esClient:      fakeEsClient,
 		onObservation: onObservation,
 	}
-	observer.retrieveState()
+	observer.observe()
 	require.Equal(t, int32(1), atomic.LoadInt32(&counter))
-	observer.retrieveState()
+	observer.observe()
 	require.Equal(t, int32(2), atomic.LoadInt32(&counter))
 }
 
-func TestObserver_retrieveState_nilFunction(t *testing.T) {
+func TestObserver_observe_nilFunction(t *testing.T) {
 	var nilFunc OnObservation
 	fakeEsClient := fakeEsClient200(client.BasicAuth{})
 	observer := Observer{
@@ -70,7 +70,7 @@ func TestObserver_retrieveState_nilFunction(t *testing.T) {
 		onObservation: nilFunc,
 	}
 	// should not panic
-	observer.retrieveState()
+	observer.observe()
 }
 
 func TestNewObserver(t *testing.T) {
@@ -93,7 +93,7 @@ func TestObserver_Stop(t *testing.T) {
 	}
 	observer := createAndRunTestObserver(onObservation)
 	// force at least one observation
-	observer.retrieveState()
+	observer.observe()
 	// stop the observer
 	observer.Stop()
 	// should be safe to call multiple times
