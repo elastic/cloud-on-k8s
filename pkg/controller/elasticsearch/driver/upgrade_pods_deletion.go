@@ -21,7 +21,7 @@ import (
 
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
 // Do not run this function unless driver expectations are met.
-func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
+func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 	if len(ctx.podsToUpgrade) == 0 {
 		return nil, nil
 	}
@@ -78,7 +78,49 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 			return deletedPods, err
 		}
 
-		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations); err != nil {
+		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, "Deleting pod for rolling upgrade"); err != nil {
+			return deletedPods, err
+		}
+		deletedPods = append(deletedPods, podToDelete)
+	}
+	return deletedPods, nil
+}
+
+// DeleteAll unconditionally deletes all upgradeable Pods after calling the node shutdown API and accounting for quorum
+// changes on older versions of Elasticsearch as applicable.
+func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
+	if len(ctx.podsToUpgrade) == 0 {
+		return nil, nil
+	}
+
+	if err := ctx.prepareClusterForNodeRestart(ctx.podsToUpgrade); err != nil {
+		return nil, err
+	}
+
+	var nonReadyPods []string
+	for _, podToDelete := range ctx.podsToUpgrade {
+		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
+			return nil, err
+		}
+		// do not delete any Pods if at least one is not ready for deletion
+		readyToDelete, err := ctx.readyToDelete(podToDelete)
+		if err != nil {
+			return nil, err
+		}
+		if !readyToDelete {
+			nonReadyPods = append(nonReadyPods, podToDelete.Name)
+		}
+	}
+
+	if len(nonReadyPods) > 0 {
+		log.Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		return nil, nil
+	}
+
+	var deletedPods []corev1.Pod //nolint:prealloc
+	for _, podToDelete := range ctx.podsToUpgrade {
+		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, "Deleting Pod for full cluster upgrade"); err != nil {
+			// an error during deletion violates the "delete all or nothing" invariant but there is no way around it
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)
@@ -87,7 +129,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 }
 
 // getAllowedDeletions returns the number of deletions that can be done and if maxUnavailable has been reached.
-func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
+func (ctx *upgradeCtx) getAllowedDeletions() (int, bool) {
 	// Check if we are not over disruption budget
 	// Upscale is done, we should have the required number of Pods
 	actualPods := ctx.statefulSets.PodNames()
@@ -144,7 +186,7 @@ func sortCandidates(allPods []corev1.Pod) {
 // In case of a master scale up there's nothing else to do:
 // * If there are Zen1 nodes m_m_n is updated prior the update of the StatefulSet in HandleUpscaleAndSpecChanges
 // * Because of the design of Zen2 there's nothing else to do for it.
-func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
+func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
 		if err := updateZenSettingsForDownscale(
@@ -162,8 +204,8 @@ func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	return nil
 }
 
-func deletePod(k8sClient k8s.Client, es esv1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations) error {
-	log.Info("Deleting pod for rolling upgrade", "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
+func deletePod(k8sClient k8s.Client, es esv1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations, msg string) error {
+	log.Info(msg, "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
 	// We also check the version of the Pod resource, to make sure its status is the current one and we're not deleting
