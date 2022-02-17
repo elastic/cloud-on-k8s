@@ -7,7 +7,7 @@ metadata:
   labels:
     app: ekmnt
 spec:
-  version: 7.16.2
+  version: 7.17.0
   http:
     tls:
       selfSignedCertificate:
@@ -16,10 +16,7 @@ spec:
   - name: master
     count: 1
     config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: ["master"]
       node.store.allow_mmap: false
     podTemplate:
       metadata:
@@ -31,10 +28,7 @@ spec:
   - name: data
     count: 1
     config:
-      node.master: false
-      node.data: true
-      node.ingest: false
-      node.ml: false
+      node.roles: ["data"]
       node.store.allow_mmap: false
     podTemplate:
       metadata:
@@ -46,10 +40,7 @@ spec:
   - name: ingest
     count: 1
     config:
-      node.master: false
-      node.data: false
-      node.ingest: true
-      node.ml: false
+      node.roles: ["ingest"]
       node.store.allow_mmap: false
     podTemplate:
       metadata:
@@ -61,10 +52,7 @@ spec:
   - name: coordinating
     count: 1
     config:
-      node.master: false
-      node.data: false
-      node.ingest: false
-      node.ml: false
+      node.roles: []
       node.store.allow_mmap: false
     podTemplate:
       metadata:
@@ -76,10 +64,7 @@ spec:
   - name: ml
     count: 1
     config:
-      node.master: false
-      node.data: false
-      node.ingest: false
-      node.ml: true
+      node.roles: ["ml"]
       node.store.allow_mmap: false
     podTemplate:
       metadata:
@@ -97,7 +82,7 @@ metadata:
   labels:
     app: ekmnt
 spec:
-  version: 7.16.2
+  version: 7.17.0
   count: 1
   http:
     tls:

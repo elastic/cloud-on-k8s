@@ -2845,11 +2845,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.20.0
-Time    : 2022-01-04T19:15:23Z
+Version : v1.21.0
+Time    : 2022-02-07T16:54:02Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.20.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.21.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -4231,11 +4231,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20211116205334
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.11.0
-Time    : 2021-12-08T21:25:46Z
+Version : v0.11.1
+Time    : 2022-02-10T18:33:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.11.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004

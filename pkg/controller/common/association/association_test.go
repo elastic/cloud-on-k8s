@@ -106,16 +106,36 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 			assoc: associationFixture(nil),
 		},
 		{
-			name:   "association ca secret missing",
+			name:   "association with a custom cert without ca",
 			client: k8s.NewFakeClient(),
 			assoc: associationFixture(&commonv1.AssociationConf{
-				CASecretName: "ca-secret-name",
+				CACertProvided: false,
+				CASecretName:   "ca-secret-name",
+			}),
+			wantHashed: "",
+			wantErr:    false,
+		},
+		{
+			name:   "association without ca",
+			client: k8s.NewFakeClient(),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CACertProvided: false,
+			}),
+			wantHashed: "",
+			wantErr:    false,
+		},
+		{
+			name:   "association with ca, ca secret missing",
+			client: k8s.NewFakeClient(),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CACertProvided: true,
+				CASecretName:   "ca-secret-name",
 			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
 		{
-			name: "association ca secret data missing",
+			name: "association with ca, ca secret present, ca.crt missing",
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-name",
@@ -123,13 +143,14 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 				},
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{
-				CASecretName: "ca-secret-name",
+				CACertProvided: true,
+				CASecretName:   "ca-secret-name",
 			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
 		{
-			name: "association ca secret data present",
+			name: "association with ca, ca secret and ca.crt present",
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "ca-secret-name",
@@ -140,7 +161,8 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 				},
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{
-				CASecretName: "ca-secret-name",
+				CACertProvided: true,
+				CASecretName:   "ca-secret-name",
 			}),
 			wantHashed: "456",
 		},

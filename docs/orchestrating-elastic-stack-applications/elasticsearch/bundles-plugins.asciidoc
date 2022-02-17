@@ -32,7 +32,7 @@ To run Elasticsearch with specific plugins or configuration files installed on E
 ** Each Elasticsearch node needs to repeat the download, wasting bandwidth and slowing startup.
 ** Deployment manifests are more complicated.
 
-See <<{p}-custom-images,Creating custom images>> for instructions on how to build custom Docker images based on the official Elastic images.
+Refer to <<{p}-custom-images,Creating custom images>> for instructions on how to build custom Docker images based on the official Elastic images.
 
 The following example describes option 2, using a repository plugin. To install the plugin before the Elasticsearch
 nodes start, use an init container to run the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/installation.html[plugin installation tool].

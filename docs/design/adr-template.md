@@ -25,7 +25,7 @@ Technical Story: [description | ticket/issue URL] <!-- optional -->
 
 ## Decision Outcome
 
-Chosen option: "[option 1]", because [justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force force | … | comes out best (see below)].
+Chosen option: "[option 1]", because [justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force force | … | comes out best (check below)].
 
 ### Positive Consequences <!-- optional -->
 

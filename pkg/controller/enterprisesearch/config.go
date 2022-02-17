@@ -318,7 +318,7 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth 
 		return nil, err
 	}
 
-	if ent.AssociationConf().CAIsConfigured() {
+	if ent.AssociationConf().GetCACertProvided() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"elasticsearch.ssl.enabled":               true,
 			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CAFileName),

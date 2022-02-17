@@ -36,6 +36,10 @@ func NewState(c esv1.Elasticsearch) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
+	status := *c.Status.DeepCopy()
+	// reset the health to 'unknown' so that if reconciliation fails before the observer has had a chance to get it,
+	// we stop reporting a health that may be out of date
+	status.Health = esv1.ElasticsearchUnknownHealth
 	return &State{
 		Recorder: events.NewRecorder(),
 		StatusReporter: &StatusReporter{
@@ -44,7 +48,7 @@ func NewState(c esv1.Elasticsearch) (*State, error) {
 			UpgradeReporter:   &UpgradeReporter{},
 		},
 		cluster: c,
-		status:  *c.Status.DeepCopy(),
+		status:  status,
 		hints:   hints,
 	}, nil
 }

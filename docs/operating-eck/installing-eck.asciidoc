@@ -112,7 +112,7 @@ helm show values elastic/eck-operator
 [id="{p}-migrate-to-helm"]
 === Migrate an existing installation to Helm
 
-CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Read the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
+CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Check the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
 
 
 You can migrate an existing operator installation to Helm by adding the `meta.helm.sh/release-name`, `meta.helm.sh/release-namespace` annotations and the `app.kubernetes.io/managed-by` label to all the resources you want to be adopted by Helm. You _must_ do this for the Elastic Custom Resource Definitions (CRD) because deleting them would trigger the deletion of all deployed Elastic applications as well. All other resources are optional and can be deleted.

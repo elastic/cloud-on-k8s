@@ -86,6 +86,9 @@ func NewResult(ctx context.Context) *Results {
 
 // HasError returns true if Results contains one or more errors.
 func (r *Results) HasError() bool {
+	if r == nil {
+		return false
+	}
 	return len(r.errors) > 0
 }
 

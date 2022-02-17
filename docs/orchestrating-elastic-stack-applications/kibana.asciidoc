@@ -52,7 +52,7 @@ spec:
 The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana. An additional `serviceName` attribute can be specified to target a custom Kubernetes service.
 Refer to <<{p}-traffic-splitting>> for more information.
 
-NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to Kibana namespace. Kibana cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, see <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
+NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to Kibana namespace. Kibana cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, check <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
 
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
@@ -167,7 +167,7 @@ spec:
 
 The name of the container in the Pod template must be `kibana`.
 
-See <<{p}-compute-resources-kibana-and-apm>> for more information.
+Check <<{p}-compute-resources-kibana-and-apm>> for more information.
 
 [id="{p}-kibana-configuration"]
 === Kibana configuration
@@ -196,7 +196,7 @@ spec:
 
 To deploy more than one instance of Kibana, all the instances must share the same encryption key. To set your own encryption key, set the `xpack.security.encryptionKey` property using a secure setting, as described in <<{p}-kibana-secure-settings,Secure settings>>. If you don't set any encryption key, the operator generates one for you. 
 
-NOTE: While most reconfigurations of your Kibana instances are carried out in rolling upgrade fashion, all version upgrades will cause Kibana downtime. This happens because you can only run a single version of Kibana at any given time. For more information, see link:https://www.elastic.co/guide/en/kibana/current/upgrade.html[Upgrade Kibana].
+NOTE: While most reconfigurations of your Kibana instances are carried out in rolling upgrade fashion, all version upgrades will cause Kibana downtime. This happens because you can only run a single version of Kibana at any given time. For more information, check link:https://www.elastic.co/guide/en/kibana/current/upgrade.html[Upgrade Kibana].
 
 [id="{p}-kibana-secure-settings"]
 == Secure settings
@@ -264,7 +264,7 @@ spec:
 [id="{p}-kibana-http-custom-tls"]
 === Provide your own certificate
 
-If you want to use your own certificate, the required configuration is identical to Elasticsearch. See <<{p}-custom-http-certificate>>.
+If you want to use your own certificate, the required configuration is identical to Elasticsearch. Check <<{p}-custom-http-certificate>>.
 
 [id="{p}-kibana-http-disable-tls"]
 === Disable TLS

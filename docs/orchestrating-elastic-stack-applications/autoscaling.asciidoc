@@ -7,7 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Autoscaling stateless applications
 
-NOTE: This section only applies to stateless applications. See <<{p}-autoscaling,Elasticsearch autoscaling>> for more details about scaling automatically Elasticsearch.
+NOTE: This section only applies to stateless applications. Check <<{p}-autoscaling,Elasticsearch autoscaling>> for more details about scaling automatically Elasticsearch.
 
 The link:https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale[Horizontal Pod Autoscaler] can be used to automatically scale the deployments of the following resources:
 

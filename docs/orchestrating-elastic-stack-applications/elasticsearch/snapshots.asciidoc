@@ -17,7 +17,7 @@ To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 
 The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs.html[Google Cloud Storage Repository Plugin].
 
-For more information on Elasticsearch snapshots, see https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
+For more information on Elasticsearch snapshots, check https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
 
 [id="{p}-install-plugin"]
 == Install the storage repository plugin
@@ -75,7 +75,7 @@ kubectl apply -f elasticsearch.yaml
 [id="{p}-secure-settings"]
 == Configure GCS credentials via the Elasticsearch keystore
 
-The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs-usage.html[Google Cloud Storage Repository Plugin].
+The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, check https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs-usage.html[Google Cloud Storage Repository Plugin].
 
 Using ECK, you can automatically inject secure settings into a cluster node by providing them through a secret in the Elasticsearch Spec.
 
@@ -118,7 +118,7 @@ spec:
   secureSettings:
   - secretName: gcs-credentials
 ----
-If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. See <<{p}-es-secure-settings,Secure Settings>> for details.
+If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. Check <<{p}-es-secure-settings,Secure Settings>> for details.
 . Apply the modifications:
 +
 [source,bash]
@@ -206,4 +206,4 @@ spec:
 kubectl apply -f snapshotter.yml
 ----
 
-For more details, see https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[Kubernetes CronJobs].
+For more details, check https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[Kubernetes CronJobs].

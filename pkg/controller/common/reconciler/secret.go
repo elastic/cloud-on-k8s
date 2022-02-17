@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -158,7 +159,7 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 		log.Info("Garbage collecting secret",
 			"namespace", deletedOwner.Namespace, "secret_name", s.Name,
 			"owner_name", deletedOwner.Name, "owner_kind", ownerKind)
-		err := c.Delete(context.Background(), &s)
+		err := c.Delete(context.Background(), &s, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &s.UID}})
 		if apierrors.IsNotFound(err) {
 			// already deleted, all good
 			continue
@@ -210,7 +211,8 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 					"namespace", secret.Namespace, "secret_name", secret.Name,
 					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
 				)
-				if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
+				options := client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
+				if err := c.Delete(context.Background(), &secret, &options); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 				continue
