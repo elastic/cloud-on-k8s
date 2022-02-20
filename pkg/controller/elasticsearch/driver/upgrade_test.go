@@ -319,7 +319,7 @@ func Test_is8xVersionUpgrade(t *testing.T) {
 				Spec:   esv1.ElasticsearchSpec{Version: "7.17.0"},
 				Status: esv1.ElasticsearchStatus{Version: "6.8.0"},
 			},
-			want:    true,
+			want:    false,
 			wantErr: false,
 		},
 		{
