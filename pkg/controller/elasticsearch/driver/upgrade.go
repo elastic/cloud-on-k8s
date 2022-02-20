@@ -97,11 +97,11 @@ func (d *defaultDriver) handleUpgrades(
 
 	var deletedPods []corev1.Pod
 
-	isMajorVersionUpgrade, err := isMajorVersionUpgrade(d.ES)
+	isVersionUpgrade, err := isVersionUpgrade(d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
-	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isMajorVersionUpgrade
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isVersionUpgrade
 	if shouldDoFullRestartUpgrade {
 		// unconditional full cluster upgrade
 		deletedPods, err = run(upgrade.DeleteAll)
@@ -206,7 +206,7 @@ func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
 	return len(actualMasters) <= 2
 }
 
-func isMajorVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
+func isVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	specVersion, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return false, err
@@ -215,7 +215,7 @@ func isMajorVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return specVersion.Major > statusVersion.Major, nil
+	return specVersion.GT(statusVersion), nil
 }
 
 func healthyPods(
