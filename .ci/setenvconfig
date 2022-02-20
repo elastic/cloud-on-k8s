@@ -15,6 +15,7 @@ ROOT=$(dirname $0)/..
 
 write_env()             { cat > $ROOT/.env; }
 write_deployer_config() { cat > $ROOT/deployer-config.yml; }
+write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 
 # detect dev local execution
 if [[ ${BUILD_ID:-} == "" ]]; then
@@ -26,6 +27,11 @@ if [[ ${BUILD_ID:-} == "" ]]; then
 fi
 
 # main
+
+# default empty stack version definition common to all environments to allow uniform invocation of the e2e test runner
+write_stack_version_def <<ENV
+[]
+ENV
 
 environment=${1:-""}
 case $environment in
@@ -62,6 +68,70 @@ overrides:
 CFG
 ;;
 
+######################################
+  e2e/custom)
+######################################
+
+write_env <<ENV
+IMG_SUFFIX=-ci
+REGISTRY_NAMESPACE=eck-snapshots
+E2E_REGISTRY_NAMESPACE=eck-ci
+
+GO_TAGS=release
+export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+TESTS_MATCH=$TESTS_MATCH
+
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
+
+PIPELINE=e2e/custom
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=eck-e2e-custom-$BUILD_NUMBER
+TEST_OPTS=-race
+ENV
+write_deployer_config <<CFG
+id: gke-ci
+overrides:
+  clusterName: eck-e2e-custom-$BUILD_NUMBER
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+write_stack_version_def <<ENV
+[
+  {
+    "kind": "Elasticsearch",
+    "image": "${ELASTICSEARCH_IMAGE:-}",
+    "version": "${ELASTICSEARCH_VERSION:-}"
+  },
+  {
+    "kind": "Kibana",
+    "image": "${KIBANA_IMAGE:-}",
+    "version": "${KIBANA_VERSION:-}"
+  },
+  {
+    "kind": "Agent",
+    "image": "${ELASTIC_AGENT_IMAGE:-}",
+    "version": "${ELASTIC_AGENT_VERSION:-}"
+  },
+  {
+    "kind": "EnterpriseSearch",
+    "image": "${ENTERPRISE_SEARCH_IMAGE:-}",
+    "version": "${ENTERPRISE_SEARCH_VERSION:-}"
+  },
+  {
+    "kind": "ElasticMapsServer",
+    "image": "${ELASTIC_MAPS_SERVER_IMAGE:-}",
+    "version": "${ELASTIC_MAPS_SERVER_VERSION:-}"
+  }
+]
+ENV
+;;
 
 ######################################
   e2e/gke-k8s-versions)

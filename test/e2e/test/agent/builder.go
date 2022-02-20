@@ -80,15 +80,17 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
+	def := test.Ctx().ElasticStackVersionDefForKind(agentv1alpha1.Kind)
 	return Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
 			Spec: agentv1alpha1.AgentSpec{
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 		Suffix: suffix,
 	}.
+		WithImage(def.Image).
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
