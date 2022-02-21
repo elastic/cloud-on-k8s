@@ -45,7 +45,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.21.2
+  kubernetesVersion: 1.22.6
   machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
@@ -58,7 +58,7 @@ plans:
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.21.2
+  kubernetesVersion: 1.22.6
   machineType: Standard_D8s_v3
   serviceAccount: false
   psp: false
