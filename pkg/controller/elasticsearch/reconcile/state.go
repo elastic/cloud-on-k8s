@@ -144,6 +144,7 @@ func (s *State) UpdateMinRunningVersion(
 			corev1.ConditionFalse,
 			fmt.Sprintf("Upgrading from %s to %s", runningVersion.String(), desiredVersion.String()),
 		)
+		return s
 	}
 	s.ReportCondition(esv1.RunningDesiredVersion, corev1.ConditionTrue, fmt.Sprintf("All nodes are running version %s", runningVersion))
 

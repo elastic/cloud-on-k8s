@@ -43,7 +43,7 @@ func (s *StatusReporter) ReportCondition(
 	conditionType esv1.ConditionType,
 	status corev1.ConditionStatus,
 	message string) {
-	s.Conditions = append(s.Conditions, esv1.Condition{
+	s.Conditions = s.Conditions.MergeWith(esv1.Condition{
 		Type:               conditionType,
 		Status:             status,
 		LastTransitionTime: metav1.Now(),

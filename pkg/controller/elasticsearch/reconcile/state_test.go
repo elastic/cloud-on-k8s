@@ -15,7 +15,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 )
 
@@ -330,8 +329,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	}
 }
 
-func TestState_fetchMinRunningVersion(t *testing.T) {
-	v770 := version.MustParse("7.7.0")
+func TestState_UpdateMinRunningVersion(t *testing.T) {
 	ssetWithVersion := func(value string) appsv1.StatefulSet {
 		return appsv1.StatefulSet{Spec: appsv1.StatefulSetSpec{Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}}}
@@ -339,57 +337,119 @@ func TestState_fetchMinRunningVersion(t *testing.T) {
 	podWithVersion := func(value string) corev1.Pod {
 		return corev1.Pod{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}
 	}
+	type want struct {
+		ver       string         // expected version to be set in the status
+		condition esv1.Condition // expected esv1.RunningDesiredVersion condition
+	}
 	tests := []struct {
 		name           string
 		resourcesState ResourcesState
-		want           *version.Version
-		wantErr        bool
+		es             esv1.Elasticsearch
+		want           want
 	}{
 		{
 			name: "all pods and ssets specify the same version",
+			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "7.7.0"}},
 			resourcesState: ResourcesState{
 				AllPods:      []corev1.Pod{podWithVersion("7.7.0"), podWithVersion("7.7.0")},
 				StatefulSets: []appsv1.StatefulSet{ssetWithVersion("7.7.0"), ssetWithVersion("7.7.0")},
 			},
-			want: &v770,
+			want: want{
+				ver: "7.7.0",
+				condition: esv1.Condition{
+					Type:    esv1.RunningDesiredVersion,
+					Status:  corev1.ConditionTrue,
+					Message: "All nodes are running version 7.7.0",
+				},
+			},
 		},
 		{
 			name: "one Pod has not been upgraded yet",
+			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "7.7.1"}},
 			resourcesState: ResourcesState{
 				AllPods:      []corev1.Pod{podWithVersion("7.7.1"), podWithVersion("7.7.0")},
 				StatefulSets: []appsv1.StatefulSet{ssetWithVersion("7.7.1"), ssetWithVersion("7.7.1")},
 			},
-			want: &v770,
+			want: want{
+				ver: "7.7.0",
+				condition: esv1.Condition{
+					Type:    esv1.RunningDesiredVersion,
+					Status:  corev1.ConditionFalse,
+					Message: "Upgrading from 7.7.0 to 7.7.1",
+				},
+			},
 		},
 		{
 			name: "one StatefulSet (whose Pods are missing) has not been upgraded yet",
+			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "7.7.1"}},
 			resourcesState: ResourcesState{
 				AllPods:      []corev1.Pod{podWithVersion("7.7.1")},
 				StatefulSets: []appsv1.StatefulSet{ssetWithVersion("7.7.1"), ssetWithVersion("7.7.0")},
 			},
-			want: &v770,
+			want: want{
+				ver: "7.7.0",
+				condition: esv1.Condition{
+					Type:    esv1.RunningDesiredVersion,
+					Status:  corev1.ConditionFalse,
+					Message: "Upgrading from 7.7.0 to 7.7.1",
+				},
+			},
 		},
 		{
-			name: "invalid version in the labels: error out",
+			name: "invalid version in the labels",
+			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "7.7.0"}},
 			resourcesState: ResourcesState{
 				AllPods:      []corev1.Pod{podWithVersion("7.7.1")},
 				StatefulSets: []appsv1.StatefulSet{ssetWithVersion("invalid"), ssetWithVersion("7.7.0")},
 			},
-			want:    nil,
-			wantErr: true,
+			want: want{
+				ver: "",
+				condition: esv1.Condition{
+					Type:    esv1.RunningDesiredVersion,
+					Status:  corev1.ConditionUnknown,
+					Message: "No running version reported",
+				},
+			},
+		},
+		{
+			name: "invalid version in spec",
+			es:   esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "invalid"}},
+			resourcesState: ResourcesState{
+				AllPods:      []corev1.Pod{podWithVersion("7.7.0")},
+				StatefulSets: []appsv1.StatefulSet{ssetWithVersion("7.7.0"), ssetWithVersion("7.7.0")},
+			},
+			want: want{
+				ver: "7.7.0",
+				condition: esv1.Condition{
+					Type:    esv1.RunningDesiredVersion,
+					Status:  corev1.ConditionUnknown,
+					Message: "Error while parsing desired version: No Major.Minor.Patch elements found",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &State{}
-			got, err := s.fetchMinRunningVersion(tt.resourcesState)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("fetchMinRunningVersion() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			s, err := NewState(tt.es)
+			assert.NoError(t, err)
+			got := s.UpdateMinRunningVersion(tt.resourcesState)
+			conditionIndex := got.Conditions.Index(esv1.RunningDesiredVersion)
+			if conditionIndex < 0 {
+				t.Fatalf("Elasticsearch status should contain condition esv1.RunningDesiredVersion")
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("fetchMinRunningVersion() got = %v, want %v", got, tt.want)
+			condition := got.Conditions[conditionIndex]
+			if !conditionsEqual(condition, tt.want.condition) {
+				t.Errorf("fetchMinRunningVersion() status.Condition[esv1.RunningDesiredVersion] = %v, want %v", condition, tt.want.condition)
+			}
+			if !reflect.DeepEqual(got.status.Version, tt.want.ver) {
+				t.Errorf("fetchMinRunningVersion() status.Version = %v, want %v", got.status.Version, tt.want.ver)
 			}
 		})
 	}
+}
+
+func conditionsEqual(c1, c2 esv1.Condition) bool {
+	return c1.Message == c2.Message &&
+		c1.Type == c2.Type &&
+		c1.Status == c2.Status
 }
