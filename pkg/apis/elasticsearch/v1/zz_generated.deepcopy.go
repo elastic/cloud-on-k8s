@@ -373,7 +373,7 @@ func (in *FileRealmSource) DeepCopy() *FileRealmSource {
 func (in *InProgressOperations) DeepCopyInto(out *InProgressOperations) {
 	*out = *in
 	in.DownscaleOperation.DeepCopyInto(&out.DownscaleOperation)
-	in.RollingUpgradeOperation.DeepCopyInto(&out.RollingUpgradeOperation)
+	in.UpgradeOperation.DeepCopyInto(&out.UpgradeOperation)
 	in.UpscaleOperation.DeepCopyInto(&out.UpscaleOperation)
 }
 

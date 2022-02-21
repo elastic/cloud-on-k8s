@@ -27,7 +27,7 @@ type StatusReporter struct {
 
 func (s *StatusReporter) MergeStatusReportingWith(otherStatus esv1.ElasticsearchStatus) esv1.ElasticsearchStatus {
 	mergedStatus := otherStatus.DeepCopy()
-	mergedStatus.RollingUpgradeOperation = s.UpgradeReporter.Merge(otherStatus.RollingUpgradeOperation)
+	mergedStatus.UpgradeOperation = s.UpgradeReporter.Merge(otherStatus.UpgradeOperation)
 	mergedStatus.UpscaleOperation = s.UpscaleReporter.Merge(otherStatus.UpscaleOperation)
 	mergedStatus.DownscaleOperation = s.DownscaleReporter.Merge(otherStatus.DownscaleOperation)
 

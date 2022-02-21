@@ -230,7 +230,7 @@ func assertSemanticEqualStatuses(t *testing.T, actual, expected *esv1.Elasticsea
 	assert.ElementsMatch(t, expected.DownscaleOperation.Nodes, actual.DownscaleOperation.Nodes)
 	assert.EqualValues(t, expected.DownscaleOperation.Stalled, actual.DownscaleOperation.Stalled)
 	assert.ElementsMatch(t, expected.UpscaleOperation.Nodes, actual.UpscaleOperation.Nodes)
-	assert.ElementsMatch(t, expected.RollingUpgradeOperation.Nodes, actual.RollingUpgradeOperation.Nodes)
+	assert.ElementsMatch(t, expected.UpgradeOperation.Nodes, actual.UpgradeOperation.Nodes)
 }
 
 func TestState_UpdateElasticsearchState(t *testing.T) {

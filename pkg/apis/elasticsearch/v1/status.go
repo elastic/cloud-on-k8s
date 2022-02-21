@@ -239,7 +239,7 @@ type DownscaleOperation struct {
 // InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster.
 // **This API is in technical preview and may be changed or removed in a future release.**
 type InProgressOperations struct {
-	DownscaleOperation      DownscaleOperation `json:"downscale"`
-	RollingUpgradeOperation UpgradeOperation   `json:"upgrade"`
-	UpscaleOperation        UpscaleOperation   `json:"upscale"`
+	DownscaleOperation DownscaleOperation `json:"downscale"`
+	UpgradeOperation   UpgradeOperation   `json:"upgrade"`
+	UpscaleOperation   UpscaleOperation   `json:"upscale"`
 }
