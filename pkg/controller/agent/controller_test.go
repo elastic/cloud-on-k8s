@@ -31,37 +31,32 @@ func newReconcileAgent(objs ...runtime.Object) *ReconcileAgent {
 }
 
 func TestReconcileAgent_Reconcile(t *testing.T) {
-	type k8sFields struct {
-		objs []runtime.Object
-	}
 	tests := []struct {
-		name      string
-		k8sfields k8sFields
-		request   reconcile.Request
-		want      reconcile.Result
-		expected  agentv1alpha1.Agent
-		wantErr   bool
+		name     string
+		objs     []runtime.Object
+		request  reconcile.Request
+		want     reconcile.Result
+		expected agentv1alpha1.Agent
+		wantErr  bool
 	}{
 		{
 			name: "valid unmanaged agent does not increment observedGeneration",
-			k8sfields: k8sFields{
-				objs: []runtime.Object{
-					&agentv1alpha1.Agent{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:       "testAgent",
-							Namespace:  "test",
-							Generation: 1,
-							Annotations: map[string]string{
-								common.ManagedAnnotation: "false",
-							},
+			objs: []runtime.Object{
+				&agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "testAgent",
+						Namespace:  "test",
+						Generation: 1,
+						Annotations: map[string]string{
+							common.ManagedAnnotation: "false",
 						},
-						Spec: agentv1alpha1.AgentSpec{
-							Version:    "8.0.1",
-							Deployment: &agentv1alpha1.DeploymentSpec{},
-						},
-						Status: agentv1alpha1.AgentStatus{
-							ObservedGeneration: 1,
-						},
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						Version:    "8.0.1",
+						Deployment: &agentv1alpha1.DeploymentSpec{},
+					},
+					Status: agentv1alpha1.AgentStatus{
+						ObservedGeneration: 1,
 					},
 				},
 			},
@@ -93,17 +88,15 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 		},
 		{
 			name: "too long name fails validation, and updates observedGeneration",
-			k8sfields: k8sFields{
-				objs: []runtime.Object{
-					&agentv1alpha1.Agent{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:       "testAgentwithtoolongofanamereallylongname",
-							Namespace:  "test",
-							Generation: 2,
-						},
-						Status: agentv1alpha1.AgentStatus{
-							ObservedGeneration: 1,
-						},
+			objs: []runtime.Object{
+				&agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "testAgentwithtoolongofanamereallylongname",
+						Namespace:  "test",
+						Generation: 2,
+					},
+					Status: agentv1alpha1.AgentStatus{
+						ObservedGeneration: 1,
 					},
 				},
 			},
@@ -129,7 +122,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newReconcileAgent(tt.k8sfields.objs...)
+			r := newReconcileAgent(tt.objs...)
 			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileAgent.Reconcile() error = %v, wantErr %v", err, tt.wantErr)

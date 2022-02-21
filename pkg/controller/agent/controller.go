@@ -6,7 +6,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,8 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/pkg/errors"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
@@ -156,6 +153,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) *reconciler.Results {
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
+	status := newStatus(agent)
 	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
 		return results
 	}
@@ -169,16 +167,13 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		OperatorParams: r.Parameters,
 	}
 
-	status := newStatus(agent)
-
-	// Run basic validations as a fallback in case webhook is disabled.
-	if err := r.validate(ctx, agent); err != nil {
-		if statusErr := updateStatus(params, status); statusErr != nil && apierrors.IsConflict(statusErr) {
+	defer func() {
+		if err := updateStatus(params, status); err != nil && apierrors.IsConflict(err) {
 			params.Logger().V(1).Info(
 				"Conflict while updating status",
 				"namespace", params.Agent.Namespace,
 				"agent_name", params.Agent.Name)
-			return results.WithResult(reconcile.Result{Requeue: true})
+			results = results.WithResult(reconcile.Result{Requeue: true})
 		} else if err != nil {
 			params.Logger().Error(
 				err,
@@ -186,30 +181,16 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 				"namespace", params.Agent.Namespace,
 				"agent_name", params.Agent.Name,
 			)
-			return results.WithError(errors.Wrapf(err, "while updating status: %s", statusErr))
+			results = results.WithError(err)
 		}
+	}()
+
+	// Run basic validations as a fallback in case webhook is disabled.
+	if err := r.validate(ctx, agent); err != nil {
 		return results.WithError(err)
 	}
 
-	driverResults := internalReconcile(params, &status)
-
-	if err := updateStatus(params, status); err != nil && apierrors.IsConflict(err) {
-		params.Logger().V(1).Info(
-			"Conflict while updating status",
-			"namespace", params.Agent.Namespace,
-			"agent_name", params.Agent.Name)
-		return results.WithResult(reconcile.Result{Requeue: true})
-	} else if err != nil {
-		params.Logger().Error(
-			err,
-			"Error while updating status",
-			"namespace", params.Agent.Namespace,
-			"agent_name", params.Agent.Name,
-		)
-		return results.WithError(fmt.Errorf("while updating status: %w", err))
-	}
-
-	return results.WithResults(driverResults)
+	return results.WithResults(internalReconcile(params, &status))
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
