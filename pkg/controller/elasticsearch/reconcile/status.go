@@ -141,7 +141,7 @@ func (u *UpgradeReporter) RecordNodesToBeUpgraded(nodes []string) {
 	for _, node := range nodes {
 		upgradedNode := u.nodes[node]
 		upgradedNode.Name = node
-		upgradedNode.DeleteStatus = "PENDING"
+		upgradedNode.Status = "PENDING"
 		u.nodes[node] = upgradedNode
 	}
 }
@@ -155,7 +155,7 @@ func (u *UpgradeReporter) RecordDeletedNode(node string) {
 	}
 	upgradedNode := u.nodes[node]
 	upgradedNode.Name = node
-	upgradedNode.DeleteStatus = "DELETED"
+	upgradedNode.Status = "DELETED"
 	u.nodes[node] = upgradedNode
 }
 
@@ -183,9 +183,9 @@ func (u *UpgradeReporter) Merge(other esv1.UpgradeOperation) esv1.UpgradeOperati
 	nodes := make([]esv1.UpgradedNode, 0, len(u.nodes))
 	for _, node := range u.nodes {
 		nodes = append(nodes, esv1.UpgradedNode{
-			Name:         node.Name,
-			Predicate:    node.Predicate,
-			DeleteStatus: node.DeleteStatus,
+			Name:      node.Name,
+			Predicate: node.Predicate,
+			Status:    node.Status,
 		})
 	}
 	// Sort for stable comparison

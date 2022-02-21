@@ -67,8 +67,13 @@ type ElasticsearchStatus struct {
 	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
 	// +optional
+	// Current service state of an Elasticsearch deployment.
+	// **This API is in technical preview and may be changed or removed in a future release.**
 	Conditions Conditions `json:"conditions"`
+
 	// +optional
+	// In progress changes being applied by the operator on the Elasticsearch cluster.
+	// **This API is in technical preview and may be changed or removed in a future release.**
 	InProgressOperations `json:"inProgressOperations"`
 }
 
@@ -104,6 +109,7 @@ const (
 )
 
 // Condition represents Elasticsearch resource's condition.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type Condition struct {
 	Type   ConditionType          `json:"type"`
 	Status corev1.ConditionStatus `json:"status"`
@@ -140,6 +146,7 @@ func (c Conditions) MergeWith(nextCondition Condition) Conditions {
 }
 
 // NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type NewNodeStatus string
 
 const (
@@ -151,58 +158,81 @@ const (
 )
 
 type NewNode struct {
-	Name   string        `json:"name"`
+	// Name of the Elasticsearch node that should be added to the cluster.
+	Name string `json:"name"`
+
+	// NewNodeStatus states if a new node is being created, or if the upscale is delayed.
 	Status NewNodeStatus `json:"status"`
 
 	// +optional
+	// Optional message to explain why a node may not be immediately added.
 	Message *string `json:"message"`
 }
 
+// UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes in the cluster.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type UpscaleOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
-	// Nodes are the nodes scheduled to be added by the operator.
+	// Nodes expected to be added by the operator.
 	Nodes []NewNode `json:"nodes"`
 }
 
+// UpgradedNode provides details about the status of nodes which are expected to be updated.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type UpgradedNode struct {
+	// Name of the Elasticsearch node that should be upgraded.
 	Name string `json:"name"`
 
-	DeleteStatus string `json:"status"`
+	// Status states if the node is either in the process of being deleted for an upgrade, or blocked by a predicate.
+	Status string `json:"status"`
 
-	// Predicate is the name of the predicate currently preventing this node from being deleted for upgrade.
+	// Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade.
 	// +optional
 	Predicate *string `json:"predicate"`
 }
 
+// UpgradeOperation provides an overview of the pending or in progress changes applied by the operator to update the Elasticsearch nodes in the cluster.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type UpgradeOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
 
-	// Nodes are the nodes that must be restarted for upgrade.
+	// Nodes that must be restarted for upgrade.
 	Nodes []UpgradedNode `json:"nodes"`
 }
 
+// DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes in the cluster.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type DownscaledNode struct {
+	// Name of the Elasticsearch node that should be removed.
 	Name string `json:"name"`
 
+	// Shutdown status as returned by the Elasticsearch shutdown API.
+	// If the Elasticsearch shutdown API is not available, the shutdown status is then inferred from the remaining
+	// shards on the nodes, as observed by the operator.
 	ShutdownStatus string `json:"shutdownStatus"`
 
 	// +optional
-	// Explanation is only available for clusters managed with the shutdown API
+	// Explanation provides details about an in progress node shutdown. It is only available for clusters managed with the
+	// Elasticsearch shutdown API.
 	Explanation *string `json:"explanation"`
 }
 
+// DownscaleOperation provides details about in progress downscale operations.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type DownscaleOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
 
-	// Nodes are the nodes that must be restarted for upgrade.
+	// Nodes which are scheduled to be removed from the cluster.
 	Nodes []DownscaledNode `json:"nodes"`
 
 	// Stalled represents a state where not progress can be made.
-	// It is only available for clusters managed with the shutdown API.
+	// It is only available for clusters managed with the Elasticsearch shutdown API.
 	// +optional
 	Stalled *bool `json:"stalled"`
 }
 
+// InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster.
+// **This API is in technical preview and may be changed or removed in a future release.**
 type InProgressOperations struct {
 	DownscaleOperation      DownscaleOperation `json:"downscale"`
 	RollingUpgradeOperation UpgradeOperation   `json:"upgrade"`

@@ -361,8 +361,6 @@ Package v1 contains API schema definitions for common types used by all resource
 
 
 
-
-
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config"]
 === Config 
 
@@ -879,6 +877,36 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition"]
+=== Condition 
+
+Condition represents Elasticsearch resource's condition. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`type`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-conditiontype[$$ConditionType$$]__ | 
+| *`status`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#conditionstatus-v1-core[$$ConditionStatus$$]__ | 
+| *`lastTransitionTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`message`* __string__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-conditiontype"]
+=== ConditionType (string) 
+
+ConditionType defines the condition of an Elasticsearch resource.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition[$$Condition$$]
+****
+
 
 
 
@@ -890,7 +918,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation"]
 === DownscaleOperation 
 
-
+DownscaleOperation provides details about in progress downscale operations. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
@@ -901,15 +929,15 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 |===
 | Field | Description
 | *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
-| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode[$$DownscaledNode$$]__ | Nodes are the nodes that must be restarted for upgrade.
-| *`stalled`* __boolean__ | Stalled represents a state where not progress can be made. It is only available for clusters managed with the shutdown API.
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode[$$DownscaledNode$$] array__ | Nodes which are scheduled to be removed from the cluster.
+| *`stalled`* __boolean__ | Stalled represents a state where not progress can be made. It is only available for clusters managed with the Elasticsearch shutdown API.
 |===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode"]
 === DownscaledNode 
 
-
+DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes in the cluster. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
@@ -919,9 +947,9 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`name`* __string__ | 
-| *`shutdownStatus`* __string__ | 
-| *`explanation`* __string__ | Explanation is only available for clusters managed with the shutdown API
+| *`name`* __string__ | Name of the Elasticsearch node that should be removed.
+| *`shutdownStatus`* __string__ | Shutdown status as returned by the Elasticsearch shutdown API. If the Elasticsearch shutdown API is not available, the shutdown status is then inferred from the remaining shards on the nodes, as observed by the operator.
+| *`explanation`* __string__ | Explanation provides details about an in progress node shutdown. It is only available for clusters managed with the Elasticsearch shutdown API.
 |===
 
 
@@ -940,7 +968,32 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
+| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]__ | 
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchhealth"]
+=== ElasticsearchHealth (string) 
+
+ElasticsearchHealth is the health of the cluster as returned by the health API.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase"]
+=== ElasticsearchOrchestrationPhase (string) 
+
+ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec"]
@@ -972,6 +1025,28 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus"]
+=== ElasticsearchStatus 
+
+ElasticsearchStatus defines the observed state of Elasticsearch
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch[$$Elasticsearch$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`availableNodes`* __integer__ | AvailableNodes is the number of available instances.
+| *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run in parallel: this value specifies the lowest version currently running.
+| *`health`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchhealth[$$ElasticsearchHealth$$]__ | 
+| *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase[$$ElasticsearchOrchestrationPhase$$]__ | 
+| *`conditions`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition[$$Condition$$] array__ | Current service state of an Elasticsearch deployment. **This API is in technical preview and may be changed or removed in a future release.**
+| *`inProgressOperations`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]__ | In progress changes being applied by the operator on the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+|===
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-filerealmsource"]
 === FileRealmSource 
 
@@ -990,6 +1065,23 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations"]
+=== InProgressOperations 
+
+InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`downscale`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation[$$DownscaleOperation$$]__ | 
+| *`upgrade`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation[$$UpgradeOperation$$]__ | 
+| *`upscale`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation[$$UpscaleOperation$$]__ | 
+|===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-logsmonitoring"]
@@ -1057,9 +1149,22 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`name`* __string__ | 
-| *`message`* __string__ | 
+| *`name`* __string__ | Name of the Elasticsearch node that should be added to the cluster.
+| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnodestatus[$$NewNodeStatus$$]__ | NewNodeStatus states if a new node is being created, or if the upscale is delayed.
+| *`message`* __string__ | Optional message to explain why a node may not be immediately added.
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnodestatus"]
+=== NewNodeStatus (string) 
+
+NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$]
+****
+
 
 
 
@@ -1181,7 +1286,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation"]
 === UpgradeOperation 
 
-
+UpgradeOperation provides an overview of the pending or in progress changes applied by the operator to update the Elasticsearch nodes in the cluster. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
@@ -1192,14 +1297,14 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 |===
 | Field | Description
 | *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
-| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode[$$UpgradedNode$$]__ | Nodes are the nodes that must be restarted for upgrade.
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode[$$UpgradedNode$$] array__ | Nodes that must be restarted for upgrade.
 |===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode"]
 === UpgradedNode 
 
-
+UpgradedNode provides details about the status of nodes which are expected to be updated. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
@@ -1209,15 +1314,16 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`name`* __string__ | 
-| *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for upgrade.
+| *`name`* __string__ | Name of the Elasticsearch node that should be upgraded.
+| *`status`* __string__ | Status states if the node is either in the process of being deleted for an upgrade, or blocked by a predicate.
+| *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade.
 |===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation"]
 === UpscaleOperation 
 
-
+UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes in the cluster. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
@@ -1228,7 +1334,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 |===
 | Field | Description
 | *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
-| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$]__ | Nodes are the nodes scheduled to be added by the operator.
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$] array__ | Nodes expected to be added by the operator.
 |===
 
 
@@ -1290,6 +1396,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
+| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus[$$ElasticsearchStatus$$]__ | 
 |===
 
 
@@ -1313,6 +1420,24 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`updateStrategy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-updatestrategy[$$UpdateStrategy$$]__ | UpdateStrategy specifies how updates to the cluster should be performed.
 | *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus"]
+=== ElasticsearchStatus 
+
+ElasticsearchStatus defines the observed state of Elasticsearch
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearch[$$Elasticsearch$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`health`* __ElasticsearchHealth__ | 
+| *`phase`* __ElasticsearchOrchestrationPhase__ | 
 |===
 
 

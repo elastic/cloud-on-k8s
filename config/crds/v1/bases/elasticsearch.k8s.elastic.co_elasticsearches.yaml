@@ -9177,8 +9177,13 @@ spec:
                 format: int32
                 type: integer
               conditions:
+                description: Current service state of an Elasticsearch deployment.
+                  **This API is in technical preview and may be changed or removed
+                  in a future release.**
                 items:
                   description: Condition represents Elasticsearch resource's condition.
+                    **This API is in technical preview and may be changed or removed
+                    in a future release.**
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -9201,24 +9206,42 @@ spec:
                   by the health API.
                 type: string
               inProgressOperations:
+                description: In progress changes being applied by the operator on
+                  the Elasticsearch cluster. **This API is in technical preview and
+                  may be changed or removed in a future release.**
                 properties:
                   downscale:
+                    description: DownscaleOperation provides details about in progress
+                      downscale operations. **This API is in technical preview and
+                      may be changed or removed in a future release.**
                     properties:
                       lastUpdatedTime:
                         format: date-time
                         type: string
                       nodes:
-                        description: Nodes are the nodes that must be restarted for
-                          upgrade.
+                        description: Nodes which are scheduled to be removed from
+                          the cluster.
                         items:
+                          description: DownscaledNode provides an overview of in progress
+                            changes applied by the operator to remove Elasticsearch
+                            nodes in the cluster. **This API is in technical preview
+                            and may be changed or removed in a future release.**
                           properties:
                             explanation:
-                              description: Explanation is only available for clusters
-                                managed with the shutdown API
+                              description: Explanation provides details about an in
+                                progress node shutdown. It is only available for clusters
+                                managed with the Elasticsearch shutdown API.
                               type: string
                             name:
+                              description: Name of the Elasticsearch node that should
+                                be removed.
                               type: string
                             shutdownStatus:
+                              description: Shutdown status as returned by the Elasticsearch
+                                shutdown API. If the Elasticsearch shutdown API is
+                                not available, the shutdown status is then inferred
+                                from the remaining shards on the nodes, as observed
+                                by the operator.
                               type: string
                           required:
                           - name
@@ -9228,29 +9251,41 @@ spec:
                       stalled:
                         description: Stalled represents a state where not progress
                           can be made. It is only available for clusters managed with
-                          the shutdown API.
+                          the Elasticsearch shutdown API.
                         type: boolean
                     required:
                     - nodes
                     type: object
                   upgrade:
+                    description: UpgradeOperation provides an overview of the pending
+                      or in progress changes applied by the operator to update the
+                      Elasticsearch nodes in the cluster. **This API is in technical
+                      preview and may be changed or removed in a future release.**
                     properties:
                       lastUpdatedTime:
                         format: date-time
                         type: string
                       nodes:
-                        description: Nodes are the nodes that must be restarted for
-                          upgrade.
+                        description: Nodes that must be restarted for upgrade.
                         items:
+                          description: UpgradedNode provides details about the status
+                            of nodes which are expected to be updated. **This API
+                            is in technical preview and may be changed or removed
+                            in a future release.**
                           properties:
                             name:
+                              description: Name of the Elasticsearch node that should
+                                be upgraded.
                               type: string
                             predicate:
                               description: Predicate is the name of the predicate
                                 currently preventing this node from being deleted
-                                for upgrade.
+                                for an upgrade.
                               type: string
                             status:
+                              description: Status states if the node is either in
+                                the process of being deleted for an upgrade, or blocked
+                                by a predicate.
                               type: string
                           required:
                           - name
@@ -9261,23 +9296,29 @@ spec:
                     - nodes
                     type: object
                   upscale:
+                    description: UpscaleOperation provides an overview of in progress
+                      changes applied by the operator to add Elasticsearch nodes in
+                      the cluster. **This API is in technical preview and may be changed
+                      or removed in a future release.**
                     properties:
                       lastUpdatedTime:
                         format: date-time
                         type: string
                       nodes:
-                        description: Nodes are the nodes scheduled to be added by
-                          the operator.
+                        description: Nodes expected to be added by the operator.
                         items:
                           properties:
                             message:
+                              description: Optional message to explain why a node
+                                may not be immediately added.
                               type: string
                             name:
+                              description: Name of the Elasticsearch node that should
+                                be added to the cluster.
                               type: string
                             status:
-                              description: NewNodeStatus provides details about the
-                                status of nodes which are expected to be created and
-                                added to the Elasticsearch cluster.
+                              description: NewNodeStatus states if a new node is being
+                                created, or if the upscale is delayed.
                               type: string
                           required:
                           - name
