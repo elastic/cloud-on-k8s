@@ -207,6 +207,7 @@ func TestVersionUpgradeTwoNodesToLatest8x(t *testing.T) {
 
 	initial := elasticsearch.NewBuilder("test-version-up-2-to-8x").
 		WithVersion(srcVersion).
+		WithChangeBudget(2, 2). // 8x non-HA upgrades cannot honour a change budget with maxUnavailable 1
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
