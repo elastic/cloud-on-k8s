@@ -8,14 +8,13 @@ import (
 	"context"
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -119,6 +118,7 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 
 	if len(nonReadyPods) > 0 {
 		log.Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), "Not all Pods are ready for a full cluster upgrade")
 		return nil, nil
 	}
 
@@ -233,7 +233,7 @@ func deletePod(
 	// expect the pod to not be there in the cache at next reconciliation
 	expectations.ExpectDeletion(pod)
 	// Update status
-	reconcileState.RecordDeletedNode(pod.Name)
+	reconcileState.RecordDeletedNode(pod.Name, msg)
 	return nil
 }
 

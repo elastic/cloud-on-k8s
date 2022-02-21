@@ -132,6 +132,10 @@ type UpgradeReporter struct {
 }
 
 func (u *UpgradeReporter) RecordNodesToBeUpgraded(nodes []string) {
+	u.RecordNodesToBeUpgradedWithMessage(nodes, "")
+}
+
+func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, message string) {
 	if u == nil {
 		return
 	}
@@ -142,11 +146,14 @@ func (u *UpgradeReporter) RecordNodesToBeUpgraded(nodes []string) {
 		upgradedNode := u.nodes[node]
 		upgradedNode.Name = node
 		upgradedNode.Status = "PENDING"
+		if len(message) > 0 {
+			upgradedNode.Message = pointer.String(message)
+		}
 		u.nodes[node] = upgradedNode
 	}
 }
 
-func (u *UpgradeReporter) RecordDeletedNode(node string) {
+func (u *UpgradeReporter) RecordDeletedNode(node, message string) {
 	if u == nil {
 		return
 	}
@@ -156,6 +163,7 @@ func (u *UpgradeReporter) RecordDeletedNode(node string) {
 	upgradedNode := u.nodes[node]
 	upgradedNode.Name = node
 	upgradedNode.Status = "DELETED"
+	upgradedNode.Message = pointer.String(message)
 	u.nodes[node] = upgradedNode
 }
 
@@ -171,6 +179,7 @@ func (u *UpgradeReporter) RecordPredicatesResult(predicatesResult map[string]str
 		upgradedNode := u.nodes[node]
 		upgradedNode.Name = node
 		upgradedNode.Predicate = pointer.String(predicate)
+		upgradedNode.Message = pointer.String("Cannot restart node because of failed predicate")
 		u.nodes[node] = upgradedNode
 	}
 }
@@ -185,6 +194,7 @@ func (u *UpgradeReporter) Merge(other esv1.UpgradeOperation) esv1.UpgradeOperati
 		nodes = append(nodes, esv1.UpgradedNode{
 			Name:      node.Name,
 			Predicate: node.Predicate,
+			Message:   node.Message,
 			Status:    node.Status,
 		})
 	}

@@ -9273,6 +9273,10 @@ spec:
                             is in technical preview and may be changed or removed
                             in a future release.**
                           properties:
+                            message:
+                              description: Optional message to explain why a node
+                                may not be immediately restarted for upgrade.
+                              type: string
                             name:
                               description: Name of the Elasticsearch node that should
                                 be upgraded.
@@ -9285,7 +9289,8 @@ spec:
                             status:
                               description: Status states if the node is either in
                                 the process of being deleted for an upgrade, or blocked
-                                by a predicate.
+                                by a predicate or another condition stated in the
+                                message field.
                               type: string
                           required:
                           - name

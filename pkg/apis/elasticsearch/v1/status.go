@@ -183,8 +183,13 @@ type UpgradedNode struct {
 	// Name of the Elasticsearch node that should be upgraded.
 	Name string `json:"name"`
 
-	// Status states if the node is either in the process of being deleted for an upgrade, or blocked by a predicate.
+	// Status states if the node is either in the process of being deleted for an upgrade,
+	// or blocked by a predicate or another condition stated in the message field.
 	Status string `json:"status"`
+
+	// +optional
+	// Optional message to explain why a node may not be immediately restarted for upgrade.
+	Message *string `json:"message"`
 
 	// Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade.
 	// +optional

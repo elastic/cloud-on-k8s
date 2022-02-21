@@ -1315,7 +1315,8 @@ UpgradedNode provides details about the status of nodes which are expected to be
 |===
 | Field | Description
 | *`name`* __string__ | Name of the Elasticsearch node that should be upgraded.
-| *`status`* __string__ | Status states if the node is either in the process of being deleted for an upgrade, or blocked by a predicate.
+| *`status`* __string__ | Status states if the node is either in the process of being deleted for an upgrade, or blocked by a predicate or another condition stated in the message field.
+| *`message`* __string__ | Optional message to explain why a node may not be immediately restarted for upgrade.
 | *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade.
 |===
 
