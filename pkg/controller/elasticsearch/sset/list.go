@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -56,15 +55,6 @@ func (l StatefulSetList) Names() set.StringSet {
 		names.Add(statefulSet.Name)
 	}
 	return names
-}
-
-// ObjectMetas returns a list of MetaObject from the StatefulSetList.
-func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
-	objs := make([]metav1.ObjectMeta, len(l))
-	for i, sset := range l {
-		objs[i] = sset.ObjectMeta
-	}
-	return objs
 }
 
 // ToUpdate filters the StatefulSetList to the ones having an update revision scheduled.
