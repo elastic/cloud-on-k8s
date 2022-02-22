@@ -9,6 +9,9 @@ import (
 	"crypto/x509"
 	"time"
 
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -21,8 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // ReconcileHTTP reconciles the HTTP layer certificates of a cluster.

@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
-
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
