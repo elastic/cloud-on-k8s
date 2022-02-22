@@ -7,7 +7,6 @@ package transport
 import (
 	"bytes"
 	"context"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"reflect"
 	"strings"
 	"time"
@@ -49,10 +48,7 @@ func ReconcileTransportCertificatesSecrets(
 	if err != nil {
 		return results.WithError(err)
 	}
-	ssets := set.Make()
-	for _, actualStatefulSet := range actualStatefulSets {
-		ssets.Add(actualStatefulSet.Name)
-	}
+	ssets := actualStatefulSets.Names()
 	for _, nodeSet := range es.Spec.NodeSets {
 		ssets.Add(esv1.StatefulSet(es.Name, nodeSet.Name))
 	}
