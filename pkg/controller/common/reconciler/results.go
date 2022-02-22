@@ -45,6 +45,7 @@ var Requeue = ReconciliationState{Result: reconcile.Result{Requeue: true}}
 
 func RequeueAfter(requeueAfter time.Duration) ReconciliationState {
 	return ReconciliationState{
+		incomplete: true,
 		Result: reconcile.Result{
 			RequeueAfter: requeueAfter,
 		},
@@ -111,7 +112,8 @@ func (r *Results) WithError(err error) *Results {
 
 // WithResult adds a result to the results.
 func (r *Results) WithResult(res reconcile.Result) *Results {
-	r.WithReconciliationState(ReconciliationState{Result: res})
+	incomplete := res.Requeue || !res.IsZero()
+	r.WithReconciliationState(ReconciliationState{incomplete: incomplete, Result: res})
 	return r
 }
 
@@ -130,13 +132,13 @@ func (r *Results) mergeResult(kind resultKind, res ReconciliationState) {
 	case kind > r.currKind:
 		r.currKind = kind
 		r.currResult = res
-		r.currResult.incomplete = r.currResult.incomplete || res.incomplete
 	case kind == specificKind && r.currKind == specificKind:
 		if res.Result.RequeueAfter < r.currResult.Result.RequeueAfter {
 			r.currResult = res
-			r.currResult.incomplete = r.currResult.incomplete && res.incomplete
 		}
 	}
+	// Reconciliation is considered as incomplete as soon as it has been reported, whatever the priority of the result.
+	r.currResult.incomplete = r.currResult.incomplete || res.incomplete
 }
 
 // Aggregate returns the highest priority reconcile result and any errors seen so far.
@@ -144,6 +146,9 @@ func (r *Results) Aggregate() (reconcile.Result, error) {
 	return r.currResult.Result, k8serrors.NewAggregate(r.errors)
 }
 
+// IsReconciled returns true if no error has been reported and if RequeueAfter is 0.
+// It also returns true if ReconciliationComplete has been called while setting RequeueAfter to something
+// greater than 0, in which case Requeue and RequeueAfter are ignored.
 func (r *Results) IsReconciled() (bool, string) {
 	if r.HasError() {
 		err := k8serrors.NewAggregate(r.errors)

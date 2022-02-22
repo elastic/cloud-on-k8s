@@ -132,3 +132,87 @@ func TestResultsHasError(t *testing.T) {
 	r = r.WithError(errors.New("some error"))
 	require.True(t, r.HasError())
 }
+
+func TestResults_IsReconciled(t *testing.T) {
+	tests := []struct {
+		name           string
+		results        *Results
+		wantReconciled bool
+		wantReason     string
+	}{
+		{
+			name: "Ignore RequeueAfter if WithReconciliationState is called",
+			results: (&Results{}).
+				WithReconciliationState(RequeueAfter(time.Duration(42)).ReconciliationComplete()),
+			wantReconciled: true,
+		},
+		{
+			name: "Do not ignore RequeueAfter if ReconciliationComplete has lower priority",
+			results: (&Results{}).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).ReconciliationComplete()).
+				WithReconciliationState(RequeueAfter(time.Duration(42))),
+			wantReconciled: false,
+		},
+		{
+			name: "Do not ignore RequeueAfter if ReconciliationComplete has higher priority",
+			results: (&Results{}).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).ReconciliationComplete()).
+				WithReconciliationState(RequeueAfter(time.Duration(96))),
+			wantReconciled: false,
+		},
+		{
+			name: "Error before",
+			results: (&Results{}).
+				WithError(errors.New("foo")).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).ReconciliationComplete()),
+			wantReconciled: false,
+			wantReason:     "foo",
+		},
+		{
+			name: "Forced requeue",
+			results: (&Results{}).
+				WithResult(reconcile.Result{
+					Requeue:      true,
+					RequeueAfter: 0,
+				}).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).ReconciliationComplete()),
+			wantReconciled: false,
+		},
+		{
+			name: "Error after",
+			results: (&Results{}).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).ReconciliationComplete()).
+				WithError(errors.New("foo2")),
+			wantReconciled: false,
+			wantReason:     "foo2",
+		},
+		{
+			name: "WithReason called twice",
+			results: (&Results{}).
+				WithReconciliationState(RequeueAfter(time.Duration(42)).WithReason("a better reason")).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).WithReason("my reason")),
+			wantReconciled: false,
+			wantReason:     "a better reason",
+		},
+		{
+			name: "Error has more priority than WithReason",
+			results: (&Results{}).
+				WithReconciliationState(RequeueAfter(time.Duration(42)).WithReason("a better reason")).
+				WithError(errors.New("bar")).
+				WithReconciliationState(RequeueAfter(time.Duration(84)).WithReason("my reason")),
+			wantReconciled: false,
+			wantReason:     "bar",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotReconciled, gotReason := tt.results.IsReconciled()
+			if gotReconciled != tt.wantReconciled {
+				t.Errorf("Results.IsReconciled() got = %v, want %v", gotReconciled, tt.wantReconciled)
+			}
+			if gotReason != tt.wantReason {
+				t.Errorf("Results.IsReconciled() got1 = %v, want %v", gotReason, tt.wantReason)
+			}
+		})
+	}
+}

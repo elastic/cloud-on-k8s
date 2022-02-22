@@ -14,14 +14,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	commonname "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 var (
