@@ -47,10 +47,7 @@ func HandleDownscale(
 
 	// Compute the desired downscale, without applying any budget filter, to feed the status and let the user know what nodes should
 	// be eventually removed, not only in this reconciliation loop, but also in the next ones.
-	desiredDownscale, _, err := podsToDownscale(actualPods, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
-	if err != nil {
-		return results.WithError(err)
-	}
+	desiredDownscale, _ := podsToDownscale(actualPods, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
 	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
@@ -99,11 +96,10 @@ func podsToDownscale(
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
 	downscaleFilter downscaleFilter,
-) ([]ssetDownscale, sset.StatefulSetList, error) {
+) ([]ssetDownscale, sset.StatefulSetList) {
 	downscaleState := newDownscaleState(actualPods, es)
 	// compute the list of StatefulSet downscales and deletions to perform
-	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
-	return downscales, deletions, nil
+	return calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
