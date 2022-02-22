@@ -9,30 +9,36 @@ import (
 	"errors"
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-func getGeneration(obj metav1.Object, k *test.K8sClient) (int64, error) {
-	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, &obj); err != nil {
+func getGeneration(obj client.Object, k *test.K8sClient) (int64, error) {
+	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj); err != nil {
 		return 0, err
 	}
 
-	return obj.GetObjectMeta().GetGeneration(), nil
+	return obj.GetGeneration(), nil
 }
 
-func getObservedGeneration(obj metav1.Object, k *test.K8sClient) (int64, error) {
-	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, &obj); err != nil {
+func getObservedGeneration(obj client.Object, k *test.K8sClient) (int64, error) {
+	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj); err != nil {
 		return 0, err
 	}
 
-	return obj.Status.ObservedGeneration, nil
+	switch v := obj.(type) {
+	case *agentv1alpha1.Agent:
+		return v.Status.ObservedGeneration, nil
+	default:
+		return 0, fmt.Errorf("unsupported type while retrieving status.observedGeneration: %T", v)
+	}
 }
 
 // RetrieveAgentGenerationsStep stores the current metadata.Generation, and status.ObservedGeneration into the given fields.
-func RetrieveAgentGenerationsStep(obj metav1.Object, k *test.K8sClient, generation, observedGeneration *int64) test.Step {
+func RetrieveAgentGenerationsStep(obj client.Object, k *test.K8sClient, generation, observedGeneration *int64) test.Step {
 	return test.Step{
 		Name: "Retrieve Objects metadata.Generation, and status.ObservedGeneration for comparison purpose",
 		Test: test.Eventually(func() error {
@@ -53,7 +59,7 @@ func RetrieveAgentGenerationsStep(obj metav1.Object, k *test.K8sClient, generati
 
 // CompareObjectGenerationsStep compares the current object's metadata.generation, and status.observedGeneration
 // and fails if they don't match expectations.
-func CompareObjectGenerationsStep(obj metav1.Object, k *test.K8sClient, previousObjectGeneration, previousObjectObservedGeneration *int64) test.Step {
+func CompareObjectGenerationsStep(obj client.Object, k *test.K8sClient, previousObjectGeneration, previousObjectObservedGeneration *int64) test.Step {
 	return test.Step{
 		Name: "Cluster metadata.generation, and status.observedGeneration should have been incremented from previous state, and should be equal",
 		Test: test.Eventually(func() error {
