@@ -181,7 +181,7 @@ func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, string, erro
 			)
 
 			var reason strings.Builder
-			reason.WriteString(fmt.Sprintf("StatefulSet %s has some pending Pods operations", statefulSet.Name))
+			reason.WriteString(fmt.Sprintf("StatefulSet %s has pending Pod operations", statefulSet.Name))
 			if len(pendingCreations) > 0 {
 				reason.WriteString(fmt.Sprintf(", creations: %s", pendingCreations))
 			}
