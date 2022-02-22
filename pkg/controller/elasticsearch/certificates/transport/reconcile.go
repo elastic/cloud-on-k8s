@@ -7,6 +7,7 @@ package transport
 import (
 	"bytes"
 	"context"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"reflect"
 	"strings"
 	"time"
@@ -26,7 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 var log = ulog.Log.WithName("transport")
