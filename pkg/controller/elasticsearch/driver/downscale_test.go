@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -148,11 +150,12 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 		},
 	)
+	reconcileState := reconcile.MustNewState(esv1.Elasticsearch{})
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
 		expectations:   expectations.NewExpectations(k8sClient),
-		reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-		nodeShutdown:   migration.NewShardMigration(es, esClient, shardLister),
+		reconcileState: reconcileState,
+		nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState),
 		esClient:       esClient,
 		es:             es,
 		parentCtx:      context.Background(),
@@ -173,6 +176,17 @@ func TestHandleDownscale(t *testing.T) {
 	// data migration should have been requested for all nodes, but last master, leaving the cluster
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
 	require.Equal(t, "ssetMaster3Replicas-2,ssetData4Replicas-3,ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
+
+	// status should reflect the in progress operations
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "NOT_STARTED"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 
 	// only part of the expected replicas of ssetMaster3Replicas should be updated,
 	// since we remove only one master at a time
@@ -211,6 +225,16 @@ func TestHandleDownscale(t *testing.T) {
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
+	// status should reflect the in progress operations
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 
 	// one less master
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
@@ -231,11 +255,20 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
-	downscaleCtx.nodeShutdown = migration.NewShardMigration(es, esClient, shardLister)
+	downscaleCtx.nodeShutdown = shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState)
 	nodespec.UpdateReplicas(&expectedAfterDownscale[0], pointer.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
@@ -290,6 +323,17 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, err)
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetToRemove-0", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetToRemove-1", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
 	require.True(t, apierrors.IsNotFound(err))
 }
