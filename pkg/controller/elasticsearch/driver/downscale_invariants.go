@@ -6,12 +6,11 @@ package driver
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -53,12 +52,8 @@ type downscaleState struct {
 }
 
 // newDownscaleState creates a new downscaleState.
-func newDownscaleState(c k8s.Client, es esv1.Elasticsearch) (*downscaleState, error) {
+func newDownscaleState(actualPods []corev1.Pod, es esv1.Elasticsearch) *downscaleState {
 	// retrieve the number of masters running ready
-	actualPods, err := sset.GetActualPodsForCluster(c, es)
-	if err != nil {
-		return nil, err
-	}
 	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
 
@@ -69,7 +64,7 @@ func newDownscaleState(c k8s.Client, es esv1.Elasticsearch) (*downscaleState, er
 			int32(len(nodesReady)),
 			es.Spec.NodeCount(),
 			es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()),
-	}, nil
+	}
 }
 
 func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *int32) *int32 {

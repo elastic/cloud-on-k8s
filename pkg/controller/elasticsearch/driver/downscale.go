@@ -38,20 +38,24 @@ func HandleDownscale(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	// TODO: We should first get the state from the cluster to build a consistent view for both the status and the downscale logic.
-	// TODO: Said differently: podsToDownscale and newDownscaleState should not use a K8S client, they should work from a common, shared, state.
-	desiredDownscale, _, err := podsToDownscale(downscaleCtx.k8sClient, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
+	// Retrieve the current list of Pods for this cluster. This list is used to compute the nodes that should be eventually removed,
+	// and the ones that will be removed in this reconciliation loop.
+	actualPods, err := sset.GetActualPodsForCluster(downscaleCtx.k8sClient, downscaleCtx.es)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Compute the desired downscale, without applying any budget filter, to feed the status and let the user know what nodes should
+	// be eventually removed, not only in this reconciliation loop, but also in the next ones.
+	desiredDownscale, _, err := podsToDownscale(actualPods, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
 	if err != nil {
 		return results.WithError(err)
 	}
 	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
-	// make sure we only downscale nodes we're allowed to
-	downscaleState, err := newDownscaleState(downscaleCtx.k8sClient, downscaleCtx.es)
-	if err != nil {
-		return results.WithError(err)
-	}
+	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
+	downscaleState := newDownscaleState(actualPods, downscaleCtx.es)
 
 	// compute the list of StatefulSet downscales and deletions to perform
 	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
@@ -90,16 +94,13 @@ func HandleDownscale(
 }
 
 func podsToDownscale(
-	k8sClient k8s.Client,
+	actualPods []corev1.Pod,
 	es esv1.Elasticsearch,
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
 	downscaleFilter downscaleFilter,
 ) ([]ssetDownscale, sset.StatefulSetList, error) {
-	downscaleState, err := newDownscaleState(k8sClient, es)
-	if err != nil {
-		return nil, nil, err
-	}
+	downscaleState := newDownscaleState(actualPods, es)
 	// compute the list of StatefulSet downscales and deletions to perform
 	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
 	return downscales, deletions, nil
