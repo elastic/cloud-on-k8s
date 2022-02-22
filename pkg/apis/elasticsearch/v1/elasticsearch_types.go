@@ -437,6 +437,7 @@ const (
 type ElasticsearchStatus struct {
 	// AvailableNodes is the number of available instances.
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
+
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run
 	// in parallel: this value specifies the lowest version currently running.
 	Version string                          `json:"version,omitempty"`
@@ -444,6 +445,12 @@ type ElasticsearchStatus struct {
 	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 
 	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
+
+	// ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Elasticsearch
+	// controller has not yet processed the changes contained in the Elasticsearch specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {

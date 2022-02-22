@@ -9189,6 +9189,15 @@ spec:
                   single Association of a given type (for ex. single ES reference),
                   this map contains a single entry.
                 type: object
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this Elasticsearch cluster. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Elasticsearch controller has not yet processed the changes contained
+                  in the Elasticsearch specification.
+                format: int64
+                type: integer
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.
