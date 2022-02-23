@@ -133,9 +133,9 @@ func (c Conditions) Index(conditionType ConditionType) int {
 func (c Conditions) MergeWith(nextCondition Condition) Conditions {
 	cp := c.DeepCopy()
 	if index := cp.Index(nextCondition.Type); index >= 0 {
-		actualCondition := c[index]
-		if actualCondition.Status != nextCondition.Status ||
-			actualCondition.Message != nextCondition.Message {
+		currentCondition := c[index]
+		if currentCondition.Status != nextCondition.Status ||
+			currentCondition.Message != nextCondition.Message {
 			// Update condition
 			cp[index] = nextCondition
 		}
