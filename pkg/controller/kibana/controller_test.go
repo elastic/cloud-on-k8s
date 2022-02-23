@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+//nolint:thelper
 func TestReconcileKibana_Reconcile(t *testing.T) {
 	sampleElasticsearch := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -62,11 +63,6 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		recorder       record.EventRecorder
 		dynamicWatches watches.DynamicWatches
 		params         operator.Parameters
-		iteration      uint64
-	}
-	type args struct {
-		ctx     context.Context
-		request reconcile.Request
 	}
 	tests := []struct {
 		name     string
