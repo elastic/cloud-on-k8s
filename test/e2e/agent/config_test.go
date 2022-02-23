@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
@@ -156,7 +157,7 @@ func TestFleetMode(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, esBuilder.Ref(), fleetServerBuilder.Ref()))
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
 	agentBuilder := agent.NewBuilder(name+"-ea").
 		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
@@ -170,12 +171,20 @@ func TestFleetMode(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
 }
 
-func fleetConfigForKibana(t *testing.T, esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {
+func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {
 	t.Helper()
 	kibanaConfig := map[string]interface{}{}
-	err := yaml.Unmarshal([]byte(E2EFleetPolicies), &kibanaConfig)
+
+	v, err := version.Parse(agentVersion)
 	if err != nil {
-		t.Fatalf("Unable to parse Fleet policies: %v", err)
+		t.Fatalf("Unable to parse Agent version: %v", err)
+	}
+	if v.GTE(version.MustParse("7.16.0")) {
+		// Starting with 7.16.0 we explicitly declare policies instead of relying on the default ones.
+		// This is mandatory starting with 8.0.0. See https://github.com/elastic/cloud-on-k8s/issues/5262.
+		if err := yaml.Unmarshal([]byte(E2EFleetPolicies), &kibanaConfig); err != nil {
+			t.Fatalf("Unable to parse Fleet policies: %v", err)
+		}
 	}
 	kibanaConfig["xpack.fleet.agents.elasticsearch.hosts"] = []string{
 		fmt.Sprintf(
