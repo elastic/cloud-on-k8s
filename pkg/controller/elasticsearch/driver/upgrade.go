@@ -97,11 +97,11 @@ func (d *defaultDriver) handleUpgrades(
 
 	var deletedPods []corev1.Pod
 
-	is8xVersionUpgrade, err := is8xVersionUpgrade(d.ES)
+	isVersionUpgrade, err := isVersionUpgrade(d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
-	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && is8xVersionUpgrade
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isVersionUpgrade
 	if shouldDoFullRestartUpgrade {
 		// unconditional full cluster upgrade
 		deletedPods, err = run(upgrade.DeleteAll)
@@ -206,9 +206,8 @@ func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
 	return len(actualMasters) <= 2
 }
 
-// is8xVersionUpgrade returns true if a version upgrade involves 8.x which displays different behaviour during version upgrades
-// than previous Elastic Stack versions.
-func is8xVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
+// isVersionUpgrade returns true if a spec change contains a version upgrade.
+func isVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	specVersion, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return false, err
@@ -217,7 +216,7 @@ func is8xVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return specVersion.Major == 8 && specVersion.GT(statusVersion), nil
+	return specVersion.GT(statusVersion), nil
 }
 
 func healthyPods(
