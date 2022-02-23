@@ -51,11 +51,16 @@ func RetrieveClusterGenerationsStep(es esv1.Elasticsearch, k *test.K8sClient, ge
 	}
 }
 
-// CompareClusterGenerations compares the current metadata.generation, and status.observedGeneration
+// CompareClusterGenerationsStep compares the current metadata.generation, and status.observedGeneration
 // and fails if they don't match expectations.
-func CompareClusterGenerationsStep(es esv1.Elasticsearch, k *test.K8sClient, previousClusterGeneration, previousClusterObservedGeneration *int64) test.Step {
+// If isMutated is true we then expect the metadata.generation to be incremented.
+func CompareClusterGenerationsStep(
+	es esv1.Elasticsearch,
+	k *test.K8sClient,
+	isMutated bool,
+	previousClusterGeneration, previousClusterObservedGeneration int64) test.Step {
 	return test.Step{
-		Name: "Cluster metadata.generation, and status.observedGeneration should have been incremented from previous state, and should be equal",
+		Name: "metadata.generation and status.observedGeneration may have been incremented from previous state and should be equal",
 		Test: test.Eventually(func() error {
 			newClusterGeneration, err := clusterGeneration(es, k)
 			if err != nil {
@@ -71,10 +76,10 @@ func CompareClusterGenerationsStep(es esv1.Elasticsearch, k *test.K8sClient, pre
 			if newClusterObservedGeneration == 0 {
 				return errors.New("expected status.observedGeneration to not be empty")
 			}
-			if newClusterGeneration <= *previousClusterGeneration {
+			if isMutated && newClusterGeneration <= previousClusterGeneration {
 				return errors.New("expected metadata.generation to be incremented")
 			}
-			if newClusterObservedGeneration <= *previousClusterObservedGeneration {
+			if isMutated && newClusterObservedGeneration <= previousClusterObservedGeneration {
 				return errors.New("expected status.observedGeneration to be incremented")
 			}
 			if newClusterGeneration != newClusterObservedGeneration {

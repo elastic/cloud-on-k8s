@@ -75,9 +75,11 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
 	mutatedFrom := b.MutatedFrom
+	isMutated := true
 	if mutatedFrom == nil {
 		// cluster mutates to itself (same spec)
 		mutatedFrom = &b
+		isMutated = false
 	}
 
 	masterChangeBudgetWatcher := NewMasterChangeBudgetWatcher(b.Elasticsearch)
@@ -118,7 +120,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-			CompareClusterGenerationsStep(b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
+			CompareClusterGenerationsStep(b.Elasticsearch, k, isMutated, clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation),
 			masterChangeBudgetWatcher.StopStep(k),
 			changeBudgetWatcher.StopStep(k),
 			test.Step{
