@@ -20,8 +20,8 @@ import (
 
 var log = ulog.Log.WithName("elasticsearch-controller")
 
-// State holds the accumulated state during the reconcile loop including the response and a pointer to an
-// Elasticsearch resource for status updates.
+// State holds the accumulated state during the reconcile loop including the response and a copy of the
+// Elasticsearch resource from the start of reconciliation, for status updates.
 type State struct {
 	*events.Recorder
 	*StatusReporter
@@ -37,6 +37,7 @@ func NewState(c esv1.Elasticsearch) (*State, error) {
 		return nil, err
 	}
 	status := *c.Status.DeepCopy()
+	status.ObservedGeneration = c.Generation
 	// reset the health to 'unknown' so that if reconciliation fails before the observer has had a chance to get it,
 	// we stop reporting a health that may be out of date
 	status.Health = esv1.ElasticsearchUnknownHealth
@@ -151,9 +152,9 @@ func (s *State) UpdateMinRunningVersion(
 	return s
 }
 
-// IsElasticsearchReady reports if Elasticsearch is ready.
-func (s *State) IsElasticsearchReady() bool {
-	return s.status.Phase == esv1.ElasticsearchReadyPhase
+// IsElasticsearchPhase reports if Elasticsearch is in the provided phase.
+func (s *State) IsElasticsearchPhase(phase esv1.ElasticsearchOrchestrationPhase) bool {
+	return s.status.Phase == phase
 }
 
 // UpdateElasticsearchInvalidWithEvent is a convenient method to set the phase to esv1.ElasticsearchResourceInvalid

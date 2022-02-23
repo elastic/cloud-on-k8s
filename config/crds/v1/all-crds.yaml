@@ -4471,16 +4471,16 @@ spec:
             - version
             type: object
           status:
-            description: ElasticsearchStatus defines the observed state of Elasticsearch
+            description: ElasticsearchStatus represents the observed state of Elasticsearch.
             properties:
               availableNodes:
                 description: AvailableNodes is the number of available instances.
                 format: int32
                 type: integer
               conditions:
-                description: Current service state of an Elasticsearch deployment.
-                  **This API is in technical preview and may be changed or removed
-                  in a future release.**
+                description: Conditions holds the current service state of an Elasticsearch
+                  cluster. **This API is in technical preview and may be changed or
+                  removed in a future release.**
                 items:
                   description: Condition represents Elasticsearch resource's condition.
                     **This API is in technical preview and may be changed or removed
@@ -4507,9 +4507,9 @@ spec:
                   by the health API.
                 type: string
               inProgressOperations:
-                description: In progress changes being applied by the operator on
-                  the Elasticsearch cluster. **This API is in technical preview and
-                  may be changed or removed in a future release.**
+                description: InProgressOperations represents changes being applied
+                  by the operator to the Elasticsearch cluster. **This API is in technical
+                  preview and may be changed or removed in a future release.**
                 properties:
                   downscale:
                     description: DownscaleOperation provides details about in progress
@@ -4525,7 +4525,7 @@ spec:
                         items:
                           description: DownscaledNode provides an overview of in progress
                             changes applied by the operator to remove Elasticsearch
-                            nodes in the cluster. **This API is in technical preview
+                            nodes from the cluster. **This API is in technical preview
                             and may be changed or removed in a future release.**
                           properties:
                             explanation:
@@ -4550,7 +4550,7 @@ spec:
                           type: object
                         type: array
                       stalled:
-                        description: Stalled represents a state where not progress
+                        description: Stalled represents a state where no progress
                           can be made. It is only available for clusters managed with
                           the Elasticsearch shutdown API.
                         type: boolean
@@ -4603,7 +4603,7 @@ spec:
                     type: object
                   upscale:
                     description: UpscaleOperation provides an overview of in progress
-                      changes applied by the operator to add Elasticsearch nodes in
+                      changes applied by the operator to add Elasticsearch nodes to
                       the cluster. **This API is in technical preview and may be changed
                       or removed in a future release.**
                     properties:
@@ -4648,6 +4648,15 @@ spec:
                   single Association of a given type (for ex. single ES reference),
                   this map contains a single entry.
                 type: object
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this Elasticsearch cluster. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Elasticsearch controller has not yet processed the changes contained
+                  in the Elasticsearch specification.
+                format: int64
+                type: integer
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.

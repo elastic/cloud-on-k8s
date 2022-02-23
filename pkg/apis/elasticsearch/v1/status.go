@@ -75,6 +75,12 @@ type ElasticsearchStatus struct {
 	// InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.
 	// **This API is in technical preview and may be changed or removed in a future release.**
 	InProgressOperations `json:"inProgressOperations"`
+
+	// ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Elasticsearch
+	// controller has not yet processed the changes contained in the Elasticsearch specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

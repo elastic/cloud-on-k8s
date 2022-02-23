@@ -201,11 +201,12 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 
 	if isReconciled, message := results.IsReconciled(); !isReconciled {
 		// Do not overwrite other "non-ready" phases like MigratingData
-		if state.IsElasticsearchReady() {
+		if state.IsElasticsearchPhase(esv1.ElasticsearchReadyPhase) {
 			state.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
 		}
 		state.ReportCondition(esv1.ReconciliationComplete, corev1.ConditionFalse, message)
-	} else {
+	} else if !state.IsElasticsearchPhase(esv1.ElasticsearchResourceInvalid) {
+		// Do not overwrite invalid phase
 		state.UpdateWithPhase(esv1.ElasticsearchReadyPhase)
 	}
 

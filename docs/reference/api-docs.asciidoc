@@ -930,14 +930,14 @@ DownscaleOperation provides details about in progress downscale operations. **Th
 | Field | Description
 | *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
 | *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode[$$DownscaledNode$$] array__ | Nodes which are scheduled to be removed from the cluster.
-| *`stalled`* __boolean__ | Stalled represents a state where not progress can be made. It is only available for clusters managed with the Elasticsearch shutdown API.
+| *`stalled`* __boolean__ | Stalled represents a state where no progress can be made. It is only available for clusters managed with the Elasticsearch shutdown API.
 |===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode"]
 === DownscaledNode 
 
-DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes in the cluster. **This API is in technical preview and may be changed or removed in a future release.**
+DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes from the cluster. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
@@ -1028,7 +1028,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus"]
 === ElasticsearchStatus 
 
-ElasticsearchStatus defines the observed state of Elasticsearch
+ElasticsearchStatus represents the observed state of Elasticsearch.
 
 .Appears In:
 ****
@@ -1042,8 +1042,9 @@ ElasticsearchStatus defines the observed state of Elasticsearch
 | *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run in parallel: this value specifies the lowest version currently running.
 | *`health`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchhealth[$$ElasticsearchHealth$$]__ | 
 | *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase[$$ElasticsearchOrchestrationPhase$$]__ | 
-| *`conditions`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition[$$Condition$$] array__ | Current service state of an Elasticsearch deployment. **This API is in technical preview and may be changed or removed in a future release.**
-| *`inProgressOperations`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]__ | In progress changes being applied by the operator on the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+| *`conditions`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition[$$Condition$$] array__ | Conditions holds the current service state of an Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+| *`inProgressOperations`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster. It corresponds to the metadata generation, which is updated on mutation by the API Server. If the generation observed in status diverges from the generation in metadata, the Elasticsearch controller has not yet processed the changes contained in the Elasticsearch specification.
 |===
 
 
@@ -1324,7 +1325,7 @@ UpgradedNode provides details about the status of nodes which are expected to be
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation"]
 === UpscaleOperation 
 
-UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes in the cluster. **This API is in technical preview and may be changed or removed in a future release.**
+UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes to the cluster. **This API is in technical preview and may be changed or removed in a future release.**
 
 .Appears In:
 ****
