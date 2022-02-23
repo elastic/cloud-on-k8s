@@ -125,7 +125,7 @@ func patchInitialMasterNodesConfig(nodeSpecResources nodespec.ResourcesList, ini
 }
 
 // nonHAZen1MasterUpgrade returns true if expected nodes in nodeSpecResources will lead to upgrading
-// the single or two node zen1-compatible master node currently running in the es cluster.
+// the one or two zen1-compatible master nodes currently running in the es cluster.
 // As we upgrade all nodes at once in one or two node clusters initial master nodes needs to be set as there is no
 // existing cluster to join once all v6 nodes have been terminated.
 func nonHAZen1MasterUpgrade(c k8s.Client, es esv1.Elasticsearch, nodeSpecResources nodespec.ResourcesList) (bool, error) {
