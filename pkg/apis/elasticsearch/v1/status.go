@@ -54,7 +54,7 @@ const (
 	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
 )
 
-// ElasticsearchStatus defines the observed state of Elasticsearch
+// ElasticsearchStatus represents the observed state of Elasticsearch.
 type ElasticsearchStatus struct {
 	// AvailableNodes is the number of available instances.
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
@@ -67,12 +67,12 @@ type ElasticsearchStatus struct {
 	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
 	// +optional
-	// Current service state of an Elasticsearch deployment.
+	// Conditions holds the current service state of an Elasticsearch cluster.
 	// **This API is in technical preview and may be changed or removed in a future release.**
 	Conditions Conditions `json:"conditions"`
 
 	// +optional
-	// In progress changes being applied by the operator on the Elasticsearch cluster.
+	// InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.
 	// **This API is in technical preview and may be changed or removed in a future release.**
 	InProgressOperations `json:"inProgressOperations"`
 }
@@ -169,7 +169,7 @@ type NewNode struct {
 	Message *string `json:"message"`
 }
 
-// UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes in the cluster.
+// UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes to the cluster.
 // **This API is in technical preview and may be changed or removed in a future release.**
 type UpscaleOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
@@ -205,7 +205,7 @@ type UpgradeOperation struct {
 	Nodes []UpgradedNode `json:"nodes"`
 }
 
-// DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes in the cluster.
+// DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes from the cluster.
 // **This API is in technical preview and may be changed or removed in a future release.**
 type DownscaledNode struct {
 	// Name of the Elasticsearch node that should be removed.
@@ -230,7 +230,7 @@ type DownscaleOperation struct {
 	// Nodes which are scheduled to be removed from the cluster.
 	Nodes []DownscaledNode `json:"nodes"`
 
-	// Stalled represents a state where not progress can be made.
+	// Stalled represents a state where no progress can be made.
 	// It is only available for clusters managed with the Elasticsearch shutdown API.
 	// +optional
 	Stalled *bool `json:"stalled"`

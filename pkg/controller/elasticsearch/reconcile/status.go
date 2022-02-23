@@ -25,6 +25,7 @@ type StatusReporter struct {
 	*UpgradeReporter
 }
 
+// MergeStatusReportingWith creates a new ElasticsearchStatus merging the reported status and an existing ElasticsearchStatus.
 func (s *StatusReporter) MergeStatusReportingWith(otherStatus esv1.ElasticsearchStatus) esv1.ElasticsearchStatus {
 	mergedStatus := otherStatus.DeepCopy()
 	mergedStatus.UpgradeOperation = s.UpgradeReporter.Merge(otherStatus.UpgradeOperation)
@@ -39,6 +40,8 @@ func (s *StatusReporter) MergeStatusReportingWith(otherStatus esv1.Elasticsearch
 	return *mergedStatus
 }
 
+// ReportCondition records a condition to be reported in the status.
+// Any existing condition with the same Type is overridden.
 func (s *StatusReporter) ReportCondition(
 	conditionType esv1.ConditionType,
 	status corev1.ConditionStatus,
@@ -58,6 +61,7 @@ type UpscaleReporter struct {
 	nodes map[string]esv1.NewNode
 }
 
+// RecordNewNodes records pending node creations.
 func (u *UpscaleReporter) RecordNewNodes(nodes []string) {
 	if u == nil {
 		return
@@ -76,7 +80,7 @@ func (u *UpscaleReporter) RecordNewNodes(nodes []string) {
 	}
 }
 
-// UpdateNodesStatuses the status and the message fields for a set of nodes.
+// UpdateNodesStatuses updates the status and the message fields for a set of nodes belonging to the same StatefulSet.
 func (u *UpscaleReporter) UpdateNodesStatuses(status esv1.NewNodeStatus, statefulSetName, message string, minOrdinal, maxOrdinal int32) {
 	if u == nil {
 		return
@@ -93,6 +97,7 @@ func (u *UpscaleReporter) UpdateNodesStatuses(status esv1.NewNodeStatus, statefu
 	}
 }
 
+// HasPendingNewNodes returns true if at least one pending node creation has been reported.
 func (u *UpscaleReporter) HasPendingNewNodes() bool {
 	if u == nil {
 		return false
@@ -100,6 +105,7 @@ func (u *UpscaleReporter) HasPendingNewNodes() bool {
 	return len(u.nodes) > 0
 }
 
+// Merge creates a new upscale status using the reported upscale status and an existing upscale status.
 func (u *UpscaleReporter) Merge(other esv1.UpscaleOperation) esv1.UpscaleOperation {
 	upscaleOperation := other.DeepCopy()
 	if u == nil {
@@ -131,10 +137,13 @@ type UpgradeReporter struct {
 	nodes map[string]esv1.UpgradedNode
 }
 
+// RecordNodesToBeUpgraded records in the status a list of nodes that should be upgraded.
 func (u *UpgradeReporter) RecordNodesToBeUpgraded(nodes []string) {
 	u.RecordNodesToBeUpgradedWithMessage(nodes, "")
 }
 
+// RecordNodesToBeUpgradedWithMessage records in the status a list of nodes that should be upgraded
+// with an additional message to give more information when relevant.
 func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, message string) {
 	if u == nil {
 		return
@@ -153,6 +162,7 @@ func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, mes
 	}
 }
 
+// RecordDeletedNode records a node being deleted for upgrade.
 func (u *UpgradeReporter) RecordDeletedNode(node, message string) {
 	if u == nil {
 		return
@@ -167,7 +177,7 @@ func (u *UpgradeReporter) RecordDeletedNode(node, message string) {
 	u.nodes[node] = upgradedNode
 }
 
-// RecordPredicatesResult records predicates results for a set of nodes
+// RecordPredicatesResult records predicates results for a set of nodes.
 func (u *UpgradeReporter) RecordPredicatesResult(predicatesResult map[string]string) {
 	if u == nil {
 		return
@@ -184,6 +194,7 @@ func (u *UpgradeReporter) RecordPredicatesResult(predicatesResult map[string]str
 	}
 }
 
+// Merge creates a new upgrade status using the reported upgrade status and an existing upgrade status.
 func (u *UpgradeReporter) Merge(other esv1.UpgradeOperation) esv1.UpgradeOperation {
 	upgradeOperation := other.DeepCopy()
 	if u == nil {
@@ -217,6 +228,7 @@ type DownscaleReporter struct {
 	stalled *bool
 }
 
+// RecordNodesToBeRemoved records nodes expected to be eventually removed from the cluster.
 func (d *DownscaleReporter) RecordNodesToBeRemoved(nodes []string) {
 	if d == nil {
 		return
@@ -227,13 +239,14 @@ func (d *DownscaleReporter) RecordNodesToBeRemoved(nodes []string) {
 	for _, node := range nodes {
 		d.nodes[node] = esv1.DownscaledNode{
 			Name: node,
-			// We set an initial value to let the caller known that this node should be eventually deleted.
+			// We set an initial value to let the caller know that this node should be eventually deleted.
 			// This should be overridden by the downscale algorithm.
 			ShutdownStatus: "NOT_STARTED",
 		}
 	}
 }
 
+// Merge creates a new downscale status using the reported downscale status and an existing downscale status.
 func (d *DownscaleReporter) Merge(other esv1.DownscaleOperation) esv1.DownscaleOperation {
 	downscaleOperation := other.DeepCopy()
 	if d == nil {
@@ -286,9 +299,7 @@ func (d *DownscaleReporter) OnShutdownStatus(
 	}
 }
 
-func (d *DownscaleReporter) OnReconcileShutdowns(
-	leavingNodes []string,
-) {
+func (d *DownscaleReporter) OnReconcileShutdowns(leavingNodes []string) {
 	if d == nil {
 		return
 	}

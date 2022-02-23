@@ -39,14 +39,14 @@ func HandleDownscale(
 	results := &reconciler.Results{}
 
 	// Retrieve the current list of Pods for this cluster. This list is used to compute the nodes that should be eventually removed,
-	// and the ones that will be removed in this reconciliation loop.
+	// and the ones that will be removed in this reconciliation attempt.
 	actualPods, err := sset.GetActualPodsForCluster(downscaleCtx.k8sClient, downscaleCtx.es)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	// Compute the desired downscale, without applying any budget filter, to feed the status and let the user know what nodes should
-	// be eventually removed, not only in this reconciliation loop, but also in the next ones.
+	// be eventually removed, not only in this reconciliation attempt, but also in the next ones.
 	desiredDownscale, _ := podsToDownscale(actualPods, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
 	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
