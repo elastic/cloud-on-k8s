@@ -109,7 +109,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.22.0@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv4")
                         }
                     }
                 }
@@ -120,7 +120,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.22.0@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv6")
                         }
                     }
                 }
