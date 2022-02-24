@@ -11,11 +11,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -59,10 +62,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		},
 	}
 	type fields struct {
-		Client         k8s.Client
-		recorder       record.EventRecorder
-		dynamicWatches watches.DynamicWatches
-		params         operator.Parameters
+		Client k8s.Client
 	}
 	tests := []struct {
 		name     string
@@ -70,6 +70,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		request  reconcile.Request
 		want     reconcile.Result
 		wantErr  bool
+		errorMsg string
 		validate func(*testing.T, fields)
 	}{
 		{
@@ -79,9 +80,6 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					&sampleElasticsearch,
 					withAnnotations(&sampleKibana, map[string]string{common.ManagedAnnotation: "false"}),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
 			},
 			request: defaultRequest,
 			want:    reconcile.Result{},
@@ -109,9 +107,6 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					&sampleElasticsearch,
 					withFinalizers(&sampleKibana, []string{"finalizer.elasticsearch.k8s.elastic.co/secure-settings-secret"}),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
 			},
 			request: defaultRequest,
 			want:    reconcile.Result{},
@@ -140,9 +135,6 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					&sampleElasticsearch,
 					withName(&sampleKibana, "superlongkibananamecausesvalidationissues"),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
 			},
 			request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -150,8 +142,9 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					Name:      "superlongkibananamecausesvalidationissues",
 				},
 			},
-			want:    reconcile.Result{},
-			wantErr: true,
+			want:     reconcile.Result{},
+			wantErr:  true,
+			errorMsg: `Kibana.kibana.k8s.elastic.co "superlongkibananamecausesvalidationissues" is invalid: metadata.name: Too long: must have at most 36 bytes`,
 			validate: func(t *testing.T, f fields) {
 				var kibana kibanav1.Kibana
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongkibananamecausesvalidationissues"}, &kibana)
@@ -169,15 +162,45 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 		},
 		{
+			name: "kibana instance with validation issues attemps update of status which fails returns status update error from deferred function and does not increment observedGeneration",
+			fields: fields{
+				Client: newK8sFailingStatusUpdateClient(
+					&sampleElasticsearch,
+					withName(&sampleKibana, "superlongkibananamecausesvalidationissues"),
+				),
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "superlongkibananamecausesvalidationissues",
+				},
+			},
+			want:     reconcile.Result{},
+			wantErr:  true,
+			errorMsg: `while updating status: internal error: Kibana.kibana.k8s.elastic.co "superlongkibananamecausesvalidationissues" is invalid: metadata.name: Too long: must have at most 36 bytes`,
+			validate: func(t *testing.T, f fields) {
+				var kibana kibanav1.Kibana
+				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongkibananamecausesvalidationissues"}, &kibana)
+				require.NoError(t, err)
+				require.Equal(t, kibanav1.KibanaStatus{
+					DeploymentStatus: commonv1.DeploymentStatus{
+						Selector:       "",
+						Count:          0,
+						AvailableNodes: 0,
+						Version:        "",
+						Health:         commonv1.DeploymentHealth(""),
+					},
+					ObservedGeneration: 1,
+				}, kibana.Status)
+			},
+		},
+		{
 			name: "sample kibana instance returns no error and increments observedGeneration",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&sampleElasticsearch,
 					&sampleKibana,
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
 			},
 			request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -204,7 +227,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "sample kibana instance with es association with version that is not allowed returns no error, increments observedGeneration",
+			name: "sample kibana instance with es association with version that is not allowed returns no error and increments observedGeneration",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&sampleElasticsearch,
@@ -227,9 +250,6 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 						},
 					},
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
 			},
 			request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -256,7 +276,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "sample kibana instance with es association with valid version returns no error, increments observedGeneration, but does not updates ES association",
+			name: "sample kibana instance with es association with valid version returns no error increments observedGeneration but does not update Elasticsearch association",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&sampleElasticsearch,
@@ -287,9 +307,6 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 						},
 					},
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
 			},
 			request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -320,14 +337,17 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileKibana{
 				Client:         tt.fields.Client,
-				recorder:       tt.fields.recorder,
-				dynamicWatches: tt.fields.dynamicWatches,
-				params:         tt.fields.params,
+				recorder:       record.NewFakeRecorder(100),
+				dynamicWatches: watches.NewDynamicWatches(),
+				params:         operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileKibana.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if tt.wantErr && err != nil {
+				require.EqualError(t, err, tt.errorMsg)
 			}
 			// RequeueAfter is ignored here, as certificate reconciler sets this to expiration of the generated certificates.
 			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(reconcile.Result{}, "RequeueAfter")) {
@@ -386,4 +406,38 @@ func withTLSDisabled(kibana *kibanav1.Kibana) *kibanav1.Kibana {
 		},
 	}
 	return obj
+}
+
+type k8sFailingStatusUpdateClient struct {
+	k8s.Client
+
+	client       k8s.Client
+	statusWriter client.StatusWriter
+}
+
+type k8sFailingStatusWriter struct {
+	client.StatusWriter
+}
+
+func newK8sFailingStatusUpdateClient(initObjs ...runtime.Object) *k8sFailingStatusUpdateClient {
+	return &k8sFailingStatusUpdateClient{
+		client:       k8s.NewFakeClient(initObjs...),
+		statusWriter: &k8sFailingStatusWriter{},
+	}
+}
+
+func (k *k8sFailingStatusUpdateClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+	return k.client.Get(ctx, key, obj)
+}
+
+func (k *k8sFailingStatusUpdateClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	return errors.New("internal error")
+}
+
+func (k *k8sFailingStatusUpdateClient) Status() client.StatusWriter {
+	return k.statusWriter
+}
+
+func (sw *k8sFailingStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	return errors.New("internal error")
 }

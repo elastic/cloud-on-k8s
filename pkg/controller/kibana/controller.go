@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -160,27 +161,29 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 	return r.doReconcile(ctx, request, &kb)
 }
 
-func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
-	var (
-		err    error
-		result reconcile.Result
-	)
+func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (result reconcile.Result, err error) {
 	state := NewState(request, kb)
 
 	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
+	// note that this deferred function is modifying the return values, which are named return values, which allows this
+	// to function properly.
 	defer func() {
 		statusErr := r.updateStatus(ctx, state)
 		if statusErr != nil && apierrors.IsConflict(statusErr) {
 			log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 			result = reconcile.Result{Requeue: true}
 		} else if statusErr != nil {
-			log.Error(statusErr, "Error while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
-			err = statusErr
+			finalError := statusErr
+			if err != nil {
+				finalError = errors.Wrapf(err, "while updating status: %s", statusErr)
+			}
+			log.Error(finalError, "Error while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
+			err = finalError
 		}
 	}()
 
 	// Run validation in case the webhook is disabled
-	if err := r.validate(ctx, kb); err != nil {
+	if err = r.validate(ctx, kb); err != nil {
 		return result, err
 	}
 
@@ -250,7 +253,8 @@ type State struct {
 // NewState creates a new reconcile state based on the given request and Kibana resource with the resource
 // state reset to empty.
 func NewState(request reconcile.Request, kb *kbv1.Kibana) State {
-	newKibana := kb.DeepCopy()
-	newKibana.Status.ObservedGeneration = kb.Generation
-	return State{Request: request, Kibana: newKibana, originalKibana: kb.DeepCopy()}
+	newState := State{Request: request, originalKibana: kb.DeepCopy()}
+	newState.Kibana = newState.originalKibana.DeepCopy()
+	newState.Kibana.Status.ObservedGeneration = kb.Generation
+	return newState
 }

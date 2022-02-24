@@ -259,6 +259,11 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 	}
 }
 
+// GetObservedGeneration will return the observed generation from the Kibana status.
+func (k *Kibana) GetObservedGeneration() int64 {
+	return k.Status.ObservedGeneration
+}
+
 // -- association with Elasticsearch
 
 func (k *Kibana) EsAssociation() *KibanaEsAssociation {
