@@ -139,12 +139,12 @@ func TestRetrieveHealth(t *testing.T) {
 	}{
 		{
 			name:          "health ok",
-			healthRespErr: true,
+			healthRespErr: false,
 			expected:      esv1.ElasticsearchGreenHealth,
 		},
 		{
 			name:          "unknown health",
-			healthRespErr: false,
+			healthRespErr: true,
 			expected:      esv1.ElasticsearchUnknownHealth,
 		},
 	}
@@ -152,7 +152,7 @@ func TestRetrieveHealth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cluster := types.NamespacedName{Namespace: "ns1", Name: "es1"}
-			esClient := fakeEsClient(!tt.healthRespErr)
+			esClient := fakeEsClient(tt.healthRespErr)
 			health := retrieveHealth(context.Background(), cluster, esClient)
 			require.Equal(t, tt.expected, health)
 		})
