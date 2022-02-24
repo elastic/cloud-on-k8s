@@ -253,8 +253,7 @@ type State struct {
 // NewState creates a new reconcile state based on the given request and Kibana resource with the resource
 // state reset to empty.
 func NewState(request reconcile.Request, kb *kbv1.Kibana) State {
-	newState := State{Request: request, originalKibana: kb.DeepCopy()}
-	newState.Kibana = newState.originalKibana.DeepCopy()
+	newState := State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
 	newState.Kibana.Status.ObservedGeneration = kb.Generation
 	return newState
 }

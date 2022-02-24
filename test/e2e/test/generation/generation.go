@@ -32,8 +32,8 @@ func getObservedGeneration(obj commonv1.HasObservedGeneration, k *test.K8sClient
 	return obj.GetObservedGeneration(), nil
 }
 
-// RetrieveAgentGenerationsStep stores the current metadata.Generation, and status.ObservedGeneration into the given fields.
-func RetrieveAgentGenerationsStep(obj commonv1.HasObservedGeneration, k *test.K8sClient, generation, observedGeneration *int64) test.Step {
+// RetrieveGenerationsStep stores the current metadata.Generation, and status.ObservedGeneration into the given fields.
+func RetrieveGenerationsStep(obj commonv1.HasObservedGeneration, k *test.K8sClient, generation, observedGeneration *int64) test.Step {
 	return test.Step{
 		Name: "Retrieve Objects metadata.Generation, and status.ObservedGeneration for comparison purpose",
 		Test: test.Eventually(func() error {

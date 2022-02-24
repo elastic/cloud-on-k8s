@@ -17,7 +17,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	isMutated := b.MutatedFrom != nil
 	var agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation int64
 	return test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k).
-		WithStep(generation.RetrieveAgentGenerationsStep(&b.Kibana, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation)).
+		WithStep(generation.RetrieveGenerationsStep(&b.Kibana, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
