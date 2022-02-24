@@ -162,7 +162,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "kibana instance with validation issues attemps update of status which fails returns status update error from deferred function and does not increment observedGeneration",
+			name: "kibana instance with validation issues attempts update of status which fails returns status update error from deferred function and does not increment observedGeneration",
 			fields: fields{
 				Client: newK8sFailingStatusUpdateClient(
 					&sampleElasticsearch,
