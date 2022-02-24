@@ -75,7 +75,7 @@ func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, no
 	if !bootstrap.AnnotatedForBootstrap(es) {
 		return true, nil
 	}
-	// - we're upgrading (effectively restarting) a single zen1 master to zen2
+	// - we're upgrading (effectively restarting) a non-HA zen1 cluster to zen2
 	return nonHAZen1MasterUpgrade(k8sClient, es, nodeSpecResources)
 }
 
