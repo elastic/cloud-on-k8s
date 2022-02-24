@@ -40,6 +40,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 				// Nodes to be upgraded
 				s.RecordNodesToBeUpgraded([]string{"to-upgrade-0", "to-upgrade-1", "to-upgrade-2"})
 				s.RecordNodesToBeUpgradedWithMessage([]string{"to-upgrade-1"}, "An upgrade Message for to-upgrade-1")
+				s.RecordDeletedNode("to-upgrade-2", "delete message")
 				s.RecordPredicatesResult(map[string]string{"to-upgrade-0": "a-predicate-result"})
 				// Nodes to be removed
 				s.RecordNodesToBeRemoved([]string{"removed-0", "removed-1", "removed-2", "removed-3"})
@@ -114,8 +115,9 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 								Message: pointer.String("An upgrade Message for to-upgrade-1"),
 							},
 							{
-								Name:   "to-upgrade-2",
-								Status: "PENDING",
+								Name:    "to-upgrade-2",
+								Status:  "DELETED",
+								Message: pointer.String("delete message"),
 							},
 						},
 					},

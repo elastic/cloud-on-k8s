@@ -139,9 +139,7 @@ func (u *UpgradeReporter) RecordNodesToBeUpgraded(nodes []string) {
 	u.RecordNodesToBeUpgradedWithMessage(nodes, "")
 }
 
-// RecordNodesToBeUpgradedWithMessage records in the status a list of nodes that should be upgraded
-// with an additional message to give more information when relevant.
-func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, message string) {
+func (u *UpgradeReporter) recordNodesUpgrade(nodes []string, status string, message string) {
 	if u == nil {
 		return
 	}
@@ -151,7 +149,7 @@ func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, mes
 	for _, node := range nodes {
 		upgradedNode := u.nodes[node]
 		upgradedNode.Name = node
-		upgradedNode.Status = "PENDING"
+		upgradedNode.Status = status
 		if len(message) > 0 {
 			upgradedNode.Message = pointer.String(message)
 		}
@@ -159,19 +157,15 @@ func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, mes
 	}
 }
 
+// RecordNodesToBeUpgradedWithMessage records in the status a list of nodes that should be upgraded
+// with an additional message to give more information when relevant.
+func (u *UpgradeReporter) RecordNodesToBeUpgradedWithMessage(nodes []string, message string) {
+	u.recordNodesUpgrade(nodes, "PENDING", message)
+}
+
 // RecordDeletedNode records a node being deleted for upgrade.
 func (u *UpgradeReporter) RecordDeletedNode(node, message string) {
-	if u == nil {
-		return
-	}
-	if u.nodes == nil {
-		u.nodes = make(map[string]esv1.UpgradedNode)
-	}
-	upgradedNode := u.nodes[node]
-	upgradedNode.Name = node
-	upgradedNode.Status = "DELETED"
-	upgradedNode.Message = pointer.String(message)
-	u.nodes[node] = upgradedNode
+	u.recordNodesUpgrade([]string{node}, "DELETED", message)
 }
 
 // RecordPredicatesResult records predicates results for a set of nodes.
