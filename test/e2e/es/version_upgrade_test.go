@@ -55,6 +55,10 @@ func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
 	// due to minimum_master_nodes=2, the cluster is unavailable while the first master is upgraded
 	initial := elasticsearch.NewBuilder("test-version-up-2-68x-to-7x").
 		WithVersion(srcVersion).
+		// 8x non-HA upgrades cannot honour a change budget with maxUnavailable 1 because we are rolling both nodes at once
+		// setting the change budget accordingly allows this test to pass as otherwise the changeBudgetWatcher step would
+		// fail as it would detect a change budget violation.
+		WithChangeBudget(2, 2).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
@@ -173,6 +177,10 @@ func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
 
 	initial := elasticsearch.NewBuilder("test-version-up-2-to-7x").
 		WithVersion(srcVersion).
+		// 8x non-HA upgrades cannot honour a change budget with maxUnavailable 1 because we are rolling both nodes at once
+		// setting the change budget accordingly allows this test to pass as otherwise the changeBudgetWatcher step would
+		// fail as it would detect a change budget violation.
+		WithChangeBudget(2, 2).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
