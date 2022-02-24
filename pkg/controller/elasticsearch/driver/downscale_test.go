@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -715,11 +716,12 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 
 func Test_attemptDownscale(t *testing.T) {
 	tests := []struct {
-		name                 string
-		downscale            ssetDownscale
-		state                *downscaleState
-		statefulSets         sset.StatefulSetList
-		expectedStatefulSets []appsv1.StatefulSet
+		name                    string
+		downscale               ssetDownscale
+		state                   *downscaleState
+		statefulSets            sset.StatefulSetList
+		expectedStatefulSets    []appsv1.StatefulSet
+		expectedDownscaledNodes []esv1.DownscaledNode
 	}{
 		{
 			name: "perform 3 -> 2 downscale",
@@ -735,6 +737,7 @@ func Test_attemptDownscale(t *testing.T) {
 			expectedStatefulSets: []appsv1.StatefulSet{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
+			expectedDownscaledNodes: []esv1.DownscaledNode{{Name: "default-2", ShutdownStatus: "COMPLETE"}},
 		},
 		{
 			name: "try perform 3 -> 2 downscale, but stay at 3 due to maxUnavailable",
@@ -751,6 +754,7 @@ func Test_attemptDownscale(t *testing.T) {
 			expectedStatefulSets: []appsv1.StatefulSet{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
+			expectedDownscaledNodes: []esv1.DownscaledNode{}, // expectedDownscaledNodes is not updated
 		},
 	}
 	for _, tt := range tests {
@@ -760,11 +764,12 @@ func Test_attemptDownscale(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, &tt.statefulSets[i])
 			}
 			k8sClient := k8s.NewFakeClient(runtimeObjs...)
+			esState := reconcile.MustNewState(esv1.Elasticsearch{})
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
 				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-				nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})),
+				nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})), esState),
 				esClient:       &fakeESClient{},
 			}
 			// do the downscale
@@ -778,6 +783,9 @@ func Test_attemptDownscale(t *testing.T) {
 			for i := range tt.expectedStatefulSets {
 				comparison.AssertEqual(t, &tt.expectedStatefulSets[i], &ssets.Items[i])
 			}
+			// check downscale status
+			downscaleStatus := esState.DownscaleReporter.Merge(esv1.DownscaleOperation{})
+			assert.Equal(t, tt.expectedDownscaledNodes, downscaleStatus.Nodes)
 		})
 	}
 }

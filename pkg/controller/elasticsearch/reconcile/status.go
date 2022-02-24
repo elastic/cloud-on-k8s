@@ -285,8 +285,8 @@ func (d *DownscaleReporter) OnShutdownStatus(
 		d.nodes = make(map[string]esv1.DownscaledNode)
 	}
 	node := d.nodes[podName]
+	node.Name = podName
 	node.ShutdownStatus = string(nodeShutdownStatus.Status)
-
 	if len(nodeShutdownStatus.Explanation) > 0 {
 		node.Explanation = pointer.StringPtr(nodeShutdownStatus.Explanation)
 	}
@@ -306,6 +306,7 @@ func (d *DownscaleReporter) OnReconcileShutdowns(leavingNodes []string) {
 	// Update InProgress condition and DownscaleOperation
 	for _, nodeName := range leavingNodes {
 		node := d.nodes[nodeName]
+		node.Name = nodeName
 		node.ShutdownStatus = string(esclient.ShutdownInProgress)
 		d.nodes[nodeName] = node
 	}
