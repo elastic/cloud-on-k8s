@@ -273,9 +273,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		if err != nil {
 			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			results.WithError(err)
 		}
-		if err != nil || requeue {
-			results.WithReconciliationState(defaultRequeue.WithReason(msg))
+		if requeue {
+			results.WithReconciliationState(defaultRequeue.WithReason("Updating remote cluster settings, re-queuing"))
 		}
 	}
 
