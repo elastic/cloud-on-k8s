@@ -163,7 +163,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 	if requeue {
-		results.WithReconciliationState(defaultRequeue.WithReason("Zen2 bootstrap is not complete"))
+		results.WithReconciliationState(defaultRequeue.WithReason("Initial cluster bootstrap is not complete"))
 	}
 	// Maybe clear zen2 voting config exclusions.
 	requeue, err = zen2.ClearVotingConfigExclusions(ctx, d.ES, d.Client, esClient, actualStatefulSets)

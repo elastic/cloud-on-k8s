@@ -69,9 +69,6 @@ func (u *UpscaleReporter) RecordNewNodes(nodes []string) {
 	if u.nodes == nil {
 		u.nodes = make(map[string]esv1.NewNode, len(nodes))
 	}
-	if nodes == nil {
-		nodes = []string{}
-	}
 	for _, node := range nodes {
 		newNode := u.nodes[node]
 		newNode.Name = node
