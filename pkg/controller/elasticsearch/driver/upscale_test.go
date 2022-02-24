@@ -6,6 +6,8 @@ package driver
 
 import (
 	"context"
+	"reflect"
+	"sort"
 	"sync"
 	"testing"
 
@@ -36,6 +38,66 @@ var onceDone = &sync.Once{}
 
 func init() {
 	onceDone.Do(func() {})
+}
+
+func Test_podsToCreate(t *testing.T) {
+	type args struct {
+		actualStatefulSets   sset.StatefulSetList
+		expectedStatefulSets sset.StatefulSetList
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "StatefulSet does not exist yet",
+			args: args{
+				actualStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+				},
+				expectedStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(8)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+				},
+			},
+			want: []string{"sts1-5", "sts1-6", "sts1-7", "sts2-0", "sts2-1"},
+		},
+		{
+			name: "StatefulSet with no replica",
+			args: args{
+				actualStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+				},
+				expectedStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(0)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+				},
+			},
+			want: []string{"sts2-0", "sts2-1"},
+		},
+		{
+			name: "StatefulSet removed",
+			args: args{
+				actualStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+				},
+				expectedStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+				},
+			},
+			want: []string{"sts2-0", "sts2-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := podsToCreate(tt.args.actualStatefulSets, tt.args.expectedStatefulSets)
+			sort.Strings(got)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("podsToCreate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
