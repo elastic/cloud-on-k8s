@@ -5,6 +5,7 @@
 package stringsutil
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,4 +105,74 @@ func Test_sortStringSlice(t *testing.T) {
 	slice := []string{"aab", "aac", "aaa", "aab"}
 	SortStringSlice(slice)
 	require.Equal(t, []string{"aaa", "aab", "aab", "aac"}, slice)
+}
+
+func TestDifference(t *testing.T) {
+	type args struct {
+		a []string
+		b []string
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantOnlyInA []string
+		wantOnlyInB []string
+	}{
+		{
+			name: "Happy path",
+			args: args{
+				a: []string{"a", "b", "d"},
+				b: []string{"a", "c", "d"},
+			},
+			wantOnlyInA: []string{"b"},
+			wantOnlyInB: []string{"c"},
+		},
+		{
+			name: "a is nil",
+			args: args{
+				a: nil,
+				b: []string{"a", "b"},
+			},
+			wantOnlyInA: nil,
+			wantOnlyInB: []string{"a", "b"},
+		},
+		{
+			name: "b is nil",
+			args: args{
+				a: []string{"a", "b"},
+				b: nil,
+			},
+			wantOnlyInA: []string{"a", "b"},
+			wantOnlyInB: nil,
+		},
+		{
+			name: "both nil",
+			args: args{
+				a: nil,
+				b: nil,
+			},
+			wantOnlyInA: nil,
+			wantOnlyInB: nil,
+		},
+		{
+			name: "equals",
+			args: args{
+				a: []string{"d", "b", "a"},
+				b: []string{"a", "b", "d"},
+			},
+			wantOnlyInA: nil,
+			wantOnlyInB: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := Difference(tt.args.a, tt.args.b)
+			if !reflect.DeepEqual(got, tt.wantOnlyInA) {
+				t.Errorf("Difference() got = %v, wantOnlyInA %v", got, tt.wantOnlyInA)
+			}
+			if !reflect.DeepEqual(got1, tt.wantOnlyInB) {
+				t.Errorf("Difference() got1 = %v, wantOnlyInB %v", got1, tt.wantOnlyInB)
+			}
+		})
+	}
 }

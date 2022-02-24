@@ -14,6 +14,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -22,10 +23,13 @@ import (
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
 // Do not run this function unless driver expectations are met.
 func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
+	// Update the status with the list of Pods to be maybe upgraded here.
+	ctx.reconcileState.RecordNodesToBeUpgraded(k8s.PodNames(ctx.podsToUpgrade))
 	if len(ctx.podsToUpgrade) == 0 {
+		// We still want to ensure that predicates in the status are cleared.
+		ctx.reconcileState.RecordPredicatesResult(map[string]string{})
 		return nil, nil
 	}
-
 	// Get allowed deletions and check if maxUnavailable has been reached.
 	allowedDeletions, maxUnavailableReached := ctx.getAllowedDeletions()
 
@@ -51,7 +55,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
+	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
 	if err != nil {
 		return podsToDelete, err
 	}
@@ -78,7 +82,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 			return deletedPods, err
 		}
 
-		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, "Deleting pod for rolling upgrade"); err != nil {
+		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting pod for rolling upgrade"); err != nil {
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)
@@ -114,12 +118,13 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 
 	if len(nonReadyPods) > 0 {
 		log.Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), "Not all Pods are ready for a full cluster upgrade")
 		return nil, nil
 	}
 
 	var deletedPods []corev1.Pod //nolint:prealloc
 	for _, podToDelete := range ctx.podsToUpgrade {
-		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, "Deleting Pod for full cluster upgrade"); err != nil {
+		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting Pod for full cluster upgrade"); err != nil {
 			// an error during deletion violates the "delete all or nothing" invariant but there is no way around it
 			return deletedPods, err
 		}
@@ -204,7 +209,14 @@ func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	return nil
 }
 
-func deletePod(k8sClient k8s.Client, es esv1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations, msg string) error {
+func deletePod(
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	pod corev1.Pod,
+	expectations *expectations.Expectations,
+	reconcileState *reconcile.State,
+	msg string,
+) error {
 	log.Info(msg, "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
@@ -220,6 +232,8 @@ func deletePod(k8sClient k8s.Client, es esv1.Elasticsearch, pod corev1.Pod, expe
 	}
 	// expect the pod to not be there in the cache at next reconciliation
 	expectations.ExpectDeletion(pod)
+	// Update status
+	reconcileState.RecordDeletedNode(pod.Name, msg)
 	return nil
 }
 

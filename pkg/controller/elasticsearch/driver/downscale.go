@@ -8,9 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -26,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.
@@ -36,14 +38,24 @@ func HandleDownscale(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	// make sure we only downscale nodes we're allowed to
-	downscaleState, err := newDownscaleState(downscaleCtx.k8sClient, downscaleCtx.es)
+	// Retrieve the current list of Pods for this cluster. This list is used to compute the nodes that should be eventually removed,
+	// and the ones that will be removed in this reconciliation attempt.
+	actualPods, err := sset.GetActualPodsForCluster(downscaleCtx.k8sClient, downscaleCtx.es)
 	if err != nil {
 		return results.WithError(err)
 	}
 
+	// Compute the desired downscale, without applying any budget filter, to feed the status and let the user know what nodes should
+	// be eventually removed, not only in this reconciliation attempt, but also in the next ones.
+	desiredDownscale, _ := podsToDownscale(actualPods, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
+	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
+	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
+
+	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
+	downscaleState := newDownscaleState(actualPods, downscaleCtx.es)
+
 	// compute the list of StatefulSet downscales and deletions to perform
-	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets)
+	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
 
 	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
 	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
@@ -66,11 +78,28 @@ func HandleDownscale(
 		}
 		if requeue {
 			// retry downscaling this statefulset later
-			results.WithResult(defaultRequeue)
+			results.WithReconciliationState(defaultRequeue.WithReason("Downscale in progress"))
 		}
 	}
 
+	// Ensure that the status mention the delayed nodes
+	if delayedLeavingNodes, _ := stringsutil.Difference(desiredLeavingNodes, leavingNodes); len(delayedLeavingNodes) > 0 {
+		sort.Strings(delayedLeavingNodes)
+		results.WithReconciliationState(defaultRequeue.WithReason(fmt.Sprintf("Downscale in progress, delayed nodes: %s", delayedLeavingNodes)))
+	}
 	return results
+}
+
+func podsToDownscale(
+	actualPods []corev1.Pod,
+	es esv1.Elasticsearch,
+	expectedStatefulSets sset.StatefulSetList,
+	actualStatefulSets sset.StatefulSetList,
+	downscaleFilter downscaleFilter,
+) ([]ssetDownscale, sset.StatefulSetList) {
+	downscaleState := newDownscaleState(actualPods, es)
+	// compute the list of StatefulSet downscales and deletions to perform
+	return calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
@@ -89,6 +118,7 @@ func calculateDownscales(
 	state downscaleState,
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
+	downscaleFilter downscaleFilter,
 ) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
 	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
@@ -108,25 +138,43 @@ func calculateDownscales(
 		case expectedReplicas < actualReplicas:
 			// the StatefulSet should be downscaled
 			requestedDeletes := actualReplicas - expectedReplicas
-			allowedDeletes, reason := checkDownscaleInvariants(state, actualSset, requestedDeletes)
+			allowedDeletes := downscaleFilter(state, actualSset, requestedDeletes)
 			if allowedDeletes == 0 {
-				ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
 				continue
 			}
-
 			downscales = append(downscales, ssetDownscale{
 				statefulSet:     actualSset,
 				initialReplicas: actualReplicas,
 				targetReplicas:  actualReplicas - allowedDeletes,
 				finalReplicas:   expectedReplicas,
 			})
-			state.recordNodeRemoval(actualSset, allowedDeletes)
 
 		default:
 			// nothing to do
 		}
 	}
 	return downscales, deletions
+}
+
+type downscaleFilter func(_ downscaleState, _ appsv1.StatefulSet, _ int32) int32
+
+// noDownscaleFilter is a filter which does no remove any Pod. It can be used to compute the full list of
+// Pods which are expected to be deleted.
+func noDownscaleFilter(_ downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
+	return requestedDeletes
+}
+
+// downscaleBudgetFilter is a filter which relies on checkDownscaleInvariants.
+// It ensures that we only downscale nodes we're allowed to.
+// Note that this function may have side effects on the downscaleState and should not be considered as idempotent.
+func downscaleBudgetFilter(state downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
+	allowedDeletes, reason := checkDownscaleInvariants(state, actualSset, requestedDeletes)
+	if allowedDeletes == 0 {
+		ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
+		return 0
+	}
+	state.recordNodeRemoval(actualSset, allowedDeletes)
+	return allowedDeletes
 }
 
 // attemptDownscale attempts to decrement the number of replicas of the given StatefulSet.
@@ -200,11 +248,23 @@ func calculatePerformableDownscale(
 			performableDownscale.targetReplicas--
 		case esclient.ShutdownStalled:
 			// shutdown stalled this can require user interaction: bubble up via event
-			ctx.reconcileState.UpdateElasticsearchShutdownStalled(ctx.resourcesState, ctx.observedState, response.Explanation)
+			ctx.reconcileState.
+				UpdateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase).
+				AddEvent(
+					corev1.EventTypeWarning,
+					events.EventReasonStalled,
+					fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", response.Explanation),
+				)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
 		case esclient.ShutdownInProgress:
-			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
+			ctx.reconcileState.
+				UpdateWithPhase(esv1.ElasticsearchMigratingDataPhase).
+				AddEvent(
+					corev1.EventTypeNormal,
+					events.EventReasonDelayed,
+					"Requested topology change delayed by data migration. Ensure index settings allow node removal.",
+				)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
 		case esclient.ShutdownNotStarted:
@@ -296,7 +356,7 @@ func maybeUpdateZen1ForDownscale(
 	// For other situations (eg. 3 -> 2), it's fine to update minimum_master_nodes after the node is removed
 	// (will be done at next reconciliation, before nodes removal).
 	reconcileState.AddEvent(
-		v1.EventTypeWarning, events.EventReasonUnhealthy,
+		corev1.EventTypeWarning, events.EventReasonUnhealthy,
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -128,8 +130,7 @@ var (
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
-	requeueResults = (&reconciler.Results{}).WithResult(defaultRequeue)
-	emptyResults   = &reconciler.Results{}
+	emptyResults = &reconciler.Results{}
 )
 
 // -- Tests start here
@@ -149,11 +150,12 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 		},
 	)
+	reconcileState := reconcile.MustNewState(esv1.Elasticsearch{})
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
 		expectations:   expectations.NewExpectations(k8sClient),
-		reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-		nodeShutdown:   migration.NewShardMigration(es, esClient, shardLister),
+		reconcileState: reconcileState,
+		nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState),
 		esClient:       esClient,
 		es:             es,
 		parentCtx:      context.Background(),
@@ -175,6 +177,17 @@ func TestHandleDownscale(t *testing.T) {
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
 	require.Equal(t, "ssetMaster3Replicas-2,ssetData4Replicas-3,ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
 
+	// status should reflect the in progress operations
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "NOT_STARTED"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
+
 	// only part of the expected replicas of ssetMaster3Replicas should be updated,
 	// since we remove only one master at a time
 	ssetMaster3ReplicasExpectedAfterDownscale := *ssetMaster3Replicas.DeepCopy()
@@ -188,7 +201,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
-	require.Equal(t, (&reconciler.Results{}).WithResult(defaultRequeue).WithResult(defaultRequeue), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
 
 	// voting config exclusion should have been added for leaving masters
 	require.True(t, esClient.AddVotingConfigExclusionsCalled)
@@ -211,7 +224,17 @@ func TestHandleDownscale(t *testing.T) {
 	// and also requeue since data migration is still not over for data nodes
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
-	require.Equal(t, requeueResults, results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
+	// status should reflect the in progress operations
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 
 	// one less master
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
@@ -232,11 +255,20 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
-	downscaleCtx.nodeShutdown = migration.NewShardMigration(es, esClient, shardLister)
+	downscaleCtx.nodeShutdown = shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState)
 	nodespec.UpdateReplicas(&expectedAfterDownscale[0], pointer.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
 	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
@@ -291,6 +323,17 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, err)
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetToRemove-0", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetToRemove-1", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
 	require.True(t, apierrors.IsNotFound(err))
 }
@@ -578,7 +621,7 @@ func Test_calculateDownscales(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownscales, gotDeletions := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets)
+			gotDownscales, gotDeletions := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
 			require.Equal(t, tt.wantDownscales, gotDownscales)
 			require.Equal(t, tt.wantDeletions, gotDeletions)
 		})
@@ -673,11 +716,12 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 
 func Test_attemptDownscale(t *testing.T) {
 	tests := []struct {
-		name                 string
-		downscale            ssetDownscale
-		state                *downscaleState
-		statefulSets         sset.StatefulSetList
-		expectedStatefulSets []appsv1.StatefulSet
+		name                    string
+		downscale               ssetDownscale
+		state                   *downscaleState
+		statefulSets            sset.StatefulSetList
+		expectedStatefulSets    []appsv1.StatefulSet
+		expectedDownscaledNodes []esv1.DownscaledNode
 	}{
 		{
 			name: "perform 3 -> 2 downscale",
@@ -693,6 +737,7 @@ func Test_attemptDownscale(t *testing.T) {
 			expectedStatefulSets: []appsv1.StatefulSet{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
+			expectedDownscaledNodes: []esv1.DownscaledNode{{Name: "default-2", ShutdownStatus: "COMPLETE"}},
 		},
 		{
 			name: "try perform 3 -> 2 downscale, but stay at 3 due to maxUnavailable",
@@ -709,6 +754,7 @@ func Test_attemptDownscale(t *testing.T) {
 			expectedStatefulSets: []appsv1.StatefulSet{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
+			expectedDownscaledNodes: []esv1.DownscaledNode{}, // expectedDownscaledNodes is not updated
 		},
 	}
 	for _, tt := range tests {
@@ -718,11 +764,12 @@ func Test_attemptDownscale(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, &tt.statefulSets[i])
 			}
 			k8sClient := k8s.NewFakeClient(runtimeObjs...)
+			esState := reconcile.MustNewState(esv1.Elasticsearch{})
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
 				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-				nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})),
+				nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})), esState),
 				esClient:       &fakeESClient{},
 			}
 			// do the downscale
@@ -736,6 +783,9 @@ func Test_attemptDownscale(t *testing.T) {
 			for i := range tt.expectedStatefulSets {
 				comparison.AssertEqual(t, &tt.expectedStatefulSets[i], &ssets.Items[i])
 			}
+			// check downscale status
+			downscaleStatus := esState.DownscaleReporter.Merge(esv1.DownscaleOperation{})
+			assert.Equal(t, tt.expectedDownscaledNodes, downscaleStatus.Nodes)
 		})
 	}
 }

@@ -1,15 +1,15 @@
 processor:
   ignoreTypes:
     - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)List$"
-    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)Health$"
-    - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent|Maps)Status$"
+    - "(Kibana|ApmServer|EnterpriseSearch|Beat|Agent)Health$"
+    - "(Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent|Maps)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tion|tionStatus|tionConf)$"
+    - "AssociationStatusMap"
     - "APM(Es|Kibana)Association"
     - "NodeSet(List|ConfigError)$"
     - "Autoscaling*"
   ignoreFields:
-    - "status$"
     - "TypeMeta$"
 
 render:

@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -20,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -34,7 +34,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	esReachable bool,
 	esClient esclient.Client,
 	reconcileState *reconcile.State,
-	observedState observer.State,
 	resourcesState reconcile.ResourcesState,
 	keystoreResources *keystore.Resources,
 ) *reconciler.Results {
@@ -47,16 +46,16 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if ok, err := autoscaledResourcesSynced(d.ES); err != nil {
 		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
 	} else if !ok {
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("Waiting for autoscaling controller to sync node sets"))
 	}
 
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
-	ok, err := d.expectationsSatisfied()
+	ok, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !ok {
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
 	// recreate any StatefulSet that needs to account for PVC expansion
@@ -71,7 +70,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
 		log.V(1).Info("StatefulSets recreation in progress, re-queueing.",
 			"namespace", d.ES.Namespace, "es_name", d.ES.Name, "recreations", recreations)
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("StatefulSets recreation in progress"))
 	}
 
 	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
@@ -85,7 +84,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	esState := NewMemoizingESState(ctx, esClient)
-
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
 		parentCtx:            ctx,
@@ -94,6 +92,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		esState:              esState,
 		expectations:         d.Expectations,
 		validateStorageClass: d.OperatorParameters.ValidateStorageClass,
+		upscaleReporter:      reconcileState.UpscaleReporter,
 	}
 	upscaleResults, err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
@@ -101,12 +100,16 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		var podTemplateErr *sset.PodTemplateError
 		if errors.As(err, &podTemplateErr) {
 			// An error has been detected in one of the pod templates, let's update the phase to "invalid"
-			reconcileState.UpdateElasticsearchInvalid(err)
+			reconcileState.UpdateElasticsearchInvalidWithEvent(err.Error())
 		}
 		return results.WithError(err)
 	}
+
 	if upscaleResults.Requeue {
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("StatefulSet is scheduled for recreation"))
+	}
+	if reconcileState.HasPendingNewNodes() {
+		results.WithReconciliationState(defaultRequeue.WithReason("Upscale in progress"))
 	}
 	actualStatefulSets = upscaleResults.ActualStatefulSets
 
@@ -134,15 +137,16 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		// If attempted, we're in a transient state where it's safer to requeue.
 		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
 		// Next reconciliation will check expectations again.
-		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
+		reconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
 		return results.WithError(err)
 	}
 
 	// Next operations require the Elasticsearch API to be available.
 	if !esReachable {
-		log.Info("ES cannot be reached yet, re-queuing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
-		return results.WithResult(defaultRequeue)
+		msg := "Elasticsearch cannot be reached yet, re-queuing"
+		log.Info(msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		reconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+		return results.WithReconciliationState(defaultRequeue.WithReason(msg))
 	}
 
 	// Maybe update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
@@ -151,7 +155,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 	if requeue {
-		results.WithResult(defaultRequeue)
+		results.WithReconciliationState(defaultRequeue.WithReason("Not enough available masters to update Zen1 settings"))
 	}
 	// Remove the zen2 bootstrap annotation if bootstrap is over.
 	requeue, err = zen2.RemoveZen2BootstrapAnnotation(ctx, d.Client, d.ES, esClient)
@@ -159,7 +163,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 	if requeue {
-		results.WithResult(defaultRequeue)
+		results.WithReconciliationState(defaultRequeue.WithReason("Initial cluster bootstrap is not complete"))
 	}
 	// Maybe clear zen2 voting config exclusions.
 	requeue, err = zen2.ClearVotingConfigExclusions(ctx, d.ES, d.Client, esClient, actualStatefulSets)
@@ -167,10 +171,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(fmt.Errorf("when clearing voting exclusions: %w", err))
 	}
 	if requeue {
-		results.WithResult(defaultRequeue)
+		results.WithReconciliationState(defaultRequeue.WithReason("Cannot clear voting exclusions yet"))
 	}
 	// shutdown logic is dependent on Elasticsearch version
-	nodeShutdowns, err := newShutdownInterface(d.ES, esClient, esState)
+	nodeShutdowns, err := newShutdownInterface(d.ES, esClient, esState, reconcileState.StatusReporter)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -183,7 +187,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		d.Client,
 		esClient,
 		resourcesState,
-		observedState,
 		reconcileState,
 		d.Expectations,
 		d.ES,
@@ -203,43 +206,26 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results
 	}
 
-	// When not reconciled, set the phase to ApplyingChanges only if it was Ready to avoid to
-	// override another "not Ready" phase like MigratingData.
-	reconciled := Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client)
-	if reconciled {
-		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
-	} else if reconcileState.IsElasticsearchReady(observedState) {
-		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
-	}
-
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
-	if reconciled {
+	if esReachable && d.isNodeSpecsReconciled(actualStatefulSets, d.Client, results) {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
 			return results.WithError(err)
 		}
 	}
 
-	// TODO:
-	//  - change budget
-	//  - grow and shrink
 	return results
 }
 
-// Reconciled reports whether the actual StatefulSets are reconciled to match the expected StatefulSets
-// by checking that the expected template hash label is reconciled for all StatefulSets, there are no
-// pod upgrades in progress and all pods are running.
-func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
-	// actual sset should have the expected sset template hash label
-	for _, expectedSset := range expectedStatefulSets {
-		actualSset, ok := actualStatefulSets.GetByName(expectedSset.Name)
-		if !ok {
-			return false
-		}
-		if !sset.EqualTemplateHashLabels(expectedSset, actualSset) {
-			log.V(1).Info("Statefulset not reconciled",
-				"statefulset_name", expectedSset.Name, "reason", "template hash not equal")
-			return false
-		}
+func (d *defaultDriver) isNodeSpecsReconciled(
+	actualStatefulSets sset.StatefulSetList,
+	client k8s.Client,
+	result *reconciler.Results,
+) bool {
+	if isReconciled, _ := result.IsReconciled(); !isReconciled {
+		return false
+	}
+	if satisfied, _, err := d.Expectations.Satisfied(); err != nil || !satisfied {
+		return false
 	}
 
 	// all pods should have been upgraded

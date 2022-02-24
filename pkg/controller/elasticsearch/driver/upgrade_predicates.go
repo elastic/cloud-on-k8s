@@ -6,6 +6,9 @@ package driver
 
 import (
 	"context"
+	"sort"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -106,15 +109,19 @@ type failedPredicate struct {
 	predicate string
 }
 
-type failedPredicates []failedPredicate
+type failedPredicates map[string]string
 
 // groupByPredicates groups by predicates the pods that can't be upgraded.
 func groupByPredicates(fp failedPredicates) map[string][]string {
 	podsByPredicates := make(map[string][]string)
-	for _, failedPredicate := range fp {
-		pods := podsByPredicates[failedPredicate.predicate]
-		pods = append(pods, failedPredicate.pod)
-		podsByPredicates[failedPredicate.predicate] = pods
+	for pod, predicate := range fp {
+		pods := podsByPredicates[predicate]
+		pods = append(pods, pod)
+		podsByPredicates[predicate] = pods
+	}
+	// Sort pods for stable comparison
+	for _, pods := range podsByPredicates {
+		sort.Strings(pods)
 	}
 	return podsByPredicates
 }
@@ -147,8 +154,14 @@ func NewPredicateContext(
 	}
 }
 
-func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
-	var failedPredicates failedPredicates
+func applyPredicates(
+	ctx PredicateContext,
+	candidates []corev1.Pod,
+	maxUnavailableReached bool,
+	allowedDeletions int,
+	reconcileState *reconcile.State,
+) (deletedPods []corev1.Pod, err error) {
+	failedPredicates := make(failedPredicates)
 
 Loop:
 	for _, candidate := range candidates {
@@ -157,7 +170,7 @@ Loop:
 			return deletedPods, err
 		case predicateErr != nil:
 			// A predicate has failed on this Pod
-			failedPredicates = append(failedPredicates, *predicateErr)
+			failedPredicates[predicateErr.pod] = predicateErr.predicate
 		default:
 			candidate := candidate
 			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.masterNodesNames) {
@@ -177,13 +190,16 @@ Loop:
 
 	// If some predicates have failed print a summary of the failures to help
 	// the user to understand why.
+	groupByPredicates := groupByPredicates(failedPredicates)
 	if len(failedPredicates) > 0 {
 		log.Info(
 			"Cannot restart some nodes for upgrade at this time",
 			"namespace", ctx.es.Namespace,
 			"es_name", ctx.es.Name,
-			"failed_predicates", groupByPredicates(failedPredicates))
+			"failed_predicates", groupByPredicates)
 	}
+	// Also report in the status
+	reconcileState.RecordPredicatesResult(failedPredicates)
 	return deletedPods, nil
 }
 

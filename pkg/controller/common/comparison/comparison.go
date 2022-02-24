@@ -26,7 +26,8 @@ func Equal(a, b runtime.Object) bool {
 func Diff(a, b runtime.Object) string {
 	typemeta := cmpopts.IgnoreTypes(metav1.TypeMeta{})
 	rv := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
-	return cmp.Diff(a, b, typemeta, rv)
+	timestamps := cmpopts.IgnoreTypes(metav1.Time{})
+	return cmp.Diff(a, b, typemeta, rv, timestamps)
 }
 
 // AssertEqual errors if two objects ignoring the TypeMeta and ResourceVersion. Equivalent to calling t.Error()
