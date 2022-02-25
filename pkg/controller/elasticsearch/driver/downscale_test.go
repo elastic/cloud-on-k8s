@@ -43,6 +43,26 @@ var (
 			Namespace: "ns",
 		},
 	}
+	ssetMaster1Replica = sset.TestSset{
+		Name:      "ssetMaster1Replicas",
+		Namespace: "ns",
+		Version:   "7.2.0",
+		Replicas:  1,
+		Master:    true,
+		Data:      false,
+	}.Build()
+	podsSsetMaster1Replica = []corev1.Pod{
+		sset.TestPod{
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster1Replica.Name, 0),
+			StatefulSetName: ssetMaster1Replica.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
+			Ready:           true,
+		}.Build(),
+	}
+
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -126,8 +146,8 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	runtimeObjs = []runtime.Object{&es, &ssetMaster3Replicas, &ssetData4Replicas,
-		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
+	runtimeObjs = []runtime.Object{&es, &ssetMaster1Replica, &ssetMaster3Replicas, &ssetData4Replicas,
+		&podsSsetMaster1Replica[0], &podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
 	emptyResults = &reconciler.Results{}
@@ -139,12 +159,12 @@ func TestHandleDownscale(t *testing.T) {
 	// This test focuses on one code path that visits most functions.
 	// Derived paths are individually tested in unit tests of the other functions.
 
-	// We want to downscale 2 StatefulSets (masters 3 -> 1 and data 4 -> 2) in version 7.X,
-	// but should only be allowed a partial downscale (3 -> 2 and 4 -> 3).
+	// We want to downscale 3 StatefulSets (masters 1-> 0, masters 3 -> 1 and data 4 -> 2) in version 7.X,
+	// but should only be allowed a partial downscale (1->0, 3 -> 3 and 4 -> 3).
 
 	k8sClient := k8s.NewFakeClient(runtimeObjs...)
 	esClient := &fakeESClient{}
-	actualStatefulSets := sset.StatefulSetList{ssetMaster3Replicas, ssetData4Replicas}
+	actualStatefulSets := sset.StatefulSetList{ssetMaster1Replica, ssetMaster3Replicas, ssetData4Replicas}
 	shardLister := migration.NewFakeShardLister(
 		esclient.Shards{
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
@@ -161,7 +181,7 @@ func TestHandleDownscale(t *testing.T) {
 		parentCtx:      context.Background(),
 	}
 
-	// request master nodes downscale from 3 to 1 replicas
+	// request master nodes downscale from 3 to 1 replicas the other master StatefulSet should not be there anymore
 	ssetMaster3ReplicasDownscaled := *ssetMaster3Replicas.DeepCopy()
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasDownscaled, pointer.Int32(1))
 	// request data nodes downscale from 4 to 2 replicas
@@ -173,39 +193,41 @@ func TestHandleDownscale(t *testing.T) {
 	results := HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets)
 	require.False(t, results.HasError())
 
-	// data migration should have been requested for all nodes, but last master, leaving the cluster
+	// data migration should have been requested for all nodes, but three master in Master3 sset, leaving the cluster
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
-	require.Equal(t, "ssetMaster3Replicas-2,ssetData4Replicas-3,ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
+	require.Equal(t, "ssetMaster1Replicas-0,ssetData4Replicas-3,ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
 
 	// status should reflect the in progress operations
 	require.Equal(t,
 		[]esv1.DownscaledNode{
 			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
 			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster1Replicas-0", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "NOT_STARTED"},
-			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "NOT_STARTED"},
 		},
 		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
 	)
 
-	// only part of the expected replicas of ssetMaster3Replicas should be updated,
+	// only part of the expected replicas of ssetMaster1Replicas should be updated,
 	// since we remove only one master at a time
-	ssetMaster3ReplicasExpectedAfterDownscale := *ssetMaster3Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(2))
+	ssetMaster1ReplicaExpectedAfterDownscale := *ssetMaster1Replica.DeepCopy()
+	nodespec.UpdateReplicas(&ssetMaster1ReplicaExpectedAfterDownscale, pointer.Int32(0))
+
 	// only part of the expected replicas of ssetData4Replicas should be updated,
 	// since a node still needs to migrate data
 	ssetData4ReplicasExpectedAfterDownscale := *ssetData4Replicas.DeepCopy()
 	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, pointer.Int32(3))
 
-	expectedAfterDownscale := []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
+	expectedAfterDownscale := []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster1ReplicaExpectedAfterDownscale, ssetMaster3Replicas}
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
 	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
 
-	// voting config exclusion should have been added for leaving masters
+	// voting config exclusion should have been added for leaving master
 	require.True(t, esClient.AddVotingConfigExclusionsCalled)
-	require.Equal(t, []string{"ssetMaster3Replicas-2"}, esClient.AddVotingConfigExclusionsCalledWith)
+	require.Equal(t, []string{"ssetMaster1Replicas-0"}, esClient.AddVotingConfigExclusionsCalledWith)
 
 	// compare what has been updated in the apiserver with what we would expect
 	var actual appsv1.StatefulSetList
@@ -217,7 +239,7 @@ func TestHandleDownscale(t *testing.T) {
 	}
 
 	// simulate pods deletion that would be done by the StatefulSet controller
-	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster3Replicas[2]))
+	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster1Replica[0]))
 	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetData4Replicas[3]))
 
 	// running the downscale again should remove the next master,
@@ -230,13 +252,46 @@ func TestHandleDownscale(t *testing.T) {
 		[]esv1.DownscaledNode{
 			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
 			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster1Replicas-0", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "NOT_STARTED"},
+			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
+		},
+		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
+	)
+	ssetMaster3ReplicasExpectedAfterDownscale := *ssetMaster3Replicas.DeepCopy()
+	// one less master and second master sset should be gone now
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(2))
+	expectedAfterDownscale = []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
+
+	err = k8sClient.List(context.Background(), &actual)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
+	for i := range expectedAfterDownscale {
+		comparison.RequireEqual(t, &expectedAfterDownscale[i], &actual.Items[i])
+	}
+
+	// simulate master pod deletion
+	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster3Replicas[2]))
+
+	// running the downscale yet again should remove the next master,
+	// and also requeue since data migration is still not over for data nodes
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	require.False(t, results.HasError())
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(defaultRequeue.WithReason("Downscale in progress")), results)
+	// status should reflect the in progress operations
+	require.Equal(t,
+		[]esv1.DownscaledNode{
+			{Name: "ssetData4Replicas-2", ShutdownStatus: "IN_PROGRESS"},
+			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster1Replicas-0", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
 		},
 		reconcileState.MergeStatusReportingWith(esv1.ElasticsearchStatus{}).DownscaleOperation.Nodes,
 	)
 
-	// one less master
+	ssetMaster3ReplicasExpectedAfterDownscale = *ssetMaster3Replicas.DeepCopy()
+	// we should be at the expected number of masters now
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
 	err = k8sClient.List(context.Background(), &actual)
@@ -246,7 +301,6 @@ func TestHandleDownscale(t *testing.T) {
 		comparison.RequireEqual(t, &expectedAfterDownscale[i], &actual.Items[i])
 	}
 
-	// simulate master pod deletion
 	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetMaster3Replicas[1]))
 
 	// once data migration is over the downscale should continue for next data nodes
@@ -264,6 +318,7 @@ func TestHandleDownscale(t *testing.T) {
 		[]esv1.DownscaledNode{
 			{Name: "ssetData4Replicas-2", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster1Replicas-0", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
 		},
@@ -327,6 +382,7 @@ func TestHandleDownscale(t *testing.T) {
 		[]esv1.DownscaledNode{
 			{Name: "ssetData4Replicas-2", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetData4Replicas-3", ShutdownStatus: "COMPLETE"},
+			{Name: "ssetMaster1Replicas-0", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-1", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetMaster3Replicas-2", ShutdownStatus: "COMPLETE"},
 			{Name: "ssetToRemove-0", ShutdownStatus: "COMPLETE"},

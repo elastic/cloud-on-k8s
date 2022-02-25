@@ -138,7 +138,7 @@ func calculateDownscales(
 		case expectedReplicas < actualReplicas:
 			// the StatefulSet should be downscaled
 			requestedDeletes := actualReplicas - expectedReplicas
-			allowedDeletes := downscaleFilter(state, actualSset, requestedDeletes)
+			allowedDeletes := downscaleFilter(&state, actualSset, requestedDeletes)
 			if allowedDeletes == 0 {
 				continue
 			}
@@ -156,19 +156,19 @@ func calculateDownscales(
 	return downscales, deletions
 }
 
-type downscaleFilter func(_ downscaleState, _ appsv1.StatefulSet, _ int32) int32
+type downscaleFilter func(_ *downscaleState, _ appsv1.StatefulSet, _ int32) int32
 
 // noDownscaleFilter is a filter which does no remove any Pod. It can be used to compute the full list of
 // Pods which are expected to be deleted.
-func noDownscaleFilter(_ downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
+func noDownscaleFilter(_ *downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
 	return requestedDeletes
 }
 
 // downscaleBudgetFilter is a filter which relies on checkDownscaleInvariants.
 // It ensures that we only downscale nodes we're allowed to.
 // Note that this function may have side effects on the downscaleState and should not be considered as idempotent.
-func downscaleBudgetFilter(state downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
-	allowedDeletes, reason := checkDownscaleInvariants(state, actualSset, requestedDeletes)
+func downscaleBudgetFilter(state *downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
+	allowedDeletes, reason := checkDownscaleInvariants(*state, actualSset, requestedDeletes)
 	if allowedDeletes == 0 {
 		ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
 		return 0
