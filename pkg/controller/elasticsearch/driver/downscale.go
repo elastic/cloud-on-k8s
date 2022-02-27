@@ -158,7 +158,7 @@ func calculateDownscales(
 
 type downscaleFilter func(_ *downscaleState, _ appsv1.StatefulSet, _ int32) int32
 
-// noDownscaleFilter is a filter which does no remove any Pod. It can be used to compute the full list of
+// noDownscaleFilter is a filter which does not remove any Pod. It can be used to compute the full list of
 // Pods which are expected to be deleted.
 func noDownscaleFilter(_ *downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
 	return requestedDeletes
