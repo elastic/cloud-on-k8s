@@ -461,6 +461,11 @@ func (es Elasticsearch) SuspendedPodNames() set.StringSet {
 	return setFromAnnotations(SuspendAnnotation, es.Annotations)
 }
 
+// GetObservedGeneration will return the observed generation from the Elasticsearch status.
+func (es Elasticsearch) GetObservedGeneration() int64 {
+	return es.Status.ObservedGeneration
+}
+
 func setFromAnnotations(annotationKey string, annotations map[string]string) set.StringSet {
 	allValues, exists := annotations[annotationKey]
 	if !exists {

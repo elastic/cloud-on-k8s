@@ -428,6 +428,8 @@ HTTPConfig holds the HTTP layer configuration for resources.
 |===
 
 
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-keytopath"]
 === KeyToPath 
 

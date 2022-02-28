@@ -7512,6 +7512,15 @@ spec:
                 description: MonitoringAssociationStatus is the status of any auto-linking
                   to monitoring Elasticsearch clusters.
                 type: object
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this Kibana instance. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Kibana controller has not yet processed the changes contained in
+                  the Kibana specification.
+                format: int64
+                type: integer
               selector:
                 description: Selector is the label selector used to find all pods.
                 type: string

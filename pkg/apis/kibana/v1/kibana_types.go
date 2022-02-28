@@ -131,15 +131,25 @@ type LogsMonitoring struct {
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
+
 	// AssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	// This field is deprecated and will be removed in a future release. Use ElasticsearchAssociationStatus instead.
 	AssociationStatus commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+
 	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
 	// EnterpriseSearchAssociationStatus is the status of any auto-linking to Enterprise Search.
 	EnterpriseSearchAssociationStatus commonv1.AssociationStatus `json:"enterpriseSearchAssociationStatus,omitempty"`
+
 	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
+
+	// ObservedGeneration is the most recent generation observed for this Kibana instance.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Kibana
+	// controller has not yet processed the changes contained in the Kibana specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
@@ -247,6 +257,11 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 	default:
 		return fmt.Errorf("association type %s not known", typ)
 	}
+}
+
+// GetObservedGeneration will return the observed generation from the Kibana status.
+func (k *Kibana) GetObservedGeneration() int64 {
+	return k.Status.ObservedGeneration
 }
 
 // -- association with Elasticsearch
