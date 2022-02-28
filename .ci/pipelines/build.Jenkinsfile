@@ -110,7 +110,7 @@ pipeline {
                     build job: 'cloud-on-k8s-e2e-tests-ocp',
                         parameters: [
                             string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                            string(name: 'OCP_VERSION', value: "4.9.6"),
+                            string(name: 'OCP_VERSION', value: "4.9.9"),
                             string(name: 'branch_specifier', value: GIT_COMMIT)
                         ],
                         wait: false
