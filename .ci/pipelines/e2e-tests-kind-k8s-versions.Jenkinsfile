@@ -36,17 +36,6 @@ pipeline {
         stage('Run tests on different versions of vanilla K8s') {
             // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
             parallel {
-                stage("1.18.19") {
-                    agent {
-                        label 'eck'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runTests(lib, failedTests, "kindest/node:v1.18.19@sha256:7af1492e19b3192a79f606e43c35fb741e520d195f96399284515f077b3b622c", "0.11.1", "ipv4")
-                        }
-                    }
-                }
                 stage("1.19.11") {
                     agent {
                         label 'eck'
@@ -102,7 +91,28 @@ pipeline {
                         }
                     }
                 }
-
+                stage("1.23.3 IPv4") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv4")
+                        }
+                    }
+                }
+                stage("1.23.3 IPv6") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv6")
+                        }
+                    }
+                }
             }
         }
     }
