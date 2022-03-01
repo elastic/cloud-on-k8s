@@ -227,6 +227,14 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 	return associations
 }
 
+func (a *Agent) ElasticsearchRefs() []commonv1.ObjectSelector {
+	refs := make([]commonv1.ObjectSelector, len(a.Spec.ElasticsearchRefs))
+	for i, r := range a.Spec.ElasticsearchRefs {
+		refs[i] = r.ObjectSelector
+	}
+	return refs
+}
+
 func (a *Agent) ServiceAccountName() string {
 	return a.Spec.ServiceAccountName
 }

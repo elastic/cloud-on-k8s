@@ -72,6 +72,7 @@ func validations(exposedNodeLabels NodeLabels) []validation {
 		validAutoscalingConfiguration,
 		validPVCNaming,
 		validMonitoring,
+		validAssociations,
 	}
 }
 
@@ -326,4 +327,11 @@ func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) 
 
 func validMonitoring(es esv1.Elasticsearch) field.ErrorList {
 	return stackmon.Validate(&es, es.Spec.Version)
+}
+
+func validAssociations(es esv1.Elasticsearch) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
+	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), es.GetMonitoringMetricsRefs()...)
+	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), es.GetMonitoringLogsRefs()...)
+	return append(err1, err2...)
 }

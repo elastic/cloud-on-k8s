@@ -95,6 +95,19 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 	return nil
 }
 
+// CheckAssociationRefs checks that the given association references are valid.
+func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if ref.Name != "" && ref.SecretName != "" {
+			return field.ErrorList{field.Forbidden(path,"Invalid association reference: specify name or secretName, not both")}
+		}
+		if ref.SecretName != "" && ref.ServiceName != "" {
+			return field.ErrorList{field.Forbidden(path,"Invalid association reference: serviceName can only be used in combination with name, not with secretName")}
+		}
+	}
+	return nil
+}
+
 func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	v, err := version.Parse(ver)
 	if err != nil {

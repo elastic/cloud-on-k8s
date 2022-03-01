@@ -31,6 +31,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkAssociation,
 	}
 
 	updateChecks = []func(old, curr *EnterpriseSearch) field.ErrorList{
@@ -113,4 +114,8 @@ func checkSupportedVersion(ent *EnterpriseSearch) field.ErrorList {
 
 func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+func checkAssociation(ent *EnterpriseSearch) field.ErrorList {
+	return commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), ent.Spec.ElasticsearchRef)
 }
