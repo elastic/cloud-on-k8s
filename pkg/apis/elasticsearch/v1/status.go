@@ -172,7 +172,7 @@ type NewNode struct {
 
 	// +optional
 	// Optional message to explain why a node may not be immediately added.
-	Message *string `json:"message"`
+	Message *string `json:"message,omitempty"`
 }
 
 // UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes to the cluster.
@@ -195,11 +195,11 @@ type UpgradedNode struct {
 
 	// +optional
 	// Optional message to explain why a node may not be immediately restarted for upgrade.
-	Message *string `json:"message"`
+	Message *string `json:"message,omitempty"`
 
 	// Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade.
 	// +optional
-	Predicate *string `json:"predicate"`
+	Predicate *string `json:"predicate,omitempty"`
 }
 
 // UpgradeOperation provides an overview of the pending or in progress changes applied by the operator to update the Elasticsearch nodes in the cluster.
@@ -225,7 +225,7 @@ type DownscaledNode struct {
 	// +optional
 	// Explanation provides details about an in progress node shutdown. It is only available for clusters managed with the
 	// Elasticsearch shutdown API.
-	Explanation *string `json:"explanation"`
+	Explanation *string `json:"explanation,omitempty"`
 }
 
 // DownscaleOperation provides details about in progress downscale operations.
@@ -239,7 +239,7 @@ type DownscaleOperation struct {
 	// Stalled represents a state where no progress can be made.
 	// It is only available for clusters managed with the Elasticsearch shutdown API.
 	// +optional
-	Stalled *bool `json:"stalled"`
+	Stalled *bool `json:"stalled,omitempty"`
 }
 
 // InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster.
