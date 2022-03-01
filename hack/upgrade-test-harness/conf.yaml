@@ -43,7 +43,10 @@ testParams:
     stackVersion: 7.16.0
   - name: v191
     operatorVersion: 1.9.1
-    stackVersion: 7.16.1
-  - name: upcoming
+    stackVersion: 7.17.0
+  - name: v200
     operatorVersion: 2.0.0
-    stackVersion: 8.0.0-SNAPSHOT
+    stackVersion: 8.0.0
+  - name: upcoming
+    operatorVersion: 2.1.0
+    stackVersion: 8.1.0-SNAPSHOT
