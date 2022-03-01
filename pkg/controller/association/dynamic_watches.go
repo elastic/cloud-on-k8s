@@ -65,7 +65,7 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 	if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
-			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.Name),
+			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
 			Namespace: ref.Namespace,
 		}
 	}); err != nil {

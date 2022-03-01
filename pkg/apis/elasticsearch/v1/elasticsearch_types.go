@@ -560,7 +560,7 @@ func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Assoc
 }
 
 func (ema *EsMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", ema.ref.Namespace, ema.ref.Name)
+	return fmt.Sprintf("%s-%s", ema.ref.Namespace, ema.ref.NameOrSecretName())
 }
 
 // HasMonitoring methods

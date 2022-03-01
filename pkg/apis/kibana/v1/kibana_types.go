@@ -412,7 +412,7 @@ func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Ass
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", kbmon.ref.Namespace, kbmon.ref.Name)
+	return fmt.Sprintf("%s-%s", kbmon.ref.Namespace, kbmon.ref.NameOrSecretName())
 }
 
 // -- HasMonitoring methods

@@ -303,7 +303,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
 			"name", association.Associated().GetName(), "ref_name", assocRef.Name, "es_ref_name", esAssocRef.Name)
 		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
-		expectedAssocConf.AuthSecretName = esAssocRef.Name
+		expectedAssocConf.AuthSecretName = esAssocRef.SecretName
 		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
 		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}

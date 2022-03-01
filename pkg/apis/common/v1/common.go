@@ -94,10 +94,18 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 	}
 }
 
+func (o ObjectSelector) NameOrSecretName() string {
+	name := o.Name
+	if o.SecretName != "" {
+		name = o.SecretName
+	}
+	return name
+}
+
 // NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
 func (o ObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
-		Name:      o.Name,
+		Name:      o.NameOrSecretName(),
 		Namespace: o.Namespace,
 	}
 }
@@ -105,7 +113,7 @@ func (o ObjectSelector) NamespacedName() types.NamespacedName {
 // IsDefined checks if the object selector is not nil and has a name.
 // Namespace is not mandatory as it may be inherited by the parent object.
 func (o *ObjectSelector) IsDefined() bool {
-	return o != nil && (o.Name != "" || o.SecretName != "")
+	return o != nil && o.NameOrSecretName() != ""
 }
 
 // IsObjectTypeSecret returns true when the object selector references a Kubernetes secret describing the referenced object.

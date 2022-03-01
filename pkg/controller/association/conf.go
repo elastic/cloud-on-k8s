@@ -77,7 +77,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
 			"ref_namespace", ref.Namespace,
-			"ref_name", ref.Name,
+			"ref_name", ref.NameOrSecretName(),
 		)
 		return false
 	}
@@ -113,7 +113,7 @@ func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (userna
 	// if direct or transitive unmanaged ES, the auth secret points to an unmanaged Secret where the username key exists
 	if providedUsername, exists := secret.Data[authUsernameUnmanagedSecretKey]; exists {
 		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, read unmanaged auth Secret",
-			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().Name)
+			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().NameOrSecretName())
 		username = string(providedUsername)
 	}
 
@@ -137,7 +137,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if assoc.AssociationConf() == nil || assoc.AssociationConf().Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
-				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
 			return false
 		}
 		if assoc.AssociationConf().Version == UnknownVersion {
@@ -156,7 +156,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
 				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
 			return false

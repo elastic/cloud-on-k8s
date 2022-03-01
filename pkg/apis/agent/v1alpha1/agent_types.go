@@ -298,7 +298,7 @@ type AgentESAssociation struct {
 var _ commonv1.Association = &AgentESAssociation{}
 
 func (aea *AgentESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.Name)
+	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.NameOrSecretName())
 }
 
 func (aea *AgentESAssociation) Associated() commonv1.Associated {

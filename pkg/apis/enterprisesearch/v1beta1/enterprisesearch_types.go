@@ -104,7 +104,7 @@ func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationC
 }
 
 func (ent *EnterpriseSearch) RequiresAssociation() bool {
-	return ent.Spec.ElasticsearchRef.Name != ""
+	return ent.Spec.ElasticsearchRef.NameOrSecretName() != ""
 }
 
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {

@@ -42,13 +42,13 @@ func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Associat
 		Version: ver,
 		URL:     info.URL,
 		// points the auth secret to the custom secret
-		AuthSecretName: assocRef.Name,
+		AuthSecretName: assocRef.SecretName,
 		AuthSecretKey:  authPasswordUnmanagedSecretKey,
 		CACertProvided: info.CaCert != "",
 	}
 	// points the ca secret to the custom secret if needed
 	if expectedAssocConf.CACertProvided {
-		expectedAssocConf.CASecretName = assocRef.Name
+		expectedAssocConf.CASecretName = assocRef.SecretName
 	}
 
 	return expectedAssocConf, err
@@ -83,15 +83,15 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.Ob
 	}
 	url, ok := secretRef.Data["url"]
 	if !ok {
-		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", o.Name)
+		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", o.SecretName)
 	}
 	username, ok := secretRef.Data["username"]
 	if !ok {
-		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", o.Name)
+		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", o.SecretName)
 	}
 	password, ok := secretRef.Data[authPasswordUnmanagedSecretKey]
 	if !ok {
-		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", o.Name)
+		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", o.SecretName)
 	}
 
 	ref := UnmanagedAssociationConnectionInfo{URL: string(url), Username: string(username), Password: string(password)}

@@ -420,7 +420,7 @@ func certificatesDir(association commonv1.Association) string {
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
 		association.AssociationType(),
 		ref.Namespace,
-		ref.Name,
+		ref.NameOrSecretName(),
 	)
 }
 
