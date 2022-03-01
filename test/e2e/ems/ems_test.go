@@ -98,15 +98,9 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 }
 
 func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
-	// TODO restore this to test.Ctx().ElasticStackVersion once 8.0 is released
-	srcVersion := "7.17.0-SNAPSHOT"
-	dstVersion := test.LatestSnapshotVersion8x
-	// TODO remove skip once 8.0 is released, we cannot test upgrades from production builds to
-	// development/snapshot builds when licensed functionality is under test due to incompatible license keys
-	if test.Ctx().TestLicensePKeyPath == "" {
-		// skip this test if the dev private key is not configured e.g. because we are testing a production build
-		t.SkipNow()
-	}
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestReleasedVersion8x
+
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-ems-version-upgrade-8x"

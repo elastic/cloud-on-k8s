@@ -20,6 +20,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
 
 const (
@@ -71,12 +72,15 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
+	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
 	mutatedFrom := b.MutatedFrom
+	isMutated := true
 	if mutatedFrom == nil {
 		// cluster mutates to itself (same spec)
 		mutatedFrom = &b
+		isMutated = false
 	}
 
 	masterChangeBudgetWatcher := NewMasterChangeBudgetWatcher(b.Elasticsearch)
@@ -109,6 +113,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		masterChangeBudgetWatcher.StartStep(k),
 		changeBudgetWatcher.StartStep(k),
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
+		generation.RetrieveGenerationsStep(&b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
 	}.
 		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
@@ -116,6 +121,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
+			generation.CompareObjectGenerationsStep(&b.Elasticsearch, k, isMutated, clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation),
 			masterChangeBudgetWatcher.StopStep(k),
 			changeBudgetWatcher.StopStep(k),
 			test.Step{

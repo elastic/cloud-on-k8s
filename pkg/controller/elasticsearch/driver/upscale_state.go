@@ -5,14 +5,17 @@
 package driver
 
 import (
+	"fmt"
 	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -25,9 +28,10 @@ type upscaleState struct {
 	recordedCreates int32
 	// indicates how many creates are allowed when taking into account maxSurge setting,
 	// nil indicates that any number of pods can be created, negative value is not expected.
-	createsAllowed *int32
-	ctx            upscaleCtx
-	once           *sync.Once
+	createsAllowed  *int32
+	ctx             upscaleCtx
+	once            *sync.Once
+	upscaleReporter *reconcile.UpscaleReporter
 }
 
 func newUpscaleState(
@@ -42,6 +46,7 @@ func newUpscaleState(
 			ctx.es.Spec.UpdateStrategy.ChangeBudget.GetMaxSurgeOrDefault(),
 			actualStatefulSets.ExpectedNodeCount(),
 			expectedResources.StatefulSets().ExpectedNodeCount()),
+		upscaleReporter: ctx.upscaleReporter,
 	}
 }
 
@@ -184,12 +189,22 @@ func (s *upscaleState) limitNodesCreation(
 			"actualReplicas", actualReplicas,
 			"replicasToCreate", replicasToCreate,
 		)
-	} else {
+		s.upscaleReporter.UpdateNodesStatuses(
+			esv1.NewNodeExpected,
+			toApply.Name,
+			fmt.Sprintf("Upscaling StatefulSet %s from %d to %d replicas", toApply.Name, actualReplicas, actualReplicas+replicasToCreate),
+			actualReplicas+1,
+			actualReplicas+replicasToCreate,
+		)
+	}
+	if replicasToCreate+actualReplicas < targetReplicas {
+		msg := "Limiting nodes creation to respect maxSurge setting"
 		ssetLogger(toApply).Info(
-			"Limiting nodes creation to respect maxSurge setting",
+			msg,
 			"target", targetReplicas,
 			"actual", actualReplicas,
 		)
+		s.upscaleReporter.UpdateNodesStatuses(esv1.NewNodePending, toApply.Name, msg, actualReplicas+replicasToCreate+1, targetReplicas)
 	}
 
 	return toApply, nil
@@ -205,21 +220,25 @@ func (s *upscaleState) limitMasterNodesCreation(
 	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
 	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
 		if !s.canCreateMasterNode() {
+			msg := "Limiting master nodes creation to one at a time"
 			ssetLogger(toApply).Info(
 				"Limiting master nodes creation to one at a time",
 				"target", targetReplicas,
 				"actual", actualReplicas,
 			)
+			s.upscaleReporter.UpdateNodesStatuses(esv1.NewNodePending, toApply.Name, msg, rep, targetReplicas)
 			break
 		}
 		// allow one more master node to be created
 		nodespec.UpdateReplicas(&toApply, pointer.Int32(rep))
 		s.recordMasterNodeCreation()
+		msg := "Creating master node"
 		ssetLogger(toApply).Info(
-			"Creating master node",
+			msg,
 			"actualReplicas", actualReplicas,
 			"targetReplicas", rep,
 		)
+		s.upscaleReporter.UpdateNodesStatuses(esv1.NewNodeExpected, toApply.Name, msg, rep, rep)
 	}
 
 	return toApply, nil

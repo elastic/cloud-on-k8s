@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 const (
@@ -74,8 +75,8 @@ func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, no
 	if !bootstrap.AnnotatedForBootstrap(es) {
 		return true, nil
 	}
-	// - we're upgrading (effectively restarting) a single zen1 master to zen2
-	return singleZen1MasterUpgrade(k8sClient, es, nodeSpecResources)
+	// - we're upgrading (effectively restarting) a non-HA zen1 cluster to zen2
+	return nonHAZen1MasterUpgrade(k8sClient, es, nodeSpecResources)
 }
 
 // RemoveZen2BootstrapAnnotation removes the initialMasterNodesAnnotation (if set) once zen2 is bootstrapped
@@ -123,47 +124,56 @@ func patchInitialMasterNodesConfig(nodeSpecResources nodespec.ResourcesList, ini
 	return nil
 }
 
-// singleZen1MasterUpgrade returns true if expected nodes in nodeSpecResources will lead to upgrading
-// the single zen1-compatible master node currently running in the es cluster.
-func singleZen1MasterUpgrade(c k8s.Client, es esv1.Elasticsearch, nodeSpecResources nodespec.ResourcesList) (bool, error) {
-	// looking for a single master node...
+// nonHAZen1MasterUpgrade returns true if expected nodes in nodeSpecResources will lead to upgrading
+// the one or two zen1-compatible master nodes currently running in the es cluster.
+// As we upgrade all nodes at once in one or two node clusters initial master nodes needs to be set as there is no
+// existing cluster to join once all v6 nodes have been terminated.
+func nonHAZen1MasterUpgrade(c k8s.Client, es esv1.Elasticsearch, nodeSpecResources nodespec.ResourcesList) (bool, error) {
+	// looking for a non-HA master node setup...
 	masters, err := sset.GetActualMastersForCluster(c, es)
 	if err != nil {
 		return false, err
 	}
-	if len(masters) != 1 {
+	if len(masters) > 2 {
 		return false, nil
 	}
-	currentMaster := masters[0]
-	// ...not compatible with zen2...
-	v, err := label.ExtractVersion(currentMaster.Labels)
-	if err != nil {
-		return false, err
-	}
-	if versionCompatibleWithZen2(v) {
-		return false, nil
-	}
-	// ...that will be replaced
-	var targetMasters []string
-	for _, res := range nodeSpecResources {
-		if label.IsMasterNodeSet(res.StatefulSet) {
-			targetMasters = append(targetMasters, sset.PodNames(res.StatefulSet)...)
+
+	currentMasterNames := set.Make()
+	for _, currentMaster := range masters {
+		currentMasterNames.Add(currentMaster.Name)
+		// ...not compatible with zen2...
+		v, err := label.ExtractVersion(currentMaster.Labels)
+		if err != nil {
+			return false, err
+		}
+		// at least one master is already on Zen 2
+		if versionCompatibleWithZen2(v) {
+			return false, nil
 		}
 	}
-	if len(targetMasters) == 0 {
+
+	// ...that will be replaced
+	targetMasters := set.Make()
+	for _, res := range nodeSpecResources {
+		if label.IsMasterNodeSet(res.StatefulSet) {
+			targetMasters.MergeWith(set.Make(sset.PodNames(res.StatefulSet)...))
+		}
+	}
+	if targetMasters.Count() == 0 {
 		return false, nil
 	}
-	if len(targetMasters) > 1 {
+	if targetMasters.Count() > 2 {
 		// Covers the case where the user is upgrading to zen2 + adding more masters simultaneously.
 		// Additional masters will get created before the existing one gets upgraded/restarted.
 		return false, nil
 	}
-	if targetMasters[0] != currentMaster.Name {
-		// Covers the case where the existing master is replaced by another master in a different NodeSet.
+
+	if currentMasterNames.Diff(targetMasters).Count() > 0 {
+		// Covers the case where the existing masters are replaced by other masters in a different NodeSet.
 		// The new master will be created before the existing one gets removed.
 		return false, nil
 	}
-	// single zen1 master, will be replaced by a single zen2 master with the same name
+	// one or two zen1 masters, will be replaced by a one or two zen2 master with the same name
 	return true, nil
 }
 

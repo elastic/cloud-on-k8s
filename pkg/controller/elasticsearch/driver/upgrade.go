@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
@@ -23,7 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func (d *defaultDriver) handleRollingUpgrades(
+func (d *defaultDriver) handleUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
@@ -34,12 +36,13 @@ func (d *defaultDriver) handleRollingUpgrades(
 	// We need to check that all the expectations are satisfied before continuing.
 	// This is to be sure that none of the previous steps has changed the state and
 	// that we are not running with a stale cache.
-	ok, err := d.expectationsSatisfied()
+	ok, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !ok {
-		return results.WithResult(defaultRequeue)
+		reason := fmt.Sprintf("Nodes upgrade: %s", reason)
+		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
 	// Get the pods to upgrade
@@ -75,8 +78,11 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithError(err)
 	}
 	numberOfPods := len(currentPods)
+
+	expectedMasters := expectedResources.MasterNodesNames()
+
 	// Maybe upgrade some of the nodes.
-	deletedPods, err := newRollingUpgrade(
+	upgrade := newUpgrade(
 		ctx,
 		d,
 		statefulSets,
@@ -84,22 +90,37 @@ func (d *defaultDriver) handleRollingUpgrades(
 		esClient,
 		esState,
 		nodeShutdown,
-		expectedResources.MasterNodesNames(),
+		expectedMasters,
 		actualMasters,
 		podsToUpgrade,
 		healthyPods,
 		numberOfPods,
-	).run()
+	)
+
+	var deletedPods []corev1.Pod
+
+	isVersionUpgrade, err := isVersionUpgrade(d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isVersionUpgrade
+	if shouldDoFullRestartUpgrade {
+		// unconditional full cluster upgrade
+		deletedPods, err = run(upgrade.DeleteAll)
+	} else {
+		// regular rolling upgrade
+		deletedPods, err = run(upgrade.Delete)
+	}
 	if err != nil {
 		return results.WithError(err)
 	}
 	if len(deletedPods) > 0 {
 		// Some Pods have just been deleted, we don't need to try to enable shards allocation.
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
 	if len(podsToUpgrade) > len(deletedPods) {
 		// Some Pods have not been updated, ensure that we retry later
-		results.WithResult(defaultRequeue)
+		results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
@@ -109,7 +130,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	return results
 }
 
-type rollingUpgradeCtx struct {
+type upgradeCtx struct {
 	parentCtx       context.Context
 	client          k8s.Client
 	ES              esv1.Elasticsearch
@@ -128,7 +149,7 @@ type rollingUpgradeCtx struct {
 	numberOfPods    int
 }
 
-func newRollingUpgrade(
+func newUpgrade(
 	ctx context.Context,
 	d *defaultDriver,
 	statefulSets sset.StatefulSetList,
@@ -141,8 +162,8 @@ func newRollingUpgrade(
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 	numberOfPods int,
-) rollingUpgradeCtx {
-	return rollingUpgradeCtx{
+) upgradeCtx {
+	return upgradeCtx{
 		parentCtx:       ctx,
 		client:          d.Client,
 		ES:              d.ES,
@@ -162,8 +183,8 @@ func newRollingUpgrade(
 	}
 }
 
-func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
-	deletedPods, err := ctx.Delete()
+func run(upgrade func() ([]corev1.Pod, error)) ([]corev1.Pod, error) {
+	deletedPods, err := upgrade()
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
 		// (could be the statefulset controller)
@@ -174,6 +195,30 @@ func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
 		return deletedPods, err
 	}
 	return deletedPods, nil
+}
+
+// isNonHACluster returns true if the expected and actual number of master nodes indicates that the quorum of that cluster
+// does not allow the loss of any node in which case a regular rolling upgrade might not be possible especially when doing
+// a major version upgrade.
+func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
+	if len(expectedMasters) > 2 {
+		return false
+	}
+	actualMasters := label.FilterMasterNodePods(actualPods)
+	return len(actualMasters) <= 2
+}
+
+// isVersionUpgrade returns true if a spec change contains a version upgrade.
+func isVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
+	specVersion, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return false, err
+	}
+	statusVersion, err := version.Parse(es.Status.Version)
+	if err != nil {
+		return false, err
+	}
+	return specVersion.GT(statusVersion), nil
 }
 
 func healthyPods(
@@ -304,12 +349,13 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	}
 
 	// Make sure all pods scheduled for upgrade have been upgraded.
-	done, err := d.expectationsSatisfied()
+	done, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !done {
-		return results.WithResult(defaultRequeue)
+		reason := fmt.Sprintf("Enabling shards allocation: %s", reason)
+		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
 	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
@@ -328,7 +374,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 			"namespace", d.ES.Namespace,
 			"es_name", d.ES.Name,
 		)
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade: some nodes are not back in the cluster yet"))
 	}
 
 	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
@@ -338,7 +384,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	return results
 }
 
-func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
+func (ctx *upgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	if !supportsNodeShutdown(ctx.esClient.Version()) {
 		return true, nil // always OK to restart pre node shutdown support
 	}
@@ -353,7 +399,7 @@ func (ctx *rollingUpgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 	return response.Status == esclient.ShutdownComplete, nil
 }
 
-func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
+func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 	var podNames []string //nolint:prealloc
 	for _, p := range podsToRestart {
 		if !k8s.IsPodReady(p) {
@@ -372,7 +418,7 @@ func (ctx *rollingUpgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) er
 	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
 }
 
-func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
+func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {
 	// use client.Version here as we want the minimal version in the cluster not the one in the spec.
 	if supportsNodeShutdown(ctx.esClient.Version()) {
 		return ctx.requestNodeRestarts(podsToUpgrade)

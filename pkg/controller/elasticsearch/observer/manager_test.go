@@ -184,7 +184,7 @@ func TestManager_AddObservationListener(t *testing.T) {
 
 	// add a listener that is only interested in cluster1
 	eventsCluster1 := make(chan types.NamespacedName)
-	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
+	m.AddObservationListener(func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		if cluster.Name == "cluster1" {
 			eventsCluster1 <- cluster
 		}
@@ -192,7 +192,7 @@ func TestManager_AddObservationListener(t *testing.T) {
 
 	// add a 2nd listener that is only interested in cluster2
 	eventsCluster2 := make(chan types.NamespacedName)
-	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
+	m.AddObservationListener(func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		if cluster.Name == "cluster2" {
 			eventsCluster2 <- cluster
 		}

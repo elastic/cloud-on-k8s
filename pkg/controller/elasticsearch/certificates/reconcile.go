@@ -11,7 +11,6 @@ import (
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -109,9 +108,11 @@ func ReconcileTransport(
 		return results.WithError(err)
 	}
 	// make sure to requeue before the CA cert expires
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
-	})
+	results.WithReconciliationState(
+		reconciler.
+			RequeueAfter(certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore)).
+			ReconciliationComplete(), // This reconciliation result should not prevent the reconciliation loop to be considered as completed in the status
+	)
 
 	// reconcile transport public certs secret
 	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {

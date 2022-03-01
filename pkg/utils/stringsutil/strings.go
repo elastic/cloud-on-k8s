@@ -44,6 +44,29 @@ func StringsInSlice(strings []string, slice []string) bool {
 	return true
 }
 
+// Difference returns the elements in `a` that aren't in `b` and the elements in `b` that aren't in `a`
+func Difference(a, b []string) ([]string, []string) {
+	// Sort strings to have a stable output
+	sort.Strings(a)
+	sort.Strings(b)
+	mb := SliceToMap(b)
+	ma := make(map[string]struct{}, len(a))
+	var inA []string
+	for _, x := range a {
+		ma[x] = struct{}{}
+		if _, found := mb[x]; !found {
+			inA = append(inA, x)
+		}
+	}
+	var inB []string
+	for _, x := range b {
+		if _, found := ma[x]; !found {
+			inB = append(inB, x)
+		}
+	}
+	return inA, inB
+}
+
 // RemoveStringInSlice returns a new slice with all occurrences of s removed,
 // keeping the given slice unmodified
 func RemoveStringInSlice(s string, slice []string) []string {

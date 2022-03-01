@@ -288,3 +288,50 @@ func TestStringSet_MergeWith(t *testing.T) {
 		})
 	}
 }
+
+func TestStringSet_Diff(t *testing.T) {
+	tests := []struct {
+		name  string
+		set   StringSet
+		other StringSet
+		want  StringSet
+	}{
+		{
+			name:  "both nil",
+			set:   nil,
+			other: nil,
+			want:  StringSet{},
+		},
+		{
+			name:  "other nil",
+			set:   StringSet{"a": {}},
+			other: nil,
+			want:  StringSet{"a": {}},
+		},
+		{
+			name:  "same elements",
+			set:   StringSet{"a": {}},
+			other: StringSet{"a": {}},
+			want:  StringSet{},
+		},
+		{
+			name:  "b not in other",
+			set:   StringSet{"a": {}, "b": {}},
+			other: StringSet{"a": {}},
+			want:  StringSet{"b": {}},
+		},
+		{
+			name:  "b not in set",
+			set:   StringSet{"a": {}},
+			other: StringSet{"a": {}, "b": {}},
+			want:  StringSet{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.set.Diff(tt.other); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Diff() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -231,3 +231,142 @@ func Test_doFlush(t *testing.T) {
 		})
 	}
 }
+
+func Test_isNonHACluster(t *testing.T) {
+	type args struct {
+		actualPods      []corev1.Pod
+		expectedMasters []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "single node cluster is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0"},
+			},
+			want: true,
+		},
+		{
+			name: "two node cluster is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1"},
+			},
+			want: true,
+		},
+		{
+			name: "multi-node cluster with two masters is not HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "master-0", StatefulSetName: "masters", Master: true}.Build(),
+					sset.TestPod{Name: "master-1", StatefulSetName: "masters", Master: true}.Build(),
+					sset.TestPod{Name: "data-0", StatefulSetName: "data", Data: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1"},
+			},
+			want: true,
+		},
+		{
+			name: "more than two master nodes is HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+					sset.TestPod{Name: "pod-2", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1", "pod-2"},
+			},
+			want: false,
+		},
+		{
+			name: "more than two master nodes but only two rolled out should be considered HA",
+			args: args{
+				actualPods: []corev1.Pod{
+					sset.TestPod{Name: "pod-0", Master: true}.Build(),
+					sset.TestPod{Name: "pod-1", Master: true}.Build(),
+				},
+				expectedMasters: []string{"pod-0", "pod-1", "pod-2"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, isNonHACluster(tt.args.actualPods, tt.args.expectedMasters), "isNonHACluster(%v, %v)", tt.args.actualPods, tt.args.expectedMasters)
+		})
+	}
+}
+
+func Test_isVersionUpgrade(t *testing.T) {
+	tests := []struct {
+		name    string
+		es      esv1.Elasticsearch
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "upgrade",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "8.0.0"},
+				Status: esv1.ElasticsearchStatus{Version: "7.17.0"},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "minor upgrade",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "8.1.0"},
+				Status: esv1.ElasticsearchStatus{Version: "8.0.0"},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "not an upgrade",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "7.17.0"},
+				Status: esv1.ElasticsearchStatus{Version: "7.17.0"},
+			},
+			want:    false,
+			wantErr: false,
+		},
+
+		{
+			name: "corrupted status version",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "7.17.0"},
+				Status: esv1.ElasticsearchStatus{Version: "NaV"},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "corrupted spec version",
+			es: esv1.Elasticsearch{
+				Spec:   esv1.ElasticsearchSpec{Version: "should never happen"},
+				Status: esv1.ElasticsearchStatus{Version: "7.17.0"},
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := isVersionUpgrade(tt.es)
+			if tt.wantErr != (err != nil) {
+				t.Errorf("wantErr %v got %v", tt.wantErr, err)
+			}
+			assert.Equalf(t, tt.want, got, "isVersionUpgrade(%v)", tt.es)
+		})
+	}
+}

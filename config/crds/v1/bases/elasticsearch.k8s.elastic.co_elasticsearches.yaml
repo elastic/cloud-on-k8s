@@ -9197,16 +9197,174 @@ spec:
             - version
             type: object
           status:
-            description: ElasticsearchStatus defines the observed state of Elasticsearch
+            description: ElasticsearchStatus represents the observed state of Elasticsearch.
             properties:
               availableNodes:
                 description: AvailableNodes is the number of available instances.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of an Elasticsearch
+                  cluster. **This API is in technical preview and may be changed or
+                  removed in a future release.**
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                    **This API is in technical preview and may be changed or removed
+                    in a future release.**
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               health:
                 description: ElasticsearchHealth is the health of the cluster as returned
                   by the health API.
                 type: string
+              inProgressOperations:
+                description: InProgressOperations represents changes being applied
+                  by the operator to the Elasticsearch cluster. **This API is in technical
+                  preview and may be changed or removed in a future release.**
+                properties:
+                  downscale:
+                    description: DownscaleOperation provides details about in progress
+                      downscale operations. **This API is in technical preview and
+                      may be changed or removed in a future release.**
+                    properties:
+                      lastUpdatedTime:
+                        format: date-time
+                        type: string
+                      nodes:
+                        description: Nodes which are scheduled to be removed from
+                          the cluster.
+                        items:
+                          description: DownscaledNode provides an overview of in progress
+                            changes applied by the operator to remove Elasticsearch
+                            nodes from the cluster. **This API is in technical preview
+                            and may be changed or removed in a future release.**
+                          properties:
+                            explanation:
+                              description: Explanation provides details about an in
+                                progress node shutdown. It is only available for clusters
+                                managed with the Elasticsearch shutdown API.
+                              type: string
+                            name:
+                              description: Name of the Elasticsearch node that should
+                                be removed.
+                              type: string
+                            shutdownStatus:
+                              description: Shutdown status as returned by the Elasticsearch
+                                shutdown API. If the Elasticsearch shutdown API is
+                                not available, the shutdown status is then inferred
+                                from the remaining shards on the nodes, as observed
+                                by the operator.
+                              type: string
+                          required:
+                          - name
+                          - shutdownStatus
+                          type: object
+                        type: array
+                      stalled:
+                        description: Stalled represents a state where no progress
+                          can be made. It is only available for clusters managed with
+                          the Elasticsearch shutdown API.
+                        type: boolean
+                    required:
+                    - nodes
+                    type: object
+                  upgrade:
+                    description: UpgradeOperation provides an overview of the pending
+                      or in progress changes applied by the operator to update the
+                      Elasticsearch nodes in the cluster. **This API is in technical
+                      preview and may be changed or removed in a future release.**
+                    properties:
+                      lastUpdatedTime:
+                        format: date-time
+                        type: string
+                      nodes:
+                        description: Nodes that must be restarted for upgrade.
+                        items:
+                          description: UpgradedNode provides details about the status
+                            of nodes which are expected to be updated. **This API
+                            is in technical preview and may be changed or removed
+                            in a future release.**
+                          properties:
+                            message:
+                              description: Optional message to explain why a node
+                                may not be immediately restarted for upgrade.
+                              type: string
+                            name:
+                              description: Name of the Elasticsearch node that should
+                                be upgraded.
+                              type: string
+                            predicate:
+                              description: Predicate is the name of the predicate
+                                currently preventing this node from being deleted
+                                for an upgrade.
+                              type: string
+                            status:
+                              description: Status states if the node is either in
+                                the process of being deleted for an upgrade, or blocked
+                                by a predicate or another condition stated in the
+                                message field.
+                              type: string
+                          required:
+                          - name
+                          - status
+                          type: object
+                        type: array
+                    required:
+                    - nodes
+                    type: object
+                  upscale:
+                    description: UpscaleOperation provides an overview of in progress
+                      changes applied by the operator to add Elasticsearch nodes to
+                      the cluster. **This API is in technical preview and may be changed
+                      or removed in a future release.**
+                    properties:
+                      lastUpdatedTime:
+                        format: date-time
+                        type: string
+                      nodes:
+                        description: Nodes expected to be added by the operator.
+                        items:
+                          properties:
+                            message:
+                              description: Optional message to explain why a node
+                                may not be immediately added.
+                              type: string
+                            name:
+                              description: Name of the Elasticsearch node that should
+                                be added to the cluster.
+                              type: string
+                            status:
+                              description: NewNodeStatus states if a new node is being
+                                created, or if the upscale is delayed.
+                              type: string
+                          required:
+                          - name
+                          - status
+                          type: object
+                        type: array
+                    required:
+                    - nodes
+                    type: object
+                required:
+                - downscale
+                - upgrade
+                - upscale
+                type: object
               monitoringAssociationStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
@@ -9216,6 +9374,15 @@ spec:
                   single Association of a given type (for ex. single ES reference),
                   this map contains a single entry.
                 type: object
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this Elasticsearch cluster. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Elasticsearch controller has not yet processed the changes contained
+                  in the Elasticsearch specification.
+                format: int64
+                type: integer
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.

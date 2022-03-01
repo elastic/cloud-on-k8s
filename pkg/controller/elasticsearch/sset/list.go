@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -56,15 +56,6 @@ func (l StatefulSetList) Names() set.StringSet {
 		names.Add(statefulSet.Name)
 	}
 	return names
-}
-
-// ObjectMetas returns a list of MetaObject from the StatefulSetList.
-func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
-	objs := make([]metav1.ObjectMeta, len(l))
-	for i, sset := range l {
-		objs[i] = sset.ObjectMeta
-	}
-	return objs
 }
 
 // ToUpdate filters the StatefulSetList to the ones having an update revision scheduled.
@@ -166,28 +157,47 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 // - created (but not there in our resources cache)
 // - removed (but still there in our resources cache)
 // Status of the pods (running, error, etc.) is ignored.
-func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, error) {
-	for _, s := range l {
-		done, err := PodReconciliationDoneForSset(c, s)
-		if err != nil || !done {
-			return done, err
+func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, string, error) {
+	for _, statefulSet := range l {
+		pendingCreations, pendingDeletions, err := pendingPodsForStatefulSet(c, statefulSet)
+		if err != nil {
+			return false, "", err
+		}
+		if len(pendingCreations) > 0 || len(pendingDeletions) > 0 {
+			log.V(1).Info(
+				"Some pods still need to be created/deleted",
+				"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name,
+				"pending_creations", pendingCreations, "pending_deletions", pendingDeletions,
+			)
+
+			var reason strings.Builder
+			reason.WriteString(fmt.Sprintf("StatefulSet %s has pending Pod operations", statefulSet.Name))
+			if len(pendingCreations) > 0 {
+				reason.WriteString(fmt.Sprintf(", creations: %s", pendingCreations))
+			}
+			if len(pendingDeletions) > 0 {
+				reason.WriteString(fmt.Sprintf(", deletions: %s", pendingDeletions))
+			}
+
+			return false, reason.String(), nil
 		}
 	}
-	return true, nil
+	return true, "", nil
 }
 
-// StatusReconciliationDone returns true if status.observedGeneration matches the metadata.generation
-// in all StatefulSets.
+// PendingReconciliation returns the list of StatefulSets for which status.observedGeneration does not match the metadata.generation.
 // The status is automatically updated by the StatefulSet controller: if the observedGeneration does not match
 // the metadata generation, it means the resource has not been processed by the StatefulSet controller yet.
 // When that happens, other fields in the StatefulSet status (eg. "updateRevision") may not be up to date.
-func (l StatefulSetList) StatusReconciliationDone() bool {
+func (l StatefulSetList) PendingReconciliation() StatefulSetList {
+	var statefulSetList StatefulSetList
 	for _, s := range l {
 		if s.Generation != s.Status.ObservedGeneration {
-			return false
+			s := s
+			statefulSetList = append(statefulSetList, s)
 		}
 	}
-	return true
+	return statefulSetList
 }
 
 // DeepCopy returns a copy of the StatefulSetList with no reference to the original StatefulSetList.

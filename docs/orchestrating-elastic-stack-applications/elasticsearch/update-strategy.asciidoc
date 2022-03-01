@@ -29,6 +29,8 @@ The operator only tries to apply these constraints when a new specification is b
 
 For example, if a new specification defines a larger cluster with `maxUnavailable: 0`, the operator creates the missing Pods according to the best practices. Similarly, if a new specification defines a smaller cluster with `maxSurge: 0`, the operator safely removes the unnecessary Pods.
 
+The operator will not enforce the change budget on version upgrades for clusters that have a non-HA setup, that is, less than three nodes. In these setups, removing a single node makes the whole cluster unavailable, and the operator will instead opt to upgrade all nodes at once. This is to avoid a situation where no progress can be made in a rolling upgrade process because the Elasticsearch cluster cannot form a quorum until all nodes have been upgraded.
+
 == Specify changeBudget
 For both `maxSurge` and `maxUnavailable` you can specify the following values:
 

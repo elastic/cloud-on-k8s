@@ -26,9 +26,6 @@ func RemoveAll(c k8s.Client, obj client.Object) error {
 		return nil
 	}
 	filterFinalizers := filterFinalizers(accessor.GetFinalizers())
-	if err != nil {
-		return err
-	}
 	accessor.SetFinalizers(filterFinalizers)
 	return c.Update(context.Background(), obj)
 }
