@@ -20,6 +20,9 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestSnapshotVersion8x
 
+	// TODO remove skip when https://github.com/elastic/kibana/issues/126611 is fixed
+	t.SkipNow()
+
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-agent-upgrade"
