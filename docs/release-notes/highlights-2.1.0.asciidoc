@@ -8,19 +8,19 @@
 New and notable changes in version 2.1.0 of {n}. See <<release-notes-2.1.0>> for the full list of changes.
 
 [float]
-[id="{p}-210-disabling-upgrade-predicates"]
-==== Allowing upgrade predicates to be selectively disabled
-
-Starting with ECK 2.1, the Elasticsearch clusters can have certain upgrade 'predicates' (rules) disabled on a case-by-case basis using annotations on the Elasticsearcch custom resource, which allow full control over what rules are considered during the Elasticsearch upgrade process.  Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-orchestration.html#k8s-advanced-upgrade-control[documentation] for more details. 
-
-[float]
 [id="{p}-210-improve-ES-status-sub-resource"]
 ==== Improved Elasticsearch status sub-resource
 
-A welcome improvement in ECK 2.1 are additions to the Elasticsearch status sub-resource, which provide rich details into the in-progress operations during upgrades, upscale, and downscale operations.  New conditions fields include `ReconciliationComplete`, `RunningDesiredVersion`, and `ElasticsearchIsReachable` which give details into why each condition is either True, or False.  Also included is a new parent field `inProgressOperations`, which provides detailed topology information for upgrades, upscale, and downscale operations.
+Additional information was added to the Elasticsearch status sub-resource, which provides rich details into the in-progress operations during upgrades, upscale, and downscale operations.  New conditions fields include `ReconciliationComplete`, `RunningDesiredVersion`, and `ElasticsearchIsReachable` which give details into why each condition is either True, or False.  Also included is a new parent field `inProgressOperations`, which provides detailed topology information for upgrades, upscale, and downscale operations.
 
 [float]
-[id="{p}-210-bugfixes"]
-==== Bug fixes
+[id="{p}-210-ES-Kibana-set-status-observed-generation"]
+==== Improved Elasticsearch and Kibana generation status
 
-Several bugs have been fixed in this release, including Elasticsearch status updates during errors, and consistently handling upgrades of non-HA (2 nodes) Elasticsearch clusters.
+An additional field `observedGeneration` is now maintained within Elasticsearch and Kibana's status sub-resource.  This new field represents the current generation of the specification that the ECK operator is working to reconcile, and is intended to allow tools to deterministically monitor the rollout of custom resources.
+
+[float]
+[id="{p}-210-disabling-upgrade-predicates"]
+==== Allowing upgrade predicates to be selectively disabled
+
+Starting with ECK 2.1, the Elasticsearch clusters can have certain upgrade 'predicates' (rules) disabled on a case-by-case basis using annotations on the Elasticsearcch custom resource, which allow full control over what rules are considered during the Elasticsearch upgrade process.  Note that disabling of these predicates should be always be a last resort, and are extremely dangerous.  Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-orchestration.html#k8s-advanced-upgrade-control[documentation] for more details.
