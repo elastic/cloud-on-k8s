@@ -83,13 +83,13 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		isMutated = false
 	}
 
-	watchers := []test.Watcher{
-		NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
-	}
-
+	var watchers []test.Watcher
 	isNonHAUpgrade := IsNonHAUpgrade(b)
 	if !isNonHAUpgrade {
-		watchers = append(watchers, NewMasterChangeBudgetWatcher(b.Elasticsearch))
+		watchers = []test.Watcher{
+			NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
+			NewMasterChangeBudgetWatcher(b.Elasticsearch),
+		}
 	}
 
 	//nolint:thelper
