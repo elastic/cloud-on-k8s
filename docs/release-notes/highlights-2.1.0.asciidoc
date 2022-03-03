@@ -17,7 +17,7 @@ Additional information was added to the Elasticsearch status sub-resource, which
 [id="{p}-210-ES-Kibana-set-status-observed-generation"]
 ==== Improved Elasticsearch and Kibana generation status
 
-An additional field `observedGeneration` is now maintained within Elasticsearch and Kibana's status sub-resource.  This new field represents the current generation of the specification that the ECK operator is working to reconcile, and is intended to allow tools to deterministically monitor the rollout of custom resources.
+An additional field `observedGeneration` is now maintained within Elasticsearch and Kibana's status sub-resource. This new field represents the current generation of the specification that the ECK operator is working to reconcile, and is intended to allow tools to deterministically monitor the rollout of custom resources.
 
 [float]
 [id="{p}-210-disabling-upgrade-predicates"]
