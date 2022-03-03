@@ -8,7 +8,7 @@
 [float]
 === New features
 
-* Allow predicates to be disabled on a case-by-case basis via annotation. {pull}5284[#5284] (issue: {issue}2092[#2092])
+* Allow predicates to be disabled on a case-by-case basis through annotation. {pull}5284[#5284] (issue: {issue}2092[#2092])
 
 [[enhancement-2.1.0]]
 [float]
