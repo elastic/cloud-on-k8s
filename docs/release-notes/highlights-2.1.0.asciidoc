@@ -11,7 +11,7 @@ New and notable changes in version 2.1.0 of {n}. Check <<release-notes-2.1.0>> f
 [id="{p}-210-improve-ES-status-sub-resource"]
 ==== Improved Elasticsearch status sub-resource
 
-Additional information was added to the Elasticsearch status sub-resource, which provides rich details into the in-progress operations during upgrades, upscale, and downscale operations.  New conditions fields include `ReconciliationComplete`, `RunningDesiredVersion`, and `ElasticsearchIsReachable` which give details into why each condition is either True, or False.  Also included is a new parent field `inProgressOperations`, which provides detailed topology information for upgrades, upscale, and downscale operations.
+Additional information was added to the Elasticsearch status sub-resource, which provides rich details into the in-progress operations during upgrades, upscale, and downscale operations. New conditions fields include `ReconciliationComplete`, `RunningDesiredVersion`, and `ElasticsearchIsReachable` which give details into why each condition is either True, or False. Also included is a new parent field `inProgressOperations`, which provides detailed topology information for upgrades, upscale, and downscale operations.
 
 [float]
 [id="{p}-210-ES-Kibana-set-status-observed-generation"]
