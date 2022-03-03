@@ -21,7 +21,7 @@
 * Improve Elasticsearch status sub-resource {pull}5328[#5328]
 * Use new node.roles notation in all example manifests {pull}5289[#5289] (issue: {issue}4130[#4130])
 * Handle data tiers during rolling upgrades {pull}5248[#5248] (issue: {issue}5228[#5228])
-* Isolate operator from http service misconfiguration - Use internal service {pull}5211[#5211] (issue: {issue}4394[#4394])
+* Isolate operator from HTTP service misconfiguration - Use internal service {pull}5211[#5211] (issue: {issue}4394[#4394])
 * Improve handling of managed namespaces - resolving 'unknown namespace for the cache' errors {pull}5187[#5187]
 
 [[bug-2.1.0]]
