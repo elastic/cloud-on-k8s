@@ -33,6 +33,8 @@
 * Do not attempt rolling upgrades for non-HA Elasticsearch clusters {pull}5327[#5327] (issue: {issue}5321[#5321])
 * Use precondition when deleting secrets {pull}5273[#5273] (issue: {issue}5249[#5249])
 * Support new Agent base image as of 7.17 {pull}5268[#5268]
+* Fix Webhooks match policy within Openshift {pull}5437[#5437] (issue: {issue}5423[#5423])
+* Fix Agent trust CA commands for all image variants {pull}5438[#5438] (issue: {issue}5434[#5434])
 
 [[docs-2.1.0]]
 [float]
