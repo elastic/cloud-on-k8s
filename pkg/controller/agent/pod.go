@@ -388,21 +388,24 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 }
 
 func trustCAScript(ver version.Version, caPath string) string {
-	sharedCAPath := "/etc/pki/ca-trust/source/anchors/"
-	updateCmd := "update-ca-trust"
-	if ver.GTE(version.MinFor(7, 17, 0)) {
-		sharedCAPath = "/usr/local/share/ca-certificates"
-		updateCmd = "update-ca-certificates"
-	}
+	redhatSharedCAPath := "/etc/pki/ca-trust/source/anchors/"
+	redhatUpdateCmd := "/usr/bin/update-ca-trust"
+	debianSharedCAPath := "/usr/local/share/ca-certificates/"
+	debianUpdateCmd := "/usr/sbin/update-ca-certificates"
 
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
 if [[ -f %[1]s ]]; then
-  cp %[1]s %[2]s
-  %[3]s
+  if [[ -f %[3]s ]]; then
+    cp %[1]s %[2]s
+    %[3]s
+  elif [[ -f %[5]s ]]; then
+    cp %[1]s %[4]s
+    %[5]s
+  fi
 fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
-`, caPath, sharedCAPath, updateCmd)
+`, caPath, redhatSharedCAPath, redhatUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 
 func createDataVolume(params Params) volume.VolumeLike {
