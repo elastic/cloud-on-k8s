@@ -242,6 +242,7 @@ type WebhookDefinition struct {
 	ContainerPort           int                              `json:"containerPort"`
 	DeploymentName          string                           `json:"deploymentName"`
 	FailurePolicy           *admissionv1.FailurePolicyType   `json:"failurePolicy"`
+	MatchPolicy             admissionv1.MatchPolicyType      `json:"matchPolicy"`
 	GenerateName            string                           `json:"generateName"`
 	Rules                   []admissionv1.RuleWithOperations `json:"rules"`
 	SideEffects             *admissionv1.SideEffectClass     `json:"sideEffects"`
@@ -423,6 +424,7 @@ func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admi
 			ContainerPort:           443,
 			DeploymentName:          "elastic-operator",
 			FailurePolicy:           webhook.FailurePolicy,
+			MatchPolicy:             admissionv1.Exact,
 			GenerateName:            webhook.Name,
 			Rules:                   webhook.Rules,
 			SideEffects:             webhook.SideEffects,
