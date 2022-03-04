@@ -677,48 +677,6 @@ fi
 			}),
 		},
 		{
-			name: "fleet server disabled, same namespace 7.17.0",
-			agent: agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "agent",
-					Namespace: agentNs,
-				},
-				Spec: agentv1alpha1.AgentSpec{
-					Version:            "7.17.0-SNAPSHOT",
-					FleetServerEnabled: false,
-				},
-			},
-			assoc:   assocToSameNs,
-			wantErr: false,
-			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
-				ps.Volumes = expectedCAVolume
-				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
-				ps.Containers[0].Command = expectedCmd
-				return ps
-			}),
-		},
-		{
-			name: "fleet server disabled, same namespace 8x",
-			agent: agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "agent",
-					Namespace: agentNs,
-				},
-				Spec: agentv1alpha1.AgentSpec{
-					Version:            "8.0.0",
-					FleetServerEnabled: false,
-				},
-			},
-			assoc:   assocToSameNs,
-			wantErr: false,
-			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
-				ps.Volumes = expectedCAVolume
-				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
-				ps.Containers[0].Command = expectedCmd
-				return ps
-			}),
-		},
-		{
 			name: "fleet server enabled 8x",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
