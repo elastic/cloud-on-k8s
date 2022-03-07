@@ -49,6 +49,7 @@
 [float]
 === Misc
 
+* Update golang version to v1.17.8 to mitigate link:https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-24921[CVE-2022-24921] {pull}5440[#5440]
 * Update module sigs.k8s.io/controller-runtime to v0.11.1 {pull}5384[#5384]
 * Update module sigs.k8s.io/kustomize/kyaml to v0.13.3 {pull}5380[#5380]
 * Update golang Docker tag to v1.17.7 {pull}5358[#5358]
