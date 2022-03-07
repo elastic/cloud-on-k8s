@@ -28,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
@@ -77,6 +76,11 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+
+	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
+	ubiUpdateCmd       = "/usr/bin/update-ca-trust"
+	debianSharedCAPath = "/usr/local/share/ca-certificates/"
+	debianUpdateCmd    = "/usr/sbin/update-ca-certificates"
 )
 
 var (
@@ -315,17 +319,12 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		certificatesDir(esAssociation),
 	))
 
-	agentVersion, err := version.Parse(agent.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
 	// Beats managed by the Elastic Agent don't trust the Elasticsearch CA that Elastic Agent itself is configured
 	// to trust. There is currently no way to configure those Beats to trust a particular CA. The intended way to handle
 	// it is to allow Fleet to provide Beat output settings, but due to https://github.com/elastic/kibana/issues/102794
 	// this is not supported outside of UI. To workaround this limitation the Agent is going to update Pod-wide CA store
 	// before starting Elastic Agent.
-	cmd := trustCAScript(agentVersion, path.Join(certificatesDir(esAssociation), CAFileName))
+	cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
 	return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
 }
 
@@ -387,22 +386,20 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 	return &fs, nil
 }
 
-func trustCAScript(ver version.Version, caPath string) string {
-	sharedCAPath := "/etc/pki/ca-trust/source/anchors/"
-	updateCmd := "update-ca-trust"
-	if ver.GTE(version.MinFor(7, 17, 0)) {
-		sharedCAPath = "/usr/local/share/ca-certificates"
-		updateCmd = "update-ca-certificates"
-	}
-
+func trustCAScript(caPath string) string {
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
 if [[ -f %[1]s ]]; then
-  cp %[1]s %[2]s
-  %[3]s
+  if [[ -f %[3]s ]]; then
+    cp %[1]s %[2]s
+    %[3]s
+  elif [[ -f %[5]s ]]; then
+    cp %[1]s %[4]s
+    %[5]s
+  fi
 fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
-`, caPath, sharedCAPath, updateCmd)
+`, caPath, ubiSharedCAPath, ubiUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 
 func createDataVolume(params Params) volume.VolumeLike {
