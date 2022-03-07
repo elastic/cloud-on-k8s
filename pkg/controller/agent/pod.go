@@ -76,6 +76,11 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+
+	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
+	ubiUpdateCmd       = "/usr/bin/update-ca-trust"
+	debianSharedCAPath = "/usr/local/share/ca-certificates/"
+	debianUpdateCmd    = "/usr/sbin/update-ca-certificates"
 )
 
 var (
@@ -382,11 +387,6 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 }
 
 func trustCAScript(caPath string) string {
-	redhatSharedCAPath := "/etc/pki/ca-trust/source/anchors/"
-	redhatUpdateCmd := "/usr/bin/update-ca-trust"
-	debianSharedCAPath := "/usr/local/share/ca-certificates/"
-	debianUpdateCmd := "/usr/sbin/update-ca-certificates"
-
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
 if [[ -f %[1]s ]]; then
@@ -399,7 +399,7 @@ if [[ -f %[1]s ]]; then
   fi
 fi
 /usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
-`, caPath, redhatSharedCAPath, redhatUpdateCmd, debianSharedCAPath, debianUpdateCmd)
+`, caPath, ubiSharedCAPath, ubiUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 
 func createDataVolume(params Params) volume.VolumeLike {
