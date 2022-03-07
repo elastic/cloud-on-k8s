@@ -1,0 +1,26 @@
+[[release-highlights-2.1.0]]
+== 2.1.0 release highlights
+
+[float]
+[id="{p}-210-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.1.0 of {n}. Check <<release-notes-2.1.0>> for the full list of changes.
+
+[float]
+[id="{p}-210-improve-ES-status-sub-resource"]
+==== Improved Elasticsearch status sub-resource
+
+Additional information was added to the Elasticsearch status sub-resource, which provides rich details concerning the in-progress operations during upgrades, upscale, and downscale operations. New conditions fields include `ReconciliationComplete`, `RunningDesiredVersion`, and `ElasticsearchIsReachable` which gives information explaining why each condition is either True, or False. Also included is a new parent field `inProgressOperations`, which provides topology information for upgrades, upscale, and downscale operations.
+
+[float]
+[id="{p}-210-ES-Kibana-set-status-observed-generation"]
+==== Improved Elasticsearch and Kibana generation status
+
+An additional field `observedGeneration` is now maintained within Elasticsearch and Kibana's status sub-resource. This new field represents the current generation of the specification that the ECK operator is working to reconcile, and is intended to allow tools to deterministically monitor the rollout of custom resources.
+
+[float]
+[id="{p}-210-disabling-upgrade-predicates"]
+==== Allowing upgrade predicates to be selectively disabled
+
+Starting with ECK 2.1, the Elasticsearch clusters can have certain upgrade 'predicates' (rules) disabled on a case-by-case basis using annotations on the Elasticsearch custom resource, which allow full control over what rules are considered during the Elasticsearch upgrade process. Selectively disabling the predicates is extremely risky, and carries a high chance of either data loss, or causing a cluster to become completely unavailable. This feature is therefore intended exclusively as a troubleshooting mechanism of last resort. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-orchestration.html#k8s-advanced-upgrade-control[documentation] for more details.
