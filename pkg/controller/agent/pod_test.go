@@ -712,21 +712,6 @@ fi
 			assoc:   assocToOtherNs,
 			wantErr: true,
 		},
-		{
-			name: "garbage version",
-			agent: agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "agent",
-					Namespace: agentNs,
-				},
-				Spec: agentv1alpha1.AgentSpec{
-					FleetServerEnabled: false,
-					Version:            "NaN",
-				},
-			},
-			assoc:   assocToSameNs,
-			wantErr: true,
-		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
