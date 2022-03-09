@@ -210,6 +210,9 @@ Force an upgrade of all the master-ineligible nodes before upgrading the last ma
 ** do_not_delete_pods_with_same_shards
 +
 Do not allow two pods containing the same shard to be deleted at the same time.
+** do_not_delete_all_members_of_a_tier
++
+Do not delete all nodes that share the same node roles at once. This ensures that there is always availability for each configured tier of nodes during a rolling upgrade.
 
 Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch metadata, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicatae with "*".
 
