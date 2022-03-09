@@ -23,6 +23,8 @@ pipeline {
         string(name: "KIBANA_VERSION", defaultValue: "", description: "Kibana version under test")
         string(name: "ELASTIC_AGENT_IMAGE", defaultValue: "", description: "Elastic Agent image under test ")
         string(name: "ELASTIC_AGENT_VERSION", defaultValue: "", description: "Elastic Agent version under test")
+        string(name: "FLEET_SERVER_IMAGE", defaultValue: "", description: "Fleet Server image under test")
+        string(name: "FLEET_SERVER_VERSION", defaultValue: "", description: "Fleet Server version under test")
         string(name: "ENTERPRISE_SEARCH_IMAGE", defaultValue: "", description: "Enterprise Search image under test ")
         string(name: "ENTERPRISE_SEARCH_VERSION", defaultValue: "", description: "Enterprise Search version under test")
         string(name: "ELASTIC_MAPS_SERVER_IMAGE", defaultValue: "", description: "Elastic Maps Server image under test ")
@@ -30,6 +32,7 @@ pipeline {
         // Beats images are not supported here we would need 12 additional inputs to accomplish that
         // APM Server is also not supported here given that is deprecated in favour of the Elastic Agent APM integration
         string(name: "TESTS_MATCH", defaultValue: "^Test", description: "Regular expression to select which test cases to run")
+        string(name: "TEST_TAGS", defaultValue: "e2e", description: "Go build constraint to select a group of e2e tests. Supported values are: e2e, es, kb, beat, agent, ems, ent")
     }
 
     environment {

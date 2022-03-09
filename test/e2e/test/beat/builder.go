@@ -110,7 +110,7 @@ func (b Builder) WithType(typ beatcommon.Type) Builder {
 	typeStr := string(typ)
 	// for Beats we have to use the specific type as there are different Beats images within the one CRD kind.
 	// capitalize the Beat name to be consistent in spelling with the other CRD kinds.
-	def := test.Ctx().ElasticStackVersionDefForKind(strings.Title(typeStr))
+	def := test.Ctx().VersionDefinitionFor(strings.Title(typeStr))
 	b.Beat.Spec.Type = typeStr
 	b.Beat.Spec.Version = def.Version
 	b.Beat.Spec.Image = def.Image

@@ -44,7 +44,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().ElasticStackVersionDefForKind(apmv1.Kind)
+	def := test.Ctx().VersionDefinitionFor(apmv1.Kind)
 	return Builder{
 		ApmServer: apmv1.ApmServer{
 			ObjectMeta: meta,

@@ -139,9 +139,9 @@ func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
 }
 
-// ElasticStackVersionDefForKind returns a specific override for the given kind of resource. Defaults to an empty image
+// VersionDefinitionFor returns a specific override for the given kind of resource. Defaults to an empty image
 // and the global Elastic Stack version under test if no override exists.
-func (c Context) ElasticStackVersionDefForKind(kind string) ElasticStackVersionDefinition {
+func (c Context) VersionDefinitionFor(kind string) ElasticStackVersionDefinition {
 	for _, def := range c.ElasticStackImages {
 		if kind == def.Kind {
 			return def

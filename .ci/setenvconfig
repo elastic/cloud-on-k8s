@@ -82,6 +82,7 @@ export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 TESTS_MATCH=$TESTS_MATCH
+E2E_TAGS=$TEST_TAGS
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -119,6 +120,11 @@ write_stack_version_def <<ENV
     "image": "${ELASTIC_AGENT_IMAGE:-}",
     "version": "${ELASTIC_AGENT_VERSION:-}"
   },
+  {
+    "kind": "FleetServer",
+    "image": "${FLEET_SERVER_IMAGE:-}",
+    "version": "${FLEET_SERVER_VERSION:-}"
+  }
   {
     "kind": "EnterpriseSearch",
     "image": "${ENTERPRISE_SEARCH_IMAGE:-}",

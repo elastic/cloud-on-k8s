@@ -144,11 +144,11 @@ func (h *helper) initTestContext() error {
 	if h.elasticStackImagesPath != "" {
 		bytes, err := ioutil.ReadFile(h.elasticStackImagesPath)
 		if err != nil {
-			return fmt.Errorf("unable to read Elastic stack images config file: %w", err)
+			return fmt.Errorf("unable to read Elastic Stack images config file: %w", err)
 		}
 		err = json.Unmarshal(bytes, &stackImages)
 		if err != nil {
-			return fmt.Errorf("unable to parse Elastic stack images config file: %w", err)
+			return fmt.Errorf("unable to parse Elastic Stack images config file: %w", err)
 		}
 	}
 

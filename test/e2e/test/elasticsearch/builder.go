@@ -97,7 +97,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
-	def := test.Ctx().ElasticStackVersionDefForKind(esv1.Kind)
+	def := test.Ctx().VersionDefinitionFor(esv1.Kind)
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
