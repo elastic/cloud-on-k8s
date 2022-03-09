@@ -83,6 +83,21 @@ func (e *esBuilder) BuildAndCopy() esv1.Elasticsearch {
 	return *e.es
 }
 
+var noInProgressOperations = esv1.InProgressOperations{
+	DownscaleOperation: esv1.DownscaleOperation{
+		LastUpdatedTime: metav1.Time{},
+		Nodes:           []esv1.DownscaledNode{},
+	},
+	UpgradeOperation: esv1.UpgradeOperation{
+		LastUpdatedTime: metav1.Time{},
+		Nodes:           []esv1.UpgradedNode{},
+	},
+	UpscaleOperation: esv1.UpscaleOperation{
+		LastUpdatedTime: metav1.Time{},
+		Nodes:           []esv1.NewNode{},
+	},
+}
+
 func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 	type k8sClientFields struct {
 		objects []runtime.Object
@@ -142,7 +157,15 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 			expected: newBuilder("testESwithtoolongofanamereallylongname", "test").
 				WithGeneration(2).
 				WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 2, Phase: esv1.ElasticsearchResourceInvalid, Health: esv1.ElasticsearchUnknownHealth}).BuildAndCopy(),
+				WithStatus(
+					esv1.ElasticsearchStatus{
+						ObservedGeneration:   2,
+						Phase:                esv1.ElasticsearchResourceInvalid,
+						Health:               esv1.ElasticsearchUnknownHealth,
+						Conditions:           esv1.Conditions{esv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						InProgressOperations: noInProgressOperations,
+					},
+				).BuildAndCopy(),
 		},
 		{
 			name: "ES with too long name, and needing annotations update, fails initial reconcile, and does not have status.* updated because of a 409/resource conflict",
@@ -189,7 +212,15 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				WithGeneration(2).
 				WithVersion("invalid").
 				WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 2, Phase: esv1.ElasticsearchResourceInvalid, Health: esv1.ElasticsearchUnknownHealth}).BuildAndCopy(),
+				WithStatus(
+					esv1.ElasticsearchStatus{
+						ObservedGeneration:   2,
+						Phase:                esv1.ElasticsearchResourceInvalid,
+						Health:               esv1.ElasticsearchUnknownHealth,
+						Conditions:           esv1.Conditions{esv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						InProgressOperations: noInProgressOperations,
+					},
+				).BuildAndCopy(),
 		},
 	}
 	for _, tt := range tests {

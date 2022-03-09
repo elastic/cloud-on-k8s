@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,12 +36,13 @@ func (d *defaultDriver) handleUpgrades(
 	// We need to check that all the expectations are satisfied before continuing.
 	// This is to be sure that none of the previous steps has changed the state and
 	// that we are not running with a stale cache.
-	ok, err := d.expectationsSatisfied()
+	ok, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !ok {
-		return results.WithResult(defaultRequeue)
+		reason := fmt.Sprintf("Nodes upgrade: %s", reason)
+		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
 	// Get the pods to upgrade
@@ -97,11 +99,11 @@ func (d *defaultDriver) handleUpgrades(
 
 	var deletedPods []corev1.Pod
 
-	is8xVersionUpgrade, err := is8xVersionUpgrade(d.ES)
+	isVersionUpgrade, err := isVersionUpgrade(d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
-	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && is8xVersionUpgrade
+	shouldDoFullRestartUpgrade := isNonHACluster(currentPods, expectedMasters) && isVersionUpgrade
 	if shouldDoFullRestartUpgrade {
 		// unconditional full cluster upgrade
 		deletedPods, err = run(upgrade.DeleteAll)
@@ -114,11 +116,11 @@ func (d *defaultDriver) handleUpgrades(
 	}
 	if len(deletedPods) > 0 {
 		// Some Pods have just been deleted, we don't need to try to enable shards allocation.
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
 	if len(podsToUpgrade) > len(deletedPods) {
 		// Some Pods have not been updated, ensure that we retry later
-		results.WithResult(defaultRequeue)
+		results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
@@ -206,9 +208,8 @@ func isNonHACluster(actualPods []corev1.Pod, expectedMasters []string) bool {
 	return len(actualMasters) <= 2
 }
 
-// is8xVersionUpgrade returns true if a version upgrade involves 8.x which displays different behaviour during version upgrades
-// than previous Elastic Stack versions.
-func is8xVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
+// isVersionUpgrade returns true if a spec change contains a version upgrade.
+func isVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	specVersion, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return false, err
@@ -217,7 +218,7 @@ func is8xVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return specVersion.Major == 8 && specVersion.GT(statusVersion), nil
+	return specVersion.GT(statusVersion), nil
 }
 
 func healthyPods(
@@ -348,12 +349,13 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	}
 
 	// Make sure all pods scheduled for upgrade have been upgraded.
-	done, err := d.expectationsSatisfied()
+	done, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !done {
-		return results.WithResult(defaultRequeue)
+		reason := fmt.Sprintf("Enabling shards allocation: %s", reason)
+		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
 	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
@@ -372,7 +374,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 			"namespace", d.ES.Namespace,
 			"es_name", d.ES.Name,
 		)
-		return results.WithResult(defaultRequeue)
+		return results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade: some nodes are not back in the cluster yet"))
 	}
 
 	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)

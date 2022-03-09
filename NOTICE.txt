@@ -1115,11 +1115,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.3.1
-Time    : 2021-12-22T17:33:12Z
+Version : v1.4.1
+Time    : 2022-02-25T18:56:59Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.3.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.4.1/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -1526,11 +1526,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/magiconair/properties
-Version : v1.8.5
-Time    : 2021-03-24T16:50:46Z
+Version : v1.8.6
+Time    : 2022-02-23T08:50:35Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.5/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.6/LICENSE.md:
 
 Copyright (c) 2013-2020, Frank Schroeder
 
@@ -3182,11 +3182,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.23.3
-Time    : 2022-01-26T01:23:20Z
+Version : v0.23.4
+Time    : 2022-02-17T18:14:00Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.4/LICENSE:
 
 
                                  Apache License
@@ -3394,11 +3394,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.3/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.23.3
+Version : v0.23.4
 Time    : 2022-01-24T17:21:04Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.4/LICENSE:
 
 
                                  Apache License
@@ -3606,11 +3606,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.3/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.23.3
-Time    : 2022-01-26T01:28:19Z
+Version : v0.23.4
+Time    : 2022-02-17T18:23:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.4/LICENSE:
 
 
                                  Apache License
@@ -12388,11 +12388,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/sdk
-Version : v0.3.0
-Time    : 2021-10-27T16:08:10Z
+Version : v0.4.1
+Time    : 2022-02-25T18:26:34Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.4.1/LICENSE:
 
 Mozilla Public License, version 2.0
 

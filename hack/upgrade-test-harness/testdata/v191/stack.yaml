@@ -4,19 +4,26 @@ kind: Elasticsearch
 metadata:
   name: es
 spec:
-  version: 7.16.1
+  version: 7.17.0
   nodeSets:
   - name: default
     count: 3
     config:
       node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: PRE_STOP_ADDITIONAL_WAIT_SECONDS
+            value: "0"
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: kb
 spec:
-  version: 7.16.1
+  version: 7.17.0
   count: 1
   elasticsearchRef:
     name: es
@@ -26,7 +33,7 @@ kind: ApmServer
 metadata:
   name: apm
 spec:
-  version: 7.16.1
+  version: 7.17.0
   count: 1
   elasticsearchRef:
     name: es
@@ -36,7 +43,7 @@ kind: EnterpriseSearch
 metadata:
   name: ent
 spec:
-  version: 7.16.1
+  version: 7.17.0
   count: 1
   elasticsearchRef:
     name: es
@@ -49,7 +56,7 @@ metadata:
   name: heartbeat
 spec:
   type: heartbeat
-  version: 7.16.1
+  version: 7.17.0
   elasticsearchRef:
     name: es
   config:

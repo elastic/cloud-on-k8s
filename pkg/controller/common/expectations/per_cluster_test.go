@@ -25,9 +25,10 @@ func TestClustersExpectation(t *testing.T) {
 
 	// requesting expectations for a particular cluster should create them on the fly
 	clusterExp := e.ForCluster(cluster)
-	satisfied, err := clusterExp.Satisfied()
+	satisfied, reason, err := clusterExp.Satisfied()
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 
 	// simulate a pod deletion expectation
 	pod := corev1.Pod{
@@ -39,27 +40,31 @@ func TestClustersExpectation(t *testing.T) {
 	}
 	require.NoError(t, client.Create(context.Background(), &pod))
 	clusterExp.ExpectDeletion(pod)
-	satisfied, err = clusterExp.Satisfied()
+	satisfied, reason, err = clusterExp.Satisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 
 	// requesting expectations for that same cluster should return the same unsatisfied expectations
 	clusterExp2 := e.ForCluster(cluster)
-	satisfied, err = clusterExp2.Satisfied()
+	satisfied, reason, err = clusterExp2.Satisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 
 	// requesting expectations for another cluster should be fine
 	clusterExp = e.ForCluster(types.NamespacedName{Namespace: "ns", Name: "another-cluster"})
-	satisfied, err = clusterExp.Satisfied()
+	satisfied, reason, err = clusterExp.Satisfied()
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 
 	// remove expectations for the first cluster
 	e.RemoveCluster(cluster)
 	// expectations should be recreated empty for that cluster
 	clusterExp = e.ForCluster(cluster)
-	satisfied, err = clusterExp.Satisfied()
+	satisfied, reason, err = clusterExp.Satisfied()
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 }

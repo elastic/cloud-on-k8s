@@ -31,10 +31,11 @@ import (
 //   the feature.
 func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations.Expectations) error {
 	// let's make sure we observe any deletions in the cache to avoid redundant deletion
-	deletionsSatisfied, err := e.DeletionsSatisfied()
+	pendingPodDeletions, err := e.PendingPodDeletions()
 	if err != nil {
 		return err
 	}
+	deletionsSatisfied := len(pendingPodDeletions) == 0
 
 	// suspendedPodNames as indicated by the user on the Elasticsearch resource via an annotation
 	// the corresponding configMap has already been reconciled prior to that function
