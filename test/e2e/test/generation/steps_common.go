@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -24,21 +24,16 @@ func getGeneration(obj client.Object, k *test.K8sClient) (int64, error) {
 	return obj.GetGeneration(), nil
 }
 
-func getObservedGeneration(obj client.Object, k *test.K8sClient) (int64, error) {
+func getObservedGeneration(obj commonv1.HasObservedGeneration, k *test.K8sClient) (int64, error) {
 	if err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj); err != nil {
 		return 0, err
 	}
 
-	switch v := obj.(type) {
-	case *agentv1alpha1.Agent:
-		return v.Status.ObservedGeneration, nil
-	default:
-		return 0, fmt.Errorf("unsupported type while retrieving status.observedGeneration: %T", v)
-	}
+	return obj.GetObservedGeneration(), nil
 }
 
-// RetrieveAgentGenerationsStep stores the current metadata.Generation, and status.ObservedGeneration into the given fields.
-func RetrieveAgentGenerationsStep(obj client.Object, k *test.K8sClient, generation, observedGeneration *int64) test.Step {
+// RetrieveGenerationsStep stores the current metadata.Generation, and status.ObservedGeneration into the given fields.
+func RetrieveGenerationsStep(obj commonv1.HasObservedGeneration, k *test.K8sClient, generation, observedGeneration *int64) test.Step {
 	return test.Step{
 		Name: "Retrieve Objects metadata.Generation, and status.ObservedGeneration for comparison purpose",
 		Test: test.Eventually(func() error {
@@ -59,9 +54,13 @@ func RetrieveAgentGenerationsStep(obj client.Object, k *test.K8sClient, generati
 
 // CompareObjectGenerationsStep compares the current object's metadata.generation, and status.observedGeneration
 // and fails if they don't match expectations.
-func CompareObjectGenerationsStep(obj client.Object, k *test.K8sClient, previousObjectGeneration, previousObjectObservedGeneration *int64) test.Step {
+func CompareObjectGenerationsStep(
+	obj commonv1.HasObservedGeneration,
+	k *test.K8sClient,
+	isMutated bool,
+	previousObjectGeneration, previousObjectObservedGeneration int64) test.Step {
 	return test.Step{
-		Name: "Cluster metadata.generation, and status.observedGeneration should have been incremented from previous state, and should be equal",
+		Name: "metadata.generation and status.observedGeneration may have been incremented from previous state, and should be equal",
 		Test: test.Eventually(func() error {
 			newObjectGeneration, err := getGeneration(obj, k)
 			if err != nil {
@@ -77,10 +76,10 @@ func CompareObjectGenerationsStep(obj client.Object, k *test.K8sClient, previous
 			if newObjectObservedGeneration == 0 {
 				return errors.New("expected object's status.observedGeneration to not be empty")
 			}
-			if newObjectGeneration <= *previousObjectGeneration {
+			if isMutated && newObjectGeneration <= previousObjectGeneration {
 				return errors.New("expected object's metadata.generation to be incremented")
 			}
-			if newObjectObservedGeneration <= *previousObjectObservedGeneration {
+			if isMutated && newObjectObservedGeneration <= previousObjectObservedGeneration {
 				return errors.New("expected object's status.observedGeneration to be incremented")
 			}
 			if newObjectGeneration != newObjectObservedGeneration {

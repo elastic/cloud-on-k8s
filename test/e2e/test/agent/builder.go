@@ -39,6 +39,8 @@ type Builder struct {
 	ValidationsOutputs []string
 	AdditionalObjects  []k8sclient.Object
 
+	MutatedFrom *Builder
+
 	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
 	PodTemplate *corev1.PodTemplateSpec
 

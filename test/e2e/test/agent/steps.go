@@ -256,12 +256,15 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation int64
+
+	isMutated := b.MutatedFrom != nil
+
 	return test.StepList{
-		generation.RetrieveAgentGenerationsStep(&b.Agent, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation),
+		generation.RetrieveGenerationsStep(&b.Agent, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation),
 	}.WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
-		WithStep(generation.CompareObjectGenerationsStep(&b.Agent, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation))
+		WithStep(generation.CompareObjectGenerationsStep(&b.Agent, k, isMutated, agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation))
 }
 
 func (b Builder) MutationReversalTestContext() test.ReversalTestContext {

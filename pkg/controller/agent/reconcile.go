@@ -77,8 +77,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 		results.WithError(err)
 	}
 
-	var updatedStatus agentv1alpha1.AgentStatus
-	updatedStatus, err = calculateStatus(&params, ready, desired)
+	err = calculateStatus(&params, ready, desired, status)
 	if err != nil {
 		params.Logger().Error(
 			err, "Error while calculating new status",
@@ -87,7 +86,6 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 		)
 		return results.WithError(err)
 	}
-	*status = updatedStatus
 
 	return results.WithError(err)
 }
@@ -145,19 +143,18 @@ type ReconciliationParams struct {
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
 // and will return the new status, and any errors encountered.
-func calculateStatus(params *Params, ready, desired int32) (agentv1alpha1.AgentStatus, error) {
-	status := newStatus(params.Agent)
+func calculateStatus(params *Params, ready, desired int32, status *agentv1alpha1.AgentStatus) error {
 	agent := params.Agent
 
 	pods, err := k8s.PodsMatchingLabels(params.Client, agent.Namespace, map[string]string{NameLabelName: agent.Name})
 	if err != nil {
-		return status, err
+		return err
 	}
 	status.AvailableNodes = ready
 	status.ExpectedNodes = desired
 	status.Health = CalculateHealth(agent.GetAssociations(), ready, desired)
 	status.Version = common.LowestVersionFromPods(status.Version, pods, VersionLabelName)
-	return status, nil
+	return nil
 }
 
 // updateStatus will update the Elastic Agent's status within the k8s cluster, using the Elastic Agent from the
@@ -168,7 +165,7 @@ func updateStatus(ctx context.Context, agent agentv1alpha1.Agent, client client.
 	}
 	results := reconciler.NewResult(ctx)
 	agent.Status = status
-	err := client.Status().Update(context.Background(), &agent)
+	err := common.UpdateStatus(client, &agent)
 	if err != nil && apierrors.IsConflict(err) {
 		logconf.FromContext(ctx).V(1).Info("Conflict while updating status", "namespace", agent.Namespace, "kibana_name", agent.Name)
 		results = results.WithResult(reconcile.Result{Requeue: true})

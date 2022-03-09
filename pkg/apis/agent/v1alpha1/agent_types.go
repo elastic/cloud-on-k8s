@@ -288,6 +288,11 @@ func (a *Agent) SecureSettings() []commonv1.SecretSource {
 	return a.Spec.SecureSettings
 }
 
+// GetObservedGeneration will return the observedGeneration from the Elastic Agent's status.
+func (a *Agent) GetObservedGeneration() int64 {
+	return a.Status.ObservedGeneration
+}
+
 type AgentESAssociation struct {
 	*Agent
 	// ref is the namespaced name of the Elasticsearch used in Association
