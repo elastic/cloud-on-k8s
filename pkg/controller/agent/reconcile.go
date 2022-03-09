@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -24,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
@@ -160,10 +162,19 @@ func calculateStatus(params *Params, ready, desired int32) (agentv1alpha1.AgentS
 
 // updateStatus will update the Elastic Agent's status within the k8s cluster, using the Elastic Agent from the
 // given params, and the given status.
-func updateStatus(params Params, status agentv1alpha1.AgentStatus) error {
-	if reflect.DeepEqual(params.Agent.Status, status) {
+func updateStatus(ctx context.Context, agent agentv1alpha1.Agent, client client.Client, status agentv1alpha1.AgentStatus) *reconciler.Results {
+	if reflect.DeepEqual(agent.Status, status) {
 		return nil
 	}
-	params.Agent.Status = status
-	return params.Client.Status().Update(context.Background(), &params.Agent)
+	results := reconciler.NewResult(ctx)
+	agent.Status = status
+	err := client.Status().Update(context.Background(), &agent)
+	if err != nil && apierrors.IsConflict(err) {
+		logconf.FromContext(ctx).V(1).Info("Conflict while updating status", "namespace", agent.Namespace, "kibana_name", agent.Name)
+		results = results.WithResult(reconcile.Result{Requeue: true})
+	} else if err != nil {
+		logconf.FromContext(ctx).Error(err, "Error while updating status", "namespace", agent.Namespace, "kibana_name", agent.Name)
+		results = results.WithError(err)
+	}
+	return results
 }
