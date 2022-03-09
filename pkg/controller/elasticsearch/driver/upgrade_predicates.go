@@ -604,8 +604,9 @@ var predicates = [...]Predicate{
 						log.V(1).Info(
 							"Delaying upgrade for Pod to ensure tier availability",
 							"node_role", role,
+							"namespace", candidate.Namespace,
 							"candidate", candidate.Name,
-							"healty", healthy,
+							"healthy_pods_with_role", healthy,
 						)
 						return false, nil
 					}
