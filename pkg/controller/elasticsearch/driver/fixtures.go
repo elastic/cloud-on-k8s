@@ -180,6 +180,14 @@ func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f 
 	return result
 }
 
+func (u upgradeTestPods) toCurrentPods() []corev1.Pod {
+	var result []corev1.Pod
+	for _, testPod := range u {
+		result = append(result, testPod.toPod())
+	}
+	return result
+}
+
 func (u upgradeTestPods) toMasterPods() []corev1.Pod {
 	var result []corev1.Pod
 	for _, testPod := range u {
