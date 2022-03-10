@@ -276,7 +276,7 @@ var predicates = [...]Predicate{
 			context PredicateContext,
 			candidate corev1.Pod,
 			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ bool,
 		) (b bool, e error) {
 			if candidate.DeletionTimestamp != nil {
 				// Pod is already terminating, skip it
@@ -563,8 +563,8 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ []corev1.Pod,
+			_ bool,
 		) (bool, error) {
 			healthyPodRoleHisto := map[common.TrueFalseLabel]int{}
 			currentPodRoleHisto := map[common.TrueFalseLabel]int{}
