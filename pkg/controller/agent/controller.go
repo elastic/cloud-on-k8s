@@ -7,6 +7,7 @@ package agent
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -121,13 +122,24 @@ type ReconcileAgent struct {
 
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
-func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	agent := &agentv1alpha1.Agent{}
-	if err := association.FetchWithAssociations(ctx, r.Client, request, agent); err != nil {
+	if err = association.FetchWithAssociations(ctx, r.Client, request, agent); err != nil {
+		defer func() {
+			if agent != nil {
+				if results := updateStatus(ctx, *agent, r.Client, newStatus(*agent)); results != nil {
+					var aggrErr error
+					result, aggrErr = results.WithError(err).Aggregate()
+					if aggrErr != nil {
+						err = errors.Wrap(aggrErr, err.Error())
+					}
+				}
+			}
+		}()
 		if apierrors.IsNotFound(err) {
 			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil
@@ -135,7 +147,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		if agent == nil {
 			return reconcile.Result{}, err
 		}
-		return updateStatus(ctx, *agent, r.Client, newStatus(*agent)).WithError(err).Aggregate()
+		return
 	}
 
 	if common.IsUnmanaged(agent) {
@@ -147,10 +159,10 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	res, err := r.doReconcile(ctx, *agent).Aggregate()
+	result, err = r.doReconcile(ctx, *agent).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, "Reconciliation error: %v", err)
 
-	return res, err
+	return result, err
 }
 
 func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (results *reconciler.Results) {
@@ -174,7 +186,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err = r.validate(ctx, agent); err != nil {
 		results = results.WithError(err)
-		return
+		return results
 	}
 
 	driverResults := internalReconcile(Params{
@@ -187,7 +199,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	}, &status)
 
 	results = results.WithResults(driverResults)
-	return //nolint:nakedret
+	return results
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
