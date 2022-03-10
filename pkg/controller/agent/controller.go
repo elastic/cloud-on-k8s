@@ -7,7 +7,6 @@ package agent
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -129,22 +128,6 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 
 	agent := &agentv1alpha1.Agent{}
 	if err = association.FetchWithAssociations(ctx, r.Client, request, agent); err != nil {
-		logconf.FromContext(ctx).Error(err, "while retrieving associations")
-		defer func() {
-			logconf.FromContext(ctx).Info("in defer")
-			if agent != nil {
-				logconf.FromContext(ctx).Info("attempting status update in defer")
-				if results := updateStatus(ctx, *agent, r.Client, newStatus(*agent)); results != nil {
-					logconf.FromContext(ctx).Info("attempting status update in defer: results != nil")
-					var aggrErr error
-					result, aggrErr = results.WithError(err).Aggregate()
-					logconf.FromContext(ctx).Info("attempting status update in defer: results != nil", "result", result, "aggrErr", aggrErr)
-					if aggrErr != nil {
-						err = errors.Wrap(aggrErr, err.Error())
-					}
-				}
-			}
-		}()
 		if apierrors.IsNotFound(err) {
 			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil
@@ -152,7 +135,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		if agent == nil {
 			return reconcile.Result{}, err
 		}
-		return
+		return updateStatus(ctx, *agent, r.Client, newStatus(*agent)).WithError(err).Aggregate()
 	}
 	logconf.FromContext(ctx).Info("fetchwithassociation did not fail")
 
