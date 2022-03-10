@@ -103,6 +103,11 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
+	return b
+}
+
 func (b Builder) WithDaemonSet() Builder {
 	b.Agent.Spec.DaemonSet = &agentv1alpha1.DaemonSetSpec{}
 
