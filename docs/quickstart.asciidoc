@@ -29,9 +29,9 @@ include::supported-versions.asciidoc[]
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
 
-A few things to consider before you start:
+Things to consider before you start:
 
-* For this quickstart guide, your Kubernetes cluster is assumed to be already up and running and conform to one of the link:k8s-quickstart.html[supported versions].
+* For this quickstart guide, your Kubernetes cluster is assumed to be already up and running, and conform to one of the link:k8s-quickstart.html[supported versions].
 
 * If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, check link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
