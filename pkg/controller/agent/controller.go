@@ -154,6 +154,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		}
 		return
 	}
+	logconf.FromContext(ctx).Info("fetchwithassociation did not fail")
 
 	if common.IsUnmanaged(agent) {
 		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
@@ -175,9 +176,6 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	var err error
 	results = reconciler.NewResult(ctx)
 	status := newStatus(agent)
-	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
-		return results
-	}
 
 	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
 	// note that this deferred function is modifying the return values, which are named return values, which allows this
@@ -187,6 +185,10 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 			results = updateStatusresults
 		}
 	}()
+
+	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
+		return results
+	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err = r.validate(ctx, agent); err != nil {
