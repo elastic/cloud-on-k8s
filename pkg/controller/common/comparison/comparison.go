@@ -26,6 +26,7 @@ func Equal(a, b runtime.Object) bool {
 func Diff(a, b runtime.Object, opts ...cmp.Option) string {
 	typemeta := cmpopts.IgnoreTypes(metav1.TypeMeta{})
 	rv := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
+	timestamps := cmpopts.IgnoreTypes(metav1.Time{})
 	return cmp.Diff(a, b, append(opts, typemeta, rv, timestamps)...)
 }
 
