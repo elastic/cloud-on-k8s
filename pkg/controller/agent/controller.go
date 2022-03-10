@@ -137,7 +137,6 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		}
 		return updateStatus(ctx, *agent, r.Client, newStatus(*agent)).WithError(err).Aggregate()
 	}
-	logconf.FromContext(ctx).Info("fetchwithassociation did not fail")
 
 	if common.IsUnmanaged(agent) {
 		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
