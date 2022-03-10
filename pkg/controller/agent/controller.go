@@ -166,7 +166,9 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	// note that this deferred function is modifying the return values, which are named return values, which allows this
 	// to function properly.
 	defer func() {
-		results = updateStatus(ctx, agent, r.Client, status).WithError(err)
+		if updateStatusresults := updateStatus(ctx, agent, r.Client, status).WithError(err); updateStatusresults != nil {
+			results = updateStatusresults
+		}
 	}()
 
 	// Run basic validations as a fallback in case webhook is disabled.
