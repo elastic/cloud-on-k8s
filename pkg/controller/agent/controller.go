@@ -187,7 +187,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	}, &status)
 
 	results = results.WithResults(driverResults)
-	return
+	return //nolint:nakedret
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
