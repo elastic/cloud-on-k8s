@@ -182,3 +182,7 @@ func versioned(b *baseClient, v version.Version) Client {
 		return &v6
 	}
 }
+
+func (c *baseClient) URL() string {
+	return c.Endpoint
+}
