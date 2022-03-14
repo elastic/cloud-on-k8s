@@ -303,7 +303,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 		validate func(*testing.T, fields)
 	}{
 		{
-			name: "unmanaged apm server does not increment observedGeneration",
+			name: "unmanaged APM server does not increment observedGeneration",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					withAnnotations(sampleAPMObject, map[string]string{common.ManagedAnnotation: "false"}),
@@ -326,7 +326,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "Legacy finalizer on apm server gets removed, and updates observedGeneration",
+			name: "Legacy finalizer on APM server gets removed, and updates observedGeneration",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					withFinalizers(sampleAPMObject, []string{"finalizer.elasticsearch.k8s.elastic.co/secure-settings-secret"}),
@@ -373,7 +373,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "With Elasticsearch association ready, but apm version not allowed with es version, observedGeneration is updated",
+			name: "With Elasticsearch association ready, but APM version not allowed with Elasticsearch version, observedGeneration is updated",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&esv1.Elasticsearch{
@@ -450,7 +450,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "Reconcile of standard apm object updates observedGeneration, and creates deployment",
+			name: "Reconcile of standard APM object updates observedGeneration, and creates deployment",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&sampleAPMObject,
