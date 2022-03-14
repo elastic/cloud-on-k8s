@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 func Test_checkBeatType(t *testing.T) {
@@ -95,6 +97,79 @@ func Test_checkSpec(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := checkSpec(&tc.beat)
 			assert.Equal(t, tc.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkAssociations(t *testing.T) {
+	type args struct {
+		b *Beat
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no ref: OK",
+			args: args{
+				b: &Beat{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple secret named refs: OK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "mix secret named and named refs: OK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+						KibanaRef: commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "secret named ref with a name: NOK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Name: "bla", Namespace: "blub"},
+						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "secret named ref with a service name: NOK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", ServiceName: "bla", Namespace: "blub"},
+						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkAssociations(tt.args.b)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
 		})
 	}
 }

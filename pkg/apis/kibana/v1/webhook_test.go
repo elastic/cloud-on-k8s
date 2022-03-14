@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 )
@@ -132,6 +133,123 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
+			),
+		},
+		{
+			Name:      "secret-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-es-ref-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				kb := mkKibana(uid)
+				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname", Namespace: "esns"}
+				return serialize(t, kb)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-service",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				kb := mkKibana(uid)
+				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname", Namespace: "esns"}
+				return serialize(t, kb)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+			),
+		},
+		{
+			Name:      "simple-stackmon-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.Version = "7.14.0"
+				ent.Spec.Monitoring = kbv1.Monitoring{Metrics:kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "multiple-stackmon-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.Version = "7.14.0"
+				ent.Spec.Monitoring = kbv1.Monitoring{
+					Metrics:kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Namespace: "esmonns"}}},
+					Logs: kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
+				}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-version-for-stackmon",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.Version = "7.13.0"
+				ent.Spec.Monitoring = kbv1.Monitoring{Metrics:kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.version: Invalid value: "7.13.0": Unsupported version for Stack Monitoring. Required >= 7.14.0.`,
+			),
+		},
+		{
+			Name:      "invalid-stackmon-ref-with-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.Version = "7.14.0"
+				ent.Spec.Monitoring = kbv1.Monitoring{
+					Metrics:kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx", Namespace: "esmonns"}}},
+					Logs: kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
+				}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.monitoring.metrics: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-stackmon-ref-with-service-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.Version = "7.14.0"
+				ent.Spec.Monitoring = kbv1.Monitoring{
+					Metrics:kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Namespace: "esmonns"}}},
+					Logs: kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx", Namespace: "esmonns"}}},
+				}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.monitoring.logs: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

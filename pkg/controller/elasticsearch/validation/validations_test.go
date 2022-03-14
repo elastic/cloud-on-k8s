@@ -550,6 +550,101 @@ func Test_validNodeLabels(t *testing.T) {
 	}
 }
 
+func Test_validAssociations(t *testing.T) {
+	type args struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}
+	tests := []args{
+		{
+			name: "simple named stackmon ref",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.14.0",
+					Monitoring: esv1.Monitoring{Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "multiple named stackmon refs",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.14.0",
+					Monitoring: esv1.Monitoring{
+						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "multiple secret named stackmon refs",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.14.0",
+					Monitoring: esv1.Monitoring{
+						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "mix secret named and named stackmon refs",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.14.0",
+					Monitoring: esv1.Monitoring{
+						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "invalid secret named stackmon ref with name",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.14.0",
+					Monitoring: esv1.Monitoring{
+						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "xx", Name: "es1monname", Namespace: "esmonns"}}},
+						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "invalid secret named stackmon ref with service name",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.14.0",
+					Monitoring: esv1.Monitoring{
+						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx", Namespace: "esmonns"}}},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := validAssociations(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validAssociations(). Name: %v, actual %v, wanted: %v", tt.name, actual, tt.expectErrors)
+			}
+		})
+	}
+}
+
 // es returns an es fixture at a given version
 func es(v string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{

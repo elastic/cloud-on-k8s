@@ -160,6 +160,43 @@ func TestWebhook(t *testing.T) {
 				`spec.version: Forbidden: Version downgrades are not supported`,
 			),
 		},
+		{
+			Name:      "secret-kibana-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Namespace: "kbns"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-kibana-ref-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Name: "kbname", Namespace: "kbns"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.kibanaRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-secret-kibana-ref-service",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", ServiceName: "kbname", Namespace: "kbns"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.kibanaRef: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+			),
+		},
 	}
 
 	validator := &apmv1.ApmServer{}

@@ -504,3 +504,106 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkAssociations(t *testing.T) {
+	type args struct {
+		b *Agent
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no ref: OK",
+			args: args{
+				b: &Agent{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple secret named refs: OK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						ElasticsearchRefs: []Output{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+							},
+						},
+						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "mix secret named and named refs: OK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						ElasticsearchRefs: []Output{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+							},
+						},
+						KibanaRef: commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
+						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "secret named ref with a name: NOK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						ElasticsearchRefs: []Output{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla", Namespace: "blub"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "secret named ref with a service name: NOK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						ElasticsearchRefs: []Output{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+							},
+						},
+						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble", ServiceName: "bla", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkAssociations(tt.args.b)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
