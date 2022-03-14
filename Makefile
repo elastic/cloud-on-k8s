@@ -196,6 +196,7 @@ go-run:
 				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
 				--manage-webhook-certs=false \
+				--exposed-node-labels=topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.* \
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:

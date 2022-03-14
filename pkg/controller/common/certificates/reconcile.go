@@ -31,7 +31,7 @@ type Reconciler struct {
 	K8sClient      k8s.Client
 	DynamicWatches watches.DynamicWatches
 
-	Owner client.Object // owner for the TLS certificates (eg. Elasticsearch, Kibana)
+	Owner client.Object // owner for the TLS certificates (for ex. Elasticsearch, Kibana)
 
 	TLSOptions    commonv1.TLSOptions               // TLS options of the object
 	ExtraHTTPSANs []commonv1.SubjectAlternativeName // SANs dynamically set by a controller, only used in the self signed cert

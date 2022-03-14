@@ -48,7 +48,7 @@ Examples of the "placeholder" controllers (additional controllers) that would be
 - Licensing controller: applies an installation-wide enterprise license to each cluster.
 - Placeholder controllers (not fully specified, but present in order to show that there would be more than one non-namespaced controller):
     - Telemetry controller: provides telemetry that can be reported upstream.
-    - Update controller: pings upstream to periodically check for new versions / security patches etc.
+    - Update controller: pings upstream to periodically check for new versions, security patches, and so on.
     - Centralized user management controller: ensures relevant clusters have a centrally defined set of realms configured.
 
 

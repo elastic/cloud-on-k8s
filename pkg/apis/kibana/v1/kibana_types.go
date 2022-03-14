@@ -91,7 +91,7 @@ type KibanaSpec struct {
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`

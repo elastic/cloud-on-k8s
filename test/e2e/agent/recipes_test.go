@@ -90,6 +90,9 @@ func TestMultiOutputRecipe(t *testing.T) {
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
+	// TODO remove once https://github.com/elastic/kibana/issues/126611 is fixed
+	t.SkipNow()
+
 	customize := func(builder agent.Builder) agent.Builder {
 		builder = builder.WithRoles(agent.PSPClusterRoleName)
 
@@ -135,6 +138,9 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
+	// TODO remove once https://github.com/elastic/kibana/issues/126611 is fixed
+	t.SkipNow()
+
 	notLoggingPod := beat.NewPodBuilder("test")
 	loggingPod := beat.NewPodBuilder("test")
 	loggingPod.Pod.Namespace = "default"
@@ -164,6 +170,9 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
+	// TODO remove once https://github.com/elastic/kibana/issues/126611 is fixed
+	t.SkipNow()
+
 	customize := func(builder agent.Builder) agent.Builder {
 		builder = builder.WithRoles(agent.PSPClusterRoleName)
 

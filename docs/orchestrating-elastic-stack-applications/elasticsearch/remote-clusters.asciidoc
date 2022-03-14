@@ -51,7 +51,7 @@ NOTE: While it is technically possible to configure remote cluster connections u
 You can configure a remote cluster connection to an ECK-managed Elasticsearch cluster from another cluster running outside the Kubernetes cluster as follows:
 
 . Make sure that both clusters trust each other's certificate authority.
-. Configure the remote cluster connection via the Elasticsearch REST API.
+. Configure the remote cluster connection through the Elasticsearch REST API.
 
 Consider the following example:
 
@@ -117,7 +117,7 @@ spec:
 
 . Repeat the above steps to add the CA of `cluster-two` to `cluster-one` as well.
 
-=== Configure the remote cluster connection via the Elasticsearch REST API
+=== Configure the remote cluster connection through the Elasticsearch REST API
 
 Expose the transport layer of `cluster-one`.
 
@@ -133,7 +133,7 @@ spec:
       spec:
         type: LoadBalancer <1>
 ----
-<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively, expose the service via one of the Kubernetes Ingress controllers that support TCP services.
+<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively, expose the service through one of the Kubernetes Ingress controllers that support TCP services.
 
 Finally, configure `cluster-one` as a remote cluster in `cluster-two` using the Elasticsearch REST API:
 

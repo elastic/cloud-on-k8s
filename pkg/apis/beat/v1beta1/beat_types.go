@@ -26,7 +26,7 @@ var (
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
-	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, etc.).
+	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, and so on).
 	// Any string can be used, but well-known types will have the image field defaulted and have the appropriate
 	// Elasticsearch roles created automatically. It also allows for dashboard setup when combined with a `KibanaRef`.
 	// +kubebuilder:validation:MaxLength=20

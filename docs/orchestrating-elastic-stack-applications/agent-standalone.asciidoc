@@ -164,7 +164,7 @@ spec:
             period: 10s
 ----
 
-Alternatively, it can be provided via a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
+Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: agent.k8s.elastic.co/v1alpha1
@@ -259,7 +259,7 @@ The `elasticsearchRefs` element allows ECK to automatically configure Elastic Ag
 
 If the `elasticsearchRefs` element is specified, ECK populates the outputs section of the Elastic Agent configuration. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Agent Pods, and recreates Pods when this certificate changes.
 
-The outputs can also be set manually. To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config`, or indirectly via the `configRef` mechanism.
+The outputs can also be set manually. To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config`, or indirectly through the `configRef` mechanism.
 
 [source,yaml,subs="attributes,+macros"]
 ----

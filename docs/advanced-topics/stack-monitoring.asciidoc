@@ -137,17 +137,17 @@ You can customize the Filebeat and Metricbeat containers through the Pod templat
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 spec:
+  monitoring:
+    metrics:
+      elasticsearchRef:
+        name: monitoring
+        namespace: observability
+    logs:
+      elasticsearchRef:
+        name: monitoring
+        namespace: observability
   nodeSets:
   - name: default
-    monitoring:
-      metrics:
-        elasticsearchRef:
-          name: monitoring
-          namespace: observability
-      logs:
-        elasticsearchRef:
-          name: monitoring
-          namespace: observability
     podTemplate:
       spec:
         containers:

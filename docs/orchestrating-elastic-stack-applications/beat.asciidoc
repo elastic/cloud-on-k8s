@@ -155,7 +155,7 @@ spec:
           runAsUser: 0
 ----
 
-Alternatively, it can be provided via a Secret specified in the `configRef` element:
+Alternatively, it can be provided through a Secret specified in the `configRef` element:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: beat.k8s.elastic.co/v1beta1
