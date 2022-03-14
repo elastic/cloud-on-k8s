@@ -561,18 +561,3 @@ type fakeK8sClient struct {
 
 	errors []error
 }
-
-func newFakeK8sClient(errors []error, objs ...runtime.Object) client.Client {
-	return &fakeK8sClient{
-		internalClient: k8s.NewFakeClient(objs...),
-		errors:         errors,
-	}
-}
-
-func (f *fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
-	if len(f.errors) > 0 {
-		defer func() { f.errors = f.errors[1:] }()
-		return f.errors[0]
-	}
-	return f.internalClient.Get(ctx, key, obj)
-}
