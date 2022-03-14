@@ -5,7 +5,6 @@
 package v1
 
 import (
-	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -560,7 +559,7 @@ func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Assoc
 }
 
 func (ema *EsMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", ema.ref.Namespace, ema.ref.NameOrSecretName())
+	return ema.ref.String()
 }
 
 // HasMonitoring methods

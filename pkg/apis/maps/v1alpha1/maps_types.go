@@ -98,7 +98,7 @@ func (m *ElasticMapsServer) SetAssociationConf(assocConf *commonv1.AssociationCo
 
 // RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
 func (m *ElasticMapsServer) RequiresAssociation() bool {
-	return m.Spec.ElasticsearchRef.NameOrSecretName() != ""
+	return m.Spec.ElasticsearchRef.IsDefined()
 }
 
 func (m *ElasticMapsServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {

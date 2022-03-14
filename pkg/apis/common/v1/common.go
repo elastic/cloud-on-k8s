@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"fmt"
 	"reflect"
 
 	v1 "k8s.io/api/core/v1"
@@ -110,7 +111,7 @@ func (o ObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
-// IsDefined checks if the object selector is not nil and has a name.
+// IsDefined checks if the object selector is not nil and has a name or a secret name.
 // Namespace is not mandatory as it may be inherited by the parent object.
 func (o *ObjectSelector) IsDefined() bool {
 	return o != nil && o.NameOrSecretName() != ""
@@ -119,6 +120,10 @@ func (o *ObjectSelector) IsDefined() bool {
 // IsObjectTypeSecret returns true when the object selector references a Kubernetes secret describing the referenced object.
 func (o ObjectSelector) IsObjectTypeSecret() bool {
 	return o.IsDefined() && o.SecretName != ""
+}
+
+func (o ObjectSelector) String() string {
+	return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.
