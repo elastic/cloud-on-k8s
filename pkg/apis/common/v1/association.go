@@ -122,6 +122,8 @@ const (
 	NoAuthRequiredValue = "-"
 )
 
+type ServiceAccountName string
+
 // Associated represents an Elastic stack resource that is associated with other stack resources.
 // Examples:
 // - Kibana can be associated with Elasticsearch
@@ -133,7 +135,6 @@ const (
 type Associated interface {
 	metav1.Object
 	runtime.Object
-	GetVersion() string
 	ServiceAccountName() string
 	GetAssociations() []Association
 	AssociationStatusMap(typ AssociationType) AssociationStatusMap
@@ -144,6 +145,8 @@ type Associated interface {
 // +kubebuilder:object:generate=false
 type Association interface {
 	Associated
+
+	ElasticServiceAccount() (ServiceAccountName, error)
 
 	// Associated can be used to retrieve the associated object
 	Associated() Associated

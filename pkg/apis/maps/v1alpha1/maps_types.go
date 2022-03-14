@@ -123,8 +123,8 @@ func (m *ElasticMapsServer) SetAssociationStatusMap(typ commonv1.AssociationType
 	return nil
 }
 
-func (m *ElasticMapsServer) GetVersion() string {
-	return m.Spec.Version
+func (m *ElasticMapsServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
 }
 
 func (m *ElasticMapsServer) GetAssociations() []commonv1.Association {

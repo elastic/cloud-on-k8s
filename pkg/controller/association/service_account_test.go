@@ -103,7 +103,7 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 	type args struct {
 		client         k8s.Client
 		applicationUID types.UID
-		serviceAccount ServiceAccountName
+		serviceAccount commonv1.ServiceAccountName
 	}
 	tests := []struct {
 		name                                 string
@@ -221,7 +221,7 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 
 func Test_newApplicationToken(t *testing.T) {
 	type args struct {
-		serviceAccountName ServiceAccountName
+		serviceAccountName commonv1.ServiceAccountName
 		tokenName          string
 	}
 	tests := []struct {
@@ -232,7 +232,7 @@ func Test_newApplicationToken(t *testing.T) {
 		{
 			name: "Simple test with Key validation",
 			args: args{
-				serviceAccountName: Kibana,
+				serviceAccountName: kbv1.KibanaServiceAccount,
 				tokenName:          "e2e-venus-kibana-kibana-sample",
 			},
 		},

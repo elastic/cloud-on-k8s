@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -31,13 +32,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-type ServiceAccountName string
-
 const (
 	Namespace string = "elastic"
-
-	Kibana      ServiceAccountName = "kibana"
-	FleetServer ServiceAccountName = "fleet-server"
 
 	ServiceAccountNameField       = "serviceAccount"
 	ServiceAccountTokenValueField = "token"
@@ -66,7 +62,7 @@ func reconcileApplicationSecret(
 	applicationSecretName types.NamespacedName,
 	commonLabels map[string]string,
 	tokenName string,
-	serviceAccount ServiceAccountName,
+	serviceAccount commonv1.ServiceAccountName,
 ) (*Token, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
 	defer span.End()
@@ -121,7 +117,7 @@ func getOrCreateToken(
 	es *esv1.Elasticsearch,
 	secretName string,
 	secretData map[string][]byte,
-	serviceAccountName ServiceAccountName,
+	serviceAccountName commonv1.ServiceAccountName,
 	tokenName string,
 ) (*Token, error) {
 	token := getCurrentApplicationToken(es, secretName, secretData)
@@ -170,7 +166,7 @@ func ReconcileServiceAccounts(
 	commonLabels map[string]string,
 	applicationSecretName types.NamespacedName,
 	elasticsearchSecretName types.NamespacedName,
-	serviceAccount ServiceAccountName,
+	serviceAccount commonv1.ServiceAccountName,
 	applicationName string,
 	applicationUID types.UID,
 ) error {
@@ -229,7 +225,7 @@ func getFieldOrNil(es *esv1.Elasticsearch, secretName string, secretData map[str
 var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
-func newApplicationToken(serviceAccountName ServiceAccountName, tokenName string) (*Token, error) {
+func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
 	secret := common.RandomBytes(64)
 	hash, err := pbkdf2Key(secret)
 	if err != nil {

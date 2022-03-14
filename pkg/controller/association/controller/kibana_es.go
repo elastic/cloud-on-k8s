@@ -63,9 +63,6 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ServiceAccount: func() (association.ServiceAccountName, version.Version) {
-				return association.Kibana, KibanaServiceAccountMinVersion
-			},
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 				return true, association.AssociationRef(), nil
 			},

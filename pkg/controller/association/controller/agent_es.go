@@ -14,7 +14,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -30,10 +29,6 @@ const (
 	// AgentAssociationLabelType marks resources created for an association originating from Agent
 	// with the target resource type (e.g. "elasticsearch").
 	AgentAssociationLabelType = "agentassociation.k8s.elastic.co/type"
-)
-
-var (
-	FleetServerServiceAccountMinVersion = version.MustParse("8.0.0")
 )
 
 func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -58,9 +53,6 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ServiceAccount: func() (association.ServiceAccountName, version.Version) {
-				return association.FleetServer, FleetServerServiceAccountMinVersion
-			},
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 				return true, association.AssociationRef(), nil
 			},

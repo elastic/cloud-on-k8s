@@ -10,7 +10,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -56,8 +55,11 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					},
 				},
 			)
-			kbVersion := version.MustParse(b.Kibana.GetVersion())
-			if kbVersion.GTE(controller.KibanaServiceAccountMinVersion) {
+			v, err := version.Parse(b.Kibana.Spec.Version)
+			if err != nil {
+				panic(err) // should not happen in an e2e test
+			}
+			if v.GTE(kbv1.KibanaServiceAccountMinVersion) {
 				expected = append(expected,
 					test.ExpectedSecret{
 						Name: kbName + "-kibana-user",

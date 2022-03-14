@@ -442,8 +442,8 @@ func (es *Elasticsearch) ServiceAccountName() string {
 	return es.Spec.ServiceAccountName
 }
 
-func (es *Elasticsearch) GetVersion() string {
-	return es.Spec.Version
+func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
 }
 
 // IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
