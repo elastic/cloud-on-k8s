@@ -10,6 +10,8 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
@@ -53,17 +55,35 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
 					},
 				},
-				test.ExpectedSecret{
-					Name: kbName + "-kibana-user",
-					Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"},
-					Labels: map[string]string{
-						"eck.k8s.elastic.co/credentials":             "true",
-						"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
-						"kibanaassociation.k8s.elastic.co/name":      kbName,
-						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
-					},
-				},
 			)
+			kbVersion := version.MustParse(b.Kibana.GetVersion())
+			if kbVersion.GTE(controller.KibanaServiceAccountMinVersion) {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: kbName + "-kibana-user",
+						Keys: []string{"hash", "name", "serviceAccount", "token"},
+						Labels: map[string]string{
+							"eck.k8s.elastic.co/credentials":             "true",
+							"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+							"kibanaassociation.k8s.elastic.co/name":      kbName,
+							"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+						},
+					},
+				)
+			} else {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: kbName + "-kibana-user",
+						Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"},
+						Labels: map[string]string{
+							"eck.k8s.elastic.co/credentials":             "true",
+							"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+							"kibanaassociation.k8s.elastic.co/name":      kbName,
+							"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+						},
+					},
+				)
+			}
 		}
 		if b.Kibana.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
