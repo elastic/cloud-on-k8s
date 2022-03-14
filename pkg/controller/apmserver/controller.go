@@ -184,7 +184,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 				Name:      request.Name,
 			})
 		}
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+		return r.updateStatus(ctx, NewState(request, &as)).WithError(err).Aggregate()
 	}
 
 	if common.IsUnmanaged(&as) {
@@ -202,10 +202,6 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
-		return reconcile.Result{}, nil
-	}
-
 	return r.doReconcile(ctx, request, &as)
 }
 
@@ -220,21 +216,14 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 	// Always attempt to update the status of the APMServer object during reconcilation.
 	defer func() {
-		err = r.updateStatus(ctx, state)
-		if err != nil && apierrors.IsConflict(err) {
-			log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
-			res, err = results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
-		} else if err != nil {
-			log.Error(
-				err,
-				"Error while updating status",
-				"namespace", as.Namespace,
-				"name", as.Name,
-			)
-			k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
-			res, err = results.WithError(err).Aggregate()
+		if updateStatusresults := r.updateStatus(ctx, state).WithError(err); updateStatusresults != nil {
+			results = updateStatusresults
 		}
 	}()
+
+	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
+		return reconcile.Result{}, nil
+	}
 
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, as); err != nil {
@@ -339,16 +328,17 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	return reconciler.ReconcileSecretNoOwnerRef(c, expectedApmServerSecret, as)
 }
 
-func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {
+func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
+	results := reconciler.NewResult(ctx)
 
-	current := state.originalApmServer
-	if reflect.DeepEqual(current.Status, state.ApmServer.Status) {
-		return nil
+	original := state.originalApmServer
+	if reflect.DeepEqual(original.Status, state.ApmServer.Status) {
+		return results
 	}
-	if state.ApmServer.Status.IsDegraded(current.Status.DeploymentStatus) {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
+	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
+		r.recorder.Event(original, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
@@ -356,7 +346,15 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		"as_name", state.ApmServer.Name,
 		"status", state.ApmServer.Status,
 	)
-	return common.UpdateStatus(r.Client, state.ApmServer)
+	err := common.UpdateStatus(r.Client, state.ApmServer)
+	if err != nil && apierrors.IsConflict(err) {
+		log.V(1).Info("Conflict while updating status", "namespace", original.Namespace, "as_name", original.Name)
+		results = results.WithResult(reconcile.Result{Requeue: true})
+	} else if err != nil {
+		log.Error(err, "Error while updating status", "namespace", original.Namespace, "as_name", original.Name)
+		results = results.WithError(err)
+	}
+	return results
 }
 
 // NewService returns the service used by the APM Server.

@@ -350,8 +350,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			// This could be a potential existing issue.  Do we want observedGeneration to be updated here?
-			name: "With Elasticsearch association not ready, observedGeneration is not updated",
+			name: "With Elasticsearch association not ready, observedGeneration is updated",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					withESReference(sampleAPMObject, commonv1.ObjectSelector{Name: "testes"}),
@@ -370,7 +369,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
 				require.NoError(t, err)
-				require.Equal(t, int64(1), apm.Status.ObservedGeneration)
+				require.Equal(t, int64(2), apm.Status.ObservedGeneration)
 			},
 		},
 		{
