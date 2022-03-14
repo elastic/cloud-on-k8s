@@ -166,7 +166,7 @@ func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, 
 		rs = append(rs, r)
 		// if we're using local yaml files, ensure that they have a proper
 		// end of directives marker between them.
-		rs = append(rs, strings.NewReader("---\n"))
+		rs = append(rs, strings.NewReader(yamlSeparator))
 	}
 	return io.MultiReader(rs...), closer, nil
 }
