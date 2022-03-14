@@ -318,6 +318,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
@@ -341,6 +342,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
@@ -365,6 +367,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
@@ -414,6 +417,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
@@ -442,6 +446,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: true,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongapmservernamecausesvalidationissues"}, &apm)
@@ -465,6 +470,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
