@@ -42,7 +42,7 @@ The ES readiness probe will fail if ES never becomes ready.
 ## Decision Drivers
 
 * Error distinction: a sidecar failure should be easily identified from an Elasticsearch failure
-* Error side effect: a sidecar failure should not increase the unvailability of Elasticsearch compared to the current situation
+* Error side effect: a sidecar failure should not increase the unavailability of Elasticsearch compared to the current situation
 * Promote reliability and simplicity because health-checking is a critical part of the system
 
 ## Considered Options
@@ -78,7 +78,7 @@ the call to the ES API. ES is considered ready when `/` is reachable.
 This solution implies that the probe through the sidecar will poll Elasticsearch.
 
 * Good, because it's well integrated with Kubernetes. Kubernetes will restart the sidecar container if the probe fails. It could
- probably resolve some issues related to the state of the system (e.g. out of memory, too many connections).
+ probably resolve some issues related to the state of the system (for example, out of memory, too many connections).
 * Good, because exposing the health over HTTP allows easily the collect by other systems
 * Good, because it's easy to expose the cluster state in another HTTP endpoint
 * Bad, because Kubernetes will restart the sidecar container if the liveness probe fails. And if that happens indefinitely, the
@@ -113,10 +113,9 @@ Then, the operator polls this endpoint and reports any change in the health stat
 
 Sending the status as an event has the added benefit of giving us richer behaviour on top of the polling.
 It makes the state of the sidecar process observable. We could for example return a revision of the secrets the sidecar process has
-seen in the response to the health/status check and implement coordinated behaviour on top of that: e.g. do x only if all sidecars have
-seen secret revison y.
+seen in the response to the health/status check and implement coordinated behaviour on top of that: for example, do x only if all sidecars have seen secret revision y.
 
-* Good, because it does not use readiness/liveness probes that can provoke a container restart or a service inavailability
+* Good, because it does not use readiness/liveness probes that can provoke a container restart or a service unavailability
 * Good, because it can give us an aggregated view of all the sidecar healths
 * Good, because it makes the state of the sidecar process observable
 * Good, because it gives more options to react to failures

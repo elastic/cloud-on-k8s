@@ -55,8 +55,8 @@ spec:
 ### Option  2: License pool and license controller 
 
 We support a pool of licenses and create a license controller that applies the most suitable license to the individual cluster deployments.  Pool of licenses is to be understood as one or more enterprise licenses in the namespace of the license controller. The controller selects a license from the pool of licenses using one of two heuristics:
-1. find a suitable license. Suitable is defined similar to our current practice in ESS: in descending precedence order of platinum, gold, standard and with the best match with regards to license validity (at least n days after license start, at least n days before license expiry). 
-2. the cluster can also express the desire to be issued with a specific kind of license via a special label for example `k8s.elastic.co\desired-license=platinum` in which case the controller tries to find a match with regards to license validity (at least n days after license start, at least n days before license expiry) of the right type. 
+1. Find a suitable license. Suitable is defined similar to our current practice in ESS: in descending precedence order of platinum, gold, standard and with the best match with regards to license validity (at least n days after license start, at least n days before license expiry). 
+2. The cluster can also express the desire to be issued with a specific kind of license through a special label for example `k8s.elastic.co\desired-license=platinum` in which case the controller tries to find a match with regards to license validity (at least n days after license start, at least n days before license expiry) of the right type. 
 
 
 #### Workflow

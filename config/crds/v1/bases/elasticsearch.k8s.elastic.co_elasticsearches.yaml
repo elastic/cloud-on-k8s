@@ -8714,9 +8714,9 @@ spec:
                 type: array
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. a remote Elasticsearch cluster) in a
-                  different namespace. Can only be used if ECK is enforcing RBAC on
-                  references.
+                  resource to a resource (for ex. a remote Elasticsearch cluster)
+                  in a different namespace. Can only be used if ECK is enforcing RBAC
+                  on references.
                 type: string
               transport:
                 description: Transport holds transport layer settings for Elasticsearch.

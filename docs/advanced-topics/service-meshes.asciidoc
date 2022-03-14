@@ -81,7 +81,7 @@ ECK has a fallback validation mechanism that reports validation failures as even
 
 This section assumes that you are deploying ECK custom resources to a namespace that has link:https://istio.io/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection[automatic sidecar injection] enabled.
 
-If you have configured Istio in link:https://istio.io/docs/concepts/security/#permissive-mode[permissive mode], examples defined elsewhere in the ECK documentation will continue to work without requiring any modifications. However, if you have enabled strict mutual TLS authentication between services either via global (`MeshPolicy`) or namespace-level (`Policy`) configuration, the following modifications to the resource manifests are necessary for correct operation.
+If you have configured Istio in link:https://istio.io/docs/concepts/security/#permissive-mode[permissive mode], examples defined elsewhere in the ECK documentation will continue to work without requiring any modifications. However, if you have enabled strict mutual TLS authentication between services either through global (`MeshPolicy`) or namespace-level (`Policy`) configuration, the following modifications to the resource manifests are necessary for correct operation.
 
 [id="{p}-service-mesh-istio-elasticsearch"]
 ==== Elasticsearch
