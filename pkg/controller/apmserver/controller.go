@@ -214,7 +214,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	state := NewState(request, as)
 	results := reconciler.NewResult(ctx)
 
-	// Always attempt to update the status of the APMServer object during reconcilation.
+	// Always attempt to update the status of the APMServer object during reconciliation.
 	defer func() {
 		if updateStatusresults := r.updateStatus(ctx, state).WithError(err); updateStatusresults != nil {
 			results = updateStatusresults
