@@ -193,6 +193,11 @@ func (as *ApmServer) SetAssociationStatusMap(typ commonv1.AssociationType, statu
 	}
 }
 
+// GetObservedGeneration will return the observedGeneration from the Elastic APM Server's status.
+func (as *ApmServer) GetObservedGeneration() int64 {
+	return as.Status.ObservedGeneration
+}
+
 // ApmEsAssociation helps to manage the APMServer / Elasticsearch association
 type ApmEsAssociation struct {
 	*ApmServer

@@ -34,7 +34,7 @@ func TestAPMServerVersionUpgradeToLatest8x(t *testing.T) {
 		[]test.Builder{esBuilder, apmServerBuilder},
 		[]test.Builder{
 			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
-			apmServerBuilder.WithVersion(dstVersion),
+			apmServerBuilder.WithVersion(dstVersion).WithMutatedFrom(&apmServerBuilder),
 		},
 	)
 }

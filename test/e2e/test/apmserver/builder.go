@@ -22,6 +22,8 @@ import (
 // Builder to create APM Servers
 type Builder struct {
 	ApmServer apmv1.ApmServer
+
+	MutatedFrom *Builder
 }
 
 var _ test.Builder = Builder{}
@@ -163,6 +165,11 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 	return b.WithConfig(map[string]interface{}{
 		"apm-server.data_streams.wait_for_integration": false,
 	})
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
+	return b
 }
 
 func (b Builder) NSN() types.NamespacedName {

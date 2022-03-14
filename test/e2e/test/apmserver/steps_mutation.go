@@ -15,12 +15,14 @@ import (
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var apmServerGenerationBeforeMutation, apmServerObservedGenerationBeforeMutation int64
+	isMutated := b.MutatedFrom != nil
+
 	return test.StepList{
-		generation.RetrieveAgentGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation),
+		generation.RetrieveGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation),
 	}.WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
-		WithStep(generation.CompareObjectGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation))
+		WithStep(generation.CompareObjectGenerationsStep(&b.ApmServer, k, isMutated, apmServerGenerationBeforeMutation, apmServerObservedGenerationBeforeMutation))
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {

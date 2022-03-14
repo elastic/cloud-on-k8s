@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"reflect"
 	"testing"
@@ -231,6 +232,7 @@ func assertCountIndexEqual(esClient client.Client, index string, expected int) e
 		return err
 	}
 	if metricCount != expected {
+		log.Printf("%d documents expected in index %s, got %d instead", expected, index, metricCount)
 		return fmt.Errorf("%d document expected in index %s, got %d instead", expected, index, metricCount)
 	}
 	return nil
