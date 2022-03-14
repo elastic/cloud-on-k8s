@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-// TODO: This is not working; the upgrade doesn't appear to be happening for es, or apmserver.
 func TestAPMServerVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestSnapshotVersion8x
