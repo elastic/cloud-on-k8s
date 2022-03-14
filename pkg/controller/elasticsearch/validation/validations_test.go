@@ -561,8 +561,8 @@ func Test_validAssociations(t *testing.T) {
 			name: "simple named stackmon ref",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Version: "7.14.0",
-					Monitoring: esv1.Monitoring{Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}},
+					Version:    "7.14.0",
+					Monitoring: esv1.Monitoring{Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}},
 				},
 			},
 			expectErrors: false,
@@ -573,8 +573,8 @@ func Test_validAssociations(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
 					Monitoring: esv1.Monitoring{
-						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
+						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
 					},
 				},
 			},
@@ -586,8 +586,8 @@ func Test_validAssociations(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
 					Monitoring: esv1.Monitoring{
-						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
+						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
 					},
 				},
 			},
@@ -599,8 +599,8 @@ func Test_validAssociations(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
 					Monitoring: esv1.Monitoring{
-						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
+						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
 					},
 				},
 			},
@@ -612,8 +612,8 @@ func Test_validAssociations(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
 					Monitoring: esv1.Monitoring{
-						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "xx", Name: "es1monname", Namespace: "esmonns"}}},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
+						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "xx", Name: "es1monname", Namespace: "esmonns"}}},
+						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es2monname", Namespace: "esmonns"}}},
 					},
 				},
 			},
@@ -625,8 +625,8 @@ func Test_validAssociations(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
 					Monitoring: esv1.Monitoring{
-						Metrics:esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx", Namespace: "esmonns"}}},
+						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "es1monname", Namespace: "esmonns"}}},
+						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx", Namespace: "esmonns"}}},
 					},
 				},
 			},

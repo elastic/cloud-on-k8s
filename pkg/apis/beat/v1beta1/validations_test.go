@@ -123,7 +123,7 @@ func Test_checkAssociations(t *testing.T) {
 				b: &Beat{
 					Spec: BeatSpec{
 						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
 					},
 				},
 			},
@@ -135,7 +135,7 @@ func Test_checkAssociations(t *testing.T) {
 				b: &Beat{
 					Spec: BeatSpec{
 						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-						KibanaRef: commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
+						KibanaRef:        commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
 					},
 				},
 			},
@@ -147,7 +147,7 @@ func Test_checkAssociations(t *testing.T) {
 				b: &Beat{
 					Spec: BeatSpec{
 						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Name: "bla", Namespace: "blub"},
-						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
 					},
 				},
 			},
@@ -159,7 +159,7 @@ func Test_checkAssociations(t *testing.T) {
 				b: &Beat{
 					Spec: BeatSpec{
 						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", ServiceName: "bla", Namespace: "blub"},
-						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
 					},
 				},
 			},

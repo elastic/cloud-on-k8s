@@ -124,7 +124,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(dialer net.Dialer, path stri
 	}
 
 	httpClient := common.HTTPClient(dialer, caCerts, client.DefaultESClientTimeout)
-	
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
