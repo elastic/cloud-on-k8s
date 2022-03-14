@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -71,13 +72,13 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 
 // referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
 // reported in its status.
-func referencedElasticsearchStatusVersion(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+func referencedElasticsearchStatusVersion(c k8s.Client, dialer net.Dialer, esRef commonv1.ObjectSelector) (string, error) {
 	if esRef.IsObjectTypeSecret() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, esRef)
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/", "{ .version.number }")
+		ver, err := info.Request(dialer, "/", "{ .version.number }")
 		if err != nil {
 			return "", err
 		}

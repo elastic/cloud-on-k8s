@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -73,13 +74,13 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 
 // referencedKibanaStatusVersion returns the currently running version of Kibana
 // reported in its status.
-func referencedKibanaStatusVersion(c k8s.Client, kbRef commonv1.ObjectSelector) (string, error) {
+func referencedKibanaStatusVersion(c k8s.Client, dialer net.Dialer, kbRef commonv1.ObjectSelector) (string, error) {
 	if kbRef.IsObjectTypeSecret() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, kbRef)
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/api/status", "{ .version.number }")
+		ver, err := info.Request(dialer, "/api/status", "{ .version.number }")
 		if err != nil {
 			return "", err
 		}

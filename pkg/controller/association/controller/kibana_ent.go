@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	entctl "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -64,13 +65,13 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 
 // referencedEntStatusVersion returns the currently running version of Enterprise Search
 // reported in its status.
-func referencedEntStatusVersion(c k8s.Client, entRef commonv1.ObjectSelector) (string, error) {
+func referencedEntStatusVersion(c k8s.Client, dialer net.Dialer, entRef commonv1.ObjectSelector) (string, error) {
 	if entRef.IsObjectTypeSecret() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, entRef)
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/api/ent/v1/internal/version", "{ .number }")
+		ver, err := info.Request(dialer, "/api/ent/v1/internal/version", "{ .number }")
 		if err != nil {
 			return "", err
 		}

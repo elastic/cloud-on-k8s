@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -64,13 +65,13 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 
 // referencedFleetServerStatusVersion returns the currently running version of Agent
 // reported in its status.
-func referencedFleetServerStatusVersion(c k8s.Client, fsRef commonv1.ObjectSelector) (string, error) {
+func referencedFleetServerStatusVersion(c k8s.Client, dialer net.Dialer, fsRef commonv1.ObjectSelector) (string, error) {
 	if fsRef.IsObjectTypeSecret() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, fsRef)
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/api/status", "{ .version.number }")
+		ver, err := info.Request(dialer, "/api/status", "{ .version.number }")
 		if err != nil {
 			// version is in the status API from version 8.0
 			if err.Error() == "version is not found" {

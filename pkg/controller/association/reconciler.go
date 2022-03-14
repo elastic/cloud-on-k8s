@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -70,7 +71,7 @@ type AssociationInfo struct {
 	AssociationConfAnnotationNameBase string
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
-	ReferencedResourceVersion func(c k8s.Client, referencedResource commonv1.ObjectSelector) (string, error)
+	ReferencedResourceVersion func(c k8s.Client, dialer net.Dialer, referencedResource commonv1.ObjectSelector) (string, error)
 	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
 	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
 	// Beat resource).
@@ -270,7 +271,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// propagate the currently running version of the referenced resource (example: Elasticsearch version).
 	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
-	ver, err := r.ReferencedResourceVersion(r.Client, assocRef)
+	ver, err := r.ReferencedResourceVersion(r.Client, r.Parameters.Dialer, assocRef)
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}

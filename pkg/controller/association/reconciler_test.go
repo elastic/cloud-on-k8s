@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
@@ -69,7 +70,7 @@ var (
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
 			}
 		},
-		ReferencedResourceVersion: func(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, dialer net.Dialer, esRef commonv1.ObjectSelector) (string, error) {
 			if esRef.IsObjectTypeSecret() {
 				_, err := GetUnmanagedAssociationConnectionInfoFromSecret(c, esRef)
 				if err != nil {
@@ -539,7 +540,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
 			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
 		},
-		ReferencedResourceVersion: func(c k8s.Client, entRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, dialer net.Dialer, entRef commonv1.ObjectSelector) (string, error) {
 			var ent entv1.EnterpriseSearch
 			err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
 			if err != nil {
@@ -811,7 +812,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ReferencedObjTemplate: func() client.Object { return &esv1.Elasticsearch{} },
-		ReferencedResourceVersion: func(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, dialer net.Dialer, esRef commonv1.ObjectSelector) (string, error) {
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", err
@@ -1164,7 +1165,7 @@ func equalKeys(t *testing.T, a map[string][]byte, b map[string][]byte) {
 func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// Kibana references ES with a custom secret, but neither the secret nor association conf exist yet
 	kb := sampleKibanaNoEsRef()
-	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "sample-es-ref-secret", Namespace: "kbname", Type: commonv1.ObjectTypeSecret}}
+	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret", Namespace: "kbname"}}
 
 	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
