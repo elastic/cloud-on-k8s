@@ -11,7 +11,6 @@ import (
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -114,7 +113,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	actualStatefulSets = upscaleResults.ActualStatefulSets
 
 	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
-	if err := transport.DeleteLegacyTransportCertificate(d.Client, d.ES); err != nil && !apierrors.IsNotFound(err) {
+	if err := transport.DeleteLegacyTransportCertificate(d.Client, d.ES); err != nil {
 		results.WithError(err)
 	}
 
