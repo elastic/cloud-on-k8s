@@ -57,8 +57,9 @@ const (
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
 
-	ElasticsearchUsername = "elasticsearch.username"
-	ElasticsearchPassword = "elasticsearch.password"
+	ElasticsearchUsername            = "elasticsearch.username"
+	ElasticsearchPassword            = "elasticsearch.password"
+	ElasticsearchServiceAccountToken = "elasticsearch.serviceAccountToken"
 
 	ElasticsearchHosts = "elasticsearch.hosts"
 
@@ -131,9 +132,31 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{cfg}, nil
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
+	credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
 	if err != nil {
 		return CanonicalConfig{}, err
+	}
+	if credentials.HasServiceAccountToken() {
+		err := cfg.MergeWith(
+			settings.MustCanonicalConfig(
+				map[string]interface{}{
+					ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
+				},
+			))
+		if err != nil {
+			return CanonicalConfig{}, err
+		}
+	} else {
+		err := cfg.MergeWith(
+			settings.MustCanonicalConfig(
+				map[string]interface{}{
+					ElasticsearchUsername: credentials.Username,
+					ElasticsearchPassword: credentials.Password,
+				},
+			))
+		if err != nil {
+			return CanonicalConfig{}, err
+		}
 	}
 
 	// merge the configuration with userSettings last so they take precedence
@@ -144,12 +167,6 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		entSearchCfg,
 		monitoringCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
-		settings.MustCanonicalConfig(
-			map[string]interface{}{
-				ElasticsearchUsername: username,
-				ElasticsearchPassword: password,
-			},
-		),
 		userSettings,
 	)
 	if err != nil {

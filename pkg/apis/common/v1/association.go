@@ -133,6 +133,7 @@ const (
 type Associated interface {
 	metav1.Object
 	runtime.Object
+	GetVersion() string
 	ServiceAccountName() string
 	GetAssociations() []Association
 	AssociationStatusMap(typ AssociationType) AssociationStatusMap
@@ -188,11 +189,12 @@ func FormatNameWithID(template string, id string) string {
 
 // AssociationConf holds the association configuration of a referenced resource in an association.
 type AssociationConf struct {
-	AuthSecretName string `json:"authSecretName"`
-	AuthSecretKey  string `json:"authSecretKey"`
-	CACertProvided bool   `json:"caCertProvided"`
-	CASecretName   string `json:"caSecretName"`
-	URL            string `json:"url"`
+	AuthSecretName   string `json:"authSecretName"`
+	AuthSecretKey    string `json:"authSecretKey"`
+	IsServiceAccount bool   `json:"isServiceAccount"`
+	CACertProvided   bool   `json:"caCertProvided"`
+	CASecretName     string `json:"caSecretName"`
+	URL              string `json:"url"`
 	// Version of the referenced resource. If a version upgrade is in progress,
 	// matches the lowest running version. May be empty if unknown.
 	Version string `json:"version"`

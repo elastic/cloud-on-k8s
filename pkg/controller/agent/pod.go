@@ -76,6 +76,7 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
 	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
 	ubiUpdateCmd       = "/usr/bin/update-ca-trust"
@@ -450,8 +451,8 @@ func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (m
 
 		envVars := map[string]string{
 			KibanaFleetHost:     kbConnectionSettings.host,
-			KibanaFleetUsername: kbConnectionSettings.username,
-			KibanaFleetPassword: kbConnectionSettings.password,
+			KibanaFleetUsername: kbConnectionSettings.credentials.Username,
+			KibanaFleetPassword: kbConnectionSettings.credentials.Password,
 			KibanaFleetSetup:    strconv.FormatBool(agent.Spec.KibanaRef.IsDefined()),
 		}
 
@@ -524,8 +525,13 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 		}
 
 		fleetServerCfg[FleetServerElasticsearchHost] = esConnectionSettings.host
-		fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.username
-		fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.password
+
+		if esConnectionSettings.credentials.HasServiceAccountToken() {
+			fleetServerCfg[FleetServerServiceToken] = esConnectionSettings.credentials.ServiceAccountToken
+		} else {
+			fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.credentials.Username
+			fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.credentials.Password
+		}
 
 		// don't set ca key if ca is not available
 		if esConnectionSettings.ca != "" {

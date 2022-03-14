@@ -191,6 +191,10 @@ func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status comm
 
 var _ commonv1.Associated = &Beat{}
 
+func (b *Beat) GetVersion() string {
+	return b.Spec.Version
+}
+
 func (b *Beat) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 

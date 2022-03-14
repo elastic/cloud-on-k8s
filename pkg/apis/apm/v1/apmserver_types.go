@@ -132,6 +132,10 @@ func (as *ApmServer) EffectiveVersion() string {
 	return ver
 }
 
+func (as *ApmServer) GetVersion() string {
+	return as.Spec.Version
+}
+
 func (as *ApmServer) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 

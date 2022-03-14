@@ -204,6 +204,10 @@ type Agent struct {
 
 var _ commonv1.Associated = &Agent{}
 
+func (a *Agent) GetVersion() string {
+	return a.Spec.Version
+}
+
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range a.Spec.ElasticsearchRefs {

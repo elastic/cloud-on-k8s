@@ -16,6 +16,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -34,6 +35,10 @@ const (
 
 	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
 	KibanaSystemUserBuiltinRole = "kibana_system"
+)
+
+var (
+	KibanaServiceAccountMinVersion = version.MustParse("8.0.0")
 )
 
 func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -58,6 +63,9 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+			ServiceAccount: func() (association.ServiceAccountName, version.Version) {
+				return association.Kibana, KibanaServiceAccountMinVersion
+			},
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 				return true, association.AssociationRef(), nil
 			},

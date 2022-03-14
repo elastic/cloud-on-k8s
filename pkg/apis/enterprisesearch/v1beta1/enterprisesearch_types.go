@@ -107,6 +107,10 @@ func (ent *EnterpriseSearch) RequiresAssociation() bool {
 	return ent.Spec.ElasticsearchRef.Name != ""
 }
 
+func (ent *EnterpriseSearch) GetVersion() string {
+	return ent.Spec.Version
+}
+
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	if ent.Spec.ElasticsearchRef.IsDefined() {

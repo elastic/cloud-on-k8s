@@ -165,6 +165,10 @@ func (k *Kibana) ServiceAccountName() string {
 	return k.Spec.ServiceAccountName
 }
 
+func (k *Kibana) GetVersion() string {
+	return k.Spec.Version
+}
+
 // -- associations
 
 var _ commonv1.Associated = &Kibana{}
