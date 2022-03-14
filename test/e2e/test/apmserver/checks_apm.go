@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"reflect"
 	"testing"
@@ -24,10 +23,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
+
+var log = ulog.Log.WithName("apm-e2e")
 
 type apmClusterChecks struct {
 	apmClient *ApmClient
@@ -189,6 +191,7 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 			// Fetch the last version of the APM Server
 			var updatedApmServer apmv1.ApmServer
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+				log.Error(err, "getting elasticsearch client")
 				return err
 			}
 
@@ -232,7 +235,6 @@ func assertCountIndexEqual(esClient client.Client, index string, expected int) e
 		return err
 	}
 	if metricCount != expected {
-		log.Printf("%d documents expected in index %s, got %d instead", expected, index, metricCount)
 		return fmt.Errorf("%d document expected in index %s, got %d instead", expected, index, metricCount)
 	}
 	return nil
