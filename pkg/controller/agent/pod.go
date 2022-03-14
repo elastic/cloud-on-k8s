@@ -384,30 +384,6 @@ func getVolumesFromAssociations(associations []commonv1.Association) []volume.Vo
 	return vols
 }
 
-func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
-	assoc, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
-	if err != nil {
-		return nil, err
-	}
-	if assoc == nil {
-		return nil, nil
-	}
-
-	fsRef := assoc.AssociationRef()
-	fs := agentv1alpha1.Agent{}
-
-	if err := association.FetchWithAssociations(
-		params.Context,
-		params.Client,
-		reconcile.Request{NamespacedName: fsRef.NamespacedName()},
-		&fs,
-	); err != nil {
-		return nil, err
-	}
-
-	return &fs, nil
-}
-
 func trustCAScript(caPath string) string {
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
