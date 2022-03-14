@@ -22,14 +22,19 @@ func TestAgentESAssociation_AssociationConfAnnotationName(t *testing.T) {
 		{
 			name: "average length names",
 			ref:  commonv1.ObjectSelector{Namespace: "namespace1", Name: "elasticsearch1"},
-			want: "association.k8s.elastic.co/es-conf-1951435392",
+			want: "association.k8s.elastic.co/es-conf-2150608354",
 		},
 		{
 			name: "max length namespace and name (63 and 36 respectively)",
 			ref: commonv1.ObjectSelector{
 				Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
 				Name:      "elasticsearch1elasticsearch1elastics"},
-			want: "association.k8s.elastic.co/es-conf-1930005463",
+			want: "association.k8s.elastic.co/es-conf-3419573237",
+		},
+		{
+			name: "secret name gives a different hash",
+			ref:  commonv1.ObjectSelector{Namespace: "namespace1", SecretName: "elasticsearch1"},
+			want: "association.k8s.elastic.co/es-conf-851285294",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
