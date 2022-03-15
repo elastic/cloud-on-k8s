@@ -13,7 +13,6 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -157,10 +156,10 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 // Kibana, when there is no Kibana in the deployment, the index templates are not present and our E2E tests checks
 // would fail.
 func (b Builder) WithoutIntegrationCheck() Builder {
-	if version.MustParse(b.ApmServer.Spec.Version).LT(version.MinFor(8, 0, 0)) {
-		// disabling integration check is not necessary below 8.0.0, no-op
-		return b
-	}
+	// if version.MustParse(b.ApmServer.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+	// 	// disabling integration check is not necessary below 8.0.0, no-op
+	// 	return b
+	// }
 
 	return b.WithConfig(map[string]interface{}{
 		"apm-server.data_streams.wait_for_integration": false,

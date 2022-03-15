@@ -23,7 +23,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+)
+
+var (
+	log = ulog.Log.WithName("apm-es")
 )
 
 const (
@@ -99,6 +104,7 @@ func getAPMElasticsearchRoles(associated commonv1.Associated) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	log.Info("apm -> es association version", "version", v.String())
 
 	// 8.0.x and above
 	if v.GTE(version.MinFor(8, 0, 0)) {

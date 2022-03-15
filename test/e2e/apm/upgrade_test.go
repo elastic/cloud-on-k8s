@@ -26,14 +26,32 @@ func TestAPMServerVersionUpgradeToLatest8x(t *testing.T) {
 		WithVersion(srcVersion).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	apmServerBuilder := apmserver.NewBuilder(name).WithElasticsearchRef(esBuilder.Ref())
+	apmServerBuilder := apmserver.NewBuilder(name).WithElasticsearchRef(esBuilder.Ref()).WithoutIntegrationCheck()
 
 	test.RunMutations(
 		t,
 		[]test.Builder{esBuilder, apmServerBuilder},
 		[]test.Builder{
 			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
-			apmServerBuilder.WithVersion(dstVersion).WithMutatedFrom(&apmServerBuilder),
+			apmServerBuilder.WithVersion(dstVersion).WithMutatedFrom(&apmServerBuilder).WithoutIntegrationCheck(),
+		},
+	)
+}
+
+func TestAPMServerMutatePodLabels(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	name := "apmserver-label-mutation"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithVersion(srcVersion).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	apmServerBuilder := apmserver.NewBuilder(name).WithElasticsearchRef(esBuilder.Ref())
+
+	test.RunMutations(
+		t,
+		[]test.Builder{esBuilder, apmServerBuilder},
+		[]test.Builder{
+			apmServerBuilder.WithMutatedFrom(&apmServerBuilder).WithPodLabel("new", "label"),
 		},
 	)
 }
