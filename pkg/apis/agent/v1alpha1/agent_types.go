@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 )
 
 const (
@@ -320,12 +321,12 @@ func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 }
 
 func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	if aea.esAssocConfs == nil {
-		return nil
+	if len(aea.esAssocConfs) == 0 {
+		return utils.SetAssocConfFromAnnotation(aea)
 	}
 	assocConf, found := aea.esAssocConfs[aea.ref]
 	if !found {
-		return nil
+		return utils.SetAssocConfFromAnnotation(aea)
 	}
 
 	return &assocConf
@@ -347,6 +348,9 @@ type AgentKibanaAssociation struct {
 var _ commonv1.Association = &AgentKibanaAssociation{}
 
 func (a *AgentKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
+	if a.kbAssocConf == nil {
+		return utils.SetAssocConfFromAnnotation(a)
+	}
 	return a.kbAssocConf
 }
 
@@ -387,6 +391,9 @@ type AgentFleetServerAssociation struct {
 var _ commonv1.Association = &AgentFleetServerAssociation{}
 
 func (a *AgentFleetServerAssociation) AssociationConf() *commonv1.AssociationConf {
+	if a.fsAssocConf == nil {
+		return utils.SetAssocConfFromAnnotation(a)
+	}
 	return a.fsAssocConf
 }
 

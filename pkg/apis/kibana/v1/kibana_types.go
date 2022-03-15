@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 )
 
 const (
@@ -300,6 +301,9 @@ func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
+	if kbes.assocConf == nil {
+		return utils.SetAssocConfFromAnnotation(kbes)
+	}
 	return kbes.assocConf
 }
 
@@ -347,6 +351,9 @@ func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
+	if kbent.entAssocConf == nil {
+		return utils.SetAssocConfFromAnnotation(kbent)
+	}
 	return kbent.entAssocConf
 }
 
@@ -396,12 +403,12 @@ func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if kbmon.monitoringAssocConfs == nil {
-		return nil
+	if len(kbmon.monitoringAssocConfs) == 0 {
+		return utils.SetAssocConfFromAnnotation(kbmon)
 	}
 	assocConf, found := kbmon.monitoringAssocConfs[kbmon.ref]
 	if !found {
-		return nil
+		return utils.SetAssocConfFromAnnotation(kbmon)
 	}
 	return &assocConf
 }

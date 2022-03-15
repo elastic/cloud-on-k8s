@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 	"unsafe"
 
@@ -22,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -43,7 +43,7 @@ func FetchWithAssociations(
 	}
 
 	for _, association := range associated.GetAssociations() {
-		assocConf, err := GetAssociationConf(association)
+		assocConf, err := utils.GetAssociationConf(association)
 		if err != nil {
 			return err
 		}
@@ -145,17 +145,6 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 	return true
 }
 
-// GetAssociationConf extracts the association configuration from the given object by reading the annotations.
-func GetAssociationConf(association commonv1.Association) (*commonv1.AssociationConf, error) {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(association)
-	if err != nil {
-		return nil, err
-	}
-
-	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
-}
-
 // SingleAssociationOfType returns single association from the provided slice that matches provided type. Returns
 // nil if such association can't be found. Returns an error if more than one association matches the type.
 func SingleAssociationOfType(
@@ -174,24 +163,6 @@ func SingleAssociationOfType(
 	}
 
 	return result, nil
-}
-
-func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
-	if len(annotations) == 0 {
-		return nil, nil
-	}
-
-	var assocConf commonv1.AssociationConf
-	serializedConf, exists := annotations[annotationName]
-	if !exists || serializedConf == "" {
-		return nil, nil
-	}
-
-	if err := json.Unmarshal(unsafeStringToBytes(serializedConf), &assocConf); err != nil {
-		return nil, errors.Wrapf(err, "failed to extract association configuration")
-	}
-
-	return &assocConf, nil
 }
 
 // RemoveObsoleteAssociationConfs removes all no longer needed annotations on `associated` matching
@@ -289,18 +260,6 @@ func UpdateAssociationConf(
 
 	// persist the changes
 	return client.Update(context.Background(), obj)
-}
-
-// unsafeStringToBytes converts a string to a byte array without making extra allocations.
-// since we read potentially large strings from annotations on every reconcile loop, this should help
-// reduce the amount of garbage created.
-func unsafeStringToBytes(s string) []byte {
-	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))    //nolint:govet
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{ //nolint:govet
-		Data: hdr.Data,
-		Len:  hdr.Len,
-		Cap:  hdr.Len,
-	}))
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.
