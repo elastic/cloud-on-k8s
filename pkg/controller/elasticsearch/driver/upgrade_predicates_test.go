@@ -1029,6 +1029,27 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: false,
 		},
 		{
+			name: "Do allow the deletion of unhealthy Pods in a tier",
+			fields: fields{
+				esVersion: "8.0.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("ingest-0").withRoles(esv1.IngestRole).isHealthy(false).needsUpgrade(true).isInCluster(true),
+					newTestPod("ingest-1").withRoles(esv1.IngestRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				shutdowns: map[string]client.NodeShutdown{
+					"ingest-0": {Status: client.ShutdownComplete},
+					"ingest-1": {Status: client.ShutdownComplete},
+				},
+				maxUnavailable: 2,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"ingest-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
+		},
+		{
 			name: "Pod deleted while upgrading",
 			fields: fields{
 				esVersion: "7.5.0",

@@ -8,8 +8,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -18,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -566,38 +565,39 @@ var predicates = [...]Predicate{
 			_ []corev1.Pod,
 			_ bool,
 		) (bool, error) {
+			if _, exists := context.healthyPods[candidate.Name]; !exists {
+				// there is no point in keeping an unhealthy Pod as it does not contribute to tier availability
+				return true, nil
+			}
+
 			healthyPodRoleHisto := map[common.TrueFalseLabel]int{}
 			currentPodRoleHisto := map[common.TrueFalseLabel]int{}
 			// look at the current pods because we want to prevent taking away from current capacity for a tier
 			// not future capacity as per the expected Pod definitions expressed in the resourcesList
 			for _, pod := range context.currentPods {
 				// ignore voting_only and master we are handling those in dedicated predicates
-				for _, role := range nonMasterRoles {
-					if role.HasValue(true, pod.Labels) {
-						currentPodRoleHisto[role]++
-					}
-				}
+				forEachNonMasterRole(pod, func(role common.TrueFalseLabel) {
+					currentPodRoleHisto[role]++
+				})
 			}
 
-			// look at the health Pods excluding the candidate (which is by part of this list)
+			// look at the healthy Pods excluding the candidate (which is part of this list)
 			// this allows us to figure out what would be the remaining Pods assuming we remove the candidate
 			for _, pod := range context.healthyPods {
 				if pod.Name == candidate.Name {
 					continue
 				}
-				for _, role := range nonMasterRoles {
-					if role.HasValue(true, pod.Labels) {
-						healthyPodRoleHisto[role]++
-					}
-				}
+				forEachNonMasterRole(pod, func(role common.TrueFalseLabel) {
+					healthyPodRoleHisto[role]++
+				})
 			}
 
-			for _, role := range nonMasterRoles {
+			for _, role := range label.NonMasterRoles {
 				if role.HasValue(true, candidate.Labels) {
 					healthy := healthyPodRoleHisto[role]
 					current := currentPodRoleHisto[role]
 					if current == 1 {
-						// only Pod with this role or all unhealthy: OK to delete
+						// only Pod with this role: OK to delete
 						continue
 					}
 					if healthy <= 0 {
@@ -615,6 +615,14 @@ var predicates = [...]Predicate{
 			return true, nil
 		},
 	},
+}
+
+func forEachNonMasterRole(pod corev1.Pod, f func(falseLabel common.TrueFalseLabel)) {
+	for _, role := range label.NonMasterRoles {
+		if role.HasValue(true, pod.Labels) {
+			f(role)
+		}
+	}
 }
 
 func willBecomeMasterNode(name string, masters []string) bool {
@@ -643,17 +651,4 @@ func isSafeToRoll(health client.Health) bool {
 		health.NumberOfInFlightFetch == 0 && // no shards being fetched
 		health.InitializingShards == 0 && // no shards initializing
 		health.RelocatingShards == 0 // no shards relocating
-}
-
-var nonMasterRoles = []common.TrueFalseLabel{
-	label.NodeTypesDataLabelName,
-	label.NodeTypesDataHotLabelName,
-	label.NodeTypesDataColdLabelName,
-	label.NodeTypesDataFrozenLabelName,
-	label.NodeTypesDataContentLabelName,
-	label.NodeTypesDataWarmLabelName,
-	label.NodeTypesIngestLabelName,
-	label.NodeTypesMLLabelName,
-	label.NodeTypesRemoteClusterClientLabelName,
-	label.NodeTypesTransformLabelName,
 }
