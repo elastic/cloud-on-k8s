@@ -85,7 +85,7 @@ func aggregateServiceAccountTokens(c k8s.Client, es esv1.Elasticsearch) (Service
 		client.MatchingLabels(
 			map[string]string{
 				label.ClusterNameLabelName: es.Name,
-				common.TypeLabelName:       "service-account-token",
+				common.TypeLabelName:       ServiceAccountTokenType,
 			},
 		),
 	); err != nil {

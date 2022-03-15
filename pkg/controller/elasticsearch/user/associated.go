@@ -21,6 +21,8 @@ import (
 const (
 	// AssociatedUserType is used to annotate an associated user secret, most likely created by an association controller.
 	AssociatedUserType = "user"
+	// ServiceAccountTokenType is used to annotate a secret that contains a service account token, most likely created by an association controller.
+	ServiceAccountTokenType = "service-account-token"
 
 	// UserNameField is the field in the secret that contains the username.
 	UserNameField = "name"
