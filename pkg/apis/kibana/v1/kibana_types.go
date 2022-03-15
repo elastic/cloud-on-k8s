@@ -169,7 +169,7 @@ func (k *Kibana) ServiceAccountName() string {
 	return k.Spec.ServiceAccountName
 }
 
-var KibanaServiceAccountMinVersion = semver.MustParse("8.0.0")
+var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 // -- associations
 

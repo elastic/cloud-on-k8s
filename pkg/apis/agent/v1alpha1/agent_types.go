@@ -208,7 +208,7 @@ type Agent struct {
 
 var _ commonv1.Associated = &Agent{}
 
-var FleetServerServiceAccountMinVersion = semver.MustParse("8.0.0")
+var FleetServerServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
