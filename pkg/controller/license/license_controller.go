@@ -198,17 +198,22 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 	}
 	matchingSpec, parent, found := findLicense(r, r.checker, minVersion)
 	if !found {
-		// no license, delete cluster level licenses to revert to basic
+		// no matching license found, delete cluster level license if it exists to revert to basic
+		clusterLicenseNSN := types.NamespacedName{Namespace: cluster.Namespace, Name: esv1.LicenseSecretName(cluster.Name)}
+		var clusterLicenseSecret corev1.Secret
+		err := r.Client.Get(context.Background(), clusterLicenseNSN, &clusterLicenseSecret)
+		if err != nil && errors.IsNotFound(err) {
+			// no cluster license found nothing to delete
+			return noResult, true, nil
+		} else if err != nil {
+			// unlikely branch given that we use a cached client
+			return noResult, true, err
+		}
+
 		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
-		secretName := esv1.LicenseSecretName(cluster.Name)
-		err := r.Client.Delete(context.Background(), &corev1.Secret{
-			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      secretName,
-			}),
-		})
+		err = r.Client.Delete(context.Background(), &clusterLicenseSecret)
 		if err != nil && !errors.IsNotFound(err) {
-			log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
+			return noResult, true, pkgerrors.Wrap(err, "failed to delete cluster license secret")
 		}
 		return noResult, true, nil
 	}
