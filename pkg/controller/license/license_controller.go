@@ -200,22 +200,10 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 	if !found {
 		// no matching license found, delete cluster level license if it exists to revert to basic
 		clusterLicenseNSN := types.NamespacedName{Namespace: cluster.Namespace, Name: esv1.LicenseSecretName(cluster.Name)}
-		var clusterLicenseSecret corev1.Secret
-		err := r.Client.Get(context.Background(), clusterLicenseNSN, &clusterLicenseSecret)
-		if err != nil && errors.IsNotFound(err) {
-			// no cluster license found nothing to delete
-			return noResult, true, nil
-		} else if err != nil {
-			// unlikely branch given that we use a cached client
-			return noResult, true, err
-		}
-
-		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
-		err = r.Client.Delete(context.Background(), &clusterLicenseSecret)
-		if err != nil && !errors.IsNotFound(err) {
-			return noResult, true, pkgerrors.Wrap(err, "failed to delete cluster license secret")
-		}
-		return noResult, true, nil
+		err := k8s.DeleteSecretIfExists(r.Client, clusterLicenseNSN, func() {
+			log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
+		})
+		return noResult, false, err
 	}
 	log.V(1).Info("Found license for cluster", "eck_license", parent, "es_license", matchingSpec.UID, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
