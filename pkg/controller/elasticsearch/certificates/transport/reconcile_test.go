@@ -259,9 +259,10 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 		es     esv1.Elasticsearch
 	}
 	tests := []struct {
-		name      string
-		args      args
-		assertErr func(*testing.T, error)
+		name       string
+		args       args
+		wantDelete bool
+		wantErr    bool
 	}{
 		{
 			name: "Former cluster transport Secret exists",
@@ -274,10 +275,8 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 				}),
 				es: testES,
 			},
-			assertErr: func(t *testing.T, err error) {
-				t.Helper()
-				assert.Nil(t, err)
-			},
+			wantDelete: true,
+			wantErr:    false,
 		},
 		{
 			name: "Former cluster transport Secret does not exist",
@@ -285,19 +284,34 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 				client: k8s.NewFakeClient(),
 				es:     testES,
 			},
-			assertErr: func(t *testing.T, err error) {
-				t.Helper()
-				assert.NotNil(t, err)
-				assert.True(t, errors.IsNotFound(err))
-			},
+			wantDelete: false,
+			wantErr:    false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteLegacyTransportCertificate(tt.args.client, tt.args.es)
-			tt.assertErr(t, err)
+			trackedClient := trackingK8sClient{
+				Client: tt.args.client,
+			}
+			err := DeleteLegacyTransportCertificate(&trackedClient, tt.args.es)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeleteLegacyTransportCertificate wantErr %v, got %v", tt.wantErr, err)
+			}
+			if tt.wantDelete != trackedClient.deleteCalled {
+				t.Errorf("DeleteLegacyTransportCertificate wantDelete %v, deleteCalled %v", tt.wantDelete, trackedClient.deleteCalled)
+			}
 		})
 	}
+}
+
+type trackingK8sClient struct {
+	k8s.Client
+	deleteCalled bool
+}
+
+func (t *trackingK8sClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	t.deleteCalled = true
+	return t.Client.Delete(ctx, obj, opts...)
 }
 
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
