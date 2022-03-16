@@ -10,7 +10,6 @@ import (
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -140,17 +139,7 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 }
 
 func deleteIfExists(c k8s.Client, secretRef types.NamespacedName) error {
-	var secret corev1.Secret
-	err := c.Get(context.Background(), secretRef, &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
-	err = c.Delete(context.Background(), &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	}
-	return err
+	return k8s.DeleteSecretIfExists(c, secretRef, func() {
+		log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
+	})
 }

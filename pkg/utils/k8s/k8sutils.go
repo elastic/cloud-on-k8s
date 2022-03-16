@@ -181,7 +181,11 @@ func DeleteSecretIfExists(c Client, key types.NamespacedName, onDelete func()) e
 	if onDelete != nil {
 		onDelete()
 	}
-	return c.Delete(context.Background(), &secret)
+	err = c.Delete(context.Background(), &secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // PodsMatchingLabels returns Pods from the given namespace matching the given labels.
