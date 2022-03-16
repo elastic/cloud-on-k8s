@@ -76,7 +76,7 @@ func DeleteStatefulSetTransportCertificate(client k8s.Client, namespace string, 
 // DeleteLegacyTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
 func DeleteLegacyTransportCertificate(client k8s.Client, es esv1.Elasticsearch) error {
 	nsn := types.NamespacedName{Namespace: es.Namespace, Name: esv1.LegacyTransportCertsSecretSuffix(es.Name)}
-	return k8s.DeleteSecretIfExists(client, nsn, nil)
+	return k8s.DeleteSecretIfExists(client, nsn)
 }
 
 // reconcileNodeSetTransportCertificatesSecrets reconciles the secret which contains the transport certificates for

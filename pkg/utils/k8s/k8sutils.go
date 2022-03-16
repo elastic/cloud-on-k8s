@@ -168,18 +168,14 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 	return nil
 }
 
-// DeleteSecretIfExists deletes the secret identified by key if exists. Takes an optional hook function to be run when
-// a deletion is attempted.
-func DeleteSecretIfExists(c Client, key types.NamespacedName, onDelete func()) error {
+// DeleteSecretIfExists deletes the secret identified by key if exists.
+func DeleteSecretIfExists(c Client, key types.NamespacedName) error {
 	var secret corev1.Secret
 	err := c.Get(context.Background(), key, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil
 	} else if err != nil {
 		return err
-	}
-	if onDelete != nil {
-		onDelete()
 	}
 	err = c.Delete(context.Background(), &secret)
 	if err != nil && apierrors.IsNotFound(err) {

@@ -114,19 +114,19 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	owner := k8s.ExtractNamespacedName(r.Owner)
 	// remove public certs secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: PublicCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove internal certs secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: InternalCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove CA secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: CAInternalSecretName(r.Namer, owner.Name, HTTPCAType)},
 	); err != nil {
 		return err
@@ -136,10 +136,4 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, r.Owner.GetName()))
 
 	return nil
-}
-
-func deleteIfExists(c k8s.Client, secretRef types.NamespacedName) error {
-	return k8s.DeleteSecretIfExists(c, secretRef, func() {
-		log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
-	})
 }

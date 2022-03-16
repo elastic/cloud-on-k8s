@@ -103,7 +103,7 @@ func reconcileSecureSettings(
 	}
 	if len(aggregatedData) == 0 {
 		// no secure settings specified, delete any existing operator-managed settings secret
-		err := k8s.DeleteSecretIfExists(c, k8s.ExtractNamespacedName(&expected), nil)
+		err := k8s.DeleteSecretIfExists(c, k8s.ExtractNamespacedName(&expected))
 		return nil, err
 	}
 
