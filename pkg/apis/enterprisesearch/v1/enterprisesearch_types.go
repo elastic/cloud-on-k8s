@@ -101,10 +101,7 @@ func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (ent *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
-	if ent.assocConf == nil {
-		return utils.SetAssocConfFromAnnotation(ent)
-	}
-	return ent.assocConf
+	return utils.SimpleAssociationConf(ent, ent.assocConf)
 }
 
 func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {

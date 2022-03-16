@@ -9,25 +9,44 @@ import (
 	"reflect"
 	"unsafe"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 
+func SimpleAssociationConf(assoc commonv1.Association, assocConf *commonv1.AssociationConf) *commonv1.AssociationConf  {
+	if assocConf == nil {
+		return setAssocConfFromAnnotation(assoc)
+	}
+	return assocConf
+}
+
+func MultipleAssociationConf(assoc commonv1.Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]commonv1.AssociationConf ) *commonv1.AssociationConf  {
+	if len(assocConfs) == 0 {
+		return setAssocConfFromAnnotation(assoc)
+	}
+	assocConf, found := assocConfs[ref]
+	if !found {
+		return setAssocConfFromAnnotation(assoc)
+	}
+	return &assocConf
+}
+
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.
-func GetAssociationConf(association commonv1.Association) (*commonv1.AssociationConf, error) {
+/*func GetAssociationConf(association commonv1.Association) (*commonv1.AssociationConf, error) {
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(association)
 	if err != nil {
 		return nil, err
 	}
-	return ExtractAssocConfFromAnnotation(annotations, association.AssociationConfAnnotationName())
-}
+	return extractAssocConfFromAnnotation(annotations, association.AssociationConfAnnotationName())
+}*/
 
-// SetAssocConfFromAnnotation sets the association configuration extracted from the annotations in the given association.
-func SetAssocConfFromAnnotation(assoc commonv1.Association) *commonv1.AssociationConf {
-	assocConf, err := ExtractAssocConfFromAnnotation(assoc.Associated().GetAnnotations(), assoc.AssociationConfAnnotationName())
+// setAssocConfFromAnnotation sets the association configuration extracted from the annotations in the given association.
+func setAssocConfFromAnnotation(assoc commonv1.Association) *commonv1.AssociationConf {
+	assocConf, err := extractAssocConfFromAnnotation(assoc.Associated().GetAnnotations(), assoc.AssociationConfAnnotationName())
 	if err != nil {
 		// ignore this unlikely unexpected error that should not happen as we control the annotation
 		return nil
@@ -37,7 +56,7 @@ func SetAssocConfFromAnnotation(assoc commonv1.Association) *commonv1.Associatio
 }
 
 // ExtractAssocConfFromAnnotation extracts the association configuration from annotations and an annotation name.
-func ExtractAssocConfFromAnnotation(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
+func extractAssocConfFromAnnotation(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil
 	}

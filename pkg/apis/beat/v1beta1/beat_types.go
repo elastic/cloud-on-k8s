@@ -251,10 +251,7 @@ func (b *BeatESAssociation) AssociationConfAnnotationName() string {
 }
 
 func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
-	if b.esAssocConf == nil {
-		return utils.SetAssocConfFromAnnotation(b)
-	}
-	return b.esAssocConf
+	return utils.SimpleAssociationConf(b, b.esAssocConf)
 }
 
 func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -272,10 +269,7 @@ type BeatKibanaAssociation struct {
 var _ commonv1.Association = &BeatKibanaAssociation{}
 
 func (b *BeatKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	if b.kbAssocConf == nil {
-		return utils.SetAssocConfFromAnnotation(b)
-	}
-	return b.kbAssocConf
+	return utils.SimpleAssociationConf(b, b.kbAssocConf)
 }
 
 func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {

@@ -321,15 +321,7 @@ func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 }
 
 func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	if len(aea.esAssocConfs) == 0 {
-		return utils.SetAssocConfFromAnnotation(aea)
-	}
-	assocConf, found := aea.esAssocConfs[aea.ref]
-	if !found {
-		return utils.SetAssocConfFromAnnotation(aea)
-	}
-
-	return &assocConf
+	return utils.MultipleAssociationConf(aea, aea.ref, aea.esAssocConfs)
 }
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -348,10 +340,7 @@ type AgentKibanaAssociation struct {
 var _ commonv1.Association = &AgentKibanaAssociation{}
 
 func (a *AgentKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	if a.kbAssocConf == nil {
-		return utils.SetAssocConfFromAnnotation(a)
-	}
-	return a.kbAssocConf
+	return utils.SimpleAssociationConf(a, a.kbAssocConf)
 }
 
 func (a *AgentKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -391,10 +380,7 @@ type AgentFleetServerAssociation struct {
 var _ commonv1.Association = &AgentFleetServerAssociation{}
 
 func (a *AgentFleetServerAssociation) AssociationConf() *commonv1.AssociationConf {
-	if a.fsAssocConf == nil {
-		return utils.SetAssocConfFromAnnotation(a)
-	}
-	return a.fsAssocConf
+	return utils.SimpleAssociationConf(a, a.fsAssocConf)
 }
 
 func (a *AgentFleetServerAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {

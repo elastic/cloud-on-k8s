@@ -90,10 +90,7 @@ func (m *ElasticMapsServer) ServiceAccountName() string {
 }
 
 func (m *ElasticMapsServer) AssociationConf() *commonv1.AssociationConf {
-	if m.assocConf == nil {
-		return utils.SetAssocConfFromAnnotation(m)
-	}
-	return m.assocConf
+	return utils.SimpleAssociationConf(m, m.assocConf)
 }
 
 func (m *ElasticMapsServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {

@@ -301,10 +301,7 @@ func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	if kbes.assocConf == nil {
-		return utils.SetAssocConfFromAnnotation(kbes)
-	}
-	return kbes.assocConf
+	return utils.SimpleAssociationConf(kbes, kbes.assocConf)
 }
 
 func (kbes *KibanaEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -351,10 +348,7 @@ func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
-	if kbent.entAssocConf == nil {
-		return utils.SetAssocConfFromAnnotation(kbent)
-	}
-	return kbent.entAssocConf
+	return utils.SimpleAssociationConf(kbent, kbent.entAssocConf)
 }
 
 func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -403,14 +397,7 @@ func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if len(kbmon.monitoringAssocConfs) == 0 {
-		return utils.SetAssocConfFromAnnotation(kbmon)
-	}
-	assocConf, found := kbmon.monitoringAssocConfs[kbmon.ref]
-	if !found {
-		return utils.SetAssocConfFromAnnotation(kbmon)
-	}
-	return &assocConf
+	return utils.MultipleAssociationConf(kbmon, kbmon.ref, kbmon.monitoringAssocConfs)
 }
 
 func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
