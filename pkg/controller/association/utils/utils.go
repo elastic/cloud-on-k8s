@@ -18,7 +18,7 @@ import (
 
 // GetAndSetAssociationConf returns the association configuration if it is not nil, else the association configured is
 // read from the annotation and put back in the given association.
-func GetAndSetAssociationConf(assoc commonv1.Association, assocConf *commonv1.AssociationConf) *commonv1.AssociationConf  {
+func GetAndSetAssociationConf(assoc commonv1.Association, assocConf *commonv1.AssociationConf) *commonv1.AssociationConf {
 	if assocConf == nil {
 		return setAssocConfFromAnnotation(assoc)
 	}
@@ -28,7 +28,7 @@ func GetAndSetAssociationConf(assoc commonv1.Association, assocConf *commonv1.As
 // GetAndSetAssociationConfByRef returns the association configuration corresponding to the namespace name of the
 // referenced resource if it is found in the given map of association configurations, else the association configured is
 // read from the annotation and put back in the given association.
-func GetAndSetAssociationConfByRef(assoc commonv1.Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]commonv1.AssociationConf ) *commonv1.AssociationConf  {
+func GetAndSetAssociationConfByRef(assoc commonv1.Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]commonv1.AssociationConf) *commonv1.AssociationConf {
 	if len(assocConfs) == 0 {
 		return setAssocConfFromAnnotation(assoc)
 	}

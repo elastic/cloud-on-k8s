@@ -25,7 +25,7 @@ func Test_AssociationConf(t *testing.T) {
 			Name:      "kb",
 			Namespace: "default",
 			Annotations: map[string]string{
-					"association.k8s.elastic.co/es-conf": `{"authSecretName":"es-default-es-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
+				"association.k8s.elastic.co/es-conf": `{"authSecretName":"es-default-es-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
 			},
 		},
 		Spec: KibanaSpec{
