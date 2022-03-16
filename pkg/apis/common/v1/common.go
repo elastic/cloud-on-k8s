@@ -50,15 +50,6 @@ type SecretRef struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
-// Objepct Type string describes the type of a referenced object
-// +enum
-type ObjectType string
-
-const (
-	// ObjectTypeSecret means a referenced object is a Secret.
-	ObjectTypeSecret ObjectType = "Secret"
-)
-
 // ObjectSelector defines a reference to a Kubernetes object which can be an Elastic custom resource or a Secret.
 type ObjectSelector struct {
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
