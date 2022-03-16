@@ -95,7 +95,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			wantUpdate: true,
 		},
 		{
-			name: "avoid unnecessary updates when  references already added",
+			name: "avoid unnecessary updates when reference already added",
 			args: args{
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
