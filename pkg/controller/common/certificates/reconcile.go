@@ -10,7 +10,6 @@ import (
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -115,19 +114,19 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	owner := k8s.ExtractNamespacedName(r.Owner)
 	// remove public certs secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: PublicCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove internal certs secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: InternalCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove CA secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: CAInternalSecretName(r.Namer, owner.Name, HTTPCAType)},
 	); err != nil {
 		return err
@@ -137,20 +136,4 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, r.Owner.GetName()))
 
 	return nil
-}
-
-func deleteIfExists(c k8s.Client, secretRef types.NamespacedName) error {
-	var secret corev1.Secret
-	err := c.Get(context.Background(), secretRef, &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
-	err = c.Delete(context.Background(), &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	}
-	return err
 }
