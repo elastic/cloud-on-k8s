@@ -48,8 +48,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		ctx.healthyPods,
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
-		ctx.actualMasters,
-		ctx.numberOfPods,
+		ctx.currentPods,
 	)
 	log.V(1).Info("Applying predicates",
 		"maxUnavailableReached", maxUnavailableReached,
