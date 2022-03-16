@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
+	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 )
 
 const (
@@ -321,7 +321,7 @@ func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 }
 
 func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	return utils.MultipleAssociationConf(aea, aea.ref, aea.esAssocConfs)
+	return assocutils.GetAndSetAssociationConfByRef(aea, aea.ref, aea.esAssocConfs)
 }
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -340,7 +340,7 @@ type AgentKibanaAssociation struct {
 var _ commonv1.Association = &AgentKibanaAssociation{}
 
 func (a *AgentKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return utils.SimpleAssociationConf(a, a.kbAssocConf)
+	return assocutils.GetAndSetAssociationConf(a, a.kbAssocConf)
 }
 
 func (a *AgentKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -380,7 +380,7 @@ type AgentFleetServerAssociation struct {
 var _ commonv1.Association = &AgentFleetServerAssociation{}
 
 func (a *AgentFleetServerAssociation) AssociationConf() *commonv1.AssociationConf {
-	return utils.SimpleAssociationConf(a, a.fsAssocConf)
+	return assocutils.GetAndSetAssociationConf(a, a.fsAssocConf)
 }
 
 func (a *AgentFleetServerAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {

@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -41,13 +42,13 @@ func FetchWithAssociations(
 		return err
 	}
 
-	/*for _, association := range associated.GetAssociations() {
-		assocConf, err := utils.GetAssociationConf(association)
+	for _, association := range associated.GetAssociations() {
+		assocConf, err := assocutils.GetAssociationConf(association)
 		if err != nil {
 			return err
 		}
 		association.SetAssociationConf(assocConf)
-	}*/
+	}
 
 	return nil
 }

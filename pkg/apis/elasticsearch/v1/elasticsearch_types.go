@@ -544,7 +544,7 @@ func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	return utils.MultipleAssociationConf(ema, ema.ref, ema.AssocConfs)
+	return utils.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
 }
 
 func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

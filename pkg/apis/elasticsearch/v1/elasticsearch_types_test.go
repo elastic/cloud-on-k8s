@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
@@ -313,4 +315,77 @@ func TestElasticsearch_DisabledPredicates(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_AssociationConfs tests that if something resets the AssocConfs map, then AssociationConf() reinitializes
+// the map from the annotation.
+func Test_AssociationConfs(t *testing.T) {
+	// simple es without associations
+	es := &Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es",
+			Namespace: "default",
+		},
+	}
+
+	// set assoc conf even if no assoc
+	assert.Equal(t, 0, len(es.AssocConfs))
+	for _, association := range es.GetAssociations() {
+		assocConf, err := assocutils.GetAssociationConf(association)
+		assert.NoError(t, err)
+		association.SetAssociationConf(assocConf)
+	}
+	assert.Equal(t, 0, len(es.AssocConfs))
+
+	// checks that assocConfs is nil
+	for _, assoc := range es.GetAssociations() {
+		assert.Nil(t, assoc.AssociationConf())
+	}
+
+	// es with associations
+	esMon := &Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "esmon",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"association.k8s.elastic.co/es-conf-864518565": `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
+				"association.k8s.elastic.co/es-conf-1654136115": `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
+			},
+		},
+		Spec: ElasticsearchSpec{
+			Monitoring: Monitoring{
+				Metrics: MetricsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{{
+						Name:      "metrics",
+						Namespace: "default"},
+					},
+				},
+				Logs: LogsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{{
+						Name:      "logs",
+						Namespace: "default"},
+					},
+				},
+			},
+		},
+	}
+
+	// set assoc conf
+	assert.Equal(t, 0, len(esMon.AssocConfs))
+	for _, association := range esMon.GetAssociations() {
+		assocConf, err := assocutils.GetAssociationConf(association)
+		assert.NoError(t, err)
+		association.SetAssociationConf(assocConf)
+	}
+	assert.Equal(t, 2, len(esMon.AssocConfs))
+
+	// simulate the case where the assocConfs map is reset, which can happen if the resource is updated
+	esMon.AssocConfs = nil
+
+	// checks that AssociationConf are not nil when AssociationConf() is called
+	assert.Equal(t, 0, len(esMon.AssocConfs))
+	for _, assoc := range esMon.GetAssociations() {
+		assert.NotNil(t, assoc.AssociationConf())
+	}
+	assert.Equal(t, 2, len(esMon.AssocConfs))
 }
