@@ -34,5 +34,6 @@ Following the Elastic Stack licensing changes in `7.11.0`, ECK `1.9.0` moves to 
 [id="{p}-190-known-issues"]
 === Known issues
 
+- When using the Red Hat certified version of the operator automatic upgrades from previous versions of ECK do not work. To upgrade remove the old ECK operator installation and install the new version manually. Because CRDs remain in place after removal this operation should not negatively affect existing Elastic Stack deployments managed by ECK.
 - On Openshift versions 4.6 and below, when installing or upgrading to 1.9.[0,1], the operator will be stuck in a state of `Installing` within the Openshift UI, and found in a `CrashLoopBackoff` within Kubernetes because of Webhook certificate location mismatches. More information and work-around can be found in link:https://github.com/elastic/cloud-on-k8s/issues/5191[this issue].
 - When using the `elasticsearchRef` mechanism with Elastic Agent in version 7.17 and later its Pods will enter a `CrashLoopBackoff`. The issue will be fixed in ECK 2.0 for Elasticsearch versions 8.0 and above. A workaround is described in link:https://github.com/elastic/cloud-on-k8s/issues/5323#issuecomment-1028954034[this issue].

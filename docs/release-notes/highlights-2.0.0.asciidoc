@@ -28,4 +28,5 @@ When orchestrating Elasticsearch version 7.15.2 or later ECK will use the new li
 [id="{p}-200-known-issues"]
 === Known issues
 
+- When using the Red Hat certified version of the operator automatic upgrades from previous versions of ECK do not work. To upgrade remove the old ECK operator installation and install the new version manually. Because CRDs remain in place after removal this operation should not negatively affect existing Elastic Stack deployments managed by ECK.
 - When using the `elasticsearchRef` mechanism with Elastic Agent in version 7.17 its Pods will enter a `CrashLoopBackoff`. A workaround is described in link:https://github.com/elastic/cloud-on-k8s/issues/5323#issuecomment-1028954034[this issue].
