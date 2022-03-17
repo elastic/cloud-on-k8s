@@ -121,21 +121,18 @@ type ReconcileAgent struct {
 
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
-func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
+func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	agent := &agentv1alpha1.Agent{}
-	if err = association.FetchWithAssociations(ctx, r.Client, request, agent); err != nil {
+	if err := association.FetchWithAssociations(ctx, r.Client, request, agent); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil
 		}
-		if agent == nil {
-			return reconcile.Result{}, err
-		}
-		return updateStatus(ctx, *agent, r.Client, newStatus(*agent)).WithError(err).Aggregate()
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if common.IsUnmanaged(agent) {
@@ -147,35 +144,35 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	result, err = r.doReconcile(ctx, *agent).Aggregate()
+	results, status := r.doReconcile(ctx, *agent)
+
+	statusErr := updateStatus(ctx, *agent, r.Client, status)
+	if statusErr != nil {
+		if apierrors.IsConflict(statusErr) {
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
+		results = results.WithError(statusErr)
+	}
+
+	result, err := results.Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, "Reconciliation error: %v", err)
 
 	return result, err
 }
 
-func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (results *reconciler.Results) {
+func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&ctx)()
-	var err error
-	results = reconciler.NewResult(ctx)
+	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
 
-	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
-	// note that this deferred function is modifying the return values, which are named return values, which allows this
-	// to function properly.
-	defer func() {
-		if updateStatusresults := updateStatus(ctx, agent, r.Client, status).WithError(err); updateStatusresults != nil {
-			results = updateStatusresults
-		}
-	}()
-
 	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
-		return results
+		return results, status
 	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
-	if err = r.validate(ctx, agent); err != nil {
+	if err := r.validate(ctx, agent); err != nil {
 		results = results.WithError(err)
-		return results
+		return results, status
 	}
 
 	driverResults := internalReconcile(Params{
@@ -188,7 +185,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	}, &status)
 
 	results = results.WithResults(driverResults)
-	return results
+	return results, status
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
