@@ -6,11 +6,19 @@ package webhook
 
 import (
 	"context"
+	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+)
+
+const (
+	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
+	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
 )
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
@@ -58,7 +66,41 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
+		UpdateOperatorPods(ctx, clientset)
 	}
 
 	return nil
+}
+
+func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface) {
+	labels := metav1.ListOptions{
+		LabelSelector: "control-plane=elastic-operator",
+	}
+	//Get all the pods that are related to control-plane label.
+	pods, err := clientset.CoreV1().Pods("elastic-system").List(ctx, labels)
+	if err != nil {
+		return
+	}
+	for _, pod := range (*pods).Items {
+		UpdateOperatorPod(pod, ctx, clientset)
+	}
+}
+
+func UpdateOperatorPod(pod corev1.Pod, ctx context.Context, clientset kubernetes.Interface) {
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	pod.Annotations[UpdateAnnotation] =
+		time.Now().Format(time.RFC3339Nano)
+	if _, err := clientset.CoreV1().Pods(pod.Namespace).Update(ctx, &pod, metav1.UpdateOptions{}); err != nil {
+		if errors.IsConflict(err) {
+			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
+			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)
+		} else {
+			log.Error(err, "failed to update pod annotation",
+				"annotation", UpdateAnnotation,
+				"namespace", pod.Namespace,
+				"pod_name", pod.Name)
+		}
+	}
 }
