@@ -88,11 +88,19 @@ func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
 
 func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, error) {
 	userSecrets := v1.SecretList{}
-	matchingLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.AssociatedUserType})
-	if err := c.List(context.Background(), &userSecrets, client.InNamespace(namespace), matchingLabels); err != nil {
+	userLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.AssociatedUserType})
+	if err := c.List(context.Background(), &userSecrets, client.InNamespace(namespace), userLabels); err != nil {
 		return nil, err
 	}
-	return userSecrets.Items, nil
+
+	serviceAccountSecrets := v1.SecretList{}
+	serviceAccountLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.ServiceAccountTokenType})
+	if err := c.List(context.Background(), &serviceAccountSecrets, client.InNamespace(namespace), serviceAccountLabels); err != nil {
+		return nil, err
+	}
+
+	secrets := append(userSecrets.Items, serviceAccountSecrets.Items...)
+	return secrets, nil
 }
 
 // DoGarbageCollection runs the User garbage collector.
