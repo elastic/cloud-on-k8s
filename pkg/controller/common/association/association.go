@@ -85,7 +85,7 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 }
 
 func writeUnmanagedSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
-	if !assoc.AssociationRef().IsObjectTypeSecret() {
+	if !assoc.AssociationRef().IsExternal() {
 		return nil
 	}
 

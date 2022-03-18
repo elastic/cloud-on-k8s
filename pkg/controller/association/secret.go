@@ -59,7 +59,7 @@ func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Associat
 }
 
 func GetAuthFromUnmanagedSecretOr(client k8s.Client, unmanagedAssocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {
-	if unmanagedAssocRef.IsObjectTypeSecret() {
+	if unmanagedAssocRef.IsExternal() {
 		info, err := GetUnmanagedAssociationConnectionInfoFromSecret(client, unmanagedAssocRef)
 		if err != nil {
 			return "", "", err
@@ -162,7 +162,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(dialer net.Dialer, path stri
 func filterUnmanagedElasticRef(associations []commonv1.Association) []commonv1.Association {
 	var r []commonv1.Association
 	for _, a := range associations {
-		if a.AssociationRef().IsObjectTypeSecret() {
+		if a.AssociationRef().IsExternal() {
 			r = append(r, a)
 		}
 	}
@@ -173,7 +173,7 @@ func filterUnmanagedElasticRef(associations []commonv1.Association) []commonv1.A
 func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Association {
 	var r []commonv1.Association
 	for _, a := range associations {
-		if !a.AssociationRef().IsObjectTypeSecret() {
+		if !a.AssociationRef().IsExternal() {
 			r = append(r, a)
 		}
 	}

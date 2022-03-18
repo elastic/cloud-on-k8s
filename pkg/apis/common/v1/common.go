@@ -108,8 +108,9 @@ func (o *ObjectSelector) IsDefined() bool {
 	return o != nil && o.NameOrSecretName() != ""
 }
 
-// IsObjectTypeSecret returns true when the object selector references a Kubernetes secret describing the referenced object.
-func (o ObjectSelector) IsObjectTypeSecret() bool {
+// IsExternal returns true when the object selector references a Kubernetes secret describing an external
+// referenced object not managed by the operator.
+func (o ObjectSelector) IsExternal() bool {
 	return o.IsDefined() && o.SecretName != ""
 }
 

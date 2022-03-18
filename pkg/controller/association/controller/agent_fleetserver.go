@@ -66,7 +66,7 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 // referencedFleetServerStatusVersion returns the currently running version of Agent
 // reported in its status.
 func referencedFleetServerStatusVersion(c k8s.Client, dialer net.Dialer, fsRef commonv1.ObjectSelector) (string, error) {
-	if fsRef.IsObjectTypeSecret() {
+	if fsRef.IsExternal() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, fsRef)
 		if err != nil {
 			return "", err

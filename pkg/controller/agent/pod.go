@@ -292,7 +292,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 		}
 		fsRef := fsAssociation.AssociationRef()
 
-		if fsRef.IsObjectTypeSecret() {
+		if fsRef.IsExternal() {
 			// the Fleet Server is not managed by ECK, no transitive ES association to get to apply
 			return nil, nil
 		}
@@ -321,7 +321,7 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 	}
 
 	esRef := esAssociation.AssociationRef()
-	if !esRef.IsObjectTypeSecret() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
+	if !esRef.IsExternal() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
 		// check agent and ES share the same namespace
 		return nil, fmt.Errorf(
 			"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",

@@ -228,7 +228,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// the referenced object can be an Elastic resource or a custom Secret
 	referencedObj := r.ReferencedObjTemplate()
-	if assocRef.IsObjectTypeSecret() {
+	if assocRef.IsExternal() {
 		referencedObj = &corev1.Secret{}
 	}
 
@@ -242,7 +242,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	if assocRef.IsObjectTypeSecret() {
+	if assocRef.IsExternal() {
 		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
 		// unmanaged object, update association conf from the unmanaged custom Secret
 		expectedAssocConf, err := r.ReconcileUnmanagedAssociation(association)
@@ -297,7 +297,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	if esAssocRef.IsObjectTypeSecret() {
+	if esAssocRef.IsExternal() {
 		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
 			"name", association.Associated().GetName(), "ref_name", assocRef.Name, "es_ref_name", esAssocRef.Name)
 		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
