@@ -136,27 +136,23 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
+	var credentialsCfg *settings.CanonicalConfig
 	if credentials.HasServiceAccountToken() {
-		err := cfg.MergeWith(
+		credentialsCfg =
 			settings.MustCanonicalConfig(
 				map[string]interface{}{
 					ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
 				},
-			))
-		if err != nil {
-			return CanonicalConfig{}, err
-		}
+			)
+
 	} else {
-		err := cfg.MergeWith(
+		credentialsCfg =
 			settings.MustCanonicalConfig(
 				map[string]interface{}{
 					ElasticsearchUsername: credentials.Username,
 					ElasticsearchPassword: credentials.Password,
 				},
-			))
-		if err != nil {
-			return CanonicalConfig{}, err
-		}
+			)
 	}
 
 	// merge the configuration with userSettings last so they take precedence
@@ -167,6 +163,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		entSearchCfg,
 		monitoringCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
+		credentialsCfg,
 		userSettings,
 	)
 	if err != nil {

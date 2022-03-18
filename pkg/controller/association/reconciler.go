@@ -305,7 +305,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			r.Client,
 			es,
 			assocLabels,
-			secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix),
+			applicationSecretName,
 			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
 			serviceAccount,
 			association.GetName(),
