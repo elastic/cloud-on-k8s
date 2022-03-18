@@ -84,7 +84,7 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
-	def := test.Ctx().VersionDefinitionFor(agentv1alpha1.Kind)
+	def := test.Ctx().ImageDefinitionFor(agentv1alpha1.Kind)
 	return Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
@@ -298,7 +298,7 @@ func (b Builder) WithFleetServer() Builder {
 }
 
 func (b Builder) WithFleetImage() Builder {
-	def := test.Ctx().VersionDefinitionFor(FleetServerPseudoKind)
+	def := test.Ctx().ImageDefinitionFor(FleetServerPseudoKind)
 	b.Agent.Spec.Image = def.Image
 	b.Agent.Spec.Version = def.Version
 	return b

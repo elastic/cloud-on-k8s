@@ -68,7 +68,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().VersionDefinitionFor(entv1.Kind)
+	def := test.Ctx().ImageDefinitionFor(entv1.Kind)
 	b := Builder{
 		EnterpriseSearch: entv1.EnterpriseSearch{
 			ObjectMeta: meta,

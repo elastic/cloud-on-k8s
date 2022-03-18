@@ -36,7 +36,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().VersionDefinitionFor(v1alpha1.Kind)
+	def := test.Ctx().ImageDefinitionFor(v1alpha1.Kind)
 	return Builder{
 		EMS: v1alpha1.ElasticMapsServer{
 			ObjectMeta: meta,

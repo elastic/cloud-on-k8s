@@ -55,7 +55,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().VersionDefinitionFor(kbv1.Kind)
+	def := test.Ctx().ImageDefinitionFor(kbv1.Kind)
 	return Builder{
 		Kibana: kbv1.Kibana{
 			ObjectMeta: meta,

@@ -84,13 +84,13 @@ func defaultContext() Context {
 	}
 }
 
-type ElasticStackVersionDefinition struct {
+type ElasticStackImageDefinition struct {
 	Kind    string `json:"kind"`
 	Image   string `json:"image"`
 	Version string `json:"version"`
 }
 
-type ElasticStackImages []ElasticStackVersionDefinition
+type ElasticStackImages []ElasticStackImageDefinition
 
 // Context encapsulates data about a specific test run
 type Context struct {
@@ -139,15 +139,15 @@ func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
 }
 
-// VersionDefinitionFor returns a specific override for the given kind of resource. Defaults to an empty image
+// ImageDefinitionFor returns a specific override for the given kind of resource. Defaults to an empty image
 // and the global Elastic Stack version under test if no override exists.
-func (c Context) VersionDefinitionFor(kind string) ElasticStackVersionDefinition {
+func (c Context) ImageDefinitionFor(kind string) ElasticStackImageDefinition {
 	for _, def := range c.ElasticStackImages {
 		if kind == def.Kind {
 			return def
 		}
 	}
-	return ElasticStackVersionDefinition{Version: c.ElasticStackVersion}
+	return ElasticStackImageDefinition{Version: c.ElasticStackVersion}
 }
 
 // ClusterResource is a generic cluster resource.
