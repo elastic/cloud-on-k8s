@@ -177,7 +177,7 @@ func TestFleetAPMIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.apm_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
 	}
 
 	runAgentRecipe(t, "fleet-apm-integration.yaml", customize)
