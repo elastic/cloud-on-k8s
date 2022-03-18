@@ -140,6 +140,37 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 			wantKibanaUserResourceVersion:        "3442951", // not updated
 			wantElasticsearchUserResourceVersion: "3443557", // not updated
 		},
+		{
+			name: "Elasticsearch secret has been deleted",
+			args: args{
+				client: k8s.NewFakeClient(
+					existingElasticsearch.DeepCopy(),
+					existingKibana.DeepCopy(),
+					expectedKibanaUserSecret.DeepCopy(),
+				),
+				// Kibana resource UID
+				applicationUID: existingKibana.UID,
+				serviceAccount: "kibana",
+			},
+			wantKibanaUserResourceVersion:        "3442951", // not updated
+			wantElasticsearchUserResourceVersion: "1",       // new Secret
+		},
+		{
+			name: "Kibana secret should be recreated",
+			args: args{
+				client: k8s.NewFakeClient(
+					existingElasticsearch.DeepCopy(),
+					existingKibana.DeepCopy(),
+					expectedElasticsearchUserSecret.DeepCopy(),
+				),
+				// Kibana resource UID
+				applicationUID: existingKibana.UID,
+				serviceAccount: "kibana",
+			},
+			wantNewToken:                         true,
+			wantKibanaUserResourceVersion:        "1",       // new Secret
+			wantElasticsearchUserResourceVersion: "3443558", // updated with new token
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -206,6 +237,13 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 			if tt.wantNewToken {
 				// Only check that the expected fields are there and that the generated token is valid
 				verifyToken(t, string(token), string(hash), "kibana", string(name))
+				// Previous hash and token should not be there anymore
+				hash, exist := reconciledKibanaSecret.Data["hash"]
+				assert.True(t, exist)
+				assert.NotEqual(t, "{PBKDF2_STRETCH}10000$p2YH/lyhXWlOgCbaiPGrArfChZYADB06Aoh9wAbuoPY=$AHRvi+YQK0TZ4kzvWhLiL5+Z1L+UQTVmz7PXndtSou0=", string(hash))
+				token, exist := reconciledKibanaSecret.Data["token"]
+				assert.True(t, exist)
+				assert.NotEqual(t, "AAEAAWVsYXN0aWMva2liYW5hL2RlZmF1bHRfa2liYW5hXzUzYWExOWJiLWM5ZTAtNDhiYS05MTU1LWEyODQ1YmNlZDdmNDpRTzNEVFhuSlZhQ0lnR1FZNjJ0QWRsMEZWSU1FQWhYV1hKcjYxdUdDRGFQMUh4YTNPa3BNSXdOSHkzUTFJbVN2", string(token))
 			} else {
 				// Reuse existing hash and token
 				hash, exist := reconciledKibanaSecret.Data["hash"]
