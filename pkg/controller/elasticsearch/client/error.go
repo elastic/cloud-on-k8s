@@ -43,8 +43,7 @@ func newAPIError(response *http.Response) error {
 	if err := json.Unmarshal(body, &errorResponse); err != nil {
 		// Only log at the debug level since it is expected to not be able to parse all types of errors.
 		// Some errors, like 408 on /_cluster/health may return a different body structure.
-		log.V(1).Error(err, "Cannot parse Elasticsearch error response body",
-			"status", response.StatusCode, "body", string(body))
+		log.V(1).Error(err, "Cannot parse Elasticsearch error response body")
 		return apiError
 	}
 	apiError.ErrorResponse = errorResponse
