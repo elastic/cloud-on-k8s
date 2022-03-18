@@ -15084,7 +15084,8 @@ spec:
                         be authenticated to the Elastic resource - `password`: the
                         password of the user to be authenticated to the Elastic resource
                         - `ca.crt`: the CA certificate in PEM format (optional). This
-                        field cannot be defined if a name or a serviceName is defined.'
+                        field cannot be used in combination with the other fields
+                        name, namespace or serviceName.'
                       type: string
                     serviceName:
                       description: ServiceName is the name of an existing Kubernetes
@@ -15121,7 +15122,8 @@ spec:
                       to the Elastic resource - `password`: the password of the user
                       to be authenticated to the Elastic resource - `ca.crt`: the
                       CA certificate in PEM format (optional). This field cannot be
-                      defined if a name or a serviceName is defined.'
+                      used in combination with the other fields name, namespace or
+                      serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -15566,7 +15568,8 @@ spec:
                       to the Elastic resource - `password`: the password of the user
                       to be authenticated to the Elastic resource - `ca.crt`: the
                       CA certificate in PEM format (optional). This field cannot be
-                      defined if a name or a serviceName is defined.'
+                      used in combination with the other fields name, namespace or
+                      serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
