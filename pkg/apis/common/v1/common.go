@@ -69,7 +69,7 @@ type ObjectSelector struct {
 	// - `username`: the username of the user to be authenticated to the Elastic resource
 	// - `password`: the password of the user to be authenticated to the Elastic resource
 	// - `ca.crt`: the CA certificate in PEM format (optional).
-	// This field cannot be defined if a name or a serviceName is defined.
+	// This field cannot be used in combination with the other fields name, namespace or serviceName.
 	SecretName string `json:"secretName,omitempty"`
 }
 

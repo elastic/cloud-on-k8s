@@ -87,12 +87,11 @@ spec:
     metrics:
       elasticsearchRefs:
       - secretName: monitoring-metrics-es-ref <1>
-        namespace: observability <2>
     logs:
       elasticsearchRefs:
       - name: monitoring-logs
-        serviceName: monitoring-logs-es-coordinating-nodes <3>
-        namespace: observability
+        namespace: observability <2>
+        serviceName: monitoring-logs-es-coordinating-nodes <2>
   nodeSets:
   - name: default
     count: 1
@@ -101,8 +100,7 @@ spec:
 ---
 
 <1> The `secretName` and `name` attributes are mutually exclusive, you have to choose one or the other.
-<2> The use of `namespace` is optional if the Secret describing the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
-<3> The `serviceName` can only be used in conjunction with `name`, not with `secretName`.
+<2> The `namespace` and `serviceName` attributes can only be used in conjunction with `name`, not with `secretName`.
 
 The referenced Secret must contain the following connection information:
 - `url`: the URL to reach the Elasticsearch cluster
@@ -117,11 +115,12 @@ kind: Secret
 metadata:
   name: monitoring-metrics-es-ref
 stringData:
-  url: https://mon1.es.eu-west-3.aws.elastic-cloud.com:9243
+  url: https://mon1.es.abcd-42.xyz.elastic-cloud.com:9243
   username: monitoring-user
   password: @j5SiN;<7yLJQz4<7:g:ap7hBb:2slbtfZ}?[PyO
-
 ---
+
+The creation of the user referenced in the secret is your responsibility.
 
 == When to use it
 

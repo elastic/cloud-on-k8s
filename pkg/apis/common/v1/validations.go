@@ -101,8 +101,14 @@ func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorL
 		if ref.Name != "" && ref.SecretName != "" {
 			return field.ErrorList{field.Forbidden(path, "Invalid association reference: specify name or secretName, not both")}
 		}
-		if ref.SecretName != "" && ref.ServiceName != "" {
-			return field.ErrorList{field.Forbidden(path, "Invalid association reference: serviceName can only be used in combination with name, not with secretName")}
+		if ref.SecretName != "" && (ref.ServiceName != "" || ref.Namespace != "") {
+			return field.ErrorList{field.Forbidden(path, "Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName")}
+		}
+		if ref.Name == "" && (ref.ServiceName != "") {
+			return field.ErrorList{field.Forbidden(path, "Invalid association reference: specify name, serviceName can only be used in combination with it")}
+		}
+		if ref.Name == "" && (ref.Namespace != "") {
+			return field.ErrorList{field.Forbidden(path, "Invalid association reference: specify name, serviceName can only be used in combination with it")}
 		}
 	}
 	return nil
