@@ -242,9 +242,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	assocRef := association.AssociationRef()
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), ref.NamespacedName())
-
 	if assocRef.IsObjectTypeSecret() {
 		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
 		// unmanaged object, update association conf from the unmanaged custom Secret
@@ -325,6 +322,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationFailed, err
 	}
 
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
 	if err := reconcileEsUserSecret(
 		ctx,
 		r.Client,
