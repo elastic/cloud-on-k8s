@@ -144,7 +144,6 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 					ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
 				},
 			)
-
 	} else {
 		credentialsCfg =
 			settings.MustCanonicalConfig(
