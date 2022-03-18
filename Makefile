@@ -470,6 +470,7 @@ e2e-run: go-generate
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(E2E_STACK_VERSION) \
+		--elastic-stack-images=stack-versions-def.json \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \

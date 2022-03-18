@@ -30,6 +30,10 @@ const (
 	PSPClusterRoleName = "elastic-agent-restricted"
 
 	AgentFleetModeRoleName = "elastic-agent-fleet"
+
+	// FleetServerPseudoKind is a lookup key for a version definition.
+	// FleetServer has the same CRD as Agent but for testing purposes we want to be able to configure a different image.
+	FleetServerPseudoKind = "FleetServer"
 )
 
 // Builder to create an Agent
@@ -80,15 +84,17 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
+	def := test.Ctx().ImageDefinitionFor(agentv1alpha1.Kind)
 	return Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
 			Spec: agentv1alpha1.AgentSpec{
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 		Suffix: suffix,
 	}.
+		WithImage(def.Image).
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
@@ -288,7 +294,13 @@ func (b Builder) WithFleetMode() Builder {
 
 func (b Builder) WithFleetServer() Builder {
 	b.Agent.Spec.FleetServerEnabled = true
+	return b.WithFleetImage()
+}
 
+func (b Builder) WithFleetImage() Builder {
+	def := test.Ctx().ImageDefinitionFor(FleetServerPseudoKind)
+	b.Agent.Spec.Image = def.Image
+	b.Agent.Spec.Version = def.Version
 	return b
 }
 
