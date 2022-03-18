@@ -146,6 +146,7 @@ type Associated interface {
 type Association interface {
 	Associated
 
+	// ElasticServiceAccount returns the Elasticsearch service account name to be used for authentication.
 	ElasticServiceAccount() (ServiceAccountName, error)
 
 	// Associated can be used to retrieve the associated object
