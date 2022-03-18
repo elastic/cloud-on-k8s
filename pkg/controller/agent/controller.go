@@ -146,7 +146,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 
 	results, status := r.doReconcile(ctx, *agent)
 
-	statusErr := updateStatus(ctx, *agent, r.Client, status)
+	statusErr := updateStatus(*agent, r.Client, status)
 	if statusErr != nil {
 		if apierrors.IsConflict(statusErr) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()

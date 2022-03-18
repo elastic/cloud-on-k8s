@@ -157,7 +157,7 @@ func calculateStatus(params *Params, ready, desired int32, status *agentv1alpha1
 
 // updateStatus will update the Elastic Agent's status within the k8s cluster, using the Elastic Agent from the
 // given params, and the given status.
-func updateStatus(ctx context.Context, agent agentv1alpha1.Agent, client client.Client, status agentv1alpha1.AgentStatus) error {
+func updateStatus(agent agentv1alpha1.Agent, client client.Client, status agentv1alpha1.AgentStatus) error {
 	if reflect.DeepEqual(agent.Status, status) {
 		return nil
 	}
