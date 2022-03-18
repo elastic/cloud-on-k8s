@@ -136,23 +136,56 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "secret-es-ref",
+			Name:      "named-es-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname"}
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
-			Name:      "invalid-secret-es-ref-name",
+			Name:      "named-es-ref-with-namesapce",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "named-es-ref-with-servicename",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", ServiceName: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "secret-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-es-ref-secret-and-name",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				kb := mkKibana(uid)
-				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname", Namespace: "esns"}
+				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
 				return serialize(t, kb)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -160,16 +193,29 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "invalid-secret-es-ref-service",
+			Name:      "invalid-secret-es-ref-secret-and-namespace",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				kb := mkKibana(uid)
-				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname", Namespace: "esns"}
+				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
 				return serialize(t, kb)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-secret-and-service",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				kb := mkKibana(uid)
+				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname"}
+				return serialize(t, kb)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 		{
@@ -193,8 +239,8 @@ func TestWebhook(t *testing.T) {
 				ent := mkKibana(uid)
 				ent.Spec.Version = "7.14.0"
 				ent.Spec.Monitoring = kbv1.Monitoring{
-					Metrics: kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Namespace: "esmonns"}}},
-					Logs:    kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
+					Metrics: kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
+					Logs:    kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
 				return serialize(t, ent)
@@ -224,8 +270,8 @@ func TestWebhook(t *testing.T) {
 				ent := mkKibana(uid)
 				ent.Spec.Version = "7.14.0"
 				ent.Spec.Monitoring = kbv1.Monitoring{
-					Metrics: kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx", Namespace: "esmonns"}}},
-					Logs:    kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", Namespace: "esmonns"}}},
+					Metrics: kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx"}}},
+					Logs:    kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
 				return serialize(t, ent)
@@ -242,14 +288,14 @@ func TestWebhook(t *testing.T) {
 				ent := mkKibana(uid)
 				ent.Spec.Version = "7.14.0"
 				ent.Spec.Monitoring = kbv1.Monitoring{
-					Metrics: kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Namespace: "esmonns"}}},
-					Logs:    kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx", Namespace: "esmonns"}}},
+					Metrics: kbv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
+					Logs:    kbv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.monitoring.logs: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+				`spec.monitoring.logs: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

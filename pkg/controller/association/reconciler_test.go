@@ -1165,7 +1165,7 @@ func equalKeys(t *testing.T, a map[string][]byte, b map[string][]byte) {
 func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// Kibana references ES with a custom secret, but neither the secret nor association conf exist yet
 	kb := sampleKibanaNoEsRef()
-	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret", Namespace: "kbname"}}
+	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "sample-es-ref-secret", Namespace: "kbname", Type: commonv1.ObjectTypeSecret}}
 
 	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)

@@ -100,13 +100,25 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "named-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.12.0"
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "secret-es-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "7.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -118,7 +130,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "7.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname", Namespace: "esns"}
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -126,17 +138,17 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "invalid-secret-es-ref-service",
+			Name:      "invalid-secret-es-ref-namespace",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "7.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname", Namespace: "esns"}
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esname"}
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

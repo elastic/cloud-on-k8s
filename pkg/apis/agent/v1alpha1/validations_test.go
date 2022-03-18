@@ -522,40 +522,20 @@ func Test_checkAssociations(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "multiple secret named refs: OK",
-			args: args{
-				b: &Agent{
-					Spec: AgentSpec{
-						ElasticsearchRefs: []Output{
-							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-							},
-							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-							},
-						},
-						KibanaRef:      commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
-						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble", Namespace: "blub"},
-					},
-				},
-			},
-			wantErr: false,
-		},
-		{
 			name: "mix secret named and named refs: OK",
 			args: args{
 				b: &Agent{
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
 							},
 							{
 								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
 							},
 						},
 						KibanaRef:      commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
-						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble", Namespace: "blub"},
+						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble"},
 					},
 				},
 			},
@@ -568,10 +548,7 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-							},
-							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla", Namespace: "blub"},
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
 							},
 						},
 					},
@@ -580,20 +557,22 @@ func Test_checkAssociations(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "secret named ref with a service name: NOK",
+			name: "no name or secret name with namespace: NOK",
 			args: args{
 				b: &Agent{
 					Spec: AgentSpec{
-						ElasticsearchRefs: []Output{
-							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-							},
-							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-							},
-						},
-						KibanaRef:      commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
-						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble", ServiceName: "bla", Namespace: "blub"},
+						KibanaRef: commonv1.ObjectSelector{Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with serviceName: NOK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						FleetServerRef: commonv1.ObjectSelector{ServiceName: "ble"},
 					},
 				},
 			},

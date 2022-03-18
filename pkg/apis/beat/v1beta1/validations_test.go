@@ -118,24 +118,12 @@ func Test_checkAssociations(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "multiple secret named refs: OK",
-			args: args{
-				b: &Beat{
-					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
-					},
-				},
-			},
-			wantErr: false,
-		},
-		{
 			name: "mix secret named and named refs: OK",
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Namespace: "blub"},
-						KibanaRef:        commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli"},
 					},
 				},
 			},
@@ -146,20 +134,18 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Name: "bla", Namespace: "blub"},
-						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
 					},
 				},
 			},
 			wantErr: true,
 		},
 		{
-			name: "secret named ref with a service name: NOK",
+			name: "secret named ref with a namespace: NOK",
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", ServiceName: "bla", Namespace: "blub"},
-						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
 					},
 				},
 			},
@@ -168,8 +154,10 @@ func Test_checkAssociations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := checkAssociations(tt.args.b)
-			assert.Equal(t, tt.wantErr, len(got) > 0)
+			errs := checkAssociations(tt.args.b)
+			if (len(errs) != 0) != tt.wantErr {
+				t.Errorf("checkAssociationst() errors = %v, wantErr %v", errs, tt.wantErr)
+			}
 		})
 	}
 }

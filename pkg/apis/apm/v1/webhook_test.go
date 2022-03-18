@@ -161,23 +161,36 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "secret-kibana-ref",
+			Name:      "named-es-kibana-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Namespace: "kbns"}
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kbname", Namespace: "kbns", ServiceName: "essvc"}
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
-			Name:      "invalid-secret-kibana-ref-name",
+			Name:      "secret-named-kibana-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Name: "kbname", Namespace: "kbns"}
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-kibana-ref-with-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Name: "kbname"}
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -185,16 +198,16 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "invalid-secret-kibana-ref-service",
+			Name:      "invalid-secret-es-ref-with-namespace",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", ServiceName: "kbname", Namespace: "kbns"}
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.kibanaRef: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

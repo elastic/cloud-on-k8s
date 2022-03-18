@@ -136,23 +136,34 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "secret-es-ref",
+			Name:      "named-es-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
-			Name:      "invalid-secret-es-ref-name",
+			Name:      "secret-named-es-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname", Namespace: "esns"}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -160,16 +171,29 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "invalid-secret-es-ref-service",
+			Name:      "invalid-secret-es-ref-with-namespace",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname", Namespace: "esns"}
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName can only be used in combination with name, not with secretName`,
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-service",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "essvc"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}
