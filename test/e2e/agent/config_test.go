@@ -134,6 +134,10 @@ func TestMultipleOutputConfig(t *testing.T) {
 }
 
 func TestFleetMode(t *testing.T) {
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(8, 1, 0)) {
+		t.SkipNow()
+	}
+
 	name := "test-agent-fleet"
 
 	esBuilder := elasticsearch.NewBuilder(name).
