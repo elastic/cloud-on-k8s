@@ -224,16 +224,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	ref := association.AssociationRef()
+	assocRef := association.AssociationRef()
 
 	// the referenced object can be an Elastic resource or a custom Secret
 	referencedObj := r.ReferencedObjTemplate()
-	if ref.IsObjectTypeSecret() {
+	if assocRef.IsObjectTypeSecret() {
 		referencedObj = &corev1.Secret{}
 	}
 
 	// check if the referenced object exists
-	exists, err := k8s.ObjectExists(r.Client, ref.NamespacedName(), referencedObj)
+	exists, err := k8s.ObjectExists(r.Client, assocRef.NamespacedName(), referencedObj)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
