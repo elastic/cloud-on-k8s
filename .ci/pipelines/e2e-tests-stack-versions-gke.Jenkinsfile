@@ -46,28 +46,6 @@ pipeline {
                         }
                     }
                 }
-                stage("7.6.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.2")
-                        }
-                    }
-                }
-                stage("7.7.1") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.1")
-                        }
-                    }
-                }
                 stage("7.8.1") {
                     agent {
                         label 'linux'
@@ -178,6 +156,28 @@ pipeline {
                         }
                     }
                }
+               stage("8.0.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runWith(lib, failedTests, "eck-800-${BUILD_NUMBER}-e2e", "8.0.0")
+                        }
+                    }
+               }
+               stage("8.1.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runWith(lib, failedTests, "eck-810-${BUILD_NUMBER}-e2e", "8.1.0")
+                        }
+                    }
+               }
             }
         }
     }
@@ -208,8 +208,6 @@ pipeline {
             script {
                 clusters = [
                     "eck-68-${BUILD_NUMBER}-e2e",
-                    "eck-76-${BUILD_NUMBER}-e2e",
-                    "eck-77-${BUILD_NUMBER}-e2e",
                     "eck-78-${BUILD_NUMBER}-e2e",
                     "eck-79-${BUILD_NUMBER}-e2e",
                     "eck-710-${BUILD_NUMBER}-e2e",
@@ -219,7 +217,9 @@ pipeline {
                     "eck-714-${BUILD_NUMBER}-e2e",
                     "eck-715-${BUILD_NUMBER}-e2e",
                     "eck-716-${BUILD_NUMBER}-e2e",
-                    "eck-717-${BUILD_NUMBER}-e2e"
+                    "eck-717-${BUILD_NUMBER}-e2e",
+                    "eck-800-${BUILD_NUMBER}-e2e",
+                    "eck-810-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',

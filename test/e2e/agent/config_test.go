@@ -134,9 +134,6 @@ func TestMultipleOutputConfig(t *testing.T) {
 }
 
 func TestFleetMode(t *testing.T) {
-	// TODO remove once https://github.com/elastic/kibana/issues/126611 is fixed
-	t.SkipNow()
-
 	name := "test-agent-fleet"
 
 	esBuilder := elasticsearch.NewBuilder(name).
