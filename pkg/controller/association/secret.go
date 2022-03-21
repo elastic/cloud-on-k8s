@@ -7,6 +7,7 @@ package association
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -16,12 +17,9 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 // authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
@@ -36,7 +34,7 @@ func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Associat
 	}
 
 	var ver string
-	ver, err = r.ReferencedResourceVersion(r.Client, r.Parameters.Dialer, assocRef)
+	ver, err = r.ReferencedResourceVersion(r.Client, assocRef)
 	if err != nil {
 		return commonv1.AssociationConf{}, err
 	}
@@ -107,7 +105,7 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.Ob
 	return &ref, nil
 }
 
-func (r UnmanagedAssociationConnectionInfo) Request(dialer net.Dialer, path string, jsonPath string) (string, error) {
+func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string) (string, error) {
 	req, err := http.NewRequest("GET", r.URL+path, nil) //nolint:noctx
 	if err != nil {
 		return "", err
@@ -115,25 +113,28 @@ func (r UnmanagedAssociationConnectionInfo) Request(dialer net.Dialer, path stri
 
 	req.SetBasicAuth(r.Username, r.Password)
 
-	var caCerts []*x509.Certificate
+	certPool := x509.NewCertPool()
 	if r.CaCert != "" {
-		caCerts, err = certificates.ParsePEMCerts([]byte(r.CaCert))
+		caCerts, err := certificates.ParsePEMCerts([]byte(r.CaCert))
 		if err != nil {
 			return "", err
 		}
+		for _, c := range caCerts {
+			certPool.AddCert(c)
+		}
 	}
+	
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}}}
+	resp, err := client.Do(req)
 
-	httpClient := common.HTTPClient(dialer, caCerts, client.DefaultESClientTimeout)
-
-	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("error requesting %s, statusCode = %d", path, resp.StatusCode)
 	}
-	defer resp.Body.Close()
 
+	defer resp.Body.Close()
 	var obj interface{}
 	if err = json.NewDecoder(resp.Body).Decode(&obj); err != nil {
 		return "", err
