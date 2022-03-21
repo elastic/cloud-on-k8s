@@ -31,8 +31,8 @@ import (
 
 // nodePort is a nodePort usable to expose and reach any service through a public IP.
 // The port has a corresponding firewall rule to be allowed from any sources:
-// - gcloud compute firewall-rules create eck-e2e-tests-node-port --allow tcp:32768
-const nodePort = int32(32768)
+// - gcloud compute firewall-rules create eck-e2e-tests-node-port --allow tcp:32767
+const nodePort = int32(32767)
 
 // TestESStackMonitoring tests that when an Elasticsearch cluster is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
