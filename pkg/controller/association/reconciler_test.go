@@ -1164,7 +1164,7 @@ func equalKeys(t *testing.T, a map[string][]byte, b map[string][]byte) {
 func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// Kibana references ES with a custom secret, but neither the secret nor association conf exist yet
 	kb := sampleKibanaNoEsRef()
-	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "sample-es-ref-secret", Namespace: "kbname", Type: commonv1.ObjectTypeSecret}}
+	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret"}}
 
 	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
@@ -1181,7 +1181,7 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// create the missing secret without the password field
 	objRefSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "kbname",
+			Namespace: "kbns",
 			Name:      "sample-es-ref-secret",
 		},
 		Data: map[string][]byte{
@@ -1193,6 +1193,7 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// simulate a re-queue
 	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.Error(t, err)
+	require.Equal(t, "password secret key doesn't exist in secret sample-es-ref-secret", err.Error())
 	// no requeue to trigger
 	require.Equal(t, reconcile.Result{}, results)
 	// should only have dynamic watches set for secrets
