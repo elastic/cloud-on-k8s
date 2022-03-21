@@ -86,15 +86,15 @@ func (e *esBuilder) BuildAndCopy() esv1.Elasticsearch {
 var noInProgressOperations = esv1.InProgressOperations{
 	DownscaleOperation: esv1.DownscaleOperation{
 		LastUpdatedTime: metav1.Time{},
-		Nodes:           []esv1.DownscaledNode{},
+		Nodes:           nil,
 	},
 	UpgradeOperation: esv1.UpgradeOperation{
 		LastUpdatedTime: metav1.Time{},
-		Nodes:           []esv1.UpgradedNode{},
+		Nodes:           nil,
 	},
 	UpscaleOperation: esv1.UpscaleOperation{
 		LastUpdatedTime: metav1.Time{},
-		Nodes:           []esv1.NewNode{},
+		Nodes:           nil,
 	},
 }
 
