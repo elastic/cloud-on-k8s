@@ -8,15 +8,15 @@ import (
 	"context"
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -85,17 +85,20 @@ func hasDependencyInOthers(node esv1.ElasticsearchSettings, others []esv1.Elasti
 // PredicateContext is the set of fields used while determining what set of pods
 // can be upgraded when performing a rolling upgrade on an Elasticsearch cluster.
 type PredicateContext struct {
-	es                     esv1.Elasticsearch
-	resourcesList          nodespec.ResourcesList
-	masterNodesNames       []string
-	actualMasters          []corev1.Pod
-	healthyPods            map[string]corev1.Pod
+	es esv1.Elasticsearch
+	// expected resources (sset, service, config) by StatefulSet
+	resourcesList            nodespec.ResourcesList
+	expectedMasterNodesNames []string
+	// healthy Pods are "running" as per k8s API and have joined the ES cluster
+	healthyPods map[string]corev1.Pod
+	// Pods based on outdated spec
 	toUpdate               []corev1.Pod
 	esState                ESState
 	shardLister            client.ShardLister
 	masterUpdateInProgress bool
 	ctx                    context.Context
-	numberOfPods           int
+	// all Pods for the existing StatefulSets from k8s API
+	currentPods []corev1.Pod
 }
 
 // Predicate is a function that indicates if a Pod can be deleted (or not).
@@ -137,20 +140,18 @@ func NewPredicateContext(
 	healthyPods map[string]corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	masterNodesNames []string,
-	actualMasters []corev1.Pod,
-	numberOfPods int,
+	currentPods []corev1.Pod,
 ) PredicateContext {
 	return PredicateContext{
-		es:               es,
-		resourcesList:    resourcesList,
-		masterNodesNames: masterNodesNames,
-		actualMasters:    actualMasters,
-		healthyPods:      healthyPods,
-		toUpdate:         podsToUpgrade,
-		esState:          state,
-		shardLister:      shardLister,
-		ctx:              ctx,
-		numberOfPods:     numberOfPods,
+		es:                       es,
+		resourcesList:            resourcesList,
+		expectedMasterNodesNames: masterNodesNames,
+		healthyPods:              healthyPods,
+		toUpdate:                 podsToUpgrade,
+		esState:                  state,
+		shardLister:              shardLister,
+		ctx:                      ctx,
+		currentPods:              currentPods,
 	}
 }
 
@@ -173,7 +174,7 @@ Loop:
 			failedPredicates[predicateErr.pod] = predicateErr.predicate
 		default:
 			candidate := candidate
-			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.masterNodesNames) {
+			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.expectedMasterNodesNames) {
 				// It is a mutation on an already existing or future master.
 				ctx.masterUpdateInProgress = true
 			}
@@ -210,7 +211,7 @@ var predicates = [...]Predicate{
 			context PredicateContext,
 			candidate corev1.Pod,
 			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ bool,
 		) (b bool, e error) {
 			if candidate.Labels[label.VersionLabelName] == context.es.Spec.Version {
 				// This predicate is only relevant during version upgrade.
@@ -258,7 +259,7 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
+			_ []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
 			_, healthy := context.healthyPods[candidate.Name]
@@ -274,7 +275,7 @@ var predicates = [...]Predicate{
 			context PredicateContext,
 			candidate corev1.Pod,
 			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ bool,
 		) (b bool, e error) {
 			if candidate.DeletionTimestamp != nil {
 				// Pod is already terminating, skip it
@@ -291,8 +292,8 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ []corev1.Pod,
+			_ bool,
 		) (b bool, e error) {
 			// Cluster health is retrieved only once from the cluster.
 			// We rely on "shard conflict" predicate to avoid to delete two ES nodes that share some shards.
@@ -323,8 +324,8 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ []corev1.Pod,
+			_ bool,
 		) (b bool, e error) {
 			health, err := context.esState.Health()
 			if err != nil {
@@ -335,7 +336,7 @@ var predicates = [...]Predicate{
 				// This predicate is only relevant on healthy node if cluster health is yellow
 				return true, nil
 			}
-			if context.numberOfPods == 1 {
+			if len(context.currentPods) == 1 {
 				// If the cluster is a single node cluster, allow restart even if there is no version difference
 				return true, nil
 			}
@@ -356,15 +357,15 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ []corev1.Pod,
+			_ bool,
 		) (b bool, e error) {
 			health, err := context.esState.Health()
 			if err != nil {
 				return false, err
 			}
 			_, healthyNode := context.healthyPods[candidate.Name]
-			if context.numberOfPods == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
+			if len(context.currentPods) == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
 				// If the cluster is a healthy single node cluster, replicas can not be started, allow the upgrade
 				return true, nil
 			}
@@ -413,15 +414,15 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ []corev1.Pod,
+			_ bool,
 		) (b bool, e error) {
 
 			// If candidate is not a master then we just check if it will become a master
 			// In this case we account for a master creation as we want to avoid creating more
 			// than one master at a time.
 			if !label.IsMasterNode(candidate) {
-				if willBecomeMasterNode(candidate.Name, context.masterNodesNames) {
+				if willBecomeMasterNode(candidate.Name, context.expectedMasterNodesNames) {
 					return !context.masterUpdateInProgress, nil
 				}
 				// It is just a data node and it will not become a master: we don't care
@@ -443,9 +444,9 @@ var predicates = [...]Predicate{
 			// If Pod is not an expected master it means that we are downscaling the masters
 			// by changing the type of the node.
 			// In this case we still check that other masters are healthy to avoid degrading the situation.
-			if !willBecomeMasterNode(candidate.Name, context.masterNodesNames) {
+			if !willBecomeMasterNode(candidate.Name, context.expectedMasterNodesNames) {
 				// We still need to ensure that others masters are healthy
-				for _, actualMaster := range context.actualMasters {
+				for _, actualMaster := range label.FilterMasterNodePods(context.currentPods) {
 					_, healthyMaster := context.healthyPods[actualMaster.Name]
 					if !healthyMaster {
 						log.V(1).Info(
@@ -461,7 +462,7 @@ var predicates = [...]Predicate{
 			}
 
 			// Get the expected masters
-			expectedMasters := len(context.masterNodesNames)
+			expectedMasters := len(context.expectedMasterNodesNames)
 			// Get the healthy masters
 			healthyMasters := 0
 			for _, pod := range context.healthyPods {
@@ -489,8 +490,8 @@ var predicates = [...]Predicate{
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ []corev1.Pod,
+			_ bool,
 		) (b bool, e error) {
 			// If candidate is not a master then we don't care
 			if !label.IsMasterNode(candidate) {
@@ -505,7 +506,7 @@ var predicates = [...]Predicate{
 					return true, nil
 				}
 			}
-			// This is the last master, check if all master-ineligible nodes are up to date
+			// This is the last master, check if all master-ineligible nodes are up-to-date
 			for _, pod := range context.toUpdate {
 				if candidate.Name == pod.Name {
 					continue
@@ -525,7 +526,7 @@ var predicates = [...]Predicate{
 			context PredicateContext,
 			candidate corev1.Pod,
 			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
+			_ bool,
 		) (b bool, e error) {
 			if len(deletedPods) == 0 {
 				// Do not do unnecessary request
@@ -556,6 +557,72 @@ var predicates = [...]Predicate{
 			return true, nil
 		},
 	},
+	{
+		name: "do_not_delete_all_members_of_a_tier",
+		fn: func(
+			context PredicateContext,
+			candidate corev1.Pod,
+			_ []corev1.Pod,
+			_ bool,
+		) (bool, error) {
+			if _, exists := context.healthyPods[candidate.Name]; !exists {
+				// there is no point in keeping an unhealthy Pod as it does not contribute to tier availability
+				return true, nil
+			}
+
+			healthyPodRoleHisto := map[common.TrueFalseLabel]int{}
+			currentPodRoleHisto := map[common.TrueFalseLabel]int{}
+			// look at the current pods because we want to prevent taking away from current capacity for a tier
+			// not future capacity as per the expected Pod definitions expressed in the resourcesList
+			for _, pod := range context.currentPods {
+				// ignore voting_only and master we are handling those in dedicated predicates
+				forEachNonMasterRole(pod, func(role common.TrueFalseLabel) {
+					currentPodRoleHisto[role]++
+				})
+			}
+
+			// look at the healthy Pods excluding the candidate (which is part of this list)
+			// this allows us to figure out what would be the remaining Pods assuming we remove the candidate
+			for _, pod := range context.healthyPods {
+				if pod.Name == candidate.Name {
+					continue
+				}
+				forEachNonMasterRole(pod, func(role common.TrueFalseLabel) {
+					healthyPodRoleHisto[role]++
+				})
+			}
+
+			for _, role := range label.NonMasterRoles {
+				if role.HasValue(true, candidate.Labels) {
+					healthy := healthyPodRoleHisto[role]
+					current := currentPodRoleHisto[role]
+					if current == 1 {
+						// only Pod with this role: OK to delete
+						continue
+					}
+					if healthy <= 0 {
+						log.V(1).Info(
+							"Delaying upgrade for Pod to ensure tier availability",
+							"node_role", role,
+							"namespace", candidate.Namespace,
+							"candidate", candidate.Name,
+							"healthy_pods_with_role", healthy,
+						)
+						return false, nil
+					}
+				}
+			}
+			return true, nil
+		},
+	},
+}
+
+func forEachNonMasterRole(pod corev1.Pod, f func(falseLabel common.TrueFalseLabel)) {
+	for _, role := range label.NonMasterRoles {
+		if role.HasValue(true, pod.Labels) {
+			f(role)
+		}
+	}
 }
 
 func willBecomeMasterNode(name string, masters []string) bool {

@@ -123,6 +123,10 @@ func (m *ElasticMapsServer) SetAssociationStatusMap(typ commonv1.AssociationType
 	return nil
 }
 
+func (m *ElasticMapsServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (m *ElasticMapsServer) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	if m.Spec.ElasticsearchRef.IsDefined() {

@@ -78,6 +78,10 @@ var (
 				Source: stringsutil.Concat(esvolume.UnicastHostsVolumeMountPath, "/", esvolume.UnicastHostsFile),
 				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", esvolume.UnicastHostsFile),
 			},
+			{
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", esvolume.ServiceAccountsFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", esvolume.ServiceAccountsFile),
+			},
 		},
 	}
 	// defaultResources are the default request and limits for the init container.

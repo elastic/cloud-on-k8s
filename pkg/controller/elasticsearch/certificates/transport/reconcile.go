@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -74,13 +75,8 @@ func DeleteStatefulSetTransportCertificate(client k8s.Client, namespace string, 
 
 // DeleteLegacyTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
 func DeleteLegacyTransportCertificate(client k8s.Client, es esv1.Elasticsearch) error {
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.LegacyTransportCertsSecretSuffix(es.Name),
-		},
-	}
-	return client.Delete(context.Background(), &secret)
+	nsn := types.NamespacedName{Namespace: es.Namespace, Name: esv1.LegacyTransportCertsSecretSuffix(es.Name)}
+	return k8s.DeleteSecretIfExists(client, nsn)
 }
 
 // reconcileNodeSetTransportCertificatesSecrets reconciles the secret which contains the transport certificates for

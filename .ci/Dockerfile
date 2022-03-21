@@ -10,7 +10,7 @@ ENV DOCKER_VERSION=19.03.13
 ENV DOCKER_BUILDX_VERSION=0.4.2
 ENV GOTESTSUM_VERSION=0.5.0
 ENV EKSCTL_VERSION=0.74.0
-ENV ECK_DIAG_VERSION=1.0.2
+ENV ECK_DIAG_VERSION=1.0.3
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \

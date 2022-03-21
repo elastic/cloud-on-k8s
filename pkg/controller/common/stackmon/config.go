@@ -99,14 +99,14 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 }
 
 func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[string]interface{}, volume.VolumeLike, error) {
-	username, password, err := association.ElasticsearchAuthSettings(client, assoc)
+	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
 	if err != nil {
 		return nil, volume.SecretVolume{}, err
 	}
 
 	outputConfig := map[string]interface{}{
-		"username": username,
-		"password": password,
+		"username": credentials.Username,
+		"password": credentials.Password,
 		"hosts":    []string{assoc.AssociationConf().GetURL()},
 	}
 

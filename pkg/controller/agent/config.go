@@ -24,7 +24,8 @@ import (
 )
 
 type connectionSettings struct {
-	host, ca, username, password string
+	host, ca    string
+	credentials association.Credentials
 }
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
@@ -98,15 +99,15 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 
 	outputs := map[string]interface{}{}
 	for i, assoc := range esAssociations {
-		username, password, err := association.ElasticsearchAuthSettings(params.Client, assoc)
+		credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
 		if err != nil {
 			return settings.NewCanonicalConfig(), err
 		}
 
 		output := map[string]interface{}{
 			"type":     "elasticsearch",
-			"username": username,
-			"password": password,
+			"username": credentials.Username,
+			"password": credentials.Password,
 			"hosts":    []string{assoc.AssociationConf().GetURL()},
 		}
 		if assoc.AssociationConf().GetCACertProvided() {
@@ -152,7 +153,7 @@ func extractConnectionSettings(
 		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, assoc)
+	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
 	if err != nil {
 		return connectionSettings{}, err
 	}
@@ -163,9 +164,8 @@ func extractConnectionSettings(
 	}
 
 	return connectionSettings{
-		host:     assoc.AssociationConf().GetURL(),
-		ca:       ca,
-		username: username,
-		password: password,
+		host:        assoc.AssociationConf().GetURL(),
+		ca:          ca,
+		credentials: credentials,
 	}, err
 }

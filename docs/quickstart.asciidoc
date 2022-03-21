@@ -29,10 +29,9 @@ include::supported-versions.asciidoc[]
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
 
-IMPORTANT: Check the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
+Things to consider before you start:
 
-[NOTE]
-====
+* For this quickstart guide, your Kubernetes cluster is assumed to be already up and running. Before you proceed with the ECK installation, make sure you check the link:k8s-quickstart.html[supported versions].
 
 * If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, check link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
@@ -40,7 +39,7 @@ IMPORTANT: Check the <<{p}-upgrading-eck,upgrade notes>> first if you are attemp
 
 * Refer to <<{p}-installing-eck>> for more information on installation options.
 
-====
+IMPORTANT: Check the <<{p}-upgrading-eck,upgrade notes>> if you are attempting to upgrade an existing ECK deployment.
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions]:
 +
