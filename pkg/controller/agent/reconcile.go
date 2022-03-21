@@ -140,7 +140,7 @@ type ReconciliationParams struct {
 }
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
-// and will return the new status, and any errors encountered.
+// and will return any error encountered.
 func calculateStatus(params *Params, ready, desired int32, status *agentv1alpha1.AgentStatus) error {
 	agent := params.Agent
 
@@ -155,8 +155,7 @@ func calculateStatus(params *Params, ready, desired int32, status *agentv1alpha1
 	return nil
 }
 
-// updateStatus will update the Elastic Agent's status within the k8s cluster, using the Elastic Agent from the
-// given params, and the given status.
+// updateStatus will update the Elastic Agent's status within the k8s cluster, using the given Elastic Agent and status.
 func updateStatus(agent agentv1alpha1.Agent, client client.Client, status agentv1alpha1.AgentStatus) error {
 	if reflect.DeepEqual(agent.Status, status) {
 		return nil
