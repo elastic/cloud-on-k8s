@@ -20,6 +20,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -81,7 +82,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 	extRefSecretName := "test-es-mon-ext-ref"
 	extRefSecretNamespace := test.Ctx().ManagedNamespace(0)
 	extRefUsername := "mon-user"
-	extRefPassword := "mon-pwd"
+	extRefPassword := common.FixedLengthRandomPasswordBytes()
 
 	steps := func(k *test.K8sClient) test.StepList {
 		s := test.StepList{
@@ -134,7 +135,9 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						return err
 					}
 
-					body := bytes.NewBufferString(`{"username":"`+extRefUsername+`","password":"`+extRefPassword+`","roles":["monitoring_user","kibana_admin","remote_monitoring_agent","remote_monitoring_collector"]}`)
+					body := bytes.NewBufferString(`{
+						"username":"`+extRefUsername+`","password":"`+string(extRefPassword)+`",
+						"roles":["monitoring_user","kibana_admin","remote_monitoring_agent","remote_monitoring_collector"]}`)
 					req, err := http.NewRequest(http.MethodPost, "/_security/user/"+extRefUsername, body)
 					if err != nil {
 						return err
@@ -173,7 +176,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						Data: map[string][]byte{
 							"url": []byte(fmt.Sprintf("https://%s:%d", nodeExternalIP, nodePort)),
 							"username": []byte(extRefUsername),
-							"password": []byte(extRefPassword),
+							"password": extRefPassword,
 							"ca.crt": monitoringHTTPPublicCertsSecret.Data["ca.crt"],
 						},
 					}
