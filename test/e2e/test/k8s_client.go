@@ -475,3 +475,26 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 	}
 	return err
 }
+
+func (k K8sClient) GetFirstNodeExternalIP() (string, error) {
+	var nodes corev1.NodeList
+	if err := k.Client.List(context.Background(), &nodes); err != nil {
+		return "", err
+	}
+	if len(nodes.Items) < 1 {
+		return "", errors.New("no node found while listing nodes")
+	}
+
+	externalIP := ""
+	for _, adr := range nodes.Items[0].Status.Addresses {
+		if adr.Type == corev1.NodeExternalIP {
+			externalIP = adr.Address
+			break
+		}
+	}
+	if externalIP == "" {
+		return "", errors.New("no external IP found")
+	}
+
+	return externalIP, nil
+}

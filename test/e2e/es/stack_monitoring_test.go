@@ -9,9 +9,11 @@ package es
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,6 +27,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
+
+// nodePort is a nodePort usable to expose and reach any service through a public IP.
+// The port has a corresponding firewall rule to be allowed from any sources:
+// - gcloud compute firewall-rules create eck-e2e-tests-node-port --allow tcp:32768
+const nodePort = int32(32768)
 
 // TestESStackMonitoring tests that when an Elasticsearch cluster is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
@@ -69,15 +76,56 @@ func TestExternalESStackMonitoring(t *testing.T) {
 	// do not associate the two clusters right now
 	monitored := elasticsearch.NewBuilder("test-es-mon-a").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	nodeExternalIP := ""
+
+	extRefSecretName := "test-es-mon-ext-ref"
+	extRefSecretNamespace := test.Ctx().ManagedNamespace(0)
+	extRefUsername := "mon-user"
+	extRefPassword := "mon-pwd"
 
 	steps := func(k *test.K8sClient) test.StepList {
-		secretName := "test-es-mon-ext-ref"
-		secretNamespace := test.Ctx().ManagedNamespace(0)
-		var esURL *string
-		username := "mon-user"
-		password := "mon-pwd"
-
 		s := test.StepList{
+			test.Step{
+				Name: "Get external node IP",
+				Test: test.Eventually(func() error {
+					var err error
+					nodeExternalIP, err = k.GetFirstNodeExternalIP()
+					if err != nil {
+						return err
+					}
+					assert.NoError(t, err)
+
+					var es esv1.Elasticsearch
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&monitoring.Elasticsearch), &es); err != nil {
+						return err
+					}
+
+					es.Spec.HTTP = commonv1.HTTPConfig{
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Type: corev1.ServiceTypeNodePort,
+								Ports: []corev1.ServicePort{
+									{Port: 9200, NodePort: nodePort},
+								},
+							},
+						},
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+									{IP: nodeExternalIP},
+								},
+							},
+						},
+					}
+
+					err = k.Client.Update(context.Background(), &es)
+					if err != nil {
+						return err
+					}
+					return nil
+
+				}),
+			},
 			test.Step{
 				Name: "Create a monitoring user",
 				Test: test.Eventually(func() error {
@@ -86,15 +134,11 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						return err
 					}
 
-					url := esClient.URL()
-					esURL = &url
-
-					body := bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`","roles":["monitoring_user","kibana_admin","remote_monitoring_agent","remote_monitoring_collector"]}`)
-					req, err := http.NewRequest(http.MethodPost, "/_security/user/"+username, body)
+					body := bytes.NewBufferString(`{"username":"`+extRefUsername+`","password":"`+extRefPassword+`","roles":["monitoring_user","kibana_admin","remote_monitoring_agent","remote_monitoring_collector"]}`)
+					req, err := http.NewRequest(http.MethodPost, "/_security/user/"+extRefUsername, body)
 					if err != nil {
 						return err
 					}
-
 
 					_, err = esClient.Request(context.Background(), req)
 					if err != nil {
@@ -108,12 +152,13 @@ func TestExternalESStackMonitoring(t *testing.T) {
 				Name: "Create a secret to reference the monitoring cluster",
 				Test: test.Eventually(func() error {
 
-					var secret corev1.Secret
+					var monitoringHTTPPublicCertsSecret corev1.Secret
 					key := types.NamespacedName{
 						Namespace: monitoring.Elasticsearch.Namespace,
 						Name:      certificates.PublicCertsSecretName(esv1.ESNamer, monitoring.Elasticsearch.Name),
 					}
-					if err := k.Client.Get(context.Background(), key, &secret); err != nil {
+
+					if err := k.Client.Get(context.Background(), key, &monitoringHTTPPublicCertsSecret); err != nil {
 						return err
 					}
 					if err != nil {
@@ -122,19 +167,19 @@ func TestExternalESStackMonitoring(t *testing.T) {
 
 					refSecret := corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: secretNamespace,
-							Name:      secretName,
+							Namespace: extRefSecretNamespace,
+							Name:      extRefSecretName,
 						},
 						Data: map[string][]byte{
-							"url": []byte(*esURL),
-							"username": []byte(username),
-							"password": []byte(password),
-							"ca.crt": secret.Data["ca.crt"],
+							"url": []byte(fmt.Sprintf("https://%s:%d", nodeExternalIP, nodePort)),
+							"username": []byte(extRefUsername),
+							"password": []byte(extRefPassword),
+							"ca.crt": monitoringHTTPPublicCertsSecret.Data["ca.crt"],
 						},
 					}
+
 					err = k.CreateOrUpdate(&refSecret)
 					if err != nil {
-						t.Log("create secret err", err)
 						return err
 					}
 
@@ -144,30 +189,26 @@ func TestExternalESStackMonitoring(t *testing.T) {
 			test.Step{
 				Name: "Update monitored es cluster with the secret reference",
 				Test: test.Eventually(func() error {
-					ref := commonv1.ObjectSelector{
-						Namespace:  secretNamespace,
-						SecretName: secretName,
-					}
-
 					var es esv1.Elasticsearch
 					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&monitored.Elasticsearch), &es); err != nil {
 						return err
 					}
 
+					monitoringEsRef := []commonv1.ObjectSelector{{SecretName: extRefSecretName}}
 					es.Spec.Monitoring = esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{ref}},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{ref}},
+						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: monitoringEsRef},
+						Logs: esv1.LogsMonitoring{ElasticsearchRefs: monitoringEsRef},
 					}
+
 					err := k.Client.Update(context.Background(), &es)
 					if err != nil {
-						t.Log("update es err", err)
 						return err
 					}
-					t.Log("update es", es.Spec.Monitoring)
 					return nil
 				}),
 			},
 		}
+
 		c := checks.MonitoredSteps(&monitored, k)
 		return append(s, c...)
 	}
