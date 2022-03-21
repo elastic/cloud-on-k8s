@@ -107,6 +107,10 @@ func (ent *EnterpriseSearch) RequiresAssociation() bool {
 	return ent.Spec.ElasticsearchRef.Name != ""
 }
 
+func (ent *EnterpriseSearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	if ent.Spec.ElasticsearchRef.IsDefined() {

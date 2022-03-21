@@ -110,15 +110,15 @@ func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssoc
 	}
 
 	// Get username and password
-	username, password, err := association.ElasticsearchAuthSettings(c, &esAssociation)
+	credentials, err := association.ElasticsearchAuthSettings(c, &esAssociation)
 	if err != nil {
 		return nil, err
 	}
 
 	tmpOutputCfg := map[string]interface{}{
 		"output.elasticsearch.hosts":    []string{esAssociation.AssociationConf().GetURL()},
-		"output.elasticsearch.username": username,
-		"output.elasticsearch.password": password,
+		"output.elasticsearch.username": credentials.Username,
+		"output.elasticsearch.password": credentials.Password,
 	}
 	if esAssociation.AssociationConf().GetCACertProvided() {
 		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
@@ -133,7 +133,7 @@ func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAsso
 	}
 
 	// Get username and password
-	username, password, err := association.ElasticsearchAuthSettings(c, &kibanaAssociation)
+	credentials, err := association.ElasticsearchAuthSettings(c, &kibanaAssociation)
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +141,8 @@ func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAsso
 	tmpOutputCfg := map[string]interface{}{
 		"apm-server.kibana.enabled":  true,
 		"apm-server.kibana.host":     kibanaAssociation.AssociationConf().GetURL(),
-		"apm-server.kibana.username": username,
-		"apm-server.kibana.password": password,
+		"apm-server.kibana.username": credentials.Username,
+		"apm-server.kibana.password": credentials.Password,
 	}
 	if kibanaAssociation.AssociationConf().GetCACertProvided() {
 		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociationType()), certificates.CAFileName)}

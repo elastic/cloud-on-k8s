@@ -201,7 +201,7 @@ func (r *VersionUpgrade) serviceURL() string {
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
 func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error) {
-	username, password, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
+	credentials, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 	}
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.SetBasicAuth(username, password)
+	req.SetBasicAuth(credentials.Username, credentials.Password)
 
 	return req, nil
 }

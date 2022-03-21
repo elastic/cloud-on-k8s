@@ -442,6 +442,10 @@ func (es *Elasticsearch) ServiceAccountName() string {
 	return es.Spec.ServiceAccountName
 }
 
+func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 // IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
 func (es Elasticsearch) IsAutoscalingDefined() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
