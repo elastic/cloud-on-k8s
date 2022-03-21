@@ -82,7 +82,6 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 			"namespace", params.Agent.Namespace,
 			"agent_name", params.Agent.Name,
 		)
-		return results.WithError(err)
 	}
 
 	return results.WithError(err)
