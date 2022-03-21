@@ -84,7 +84,7 @@ func testFetchAPMServer(t *testing.T) {
 			client := k8s.NewFakeClient(tc.apmServer)
 
 			var got apmv1.ApmServer
-			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
+			err := client.Get(context.Background(), tc.request.NamespacedName, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -146,7 +146,7 @@ func testFetchKibana(t *testing.T) {
 			client := k8s.NewFakeClient(tc.kibana)
 
 			var got kbv1.Kibana
-			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
+			err := client.Get(context.Background(), tc.request.NamespacedName, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -355,7 +355,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociations(context.Background(), client, request, &got)
+	err := client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -374,7 +374,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	err = UpdateAssociationConf(client, got.EsAssociation(), newAssocConf)
 	require.NoError(t, err)
 
-	err = FetchWithAssociations(context.Background(), client, request, &got)
+	err = client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -397,7 +397,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociations(context.Background(), client, request, &got)
+	err := client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -409,7 +409,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	err = RemoveAssociationConf(client, got.EsAssociation())
 	require.NoError(t, err)
 
-	err = FetchWithAssociations(context.Background(), client, request, &got)
+	err = client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)

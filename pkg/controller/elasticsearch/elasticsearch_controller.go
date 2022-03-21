@@ -23,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -226,8 +225,7 @@ func (r *ReconcileElasticsearch) fetchElasticsearchWithAssociations(ctx context.
 	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
-	err := association.FetchWithAssociations(ctx, r.Client, request, es)
-	if err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, es); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, cleanup in-memory state. Children resources are garbage-collected either by
 			// the operator (see `onDelete`), either by k8s through the ownerReference mechanism.

@@ -13,45 +13,16 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
-
-// FetchWithAssociations retrieves an object and extracts its association configurations.
-func FetchWithAssociations(
-	ctx context.Context,
-	client k8s.Client,
-	request reconcile.Request,
-	associated commonv1.Associated,
-) error {
-	span, _ := apm.StartSpan(ctx, "fetch_associations", tracing.SpanTypeApp)
-	defer span.End()
-
-	if err := client.Get(context.Background(), request.NamespacedName, associated); err != nil {
-		return err
-	}
-
-	for _, association := range associated.GetAssociations() {
-		assocConf, err := assocutils.GetAssociationConf(association)
-		if err != nil {
-			return err
-		}
-		association.SetAssociationConf(assocConf)
-	}
-
-	return nil
-}
 
 func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) bool {
 	allAssociationsConfigured := true

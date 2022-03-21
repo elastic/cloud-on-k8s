@@ -373,13 +373,8 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 
 	fsRef := assoc.AssociationRef()
 	fs := agentv1alpha1.Agent{}
-
-	if err := association.FetchWithAssociations(
-		params.Context,
-		params.Client,
-		reconcile.Request{NamespacedName: fsRef.NamespacedName()},
-		&fs,
-	); err != nil {
+	request := reconcile.Request{NamespacedName: fsRef.NamespacedName()}
+	if err = params.Client.Get(params.Context, request.NamespacedName, &fs); err != nil {
 		return nil, err
 	}
 

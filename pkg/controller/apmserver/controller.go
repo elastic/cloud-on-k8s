@@ -174,7 +174,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	defer tracing.EndTransaction(tx)
 
 	var as apmv1.ApmServer
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &as); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &as); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,

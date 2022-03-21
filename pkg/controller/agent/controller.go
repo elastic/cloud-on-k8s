@@ -127,7 +127,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	defer tracing.EndContextTransaction(ctx)
 
 	var agent agentv1alpha1.Agent
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &agent); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &agent); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil

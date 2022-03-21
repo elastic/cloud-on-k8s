@@ -152,7 +152,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 
 	// retrieve the EMS object
 	var ems emsv1alpha1.ElasticMapsServer
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &ems); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &ems); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,

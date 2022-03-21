@@ -150,7 +150,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	defer tracing.EndTransaction(tx)
 
 	associated := r.AssociatedObjTemplate()
-	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
 			r.onDelete(ctx, types.NamespacedName{
