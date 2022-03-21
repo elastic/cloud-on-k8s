@@ -123,8 +123,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 			certPool.AddCert(c)
 		}
 	}
-	
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}}}
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}}} //nolint:gosec
 	resp, err := client.Do(req)
 
 	if err != nil {

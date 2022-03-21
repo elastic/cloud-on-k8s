@@ -96,7 +96,7 @@ func Test_PublicCertsHasCACert(t *testing.T) {
 		name    string
 		secret  corev1.Secret
 		wantErr bool
-		want   bool
+		want    bool
 	}{
 		{
 			name: "Happy path: with ca.crt",
@@ -106,12 +106,12 @@ func Test_PublicCertsHasCACert(t *testing.T) {
 					Name:      "c1-es-http-certs-public",
 				},
 				Data: map[string][]byte{
-					CAFileName: []byte("..."),
+					CAFileName:   []byte("..."),
 					CertFileName: []byte("..."),
 				},
 			},
 			wantErr: false,
-			want: true,
+			want:    true,
 		},
 		{
 			name: "Happy path, without ca.crt",
@@ -125,12 +125,12 @@ func Test_PublicCertsHasCACert(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			want: false,
+			want:    false,
 		},
 		{
-			name: "Error if no certs secret",
+			name:    "Error if no certs secret",
 			wantErr: true,
-			want: false,
+			want:    false,
 		},
 	}
 

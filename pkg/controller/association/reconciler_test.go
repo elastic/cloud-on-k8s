@@ -132,8 +132,6 @@ var (
 				true, "kbname-kb-es-ca",
 				fmt.Sprintf("https://%s.esns.svc:9200", svcName),
 			),
-			//kb.EsAssociation().AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",
-			//\"authSecretKey\":\"kbns-kbname-kibana-user\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
 		}
 		return *kb
 	}
