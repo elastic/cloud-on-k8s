@@ -11,19 +11,29 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -42,6 +52,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.BuildApmServerClient(b.ApmServer, k),
 		a.CheckApmServerReachable(),
 		a.CheckApmServerVersion(b.ApmServer),
+		a.CheckIndexCreation(b.ApmServer, k),
 		a.CheckEventsAPI(),
 		a.CheckEventsInElasticsearch(b.ApmServer, k),
 		a.CheckRUMEventsAPI(b.RUMEnabled()),
@@ -144,6 +155,108 @@ func (c *apmClusterChecks) CheckEventsAPI() test.Step {
 				assert.Len(t, eventsErrorResponse.Errors, 0)
 			}
 		},
+	}
+}
+
+//nolint:thelper
+func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
+	// default to < 8.x Elasticsearch APM Server index names
+	indexName := "apm-testindex-" + rand.String(4)
+
+	return test.Step{
+		Name: "ES Index should eventually be able to be created by APM Server user",
+		Test: test.Eventually(func() error {
+			if !apm.Spec.ElasticsearchRef.IsDefined() {
+				return nil
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+			defer cancel()
+
+			managedNamespace := test.Ctx().ManagedNamespace(0)
+
+			sec := corev1.Secret{}
+			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Name + "-apm-user", Namespace: managedNamespace}, &sec); err != nil {
+				log.Error(err, "getting apm user secret")
+				return err
+			}
+
+			usernameKey := fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name)
+			b, ok := sec.Data[usernameKey]
+			if !ok {
+				log.Error(fmt.Errorf("key not found"), "getting apm password from secret data")
+				return fmt.Errorf("secret data did not contain key %s", usernameKey)
+			}
+			password := string(b)
+
+			es := esv1.Elasticsearch{}
+			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Spec.ElasticsearchRef.Name, Namespace: apm.Spec.ElasticsearchRef.Namespace}, &es); err != nil {
+				log.Error(err, "getting associated Elasticsearch cluster")
+				return err
+			}
+
+			pods, err := sset.GetActualPodsForCluster(k.Client, es)
+			if err != nil {
+				return err
+			}
+			inClusterURL := services.ElasticsearchURL(es, reconcile.AvailableElasticsearchNodes(pods))
+			var dialer net.Dialer
+			if test.Ctx().AutoPortForwarding {
+				dialer = portforward.NewForwardingDialer()
+			}
+
+			r, err := http.NewRequestWithContext(
+				ctx,
+				http.MethodPut,
+				fmt.Sprintf("%s/%s", inClusterURL, indexName),
+				nil,
+			)
+			if err != nil {
+				log.Error(err, "creating new http request")
+				return err
+			}
+
+			// If the ES version is >= 8.x, then the index name must change to a datastream,
+			// and we only have permissions to auto-create indexes on index document requests,
+			// not explicitly create indexes.
+			if version.MustParse(es.Spec.Version).GE(version.MinFor(8, 0, 0)) {
+				indexName = "metrics-apm.testindex-" + rand.String(4)
+
+				r, err = http.NewRequestWithContext(
+					ctx,
+					http.MethodPost,
+					fmt.Sprintf("%s/%s/_doc/", inClusterURL, indexName),
+					strings.NewReader(`{"@timestamp": "2022-03-22T00:00:00.000Z","message": "test_message"}`),
+				)
+				if err != nil {
+					log.Error(err, "creating new http request")
+					return err
+				}
+			}
+
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("Accept", "application/json")
+			r.SetBasicAuth(fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name), password)
+
+			caCert, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
+			if err != nil {
+				return err
+			}
+
+			httpClient := common.HTTPClient(dialer, caCert, 10*time.Second)
+			res, err := httpClient.Do(r)
+			if err != nil {
+				log.Error(err, "executing http request")
+				return err
+			}
+			// we should receieve either a 200 (index creation), or 201 (index doc request)
+			// from Elasticsearch
+			if res.StatusCode > 201 {
+				log.Error(fmt.Errorf("status code %d", res.StatusCode), "during http request")
+				return fmt.Errorf("expected http 200/201 response code when creating index, got %d", res.StatusCode)
+			}
+			return nil
+		}),
 	}
 }
 
