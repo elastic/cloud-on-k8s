@@ -295,7 +295,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
-	log.Info("association user roles", "userRole", userRole)
 
 	if err := reconcileEsUserSecret(
 		ctx,

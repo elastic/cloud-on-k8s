@@ -181,21 +181,21 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 
 			sec := corev1.Secret{}
 			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Name + "-apm-user", Namespace: managedNamespace}, &sec); err != nil {
-				log.Error(err, "getting apm user secret")
+				log.Error(err, "while getting apm user secret")
 				return err
 			}
 
 			usernameKey := fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name)
 			b, ok := sec.Data[usernameKey]
 			if !ok {
-				log.Error(fmt.Errorf("key not found"), "getting apm password from secret data")
+				log.Error(fmt.Errorf("key not found"), "while getting apm password from secret data")
 				return fmt.Errorf("secret data did not contain key %s", usernameKey)
 			}
 			password := string(b)
 
 			es := esv1.Elasticsearch{}
 			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Spec.ElasticsearchRef.Name, Namespace: apm.Spec.ElasticsearchRef.Namespace}, &es); err != nil {
-				log.Error(err, "getting associated Elasticsearch cluster")
+				log.Error(err, "while getting associated Elasticsearch cluster")
 				return err
 			}
 
@@ -216,13 +216,13 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 				nil,
 			)
 			if err != nil {
-				log.Error(err, "creating new http request")
+				log.Error(err, "while creating new http request")
 				return err
 			}
 
 			// If the ES version is >= 8.x, then the index name must change to a datastream,
 			// and we only have permissions to auto-create indexes on index document requests,
-			// not explicitly create indexes.
+			// not explicitly create index requests.
 			if version.MustParse(es.Spec.Version).GE(version.MinFor(8, 0, 0)) {
 				indexName = "metrics-apm.testindex-" + rand.String(4)
 
@@ -233,7 +233,7 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 					strings.NewReader(`{"@timestamp": "2022-03-22T00:00:00.000Z","message": "test_message"}`),
 				)
 				if err != nil {
-					log.Error(err, "creating new http request")
+					log.Error(err, "while creating new http request")
 					return err
 				}
 			}
@@ -250,7 +250,7 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 			httpClient := common.HTTPClient(dialer, caCert, 10*time.Second)
 			res, err := httpClient.Do(r)
 			if err != nil {
-				log.Error(err, "executing http request")
+				log.Error(err, "while executing http request")
 				return err
 			}
 			defer res.Body.Close()
@@ -309,7 +309,7 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 			// Fetch the last version of the APM Server
 			var updatedApmServer apmv1.ApmServer
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
-				log.Error(err, "getting elasticsearch client")
+				log.Error(err, "while getting elasticsearch client")
 				return err
 			}
 
