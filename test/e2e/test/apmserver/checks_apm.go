@@ -159,6 +159,11 @@ func (c *apmClusterChecks) CheckEventsAPI() test.Step {
 }
 
 //nolint:thelper
+// CheckIndexCreation ensure that, prior to attempting to ingest events, the APM Server user
+// has the necessary permissions to either create indexes (ES < 8.x), or index documents into
+// non-existing indexes (ES >= 8.x). This fixes a transient issue that happens when upgrading
+// Elasticsearch between major versions where it takes a bit of time to transition between
+// file-based user roles, and permissions errors were being returned by Elasticsearch.
 func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
 	// default to < 8.x Elasticsearch APM Server index names
 	indexName := "apm-testindex-" + rand.String(4)
