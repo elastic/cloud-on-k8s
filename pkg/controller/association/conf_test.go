@@ -96,11 +96,13 @@ func testFetchAPMServer(t *testing.T) {
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
 			for _, assoc := range got.GetAssociations() {
+				assocConf, err := assoc.AssociationConf()
+				require.NoError(t, err)
 				switch assoc.AssociationType() {
 				case "elasticsearch":
-					require.Equal(t, tc.wantEsAssocConf, assoc.AssociationConf())
+					require.Equal(t, tc.wantEsAssocConf, assocConf)
 				case "kibana":
-					require.Equal(t, tc.wantKibanaAssocConf, assoc.AssociationConf())
+					require.Equal(t, tc.wantKibanaAssocConf, assocConf)
 				default:
 					t.Fatalf("unknown association type: %s", assoc.AssociationType())
 				}
@@ -157,7 +159,9 @@ func testFetchKibana(t *testing.T) {
 			require.Equal(t, "kb-ns", got.Namespace)
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
-			require.Equal(t, tc.wantAssocConf, got.EsAssociation().AssociationConf())
+			assocConf, err := got.EsAssociation().AssociationConf()
+			require.NoError(t, err)
+			require.Equal(t, tc.wantAssocConf, assocConf)
 		})
 	}
 }
@@ -220,7 +224,8 @@ func TestAreConfiguredIfSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := AreConfiguredIfSet(tt.associations, tt.recorder)
+			got, err := AreConfiguredIfSet(tt.associations, tt.recorder)
+			require.NoError(t, err)
 			if got != tt.want {
 				t.Errorf("AreConfiguredIfSet() got = %v, want %v", got, tt.want)
 			}
@@ -361,7 +366,9 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, assocConf, got.EsAssociation().AssociationConf())
+	assocConf, err = got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, assocConf, assocConf)
 
 	// update and check the new values
 	newAssocConf := &commonv1.AssociationConf{
@@ -380,7 +387,9 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, newAssocConf, got.EsAssociation().AssociationConf())
+	assocConf, err = got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, assocConf, assocConf)
 }
 
 func TestRemoveAssociationConf(t *testing.T) {
@@ -403,7 +412,9 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, assocConf, got.EsAssociation().AssociationConf())
+	assocConf, err = got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, assocConf, assocConf)
 
 	// remove and check the new values
 	err = RemoveAssociationConf(client, got.EsAssociation())
@@ -415,7 +426,9 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Nil(t, got.EsAssociation().AssociationConf())
+	assocConf, err = got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, assocConf, assocConf)
 }
 
 func TestAllowVersion(t *testing.T) {
@@ -501,7 +514,7 @@ func TestAllowVersion(t *testing.T) {
 		logger := log.WithValues("a", "b")
 		recorder := record.NewFakeRecorder(10)
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); got != tt.want {
+			if got, err := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); err != nil && got != tt.want {
 				t.Errorf("AllowVersion() = %v, want %v", got, tt.want)
 			}
 		})

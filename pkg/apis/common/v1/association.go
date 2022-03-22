@@ -161,7 +161,7 @@ type Association interface {
 	AssociationConfAnnotationName() string
 
 	// AssociationConf is the configuration of the Association allowing to connect to the Association resource.
-	AssociationConf() *AssociationConf
+	AssociationConf() (*AssociationConf, error)
 	SetAssociationConf(*AssociationConf)
 
 	// AssociationID uniquely identifies this Association among all Associations of the same type belonging to Associated()

@@ -319,7 +319,7 @@ func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 	return commonv1.ElasticsearchConfigAnnotationName(aea.ref)
 }
 
-func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
+func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref, aea.esAssocConfs)
 }
 
@@ -338,7 +338,7 @@ type AgentKibanaAssociation struct {
 
 var _ commonv1.Association = &AgentKibanaAssociation{}
 
-func (a *AgentKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
+func (a *AgentKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(a, a.kbAssocConf)
 }
 
@@ -378,7 +378,7 @@ type AgentFleetServerAssociation struct {
 
 var _ commonv1.Association = &AgentFleetServerAssociation{}
 
-func (a *AgentFleetServerAssociation) AssociationConf() *commonv1.AssociationConf {
+func (a *AgentFleetServerAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(a, a.fsAssocConf)
 }
 

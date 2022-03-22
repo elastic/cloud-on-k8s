@@ -158,7 +158,8 @@ func Test_CalculateHealth(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := beatcommon.CalculateHealth(tt.associations, tt.ready, tt.desired)
+			got, err := beatcommon.CalculateHealth(tt.associations, tt.ready, tt.desired)
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}

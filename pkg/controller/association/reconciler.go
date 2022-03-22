@@ -368,7 +368,11 @@ func (r *Reconciler) updateAssocConf(
 	span, _ := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
 	defer span.End()
 
-	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return "", err
+	}
+	if !reflect.DeepEqual(expectedAssocConf, assocConf) {
 		r.log(k8s.ExtractNamespacedName(association)).Info("Updating association configuration")
 		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {

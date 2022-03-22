@@ -24,12 +24,19 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploy := deployment.New(r.deploymentParams(ent, configHash))
+	deployParams, err := r.deploymentParams(ent, configHash)
+	if err != nil {
+		return appsv1.Deployment{}, err
+	}
+	deploy := deployment.New(deployParams)
 	return deployment.Reconcile(r.K8sClient(), deploy, &ent)
 }
 
-func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) deployment.Params {
-	podSpec := newPodSpec(ent, configHash)
+func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) (deployment.Params, error) {
+	podSpec, err := newPodSpec(ent, configHash)
+	if err != nil {
+		return deployment.Params{}, err
+	}
 
 	deploymentLabels := Labels(ent.Name)
 
@@ -45,5 +52,5 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 		Labels:          deploymentLabels,
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
-	}
+	}, nil
 }

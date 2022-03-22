@@ -99,7 +99,7 @@ func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
 	return ent.Spec.ElasticsearchRef.WithDefaultNamespace(ent.Namespace)
 }
 
-func (ent *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
+func (ent *EnterpriseSearch) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(ent, ent.assocConf)
 }
 

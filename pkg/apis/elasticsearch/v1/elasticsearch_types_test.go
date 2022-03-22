@@ -364,7 +364,9 @@ func Test_AssociationConfs(t *testing.T) {
 
 	// get and set assoc conf
 	for _, assoc := range esMon.GetAssociations() {
-		assert.NotNil(t, assoc.AssociationConf())
+		assocConf, err := assoc.AssociationConf()
+		assert.NotNil(t, assocConf)
+		assert.NoError(t, err)
 	}
 	// map should have been populated by the call to AssociationConf()
 	assert.Equal(t, 2, len(esMon.AssocConfs))
@@ -375,7 +377,9 @@ func Test_AssociationConfs(t *testing.T) {
 
 	// get and set assoc conf
 	for _, assoc := range esMon.GetAssociations() {
-		assert.NotNil(t, assoc.AssociationConf())
+		assocConf, err := assoc.AssociationConf()
+		assert.NotNil(t, assocConf)
+		assert.NoError(t, err)
 	}
 	// checks that all map entries are set again
 	assert.Equal(t, 2, len(esMon.AssocConfs))
@@ -386,7 +390,9 @@ func Test_AssociationConfs(t *testing.T) {
 
 	// checks that the missing entry is set again
 	for _, assoc := range esMon.GetAssociations() {
-		assert.NotNil(t, assoc.AssociationConf())
+		assocConf, err := assoc.AssociationConf()
+		assert.NotNil(t, assocConf)
+		assert.NoError(t, err)
 	}
 	assert.Equal(t, 2, len(esMon.AssocConfs))
 }

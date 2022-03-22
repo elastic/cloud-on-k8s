@@ -35,7 +35,11 @@ func Test_AssociationConf(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, kb.EntAssociation().AssociationConf())
-	assert.NotNil(t, kb.EsAssociation().AssociationConf())
-	assert.Equal(t, "https://metrics-es-http.default.svc:9200", kb.EsAssociation().AssociationConf().URL)
+	entAssocConf, err := kb.EntAssociation().AssociationConf()
+	assert.NoError(t, err)
+	assert.Nil(t, entAssocConf)
+	esAssocConf, err := kb.EsAssociation().AssociationConf()
+	assert.NoError(t, err)
+	assert.NotNil(t, esAssocConf)
+	assert.Equal(t, "https://metrics-es-http.default.svc:9200", esAssocConf.URL)
 }

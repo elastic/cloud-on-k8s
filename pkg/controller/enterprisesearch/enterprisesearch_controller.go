@@ -163,7 +163,11 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, nil
 	}
 
-	if !association.IsConfiguredIfSet(&ent, r.recorder) {
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ent, r.recorder)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !isEsAssocConfigured {
 		return reconcile.Result{}, nil
 	}
 
@@ -212,7 +216,11 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
-	if !association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder) {
+	assocAllowed, err := association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !assocAllowed {
 		return reconcile.Result{}, nil // will eventually retry once updated
 	}
 

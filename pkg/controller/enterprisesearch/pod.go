@@ -52,7 +52,7 @@ var (
 	}
 )
 
-func newPodSpec(ent entv1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
+func newPodSpec(ent entv1.EnterpriseSearch, configHash string) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	annotations := map[string]string{ConfigHashAnnotationName: configHash}
 
@@ -75,24 +75,31 @@ func newPodSpec(ent entv1.EnterpriseSearch, configHash string) corev1.PodTemplat
 		WithVolumeMounts(cfgVolume.VolumeMount(), readinessProbeVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
 
-	builder = withESCertsVolume(builder, ent)
+	builder, err := withESCertsVolume(builder, ent)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
 	builder = withHTTPCertsVolume(builder, ent)
 
-	return builder.PodTemplate
+	return builder.PodTemplate, nil
 }
 
-func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.EnterpriseSearch) *defaults.PodTemplateBuilder {
-	if !ent.AssociationConf().CAIsConfigured() {
-		return builder
+func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.EnterpriseSearch) (*defaults.PodTemplateBuilder, error) {
+	esAssocConf, err := ent.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !esAssocConf.CAIsConfigured() {
+		return builder, nil
 	}
 	vol := volume.NewSecretVolumeWithMountPath(
-		ent.AssociationConf().GetCASecretName(),
+		esAssocConf.GetCASecretName(),
 		"es-certs",
 		ESCertsPath,
 	)
 	return builder.
 		WithVolumes(vol.Volume()).
-		WithVolumeMounts(vol.VolumeMount())
+		WithVolumeMounts(vol.VolumeMount()), nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.EnterpriseSearch) *defaults.PodTemplateBuilder {

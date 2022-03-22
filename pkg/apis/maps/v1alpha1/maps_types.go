@@ -88,7 +88,7 @@ func (m *ElasticMapsServer) ServiceAccountName() string {
 	return m.Spec.ServiceAccountName
 }
 
-func (m *ElasticMapsServer) AssociationConf() *commonv1.AssociationConf {
+func (m *ElasticMapsServer) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(m, m.assocConf)
 }
 

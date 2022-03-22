@@ -299,7 +299,7 @@ func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
-func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
+func (kbes *KibanaEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(kbes, kbes.assocConf)
 }
 
@@ -346,7 +346,7 @@ func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
-func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
+func (kbent *KibanaEntAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(kbent, kbent.entAssocConf)
 }
 
@@ -395,7 +395,7 @@ func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
+func (kbmon *KbMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConfByRef(kbmon, kbmon.ref, kbmon.monitoringAssocConfs)
 }
 

@@ -90,14 +90,16 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		}
 	}
 
-	for _, assoc := range esAssociations {
-		if !assoc.AssociationConf().IsConfigured() {
-			return settings.NewCanonicalConfig(), nil
-		}
-	}
-
 	outputs := map[string]interface{}{}
 	for i, assoc := range esAssociations {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return settings.NewCanonicalConfig(), err
+		}
+		if !assocConf.IsConfigured() {
+			return settings.NewCanonicalConfig(), nil
+		}
+
 		username, password, err := association.ElasticsearchAuthSettings(params.Client, assoc)
 		if err != nil {
 			return settings.NewCanonicalConfig(), err
@@ -107,9 +109,9 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			"type":     "elasticsearch",
 			"username": username,
 			"password": password,
-			"hosts":    []string{assoc.AssociationConf().GetURL()},
+			"hosts":    []string{assocConf.GetURL()},
 		}
-		if assoc.AssociationConf().GetCACertProvided() {
+		if assocConf.GetCACertProvided() {
 			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
 		}
 
@@ -157,13 +159,18 @@ func extractConnectionSettings(
 		return connectionSettings{}, err
 	}
 
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
 	ca := ""
-	if assoc.AssociationConf().GetCACertProvided() {
+	if assocConf.GetCACertProvided() {
 		ca = path.Join(certificatesDir(assoc), CAFileName)
 	}
 
 	return connectionSettings{
-		host:     assoc.AssociationConf().GetURL(),
+		host:     assocConf.GetURL(),
 		ca:       ca,
 		username: username,
 		password: password,

@@ -143,7 +143,10 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodT
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...)
 
-	builder = withAssociationCACertsVolumes(builder, *as)
+	builder, err = withAssociationCACertsVolumes(builder, *as)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
 	builder = withHTTPCertsVolume(builder, *as)
 
 	return builder.WithInitContainerDefaults().PodTemplate, nil
@@ -161,19 +164,23 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, as apmv1.ApmServe
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 }
 
-func withAssociationCACertsVolumes(builder *defaults.PodTemplateBuilder, as apmv1.ApmServer) *defaults.PodTemplateBuilder {
+func withAssociationCACertsVolumes(builder *defaults.PodTemplateBuilder, as apmv1.ApmServer) (*defaults.PodTemplateBuilder, error) {
 	for _, association := range as.GetAssociations() {
-		if !association.AssociationConf().CAIsConfigured() {
+		assocConf, err := association.AssociationConf()
+		if err != nil {
+			return nil, err
+		}
+		if !assocConf.CAIsConfigured() {
 			continue
 		}
 
 		vol := volume.NewSecretVolumeWithMountPath(
-			association.AssociationConf().GetCASecretName(),
+			assocConf.GetCASecretName(),
 			fmt.Sprintf("%s-certs", association.AssociationType()),
 			filepath.Join(ApmBaseDir, certificatesDir(association.AssociationType())),
 		)
 
 		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 	}
-	return builder
+	return builder, nil
 }

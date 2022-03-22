@@ -153,7 +153,11 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) *reconciler.Results {
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
-	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
+	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !areAssocsConfigured {
 		return results
 	}
 

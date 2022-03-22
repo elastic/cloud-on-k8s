@@ -542,7 +542,7 @@ func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
+func (ema *EsMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
 }
 

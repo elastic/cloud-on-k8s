@@ -24,19 +24,27 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) bool {
+func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) (bool, error) {
 	allAssociationsConfigured := true
 	for _, association := range associations {
-		allAssociationsConfigured = allAssociationsConfigured && IsConfiguredIfSet(association, r)
+		isAssocConfigured, err := IsConfiguredIfSet(association, r)
+		if err != nil {
+			return false, err
+		}
+		allAssociationsConfigured = allAssociationsConfigured && isAssocConfigured
 	}
-	return allAssociationsConfigured
+	return allAssociationsConfigured, nil
 }
 
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) bool {
+func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) (bool, error) {
 	ref := association.AssociationRef()
-	if (&ref).IsDefined() && !association.AssociationConf().IsConfigured() {
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return false, err
+	}
+	if (&ref).IsDefined() && !assocConf.IsConfigured() {
 		r.Event(
 			association,
 			corev1.EventTypeWarning,
@@ -50,16 +58,19 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			"ref_namespace", ref.Namespace,
 			"ref_name", ref.Name,
 		)
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 // ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
 // This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
 func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (username, password string, err error) {
-	assocConf := association.AssociationConf()
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return "", "", err
+	}
 	if !assocConf.AuthIsConfigured() {
 		return "", "", nil
 	}
@@ -82,23 +93,27 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
 // A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
 // Referenced resources version is parsed from the association conf annotation.
-func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) bool {
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) (bool, error) {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
 		if !assocRef.IsDefined() {
 			// no association specified, move on
 			continue
 		}
-		if assoc.AssociationConf() == nil || assoc.AssociationConf().Version == "" {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return false, err
+		}
+		if assocConf == nil || assocConf.Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
 				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
-			return false
+			return false, nil
 		}
-		refVer, err := version.Parse(assoc.AssociationConf().Version)
+		refVer, err := version.Parse(assocConf.Version)
 		if err != nil {
-			logger.Error(err, "Invalid version found in association configuration", "association_version", assoc.AssociationConf().Version)
-			return false
+			logger.Error(err, "Invalid version found in association configuration", "association_version", assocConf.Version)
+			return false, nil
 		}
 
 		compatibleVersions := refVer.GTE(resourceVersion) || ((refVer.Major == resourceVersion.Major) && (refVer.Minor == resourceVersion.Minor))
@@ -110,10 +125,10 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
 				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // SingleAssociationOfType returns single association from the provided slice that matches provided type. Returns

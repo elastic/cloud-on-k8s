@@ -15,11 +15,11 @@ import (
 
 // GetAndSetAssociationConf returns the association configuration if it is not nil, else the association configured is
 // read from the annotation and put back in the given association.
-func GetAndSetAssociationConf(assoc Association, assocConf *AssociationConf) *AssociationConf {
+func GetAndSetAssociationConf(assoc Association, assocConf *AssociationConf) (*AssociationConf, error) {
 	if assocConf == nil {
 		return setAssocConfFromAnnotation(assoc)
 	}
-	return assocConf
+	return assocConf, nil
 }
 
 // GetAndSetAssociationConfByRef returns the association configuration corresponding to the namespace name of the
@@ -27,7 +27,7 @@ func GetAndSetAssociationConf(assoc Association, assocConf *AssociationConf) *As
 // Because the map of association configurations is not persisted and can be cleared by an update of the parent resource
 // (see https://github.com/elastic/cloud-on-k8s/issues/4709#issuecomment-1042898108). If we detect that the map is empty,
 // we try to populate it again from the annotation.
-func GetAndSetAssociationConfByRef(assoc Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]AssociationConf) *AssociationConf {
+func GetAndSetAssociationConfByRef(assoc Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]AssociationConf) (*AssociationConf, error) {
 	if len(assocConfs) == 0 {
 		return setAssocConfFromAnnotation(assoc)
 	}
@@ -35,18 +35,17 @@ func GetAndSetAssociationConfByRef(assoc Association, ref types.NamespacedName, 
 	if !found {
 		return setAssocConfFromAnnotation(assoc)
 	}
-	return &assocConf
+	return &assocConf, nil
 }
 
 // setAssocConfFromAnnotation sets the association configuration extracted from the annotations in the given association.
-func setAssocConfFromAnnotation(assoc Association) *AssociationConf {
+func setAssocConfFromAnnotation(assoc Association) (*AssociationConf, error) {
 	assocConf, err := extractAssocConfFromAnnotation(assoc.Associated().GetAnnotations(), assoc.AssociationConfAnnotationName())
 	if err != nil {
-		// ignore this unlikely unexpected error that should not happen as we control the annotation
-		return nil
+		return nil, err
 	}
 	assoc.SetAssociationConf(assocConf)
-	return assocConf
+	return assocConf, nil
 }
 
 // extractAssocConfFromAnnotation extracts the association configuration from annotations and an annotation name.

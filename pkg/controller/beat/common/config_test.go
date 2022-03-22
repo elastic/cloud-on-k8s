@@ -76,7 +76,9 @@ func Test_buildBeatConfig(t *testing.T) {
 	withAssocWithCA := *withAssoc.DeepCopy()
 
 	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssocWithCA}
-	esAssocWithCA.AssociationConf().CACertProvided = true
+	assocConf, err := esAssocWithCA.AssociationConf()
+	require.NoError(t, err)
+	assocConf.CACertProvided = true
 
 	withAssocWithCAWithonfig := *withAssocWithCA.DeepCopy()
 	withAssocWithCAWithonfig.Spec.Config = userCfg
