@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/jsonpath"
 
@@ -110,22 +111,25 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 	if err != nil {
 		return "", err
 	}
-
 	req.SetBasicAuth(r.Username, r.Password)
 
-	certPool := x509.NewCertPool()
+	httpClient := &http.Client{
+		Timeout: client.DefaultESClientTimeout,
+	}
+	// configure CA if it exists
 	if r.CaCert != "" {
 		caCerts, err := certificates.ParsePEMCerts([]byte(r.CaCert))
 		if err != nil {
 			return "", err
 		}
+		certPool := x509.NewCertPool()
 		for _, c := range caCerts {
 			certPool.AddCert(c)
 		}
+		httpClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}} //nolint:gosec
 	}
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}}} //nolint:gosec
-	resp, err := client.Do(req)
 
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
