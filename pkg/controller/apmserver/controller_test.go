@@ -284,10 +284,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 		},
 	}
 	type fields struct {
-		Client         k8s.Client
-		recorder       record.EventRecorder
-		dynamicWatches watches.DynamicWatches
-		Parameters     operator.Parameters
+		Client k8s.Client
 	}
 	type args struct {
 		ctx     context.Context
@@ -307,9 +304,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(
 					withAnnotations(sampleAPMObject, map[string]string{common.ManagedAnnotation: "false"}),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
 			},
 			args: args{
 				ctx:     context.Background(),
@@ -331,9 +325,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(
 					withFinalizers(sampleAPMObject, []string{"finalizer.elasticsearch.k8s.elastic.co/secure-settings-secret"}),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
 			},
 			args: args{
 				ctx:     context.Background(),
@@ -356,9 +347,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(
 					withESReference(sampleAPMObject, commonv1.ObjectSelector{Name: "testes"}),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
 			},
 			args: args{
 				ctx:     context.Background(),
@@ -406,9 +394,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 						},
 					},
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
 			},
 			args: args{
 				ctx:     context.Background(),
@@ -430,9 +415,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(
 					withName(sampleAPMObject, "superlongapmservernamecausesvalidationissues"),
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
 			},
 			args: args{
 				ctx: context.Background(),
@@ -459,9 +441,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(
 					&sampleAPMObject,
 				),
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
 			},
 			args: args{
 				ctx:     context.Background(),
@@ -487,9 +466,9 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileApmServer{
 				Client:         tt.fields.Client,
-				recorder:       tt.fields.recorder,
-				dynamicWatches: tt.fields.dynamicWatches,
-				Parameters:     tt.fields.Parameters,
+				recorder:       record.NewFakeRecorder(100),
+				dynamicWatches: watches.NewDynamicWatches(),
+				Parameters:     operator.Parameters{},
 			}
 			var apm apmv1.ApmServer
 			getErr := association.FetchWithAssociations(context.Background(), r.Client, tt.args.request, &apm)
