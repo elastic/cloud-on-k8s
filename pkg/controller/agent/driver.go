@@ -82,7 +82,7 @@ func internalReconcile(params Params) *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	if !assocAllowed{
+	if !assocAllowed {
 		return results // will eventually retry
 	}
 

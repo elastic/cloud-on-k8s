@@ -97,7 +97,6 @@ func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
 
 func (ent *EnterpriseSearch) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(ent, ent.assocConf)
-
 }
 
 func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {

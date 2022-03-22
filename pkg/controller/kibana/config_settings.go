@@ -165,7 +165,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		kibanaTLSCfg,
 		entSearchCfg,
 		monitoringCfg,
-		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb, *esAssocConf)),
+		settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf)),
 		credentialsCfg,
 		userSettings,
 	)
@@ -299,7 +299,7 @@ func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 	}
 }
 
-func elasticsearchTLSSettings(kb kbv1.Kibana, esAssocConf commonv1.AssociationConf) map[string]interface{} {
+func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]interface{} {
 	cfg := map[string]interface{}{
 		ElasticsearchSslVerificationMode: "certificate",
 	}

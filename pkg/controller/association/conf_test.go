@@ -351,7 +351,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
 	client := k8s.NewFakeClient(kb)
 
-	assocConf := &commonv1.AssociationConf{
+	expectedAssocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -366,9 +366,9 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	assocConf, err = got.EsAssociation().AssociationConf()
+	assocConf, err := got.EsAssociation().AssociationConf()
 	require.NoError(t, err)
-	require.Equal(t, assocConf, assocConf)
+	require.Equal(t, expectedAssocConf, assocConf)
 
 	// update and check the new values
 	newAssocConf := &commonv1.AssociationConf{
@@ -389,7 +389,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.EqualValues(t, 1, got.Spec.Count)
 	assocConf, err = got.EsAssociation().AssociationConf()
 	require.NoError(t, err)
-	require.Equal(t, assocConf, assocConf)
+	require.Equal(t, newAssocConf, assocConf)
 }
 
 func TestRemoveAssociationConf(t *testing.T) {
@@ -397,7 +397,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
 	client := k8s.NewFakeClient(kb)
 
-	assocConf := &commonv1.AssociationConf{
+	expectedAssocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -412,9 +412,9 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	assocConf, err = got.EsAssociation().AssociationConf()
+	assocConf, err := got.EsAssociation().AssociationConf()
 	require.NoError(t, err)
-	require.Equal(t, assocConf, assocConf)
+	require.Equal(t, expectedAssocConf, assocConf)
 
 	// remove and check the new values
 	err = RemoveAssociationConf(client, got.EsAssociation())
@@ -428,7 +428,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.EqualValues(t, 1, got.Spec.Count)
 	assocConf, err = got.EsAssociation().AssociationConf()
 	require.NoError(t, err)
-	require.Equal(t, assocConf, assocConf)
+	require.Nil(t, assocConf)
 }
 
 func TestAllowVersion(t *testing.T) {

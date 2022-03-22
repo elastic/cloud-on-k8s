@@ -160,7 +160,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 
 func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-	areAssocsConfigured, err  := association.AreConfiguredIfSet(beat.GetAssociations(), r.recorder)
+	areAssocsConfigured, err := association.AreConfiguredIfSet(beat.GetAssociations(), r.recorder)
 	if err != nil {
 		return results.WithError(err)
 	}
