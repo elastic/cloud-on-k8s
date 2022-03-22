@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
@@ -544,7 +543,7 @@ func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	return utils.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
+	return commonv1.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
 }
 
 func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

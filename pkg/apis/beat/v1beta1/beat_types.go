@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 )
 
 const (
@@ -251,7 +250,7 @@ func (b *BeatESAssociation) AssociationConfAnnotationName() string {
 }
 
 func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
-	return assocutils.GetAndSetAssociationConf(b, b.esAssocConf)
+	return commonv1.GetAndSetAssociationConf(b, b.esAssocConf)
 }
 
 func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -269,7 +268,7 @@ type BeatKibanaAssociation struct {
 var _ commonv1.Association = &BeatKibanaAssociation{}
 
 func (b *BeatKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return assocutils.GetAndSetAssociationConf(b, b.kbAssocConf)
+	return commonv1.GetAndSetAssociationConf(b, b.kbAssocConf)
 }
 
 func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {

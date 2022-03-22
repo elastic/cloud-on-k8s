@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package utils
+package v1
 
 import (
 	"encoding/json"
@@ -10,15 +10,12 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 // GetAndSetAssociationConf returns the association configuration if it is not nil, else the association configured is
 // read from the annotation and put back in the given association.
-func GetAndSetAssociationConf(assoc commonv1.Association, assocConf *commonv1.AssociationConf) *commonv1.AssociationConf {
+func GetAndSetAssociationConf(assoc Association, assocConf *AssociationConf) *AssociationConf {
 	if assocConf == nil {
 		return setAssocConfFromAnnotation(assoc)
 	}
@@ -27,10 +24,10 @@ func GetAndSetAssociationConf(assoc commonv1.Association, assocConf *commonv1.As
 
 // GetAndSetAssociationConfByRef returns the association configuration corresponding to the namespace name of the
 // referenced resource if it is found in the given map of association configurations.
-// Because the map of association configurations is not persisted and can be reset by an update of the parent resource
+// Because the map of association configurations is not persisted and can be cleared by an update of the parent resource
 // (see https://github.com/elastic/cloud-on-k8s/issues/4709#issuecomment-1042898108). If we detect that the map is empty,
 // we try to populate it again from the annotation.
-func GetAndSetAssociationConfByRef(assoc commonv1.Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]commonv1.AssociationConf) *commonv1.AssociationConf {
+func GetAndSetAssociationConfByRef(assoc Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]AssociationConf) *AssociationConf {
 	if len(assocConfs) == 0 {
 		return setAssocConfFromAnnotation(assoc)
 	}
@@ -41,18 +38,8 @@ func GetAndSetAssociationConfByRef(assoc commonv1.Association, ref types.Namespa
 	return &assocConf
 }
 
-// GetAssociationConf extracts the association configuration from the given object by reading the annotations.
-func GetAssociationConf(association commonv1.Association) (*commonv1.AssociationConf, error) {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(association)
-	if err != nil {
-		return nil, err
-	}
-	return extractAssocConfFromAnnotation(annotations, association.AssociationConfAnnotationName())
-}
-
 // setAssocConfFromAnnotation sets the association configuration extracted from the annotations in the given association.
-func setAssocConfFromAnnotation(assoc commonv1.Association) *commonv1.AssociationConf {
+func setAssocConfFromAnnotation(assoc Association) *AssociationConf {
 	assocConf, err := extractAssocConfFromAnnotation(assoc.Associated().GetAnnotations(), assoc.AssociationConfAnnotationName())
 	if err != nil {
 		// ignore this unlikely unexpected error that should not happen as we control the annotation
@@ -63,12 +50,12 @@ func setAssocConfFromAnnotation(assoc commonv1.Association) *commonv1.Associatio
 }
 
 // extractAssocConfFromAnnotation extracts the association configuration from annotations and an annotation name.
-func extractAssocConfFromAnnotation(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
+func extractAssocConfFromAnnotation(annotations map[string]string, annotationName string) (*AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil
 	}
 
-	var assocConf commonv1.AssociationConf
+	var assocConf AssociationConf
 	serializedConf, exists := annotations[annotationName]
 	if !exists || serializedConf == "" {
 		return nil, nil

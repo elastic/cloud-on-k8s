@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 )
 
 const (
@@ -90,7 +89,7 @@ func (m *ElasticMapsServer) ServiceAccountName() string {
 }
 
 func (m *ElasticMapsServer) AssociationConf() *commonv1.AssociationConf {
-	return assocutils.GetAndSetAssociationConf(m, m.assocConf)
+	return commonv1.GetAndSetAssociationConf(m, m.assocConf)
 }
 
 func (m *ElasticMapsServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {

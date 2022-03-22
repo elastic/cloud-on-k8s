@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 )
 
@@ -101,7 +100,7 @@ func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (ent *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
-	return assocutils.GetAndSetAssociationConf(ent, ent.assocConf)
+	return commonv1.GetAndSetAssociationConf(ent, ent.assocConf)
 }
 
 func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {

@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	assocutils "github.com/elastic/cloud-on-k8s/pkg/controller/association/utils"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
@@ -317,8 +316,8 @@ func TestElasticsearch_DisabledPredicates(t *testing.T) {
 	}
 }
 
-// Test_AssociationConfs tests that if something resets the AssocConfs map, then AssociationConf() reinitializes
-// the map from the annotation.
+// Test_AssociationConfs tests that if the association configuration map in an associated object is cleared, then
+// AssociationConf() is rebuilt from the annotation.
 func Test_AssociationConfs(t *testing.T) {
 	// simple es without associations
 	es := &Elasticsearch{
@@ -327,20 +326,8 @@ func Test_AssociationConfs(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-
-	// set assoc conf even if no assoc
+	assert.Equal(t, 0, len(es.GetAssociations()))
 	assert.Equal(t, 0, len(es.AssocConfs))
-	for _, association := range es.GetAssociations() {
-		assocConf, err := assocutils.GetAssociationConf(association)
-		assert.NoError(t, err)
-		association.SetAssociationConf(assocConf)
-	}
-	assert.Equal(t, 0, len(es.AssocConfs))
-
-	// checks that assocConfs is nil
-	for _, assoc := range es.GetAssociations() {
-		assert.Nil(t, assoc.AssociationConf())
-	}
 
 	// es with associations
 	metricsEsRef := commonv1.ObjectSelector{
@@ -370,34 +357,36 @@ func Test_AssociationConfs(t *testing.T) {
 			},
 		},
 	}
+	assert.Equal(t, 2, len(esMon.GetAssociations()))
 
-	// set assoc conf
+	// map should be initially empty
 	assert.Equal(t, 0, len(esMon.AssocConfs))
-	for _, association := range esMon.GetAssociations() {
-		assocConf, err := assocutils.GetAssociationConf(association)
-		assert.NoError(t, err)
-		association.SetAssociationConf(assocConf)
+
+	// get and set assoc conf
+	for _, assoc := range esMon.GetAssociations() {
+		assert.NotNil(t, assoc.AssociationConf())
 	}
+	// map should have been populated by the call to AssociationConf()
 	assert.Equal(t, 2, len(esMon.AssocConfs))
 
 	// simulate the case where the assocConfs map is reset, which can happen if the resource is updated
 	esMon.AssocConfs = nil
-
-	// checks that AssociationConf are not nil when AssociationConf() is called
 	assert.Equal(t, 0, len(esMon.AssocConfs))
+
+	// get and set assoc conf
 	for _, assoc := range esMon.GetAssociations() {
 		assert.NotNil(t, assoc.AssociationConf())
 	}
+	// checks that all map entries are set again
 	assert.Equal(t, 2, len(esMon.AssocConfs))
 
 	// delete just one entry in the map
 	delete(esMon.AssocConfs, metricsEsRef.NamespacedName())
-	assert.Equal(t, 1	, len(esMon.AssocConfs))
+	assert.Equal(t, 1, len(esMon.AssocConfs))
 
-	// checks that the map the missing entry is set again
+	// checks that the missing entry is set again
 	for _, assoc := range esMon.GetAssociations() {
 		assert.NotNil(t, assoc.AssociationConf())
 	}
 	assert.Equal(t, 2, len(esMon.AssocConfs))
-
 }
